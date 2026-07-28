@@ -15,3 +15,10 @@ projection, and observer-local state. Yellow Beast owns declared initial content
 source provenance, claim classifications, capabilities, and scenario selection.
 No pack code imports reducers, invokes the Director, applies effects, or mutates
 state directly.
+
+The public conformance test uses two ticks: both surveyors acquire a bounded
+visual perception of an objective signal, the alpha surveyor traverses the
+declared controlled route, a private radio message remains an objective
+communication fact, and a later baseline measurement creates evidence. Export
+and restore then rebuild the same session. These are pack-original smoke-test
+facts, not a claim of broad setting mechanics.
