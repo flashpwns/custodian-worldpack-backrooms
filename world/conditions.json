@@ -1,0 +1,1 @@
+{"conditions":[{"id":"survey-instrument","initial":{"ready":false},"classification":"pack-original baseline measurement control"},{"id":"lighting","initial":{"state":"controlled"},"classification":"pack-original controlled-area condition"},{"id":"air-quality","initial":{"state":"unmeasured"},"classification":"unknown until measurement"}]}
