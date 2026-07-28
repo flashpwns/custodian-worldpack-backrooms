@@ -1,0 +1,11 @@
+"use strict";
+const fs = require("node:fs");
+const path = require("node:path");
+const { validateWorldPackConformance } = require("custodian");
+const root = path.resolve(__dirname, "..");
+const world_pack = JSON.parse(fs.readFileSync(path.join(root, "manifest.json"), "utf8"));
+const scenario = JSON.parse(fs.readFileSync(path.join(root, "scenario.json"), "utf8"));
+const ticks = [{ id: "threshold-baseline-conformance", at: 1, observers: scenario.observers.map((observer, index) => ({ ...observer, goals: index === 0 ? [{ id: "baseline", intent: "toggle-light", priority: 0 }] : [] })) }];
+const report = validateWorldPackConformance({ world_pack, scenarios: [{ scenario, ticks }] });
+process.stdout.write(`${report.serialization}\n`);
+process.exitCode = report.ok ? 0 : 1;
