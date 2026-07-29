@@ -14,7 +14,9 @@ const relations = ["supports", "contradicts", "qualifies", "supersedes", "contex
 function data() {
   const registry = read("canon/source-registry.json");
   const claims = read("canon/claims/foundation.json").claims;
-  return { registry, claims, sourceIds: new Set(registry.sources.map(({ id }) => id)), claimById: new Map(claims.map((claim) => [claim.id, claim])) };
+  const primary = read("canon/verified-primary-sources.json").sources;
+  const locatorById = new Map(primary.flatMap((source) => source.locators.map((locator) => [locator.id, { ...locator, source }])));
+  return { registry, claims, primary, locatorById, sourceIds: new Set(registry.sources.map(({ id }) => id)), claimById: new Map(claims.map((claim) => [claim.id, claim])) };
 }
 function admission(dependency, claim) {
   if (!claim) return { ok: false, code: "MISSING_CLAIM" };

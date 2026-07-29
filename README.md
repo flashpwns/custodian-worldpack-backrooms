@@ -15,6 +15,7 @@ statement silently becomes objective world state.
 npm install
 npm run validate-assets
 npm run check-admission
+npm run evidence-report
 npm run conformance
 ```
 
@@ -24,6 +25,7 @@ Research references are not world facts. Yellow Beast records source metadata,
 project scope, provenance, normalized claims, review states, conflict links, and
 scenario-specific admission separately. Start with the [verified intake workflow](docs/intake-workflow.md).
 No raw transcript, film frame, image gallery, or Discord archive belongs here.
+The bounded primary-source procedure is documented in [primary-source verification](docs/primary-source-verification.md).
 
 The small `threshold-baseline` scenario is a constitutional smoke test for a
 controlled Threshold-side survey: multiple observers, equipment custody,
