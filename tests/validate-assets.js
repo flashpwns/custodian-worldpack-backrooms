@@ -5,7 +5,7 @@ const path = require("node:path");
 const root = path.resolve(__dirname, "..");
 const read = (relative) => JSON.parse(fs.readFileSync(path.join(root, relative), "utf8"));
 const registry = read("canon/source-registry.json");
-const claims = [...read("canon/claims/foundation.json").claims, ...read("canon/claims/operations.json").claims, ...read("canon/claims/recovered-records.json").claims, ...read("canon/claims/architecture.json").claims, ...read("canon/claims/environmental-survey.json").claims, ...read("canon/claims/anomalies.json").claims];
+const claims = [...read("canon/claims/foundation.json").claims, ...read("canon/claims/operations.json").claims, ...read("canon/claims/recovered-records.json").claims, ...read("canon/claims/architecture.json").claims, ...read("canon/claims/environmental-survey.json").claims, ...read("canon/claims/anomalies.json").claims, ...read("canon/claims/transitions.json").claims];
 const intake = read("intake/records/representative-sources.json");
 const admission = read("scenarios/threshold-baseline-admission.json");
 const verifiedPrimary = [...read("canon/verified-primary-sources.json").sources, ...read("canon/verified-expedition-sources.json").sources, ...read("canon/verified-recovered-record-sources.json").sources, ...read("canon/verified-architecture-sources.json").sources, ...read("canon/verified-survey-sources.json").sources, ...read("canon/verified-anomaly-sources.json").sources];
@@ -21,6 +21,9 @@ const anomalyObservations = read("anomalies/observations.json").observations;
 const anomalyInteractions = read("anomalies/interactions.json").interactions;
 const anomalyChronology = read("anomalies/chronology.json").relationships;
 const anomalyTerms = read("anomalies/terminology.json").terms;
+const corpusRoots = read("corpus/roots.json").roots;
+const corpusVideos = read("corpus/videos.json").videos;
+const transitions = read("transitions/observations.json").transitions;
 const manifest = read("manifest.json");
 const scenario = read("scenario.json");
 const scenarioCopy = read("scenarios/threshold-baseline.json");
@@ -168,8 +171,24 @@ for (const dependency of admission.dependencies) {
   assert.notEqual(claim.simulation_authority, "prohibited", `${dependency.claim_id} is not prohibited`);
   assert.notEqual(claim.review_state, "rejected", `${dependency.claim_id} is not rejected`);
 }
-for (const relative of ["README.md", "canon/SOURCE_POLICY.md", "canon/source-registry-schema.json", "canon/source-intake-schema.json", "canon/claim-schema.json", "canon/scenario-admission-schema.json", "canon/verified-primary-source-schema.json", "canon/verified-primary-sources.json", "canon/verified-expedition-sources.json", "canon/verified-recovered-record-sources.json", "canon/verified-architecture-sources.json", "canon/verified-survey-sources.json", "canon/verified-anomaly-sources.json", "canon/evidence-object-schema.json", "canon/communication-record-schema.json", "canon/recovered-record-schema.json", "canon/derived-report-schema.json", "canon/environment-observation-schema.json", "canon/local-topology-schema.json", "canon/architecture-grammar-schema.json", "canon/production-reference-schema.json", "canon/environmental-condition-schema.json", "canon/survey-observation-schema.json", "canon/anomaly-observation-schema.json", "canon/anomaly-interaction-schema.json", "canon/claims/environmental-survey.json", "canon/claims/anomalies.json", "docs/canon-model.md", "docs/architecture.md", "docs/roadmap.md", "docs/intake-workflow.md", "docs/primary-source-verification.md", "docs/operations-evidence.md", "docs/recovered-records.md", "docs/complex-physical-grammar.md", "docs/environmental-survey.md", "docs/spatial-anomalies.md", "intake/README.md", "intake/records/representative-sources.json", "operations/evidence-objects.json", "operations/communication-records.json", "records/recovered-records.json", "records/derived-reports.json", "records/record-review-smoke-test.json", "architecture/environments.json", "architecture/local-topology.json", "architecture/grammar.json", "architecture/production-references.json", "environment/conditions.json", "environment/surveys.json", "environment/source-local-environments.json", "anomalies/observations.json", "anomalies/interactions.json", "anomalies/chronology.json", "anomalies/terminology.json", "scenarios/threshold-baseline-admission.json", "tools/README.md", "world/locations.json", "world/connections.json", "world/conditions.json", "world/resources.json", "world/observation-capabilities.json"]) assert.ok(fs.existsSync(path.join(root, relative)));
-const scripts = ["tests/validate-assets.js", "tests/validate-contracts.js", "tests/intake-model.test.js", "tests/operations-model.test.js", "tests/recovered-records.test.js", "tests/architecture-model.test.js", "tests/survey-model.test.js", "tests/anomaly-model.test.js", "tests/run-conformance.js", "tools/intake-lib.js", "tools/register-source.js", "tools/create-claim-stub.js", "tools/link-claims.js", "tools/promote-review.js", "tools/check-admission.js", "tools/intake-summary.js", "tools/evidence-report.js", "tools/operations-report.js", "tools/records-report.js", "tools/architecture-report.js", "tools/survey-report.js", "tools/anomaly-report.js"];
+assert.equal(new Set(corpusRoots.map(({ playlist_id }) => playlist_id)).size, corpusRoots.length, "playlist IDs are unique");
+assert.equal(new Set(corpusVideos.map(({ video_id }) => video_id)).size, corpusVideos.length, "video IDs deduplicate corpus identities");
+for (const video of corpusVideos) {
+  assert.equal(video.review_state, "unreviewed", `${video.video_id} inventory is unreviewed`);
+  assert.equal(video.directly_checked, false, `${video.video_id} inventory is not directly reviewed`);
+  assert.equal(video.canon_authority, "none", `${video.video_id} inventory has no canon authority`);
+  assert.ok(video.playlist_memberships.length > 0, `${video.video_id} retains playlist membership`);
+}
+const transitionIds = new Set(transitions.map(({ id }) => id));
+for (const transition of transitions) {
+  if (transition.simulation_authority === "authoritative") for (const locatorRef of transition.locator_refs) assert.equal(locatorById.get(locatorRef)?.source.directly_checked, true, `${transition.id} authoritative locator is verified`);
+  assert.ok(transition.origin_environment === null || environmentIds.has(transition.origin_environment) || ["first-contact-apparatus-view","complex-side-controlled-area"].includes(transition.origin_environment), `${transition.id} origin resolves or remains source-local`);
+  assert.ok(transition.destination_environment === null || environmentIds.has(transition.destination_environment) || ["threshold-facility","complex-side-controlled-area"].includes(transition.destination_environment), `${transition.id} destination resolves or remains explicit`);
+  if (transition.directionality === "observed-one-way") assert.equal(transition.return_observed, false, `${transition.id} does not silently become a return`);
+}
+assert.ok(transitionIds.has("ff2-transition-destination-unresolved"), "unresolved endpoint stays explicit");
+for (const relative of ["README.md", "canon/SOURCE_POLICY.md", "canon/source-registry-schema.json", "canon/source-intake-schema.json", "canon/claim-schema.json", "canon/scenario-admission-schema.json", "canon/verified-primary-source-schema.json", "canon/verified-primary-sources.json", "canon/verified-expedition-sources.json", "canon/verified-recovered-record-sources.json", "canon/verified-architecture-sources.json", "canon/verified-survey-sources.json", "canon/verified-anomaly-sources.json", "canon/corpus-root-schema.json", "canon/corpus-video-schema.json", "canon/transition-schema.json", "canon/claims/transitions.json", "corpus/roots.json", "corpus/videos.json", "transitions/observations.json", "docs/corpus-and-recovery-paths.md", "tools/corpus-report.js", "tools/transition-report.js", "tests/corpus-transition-model.test.js"]) assert.ok(fs.existsSync(path.join(root, relative)));
+const scripts = ["tests/validate-assets.js", "tests/validate-contracts.js", "tests/intake-model.test.js", "tests/operations-model.test.js", "tests/recovered-records.test.js", "tests/architecture-model.test.js", "tests/survey-model.test.js", "tests/anomaly-model.test.js", "tests/corpus-transition-model.test.js", "tests/run-conformance.js", "tools/intake-lib.js", "tools/register-source.js", "tools/create-claim-stub.js", "tools/link-claims.js", "tools/promote-review.js", "tools/check-admission.js", "tools/intake-summary.js", "tools/evidence-report.js", "tools/operations-report.js", "tools/records-report.js", "tools/architecture-report.js", "tools/survey-report.js", "tools/anomaly-report.js", "tools/corpus-report.js", "tools/transition-report.js"];
 for (const relative of scripts) {
   const content = fs.readFileSync(path.join(root, relative), "utf8");
   assert.doesNotMatch(content, /custodian\/(runtime|state|tools)/, `${relative} uses only public Custodian imports`);

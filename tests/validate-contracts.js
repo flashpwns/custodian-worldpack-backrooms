@@ -13,7 +13,7 @@ const schemas = [
   read("canon/evidence-object-schema.json"),
   read("canon/recovered-record-schema.json"),
   read("canon/derived-report-schema.json"),
-  read("canon/environment-observation-schema.json"), read("canon/local-topology-schema.json"), read("canon/architecture-grammar-schema.json"), read("canon/production-reference-schema.json"), read("canon/environmental-condition-schema.json"), read("canon/survey-observation-schema.json"), read("canon/anomaly-observation-schema.json"), read("canon/anomaly-interaction-schema.json"),
+  read("canon/environment-observation-schema.json"), read("canon/local-topology-schema.json"), read("canon/architecture-grammar-schema.json"), read("canon/production-reference-schema.json"), read("canon/environmental-condition-schema.json"), read("canon/survey-observation-schema.json"), read("canon/anomaly-observation-schema.json"), read("canon/anomaly-interaction-schema.json"), read("canon/corpus-root-schema.json"), read("canon/corpus-video-schema.json"), read("canon/transition-schema.json"),
   read("canon/communication-record-schema.json"),
   read("canon/scenario-admission-schema.json")
 ];
@@ -25,7 +25,7 @@ function validate(schemaId, value, label) {
 }
 validate("https://yellowbeast.dev/schemas/source-registry/v1", read("canon/source-registry.json"), "source registry");
 for (const record of read("intake/records/representative-sources.json").records) validate("https://yellowbeast.dev/schemas/source-intake/v1", record, `intake ${record.id}`);
-for (const claim of [...read("canon/claims/foundation.json").claims, ...read("canon/claims/operations.json").claims, ...read("canon/claims/recovered-records.json").claims, ...read("canon/claims/architecture.json").claims, ...read("canon/claims/environmental-survey.json").claims, ...read("canon/claims/anomalies.json").claims]) validate("https://yellowbeast.dev/schemas/claim/v3", claim, `claim ${claim.id}`);
+for (const claim of [...read("canon/claims/foundation.json").claims, ...read("canon/claims/operations.json").claims, ...read("canon/claims/recovered-records.json").claims, ...read("canon/claims/architecture.json").claims, ...read("canon/claims/environmental-survey.json").claims, ...read("canon/claims/anomalies.json").claims, ...read("canon/claims/transitions.json").claims]) validate("https://yellowbeast.dev/schemas/claim/v3", claim, `claim ${claim.id}`);
 for (const source of read("canon/verified-primary-sources.json").sources) validate("https://yellowbeast.dev/schemas/verified-primary-source/v1", source, `verified source ${source.id}`);
 for (const source of read("canon/verified-expedition-sources.json").sources) validate("https://yellowbeast.dev/schemas/verified-primary-source/v1", source, `verified source ${source.id}`);
 for (const source of read("canon/verified-recovered-record-sources.json").sources) validate("https://yellowbeast.dev/schemas/verified-primary-source/v1", source, `verified source ${source.id}`);
@@ -44,5 +44,8 @@ for (const item of read("environment/conditions.json").conditions) validate("htt
 for (const item of read("environment/surveys.json").observations) validate("https://yellowbeast.dev/schemas/survey-observation/v1", item, `survey ${item.id}`);
 for (const item of read("anomalies/observations.json").observations) validate("https://yellowbeast.dev/schemas/anomaly-observation/v1", item, `anomaly ${item.id}`);
 for (const item of read("anomalies/interactions.json").interactions) validate("https://yellowbeast.dev/schemas/anomaly-interaction/v1", item, `anomaly interaction ${item.id}`);
+for (const item of read("corpus/roots.json").roots) validate("https://yellowbeast.dev/schemas/corpus-root/v1", item, `corpus root ${item.id}`);
+for (const item of read("corpus/videos.json").videos) validate("https://yellowbeast.dev/schemas/corpus-video/v1", item, `corpus video ${item.id}`);
+for (const item of read("transitions/observations.json").transitions) validate("https://yellowbeast.dev/schemas/transition-observation/v1", item, `transition ${item.id}`);
 validate("https://yellowbeast.dev/schemas/scenario-admission/v1", read("scenarios/threshold-baseline-admission.json"), "Threshold Baseline admission");
 console.log("validated Yellow Beast intake and admission contracts");
