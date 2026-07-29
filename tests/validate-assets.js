@@ -5,10 +5,12 @@ const path = require("node:path");
 const root = path.resolve(__dirname, "..");
 const read = (relative) => JSON.parse(fs.readFileSync(path.join(root, relative), "utf8"));
 const registry = read("canon/source-registry.json");
-const claims = read("canon/claims/foundation.json").claims;
+const claims = [...read("canon/claims/foundation.json").claims, ...read("canon/claims/operations.json").claims];
 const intake = read("intake/records/representative-sources.json");
 const admission = read("scenarios/threshold-baseline-admission.json");
-const verifiedPrimary = read("canon/verified-primary-sources.json").sources;
+const verifiedPrimary = [...read("canon/verified-primary-sources.json").sources, ...read("canon/verified-expedition-sources.json").sources];
+const evidenceObjects = read("operations/evidence-objects.json").evidence;
+const communicationRecords = read("operations/communication-records.json").records;
 const manifest = read("manifest.json");
 const scenario = read("scenario.json");
 const scenarioCopy = read("scenarios/threshold-baseline.json");
@@ -17,6 +19,9 @@ const claimIds = new Set(claims.map((claim) => claim.id));
 const reviewStates = new Set(["unreviewed", "triaged", "source-verified", "claim-extracted", "canon-reviewed", "admitted", "rejected", "superseded", "needs-context"]);
 const relations = new Set(["supports", "contradicts", "qualifies", "supersedes", "contextualizes", "duplicates", "derived-from"]);
 const locatorById = new Map(verifiedPrimary.flatMap((source) => source.locators.map((locator) => [locator.id, { locator, source }])));
+const observerIds = new Set(scenario.observers.map(({ id }) => id));
+const ruleIds = new Set(manifest.execution_rules.map(({ id }) => id));
+const scheduledIds = new Set(scenario.scheduled_events.map(({ id }) => id));
 assert.equal(registry.version, "source-registry/v1");
 assert.ok(registry.sources.length >= 10 && registry.sources.length <= 20);
 assert.equal(manifest.id, "yellow-beast");
@@ -63,6 +68,23 @@ for (const source of verifiedPrimary) {
   assert.equal(source.transcript_assisted, false, `${source.id} did not rely on a transcript`);
   for (const locator of source.locators) assert.match(locator.start, /^\d{2}:\d{2}:\d{2}$/);
 }
+for (const evidence of evidenceObjects) {
+  assert.ok(observerIds.has(evidence.creator), `${evidence.id} creator resolves`);
+  assert.ok(observerIds.has(evidence.current_custodian), `${evidence.id} custodian resolves`);
+  assert.ok(evidence.creation_ref.kind !== "execution-rule" || ruleIds.has(evidence.creation_ref.id), `${evidence.id} creation rule resolves`);
+  for (const transfer of evidence.transfer_history) {
+    assert.ok(observerIds.has(transfer.from) && observerIds.has(transfer.to), `${evidence.id} transfer actors resolve`);
+    assert.ok(scheduledIds.has(transfer.record_ref), `${evidence.id} transfer record resolves`);
+  }
+  for (const claimRef of evidence.claim_refs) assert.ok(claimIds.has(claimRef), `${evidence.id} claim resolves`);
+}
+for (const record of communicationRecords) {
+  assert.ok(scheduledIds.has(record.source_event), `${record.id} source event resolves`);
+  assert.ok(observerIds.has(record.sender), `${record.id} sender resolves`);
+  for (const recipient of [...record.intended_recipients, ...record.actual_recipients, ...record.recipient_access]) assert.ok(observerIds.has(recipient), `${record.id} recipient resolves`);
+  assert.deepEqual(record.actual_recipients, record.recipient_access, `${record.id} models receipt explicitly, not universal delivery`);
+  for (const claimRef of record.claim_refs) assert.ok(claimIds.has(claimRef), `${record.id} claim resolves`);
+}
 for (const dependency of admission.dependencies) {
   const claim = claims.find((candidate) => candidate.id === dependency.claim_id);
   assert.ok(claim, `${dependency.claim_id} is an existing scenario dependency`);
@@ -73,8 +95,8 @@ for (const dependency of admission.dependencies) {
   assert.notEqual(claim.simulation_authority, "prohibited", `${dependency.claim_id} is not prohibited`);
   assert.notEqual(claim.review_state, "rejected", `${dependency.claim_id} is not rejected`);
 }
-for (const relative of ["README.md", "canon/SOURCE_POLICY.md", "canon/source-registry-schema.json", "canon/source-intake-schema.json", "canon/claim-schema.json", "canon/scenario-admission-schema.json", "canon/verified-primary-source-schema.json", "canon/verified-primary-sources.json", "docs/canon-model.md", "docs/architecture.md", "docs/roadmap.md", "docs/intake-workflow.md", "docs/primary-source-verification.md", "intake/README.md", "intake/records/representative-sources.json", "scenarios/threshold-baseline-admission.json", "tools/README.md", "world/locations.json", "world/connections.json", "world/conditions.json", "world/resources.json", "world/observation-capabilities.json"]) assert.ok(fs.existsSync(path.join(root, relative)));
-const scripts = ["tests/validate-assets.js", "tests/validate-contracts.js", "tests/intake-model.test.js", "tests/run-conformance.js", "tools/intake-lib.js", "tools/register-source.js", "tools/create-claim-stub.js", "tools/link-claims.js", "tools/promote-review.js", "tools/check-admission.js", "tools/intake-summary.js", "tools/evidence-report.js"];
+for (const relative of ["README.md", "canon/SOURCE_POLICY.md", "canon/source-registry-schema.json", "canon/source-intake-schema.json", "canon/claim-schema.json", "canon/scenario-admission-schema.json", "canon/verified-primary-source-schema.json", "canon/verified-primary-sources.json", "canon/verified-expedition-sources.json", "canon/evidence-object-schema.json", "canon/communication-record-schema.json", "docs/canon-model.md", "docs/architecture.md", "docs/roadmap.md", "docs/intake-workflow.md", "docs/primary-source-verification.md", "docs/operations-evidence.md", "intake/README.md", "intake/records/representative-sources.json", "operations/evidence-objects.json", "operations/communication-records.json", "scenarios/threshold-baseline-admission.json", "tools/README.md", "world/locations.json", "world/connections.json", "world/conditions.json", "world/resources.json", "world/observation-capabilities.json"]) assert.ok(fs.existsSync(path.join(root, relative)));
+const scripts = ["tests/validate-assets.js", "tests/validate-contracts.js", "tests/intake-model.test.js", "tests/operations-model.test.js", "tests/run-conformance.js", "tools/intake-lib.js", "tools/register-source.js", "tools/create-claim-stub.js", "tools/link-claims.js", "tools/promote-review.js", "tools/check-admission.js", "tools/intake-summary.js", "tools/evidence-report.js", "tools/operations-report.js"];
 for (const relative of scripts) {
   const content = fs.readFileSync(path.join(root, relative), "utf8");
   assert.doesNotMatch(content, /custodian\/(runtime|state|tools)/, `${relative} uses only public Custodian imports`);
