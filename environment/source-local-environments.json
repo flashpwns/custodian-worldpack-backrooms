@@ -2,6 +2,13 @@
   "version": "source-local-environments/v1",
   "environments": [
     {
+      "id": "ff2-marked-floor-garage-view",
+      "source_refs": ["backrooms-found-footage-2"],
+      "locator_refs": ["ff2-marked-floor-interactions"],
+      "scope": "source-local",
+      "notes": "A local recorded view containing a blue-tape-marked floor region. It asserts neither an exact boundary nor any continued geography."
+    },
+    {
       "id": "lighting-survey-local-interior",
       "source_refs": ["backrooms-lighting-tile-survey"],
       "locator_refs": ["lighting-survey-fixture-and-tile-inspection"],
