@@ -5,6 +5,12 @@
 Source/claim model, small curated registry, minimal Threshold Baseline, and
 conformance tooling.
 
+## YB-2: Verified Source Intake and Canon Admission
+
+Review-state contracts, external-only source-intake metadata, claim extraction
+and conflict relationships, scenario-bound admission, and deterministic
+researcher tooling. This does not expand mechanics or claim full-corpus intake.
+
 ## Later, only after explicit source review
 
 - Verified location and chronology intake.

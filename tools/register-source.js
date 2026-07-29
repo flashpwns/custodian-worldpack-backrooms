@@ -1,0 +1,10 @@
+"use strict";
+const fs = require("node:fs");
+const { data, states, stable } = require("./intake-lib");
+const input = process.argv[2];
+if (!input) throw new Error("usage: node tools/register-source.js <intake-record.json>");
+const inputValue = JSON.parse(fs.readFileSync(input, "utf8"));
+const records = inputValue.records ?? [inputValue];
+const { sourceIds } = data();
+for (const record of records) if (!sourceIds.has(record.source_ref) || !states.includes(record.review_state) || record.raw_reference?.external_only !== true) throw new Error("INVALID_SOURCE_REGISTRATION");
+process.stdout.write(stable({ ok: true, operation: "source-registration-validated", records: records.map(({ id, source_ref, review_state }) => ({ id, source_ref, review_state })) }));

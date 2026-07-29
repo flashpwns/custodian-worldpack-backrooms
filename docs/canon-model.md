@@ -15,3 +15,8 @@ independent values. A claim may be useful context while still being
 
 The first pack-original claim confines the baseline survey layout to its scenario.
 It does not assert a complete depiction of setting geography.
+
+Claims also retain a review lifecycle, non-verbatim extraction metadata, and
+typed claim-to-claim relationships. Scenario dependencies are admission records
+outside Custodian's scenario contract, so the pack can reject unsafe use without
+modifying the kernel. See [Verified source intake](intake-workflow.md).

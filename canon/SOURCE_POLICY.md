@@ -29,3 +29,11 @@ belief instead.
 
 This repository stores source metadata and original analytical claims, never
 transcripts, film frames, production artwork, or Discord archives.
+
+## Admission control
+
+The registry identifies a reference; it does not admit it. The intake lifecycle
+and reviewer requirements are defined in [Verified source intake](../docs/intake-workflow.md).
+A claim may influence objective scenario state only when its reviewed authority
+allows that exact use. Source classification, claim extraction, canon review,
+and scenario admission are separate records.
