@@ -1,0 +1,12 @@
+{
+  "version": "source-local-environments/v1",
+  "environments": [
+    {
+      "id": "lighting-survey-local-interior",
+      "source_refs": ["backrooms-lighting-tile-survey"],
+      "locator_refs": ["lighting-survey-fixture-and-tile-inspection"],
+      "scope": "source-local",
+      "notes": "A bounded local interior identifier for survey linkage. It does not assert global coordinates, continued topology, or a reusable canonical room identity."
+    }
+  ]
+}

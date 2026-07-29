@@ -13,8 +13,8 @@ const states = ["unreviewed", "triaged", "source-verified", "claim-extracted", "
 const relations = ["supports", "contradicts", "qualifies", "supersedes", "contextualizes", "duplicates", "derived-from"];
 function data() {
   const registry = read("canon/source-registry.json");
-  const claims = [...read("canon/claims/foundation.json").claims, ...read("canon/claims/operations.json").claims, ...read("canon/claims/recovered-records.json").claims, ...read("canon/claims/architecture.json").claims];
-  const primary = [...read("canon/verified-primary-sources.json").sources, ...read("canon/verified-expedition-sources.json").sources, ...read("canon/verified-recovered-record-sources.json").sources, ...read("canon/verified-architecture-sources.json").sources];
+  const claims = [...read("canon/claims/foundation.json").claims, ...read("canon/claims/operations.json").claims, ...read("canon/claims/recovered-records.json").claims, ...read("canon/claims/architecture.json").claims, ...read("canon/claims/environmental-survey.json").claims];
+  const primary = [...read("canon/verified-primary-sources.json").sources, ...read("canon/verified-expedition-sources.json").sources, ...read("canon/verified-recovered-record-sources.json").sources, ...read("canon/verified-architecture-sources.json").sources, ...read("canon/verified-survey-sources.json").sources];
   const locatorById = new Map(primary.flatMap((source) => source.locators.map((locator) => [locator.id, { ...locator, source }])));
   return { registry, claims, primary, locatorById, sourceIds: new Set(registry.sources.map(({ id }) => id)), claimById: new Map(claims.map((claim) => [claim.id, claim])) };
 }

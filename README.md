@@ -29,6 +29,7 @@ The bounded primary-source procedure is documented in [primary-source verificati
 Communication, evidence provenance, custody, and recipient-access limits are documented in [operations evidence boundaries](docs/operations-evidence.md).
 Post-expedition recovery, access, review, and derived-report boundaries are documented in [recovered records](docs/recovered-records.md).
 Local Complex architecture, topology, visibility, and grammar boundaries are documented in [physical grammar](docs/complex-physical-grammar.md).
+Environmental materials, lighting states, and qualitative survey boundaries are documented in [environmental survey](docs/environmental-survey.md).
 
 The small `threshold-baseline` scenario is a constitutional smoke test for a
 controlled Threshold-side survey: multiple observers, equipment custody,
