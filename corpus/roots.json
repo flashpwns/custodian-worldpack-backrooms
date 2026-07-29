@@ -1,0 +1,89 @@
+{
+  "version": "corpus-roots/v1",
+  "roots": [
+    {
+      "id": "corpus-root-1",
+      "platform": "youtube",
+      "playlist_id": "PLAmHAFa1D3sDt6lV_Hdj7t5y7ciF-oXWw",
+      "playlist_url": "https://www.youtube.com/playlist?list=PLAmHAFa1D3sDt6lV_Hdj7t5y7ciF-oXWw",
+      "playlist_title": "Backrooms Movie News and Analysis",
+      "owning_channel": "Red",
+      "discovery_date": "2026-07-29",
+      "enumeration_status": "completed-with-unavailable-entries",
+      "video_count_discovered": 18,
+      "unavailable_entry_count": 3,
+      "review_state": "unreviewed",
+      "notes": "External research inventory only; playlist membership does not establish project scope, authorship, canon, or simulation authority.",
+      "errors": [
+        "YouTube enumeration reported hidden unavailable entries; no title or video ID was exposed.",
+        {
+          "id": "corpus-root-1-unavailable-1",
+          "status": "unavailable",
+          "metadata": "not-exposed-by-platform"
+        },
+        {
+          "id": "corpus-root-1-unavailable-2",
+          "status": "unavailable",
+          "metadata": "not-exposed-by-platform"
+        },
+        {
+          "id": "corpus-root-1-unavailable-3",
+          "status": "unavailable",
+          "metadata": "not-exposed-by-platform"
+        }
+      ]
+    },
+    {
+      "id": "corpus-root-2",
+      "platform": "youtube",
+      "playlist_id": "PLcQrS3EXVZ00",
+      "playlist_url": "https://www.youtube.com/playlist?list=PLcQrS3EXVZ00",
+      "playlist_title": "rooms",
+      "owning_channel": "rivrstyxx",
+      "discovery_date": "2026-07-29",
+      "enumeration_status": "completed-with-unavailable-entries",
+      "video_count_discovered": 17,
+      "unavailable_entry_count": 0,
+      "review_state": "unreviewed",
+      "notes": "External research inventory only; playlist membership does not establish project scope, authorship, canon, or simulation authority.",
+      "errors": []
+    },
+    {
+      "id": "corpus-root-3",
+      "platform": "youtube",
+      "playlist_id": "PLC9YQQCWsMVggeBbA-o201KLow5lpMq2T",
+      "playlist_url": "https://www.youtube.com/playlist?list=PLC9YQQCWsMVggeBbA-o201KLow5lpMq2T",
+      "playlist_title": "The backrooms sounds for Editing And Vhs effects 🟡🟡",
+      "owning_channel": "Christian gaming🔵camBoy",
+      "discovery_date": "2026-07-29",
+      "enumeration_status": "completed-with-unavailable-entries",
+      "video_count_discovered": 88,
+      "unavailable_entry_count": 0,
+      "review_state": "unreviewed",
+      "notes": "External research inventory only; playlist membership does not establish project scope, authorship, canon, or simulation authority.",
+      "errors": []
+    },
+    {
+      "id": "corpus-root-4",
+      "platform": "youtube",
+      "playlist_id": "PLVAh-MgDVqvDUEq6qDXqORBioE4Yhol_z",
+      "playlist_url": "https://www.youtube.com/playlist?list=PLVAh-MgDVqvDUEq6qDXqORBioE4Yhol_z",
+      "playlist_title": "The Backrooms",
+      "owning_channel": "Kane Pixels",
+      "discovery_date": "2026-07-29",
+      "enumeration_status": "completed-with-unavailable-entries",
+      "video_count_discovered": 23,
+      "unavailable_entry_count": 1,
+      "review_state": "unreviewed",
+      "notes": "External research inventory only; playlist membership does not establish project scope, authorship, canon, or simulation authority.",
+      "errors": [
+        "YouTube enumeration reported hidden unavailable entries; no title or video ID was exposed.",
+        {
+          "id": "corpus-root-4-unavailable-1",
+          "status": "unavailable",
+          "metadata": "not-exposed-by-platform"
+        }
+      ]
+    }
+  ]
+}

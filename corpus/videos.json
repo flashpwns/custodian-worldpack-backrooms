@@ -1,0 +1,3821 @@
+{
+  "version": "corpus-videos/v1",
+  "videos": [
+    {
+      "id": "youtube-_j4gcowlcrk",
+      "video_id": "_J4GCoWLCRk",
+      "title": "Escape the Backrooms - Level 4 Ambience",
+      "channel": null,
+      "publication_date": null,
+      "duration_seconds": 44,
+      "stable_locator": "https://www.youtube.com/watch?v=_J4GCoWLCRk",
+      "source_type": "unclassified-video",
+      "project_scope": {
+        "relationship": "unresolved",
+        "belongs_to": "unknown"
+      },
+      "directly_checked": false,
+      "transcript_status": "unknown",
+      "review_state": "unreviewed",
+      "canon_authority": "none",
+      "playlist_memberships": [
+        {
+          "corpus_root_id": "corpus-root-3",
+          "playlist_id": "PLC9YQQCWsMVggeBbA-o201KLow5lpMq2T",
+          "position": 79,
+          "status": "accessible"
+        }
+      ],
+      "notes": "Enumerated from an external playlist; unreviewed inventory metadata only."
+    },
+    {
+      "id": "youtube-_zmcm0jgzzw",
+      "video_id": "_ZMcM0JGzZw",
+      "title": "Old Home Not Yet Built, but it forgets more and 𝕞ore eαch 𝘵ime.",
+      "channel": null,
+      "publication_date": null,
+      "duration_seconds": 121,
+      "stable_locator": "https://www.youtube.com/watch?v=_ZMcM0JGzZw",
+      "source_type": "unclassified-video",
+      "project_scope": {
+        "relationship": "unresolved",
+        "belongs_to": "unknown"
+      },
+      "directly_checked": false,
+      "transcript_status": "unknown",
+      "review_state": "unreviewed",
+      "canon_authority": "none",
+      "playlist_memberships": [
+        {
+          "corpus_root_id": "corpus-root-2",
+          "playlist_id": "PLcQrS3EXVZ00",
+          "position": 13,
+          "status": "accessible"
+        }
+      ],
+      "notes": "Enumerated from an external playlist; unreviewed inventory metadata only."
+    },
+    {
+      "id": "youtube--tkvzvoqhzu",
+      "video_id": "-TkVZVoQhzU",
+      "title": "The Backrooms: Entity 7 - Jerry (sounds)",
+      "channel": null,
+      "publication_date": null,
+      "duration_seconds": 60,
+      "stable_locator": "https://www.youtube.com/watch?v=-TkVZVoQhzU",
+      "source_type": "unclassified-video",
+      "project_scope": {
+        "relationship": "unresolved",
+        "belongs_to": "unknown"
+      },
+      "directly_checked": false,
+      "transcript_status": "unknown",
+      "review_state": "unreviewed",
+      "canon_authority": "none",
+      "playlist_memberships": [
+        {
+          "corpus_root_id": "corpus-root-3",
+          "playlist_id": "PLC9YQQCWsMVggeBbA-o201KLow5lpMq2T",
+          "position": 45,
+          "status": "accessible"
+        }
+      ],
+      "notes": "Enumerated from an external playlist; unreviewed inventory metadata only."
+    },
+    {
+      "id": "youtube-0vj3x6fmcmg",
+      "video_id": "0VJ3x6fMCmg",
+      "title": "Escape the Backrooms - Level ! Ambience",
+      "channel": null,
+      "publication_date": null,
+      "duration_seconds": 38,
+      "stable_locator": "https://www.youtube.com/watch?v=0VJ3x6fMCmg",
+      "source_type": "unclassified-video",
+      "project_scope": {
+        "relationship": "unresolved",
+        "belongs_to": "unknown"
+      },
+      "directly_checked": false,
+      "transcript_status": "unknown",
+      "review_state": "unreviewed",
+      "canon_authority": "none",
+      "playlist_memberships": [
+        {
+          "corpus_root_id": "corpus-root-3",
+          "playlist_id": "PLC9YQQCWsMVggeBbA-o201KLow5lpMq2T",
+          "position": 81,
+          "status": "accessible"
+        }
+      ],
+      "notes": "Enumerated from an external playlist; unreviewed inventory metadata only."
+    },
+    {
+      "id": "youtube-0xwlwxtpacm",
+      "video_id": "0XwlWXtpaCM",
+      "title": "Backrooms - Pitfalls",
+      "channel": null,
+      "publication_date": null,
+      "duration_seconds": 844,
+      "stable_locator": "https://www.youtube.com/watch?v=0XwlWXtpaCM",
+      "source_type": "unclassified-video",
+      "project_scope": {
+        "relationship": "unresolved",
+        "belongs_to": "unknown"
+      },
+      "directly_checked": false,
+      "transcript_status": "unknown",
+      "review_state": "unreviewed",
+      "canon_authority": "none",
+      "playlist_memberships": [
+        {
+          "corpus_root_id": "corpus-root-4",
+          "playlist_id": "PLVAh-MgDVqvDUEq6qDXqORBioE4Yhol_z",
+          "position": 10,
+          "status": "accessible"
+        }
+      ],
+      "notes": "Enumerated from an external playlist; unreviewed inventory metadata only."
+    },
+    {
+      "id": "youtube-17z21xwcovq",
+      "video_id": "17Z21XwcOVQ",
+      "title": "We FINALLY Saw the CARPET! + MORE Movie Info! | The Backrooms Movie Analysis",
+      "channel": null,
+      "publication_date": null,
+      "duration_seconds": 803,
+      "stable_locator": "https://www.youtube.com/watch?v=17Z21XwcOVQ",
+      "source_type": "unclassified-video",
+      "project_scope": {
+        "relationship": "unresolved",
+        "belongs_to": "unknown"
+      },
+      "directly_checked": false,
+      "transcript_status": "unknown",
+      "review_state": "unreviewed",
+      "canon_authority": "none",
+      "playlist_memberships": [
+        {
+          "corpus_root_id": "corpus-root-1",
+          "playlist_id": "PLAmHAFa1D3sDt6lV_Hdj7t5y7ciF-oXWw",
+          "position": 14,
+          "status": "accessible"
+        }
+      ],
+      "notes": "Enumerated from an external playlist; unreviewed inventory metadata only."
+    },
+    {
+      "id": "youtube-1s16cb1-pj0",
+      "video_id": "1s16cB1-PJ0",
+      "title": "👞 Footsteps in Hallway on Concrete Floor Sound ASMR Natural Noise Relax 1 Hour",
+      "channel": null,
+      "publication_date": null,
+      "duration_seconds": 3601,
+      "stable_locator": "https://www.youtube.com/watch?v=1s16cB1-PJ0",
+      "source_type": "unclassified-video",
+      "project_scope": {
+        "relationship": "unresolved",
+        "belongs_to": "unknown"
+      },
+      "directly_checked": false,
+      "transcript_status": "unknown",
+      "review_state": "unreviewed",
+      "canon_authority": "none",
+      "playlist_memberships": [
+        {
+          "corpus_root_id": "corpus-root-3",
+          "playlist_id": "PLC9YQQCWsMVggeBbA-o201KLow5lpMq2T",
+          "position": 51,
+          "status": "accessible"
+        }
+      ],
+      "notes": "Enumerated from an external playlist; unreviewed inventory metadata only."
+    },
+    {
+      "id": "youtube-2an6j7jyc1g",
+      "video_id": "2AN6j7JYc1g",
+      "title": "Backrooms - Autopsy Report",
+      "channel": null,
+      "publication_date": null,
+      "duration_seconds": 157,
+      "stable_locator": "https://www.youtube.com/watch?v=2AN6j7JYc1g",
+      "source_type": "unclassified-video",
+      "project_scope": {
+        "relationship": "unresolved",
+        "belongs_to": "unknown"
+      },
+      "directly_checked": false,
+      "transcript_status": "unknown",
+      "review_state": "unreviewed",
+      "canon_authority": "none",
+      "playlist_memberships": [
+        {
+          "corpus_root_id": "corpus-root-4",
+          "playlist_id": "PLVAh-MgDVqvDUEq6qDXqORBioE4Yhol_z",
+          "position": 6,
+          "status": "accessible"
+        }
+      ],
+      "notes": "Enumerated from an external playlist; unreviewed inventory metadata only."
+    },
+    {
+      "id": "youtube-3_fql_0vm9q",
+      "video_id": "3_fqL_0VM9Q",
+      "title": "Bacteria Sounds",
+      "channel": null,
+      "publication_date": null,
+      "duration_seconds": 89,
+      "stable_locator": "https://www.youtube.com/watch?v=3_fqL_0VM9Q",
+      "source_type": "unclassified-video",
+      "project_scope": {
+        "relationship": "unresolved",
+        "belongs_to": "unknown"
+      },
+      "directly_checked": false,
+      "transcript_status": "unknown",
+      "review_state": "unreviewed",
+      "canon_authority": "none",
+      "playlist_memberships": [
+        {
+          "corpus_root_id": "corpus-root-3",
+          "playlist_id": "PLC9YQQCWsMVggeBbA-o201KLow5lpMq2T",
+          "position": 7,
+          "status": "accessible"
+        }
+      ],
+      "notes": "Enumerated from an external playlist; unreviewed inventory metadata only."
+    },
+    {
+      "id": "youtube-30c3r07e2ly",
+      "video_id": "30C3r07E2lY",
+      "title": "Footsteps Walking On Carpet Sound Effect",
+      "channel": null,
+      "publication_date": null,
+      "duration_seconds": 22,
+      "stable_locator": "https://www.youtube.com/watch?v=30C3r07E2lY",
+      "source_type": "unclassified-video",
+      "project_scope": {
+        "relationship": "unresolved",
+        "belongs_to": "unknown"
+      },
+      "directly_checked": false,
+      "transcript_status": "unknown",
+      "review_state": "unreviewed",
+      "canon_authority": "none",
+      "playlist_memberships": [
+        {
+          "corpus_root_id": "corpus-root-3",
+          "playlist_id": "PLC9YQQCWsMVggeBbA-o201KLow5lpMq2T",
+          "position": 9,
+          "status": "accessible"
+        }
+      ],
+      "notes": "Enumerated from an external playlist; unreviewed inventory metadata only."
+    },
+    {
+      "id": "youtube-3df6nqwriu0",
+      "video_id": "3df6nQwrIU0",
+      "title": "Kane Pixels backrooms sounds (good for editing)",
+      "channel": null,
+      "publication_date": null,
+      "duration_seconds": 477,
+      "stable_locator": "https://www.youtube.com/watch?v=3df6nQwrIU0",
+      "source_type": "unclassified-video",
+      "project_scope": {
+        "relationship": "unresolved",
+        "belongs_to": "unknown"
+      },
+      "directly_checked": false,
+      "transcript_status": "unknown",
+      "review_state": "unreviewed",
+      "canon_authority": "none",
+      "playlist_memberships": [
+        {
+          "corpus_root_id": "corpus-root-3",
+          "playlist_id": "PLC9YQQCWsMVggeBbA-o201KLow5lpMq2T",
+          "position": 6,
+          "status": "accessible"
+        }
+      ],
+      "notes": "Enumerated from an external playlist; unreviewed inventory metadata only."
+    },
+    {
+      "id": "youtube-3hbmmuntw0u",
+      "video_id": "3HBMmuNtw0U",
+      "title": "Greetings in 55 Languages | BACKROOMS MOVIE ",
+      "channel": null,
+      "publication_date": null,
+      "duration_seconds": 266,
+      "stable_locator": "https://www.youtube.com/watch?v=3HBMmuNtw0U",
+      "source_type": "unclassified-video",
+      "project_scope": {
+        "relationship": "unresolved",
+        "belongs_to": "unknown"
+      },
+      "directly_checked": false,
+      "transcript_status": "unknown",
+      "review_state": "unreviewed",
+      "canon_authority": "none",
+      "playlist_memberships": [
+        {
+          "corpus_root_id": "corpus-root-2",
+          "playlist_id": "PLcQrS3EXVZ00",
+          "position": 16,
+          "status": "accessible"
+        }
+      ],
+      "notes": "Enumerated from an external playlist; unreviewed inventory metadata only."
+    },
+    {
+      "id": "youtube-48e8yma1rmy",
+      "video_id": "48e8YmA1RmY",
+      "title": "Backrooms Movie Extended Synopsis Analysis | The Backrooms Movie Analysis",
+      "channel": null,
+      "publication_date": null,
+      "duration_seconds": 634,
+      "stable_locator": "https://www.youtube.com/watch?v=48e8YmA1RmY",
+      "source_type": "unclassified-video",
+      "project_scope": {
+        "relationship": "unresolved",
+        "belongs_to": "unknown"
+      },
+      "directly_checked": false,
+      "transcript_status": "unknown",
+      "review_state": "unreviewed",
+      "canon_authority": "none",
+      "playlist_memberships": [
+        {
+          "corpus_root_id": "corpus-root-1",
+          "playlist_id": "PLAmHAFa1D3sDt6lV_Hdj7t5y7ciF-oXWw",
+          "position": 11,
+          "status": "accessible"
+        }
+      ],
+      "notes": "Enumerated from an external playlist; unreviewed inventory metadata only."
+    },
+    {
+      "id": "youtube-4fdotuhfpwk",
+      "video_id": "4FDotUHfpWk",
+      "title": "Backrooms - Motion Detected",
+      "channel": null,
+      "publication_date": null,
+      "duration_seconds": 247,
+      "stable_locator": "https://www.youtube.com/watch?v=4FDotUHfpWk",
+      "source_type": "unclassified-video",
+      "project_scope": {
+        "relationship": "unresolved",
+        "belongs_to": "unknown"
+      },
+      "directly_checked": false,
+      "transcript_status": "unknown",
+      "review_state": "unreviewed",
+      "canon_authority": "none",
+      "playlist_memberships": [
+        {
+          "corpus_root_id": "corpus-root-4",
+          "playlist_id": "PLVAh-MgDVqvDUEq6qDXqORBioE4Yhol_z",
+          "position": 8,
+          "status": "accessible"
+        }
+      ],
+      "notes": "Enumerated from an external playlist; unreviewed inventory metadata only."
+    },
+    {
+      "id": "youtube-4k46cbhq20c",
+      "video_id": "4K46CbHQ20c",
+      "title": "Old home not yet built by Kane Parsons. Actual cassette recording. #backrooms #music #cassette",
+      "channel": null,
+      "publication_date": null,
+      "duration_seconds": 363,
+      "stable_locator": "https://www.youtube.com/watch?v=4K46CbHQ20c",
+      "source_type": "unclassified-video",
+      "project_scope": {
+        "relationship": "unresolved",
+        "belongs_to": "unknown"
+      },
+      "directly_checked": false,
+      "transcript_status": "unknown",
+      "review_state": "unreviewed",
+      "canon_authority": "none",
+      "playlist_memberships": [
+        {
+          "corpus_root_id": "corpus-root-2",
+          "playlist_id": "PLcQrS3EXVZ00",
+          "position": 10,
+          "status": "accessible"
+        }
+      ],
+      "notes": "Enumerated from an external playlist; unreviewed inventory metadata only."
+    },
+    {
+      "id": "youtube-4qmpr0cmegm",
+      "video_id": "4QmPr0CMeGM",
+      "title": "Still life - movie version [OUTDATED]",
+      "channel": null,
+      "publication_date": null,
+      "duration_seconds": 288,
+      "stable_locator": "https://www.youtube.com/watch?v=4QmPr0CMeGM",
+      "source_type": "unclassified-video",
+      "project_scope": {
+        "relationship": "unresolved",
+        "belongs_to": "unknown"
+      },
+      "directly_checked": false,
+      "transcript_status": "unknown",
+      "review_state": "unreviewed",
+      "canon_authority": "none",
+      "playlist_memberships": [
+        {
+          "corpus_root_id": "corpus-root-2",
+          "playlist_id": "PLcQrS3EXVZ00",
+          "position": 3,
+          "status": "accessible"
+        }
+      ],
+      "notes": "Enumerated from an external playlist; unreviewed inventory metadata only."
+    },
+    {
+      "id": "youtube-6jbs3qoooak",
+      "video_id": "6JBs3QoOOAk",
+      "title": "CAMERA ZOOM SOUND EFFECTS/Free Sound Effect Download",
+      "channel": null,
+      "publication_date": null,
+      "duration_seconds": 4,
+      "stable_locator": "https://www.youtube.com/watch?v=6JBs3QoOOAk",
+      "source_type": "unclassified-video",
+      "project_scope": {
+        "relationship": "unresolved",
+        "belongs_to": "unknown"
+      },
+      "directly_checked": false,
+      "transcript_status": "unknown",
+      "review_state": "unreviewed",
+      "canon_authority": "none",
+      "playlist_memberships": [
+        {
+          "corpus_root_id": "corpus-root-3",
+          "playlist_id": "PLC9YQQCWsMVggeBbA-o201KLow5lpMq2T",
+          "position": 31,
+          "status": "accessible"
+        }
+      ],
+      "notes": "Enumerated from an external playlist; unreviewed inventory metadata only."
+    },
+    {
+      "id": "youtube-8-_ckma_uoa",
+      "video_id": "8-_ckmA_UOA",
+      "title": "Footsteps on Wooden Floor | Walking Sound Effect | 1 HOUR",
+      "channel": null,
+      "publication_date": null,
+      "duration_seconds": 3600,
+      "stable_locator": "https://www.youtube.com/watch?v=8-_ckmA_UOA",
+      "source_type": "unclassified-video",
+      "project_scope": {
+        "relationship": "unresolved",
+        "belongs_to": "unknown"
+      },
+      "directly_checked": false,
+      "transcript_status": "unknown",
+      "review_state": "unreviewed",
+      "canon_authority": "none",
+      "playlist_memberships": [
+        {
+          "corpus_root_id": "corpus-root-3",
+          "playlist_id": "PLC9YQQCWsMVggeBbA-o201KLow5lpMq2T",
+          "position": 57,
+          "status": "accessible"
+        }
+      ],
+      "notes": "Enumerated from an external playlist; unreviewed inventory metadata only."
+    },
+    {
+      "id": "youtube-84mbdukruwy",
+      "video_id": "84MbduKrUWY",
+      "title": "We SAW Some FILMING!! | The Backrooms Movie Analysis",
+      "channel": null,
+      "publication_date": null,
+      "duration_seconds": 486,
+      "stable_locator": "https://www.youtube.com/watch?v=84MbduKrUWY",
+      "source_type": "unclassified-video",
+      "project_scope": {
+        "relationship": "unresolved",
+        "belongs_to": "unknown"
+      },
+      "directly_checked": false,
+      "transcript_status": "unknown",
+      "review_state": "unreviewed",
+      "canon_authority": "none",
+      "playlist_memberships": [
+        {
+          "corpus_root_id": "corpus-root-1",
+          "playlist_id": "PLAmHAFa1D3sDt6lV_Hdj7t5y7ciF-oXWw",
+          "position": 16,
+          "status": "accessible"
+        }
+      ],
+      "notes": "Enumerated from an external playlist; unreviewed inventory metadata only."
+    },
+    {
+      "id": "youtube-8qhs5had0tg",
+      "video_id": "8QHS5HAD0tg",
+      "title": "Backrooms Movie Teaser Analysis | Backrooms Analysis",
+      "channel": null,
+      "publication_date": null,
+      "duration_seconds": 428,
+      "stable_locator": "https://www.youtube.com/watch?v=8QHS5HAD0tg",
+      "source_type": "unclassified-video",
+      "project_scope": {
+        "relationship": "unresolved",
+        "belongs_to": "unknown"
+      },
+      "directly_checked": false,
+      "transcript_status": "unknown",
+      "review_state": "unreviewed",
+      "canon_authority": "none",
+      "playlist_memberships": [
+        {
+          "corpus_root_id": "corpus-root-1",
+          "playlist_id": "PLAmHAFa1D3sDt6lV_Hdj7t5y7ciF-oXWw",
+          "position": 12,
+          "status": "accessible"
+        }
+      ],
+      "notes": "Enumerated from an external playlist; unreviewed inventory metadata only."
+    },
+    {
+      "id": "youtube-8qrbpnfezkk",
+      "video_id": "8qrbpnfEzKk",
+      "title": "Backrooms - Project 580 (Expedition 1)",
+      "channel": null,
+      "publication_date": null,
+      "duration_seconds": 321,
+      "stable_locator": "https://www.youtube.com/watch?v=8qrbpnfEzKk",
+      "source_type": "unclassified-video",
+      "project_scope": {
+        "relationship": "unresolved",
+        "belongs_to": "unknown"
+      },
+      "directly_checked": false,
+      "transcript_status": "unknown",
+      "review_state": "unreviewed",
+      "canon_authority": "none",
+      "playlist_memberships": [
+        {
+          "corpus_root_id": "corpus-root-2",
+          "playlist_id": "PLcQrS3EXVZ00",
+          "position": 14,
+          "status": "accessible"
+        }
+      ],
+      "notes": "Enumerated from an external playlist; unreviewed inventory metadata only."
+    },
+    {
+      "id": "youtube-8tyopksmkya",
+      "video_id": "8TYopkSmKyA",
+      "title": "Backrooms - Overflow",
+      "channel": null,
+      "publication_date": null,
+      "duration_seconds": 99,
+      "stable_locator": "https://www.youtube.com/watch?v=8TYopkSmKyA",
+      "source_type": "unclassified-video",
+      "project_scope": {
+        "relationship": "unresolved",
+        "belongs_to": "unknown"
+      },
+      "directly_checked": false,
+      "transcript_status": "unknown",
+      "review_state": "unreviewed",
+      "canon_authority": "none",
+      "playlist_memberships": [
+        {
+          "corpus_root_id": "corpus-root-4",
+          "playlist_id": "PLVAh-MgDVqvDUEq6qDXqORBioE4Yhol_z",
+          "position": 19,
+          "status": "accessible"
+        }
+      ],
+      "notes": "Enumerated from an external playlist; unreviewed inventory metadata only."
+    },
+    {
+      "id": "youtube-8tz_n3wp9ko",
+      "video_id": "8tZ_N3wP9Ko",
+      "title": "VHS 80 overlay vintage effect real overused footage retro look noise after effects premiere glitch",
+      "channel": null,
+      "publication_date": null,
+      "duration_seconds": 214,
+      "stable_locator": "https://www.youtube.com/watch?v=8tZ_N3wP9Ko",
+      "source_type": "unclassified-video",
+      "project_scope": {
+        "relationship": "unresolved",
+        "belongs_to": "unknown"
+      },
+      "directly_checked": false,
+      "transcript_status": "unknown",
+      "review_state": "unreviewed",
+      "canon_authority": "none",
+      "playlist_memberships": [
+        {
+          "corpus_root_id": "corpus-root-3",
+          "playlist_id": "PLC9YQQCWsMVggeBbA-o201KLow5lpMq2T",
+          "position": 16,
+          "status": "accessible"
+        }
+      ],
+      "notes": "Enumerated from an external playlist; unreviewed inventory metadata only."
+    },
+    {
+      "id": "youtube-9_un1dsz9vg",
+      "video_id": "9_UN1dsZ9Vg",
+      "title": "Backrooms - Prototype",
+      "channel": null,
+      "publication_date": null,
+      "duration_seconds": 93,
+      "stable_locator": "https://www.youtube.com/watch?v=9_UN1dsZ9Vg",
+      "source_type": "unclassified-video",
+      "project_scope": {
+        "relationship": "unresolved",
+        "belongs_to": "unknown"
+      },
+      "directly_checked": false,
+      "transcript_status": "unknown",
+      "review_state": "unreviewed",
+      "canon_authority": "none",
+      "playlist_memberships": [
+        {
+          "corpus_root_id": "corpus-root-4",
+          "playlist_id": "PLVAh-MgDVqvDUEq6qDXqORBioE4Yhol_z",
+          "position": 9,
+          "status": "accessible"
+        }
+      ],
+      "notes": "Enumerated from an external playlist; unreviewed inventory metadata only."
+    },
+    {
+      "id": "youtube-a7ckzgigx_o",
+      "video_id": "a7ckzgIgx_o",
+      "title": "9780415263573",
+      "channel": null,
+      "publication_date": null,
+      "duration_seconds": 34,
+      "stable_locator": "https://www.youtube.com/watch?v=a7ckzgIgx_o",
+      "source_type": "unclassified-video",
+      "project_scope": {
+        "relationship": "unresolved",
+        "belongs_to": "unknown"
+      },
+      "directly_checked": false,
+      "transcript_status": "unknown",
+      "review_state": "unreviewed",
+      "canon_authority": "none",
+      "playlist_memberships": [
+        {
+          "corpus_root_id": "corpus-root-4",
+          "playlist_id": "PLVAh-MgDVqvDUEq6qDXqORBioE4Yhol_z",
+          "position": 12,
+          "status": "accessible"
+        }
+      ],
+      "notes": "Enumerated from an external playlist; unreviewed inventory metadata only."
+    },
+    {
+      "id": "youtube-ac5ly_-5yi0",
+      "video_id": "ac5ly_-5YI0",
+      "title": "VHS blank screen - failing tape - 1 hour - white noise",
+      "channel": null,
+      "publication_date": null,
+      "duration_seconds": 4015,
+      "stable_locator": "https://www.youtube.com/watch?v=ac5ly_-5YI0",
+      "source_type": "unclassified-video",
+      "project_scope": {
+        "relationship": "unresolved",
+        "belongs_to": "unknown"
+      },
+      "directly_checked": false,
+      "transcript_status": "unknown",
+      "review_state": "unreviewed",
+      "canon_authority": "none",
+      "playlist_memberships": [
+        {
+          "corpus_root_id": "corpus-root-3",
+          "playlist_id": "PLC9YQQCWsMVggeBbA-o201KLow5lpMq2T",
+          "position": 15,
+          "status": "accessible"
+        }
+      ],
+      "notes": "Enumerated from an external playlist; unreviewed inventory metadata only."
+    },
+    {
+      "id": "youtube-acdys9tplko",
+      "video_id": "acdYs9tPLko",
+      "title": "Backrooms - Found Footage #3",
+      "channel": null,
+      "publication_date": null,
+      "duration_seconds": 2701,
+      "stable_locator": "https://www.youtube.com/watch?v=acdYs9tPLko",
+      "source_type": "unclassified-video",
+      "project_scope": {
+        "relationship": "unresolved",
+        "belongs_to": "unknown"
+      },
+      "directly_checked": false,
+      "transcript_status": "unknown",
+      "review_state": "unreviewed",
+      "canon_authority": "none",
+      "playlist_memberships": [
+        {
+          "corpus_root_id": "corpus-root-4",
+          "playlist_id": "PLVAh-MgDVqvDUEq6qDXqORBioE4Yhol_z",
+          "position": 21,
+          "status": "accessible"
+        }
+      ],
+      "notes": "Enumerated from an external playlist; unreviewed inventory metadata only."
+    },
+    {
+      "id": "youtube-ad_uygdm5pg",
+      "video_id": "AD_UygDM5pg",
+      "title": "Giant footsteps Sound Effect",
+      "channel": null,
+      "publication_date": null,
+      "duration_seconds": 31,
+      "stable_locator": "https://www.youtube.com/watch?v=AD_UygDM5pg",
+      "source_type": "unclassified-video",
+      "project_scope": {
+        "relationship": "unresolved",
+        "belongs_to": "unknown"
+      },
+      "directly_checked": false,
+      "transcript_status": "unknown",
+      "review_state": "unreviewed",
+      "canon_authority": "none",
+      "playlist_memberships": [
+        {
+          "corpus_root_id": "corpus-root-3",
+          "playlist_id": "PLC9YQQCWsMVggeBbA-o201KLow5lpMq2T",
+          "position": 67,
+          "status": "accessible"
+        }
+      ],
+      "notes": "Enumerated from an external playlist; unreviewed inventory metadata only."
+    },
+    {
+      "id": "youtube-aeio6dasbky",
+      "video_id": "aEio6daSbkY",
+      "title": "VHS NOISE EFFECT 03 - Free Footage - 4K",
+      "channel": null,
+      "publication_date": null,
+      "duration_seconds": 86,
+      "stable_locator": "https://www.youtube.com/watch?v=aEio6daSbkY",
+      "source_type": "unclassified-video",
+      "project_scope": {
+        "relationship": "unresolved",
+        "belongs_to": "unknown"
+      },
+      "directly_checked": false,
+      "transcript_status": "unknown",
+      "review_state": "unreviewed",
+      "canon_authority": "none",
+      "playlist_memberships": [
+        {
+          "corpus_root_id": "corpus-root-3",
+          "playlist_id": "PLC9YQQCWsMVggeBbA-o201KLow5lpMq2T",
+          "position": 18,
+          "status": "accessible"
+        }
+      ],
+      "notes": "Enumerated from an external playlist; unreviewed inventory metadata only."
+    },
+    {
+      "id": "youtube-aipqntrqqrk",
+      "video_id": "AIPQNTrQQRk",
+      "title": "Smiler sounds (backrooms)",
+      "channel": null,
+      "publication_date": null,
+      "duration_seconds": 63,
+      "stable_locator": "https://www.youtube.com/watch?v=AIPQNTrQQRk",
+      "source_type": "unclassified-video",
+      "project_scope": {
+        "relationship": "unresolved",
+        "belongs_to": "unknown"
+      },
+      "directly_checked": false,
+      "transcript_status": "unknown",
+      "review_state": "unreviewed",
+      "canon_authority": "none",
+      "playlist_memberships": [
+        {
+          "corpus_root_id": "corpus-root-3",
+          "playlist_id": "PLC9YQQCWsMVggeBbA-o201KLow5lpMq2T",
+          "position": 41,
+          "status": "accessible"
+        }
+      ],
+      "notes": "Enumerated from an external playlist; unreviewed inventory metadata only."
+    },
+    {
+      "id": "youtube-amkm2pi5wui",
+      "video_id": "amkm2pi5wUI",
+      "title": "We SAW the LIGHT! | The Backrooms Movie Teaser Update",
+      "channel": null,
+      "publication_date": null,
+      "duration_seconds": 254,
+      "stable_locator": "https://www.youtube.com/watch?v=amkm2pi5wUI",
+      "source_type": "unclassified-video",
+      "project_scope": {
+        "relationship": "unresolved",
+        "belongs_to": "unknown"
+      },
+      "directly_checked": false,
+      "transcript_status": "unknown",
+      "review_state": "unreviewed",
+      "canon_authority": "none",
+      "playlist_memberships": [
+        {
+          "corpus_root_id": "corpus-root-1",
+          "playlist_id": "PLAmHAFa1D3sDt6lV_Hdj7t5y7ciF-oXWw",
+          "position": 17,
+          "status": "accessible"
+        }
+      ],
+      "notes": "Enumerated from an external playlist; unreviewed inventory metadata only."
+    },
+    {
+      "id": "youtube-bbyc2aghcha",
+      "video_id": "bbYc2AgHcHA",
+      "title": "Hound sounds (backrooms)",
+      "channel": null,
+      "publication_date": null,
+      "duration_seconds": 63,
+      "stable_locator": "https://www.youtube.com/watch?v=bbYc2AgHcHA",
+      "source_type": "unclassified-video",
+      "project_scope": {
+        "relationship": "unresolved",
+        "belongs_to": "unknown"
+      },
+      "directly_checked": false,
+      "transcript_status": "unknown",
+      "review_state": "unreviewed",
+      "canon_authority": "none",
+      "playlist_memberships": [
+        {
+          "corpus_root_id": "corpus-root-3",
+          "playlist_id": "PLC9YQQCWsMVggeBbA-o201KLow5lpMq2T",
+          "position": 46,
+          "status": "accessible"
+        }
+      ],
+      "notes": "Enumerated from an external playlist; unreviewed inventory metadata only."
+    },
+    {
+      "id": "youtube-c1rtrulqq_w",
+      "video_id": "C1rTrUlQq_w",
+      "title": "Clumps sounds (backrooms)",
+      "channel": null,
+      "publication_date": null,
+      "duration_seconds": 72,
+      "stable_locator": "https://www.youtube.com/watch?v=C1rTrUlQq_w",
+      "source_type": "unclassified-video",
+      "project_scope": {
+        "relationship": "unresolved",
+        "belongs_to": "unknown"
+      },
+      "directly_checked": false,
+      "transcript_status": "unknown",
+      "review_state": "unreviewed",
+      "canon_authority": "none",
+      "playlist_memberships": [
+        {
+          "corpus_root_id": "corpus-root-3",
+          "playlist_id": "PLC9YQQCWsMVggeBbA-o201KLow5lpMq2T",
+          "position": 42,
+          "status": "accessible"
+        }
+      ],
+      "notes": "Enumerated from an external playlist; unreviewed inventory metadata only."
+    },
+    {
+      "id": "youtube-cbu_bdorq8y",
+      "video_id": "CbU_BDoRq8Y",
+      "title": "We SAW the WALL! | \"The Backrooms\" Movie Update & New Teaser!",
+      "channel": null,
+      "publication_date": null,
+      "duration_seconds": 313,
+      "stable_locator": "https://www.youtube.com/watch?v=CbU_BDoRq8Y",
+      "source_type": "unclassified-video",
+      "project_scope": {
+        "relationship": "unresolved",
+        "belongs_to": "unknown"
+      },
+      "directly_checked": false,
+      "transcript_status": "unknown",
+      "review_state": "unreviewed",
+      "canon_authority": "none",
+      "playlist_memberships": [
+        {
+          "corpus_root_id": "corpus-root-1",
+          "playlist_id": "PLAmHAFa1D3sDt6lV_Hdj7t5y7ciF-oXWw",
+          "position": 18,
+          "status": "accessible"
+        }
+      ],
+      "notes": "Enumerated from an external playlist; unreviewed inventory metadata only."
+    },
+    {
+      "id": "youtube-cbvzedizulm",
+      "video_id": "cBvZedizulM",
+      "title": "Running On Concrete - Sound Effect for editing",
+      "channel": null,
+      "publication_date": null,
+      "duration_seconds": 19,
+      "stable_locator": "https://www.youtube.com/watch?v=cBvZedizulM",
+      "source_type": "unclassified-video",
+      "project_scope": {
+        "relationship": "unresolved",
+        "belongs_to": "unknown"
+      },
+      "directly_checked": false,
+      "transcript_status": "unknown",
+      "review_state": "unreviewed",
+      "canon_authority": "none",
+      "playlist_memberships": [
+        {
+          "corpus_root_id": "corpus-root-3",
+          "playlist_id": "PLC9YQQCWsMVggeBbA-o201KLow5lpMq2T",
+          "position": 54,
+          "status": "accessible"
+        }
+      ],
+      "notes": "Enumerated from an external playlist; unreviewed inventory metadata only."
+    },
+    {
+      "id": "youtube-chp9rl8y6yq",
+      "video_id": "CHp9rL8Y6yQ",
+      "title": "Real VHS/VCR intense distortion and interference VFX with sound (16:9 widescreen) [Free to use]",
+      "channel": null,
+      "publication_date": null,
+      "duration_seconds": 53,
+      "stable_locator": "https://www.youtube.com/watch?v=CHp9rL8Y6yQ",
+      "source_type": "unclassified-video",
+      "project_scope": {
+        "relationship": "unresolved",
+        "belongs_to": "unknown"
+      },
+      "directly_checked": false,
+      "transcript_status": "unknown",
+      "review_state": "unreviewed",
+      "canon_authority": "none",
+      "playlist_memberships": [
+        {
+          "corpus_root_id": "corpus-root-3",
+          "playlist_id": "PLC9YQQCWsMVggeBbA-o201KLow5lpMq2T",
+          "position": 24,
+          "status": "accessible"
+        }
+      ],
+      "notes": "Enumerated from an external playlist; unreviewed inventory metadata only."
+    },
+    {
+      "id": "youtube-cjgu7rpaehg",
+      "video_id": "CjgU7rPAEhg",
+      "title": "Updated Backrooms Timeline and Lore Recap | The Backrooms Analysis",
+      "channel": null,
+      "publication_date": null,
+      "duration_seconds": 2436,
+      "stable_locator": "https://www.youtube.com/watch?v=CjgU7rPAEhg",
+      "source_type": "unclassified-video",
+      "project_scope": {
+        "relationship": "unresolved",
+        "belongs_to": "unknown"
+      },
+      "directly_checked": false,
+      "transcript_status": "unknown",
+      "review_state": "unreviewed",
+      "canon_authority": "none",
+      "playlist_memberships": [
+        {
+          "corpus_root_id": "corpus-root-1",
+          "playlist_id": "PLAmHAFa1D3sDt6lV_Hdj7t5y7ciF-oXWw",
+          "position": 1,
+          "status": "accessible"
+        }
+      ],
+      "notes": "Enumerated from an external playlist; unreviewed inventory metadata only."
+    },
+    {
+      "id": "youtube-cjuqcsdmx-i",
+      "video_id": "cjUqCsDmx-I",
+      "title": "_recording014",
+      "channel": null,
+      "publication_date": null,
+      "duration_seconds": 152,
+      "stable_locator": "https://www.youtube.com/watch?v=cjUqCsDmx-I",
+      "source_type": "unclassified-video",
+      "project_scope": {
+        "relationship": "unresolved",
+        "belongs_to": "unknown"
+      },
+      "directly_checked": false,
+      "transcript_status": "unknown",
+      "review_state": "unreviewed",
+      "canon_authority": "none",
+      "playlist_memberships": [
+        {
+          "corpus_root_id": "corpus-root-4",
+          "playlist_id": "PLVAh-MgDVqvDUEq6qDXqORBioE4Yhol_z",
+          "position": 14,
+          "status": "accessible"
+        }
+      ],
+      "notes": "Enumerated from an external playlist; unreviewed inventory metadata only."
+    },
+    {
+      "id": "youtube-cntzilogvza",
+      "video_id": "cntZILOgVzA",
+      "title": "Vhs video starts / VHS Play- Free video with blue background",
+      "channel": null,
+      "publication_date": null,
+      "duration_seconds": 7,
+      "stable_locator": "https://www.youtube.com/watch?v=cntZILOgVzA",
+      "source_type": "unclassified-video",
+      "project_scope": {
+        "relationship": "unresolved",
+        "belongs_to": "unknown"
+      },
+      "directly_checked": false,
+      "transcript_status": "unknown",
+      "review_state": "unreviewed",
+      "canon_authority": "none",
+      "playlist_memberships": [
+        {
+          "corpus_root_id": "corpus-root-3",
+          "playlist_id": "PLC9YQQCWsMVggeBbA-o201KLow5lpMq2T",
+          "position": 25,
+          "status": "accessible"
+        }
+      ],
+      "notes": "Enumerated from an external playlist; unreviewed inventory metadata only."
+    },
+    {
+      "id": "youtube-cpk5uya2mse",
+      "video_id": "cpk5UyA2mSE",
+      "title": "Skinwalker sounds",
+      "channel": null,
+      "publication_date": null,
+      "duration_seconds": 63,
+      "stable_locator": "https://www.youtube.com/watch?v=cpk5UyA2mSE",
+      "source_type": "unclassified-video",
+      "project_scope": {
+        "relationship": "unresolved",
+        "belongs_to": "unknown"
+      },
+      "directly_checked": false,
+      "transcript_status": "unknown",
+      "review_state": "unreviewed",
+      "canon_authority": "none",
+      "playlist_memberships": [
+        {
+          "corpus_root_id": "corpus-root-3",
+          "playlist_id": "PLC9YQQCWsMVggeBbA-o201KLow5lpMq2T",
+          "position": 35,
+          "status": "accessible"
+        }
+      ],
+      "notes": "Enumerated from an external playlist; unreviewed inventory metadata only."
+    },
+    {
+      "id": "youtube-dc2h3bba11e",
+      "video_id": "Dc2h3BBA11E",
+      "title": "Analyzing the Latest Backrooms Movie ARG Update | Backrooms Movie Analysis",
+      "channel": null,
+      "publication_date": null,
+      "duration_seconds": 900,
+      "stable_locator": "https://www.youtube.com/watch?v=Dc2h3BBA11E",
+      "source_type": "unclassified-video",
+      "project_scope": {
+        "relationship": "unresolved",
+        "belongs_to": "unknown"
+      },
+      "directly_checked": false,
+      "transcript_status": "unknown",
+      "review_state": "unreviewed",
+      "canon_authority": "none",
+      "playlist_memberships": [
+        {
+          "corpus_root_id": "corpus-root-1",
+          "playlist_id": "PLAmHAFa1D3sDt6lV_Hdj7t5y7ciF-oXWw",
+          "position": 4,
+          "status": "accessible"
+        }
+      ],
+      "notes": "Enumerated from an external playlist; unreviewed inventory metadata only."
+    },
+    {
+      "id": "youtube-dmy3lxy-wew",
+      "video_id": "dmy3LXy-wEw",
+      "title": "VHS Static / VCR Noise Blue Overlay Video Effect Black Background Filter",
+      "channel": null,
+      "publication_date": null,
+      "duration_seconds": 181,
+      "stable_locator": "https://www.youtube.com/watch?v=dmy3LXy-wEw",
+      "source_type": "unclassified-video",
+      "project_scope": {
+        "relationship": "unresolved",
+        "belongs_to": "unknown"
+      },
+      "directly_checked": false,
+      "transcript_status": "unknown",
+      "review_state": "unreviewed",
+      "canon_authority": "none",
+      "playlist_memberships": [
+        {
+          "corpus_root_id": "corpus-root-3",
+          "playlist_id": "PLC9YQQCWsMVggeBbA-o201KLow5lpMq2T",
+          "position": 19,
+          "status": "accessible"
+        }
+      ],
+      "notes": "Enumerated from an external playlist; unreviewed inventory metadata only."
+    },
+    {
+      "id": "youtube-dom5y1m7rck",
+      "video_id": "Dom5Y1M7rck",
+      "title": "Escape the Backrooms - Level 5 Ambience",
+      "channel": null,
+      "publication_date": null,
+      "duration_seconds": 214,
+      "stable_locator": "https://www.youtube.com/watch?v=Dom5Y1M7rck",
+      "source_type": "unclassified-video",
+      "project_scope": {
+        "relationship": "unresolved",
+        "belongs_to": "unknown"
+      },
+      "directly_checked": false,
+      "transcript_status": "unknown",
+      "review_state": "unreviewed",
+      "canon_authority": "none",
+      "playlist_memberships": [
+        {
+          "corpus_root_id": "corpus-root-3",
+          "playlist_id": "PLC9YQQCWsMVggeBbA-o201KLow5lpMq2T",
+          "position": 80,
+          "status": "accessible"
+        }
+      ],
+      "notes": "Enumerated from an external playlist; unreviewed inventory metadata only."
+    },
+    {
+      "id": "youtube-dswuemjdglw",
+      "video_id": "DSWUEmJDglw",
+      "title": "Backrooms - Lighting and Tile Survey",
+      "channel": null,
+      "publication_date": null,
+      "duration_seconds": 524,
+      "stable_locator": "https://www.youtube.com/watch?v=DSWUEmJDglw",
+      "source_type": "unclassified-video",
+      "project_scope": {
+        "relationship": "unresolved",
+        "belongs_to": "unknown"
+      },
+      "directly_checked": false,
+      "transcript_status": "unknown",
+      "review_state": "unreviewed",
+      "canon_authority": "none",
+      "playlist_memberships": [
+        {
+          "corpus_root_id": "corpus-root-4",
+          "playlist_id": "PLVAh-MgDVqvDUEq6qDXqORBioE4Yhol_z",
+          "position": 20,
+          "status": "accessible"
+        }
+      ],
+      "notes": "Enumerated from an external playlist; unreviewed inventory metadata only."
+    },
+    {
+      "id": "youtube-e9i0mv8frnq",
+      "video_id": "E9I0MV8FRNQ",
+      "title": "The Backrooms Hum buzz￼ (Kane Pixles Version) (Version 1)",
+      "channel": null,
+      "publication_date": null,
+      "duration_seconds": 81,
+      "stable_locator": "https://www.youtube.com/watch?v=E9I0MV8FRNQ",
+      "source_type": "unclassified-video",
+      "project_scope": {
+        "relationship": "unresolved",
+        "belongs_to": "unknown"
+      },
+      "directly_checked": false,
+      "transcript_status": "unknown",
+      "review_state": "unreviewed",
+      "canon_authority": "none",
+      "playlist_memberships": [
+        {
+          "corpus_root_id": "corpus-root-3",
+          "playlist_id": "PLC9YQQCWsMVggeBbA-o201KLow5lpMq2T",
+          "position": 1,
+          "status": "accessible"
+        }
+      ],
+      "notes": "Enumerated from an external playlist; unreviewed inventory metadata only."
+    },
+    {
+      "id": "youtube-ewzx0bnbb30",
+      "video_id": "ewZx0bnBb30",
+      "title": null,
+      "channel": null,
+      "publication_date": null,
+      "duration_seconds": null,
+      "stable_locator": "https://www.youtube.com/watch?v=ewZx0bnBb30",
+      "source_type": "unclassified-video",
+      "project_scope": {
+        "relationship": "unresolved",
+        "belongs_to": "unknown"
+      },
+      "directly_checked": false,
+      "transcript_status": "unknown",
+      "review_state": "unreviewed",
+      "canon_authority": "none",
+      "playlist_memberships": [
+        {
+          "corpus_root_id": "corpus-root-4",
+          "playlist_id": "PLVAh-MgDVqvDUEq6qDXqORBioE4Yhol_z",
+          "position": 23,
+          "status": "accessible"
+        }
+      ],
+      "notes": "Enumerated from an external playlist; unreviewed inventory metadata only."
+    },
+    {
+      "id": "youtube-exdidjzy6ky",
+      "video_id": "eXdIDjzy6KY",
+      "title": "Backrooms - First Contact",
+      "channel": null,
+      "publication_date": null,
+      "duration_seconds": 118,
+      "stable_locator": "https://www.youtube.com/watch?v=eXdIDjzy6KY",
+      "source_type": "unclassified-video",
+      "project_scope": {
+        "relationship": "unresolved",
+        "belongs_to": "unknown"
+      },
+      "directly_checked": false,
+      "transcript_status": "unknown",
+      "review_state": "unreviewed",
+      "canon_authority": "none",
+      "playlist_memberships": [
+        {
+          "corpus_root_id": "corpus-root-4",
+          "playlist_id": "PLVAh-MgDVqvDUEq6qDXqORBioE4Yhol_z",
+          "position": 4,
+          "status": "accessible"
+        }
+      ],
+      "notes": "Enumerated from an external playlist; unreviewed inventory metadata only."
+    },
+    {
+      "id": "youtube-fcusjaozplg",
+      "video_id": "FcusJaoZplg",
+      "title": "Escape the Backrooms - Level 3 Ambience",
+      "channel": null,
+      "publication_date": null,
+      "duration_seconds": 200,
+      "stable_locator": "https://www.youtube.com/watch?v=FcusJaoZplg",
+      "source_type": "unclassified-video",
+      "project_scope": {
+        "relationship": "unresolved",
+        "belongs_to": "unknown"
+      },
+      "directly_checked": false,
+      "transcript_status": "unknown",
+      "review_state": "unreviewed",
+      "canon_authority": "none",
+      "playlist_memberships": [
+        {
+          "corpus_root_id": "corpus-root-3",
+          "playlist_id": "PLC9YQQCWsMVggeBbA-o201KLow5lpMq2T",
+          "position": 77,
+          "status": "accessible"
+        }
+      ],
+      "notes": "Enumerated from an external playlist; unreviewed inventory metadata only."
+    },
+    {
+      "id": "youtube-fxkyu9gqnhw",
+      "video_id": "FxKYU9gqnhw",
+      "title": "[FREE VIDEO] REAL VHS TRACKING GLITCH AND PLAY LOGO FOR EDITION  PURPOSES",
+      "channel": null,
+      "publication_date": null,
+      "duration_seconds": 192,
+      "stable_locator": "https://www.youtube.com/watch?v=FxKYU9gqnhw",
+      "source_type": "unclassified-video",
+      "project_scope": {
+        "relationship": "unresolved",
+        "belongs_to": "unknown"
+      },
+      "directly_checked": false,
+      "transcript_status": "unknown",
+      "review_state": "unreviewed",
+      "canon_authority": "none",
+      "playlist_memberships": [
+        {
+          "corpus_root_id": "corpus-root-3",
+          "playlist_id": "PLC9YQQCWsMVggeBbA-o201KLow5lpMq2T",
+          "position": 14,
+          "status": "accessible"
+        }
+      ],
+      "notes": "Enumerated from an external playlist; unreviewed inventory metadata only."
+    },
+    {
+      "id": "youtube-gqrz8cq77ik",
+      "video_id": "Gqrz8cq77ik",
+      "title": "The Backrooms: Level 0 (Ambience) (MY VERY FIRST VIDEO HERE ON THE CHANNEL!)",
+      "channel": null,
+      "publication_date": null,
+      "duration_seconds": 311,
+      "stable_locator": "https://www.youtube.com/watch?v=Gqrz8cq77ik",
+      "source_type": "unclassified-video",
+      "project_scope": {
+        "relationship": "unresolved",
+        "belongs_to": "unknown"
+      },
+      "directly_checked": false,
+      "transcript_status": "unknown",
+      "review_state": "unreviewed",
+      "canon_authority": "none",
+      "playlist_memberships": [
+        {
+          "corpus_root_id": "corpus-root-3",
+          "playlist_id": "PLC9YQQCWsMVggeBbA-o201KLow5lpMq2T",
+          "position": 70,
+          "status": "accessible"
+        }
+      ],
+      "notes": "Enumerated from an external playlist; unreviewed inventory metadata only."
+    },
+    {
+      "id": "youtube-gten-z-v1ei",
+      "video_id": "gTEn-Z-V1eI",
+      "title": "Fluorescent light Buzz 10 hours",
+      "channel": null,
+      "publication_date": null,
+      "duration_seconds": 36015,
+      "stable_locator": "https://www.youtube.com/watch?v=gTEn-Z-V1eI",
+      "source_type": "unclassified-video",
+      "project_scope": {
+        "relationship": "unresolved",
+        "belongs_to": "unknown"
+      },
+      "directly_checked": false,
+      "transcript_status": "unknown",
+      "review_state": "unreviewed",
+      "canon_authority": "none",
+      "playlist_memberships": [
+        {
+          "corpus_root_id": "corpus-root-3",
+          "playlist_id": "PLC9YQQCWsMVggeBbA-o201KLow5lpMq2T",
+          "position": 36,
+          "status": "accessible"
+        }
+      ],
+      "notes": "Enumerated from an external playlist; unreviewed inventory metadata only."
+    },
+    {
+      "id": "youtube-h4dgpz6cnho",
+      "video_id": "H4dGpz6cnHo",
+      "title": "The Backrooms (Found Footage)",
+      "channel": null,
+      "publication_date": null,
+      "duration_seconds": 554,
+      "stable_locator": "https://www.youtube.com/watch?v=H4dGpz6cnHo",
+      "source_type": "unclassified-video",
+      "project_scope": {
+        "relationship": "unresolved",
+        "belongs_to": "unknown"
+      },
+      "directly_checked": false,
+      "transcript_status": "unknown",
+      "review_state": "unreviewed",
+      "canon_authority": "none",
+      "playlist_memberships": [
+        {
+          "corpus_root_id": "corpus-root-4",
+          "playlist_id": "PLVAh-MgDVqvDUEq6qDXqORBioE4Yhol_z",
+          "position": 1,
+          "status": "accessible"
+        }
+      ],
+      "notes": "Enumerated from an external playlist; unreviewed inventory metadata only."
+    },
+    {
+      "id": "youtube-hczihxkq6-k",
+      "video_id": "hCzihXkq6-k",
+      "title": "Vhs Vcr Interference Noise",
+      "channel": null,
+      "publication_date": null,
+      "duration_seconds": 61,
+      "stable_locator": "https://www.youtube.com/watch?v=hCzihXkq6-k",
+      "source_type": "unclassified-video",
+      "project_scope": {
+        "relationship": "unresolved",
+        "belongs_to": "unknown"
+      },
+      "directly_checked": false,
+      "transcript_status": "unknown",
+      "review_state": "unreviewed",
+      "canon_authority": "none",
+      "playlist_memberships": [
+        {
+          "corpus_root_id": "corpus-root-3",
+          "playlist_id": "PLC9YQQCWsMVggeBbA-o201KLow5lpMq2T",
+          "position": 12,
+          "status": "accessible"
+        },
+        {
+          "corpus_root_id": "corpus-root-3",
+          "playlist_id": "PLC9YQQCWsMVggeBbA-o201KLow5lpMq2T",
+          "position": 13,
+          "status": "accessible"
+        }
+      ],
+      "notes": "Enumerated from an external playlist; unreviewed inventory metadata only."
+    },
+    {
+      "id": "youtube-hkrsr5esrvu",
+      "video_id": "hkrSr5esRVU",
+      "title": "Analog VHS TV VHS Texture Overlay Static Lines ( Free Overlay ) #Vhs #Texture",
+      "channel": null,
+      "publication_date": null,
+      "duration_seconds": 2,
+      "stable_locator": "https://www.youtube.com/watch?v=hkrSr5esRVU",
+      "source_type": "unclassified-video",
+      "project_scope": {
+        "relationship": "unresolved",
+        "belongs_to": "unknown"
+      },
+      "directly_checked": false,
+      "transcript_status": "unknown",
+      "review_state": "unreviewed",
+      "canon_authority": "none",
+      "playlist_memberships": [
+        {
+          "corpus_root_id": "corpus-root-3",
+          "playlist_id": "PLC9YQQCWsMVggeBbA-o201KLow5lpMq2T",
+          "position": 22,
+          "status": "accessible"
+        }
+      ],
+      "notes": "Enumerated from an external playlist; unreviewed inventory metadata only."
+    },
+    {
+      "id": "youtube-i5thtebrqpy",
+      "video_id": "i5tHTEBRqPY",
+      "title": "Backrooms Movie Poster Analysis | The Backrooms Movie Analysis",
+      "channel": null,
+      "publication_date": null,
+      "duration_seconds": 370,
+      "stable_locator": "https://www.youtube.com/watch?v=i5tHTEBRqPY",
+      "source_type": "unclassified-video",
+      "project_scope": {
+        "relationship": "unresolved",
+        "belongs_to": "unknown"
+      },
+      "directly_checked": false,
+      "transcript_status": "unknown",
+      "review_state": "unreviewed",
+      "canon_authority": "none",
+      "playlist_memberships": [
+        {
+          "corpus_root_id": "corpus-root-1",
+          "playlist_id": "PLAmHAFa1D3sDt6lV_Hdj7t5y7ciF-oXWw",
+          "position": 10,
+          "status": "accessible"
+        }
+      ],
+      "notes": "Enumerated from an external playlist; unreviewed inventory metadata only."
+    },
+    {
+      "id": "youtube-i6z0ycq0ar4",
+      "video_id": "i6z0yCq0Ar4",
+      "title": "Kane Parsons *still life* SLOWED + REVERB",
+      "channel": null,
+      "publication_date": null,
+      "duration_seconds": 394,
+      "stable_locator": "https://www.youtube.com/watch?v=i6z0yCq0Ar4",
+      "source_type": "unclassified-video",
+      "project_scope": {
+        "relationship": "unresolved",
+        "belongs_to": "unknown"
+      },
+      "directly_checked": false,
+      "transcript_status": "unknown",
+      "review_state": "unreviewed",
+      "canon_authority": "none",
+      "playlist_memberships": [
+        {
+          "corpus_root_id": "corpus-root-2",
+          "playlist_id": "PLcQrS3EXVZ00",
+          "position": 5,
+          "status": "accessible"
+        }
+      ],
+      "notes": "Enumerated from an external playlist; unreviewed inventory metadata only."
+    },
+    {
+      "id": "youtube-igu_hvbzdkq",
+      "video_id": "igU_hVBzDkQ",
+      "title": "FOOTSTEPS ON WOOD FLOOR SOUND EFFECT (ASMR) - 1 HOUR",
+      "channel": null,
+      "publication_date": null,
+      "duration_seconds": 3614,
+      "stable_locator": "https://www.youtube.com/watch?v=igU_hVBzDkQ",
+      "source_type": "unclassified-video",
+      "project_scope": {
+        "relationship": "unresolved",
+        "belongs_to": "unknown"
+      },
+      "directly_checked": false,
+      "transcript_status": "unknown",
+      "review_state": "unreviewed",
+      "canon_authority": "none",
+      "playlist_memberships": [
+        {
+          "corpus_root_id": "corpus-root-3",
+          "playlist_id": "PLC9YQQCWsMVggeBbA-o201KLow5lpMq2T",
+          "position": 55,
+          "status": "accessible"
+        },
+        {
+          "corpus_root_id": "corpus-root-3",
+          "playlist_id": "PLC9YQQCWsMVggeBbA-o201KLow5lpMq2T",
+          "position": 56,
+          "status": "accessible"
+        }
+      ],
+      "notes": "Enumerated from an external playlist; unreviewed inventory metadata only."
+    },
+    {
+      "id": "youtube-ijlshfx1uay",
+      "video_id": "IJlsHFX1uaY",
+      "title": "Footsteps Carpet Sound Effect",
+      "channel": null,
+      "publication_date": null,
+      "duration_seconds": 41,
+      "stable_locator": "https://www.youtube.com/watch?v=IJlsHFX1uaY",
+      "source_type": "unclassified-video",
+      "project_scope": {
+        "relationship": "unresolved",
+        "belongs_to": "unknown"
+      },
+      "directly_checked": false,
+      "transcript_status": "unknown",
+      "review_state": "unreviewed",
+      "canon_authority": "none",
+      "playlist_memberships": [
+        {
+          "corpus_root_id": "corpus-root-3",
+          "playlist_id": "PLC9YQQCWsMVggeBbA-o201KLow5lpMq2T",
+          "position": 84,
+          "status": "accessible"
+        }
+      ],
+      "notes": "Enumerated from an external playlist; unreviewed inventory metadata only."
+    },
+    {
+      "id": "youtube-iksyj_pspno",
+      "video_id": "IKSYJ_PSPno",
+      "title": "Backrooms Ambience. (Level 1)",
+      "channel": null,
+      "publication_date": null,
+      "duration_seconds": 301,
+      "stable_locator": "https://www.youtube.com/watch?v=IKSYJ_PSPno",
+      "source_type": "unclassified-video",
+      "project_scope": {
+        "relationship": "unresolved",
+        "belongs_to": "unknown"
+      },
+      "directly_checked": false,
+      "transcript_status": "unknown",
+      "review_state": "unreviewed",
+      "canon_authority": "none",
+      "playlist_memberships": [
+        {
+          "corpus_root_id": "corpus-root-3",
+          "playlist_id": "PLC9YQQCWsMVggeBbA-o201KLow5lpMq2T",
+          "position": 71,
+          "status": "accessible"
+        }
+      ],
+      "notes": "Enumerated from an external playlist; unreviewed inventory metadata only."
+    },
+    {
+      "id": "youtube-irsninmzdhe",
+      "video_id": "iRSniNMZDhE",
+      "title": "The Backrooms Game You've Been Waiting For...",
+      "channel": null,
+      "publication_date": null,
+      "duration_seconds": 455,
+      "stable_locator": "https://www.youtube.com/watch?v=iRSniNMZDhE",
+      "source_type": "unclassified-video",
+      "project_scope": {
+        "relationship": "unresolved",
+        "belongs_to": "unknown"
+      },
+      "directly_checked": false,
+      "transcript_status": "unknown",
+      "review_state": "unreviewed",
+      "canon_authority": "none",
+      "playlist_memberships": [
+        {
+          "corpus_root_id": "corpus-root-2",
+          "playlist_id": "PLcQrS3EXVZ00",
+          "position": 4,
+          "status": "accessible"
+        }
+      ],
+      "notes": "Enumerated from an external playlist; unreviewed inventory metadata only."
+    },
+    {
+      "id": "youtube-itugdhxhi0a",
+      "video_id": "ITuGdHxHi0A",
+      "title": "Backrooms - Presentation",
+      "channel": null,
+      "publication_date": null,
+      "duration_seconds": 506,
+      "stable_locator": "https://www.youtube.com/watch?v=ITuGdHxHi0A",
+      "source_type": "unclassified-video",
+      "project_scope": {
+        "relationship": "unresolved",
+        "belongs_to": "unknown"
+      },
+      "directly_checked": false,
+      "transcript_status": "unknown",
+      "review_state": "unreviewed",
+      "canon_authority": "none",
+      "playlist_memberships": [
+        {
+          "corpus_root_id": "corpus-root-4",
+          "playlist_id": "PLVAh-MgDVqvDUEq6qDXqORBioE4Yhol_z",
+          "position": 13,
+          "status": "accessible"
+        }
+      ],
+      "notes": "Enumerated from an external playlist; unreviewed inventory metadata only."
+    },
+    {
+      "id": "youtube-iyozhmfglug",
+      "video_id": "IYoZhMfgLug",
+      "title": "Do You Like Air Conditioning But what ravi heard",
+      "channel": null,
+      "publication_date": null,
+      "duration_seconds": 36,
+      "stable_locator": "https://www.youtube.com/watch?v=IYoZhMfgLug",
+      "source_type": "unclassified-video",
+      "project_scope": {
+        "relationship": "unresolved",
+        "belongs_to": "unknown"
+      },
+      "directly_checked": false,
+      "transcript_status": "unknown",
+      "review_state": "unreviewed",
+      "canon_authority": "none",
+      "playlist_memberships": [
+        {
+          "corpus_root_id": "corpus-root-2",
+          "playlist_id": "PLcQrS3EXVZ00",
+          "position": 11,
+          "status": "accessible"
+        }
+      ],
+      "notes": "Enumerated from an external playlist; unreviewed inventory metadata only."
+    },
+    {
+      "id": "youtube-j1fwer0e5mc",
+      "video_id": "J1fwer0E5mc",
+      "title": "Zoom SOUND EFFECT - Videocamera Zoom SOUNDS SFX",
+      "channel": null,
+      "publication_date": null,
+      "duration_seconds": 48,
+      "stable_locator": "https://www.youtube.com/watch?v=J1fwer0E5mc",
+      "source_type": "unclassified-video",
+      "project_scope": {
+        "relationship": "unresolved",
+        "belongs_to": "unknown"
+      },
+      "directly_checked": false,
+      "transcript_status": "unknown",
+      "review_state": "unreviewed",
+      "canon_authority": "none",
+      "playlist_memberships": [
+        {
+          "corpus_root_id": "corpus-root-3",
+          "playlist_id": "PLC9YQQCWsMVggeBbA-o201KLow5lpMq2T",
+          "position": 32,
+          "status": "accessible"
+        },
+        {
+          "corpus_root_id": "corpus-root-3",
+          "playlist_id": "PLC9YQQCWsMVggeBbA-o201KLow5lpMq2T",
+          "position": 33,
+          "status": "accessible"
+        }
+      ],
+      "notes": "Enumerated from an external playlist; unreviewed inventory metadata only."
+    },
+    {
+      "id": "youtube-j6klsi8glxi",
+      "video_id": "j6klSI8GlXI",
+      "title": "Backrooms - Damage Control",
+      "channel": null,
+      "publication_date": null,
+      "duration_seconds": 843,
+      "stable_locator": "https://www.youtube.com/watch?v=j6klSI8GlXI",
+      "source_type": "unclassified-video",
+      "project_scope": {
+        "relationship": "unresolved",
+        "belongs_to": "unknown"
+      },
+      "directly_checked": false,
+      "transcript_status": "unknown",
+      "review_state": "unreviewed",
+      "canon_authority": "none",
+      "playlist_memberships": [
+        {
+          "corpus_root_id": "corpus-root-4",
+          "playlist_id": "PLVAh-MgDVqvDUEq6qDXqORBioE4Yhol_z",
+          "position": 18,
+          "status": "accessible"
+        }
+      ],
+      "notes": "Enumerated from an external playlist; unreviewed inventory metadata only."
+    },
+    {
+      "id": "youtube-jg6fc9ziat8",
+      "video_id": "jg6FC9ZIAt8",
+      "title": "Old Home Not Yet Built x Still Life",
+      "channel": null,
+      "publication_date": null,
+      "duration_seconds": 345,
+      "stable_locator": "https://www.youtube.com/watch?v=jg6FC9ZIAt8",
+      "source_type": "unclassified-video",
+      "project_scope": {
+        "relationship": "unresolved",
+        "belongs_to": "unknown"
+      },
+      "directly_checked": false,
+      "transcript_status": "unknown",
+      "review_state": "unreviewed",
+      "canon_authority": "none",
+      "playlist_memberships": [
+        {
+          "corpus_root_id": "corpus-root-2",
+          "playlist_id": "PLcQrS3EXVZ00",
+          "position": 9,
+          "status": "accessible"
+        }
+      ],
+      "notes": "Enumerated from an external playlist; unreviewed inventory metadata only."
+    },
+    {
+      "id": "youtube-jmj_-2ow0qo",
+      "video_id": "jMj_-2OW0Qo",
+      "title": null,
+      "channel": null,
+      "publication_date": null,
+      "duration_seconds": null,
+      "stable_locator": "https://www.youtube.com/watch?v=jMj_-2OW0Qo",
+      "source_type": "unclassified-video",
+      "project_scope": {
+        "relationship": "unresolved",
+        "belongs_to": "unknown"
+      },
+      "directly_checked": false,
+      "transcript_status": "unknown",
+      "review_state": "unreviewed",
+      "canon_authority": "none",
+      "playlist_memberships": [
+        {
+          "corpus_root_id": "corpus-root-3",
+          "playlist_id": "PLC9YQQCWsMVggeBbA-o201KLow5lpMq2T",
+          "position": 65,
+          "status": "accessible"
+        }
+      ],
+      "notes": "Enumerated from an external playlist; unreviewed inventory metadata only."
+    },
+    {
+      "id": "youtube-jrisqnr-zey",
+      "video_id": "jRIsqNR-ZeY",
+      "title": "Camera Zoom - Sound Effect | ProSounds",
+      "channel": null,
+      "publication_date": null,
+      "duration_seconds": 3,
+      "stable_locator": "https://www.youtube.com/watch?v=jRIsqNR-ZeY",
+      "source_type": "unclassified-video",
+      "project_scope": {
+        "relationship": "unresolved",
+        "belongs_to": "unknown"
+      },
+      "directly_checked": false,
+      "transcript_status": "unknown",
+      "review_state": "unreviewed",
+      "canon_authority": "none",
+      "playlist_memberships": [
+        {
+          "corpus_root_id": "corpus-root-3",
+          "playlist_id": "PLC9YQQCWsMVggeBbA-o201KLow5lpMq2T",
+          "position": 29,
+          "status": "accessible"
+        },
+        {
+          "corpus_root_id": "corpus-root-3",
+          "playlist_id": "PLC9YQQCWsMVggeBbA-o201KLow5lpMq2T",
+          "position": 30,
+          "status": "accessible"
+        }
+      ],
+      "notes": "Enumerated from an external playlist; unreviewed inventory metadata only."
+    },
+    {
+      "id": "youtube-jtjmnvbsrn0",
+      "video_id": "JtJmnVBSRN0",
+      "title": "Boot walking on carpet sound effect",
+      "channel": null,
+      "publication_date": null,
+      "duration_seconds": 27,
+      "stable_locator": "https://www.youtube.com/watch?v=JtJmnVBSRN0",
+      "source_type": "unclassified-video",
+      "project_scope": {
+        "relationship": "unresolved",
+        "belongs_to": "unknown"
+      },
+      "directly_checked": false,
+      "transcript_status": "unknown",
+      "review_state": "unreviewed",
+      "canon_authority": "none",
+      "playlist_memberships": [
+        {
+          "corpus_root_id": "corpus-root-3",
+          "playlist_id": "PLC9YQQCWsMVggeBbA-o201KLow5lpMq2T",
+          "position": 83,
+          "status": "accessible"
+        }
+      ],
+      "notes": "Enumerated from an external playlist; unreviewed inventory metadata only."
+    },
+    {
+      "id": "youtube-k0l8sm32eni",
+      "video_id": "k0L8SM32ENI",
+      "title": "Mar11_90_ARCHIVE.tar",
+      "channel": null,
+      "publication_date": null,
+      "duration_seconds": 169,
+      "stable_locator": "https://www.youtube.com/watch?v=k0L8SM32ENI",
+      "source_type": "unclassified-video",
+      "project_scope": {
+        "relationship": "unresolved",
+        "belongs_to": "unknown"
+      },
+      "directly_checked": false,
+      "transcript_status": "unknown",
+      "review_state": "unreviewed",
+      "canon_authority": "none",
+      "playlist_memberships": [
+        {
+          "corpus_root_id": "corpus-root-4",
+          "playlist_id": "PLVAh-MgDVqvDUEq6qDXqORBioE4Yhol_z",
+          "position": 2,
+          "status": "accessible"
+        }
+      ],
+      "notes": "Enumerated from an external playlist; unreviewed inventory metadata only."
+    },
+    {
+      "id": "youtube-kcaqaavqqmu",
+      "video_id": "KcaQaAVQQmU",
+      "title": "SECAM FIRE.SYSTEM B/G",
+      "channel": null,
+      "publication_date": null,
+      "duration_seconds": 11,
+      "stable_locator": "https://www.youtube.com/watch?v=KcaQaAVQQmU",
+      "source_type": "unclassified-video",
+      "project_scope": {
+        "relationship": "unresolved",
+        "belongs_to": "unknown"
+      },
+      "directly_checked": false,
+      "transcript_status": "unknown",
+      "review_state": "unreviewed",
+      "canon_authority": "none",
+      "playlist_memberships": [
+        {
+          "corpus_root_id": "corpus-root-3",
+          "playlist_id": "PLC9YQQCWsMVggeBbA-o201KLow5lpMq2T",
+          "position": 21,
+          "status": "accessible"
+        }
+      ],
+      "notes": "Enumerated from an external playlist; unreviewed inventory metadata only."
+    },
+    {
+      "id": "youtube-knn5pzdnphc",
+      "video_id": "kNN5PzdNpHc",
+      "title": "POV: You are at the Backrooms Lvl 2 \"Pipe Dreams\" - Ambient Sounds",
+      "channel": null,
+      "publication_date": null,
+      "duration_seconds": 601,
+      "stable_locator": "https://www.youtube.com/watch?v=kNN5PzdNpHc",
+      "source_type": "unclassified-video",
+      "project_scope": {
+        "relationship": "unresolved",
+        "belongs_to": "unknown"
+      },
+      "directly_checked": false,
+      "transcript_status": "unknown",
+      "review_state": "unreviewed",
+      "canon_authority": "none",
+      "playlist_memberships": [
+        {
+          "corpus_root_id": "corpus-root-3",
+          "playlist_id": "PLC9YQQCWsMVggeBbA-o201KLow5lpMq2T",
+          "position": 75,
+          "status": "accessible"
+        }
+      ],
+      "notes": "Enumerated from an external playlist; unreviewed inventory metadata only."
+    },
+    {
+      "id": "youtube-kpnyrjgvl5w",
+      "video_id": "KPNyRJgVl5w",
+      "title": "Walking on carpet sound effect",
+      "channel": null,
+      "publication_date": null,
+      "duration_seconds": 4,
+      "stable_locator": "https://www.youtube.com/watch?v=KPNyRJgVl5w",
+      "source_type": "unclassified-video",
+      "project_scope": {
+        "relationship": "unresolved",
+        "belongs_to": "unknown"
+      },
+      "directly_checked": false,
+      "transcript_status": "unknown",
+      "review_state": "unreviewed",
+      "canon_authority": "none",
+      "playlist_memberships": [
+        {
+          "corpus_root_id": "corpus-root-3",
+          "playlist_id": "PLC9YQQCWsMVggeBbA-o201KLow5lpMq2T",
+          "position": 82,
+          "status": "accessible"
+        }
+      ],
+      "notes": "Enumerated from an external playlist; unreviewed inventory metadata only."
+    },
+    {
+      "id": "youtube-kq6l9yco9ri",
+      "video_id": "Kq6l9yCO9rI",
+      "title": "home_27647.mov",
+      "channel": null,
+      "publication_date": null,
+      "duration_seconds": 206,
+      "stable_locator": "https://www.youtube.com/watch?v=Kq6l9yCO9rI",
+      "source_type": "unclassified-video",
+      "project_scope": {
+        "relationship": "unresolved",
+        "belongs_to": "unknown"
+      },
+      "directly_checked": false,
+      "transcript_status": "unknown",
+      "review_state": "unreviewed",
+      "canon_authority": "none",
+      "playlist_memberships": [
+        {
+          "corpus_root_id": "corpus-root-4",
+          "playlist_id": "PLVAh-MgDVqvDUEq6qDXqORBioE4Yhol_z",
+          "position": 16,
+          "status": "accessible"
+        }
+      ],
+      "notes": "Enumerated from an external playlist; unreviewed inventory metadata only."
+    },
+    {
+      "id": "youtube-ktg2wxtpdsk",
+      "video_id": "Ktg2wxTPdsk",
+      "title": "Still Life VHS distorted",
+      "channel": null,
+      "publication_date": null,
+      "duration_seconds": 159,
+      "stable_locator": "https://www.youtube.com/watch?v=Ktg2wxTPdsk",
+      "source_type": "unclassified-video",
+      "project_scope": {
+        "relationship": "unresolved",
+        "belongs_to": "unknown"
+      },
+      "directly_checked": false,
+      "transcript_status": "unknown",
+      "review_state": "unreviewed",
+      "canon_authority": "none",
+      "playlist_memberships": [
+        {
+          "corpus_root_id": "corpus-root-2",
+          "playlist_id": "PLcQrS3EXVZ00",
+          "position": 8,
+          "status": "accessible"
+        }
+      ],
+      "notes": "Enumerated from an external playlist; unreviewed inventory metadata only."
+    },
+    {
+      "id": "youtube-ku6s88a3km8",
+      "video_id": "Ku6S88A3km8",
+      "title": "Still Life by Kane Parsons ACTUAL CASSETTE RECORDING #backrooms #cassette #music ",
+      "channel": null,
+      "publication_date": null,
+      "duration_seconds": 181,
+      "stable_locator": "https://www.youtube.com/watch?v=Ku6S88A3km8",
+      "source_type": "unclassified-video",
+      "project_scope": {
+        "relationship": "unresolved",
+        "belongs_to": "unknown"
+      },
+      "directly_checked": false,
+      "transcript_status": "unknown",
+      "review_state": "unreviewed",
+      "canon_authority": "none",
+      "playlist_memberships": [
+        {
+          "corpus_root_id": "corpus-root-2",
+          "playlist_id": "PLcQrS3EXVZ00",
+          "position": 2,
+          "status": "accessible"
+        }
+      ],
+      "notes": "Enumerated from an external playlist; unreviewed inventory metadata only."
+    },
+    {
+      "id": "youtube-kzgjx1gh9zq",
+      "video_id": "kZgjX1gH9ZQ",
+      "title": "ONE HOUR | Speed Walking On Wooden Floor | White sound",
+      "channel": null,
+      "publication_date": null,
+      "duration_seconds": 3613,
+      "stable_locator": "https://www.youtube.com/watch?v=kZgjX1gH9ZQ",
+      "source_type": "unclassified-video",
+      "project_scope": {
+        "relationship": "unresolved",
+        "belongs_to": "unknown"
+      },
+      "directly_checked": false,
+      "transcript_status": "unknown",
+      "review_state": "unreviewed",
+      "canon_authority": "none",
+      "playlist_memberships": [
+        {
+          "corpus_root_id": "corpus-root-3",
+          "playlist_id": "PLC9YQQCWsMVggeBbA-o201KLow5lpMq2T",
+          "position": 63,
+          "status": "accessible"
+        }
+      ],
+      "notes": "Enumerated from an external playlist; unreviewed inventory metadata only."
+    },
+    {
+      "id": "youtube-l3xntkqckdq",
+      "video_id": "L3xNTKqcKDQ",
+      "title": "Analyzing the Backrooms Movie Promo Trailer | Backrooms Movie Analysis",
+      "channel": null,
+      "publication_date": null,
+      "duration_seconds": 1098,
+      "stable_locator": "https://www.youtube.com/watch?v=L3xNTKqcKDQ",
+      "source_type": "unclassified-video",
+      "project_scope": {
+        "relationship": "unresolved",
+        "belongs_to": "unknown"
+      },
+      "directly_checked": false,
+      "transcript_status": "unknown",
+      "review_state": "unreviewed",
+      "canon_authority": "none",
+      "playlist_memberships": [
+        {
+          "corpus_root_id": "corpus-root-1",
+          "playlist_id": "PLAmHAFa1D3sDt6lV_Hdj7t5y7ciF-oXWw",
+          "position": 5,
+          "status": "accessible"
+        }
+      ],
+      "notes": "Enumerated from an external playlist; unreviewed inventory metadata only."
+    },
+    {
+      "id": "youtube-lerpaf9wfoe",
+      "video_id": "LeRpaf9WFOE",
+      "title": "Escape the Backrooms - Level 1 Ambience",
+      "channel": null,
+      "publication_date": null,
+      "duration_seconds": 56,
+      "stable_locator": "https://www.youtube.com/watch?v=LeRpaf9WFOE",
+      "source_type": "unclassified-video",
+      "project_scope": {
+        "relationship": "unresolved",
+        "belongs_to": "unknown"
+      },
+      "directly_checked": false,
+      "transcript_status": "unknown",
+      "review_state": "unreviewed",
+      "canon_authority": "none",
+      "playlist_memberships": [
+        {
+          "corpus_root_id": "corpus-root-3",
+          "playlist_id": "PLC9YQQCWsMVggeBbA-o201KLow5lpMq2T",
+          "position": 72,
+          "status": "accessible"
+        }
+      ],
+      "notes": "Enumerated from an external playlist; unreviewed inventory metadata only."
+    },
+    {
+      "id": "youtube-mhbnzejfxbm",
+      "video_id": "MHBNzejfxBM",
+      "title": "Escape the Backrooms - Level 37 Ambience",
+      "channel": null,
+      "publication_date": null,
+      "duration_seconds": 48,
+      "stable_locator": "https://www.youtube.com/watch?v=MHBNzejfxBM",
+      "source_type": "unclassified-video",
+      "project_scope": {
+        "relationship": "unresolved",
+        "belongs_to": "unknown"
+      },
+      "directly_checked": false,
+      "transcript_status": "unknown",
+      "review_state": "unreviewed",
+      "canon_authority": "none",
+      "playlist_memberships": [
+        {
+          "corpus_root_id": "corpus-root-3",
+          "playlist_id": "PLC9YQQCWsMVggeBbA-o201KLow5lpMq2T",
+          "position": 78,
+          "status": "accessible"
+        }
+      ],
+      "notes": "Enumerated from an external playlist; unreviewed inventory metadata only."
+    },
+    {
+      "id": "youtube-mlr80a5x-zc",
+      "video_id": "MlR80A5x-zc",
+      "title": "Bad Tracking VHS - Retro Color Noise 80's 90's Video Tapes (Version 3)",
+      "channel": null,
+      "publication_date": null,
+      "duration_seconds": 61,
+      "stable_locator": "https://www.youtube.com/watch?v=MlR80A5x-zc",
+      "source_type": "unclassified-video",
+      "project_scope": {
+        "relationship": "unresolved",
+        "belongs_to": "unknown"
+      },
+      "directly_checked": false,
+      "transcript_status": "unknown",
+      "review_state": "unreviewed",
+      "canon_authority": "none",
+      "playlist_memberships": [
+        {
+          "corpus_root_id": "corpus-root-3",
+          "playlist_id": "PLC9YQQCWsMVggeBbA-o201KLow5lpMq2T",
+          "position": 17,
+          "status": "accessible"
+        }
+      ],
+      "notes": "Enumerated from an external playlist; unreviewed inventory metadata only."
+    },
+    {
+      "id": "youtube-mlrz1j3yq_y",
+      "video_id": "mLrz1J3YQ_Y",
+      "title": "Footsteps on Wooden Floor | 1 HOUR Walking Sound Effect",
+      "channel": null,
+      "publication_date": null,
+      "duration_seconds": 3600,
+      "stable_locator": "https://www.youtube.com/watch?v=mLrz1J3YQ_Y",
+      "source_type": "unclassified-video",
+      "project_scope": {
+        "relationship": "unresolved",
+        "belongs_to": "unknown"
+      },
+      "directly_checked": false,
+      "transcript_status": "unknown",
+      "review_state": "unreviewed",
+      "canon_authority": "none",
+      "playlist_memberships": [
+        {
+          "corpus_root_id": "corpus-root-3",
+          "playlist_id": "PLC9YQQCWsMVggeBbA-o201KLow5lpMq2T",
+          "position": 62,
+          "status": "accessible"
+        }
+      ],
+      "notes": "Enumerated from an external playlist; unreviewed inventory metadata only."
+    },
+    {
+      "id": "youtube-mpwuigdnu38",
+      "video_id": "MpWUigdNU38",
+      "title": "The Backrooms | Levels 0-3 Ambience | 19 Minutes",
+      "channel": null,
+      "publication_date": null,
+      "duration_seconds": 1156,
+      "stable_locator": "https://www.youtube.com/watch?v=MpWUigdNU38",
+      "source_type": "unclassified-video",
+      "project_scope": {
+        "relationship": "unresolved",
+        "belongs_to": "unknown"
+      },
+      "directly_checked": false,
+      "transcript_status": "unknown",
+      "review_state": "unreviewed",
+      "canon_authority": "none",
+      "playlist_memberships": [
+        {
+          "corpus_root_id": "corpus-root-3",
+          "playlist_id": "PLC9YQQCWsMVggeBbA-o201KLow5lpMq2T",
+          "position": 73,
+          "status": "accessible"
+        }
+      ],
+      "notes": "Enumerated from an external playlist; unreviewed inventory metadata only."
+    },
+    {
+      "id": "youtube-nh2d0tm-kfe",
+      "video_id": "nH2D0tM-kfE",
+      "title": "Screaming Monster Sound - Evil Scream Sound Effect",
+      "channel": null,
+      "publication_date": null,
+      "duration_seconds": 41,
+      "stable_locator": "https://www.youtube.com/watch?v=nH2D0tM-kfE",
+      "source_type": "unclassified-video",
+      "project_scope": {
+        "relationship": "unresolved",
+        "belongs_to": "unknown"
+      },
+      "directly_checked": false,
+      "transcript_status": "unknown",
+      "review_state": "unreviewed",
+      "canon_authority": "none",
+      "playlist_memberships": [
+        {
+          "corpus_root_id": "corpus-root-3",
+          "playlist_id": "PLC9YQQCWsMVggeBbA-o201KLow5lpMq2T",
+          "position": 88,
+          "status": "accessible"
+        }
+      ],
+      "notes": "Enumerated from an external playlist; unreviewed inventory metadata only."
+    },
+    {
+      "id": "youtube-niigo4gvt4a",
+      "video_id": "NIIGO4gVt4A",
+      "title": "More Hidden Connections in the Backrooms Trailer | The Backrooms Movie Analysis",
+      "channel": null,
+      "publication_date": null,
+      "duration_seconds": 761,
+      "stable_locator": "https://www.youtube.com/watch?v=NIIGO4gVt4A",
+      "source_type": "unclassified-video",
+      "project_scope": {
+        "relationship": "unresolved",
+        "belongs_to": "unknown"
+      },
+      "directly_checked": false,
+      "transcript_status": "unknown",
+      "review_state": "unreviewed",
+      "canon_authority": "none",
+      "playlist_memberships": [
+        {
+          "corpus_root_id": "corpus-root-1",
+          "playlist_id": "PLAmHAFa1D3sDt6lV_Hdj7t5y7ciF-oXWw",
+          "position": 7,
+          "status": "accessible"
+        }
+      ],
+      "notes": "Enumerated from an external playlist; unreviewed inventory metadata only."
+    },
+    {
+      "id": "youtube-nk8rnuflvww",
+      "video_id": "NK8rnUFLvWw",
+      "title": "Monster Giant Footstep Sound Effect (HD)",
+      "channel": null,
+      "publication_date": null,
+      "duration_seconds": 16,
+      "stable_locator": "https://www.youtube.com/watch?v=NK8rnUFLvWw",
+      "source_type": "unclassified-video",
+      "project_scope": {
+        "relationship": "unresolved",
+        "belongs_to": "unknown"
+      },
+      "directly_checked": false,
+      "transcript_status": "unknown",
+      "review_state": "unreviewed",
+      "canon_authority": "none",
+      "playlist_memberships": [
+        {
+          "corpus_root_id": "corpus-root-3",
+          "playlist_id": "PLC9YQQCWsMVggeBbA-o201KLow5lpMq2T",
+          "position": 39,
+          "status": "accessible"
+        }
+      ],
+      "notes": "Enumerated from an external playlist; unreviewed inventory metadata only."
+    },
+    {
+      "id": "youtube-nl5aklrttw0",
+      "video_id": "Nl5AklRtTW0",
+      "title": "Did We See The RED NEIGHBORHOOD? + New Casting Info! | The Backrooms Movie Analysis",
+      "channel": null,
+      "publication_date": null,
+      "duration_seconds": 417,
+      "stable_locator": "https://www.youtube.com/watch?v=Nl5AklRtTW0",
+      "source_type": "unclassified-video",
+      "project_scope": {
+        "relationship": "unresolved",
+        "belongs_to": "unknown"
+      },
+      "directly_checked": false,
+      "transcript_status": "unknown",
+      "review_state": "unreviewed",
+      "canon_authority": "none",
+      "playlist_memberships": [
+        {
+          "corpus_root_id": "corpus-root-1",
+          "playlist_id": "PLAmHAFa1D3sDt6lV_Hdj7t5y7ciF-oXWw",
+          "position": 15,
+          "status": "accessible"
+        }
+      ],
+      "notes": "Enumerated from an external playlist; unreviewed inventory metadata only."
+    },
+    {
+      "id": "youtube-nsxfcpxorjk",
+      "video_id": "NSXFcPxORJk",
+      "title": "Skin stealer sounds (backrooms)",
+      "channel": null,
+      "publication_date": null,
+      "duration_seconds": 69,
+      "stable_locator": "https://www.youtube.com/watch?v=NSXFcPxORJk",
+      "source_type": "unclassified-video",
+      "project_scope": {
+        "relationship": "unresolved",
+        "belongs_to": "unknown"
+      },
+      "directly_checked": false,
+      "transcript_status": "unknown",
+      "review_state": "unreviewed",
+      "canon_authority": "none",
+      "playlist_memberships": [
+        {
+          "corpus_root_id": "corpus-root-3",
+          "playlist_id": "PLC9YQQCWsMVggeBbA-o201KLow5lpMq2T",
+          "position": 47,
+          "status": "accessible"
+        }
+      ],
+      "notes": "Enumerated from an external playlist; unreviewed inventory metadata only."
+    },
+    {
+      "id": "youtube-nwwt6m4c9oq",
+      "video_id": "Nwwt6m4C9oQ",
+      "title": "The Backrooms: Entity 6 - Duller (sounds)",
+      "channel": null,
+      "publication_date": null,
+      "duration_seconds": 36,
+      "stable_locator": "https://www.youtube.com/watch?v=Nwwt6m4C9oQ",
+      "source_type": "unclassified-video",
+      "project_scope": {
+        "relationship": "unresolved",
+        "belongs_to": "unknown"
+      },
+      "directly_checked": false,
+      "transcript_status": "unknown",
+      "review_state": "unreviewed",
+      "canon_authority": "none",
+      "playlist_memberships": [
+        {
+          "corpus_root_id": "corpus-root-3",
+          "playlist_id": "PLC9YQQCWsMVggeBbA-o201KLow5lpMq2T",
+          "position": 43,
+          "status": "accessible"
+        },
+        {
+          "corpus_root_id": "corpus-root-3",
+          "playlist_id": "PLC9YQQCWsMVggeBbA-o201KLow5lpMq2T",
+          "position": 44,
+          "status": "accessible"
+        }
+      ],
+      "notes": "Enumerated from an external playlist; unreviewed inventory metadata only."
+    },
+    {
+      "id": "youtube-o2qxsebbswa",
+      "video_id": "O2qxSebbswA",
+      "title": "Backrooms Ambience 10 hours Black Screen (Backrooms Sound)",
+      "channel": null,
+      "publication_date": null,
+      "duration_seconds": 37548,
+      "stable_locator": "https://www.youtube.com/watch?v=O2qxSebbswA",
+      "source_type": "unclassified-video",
+      "project_scope": {
+        "relationship": "unresolved",
+        "belongs_to": "unknown"
+      },
+      "directly_checked": false,
+      "transcript_status": "unknown",
+      "review_state": "unreviewed",
+      "canon_authority": "none",
+      "playlist_memberships": [
+        {
+          "corpus_root_id": "corpus-root-3",
+          "playlist_id": "PLC9YQQCWsMVggeBbA-o201KLow5lpMq2T",
+          "position": 4,
+          "status": "accessible"
+        }
+      ],
+      "notes": "Enumerated from an external playlist; unreviewed inventory metadata only."
+    },
+    {
+      "id": "youtube-onxnum6g3lc",
+      "video_id": "oNxnum6g3Lc",
+      "title": "Running Footsteps Sound Effects All Sounds",
+      "channel": null,
+      "publication_date": null,
+      "duration_seconds": 159,
+      "stable_locator": "https://www.youtube.com/watch?v=oNxnum6g3Lc",
+      "source_type": "unclassified-video",
+      "project_scope": {
+        "relationship": "unresolved",
+        "belongs_to": "unknown"
+      },
+      "directly_checked": false,
+      "transcript_status": "unknown",
+      "review_state": "unreviewed",
+      "canon_authority": "none",
+      "playlist_memberships": [
+        {
+          "corpus_root_id": "corpus-root-3",
+          "playlist_id": "PLC9YQQCWsMVggeBbA-o201KLow5lpMq2T",
+          "position": 40,
+          "status": "accessible"
+        }
+      ],
+      "notes": "Enumerated from an external playlist; unreviewed inventory metadata only."
+    },
+    {
+      "id": "youtube-opqjs5wjp4u",
+      "video_id": "oPqjs5WJP4U",
+      "title": "Analyzing Cap'n Clark's Ottoman Empire Ad | The Backrooms Movie ARG Analysis",
+      "channel": null,
+      "publication_date": null,
+      "duration_seconds": 772,
+      "stable_locator": "https://www.youtube.com/watch?v=oPqjs5WJP4U",
+      "source_type": "unclassified-video",
+      "project_scope": {
+        "relationship": "unresolved",
+        "belongs_to": "unknown"
+      },
+      "directly_checked": false,
+      "transcript_status": "unknown",
+      "review_state": "unreviewed",
+      "canon_authority": "none",
+      "playlist_memberships": [
+        {
+          "corpus_root_id": "corpus-root-1",
+          "playlist_id": "PLAmHAFa1D3sDt6lV_Hdj7t5y7ciF-oXWw",
+          "position": 8,
+          "status": "accessible"
+        }
+      ],
+      "notes": "Enumerated from an external playlist; unreviewed inventory metadata only."
+    },
+    {
+      "id": "youtube-ozzzunfufr0",
+      "video_id": "OZzZuNfUfR0",
+      "title": "walking on wood -footstep on wood Sound effect (part1)",
+      "channel": null,
+      "publication_date": null,
+      "duration_seconds": 37,
+      "stable_locator": "https://www.youtube.com/watch?v=OZzZuNfUfR0",
+      "source_type": "unclassified-video",
+      "project_scope": {
+        "relationship": "unresolved",
+        "belongs_to": "unknown"
+      },
+      "directly_checked": false,
+      "transcript_status": "unknown",
+      "review_state": "unreviewed",
+      "canon_authority": "none",
+      "playlist_memberships": [
+        {
+          "corpus_root_id": "corpus-root-3",
+          "playlist_id": "PLC9YQQCWsMVggeBbA-o201KLow5lpMq2T",
+          "position": 58,
+          "status": "accessible"
+        }
+      ],
+      "notes": "Enumerated from an external playlist; unreviewed inventory metadata only."
+    },
+    {
+      "id": "youtube-pi_ix1btbiw",
+      "video_id": "pi_IX1BTBiw",
+      "title": "Kane pixels Backrooms sound effects",
+      "channel": null,
+      "publication_date": null,
+      "duration_seconds": 1206,
+      "stable_locator": "https://www.youtube.com/watch?v=pi_IX1BTBiw",
+      "source_type": "unclassified-video",
+      "project_scope": {
+        "relationship": "unresolved",
+        "belongs_to": "unknown"
+      },
+      "directly_checked": false,
+      "transcript_status": "unknown",
+      "review_state": "unreviewed",
+      "canon_authority": "none",
+      "playlist_memberships": [
+        {
+          "corpus_root_id": "corpus-root-2",
+          "playlist_id": "PLcQrS3EXVZ00",
+          "position": 15,
+          "status": "accessible"
+        }
+      ],
+      "notes": "Enumerated from an external playlist; unreviewed inventory metadata only."
+    },
+    {
+      "id": "youtube-pkfpmzfije4",
+      "video_id": "pKfpmzFiJE4",
+      "title": "Reviewing Kane Pixels Backrooms Movie ",
+      "channel": null,
+      "publication_date": null,
+      "duration_seconds": 835,
+      "stable_locator": "https://www.youtube.com/watch?v=pKfpmzFiJE4",
+      "source_type": "unclassified-video",
+      "project_scope": {
+        "relationship": "unresolved",
+        "belongs_to": "unknown"
+      },
+      "directly_checked": false,
+      "transcript_status": "unknown",
+      "review_state": "unreviewed",
+      "canon_authority": "none",
+      "playlist_memberships": [
+        {
+          "corpus_root_id": "corpus-root-1",
+          "playlist_id": "PLAmHAFa1D3sDt6lV_Hdj7t5y7ciF-oXWw",
+          "position": 3,
+          "status": "accessible"
+        }
+      ],
+      "notes": "Enumerated from an external playlist; unreviewed inventory metadata only."
+    },
+    {
+      "id": "youtube-py6c5naheb8",
+      "video_id": "py6c5NaHeB8",
+      "title": "Backrooms - Missing Persons",
+      "channel": null,
+      "publication_date": null,
+      "duration_seconds": 157,
+      "stable_locator": "https://www.youtube.com/watch?v=py6c5NaHeB8",
+      "source_type": "unclassified-video",
+      "project_scope": {
+        "relationship": "unresolved",
+        "belongs_to": "unknown"
+      },
+      "directly_checked": false,
+      "transcript_status": "unknown",
+      "review_state": "unreviewed",
+      "canon_authority": "none",
+      "playlist_memberships": [
+        {
+          "corpus_root_id": "corpus-root-4",
+          "playlist_id": "PLVAh-MgDVqvDUEq6qDXqORBioE4Yhol_z",
+          "position": 5,
+          "status": "accessible"
+        }
+      ],
+      "notes": "Enumerated from an external playlist; unreviewed inventory metadata only."
+    },
+    {
+      "id": "youtube-q_n59h0vtw8",
+      "video_id": "Q_N59H0VtW8",
+      "title": "estos efectos es para un proyecto",
+      "channel": null,
+      "publication_date": null,
+      "duration_seconds": 44,
+      "stable_locator": "https://www.youtube.com/watch?v=Q_N59H0VtW8",
+      "source_type": "unclassified-video",
+      "project_scope": {
+        "relationship": "unresolved",
+        "belongs_to": "unknown"
+      },
+      "directly_checked": false,
+      "transcript_status": "unknown",
+      "review_state": "unreviewed",
+      "canon_authority": "none",
+      "playlist_memberships": [
+        {
+          "corpus_root_id": "corpus-root-3",
+          "playlist_id": "PLC9YQQCWsMVggeBbA-o201KLow5lpMq2T",
+          "position": 23,
+          "status": "accessible"
+        }
+      ],
+      "notes": "Enumerated from an external playlist; unreviewed inventory metadata only."
+    },
+    {
+      "id": "youtube-qelssasprdi",
+      "video_id": "qELSSAspRDI",
+      "title": "VHS Glitch - Volume 1 - Stock Footage - Free to use for movies and video clips - with Download Link",
+      "channel": null,
+      "publication_date": null,
+      "duration_seconds": 2401,
+      "stable_locator": "https://www.youtube.com/watch?v=qELSSAspRDI",
+      "source_type": "unclassified-video",
+      "project_scope": {
+        "relationship": "unresolved",
+        "belongs_to": "unknown"
+      },
+      "directly_checked": false,
+      "transcript_status": "unknown",
+      "review_state": "unreviewed",
+      "canon_authority": "none",
+      "playlist_memberships": [
+        {
+          "corpus_root_id": "corpus-root-3",
+          "playlist_id": "PLC9YQQCWsMVggeBbA-o201KLow5lpMq2T",
+          "position": 20,
+          "status": "accessible"
+        }
+      ],
+      "notes": "Enumerated from an external playlist; unreviewed inventory metadata only."
+    },
+    {
+      "id": "youtube-qohsco6naew",
+      "video_id": "QoHScO6NaEw",
+      "title": "[SFX] The Backrooms Ambience",
+      "channel": null,
+      "publication_date": null,
+      "duration_seconds": 659,
+      "stable_locator": "https://www.youtube.com/watch?v=QoHScO6NaEw",
+      "source_type": "unclassified-video",
+      "project_scope": {
+        "relationship": "unresolved",
+        "belongs_to": "unknown"
+      },
+      "directly_checked": false,
+      "transcript_status": "unknown",
+      "review_state": "unreviewed",
+      "canon_authority": "none",
+      "playlist_memberships": [
+        {
+          "corpus_root_id": "corpus-root-3",
+          "playlist_id": "PLC9YQQCWsMVggeBbA-o201KLow5lpMq2T",
+          "position": 68,
+          "status": "accessible"
+        }
+      ],
+      "notes": "Enumerated from an external playlist; unreviewed inventory metadata only."
+    },
+    {
+      "id": "youtube-qyj8kx_574i",
+      "video_id": "qYj8Kx_574I",
+      "title": "Kane pixels (some custom) Backrooms sounds (good for editing)",
+      "channel": null,
+      "publication_date": null,
+      "duration_seconds": 1100,
+      "stable_locator": "https://www.youtube.com/watch?v=qYj8Kx_574I",
+      "source_type": "unclassified-video",
+      "project_scope": {
+        "relationship": "unresolved",
+        "belongs_to": "unknown"
+      },
+      "directly_checked": false,
+      "transcript_status": "unknown",
+      "review_state": "unreviewed",
+      "canon_authority": "none",
+      "playlist_memberships": [
+        {
+          "corpus_root_id": "corpus-root-3",
+          "playlist_id": "PLC9YQQCWsMVggeBbA-o201KLow5lpMq2T",
+          "position": 3,
+          "status": "accessible"
+        }
+      ],
+      "notes": "Enumerated from an external playlist; unreviewed inventory metadata only."
+    },
+    {
+      "id": "youtube-raokc6uakrg",
+      "video_id": "rAOkC6UAKrg",
+      "title": "Footsteps Walking on Concrete | HQ Sound Effects",
+      "channel": null,
+      "publication_date": null,
+      "duration_seconds": 53,
+      "stable_locator": "https://www.youtube.com/watch?v=rAOkC6UAKrg",
+      "source_type": "unclassified-video",
+      "project_scope": {
+        "relationship": "unresolved",
+        "belongs_to": "unknown"
+      },
+      "directly_checked": false,
+      "transcript_status": "unknown",
+      "review_state": "unreviewed",
+      "canon_authority": "none",
+      "playlist_memberships": [
+        {
+          "corpus_root_id": "corpus-root-3",
+          "playlist_id": "PLC9YQQCWsMVggeBbA-o201KLow5lpMq2T",
+          "position": 53,
+          "status": "accessible"
+        }
+      ],
+      "notes": "Enumerated from an external playlist; unreviewed inventory metadata only."
+    },
+    {
+      "id": "youtube-rigttyxjl1o",
+      "video_id": "RIGTtYXJL1o",
+      "title": "Analyzing the Backrooms Movie | Backrooms Movie Analysis",
+      "channel": null,
+      "publication_date": null,
+      "duration_seconds": 3526,
+      "stable_locator": "https://www.youtube.com/watch?v=RIGTtYXJL1o",
+      "source_type": "unclassified-video",
+      "project_scope": {
+        "relationship": "unresolved",
+        "belongs_to": "unknown"
+      },
+      "directly_checked": false,
+      "transcript_status": "unknown",
+      "review_state": "unreviewed",
+      "canon_authority": "none",
+      "playlist_memberships": [
+        {
+          "corpus_root_id": "corpus-root-1",
+          "playlist_id": "PLAmHAFa1D3sDt6lV_Hdj7t5y7ciF-oXWw",
+          "position": 2,
+          "status": "accessible"
+        }
+      ],
+      "notes": "Enumerated from an external playlist; unreviewed inventory metadata only."
+    },
+    {
+      "id": "youtube-rjborzd92ec",
+      "video_id": "rJbOrzd92Ec",
+      "title": "Walking on Wood Floor Sound Effect",
+      "channel": null,
+      "publication_date": null,
+      "duration_seconds": 56,
+      "stable_locator": "https://www.youtube.com/watch?v=rJbOrzd92Ec",
+      "source_type": "unclassified-video",
+      "project_scope": {
+        "relationship": "unresolved",
+        "belongs_to": "unknown"
+      },
+      "directly_checked": false,
+      "transcript_status": "unknown",
+      "review_state": "unreviewed",
+      "canon_authority": "none",
+      "playlist_memberships": [
+        {
+          "corpus_root_id": "corpus-root-3",
+          "playlist_id": "PLC9YQQCWsMVggeBbA-o201KLow5lpMq2T",
+          "position": 59,
+          "status": "accessible"
+        }
+      ],
+      "notes": "Enumerated from an external playlist; unreviewed inventory metadata only."
+    },
+    {
+      "id": "youtube-rkchjv_ywwu",
+      "video_id": "RKcHjv_yWWU",
+      "title": "The Backrooms: Entity 11 - Burster (sounds)",
+      "channel": null,
+      "publication_date": null,
+      "duration_seconds": 37,
+      "stable_locator": "https://www.youtube.com/watch?v=RKcHjv_yWWU",
+      "source_type": "unclassified-video",
+      "project_scope": {
+        "relationship": "unresolved",
+        "belongs_to": "unknown"
+      },
+      "directly_checked": false,
+      "transcript_status": "unknown",
+      "review_state": "unreviewed",
+      "canon_authority": "none",
+      "playlist_memberships": [
+        {
+          "corpus_root_id": "corpus-root-3",
+          "playlist_id": "PLC9YQQCWsMVggeBbA-o201KLow5lpMq2T",
+          "position": 48,
+          "status": "accessible"
+        }
+      ],
+      "notes": "Enumerated from an external playlist; unreviewed inventory metadata only."
+    },
+    {
+      "id": "youtube-rt18anoqfz0",
+      "video_id": "Rt18anOqfZ0",
+      "title": "Footsteps Sound Effect: Walking in hallway (1 Hour) 🎧 Steps on concrete and wood floors",
+      "channel": null,
+      "publication_date": null,
+      "duration_seconds": 3601,
+      "stable_locator": "https://www.youtube.com/watch?v=Rt18anOqfZ0",
+      "source_type": "unclassified-video",
+      "project_scope": {
+        "relationship": "unresolved",
+        "belongs_to": "unknown"
+      },
+      "directly_checked": false,
+      "transcript_status": "unknown",
+      "review_state": "unreviewed",
+      "canon_authority": "none",
+      "playlist_memberships": [
+        {
+          "corpus_root_id": "corpus-root-3",
+          "playlist_id": "PLC9YQQCWsMVggeBbA-o201KLow5lpMq2T",
+          "position": 64,
+          "status": "accessible"
+        }
+      ],
+      "notes": "Enumerated from an external playlist; unreviewed inventory metadata only."
+    },
+    {
+      "id": "youtube-rtoujrc3hcg",
+      "video_id": "RTOujrc3Hcg",
+      "title": "The Backrooms: Entity 12 - Howler (sounds)",
+      "channel": null,
+      "publication_date": null,
+      "duration_seconds": 49,
+      "stable_locator": "https://www.youtube.com/watch?v=RTOujrc3Hcg",
+      "source_type": "unclassified-video",
+      "project_scope": {
+        "relationship": "unresolved",
+        "belongs_to": "unknown"
+      },
+      "directly_checked": false,
+      "transcript_status": "unknown",
+      "review_state": "unreviewed",
+      "canon_authority": "none",
+      "playlist_memberships": [
+        {
+          "corpus_root_id": "corpus-root-3",
+          "playlist_id": "PLC9YQQCWsMVggeBbA-o201KLow5lpMq2T",
+          "position": 49,
+          "status": "accessible"
+        }
+      ],
+      "notes": "Enumerated from an external playlist; unreviewed inventory metadata only."
+    },
+    {
+      "id": "youtube-sa5pxghqpto",
+      "video_id": "sA5PxGHqpTo",
+      "title": "Backrooms - Found Footage #2",
+      "channel": null,
+      "publication_date": null,
+      "duration_seconds": 803,
+      "stable_locator": "https://www.youtube.com/watch?v=sA5PxGHqpTo",
+      "source_type": "unclassified-video",
+      "project_scope": {
+        "relationship": "unresolved",
+        "belongs_to": "unknown"
+      },
+      "directly_checked": false,
+      "transcript_status": "unknown",
+      "review_state": "unreviewed",
+      "canon_authority": "none",
+      "playlist_memberships": [
+        {
+          "corpus_root_id": "corpus-root-4",
+          "playlist_id": "PLVAh-MgDVqvDUEq6qDXqORBioE4Yhol_z",
+          "position": 15,
+          "status": "accessible"
+        }
+      ],
+      "notes": "Enumerated from an external playlist; unreviewed inventory metadata only."
+    },
+    {
+      "id": "youtube-sgfvi6cvltc",
+      "video_id": "SgfVI6cVLTc",
+      "title": "Escape the Backrooms - The Hub Ambience",
+      "channel": null,
+      "publication_date": null,
+      "duration_seconds": 43,
+      "stable_locator": "https://www.youtube.com/watch?v=SgfVI6cVLTc",
+      "source_type": "unclassified-video",
+      "project_scope": {
+        "relationship": "unresolved",
+        "belongs_to": "unknown"
+      },
+      "directly_checked": false,
+      "transcript_status": "unknown",
+      "review_state": "unreviewed",
+      "canon_authority": "none",
+      "playlist_memberships": [
+        {
+          "corpus_root_id": "corpus-root-3",
+          "playlist_id": "PLC9YQQCWsMVggeBbA-o201KLow5lpMq2T",
+          "position": 76,
+          "status": "accessible"
+        }
+      ],
+      "notes": "Enumerated from an external playlist; unreviewed inventory metadata only."
+    },
+    {
+      "id": "youtube-sgqb3lh91li",
+      "video_id": "SgqB3lh91lI",
+      "title": "Kane Pixels - Still Life (Slowed Down To Match Pt. 3)",
+      "channel": null,
+      "publication_date": null,
+      "duration_seconds": 206,
+      "stable_locator": "https://www.youtube.com/watch?v=SgqB3lh91lI",
+      "source_type": "unclassified-video",
+      "project_scope": {
+        "relationship": "unresolved",
+        "belongs_to": "unknown"
+      },
+      "directly_checked": false,
+      "transcript_status": "unknown",
+      "review_state": "unreviewed",
+      "canon_authority": "none",
+      "playlist_memberships": [
+        {
+          "corpus_root_id": "corpus-root-2",
+          "playlist_id": "PLcQrS3EXVZ00",
+          "position": 17,
+          "status": "accessible"
+        }
+      ],
+      "notes": "Enumerated from an external playlist; unreviewed inventory metadata only."
+    },
+    {
+      "id": "youtube-siunos8ajwa",
+      "video_id": "sIunos8AjWA",
+      "title": "Backrooms Movie Trailer Analysis | The Backrooms Analysis",
+      "channel": null,
+      "publication_date": null,
+      "duration_seconds": 1521,
+      "stable_locator": "https://www.youtube.com/watch?v=sIunos8AjWA",
+      "source_type": "unclassified-video",
+      "project_scope": {
+        "relationship": "unresolved",
+        "belongs_to": "unknown"
+      },
+      "directly_checked": false,
+      "transcript_status": "unknown",
+      "review_state": "unreviewed",
+      "canon_authority": "none",
+      "playlist_memberships": [
+        {
+          "corpus_root_id": "corpus-root-1",
+          "playlist_id": "PLAmHAFa1D3sDt6lV_Hdj7t5y7ciF-oXWw",
+          "position": 9,
+          "status": "accessible"
+        }
+      ],
+      "notes": "Enumerated from an external playlist; unreviewed inventory metadata only."
+    },
+    {
+      "id": "youtube-sj0ywjuambw",
+      "video_id": "SJ0yWjuAmbw",
+      "title": null,
+      "channel": null,
+      "publication_date": null,
+      "duration_seconds": null,
+      "stable_locator": "https://www.youtube.com/watch?v=SJ0yWjuAmbw",
+      "source_type": "unclassified-video",
+      "project_scope": {
+        "relationship": "unresolved",
+        "belongs_to": "unknown"
+      },
+      "directly_checked": false,
+      "transcript_status": "unknown",
+      "review_state": "unreviewed",
+      "canon_authority": "none",
+      "playlist_memberships": [
+        {
+          "corpus_root_id": "corpus-root-3",
+          "playlist_id": "PLC9YQQCWsMVggeBbA-o201KLow5lpMq2T",
+          "position": 34,
+          "status": "accessible"
+        }
+      ],
+      "notes": "Enumerated from an external playlist; unreviewed inventory metadata only."
+    },
+    {
+      "id": "youtube-snpcnedyrpe",
+      "video_id": "snpCnEDYrPE",
+      "title": "Do you like air conditioning, but it forgets more an₫ more eaçh ti𝘮e.",
+      "channel": null,
+      "publication_date": null,
+      "duration_seconds": 121,
+      "stable_locator": "https://www.youtube.com/watch?v=snpCnEDYrPE",
+      "source_type": "unclassified-video",
+      "project_scope": {
+        "relationship": "unresolved",
+        "belongs_to": "unknown"
+      },
+      "directly_checked": false,
+      "transcript_status": "unknown",
+      "review_state": "unreviewed",
+      "canon_authority": "none",
+      "playlist_memberships": [
+        {
+          "corpus_root_id": "corpus-root-2",
+          "playlist_id": "PLcQrS3EXVZ00",
+          "position": 7,
+          "status": "accessible"
+        }
+      ],
+      "notes": "Enumerated from an external playlist; unreviewed inventory metadata only."
+    },
+    {
+      "id": "youtube-sp571uenwpg",
+      "video_id": "sp571uEnWpg",
+      "title": "VHS Blue Screen Intro [HD]",
+      "channel": null,
+      "publication_date": null,
+      "duration_seconds": 14,
+      "stable_locator": "https://www.youtube.com/watch?v=sp571uEnWpg",
+      "source_type": "unclassified-video",
+      "project_scope": {
+        "relationship": "unresolved",
+        "belongs_to": "unknown"
+      },
+      "directly_checked": false,
+      "transcript_status": "unknown",
+      "review_state": "unreviewed",
+      "canon_authority": "none",
+      "playlist_memberships": [
+        {
+          "corpus_root_id": "corpus-root-3",
+          "playlist_id": "PLC9YQQCWsMVggeBbA-o201KLow5lpMq2T",
+          "position": 27,
+          "status": "accessible"
+        }
+      ],
+      "notes": "Enumerated from an external playlist; unreviewed inventory metadata only."
+    },
+    {
+      "id": "youtube-sseoyheifaw",
+      "video_id": "SSeOyheifAw",
+      "title": "Analyzing the South Bay Bulletin Board Advertisement | The Backrooms Movie Analysis",
+      "channel": null,
+      "publication_date": null,
+      "duration_seconds": 454,
+      "stable_locator": "https://www.youtube.com/watch?v=SSeOyheifAw",
+      "source_type": "unclassified-video",
+      "project_scope": {
+        "relationship": "unresolved",
+        "belongs_to": "unknown"
+      },
+      "directly_checked": false,
+      "transcript_status": "unknown",
+      "review_state": "unreviewed",
+      "canon_authority": "none",
+      "playlist_memberships": [
+        {
+          "corpus_root_id": "corpus-root-1",
+          "playlist_id": "PLAmHAFa1D3sDt6lV_Hdj7t5y7ciF-oXWw",
+          "position": 6,
+          "status": "accessible"
+        }
+      ],
+      "notes": "Enumerated from an external playlist; unreviewed inventory metadata only."
+    },
+    {
+      "id": "youtube-tf8bfnmoafk",
+      "video_id": "tf8BfnMoafk",
+      "title": "[FREE VIDEO] REAL VHS Background Noisy Audio (VHS NOISE BACKGROUND) FREE",
+      "channel": null,
+      "publication_date": null,
+      "duration_seconds": 76,
+      "stable_locator": "https://www.youtube.com/watch?v=tf8BfnMoafk",
+      "source_type": "unclassified-video",
+      "project_scope": {
+        "relationship": "unresolved",
+        "belongs_to": "unknown"
+      },
+      "directly_checked": false,
+      "transcript_status": "unknown",
+      "review_state": "unreviewed",
+      "canon_authority": "none",
+      "playlist_memberships": [
+        {
+          "corpus_root_id": "corpus-root-3",
+          "playlist_id": "PLC9YQQCWsMVggeBbA-o201KLow5lpMq2T",
+          "position": 11,
+          "status": "accessible"
+        }
+      ],
+      "notes": "Enumerated from an external playlist; unreviewed inventory metadata only."
+    },
+    {
+      "id": "youtube-tqul1rgygfm",
+      "video_id": "TQUL1RgyGFM",
+      "title": "Putting an Orange Nickelodeon VHS Tape in a Sony VCR",
+      "channel": null,
+      "publication_date": null,
+      "duration_seconds": 28,
+      "stable_locator": "https://www.youtube.com/watch?v=TQUL1RgyGFM",
+      "source_type": "unclassified-video",
+      "project_scope": {
+        "relationship": "unresolved",
+        "belongs_to": "unknown"
+      },
+      "directly_checked": false,
+      "transcript_status": "unknown",
+      "review_state": "unreviewed",
+      "canon_authority": "none",
+      "playlist_memberships": [
+        {
+          "corpus_root_id": "corpus-root-3",
+          "playlist_id": "PLC9YQQCWsMVggeBbA-o201KLow5lpMq2T",
+          "position": 28,
+          "status": "accessible"
+        }
+      ],
+      "notes": "Enumerated from an external playlist; unreviewed inventory metadata only."
+    },
+    {
+      "id": "youtube-trcmgwf7its",
+      "video_id": "TRcmGWF7iTs",
+      "title": "Custom Bacteria sounds (headphone warning)",
+      "channel": null,
+      "publication_date": null,
+      "duration_seconds": 54,
+      "stable_locator": "https://www.youtube.com/watch?v=TRcmGWF7iTs",
+      "source_type": "unclassified-video",
+      "project_scope": {
+        "relationship": "unresolved",
+        "belongs_to": "unknown"
+      },
+      "directly_checked": false,
+      "transcript_status": "unknown",
+      "review_state": "unreviewed",
+      "canon_authority": "none",
+      "playlist_memberships": [
+        {
+          "corpus_root_id": "corpus-root-3",
+          "playlist_id": "PLC9YQQCWsMVggeBbA-o201KLow5lpMq2T",
+          "position": 86,
+          "status": "accessible"
+        }
+      ],
+      "notes": "Enumerated from an external playlist; unreviewed inventory metadata only."
+    },
+    {
+      "id": "youtube-tvmec7jhr0e",
+      "video_id": "tvmEc7JhR0E",
+      "title": "Backrooms - The Third Test",
+      "channel": null,
+      "publication_date": null,
+      "duration_seconds": 107,
+      "stable_locator": "https://www.youtube.com/watch?v=tvmEc7JhR0E",
+      "source_type": "unclassified-video",
+      "project_scope": {
+        "relationship": "unresolved",
+        "belongs_to": "unknown"
+      },
+      "directly_checked": false,
+      "transcript_status": "unknown",
+      "review_state": "unreviewed",
+      "canon_authority": "none",
+      "playlist_memberships": [
+        {
+          "corpus_root_id": "corpus-root-4",
+          "playlist_id": "PLVAh-MgDVqvDUEq6qDXqORBioE4Yhol_z",
+          "position": 3,
+          "status": "accessible"
+        }
+      ],
+      "notes": "Enumerated from an external playlist; unreviewed inventory metadata only."
+    },
+    {
+      "id": "youtube-ujhqgbedjtc",
+      "video_id": "ujHqGBeDjtc",
+      "title": "Monster Scream Sound Effect | Scary Halloween Sounds",
+      "channel": null,
+      "publication_date": null,
+      "duration_seconds": 12,
+      "stable_locator": "https://www.youtube.com/watch?v=ujHqGBeDjtc",
+      "source_type": "unclassified-video",
+      "project_scope": {
+        "relationship": "unresolved",
+        "belongs_to": "unknown"
+      },
+      "directly_checked": false,
+      "transcript_status": "unknown",
+      "review_state": "unreviewed",
+      "canon_authority": "none",
+      "playlist_memberships": [
+        {
+          "corpus_root_id": "corpus-root-3",
+          "playlist_id": "PLC9YQQCWsMVggeBbA-o201KLow5lpMq2T",
+          "position": 87,
+          "status": "accessible"
+        }
+      ],
+      "notes": "Enumerated from an external playlist; unreviewed inventory metadata only."
+    },
+    {
+      "id": "youtube-uvx_smwqlgg",
+      "video_id": "UvX_SMWqLgg",
+      "title": "𝖳𝗁𝖾 𝖡𝖺𝖼𝗄𝗋𝗈𝗈𝗆𝗌 - 𝖡𝖺𝖼𝗍𝖾𝗋𝗂𝖺 𝖲𝗈𝗎𝗇𝖽𝗌 (𝗙𝗼𝘂𝗻𝗱 𝗔𝘂𝗱𝗶𝗼) (𝗥𝗘𝗔𝗗 𝗧𝗛𝗘 𝗗𝗘𝗦𝗖𝗥𝗜𝗣𝗧𝗜𝗢𝗡)",
+      "channel": null,
+      "publication_date": null,
+      "duration_seconds": 35,
+      "stable_locator": "https://www.youtube.com/watch?v=UvX_SMWqLgg",
+      "source_type": "unclassified-video",
+      "project_scope": {
+        "relationship": "unresolved",
+        "belongs_to": "unknown"
+      },
+      "directly_checked": false,
+      "transcript_status": "unknown",
+      "review_state": "unreviewed",
+      "canon_authority": "none",
+      "playlist_memberships": [
+        {
+          "corpus_root_id": "corpus-root-3",
+          "playlist_id": "PLC9YQQCWsMVggeBbA-o201KLow5lpMq2T",
+          "position": 85,
+          "status": "accessible"
+        }
+      ],
+      "notes": "Enumerated from an external playlist; unreviewed inventory metadata only."
+    },
+    {
+      "id": "youtube-vwvb4gqqves",
+      "video_id": "vWvB4GqQves",
+      "title": "Kane pixels Backrooms noclip sounds (and extras)",
+      "channel": null,
+      "publication_date": null,
+      "duration_seconds": 30,
+      "stable_locator": "https://www.youtube.com/watch?v=vWvB4GqQves",
+      "source_type": "unclassified-video",
+      "project_scope": {
+        "relationship": "unresolved",
+        "belongs_to": "unknown"
+      },
+      "directly_checked": false,
+      "transcript_status": "unknown",
+      "review_state": "unreviewed",
+      "canon_authority": "none",
+      "playlist_memberships": [
+        {
+          "corpus_root_id": "corpus-root-3",
+          "playlist_id": "PLC9YQQCWsMVggeBbA-o201KLow5lpMq2T",
+          "position": 5,
+          "status": "accessible"
+        }
+      ],
+      "notes": "Enumerated from an external playlist; unreviewed inventory metadata only."
+    },
+    {
+      "id": "youtube-wrgctkdctww",
+      "video_id": "WrgctkDCtww",
+      "title": "Kane pixel backroom ambience sound effect",
+      "channel": null,
+      "publication_date": null,
+      "duration_seconds": 61,
+      "stable_locator": "https://www.youtube.com/watch?v=WrgctkDCtww",
+      "source_type": "unclassified-video",
+      "project_scope": {
+        "relationship": "unresolved",
+        "belongs_to": "unknown"
+      },
+      "directly_checked": false,
+      "transcript_status": "unknown",
+      "review_state": "unreviewed",
+      "canon_authority": "none",
+      "playlist_memberships": [
+        {
+          "corpus_root_id": "corpus-root-3",
+          "playlist_id": "PLC9YQQCWsMVggeBbA-o201KLow5lpMq2T",
+          "position": 2,
+          "status": "accessible"
+        }
+      ],
+      "notes": "Enumerated from an external playlist; unreviewed inventory metadata only."
+    },
+    {
+      "id": "youtube-x7bznkq03d4",
+      "video_id": "X7BZNKQ03d4",
+      "title": "Walking Wood Floor House - Sound Effect for editing",
+      "channel": null,
+      "publication_date": null,
+      "duration_seconds": 12,
+      "stable_locator": "https://www.youtube.com/watch?v=X7BZNKQ03d4",
+      "source_type": "unclassified-video",
+      "project_scope": {
+        "relationship": "unresolved",
+        "belongs_to": "unknown"
+      },
+      "directly_checked": false,
+      "transcript_status": "unknown",
+      "review_state": "unreviewed",
+      "canon_authority": "none",
+      "playlist_memberships": [
+        {
+          "corpus_root_id": "corpus-root-3",
+          "playlist_id": "PLC9YQQCWsMVggeBbA-o201KLow5lpMq2T",
+          "position": 60,
+          "status": "accessible"
+        }
+      ],
+      "notes": "Enumerated from an external playlist; unreviewed inventory metadata only."
+    },
+    {
+      "id": "youtube-xepd47_ceaq",
+      "video_id": "Xepd47_ceaQ",
+      "title": "apeirophobia all monster sound part 3",
+      "channel": null,
+      "publication_date": null,
+      "duration_seconds": 108,
+      "stable_locator": "https://www.youtube.com/watch?v=Xepd47_ceaQ",
+      "source_type": "unclassified-video",
+      "project_scope": {
+        "relationship": "unresolved",
+        "belongs_to": "unknown"
+      },
+      "directly_checked": false,
+      "transcript_status": "unknown",
+      "review_state": "unreviewed",
+      "canon_authority": "none",
+      "playlist_memberships": [
+        {
+          "corpus_root_id": "corpus-root-3",
+          "playlist_id": "PLC9YQQCWsMVggeBbA-o201KLow5lpMq2T",
+          "position": 66,
+          "status": "accessible"
+        }
+      ],
+      "notes": "Enumerated from an external playlist; unreviewed inventory metadata only."
+    },
+    {
+      "id": "youtube-xid3tuz9oi4",
+      "video_id": "xid3tuZ9oi4",
+      "title": "wandering the backrooms for one hour",
+      "channel": null,
+      "publication_date": null,
+      "duration_seconds": 3601,
+      "stable_locator": "https://www.youtube.com/watch?v=xid3tuZ9oi4",
+      "source_type": "unclassified-video",
+      "project_scope": {
+        "relationship": "unresolved",
+        "belongs_to": "unknown"
+      },
+      "directly_checked": false,
+      "transcript_status": "unknown",
+      "review_state": "unreviewed",
+      "canon_authority": "none",
+      "playlist_memberships": [
+        {
+          "corpus_root_id": "corpus-root-3",
+          "playlist_id": "PLC9YQQCWsMVggeBbA-o201KLow5lpMq2T",
+          "position": 69,
+          "status": "accessible"
+        }
+      ],
+      "notes": "Enumerated from an external playlist; unreviewed inventory metadata only."
+    },
+    {
+      "id": "youtube-xuu9urbfi5i",
+      "video_id": "XuU9URbFi5I",
+      "title": "Fluorescent Light Startup Sound",
+      "channel": null,
+      "publication_date": null,
+      "duration_seconds": 16,
+      "stable_locator": "https://www.youtube.com/watch?v=XuU9URbFi5I",
+      "source_type": "unclassified-video",
+      "project_scope": {
+        "relationship": "unresolved",
+        "belongs_to": "unknown"
+      },
+      "directly_checked": false,
+      "transcript_status": "unknown",
+      "review_state": "unreviewed",
+      "canon_authority": "none",
+      "playlist_memberships": [
+        {
+          "corpus_root_id": "corpus-root-3",
+          "playlist_id": "PLC9YQQCWsMVggeBbA-o201KLow5lpMq2T",
+          "position": 38,
+          "status": "accessible"
+        }
+      ],
+      "notes": "Enumerated from an external playlist; unreviewed inventory metadata only."
+    },
+    {
+      "id": "youtube-ydqdfly9jwm",
+      "video_id": "YdQdfly9JWM",
+      "title": "BACKROOMS MOVIE TRAILER TOMORROW! #backrooms #kanepixels #horror",
+      "channel": null,
+      "publication_date": null,
+      "duration_seconds": 90,
+      "stable_locator": "https://www.youtube.com/watch?v=YdQdfly9JWM",
+      "source_type": "unclassified-video",
+      "project_scope": {
+        "relationship": "unresolved",
+        "belongs_to": "unknown"
+      },
+      "directly_checked": false,
+      "transcript_status": "unknown",
+      "review_state": "unreviewed",
+      "canon_authority": "none",
+      "playlist_memberships": [
+        {
+          "corpus_root_id": "corpus-root-1",
+          "playlist_id": "PLAmHAFa1D3sDt6lV_Hdj7t5y7ciF-oXWw",
+          "position": 13,
+          "status": "accessible"
+        }
+      ],
+      "notes": "Enumerated from an external playlist; unreviewed inventory metadata only."
+    },
+    {
+      "id": "youtube-ye6ypxfe9jk",
+      "video_id": "ye6YpxFE9jk",
+      "title": "Backrooms - Reunion",
+      "channel": null,
+      "publication_date": null,
+      "duration_seconds": 792,
+      "stable_locator": "https://www.youtube.com/watch?v=ye6YpxFE9jk",
+      "source_type": "unclassified-video",
+      "project_scope": {
+        "relationship": "unresolved",
+        "belongs_to": "unknown"
+      },
+      "directly_checked": false,
+      "transcript_status": "unknown",
+      "review_state": "unreviewed",
+      "canon_authority": "none",
+      "playlist_memberships": [
+        {
+          "corpus_root_id": "corpus-root-4",
+          "playlist_id": "PLVAh-MgDVqvDUEq6qDXqORBioE4Yhol_z",
+          "position": 17,
+          "status": "accessible"
+        }
+      ],
+      "notes": "Enumerated from an external playlist; unreviewed inventory metadata only."
+    },
+    {
+      "id": "youtube-yiiedr0_5y4",
+      "video_id": "YiieDr0_5y4",
+      "title": "Run on wood - Sound Effect for editing",
+      "channel": null,
+      "publication_date": null,
+      "duration_seconds": 5,
+      "stable_locator": "https://www.youtube.com/watch?v=YiieDr0_5y4",
+      "source_type": "unclassified-video",
+      "project_scope": {
+        "relationship": "unresolved",
+        "belongs_to": "unknown"
+      },
+      "directly_checked": false,
+      "transcript_status": "unknown",
+      "review_state": "unreviewed",
+      "canon_authority": "none",
+      "playlist_memberships": [
+        {
+          "corpus_root_id": "corpus-root-3",
+          "playlist_id": "PLC9YQQCWsMVggeBbA-o201KLow5lpMq2T",
+          "position": 61,
+          "status": "accessible"
+        }
+      ],
+      "notes": "Enumerated from an external playlist; unreviewed inventory metadata only."
+    },
+    {
+      "id": "youtube-yj2yhu0pbeq",
+      "video_id": "yj2yHU0pbeQ",
+      "title": "Walking on Concrete (1Hour) I Selfcare Meditation",
+      "channel": null,
+      "publication_date": null,
+      "duration_seconds": 3618,
+      "stable_locator": "https://www.youtube.com/watch?v=yj2yHU0pbeQ",
+      "source_type": "unclassified-video",
+      "project_scope": {
+        "relationship": "unresolved",
+        "belongs_to": "unknown"
+      },
+      "directly_checked": false,
+      "transcript_status": "unknown",
+      "review_state": "unreviewed",
+      "canon_authority": "none",
+      "playlist_memberships": [
+        {
+          "corpus_root_id": "corpus-root-3",
+          "playlist_id": "PLC9YQQCWsMVggeBbA-o201KLow5lpMq2T",
+          "position": 50,
+          "status": "accessible"
+        },
+        {
+          "corpus_root_id": "corpus-root-3",
+          "playlist_id": "PLC9YQQCWsMVggeBbA-o201KLow5lpMq2T",
+          "position": 52,
+          "status": "accessible"
+        }
+      ],
+      "notes": "Enumerated from an external playlist; unreviewed inventory metadata only."
+    },
+    {
+      "id": "youtube-ynow2jkcnyu",
+      "video_id": "ynOw2JKCNYU",
+      "title": "Prospective Development Proof",
+      "channel": null,
+      "publication_date": null,
+      "duration_seconds": 175,
+      "stable_locator": "https://www.youtube.com/watch?v=ynOw2JKCNYU",
+      "source_type": "unclassified-video",
+      "project_scope": {
+        "relationship": "unresolved",
+        "belongs_to": "unknown"
+      },
+      "directly_checked": false,
+      "transcript_status": "unknown",
+      "review_state": "unreviewed",
+      "canon_authority": "none",
+      "playlist_memberships": [
+        {
+          "corpus_root_id": "corpus-root-2",
+          "playlist_id": "PLcQrS3EXVZ00",
+          "position": 1,
+          "status": "accessible"
+        }
+      ],
+      "notes": "Enumerated from an external playlist; unreviewed inventory metadata only."
+    },
+    {
+      "id": "youtube-yv7rvvhkmc4",
+      "video_id": "Yv7rvvhkmc4",
+      "title": "ShortTerm Paradox - [ Backrooms Short ]",
+      "channel": null,
+      "publication_date": null,
+      "duration_seconds": 287,
+      "stable_locator": "https://www.youtube.com/watch?v=Yv7rvvhkmc4",
+      "source_type": "unclassified-video",
+      "project_scope": {
+        "relationship": "unresolved",
+        "belongs_to": "unknown"
+      },
+      "directly_checked": false,
+      "transcript_status": "unknown",
+      "review_state": "unreviewed",
+      "canon_authority": "none",
+      "playlist_memberships": [
+        {
+          "corpus_root_id": "corpus-root-2",
+          "playlist_id": "PLcQrS3EXVZ00",
+          "position": 12,
+          "status": "accessible"
+        }
+      ],
+      "notes": "Enumerated from an external playlist; unreviewed inventory metadata only."
+    },
+    {
+      "id": "youtube-ywvxpz4xubm",
+      "video_id": "ywVxpZ4XUBM",
+      "title": "Backrooms - Report",
+      "channel": null,
+      "publication_date": null,
+      "duration_seconds": 381,
+      "stable_locator": "https://www.youtube.com/watch?v=ywVxpZ4XUBM",
+      "source_type": "unclassified-video",
+      "project_scope": {
+        "relationship": "unresolved",
+        "belongs_to": "unknown"
+      },
+      "directly_checked": false,
+      "transcript_status": "unknown",
+      "review_state": "unreviewed",
+      "canon_authority": "none",
+      "playlist_memberships": [
+        {
+          "corpus_root_id": "corpus-root-4",
+          "playlist_id": "PLVAh-MgDVqvDUEq6qDXqORBioE4Yhol_z",
+          "position": 11,
+          "status": "accessible"
+        }
+      ],
+      "notes": "Enumerated from an external playlist; unreviewed inventory metadata only."
+    },
+    {
+      "id": "youtube-z_zraiojw8a",
+      "video_id": "Z_ZraIoJw8A",
+      "title": null,
+      "channel": null,
+      "publication_date": null,
+      "duration_seconds": null,
+      "stable_locator": "https://www.youtube.com/watch?v=Z_ZraIoJw8A",
+      "source_type": "unclassified-video",
+      "project_scope": {
+        "relationship": "unresolved",
+        "belongs_to": "unknown"
+      },
+      "directly_checked": false,
+      "transcript_status": "unknown",
+      "review_state": "unreviewed",
+      "canon_authority": "none",
+      "playlist_memberships": [
+        {
+          "corpus_root_id": "corpus-root-3",
+          "playlist_id": "PLC9YQQCWsMVggeBbA-o201KLow5lpMq2T",
+          "position": 10,
+          "status": "accessible"
+        }
+      ],
+      "notes": "Enumerated from an external playlist; unreviewed inventory metadata only."
+    },
+    {
+      "id": "youtube-z1_xmgild5i",
+      "video_id": "Z1_XMGild5I",
+      "title": "Still life [backrooms movie version] remastered and hopefully more accurate",
+      "channel": null,
+      "publication_date": null,
+      "duration_seconds": 287,
+      "stable_locator": "https://www.youtube.com/watch?v=Z1_XMGild5I",
+      "source_type": "unclassified-video",
+      "project_scope": {
+        "relationship": "unresolved",
+        "belongs_to": "unknown"
+      },
+      "directly_checked": false,
+      "transcript_status": "unknown",
+      "review_state": "unreviewed",
+      "canon_authority": "none",
+      "playlist_memberships": [
+        {
+          "corpus_root_id": "corpus-root-2",
+          "playlist_id": "PLcQrS3EXVZ00",
+          "position": 6,
+          "status": "accessible"
+        }
+      ],
+      "notes": "Enumerated from an external playlist; unreviewed inventory metadata only."
+    },
+    {
+      "id": "youtube-zbpawvqaeq4",
+      "video_id": "ZbPaWvqAEq4",
+      "title": "Backrooms - Static Dead End",
+      "channel": null,
+      "publication_date": null,
+      "duration_seconds": 242,
+      "stable_locator": "https://www.youtube.com/watch?v=ZbPaWvqAEq4",
+      "source_type": "unclassified-video",
+      "project_scope": {
+        "relationship": "unresolved",
+        "belongs_to": "unknown"
+      },
+      "directly_checked": false,
+      "transcript_status": "unknown",
+      "review_state": "unreviewed",
+      "canon_authority": "none",
+      "playlist_memberships": [
+        {
+          "corpus_root_id": "corpus-root-4",
+          "playlist_id": "PLVAh-MgDVqvDUEq6qDXqORBioE4Yhol_z",
+          "position": 22,
+          "status": "accessible"
+        }
+      ],
+      "notes": "Enumerated from an external playlist; unreviewed inventory metadata only."
+    },
+    {
+      "id": "youtube-zdzj3fjycn8",
+      "video_id": "Zdzj3fjycN8",
+      "title": "Backrooms Ambience. (Level 2)",
+      "channel": null,
+      "publication_date": null,
+      "duration_seconds": 232,
+      "stable_locator": "https://www.youtube.com/watch?v=Zdzj3fjycN8",
+      "source_type": "unclassified-video",
+      "project_scope": {
+        "relationship": "unresolved",
+        "belongs_to": "unknown"
+      },
+      "directly_checked": false,
+      "transcript_status": "unknown",
+      "review_state": "unreviewed",
+      "canon_authority": "none",
+      "playlist_memberships": [
+        {
+          "corpus_root_id": "corpus-root-3",
+          "playlist_id": "PLC9YQQCWsMVggeBbA-o201KLow5lpMq2T",
+          "position": 74,
+          "status": "accessible"
+        }
+      ],
+      "notes": "Enumerated from an external playlist; unreviewed inventory metadata only."
+    },
+    {
+      "id": "youtube-zgjfdsh7zrg",
+      "video_id": "zgJFDSH7zRg",
+      "title": "VHS overlay for ae look",
+      "channel": null,
+      "publication_date": null,
+      "duration_seconds": 185,
+      "stable_locator": "https://www.youtube.com/watch?v=zgJFDSH7zRg",
+      "source_type": "unclassified-video",
+      "project_scope": {
+        "relationship": "unresolved",
+        "belongs_to": "unknown"
+      },
+      "directly_checked": false,
+      "transcript_status": "unknown",
+      "review_state": "unreviewed",
+      "canon_authority": "none",
+      "playlist_memberships": [
+        {
+          "corpus_root_id": "corpus-root-3",
+          "playlist_id": "PLC9YQQCWsMVggeBbA-o201KLow5lpMq2T",
+          "position": 26,
+          "status": "accessible"
+        }
+      ],
+      "notes": "Enumerated from an external playlist; unreviewed inventory metadata only."
+    },
+    {
+      "id": "youtube-zifhglhn3w0",
+      "video_id": "ZIFhglHn3W0",
+      "title": "Backrooms - Informational Video",
+      "channel": null,
+      "publication_date": null,
+      "duration_seconds": 481,
+      "stable_locator": "https://www.youtube.com/watch?v=ZIFhglHn3W0",
+      "source_type": "unclassified-video",
+      "project_scope": {
+        "relationship": "unresolved",
+        "belongs_to": "unknown"
+      },
+      "directly_checked": false,
+      "transcript_status": "unknown",
+      "review_state": "unreviewed",
+      "canon_authority": "none",
+      "playlist_memberships": [
+        {
+          "corpus_root_id": "corpus-root-4",
+          "playlist_id": "PLVAh-MgDVqvDUEq6qDXqORBioE4Yhol_z",
+          "position": 7,
+          "status": "accessible"
+        }
+      ],
+      "notes": "Enumerated from an external playlist; unreviewed inventory metadata only."
+    },
+    {
+      "id": "youtube-zmihx4rdjro",
+      "video_id": "ZmIhX4rdJro",
+      "title": "Footsteps on carpet sound effect",
+      "channel": null,
+      "publication_date": null,
+      "duration_seconds": 27,
+      "stable_locator": "https://www.youtube.com/watch?v=ZmIhX4rdJro",
+      "source_type": "unclassified-video",
+      "project_scope": {
+        "relationship": "unresolved",
+        "belongs_to": "unknown"
+      },
+      "directly_checked": false,
+      "transcript_status": "unknown",
+      "review_state": "unreviewed",
+      "canon_authority": "none",
+      "playlist_memberships": [
+        {
+          "corpus_root_id": "corpus-root-3",
+          "playlist_id": "PLC9YQQCWsMVggeBbA-o201KLow5lpMq2T",
+          "position": 37,
+          "status": "accessible"
+        }
+      ],
+      "notes": "Enumerated from an external playlist; unreviewed inventory metadata only."
+    },
+    {
+      "id": "youtube-zuzjmcs-xmi",
+      "video_id": "zuzJMCS-xMI",
+      "title": "My attempt of isolating all bacteria sounds",
+      "channel": null,
+      "publication_date": null,
+      "duration_seconds": 245,
+      "stable_locator": "https://www.youtube.com/watch?v=zuzJMCS-xMI",
+      "source_type": "unclassified-video",
+      "project_scope": {
+        "relationship": "unresolved",
+        "belongs_to": "unknown"
+      },
+      "directly_checked": false,
+      "transcript_status": "unknown",
+      "review_state": "unreviewed",
+      "canon_authority": "none",
+      "playlist_memberships": [
+        {
+          "corpus_root_id": "corpus-root-3",
+          "playlist_id": "PLC9YQQCWsMVggeBbA-o201KLow5lpMq2T",
+          "position": 8,
+          "status": "accessible"
+        }
+      ],
+      "notes": "Enumerated from an external playlist; unreviewed inventory metadata only."
+    }
+  ]
+}
