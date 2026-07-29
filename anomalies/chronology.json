@@ -1,0 +1,1 @@
+{"version":"anomaly-chronology/v1","relationships":[{"id":"ff2-tests-precede-local-transition","from":"ff2-marked-floor-surface-discontinuity","to":"ff2-local-transition-after-testing","relation":"followed-by","causal_authority":"observed-sequence","notes":"The selected source orders the observations. It does not establish that testing caused the later transition."}]}
