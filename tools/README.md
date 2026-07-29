@@ -14,6 +14,7 @@ node tools/operations-report.js
 node tools/records-report.js
 node tools/architecture-report.js
 node tools/survey-report.js
+node tools/anomaly-report.js
 ```
 
 Use outputs as review proposals. Commit a reviewed JSON record only after a human checks source scope, provenance, and authority.

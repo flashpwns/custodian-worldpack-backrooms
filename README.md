@@ -30,6 +30,7 @@ Communication, evidence provenance, custody, and recipient-access limits are doc
 Post-expedition recovery, access, review, and derived-report boundaries are documented in [recovered records](docs/recovered-records.md).
 Local Complex architecture, topology, visibility, and grammar boundaries are documented in [physical grammar](docs/complex-physical-grammar.md).
 Environmental materials, lighting states, and qualitative survey boundaries are documented in [environmental survey](docs/environmental-survey.md).
+Localized discontinuities, interaction results, causality limits, and terminology discipline are documented in [spatial anomalies](docs/spatial-anomalies.md).
 
 The small `threshold-baseline` scenario is a constitutional smoke test for a
 controlled Threshold-side survey: multiple observers, equipment custody,
