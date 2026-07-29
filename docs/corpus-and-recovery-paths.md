@@ -27,3 +27,5 @@ Observer-local route knowledge is distinct from objective topology, memory, beli
 - Do not infer recovery route, global map, universal exit, or observer knowledge from institutional context.
 
 Run `npm run corpus-report` and `npm run transition-report` for deterministic summaries.
+
+Directly verified bounded canon return traversal remains deferred in `research/deferred-return-path-evidence.json`; future direct evidence may extend the transition layer without rewriting corpus inventory.
