@@ -1,0 +1,11 @@
+"use strict";
+const fs = require("node:fs");
+const { data, admission, stable } = require("./intake-lib");
+const input = process.argv[2];
+if (!input) throw new Error("usage: node tools/check-admission.js <scenario-admission.json>");
+const record = JSON.parse(fs.readFileSync(input, "utf8"));
+const { claimById } = data();
+const results = record.dependencies.map((dependency) => ({ claim_id: dependency.claim_id, use: dependency.use, ...admission(dependency, claimById.get(dependency.claim_id)) }));
+const report = { scenario_id: record.scenario_id, ok: results.every(({ ok }) => ok), results };
+process.stdout.write(stable(report));
+if (!report.ok) process.exitCode = 1;

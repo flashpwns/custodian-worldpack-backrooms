@@ -8,3 +8,7 @@ in-fiction assertion, production context, or only a reference lead.
 
 Raw transcripts, image archives, Discord exports, and copyrighted source content
 remain outside this public repository.
+
+Representative reviewed metadata lives in `records/`. It proves the intake
+model without importing a corpus. See the [verified intake workflow](../docs/intake-workflow.md)
+before adding a record.

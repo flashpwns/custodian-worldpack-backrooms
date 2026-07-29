@@ -5,3 +5,5 @@
 - Establishes the Yellow Beast source/claim classification model.
 - Adds a small curated source registry and non-authoritative example claims.
 - Adds the deliberately minimal `threshold-baseline` conformant scenario.
+- Adds reviewed source-intake records, claim review states, conflict links, and
+  scenario-bound canon admission validation.
