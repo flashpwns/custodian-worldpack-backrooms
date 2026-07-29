@@ -1,6 +1,35 @@
 # Yellow Beast
 
 Yellow Beast is an unofficial, independently maintained declarative world pack
-for Custodian. It is not affiliated with Kane Parsons, A24, or any rights holder.
-The initial project base exists so development can proceed through reviewable
-pull requests; the world pack itself is introduced on its first feature branch.
+for [Custodian](https://github.com/flashpwns/Kane-Parsons-Backrooms---AI-Based-Roleplay-Interface).
+It targets `canonical-kernel@v1` and is currently `0.1.0-alpha`.
+
+It is a simulation-pack foundation, not a transcript archive or a statement of
+official canon. Source metadata, claims, and simulation authority are separate:
+no source summary, theory, production image, Discord message, or in-fiction
+statement silently becomes objective world state.
+
+## Quick start
+
+```sh
+npm install
+npm run validate-assets
+npm run conformance
+```
+
+The small `threshold-baseline` scenario is a constitutional smoke test for a
+controlled Threshold-side survey: multiple observers, equipment custody,
+traversal, communication context, environmental measurement, evidence, and a
+return path. It has no creature encounter, chase, or speculative mechanic.
+
+## Boundaries
+
+Yellow Beast is not affiliated with Kane Parsons, A24, or other rights holders.
+It contains original metadata, schemas, citations, and analytical descriptions;
+it does not redistribute transcripts, film frames, production artwork, or Discord
+archives. See [canon/SOURCE_POLICY.md](canon/SOURCE_POLICY.md).
+
+Custodian remains setting-independent. `npm run conformance` calls the public
+`validateWorldPackConformance` API; Yellow Beast does not import private
+Custodian modules or execute pack-authored code. The corresponding
+`custodian-conformance` binary is tracked by Custodian packaging fix PR #19.
