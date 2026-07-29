@@ -27,6 +27,7 @@ scenario-specific admission separately. Start with the [verified intake workflow
 No raw transcript, film frame, image gallery, or Discord archive belongs here.
 The bounded primary-source procedure is documented in [primary-source verification](docs/primary-source-verification.md).
 Communication, evidence provenance, custody, and recipient-access limits are documented in [operations evidence boundaries](docs/operations-evidence.md).
+Post-expedition recovery, access, review, and derived-report boundaries are documented in [recovered records](docs/recovered-records.md).
 
 The small `threshold-baseline` scenario is a constitutional smoke test for a
 controlled Threshold-side survey: multiple observers, equipment custody,

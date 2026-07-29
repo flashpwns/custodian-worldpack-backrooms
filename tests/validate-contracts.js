@@ -11,6 +11,8 @@ const schemas = [
   read("canon/claim-schema.json"),
   read("canon/verified-primary-source-schema.json"),
   read("canon/evidence-object-schema.json"),
+  read("canon/recovered-record-schema.json"),
+  read("canon/derived-report-schema.json"),
   read("canon/communication-record-schema.json"),
   read("canon/scenario-admission-schema.json")
 ];
@@ -22,10 +24,13 @@ function validate(schemaId, value, label) {
 }
 validate("https://yellowbeast.dev/schemas/source-registry/v1", read("canon/source-registry.json"), "source registry");
 for (const record of read("intake/records/representative-sources.json").records) validate("https://yellowbeast.dev/schemas/source-intake/v1", record, `intake ${record.id}`);
-for (const claim of [...read("canon/claims/foundation.json").claims, ...read("canon/claims/operations.json").claims]) validate("https://yellowbeast.dev/schemas/claim/v3", claim, `claim ${claim.id}`);
+for (const claim of [...read("canon/claims/foundation.json").claims, ...read("canon/claims/operations.json").claims, ...read("canon/claims/recovered-records.json").claims]) validate("https://yellowbeast.dev/schemas/claim/v3", claim, `claim ${claim.id}`);
 for (const source of read("canon/verified-primary-sources.json").sources) validate("https://yellowbeast.dev/schemas/verified-primary-source/v1", source, `verified source ${source.id}`);
 for (const source of read("canon/verified-expedition-sources.json").sources) validate("https://yellowbeast.dev/schemas/verified-primary-source/v1", source, `verified source ${source.id}`);
+for (const source of read("canon/verified-recovered-record-sources.json").sources) validate("https://yellowbeast.dev/schemas/verified-primary-source/v1", source, `verified source ${source.id}`);
 for (const evidence of read("operations/evidence-objects.json").evidence) validate("https://yellowbeast.dev/schemas/evidence-object/v1", evidence, `evidence ${evidence.id}`);
 for (const record of read("operations/communication-records.json").records) validate("https://yellowbeast.dev/schemas/communication-record/v1", record, `communication ${record.id}`);
+for (const record of read("records/recovered-records.json").records) validate("https://yellowbeast.dev/schemas/recovered-record/v1", record, `recovered record ${record.id}`);
+for (const report of read("records/derived-reports.json").reports) validate("https://yellowbeast.dev/schemas/derived-report/v1", report, `derived report ${report.id}`);
 validate("https://yellowbeast.dev/schemas/scenario-admission/v1", read("scenarios/threshold-baseline-admission.json"), "Threshold Baseline admission");
 console.log("validated Yellow Beast intake and admission contracts");
