@@ -8,6 +8,7 @@ const registry = read("canon/source-registry.json");
 const claims = read("canon/claims/foundation.json").claims;
 const intake = read("intake/records/representative-sources.json");
 const admission = read("scenarios/threshold-baseline-admission.json");
+const verifiedPrimary = read("canon/verified-primary-sources.json").sources;
 const manifest = read("manifest.json");
 const scenario = read("scenario.json");
 const scenarioCopy = read("scenarios/threshold-baseline.json");
@@ -15,6 +16,7 @@ const sourceIds = new Set(registry.sources.map((source) => source.id));
 const claimIds = new Set(claims.map((claim) => claim.id));
 const reviewStates = new Set(["unreviewed", "triaged", "source-verified", "claim-extracted", "canon-reviewed", "admitted", "rejected", "superseded", "needs-context"]);
 const relations = new Set(["supports", "contradicts", "qualifies", "supersedes", "contextualizes", "duplicates", "derived-from"]);
+const locatorById = new Map(verifiedPrimary.flatMap((source) => source.locators.map((locator) => [locator.id, { locator, source }])));
 assert.equal(registry.version, "source-registry/v1");
 assert.ok(registry.sources.length >= 10 && registry.sources.length <= 20);
 assert.equal(manifest.id, "yellow-beast");
@@ -37,12 +39,29 @@ for (const claim of claims) {
   assert.match(claim.id, /^[a-z0-9][a-z0-9-]*$/);
   assert.ok(["authoritative", "interpretive-default", "scenario-optional", "experimental", "reference-only", "prohibited"].includes(claim.simulation_authority));
   assert.ok(reviewStates.has(claim.review_state), `${claim.id} has a review state`);
+  assert.ok(claim.review_history.includes(claim.review_state), `${claim.id} history reaches its current state`);
   assert.ok(claim.extraction.locator && claim.extraction.summary, `${claim.id} preserves a non-verbatim extraction record`);
   for (const ref of claim.source_refs) assert.ok(sourceIds.has(ref), `${claim.id} references ${ref}`);
   for (const relationship of claim.relationships) {
     assert.ok(relations.has(relationship.relation), `${claim.id} uses a known relation`);
     assert.ok(claimIds.has(relationship.claim_id), `${claim.id} relationship resolves`);
   }
+  for (const locatorRef of claim.locator_refs) {
+    const resolved = locatorById.get(locatorRef);
+    assert.ok(resolved, `${claim.id} locator ${locatorRef} resolves`);
+    assert.ok(claim.source_refs.includes(resolved.source.source_ref), `${claim.id} locator source is declared`);
+  }
+  if (claim.simulation_authority === "authoritative" && claim.evidence_type !== "pack-original") {
+    assert.equal(claim.review_state, "admitted", `${claim.id} authoritative primary claim is admitted`);
+    assert.ok(claim.locator_refs.length > 0, `${claim.id} has a verified locator`);
+    for (const locatorRef of claim.locator_refs) assert.equal(locatorById.get(locatorRef).source.directly_checked, true, `${claim.id} uses a directly checked source`);
+  }
+}
+for (const source of verifiedPrimary) {
+  assert.ok(sourceIds.has(source.source_ref), `${source.id} references a known source`);
+  assert.equal(source.directly_checked, true, `${source.id} is directly checked`);
+  assert.equal(source.transcript_assisted, false, `${source.id} did not rely on a transcript`);
+  for (const locator of source.locators) assert.match(locator.start, /^\d{2}:\d{2}:\d{2}$/);
 }
 for (const dependency of admission.dependencies) {
   const claim = claims.find((candidate) => candidate.id === dependency.claim_id);
@@ -54,8 +73,8 @@ for (const dependency of admission.dependencies) {
   assert.notEqual(claim.simulation_authority, "prohibited", `${dependency.claim_id} is not prohibited`);
   assert.notEqual(claim.review_state, "rejected", `${dependency.claim_id} is not rejected`);
 }
-for (const relative of ["README.md", "canon/SOURCE_POLICY.md", "canon/source-registry-schema.json", "canon/source-intake-schema.json", "canon/claim-schema.json", "canon/scenario-admission-schema.json", "docs/canon-model.md", "docs/architecture.md", "docs/roadmap.md", "docs/intake-workflow.md", "intake/README.md", "intake/records/representative-sources.json", "scenarios/threshold-baseline-admission.json", "tools/README.md", "world/locations.json", "world/connections.json", "world/conditions.json", "world/resources.json", "world/observation-capabilities.json"]) assert.ok(fs.existsSync(path.join(root, relative)));
-const scripts = ["tests/validate-assets.js", "tests/validate-contracts.js", "tests/intake-model.test.js", "tests/run-conformance.js", "tools/intake-lib.js", "tools/register-source.js", "tools/create-claim-stub.js", "tools/link-claims.js", "tools/promote-review.js", "tools/check-admission.js", "tools/intake-summary.js"];
+for (const relative of ["README.md", "canon/SOURCE_POLICY.md", "canon/source-registry-schema.json", "canon/source-intake-schema.json", "canon/claim-schema.json", "canon/scenario-admission-schema.json", "canon/verified-primary-source-schema.json", "canon/verified-primary-sources.json", "docs/canon-model.md", "docs/architecture.md", "docs/roadmap.md", "docs/intake-workflow.md", "docs/primary-source-verification.md", "intake/README.md", "intake/records/representative-sources.json", "scenarios/threshold-baseline-admission.json", "tools/README.md", "world/locations.json", "world/connections.json", "world/conditions.json", "world/resources.json", "world/observation-capabilities.json"]) assert.ok(fs.existsSync(path.join(root, relative)));
+const scripts = ["tests/validate-assets.js", "tests/validate-contracts.js", "tests/intake-model.test.js", "tests/run-conformance.js", "tools/intake-lib.js", "tools/register-source.js", "tools/create-claim-stub.js", "tools/link-claims.js", "tools/promote-review.js", "tools/check-admission.js", "tools/intake-summary.js", "tools/evidence-report.js"];
 for (const relative of scripts) {
   const content = fs.readFileSync(path.join(root, relative), "utf8");
   assert.doesNotMatch(content, /custodian\/(runtime|state|tools)/, `${relative} uses only public Custodian imports`);
