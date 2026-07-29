@@ -10,6 +10,7 @@ node tools/promote-review.js threshold-baseline-is-pack-original admitted
 node tools/check-admission.js scenarios/threshold-baseline-admission.json
 node tools/intake-summary.js
 node tools/evidence-report.js
+node tools/operations-report.js
 ```
 
 Use outputs as review proposals. Commit a reviewed JSON record only after a human checks source scope, provenance, and authority.
