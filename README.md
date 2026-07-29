@@ -32,6 +32,7 @@ Local Complex architecture, topology, visibility, and grammar boundaries are doc
 Environmental materials, lighting states, and qualitative survey boundaries are documented in [environmental survey](docs/environmental-survey.md).
 Localized discontinuities, interaction results, causality limits, and terminology discipline are documented in [spatial anomalies](docs/spatial-anomalies.md).
 Corpus inventory and source-local transition boundaries are documented in [corpus and recovery paths](docs/corpus-and-recovery-paths.md).
+Player/session configuration boundaries are documented in [Scenario Profiles](docs/scenario-profiles.md).
 
 The small `threshold-baseline` scenario is a constitutional smoke test for a
 controlled Threshold-side survey: multiple observers, equipment custody,

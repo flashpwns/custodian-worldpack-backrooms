@@ -1,0 +1,1 @@
+{"version":"resource-profiles/v1","profiles":[{"id":"civilian-limited","resources":["personal-recording-device"]},{"id":"async-field-survey","resources":["survey-equipment","protective-equipment","recording-device"]},{"id":"async-command-allocation","resources":["institutional-allocation-view"]}]}
