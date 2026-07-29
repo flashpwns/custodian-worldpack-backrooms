@@ -20,6 +20,7 @@ assert.equal(measurement.ok, true, JSON.stringify(measurement.error));
 assert.equal(measurement.session.projection.objective.evidence.length, 1);
 const restored = restoreSession(exportSession(measurement.session).envelope);
 assert.equal(restored.ok, true, JSON.stringify(restored.error));
+assert.deepEqual(restored.session.projection.objective.evidence, measurement.session.projection.objective.evidence, "export and restore preserve objective evidence");
 const report = validateWorldPackConformance({ world_pack, scenarios: [{ scenario, ticks: [] }] });
 assert.equal(report.ok, true);
 process.stdout.write(`${report.serialization}\n`);
