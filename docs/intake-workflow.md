@@ -50,3 +50,5 @@ Threshold Baseline admits only pack-authored smoke-test facts. It does not turn 
 8. Run `npm run validate-assets`, `npm run check-admission`, and `npm run conformance`.
 
 Good admission: an admitted `pack-original` claim used only for a named smoke-test scenario. Bad admission: a wiki summary, a production image, an in-fiction assertion, or an unresolved timeline used as authoritative objective state.
+
+For direct primary-source locators, timestamp practice, and a complete scenario-admission example, see [Primary-source verification](primary-source-verification.md).
