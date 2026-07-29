@@ -5,12 +5,15 @@ const path = require("node:path");
 const root = path.resolve(__dirname, "..");
 const read = (relative) => JSON.parse(fs.readFileSync(path.join(root, relative), "utf8"));
 const registry = read("canon/source-registry.json");
-const claims = [...read("canon/claims/foundation.json").claims, ...read("canon/claims/operations.json").claims];
+const claims = [...read("canon/claims/foundation.json").claims, ...read("canon/claims/operations.json").claims, ...read("canon/claims/recovered-records.json").claims, ...read("canon/claims/architecture.json").claims];
 const intake = read("intake/records/representative-sources.json");
 const admission = read("scenarios/threshold-baseline-admission.json");
-const verifiedPrimary = [...read("canon/verified-primary-sources.json").sources, ...read("canon/verified-expedition-sources.json").sources];
+const verifiedPrimary = [...read("canon/verified-primary-sources.json").sources, ...read("canon/verified-expedition-sources.json").sources, ...read("canon/verified-recovered-record-sources.json").sources, ...read("canon/verified-architecture-sources.json").sources];
 const evidenceObjects = read("operations/evidence-objects.json").evidence;
 const communicationRecords = read("operations/communication-records.json").records;
+const recoveredRecords = read("records/recovered-records.json").records;
+const derivedReports = read("records/derived-reports.json").reports;
+const recordFixture = read("records/record-review-smoke-test.json");
 const manifest = read("manifest.json");
 const scenario = read("scenario.json");
 const scenarioCopy = read("scenarios/threshold-baseline.json");
@@ -22,6 +25,8 @@ const locatorById = new Map(verifiedPrimary.flatMap((source) => source.locators.
 const observerIds = new Set(scenario.observers.map(({ id }) => id));
 const ruleIds = new Set(manifest.execution_rules.map(({ id }) => id));
 const scheduledIds = new Set(scenario.scheduled_events.map(({ id }) => id));
+const evidenceIds = new Set(evidenceObjects.map(({ id }) => id));
+const recoveredRecordIds = new Set(recoveredRecords.map(({ id }) => id));
 assert.equal(registry.version, "source-registry/v1");
 assert.ok(registry.sources.length >= 10 && registry.sources.length <= 20);
 assert.equal(manifest.id, "yellow-beast");
@@ -85,6 +90,26 @@ for (const record of communicationRecords) {
   assert.deepEqual(record.actual_recipients, record.recipient_access, `${record.id} models receipt explicitly, not universal delivery`);
   for (const claimRef of record.claim_refs) assert.ok(claimIds.has(claimRef), `${record.id} claim resolves`);
 }
+for (const record of recoveredRecords) {
+  assert.ok(evidenceIds.has(record.origin_evidence_id), `${record.id} origin resolves`);
+  assert.ok(observerIds.has(record.creator), `${record.id} creator resolves`);
+  assert.ok(observerIds.has(record.recovery.recovering_actor), `${record.id} recovering actor resolves`);
+  assert.ok(observerIds.has(record.current_custodian), `${record.id} custodian resolves`);
+  assert.ok(recordFixture.recovery_events.includes(record.recovery.record_ref), `${record.id} recovery is explicit`);
+  for (const access of record.access_history) assert.ok(observerIds.has(access.actor) && recordFixture.access_events.includes(access.record_ref), `${record.id} access is explicit`);
+  for (const review of record.review_history) {
+    assert.ok(observerIds.has(review.actor) && recordFixture.review_events.includes(review.record_ref), `${record.id} review is explicit`);
+    for (const claimRef of review.claim_refs) assert.ok(claimIds.has(claimRef), `${record.id} review claim resolves`);
+  }
+  for (const reportRef of record.derived_report_refs) assert.ok(derivedReports.some(({ id }) => id === reportRef), `${record.id} report resolves`);
+}
+for (const report of derivedReports) {
+  for (const input of report.evidence_inputs) assert.ok(recoveredRecordIds.has(input), `${report.id} evidence input resolves`);
+  for (const claimRef of report.claims_asserted) assert.ok(claimIds.has(claimRef), `${report.id} asserted claim resolves`);
+  assert.notEqual(report.simulation_authority, "authoritative", `${report.id} report is not objective truth`);
+  assert.notEqual(report.classification, "descriptive", `${report.id} remains an interpretation boundary`);
+  assert.ok(recordFixture.report_events.includes(report.creation_ref), `${report.id} creation is explicit`);
+}
 for (const dependency of admission.dependencies) {
   const claim = claims.find((candidate) => candidate.id === dependency.claim_id);
   assert.ok(claim, `${dependency.claim_id} is an existing scenario dependency`);
@@ -95,12 +120,14 @@ for (const dependency of admission.dependencies) {
   assert.notEqual(claim.simulation_authority, "prohibited", `${dependency.claim_id} is not prohibited`);
   assert.notEqual(claim.review_state, "rejected", `${dependency.claim_id} is not rejected`);
 }
-for (const relative of ["README.md", "canon/SOURCE_POLICY.md", "canon/source-registry-schema.json", "canon/source-intake-schema.json", "canon/claim-schema.json", "canon/scenario-admission-schema.json", "canon/verified-primary-source-schema.json", "canon/verified-primary-sources.json", "canon/verified-expedition-sources.json", "canon/evidence-object-schema.json", "canon/communication-record-schema.json", "docs/canon-model.md", "docs/architecture.md", "docs/roadmap.md", "docs/intake-workflow.md", "docs/primary-source-verification.md", "docs/operations-evidence.md", "intake/README.md", "intake/records/representative-sources.json", "operations/evidence-objects.json", "operations/communication-records.json", "scenarios/threshold-baseline-admission.json", "tools/README.md", "world/locations.json", "world/connections.json", "world/conditions.json", "world/resources.json", "world/observation-capabilities.json"]) assert.ok(fs.existsSync(path.join(root, relative)));
-const scripts = ["tests/validate-assets.js", "tests/validate-contracts.js", "tests/intake-model.test.js", "tests/operations-model.test.js", "tests/run-conformance.js", "tools/intake-lib.js", "tools/register-source.js", "tools/create-claim-stub.js", "tools/link-claims.js", "tools/promote-review.js", "tools/check-admission.js", "tools/intake-summary.js", "tools/evidence-report.js", "tools/operations-report.js"];
+for (const relative of ["README.md", "canon/SOURCE_POLICY.md", "canon/source-registry-schema.json", "canon/source-intake-schema.json", "canon/claim-schema.json", "canon/scenario-admission-schema.json", "canon/verified-primary-source-schema.json", "canon/verified-primary-sources.json", "canon/verified-expedition-sources.json", "canon/verified-recovered-record-sources.json", "canon/verified-architecture-sources.json", "canon/evidence-object-schema.json", "canon/communication-record-schema.json", "canon/recovered-record-schema.json", "canon/derived-report-schema.json", "canon/environment-observation-schema.json", "canon/local-topology-schema.json", "canon/architecture-grammar-schema.json", "canon/production-reference-schema.json", "docs/canon-model.md", "docs/architecture.md", "docs/roadmap.md", "docs/intake-workflow.md", "docs/primary-source-verification.md", "docs/operations-evidence.md", "docs/recovered-records.md", "docs/complex-physical-grammar.md", "intake/README.md", "intake/records/representative-sources.json", "operations/evidence-objects.json", "operations/communication-records.json", "records/recovered-records.json", "records/derived-reports.json", "records/record-review-smoke-test.json", "architecture/environments.json", "architecture/local-topology.json", "architecture/grammar.json", "architecture/production-references.json", "scenarios/threshold-baseline-admission.json", "tools/README.md", "world/locations.json", "world/connections.json", "world/conditions.json", "world/resources.json", "world/observation-capabilities.json"]) assert.ok(fs.existsSync(path.join(root, relative)));
+const scripts = ["tests/validate-assets.js", "tests/validate-contracts.js", "tests/intake-model.test.js", "tests/operations-model.test.js", "tests/recovered-records.test.js", "tests/architecture-model.test.js", "tests/run-conformance.js", "tools/intake-lib.js", "tools/register-source.js", "tools/create-claim-stub.js", "tools/link-claims.js", "tools/promote-review.js", "tools/check-admission.js", "tools/intake-summary.js", "tools/evidence-report.js", "tools/operations-report.js", "tools/records-report.js", "tools/architecture-report.js"];
 for (const relative of scripts) {
   const content = fs.readFileSync(path.join(root, relative), "utf8");
   assert.doesNotMatch(content, /custodian\/(runtime|state|tools)/, `${relative} uses only public Custodian imports`);
 }
 const packFiles = fs.readdirSync(root, { recursive: true }).filter((entry) => entry.endsWith(".js") && !entry.startsWith("node_modules/"));
 assert.deepEqual(packFiles.sort(), scripts.sort(), "Yellow Beast contains no executable world-pack logic");
+const prohibitedRawMedia = fs.readdirSync(root, { recursive: true }).filter((entry) => /\.(mp4|mov|webm|mkv|jpg|jpeg|png|gif|webp|mp3|wav|pdf)$/i.test(entry));
+assert.deepEqual(prohibitedRawMedia, [], "Yellow Beast contains no copied raw source media or archives");
 console.log("validated Yellow Beast canon intake assets and baseline manifest");
