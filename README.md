@@ -1,7 +1,7 @@
 # Yellow Beast
 
 Yellow Beast is an unofficial, independently maintained declarative world pack
-for [Custodian](https://github.com/flashpwns/Kane-Parsons-Backrooms---AI-Based-Roleplay-Interface).
+for [Custodian](https://github.com/flashpwns/custodian).
 It targets `canonical-kernel@v1` and is currently `0.1.0-alpha`.
 
 It is a simulation-pack foundation, not a transcript archive or a statement of
