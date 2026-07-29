@@ -12,6 +12,7 @@ node tools/intake-summary.js
 node tools/evidence-report.js
 node tools/operations-report.js
 node tools/records-report.js
+node tools/architecture-report.js
 ```
 
 Use outputs as review proposals. Commit a reviewed JSON record only after a human checks source scope, provenance, and authority.
