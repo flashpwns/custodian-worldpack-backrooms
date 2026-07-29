@@ -13,7 +13,7 @@ const schemas = [
   read("canon/evidence-object-schema.json"),
   read("canon/recovered-record-schema.json"),
   read("canon/derived-report-schema.json"),
-  read("canon/environment-observation-schema.json"), read("canon/local-topology-schema.json"), read("canon/architecture-grammar-schema.json"), read("canon/production-reference-schema.json"), read("canon/environmental-condition-schema.json"), read("canon/survey-observation-schema.json"), read("canon/anomaly-observation-schema.json"), read("canon/anomaly-interaction-schema.json"), read("canon/corpus-root-schema.json"), read("canon/corpus-video-schema.json"), read("canon/transition-schema.json"),
+  read("canon/environment-observation-schema.json"), read("canon/local-topology-schema.json"), read("canon/architecture-grammar-schema.json"), read("canon/production-reference-schema.json"), read("canon/environmental-condition-schema.json"), read("canon/survey-observation-schema.json"), read("canon/anomaly-observation-schema.json"), read("canon/anomaly-interaction-schema.json"), read("canon/corpus-root-schema.json"), read("canon/corpus-video-schema.json"), read("canon/transition-schema.json"), read("canon/scenario-profile-schema.json"),
   read("canon/communication-record-schema.json"),
   read("canon/scenario-admission-schema.json")
 ];
@@ -47,5 +47,6 @@ for (const item of read("anomalies/interactions.json").interactions) validate("h
 for (const item of read("corpus/roots.json").roots) validate("https://yellowbeast.dev/schemas/corpus-root/v1", item, `corpus root ${item.id}`);
 for (const item of read("corpus/videos.json").videos) validate("https://yellowbeast.dev/schemas/corpus-video/v1", item, `corpus video ${item.id}`);
 for (const item of read("transitions/observations.json").transitions) validate("https://yellowbeast.dev/schemas/transition-observation/v1", item, `transition ${item.id}`);
+for (const item of read("profiles/profiles.json").profiles) validate("https://yellowbeast.dev/schemas/scenario-profile/v1", item, `profile ${item.id}`);
 validate("https://yellowbeast.dev/schemas/scenario-admission/v1", read("scenarios/threshold-baseline-admission.json"), "Threshold Baseline admission");
 console.log("validated Yellow Beast intake and admission contracts");
