@@ -1,1 +1,11 @@
-"use strict";const fs=require("node:fs"),{startRun,status,act}=require("./run-bootstrap"),{exportSession,restoreSession}=require("custodian");const args=process.argv.slice(2),v=n=>{const i=args.indexOf(n);return i<0?undefined:args[i+1]},save=v("--save");let session;if(v("--resume")){session=restoreSession(JSON.parse(fs.readFileSync(v("--resume"),"utf8")).envelope).session;}else session=startRun({profile:v("--profile")||"field-researcher",seed:v("--seed")||"demo"}).session;const verb=v("--action");const result=verb?act(session,verb):{ok:true};if(result.session)session=result.session;if(save)fs.writeFileSync(save,JSON.stringify({envelope:exportSession(session).envelope},null,2));console.log(JSON.stringify({status:status(session),result:result.ok?{outcome:result.outcome,reason:result.reason}:result},null,2));
+"use strict";
+const fs = require("node:fs");
+const path = require("node:path");
+const { startRun, status, act, saveRun, resumeRun } = require("./run-bootstrap");
+const args = process.argv.slice(2); const value = (name) => { const index = args.indexOf(name); return index < 0 ? undefined : args[index + 1]; };
+const savePath = value("--save") ?? path.join(".saves", "yellow-beast-save.json");
+let run;
+if (value("--resume")) { const resumed = resumeRun(JSON.parse(fs.readFileSync(value("--resume"), "utf8"))); if (!resumed.ok) throw new Error("unable to restore save"); run = resumed.run; } else run = startRun({ profile: value("--profile") || "field-researcher", seed: value("--seed") || "demo" }).run;
+const verb = value("--action"); const target = value("--target"); const result = verb ? act(run, verb, target) : { ok: true };
+if (value("--save") || value("--save-default")) { fs.mkdirSync(path.dirname(savePath), { recursive: true }); fs.writeFileSync(savePath, JSON.stringify(saveRun(run), null, 2)); }
+console.log(JSON.stringify({ status: status(run), result: result.ok ? { outcome: result.outcome, reason: result.reason, public_reason: result.result?.public_reason ?? null } : result.error, save: (value("--save") || value("--save-default")) ? savePath : null }, null, 2));
