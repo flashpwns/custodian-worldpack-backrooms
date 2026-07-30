@@ -11,3 +11,10 @@ Institutional knowledge is created only by delivered Standard reports and archiv
 Artifacts/remnants are minimal persistent objects with origin run, region/location identity, custody, recoverability, visibility, and provenance. Their recovery appends a history event; it does not rewrite the leaving event.
 
 For generator v2 regions, world history also records append-only `region.mutated` events. Each event identifies the originating run, region, node, target type/identity, operation, resulting value, provenance, and authority. A v2 region stores an immutable materialized baseline alongside its current materialization; rebuild applies ordered mutation events to that baseline. Duplicate event ingestion is idempotent. V2-only mutation events are rejected for v1 regions, preserving v1 semantics.
+
+Institutional processes are materialized in `world.management` and append
+`institution.*` events for process creation, communication/review, research,
+recovery, and infrastructure. Research retains only reviewed report inputs and
+changes institutional capability state. Infrastructure completion additionally
+uses the same v2 mutation stream to install a physical shared-world object;
+rebuilding the region therefore preserves it without a management-only copy.
