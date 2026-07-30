@@ -1,0 +1,32 @@
+name: Package Yellow Beast Alpha
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - "tools/**"
+      - "profiles/**"
+      - "scenarios/**"
+      - "manifest.json"
+      - "package*.json"
+      - ".github/workflows/package-alpha.yml"
+
+jobs:
+  package:
+    strategy:
+      matrix:
+        os: [macos-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - run: npm run build:alpha
+      - run: npm run verify:alpha
+      - uses: actions/upload-artifact@v4
+        with:
+          name: yellow-beast-alpha-${{ runner.os }}
+          path: dist/
