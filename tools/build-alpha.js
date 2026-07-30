@@ -46,7 +46,7 @@ function nodeDistribution() {
   return cache;
 }
 fs.rmSync(artifact, { recursive: true, force: true }); fs.mkdirSync(app, { recursive: true });
-["manifest.json", "LICENSE", "THIRD_PARTY_NOTICES.md", "START-HERE.md", "package.json", "profiles", "scenarios/threshold-baseline.json", "data/procedural-grammar.json", "data/entity-definitions.json", "data/still-life-behavior-authority.json", "tools/expedition.js", "tools/procedural-complex.js", "tools/procedural-complex-v2.js", "tools/world-history.js", "tools/entity-simulation.js", "tools/becks-desk.js", "tools/nullzone-exposure.js", "tools/lost.js", "tools/run-bootstrap.js", "tools/ai-adapter.js", "tools/ai-mock-provider.js", "tools/ai-openai-provider.js", "tools/launcher-paths.js", "tools/launcher.js", "node_modules"].forEach(copy);
+["manifest.json", "LICENSE", "THIRD_PARTY_NOTICES.md", "START-HERE.md", "package.json", "profiles", "scenarios/threshold-baseline.json", "data/procedural-grammar.json", "data/entity-definitions.json", "data/still-life-behavior-authority.json", "tools/expedition.js", "tools/procedural-complex.js", "tools/procedural-complex-v2.js", "tools/world-history.js", "tools/entity-simulation.js", "tools/becks-desk.js", "tools/nullzone-exposure.js", "tools/lost.js", "tools/gameplay.js", "tools/run-bootstrap.js", "tools/ai-adapter.js", "tools/ai-mock-provider.js", "tools/ai-openai-provider.js", "tools/launcher-paths.js", "tools/launcher.js", "node_modules"].forEach(copy);
 pruneDependencyDevelopmentFiles(path.join(app, "node_modules"));
 const runtime = path.join(artifact, "runtime"); fs.cpSync(nodeDistribution(), runtime, { recursive: true });
 // Official Node archives place bundled package-manager files under lib/node_modules
