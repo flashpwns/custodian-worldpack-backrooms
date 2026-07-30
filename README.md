@@ -19,6 +19,18 @@ npm run evidence-report
 npm run conformance
 ```
 
+## Desktop shell (YB-26 alpha)
+
+The in-progress desktop shell runs without an AI provider and stores worlds in
+the platform application-data directory. For development, run:
+
+```sh
+npm run desktop:dev
+```
+
+`npm run desktop:build` performs the current deterministic desktop staging
+check; native installers remain a later YB-26 pass.
+
 ## Canon admission
 
 Research references are not world facts. Yellow Beast records source metadata,
