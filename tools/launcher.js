@@ -31,11 +31,11 @@ function log(paths, message) { ensureData(paths); fs.appendFileSync(paths.log, `
 function savePath(paths, slot = "clear-q4") { return path.join(paths.saves, `${String(slot).replace(/[^a-z0-9_-]/gi, "-")}.json`); }
 function readSave(file) { return JSON.parse(fs.readFileSync(file, "utf8")); }
 function concise(result) { return result.ok ? { outcome: result.outcome, reason: result.reason, public_reason: result.result?.public_reason ?? null } : result.error; }
-async function runCommand({ paths, profile = "field-researcher", seed = "alpha", resume, save, action, target, natural }) {
+async function runCommand({ paths, profile = "field-researcher", seed = "alpha", scenario, resume, save, action, target, natural }) {
   const loaded = loadConfig(paths); let run;
   try {
     if (resume) { const restored = resumeRun(readSave(savePath(paths, resume))); if (!restored.ok) throw new Error("save is incompatible or corrupted"); run = restored.run; }
-    else run = startRun({ profile, seed }).run;
+    else run = startRun({ profile, seed, scenario }).run;
     const selected = natural ? safeProviderForEnvironment() : null;
     const result = natural ? await executeNatural({ run, provider: selected.provider, player_text: natural }) : action ? act(run, action.toUpperCase(), target) : { ok: true };
     let saved = null;
@@ -76,7 +76,7 @@ function option(args, name) { const i = args.indexOf(name); return i < 0 ? undef
 async function main() {
   const paths = resolveAppPaths(); const args = process.argv.slice(2);
   if (args.includes("--interactive") || (!args.length && stdin.isTTY)) return interactive(paths);
-  const output = await runCommand({ paths, profile: option(args, "--profile") || "field-researcher", seed: option(args, "--seed") || "alpha", resume: option(args, "--resume"), save: args.includes("--save") ? option(args, "--save") || true : false, action: option(args, "--action"), target: option(args, "--target"), natural: option(args, "--natural") });
+  const output = await runCommand({ paths, profile: option(args, "--profile") || "field-researcher", seed: option(args, "--seed") || "alpha", scenario: option(args, "--scenario"), resume: option(args, "--resume"), save: args.includes("--save") ? option(args, "--save") || true : false, action: option(args, "--action"), target: option(args, "--target"), natural: option(args, "--natural") });
   console.log(JSON.stringify(output, null, 2)); if (!output.ok) process.exitCode = 1;
 }
 if (require.main === module) main().catch((error) => { console.error("Yellow Beast launcher failed safely:", error.message); process.exitCode = 1; });

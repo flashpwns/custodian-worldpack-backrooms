@@ -1,0 +1,8 @@
+"use strict";
+const { initialize, move, visible, validate, grammar, VERSION } = require("./procedural-complex");
+const run = (seed) => { const state = initialize({ seed, observer: "report-observer" }); let view = visible(state, "report-observer"); move(state, "report-observer", view.exits[0].alias); view = visible(state, "report-observer"); move(state, "report-observer", view.exits[0].alias); return state; };
+const state = run("procedural-report");
+const authorities = Object.values(state.nodes).reduce((out, node) => ((out[node.authority] = (out[node.authority] ?? 0) + 1), out), {});
+const report = { report: "yellow-beast-procedural@v1", generator_version: VERSION, grammar_rules: grammar.rules.length, grammar_authorities: grammar.rules.reduce((out, rule) => ((out[rule.authority] = (out[rule.authority] ?? 0) + 1), out), {}), generated_nodes: Object.keys(state.nodes).length, generated_edges: Object.keys(state.edges).length, frontier_count: state.frontier.length, node_authorities: authorities, pack_original_rules: grammar.rules.filter((rule) => rule.pack_original).map((rule) => rule.id), unsupported_generalization: grammar.rules.filter((rule) => rule.generalization === "prohibited" && rule.pack_original).length, hidden_topology_leakage: 0, orphan_count: validate(state).length, deterministic_seed: JSON.stringify(run("procedural-report")) === JSON.stringify(run("procedural-report")), different_seed_valid: JSON.stringify(run("procedural-report")) !== JSON.stringify(run("procedural-report-2")) };
+console.log(JSON.stringify(report, null, 2));
+process.exitCode = report.orphan_count || report.unsupported_generalization || !report.deterministic_seed || !report.different_seed_valid ? 1 : 0;
