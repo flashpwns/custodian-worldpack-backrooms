@@ -1,0 +1,14 @@
+{
+  "version": "yellow-beast-still-life-behavior@v1",
+  "entity_type": "still-life",
+  "evidence_status": "no-admitted-still-life-behavior-source-in-current-corpus",
+  "behaviors": [
+    {"id":"still-life-physical-presence","category":"presence","classification":"pack-original","authority":"scenario-optional","source_basis":[],"scope":"explicit-fixture-only","generalization_permission":"prohibited","notes":"Permits a named physical fixture solely for deterministic entity-system validation; it is not a canon claim."},
+    {"id":"still-life-appearance","category":"appearance","classification":"unknown","authority":"prohibited","source_basis":[],"scope":"none","generalization_permission":"prohibited"},
+    {"id":"still-life-movement","category":"movement","classification":"unknown","authority":"prohibited","source_basis":[],"scope":"none","generalization_permission":"prohibited"},
+    {"id":"still-life-perception","category":"perception","classification":"unknown","authority":"prohibited","source_basis":[],"scope":"none","generalization_permission":"prohibited"},
+    {"id":"still-life-pursuit","category":"behavior","classification":"unknown","authority":"prohibited","source_basis":[],"scope":"none","generalization_permission":"prohibited"},
+    {"id":"still-life-harm","category":"effects","classification":"unknown","authority":"prohibited","source_basis":[],"scope":"none","generalization_permission":"prohibited"},
+    {"id":"still-life-motives","category":"unknown","classification":"unknown","authority":"prohibited","source_basis":[],"scope":"none","generalization_permission":"prohibited"}
+  ]
+}
