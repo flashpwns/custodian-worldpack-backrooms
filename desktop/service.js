@@ -11,7 +11,10 @@ const desk = require("../tools/becks-desk");
 const bootstrap = require("../tools/run-bootstrap");
 const nullzone = require("../tools/nullzone-exposure");
 const lost = require("../tools/lost");
+const { executeNatural } = require("../tools/ai-adapter");
+const { createOpenAIProvider } = require("../tools/ai-openai-provider");
 const { resolveAppPaths } = require("../tools/launcher-paths");
+const { CredentialStore } = require("./credentials");
 const packageVersion = require("../package.json").version;
 
 const clone = (value) => structuredClone(value);
@@ -21,21 +24,22 @@ const MODES = Object.freeze([
   { id: "local-anomaly", gameplay_mode: "nullzone", label: "Nullzone Exposure", role: "Civilian investigation", description: "Investigate the Complex independently from a civilian base and personal archive." },
   { id: "lost", gameplay_mode: "lost", label: "Lost", role: "Survival", description: "Survive and navigate the Complex with limited knowledge and uncertain escape." }
 ]);
-const DEFAULT_SETTINGS = Object.freeze({ version: 1, input_mode: "structured", provider: "offline", theme: "system" });
+const DEFAULT_SETTINGS = Object.freeze({ version: 2, input_mode: "structured", provider: "offline", theme: "system", reduced_motion: false, reopen_last_world: true, mode_onboarding: {} });
 
 function publicError(code, message) { return { ok: false, error: { code, message } }; }
 function safeId(value) { return typeof value === "string" && /^[a-z0-9][a-z0-9_-]{0,100}$/i.test(value); }
 function friendlyName(value) { return typeof value === "string" && value.trim().length > 0 && value.trim().length <= 80; }
 function ensureDirectory(directory) { fs.mkdirSync(directory, { recursive: true }); }
 function readJson(file, fallback) { try { return fs.existsSync(file) ? JSON.parse(fs.readFileSync(file, "utf8")) : clone(fallback); } catch { return clone(fallback); } }
-function writeJson(file, value) { ensureDirectory(path.dirname(file)); fs.writeFileSync(file, `${JSON.stringify(value, null, 2)}\n`); }
+function writeJson(file, value) { ensureDirectory(path.dirname(file)); const temporary = `${file}.${process.pid}.tmp`; fs.writeFileSync(temporary, `${JSON.stringify(value, null, 2)}\n`); JSON.parse(fs.readFileSync(temporary, "utf8")); fs.renameSync(temporary, file); }
 
 class DesktopService {
-  constructor({ appDataPath = null, paths = null, logger = null } = {}) {
+  constructor({ appDataPath = null, paths = null, logger = null, credentials = null } = {}) {
     this.paths = paths ?? (appDataPath ? { root: appDataPath, worlds: path.join(appDataPath, "worlds"), saves: path.join(appDataPath, "saves"), logs: path.join(appDataPath, "logs"), config: path.join(appDataPath, "config.json") } : resolveAppPaths());
     this.metadataFile = path.join(this.paths.root, "desktop-worlds.json");
     this.settingsFile = path.join(this.paths.root, "desktop-settings.json");
     this.logger = logger ?? (() => {});
+    this.credentials = credentials ?? new CredentialStore();
     this.sessions = new Map();
     [this.paths.root, this.paths.worlds, this.paths.saves, this.paths.logs].forEach(ensureDirectory);
   }
@@ -47,8 +51,9 @@ class DesktopService {
   worldFile(worldId) { if (!safeId(worldId)) throw Object.assign(new Error("invalid world reference"), { code: "WORLD_INVALID" }); return path.join(this.paths.worlds, `${worldId}.json`); }
   sessionFile(worldId, mode) { if (!safeId(worldId) || !MODES.some((item) => item.id === mode)) throw Object.assign(new Error("invalid session reference"), { code: "SESSION_INVALID" }); return path.join(this.paths.saves, `${worldId}-${mode}.json`); }
   getMode(mode) { return MODES.find((item) => item.id === mode) ?? null; }
-  getWorld(worldId) { const file = this.worldFile(worldId); if (!fs.existsSync(file)) throw Object.assign(new Error("world not found"), { code: "WORLD_NOT_FOUND" }); return history.loadWorld(file); }
-  saveCanonical(world) { history.saveWorld(this.worldFile(world.world_id), world); }
+  backupFile(worldId) { return `${this.worldFile(worldId)}.previous-good`; }
+  getWorld(worldId) { const file = this.worldFile(worldId); if (!fs.existsSync(file)) throw Object.assign(new Error("world not found"), { code: "WORLD_NOT_FOUND" }); let raw; try { raw = JSON.parse(fs.readFileSync(file, "utf8")); } catch { throw Object.assign(new Error("world save is damaged"), { code: "WORLD_LOAD_FAILED" }); } if (raw.version !== history.VERSION) throw Object.assign(new Error("world uses an unsupported version"), { code: "WORLD_VERSION_UNSUPPORTED" }); return history.loadWorld(file); }
+  saveCanonical(world) { const file = this.worldFile(world.world_id); const temporary = `${file}.${process.pid}.tmp`; try { history.saveWorld(temporary, world); history.loadWorld(temporary); if (fs.existsSync(file)) fs.copyFileSync(file, this.backupFile(world.world_id)); fs.renameSync(temporary, file); return { ok: true }; } catch (error) { try { if (fs.existsSync(temporary)) fs.unlinkSync(temporary); } catch {} throw error; } }
   worldInfo(world, metadata = {}) { return { id: world.world_id, name: metadata.name ?? world.world_id, version: world.version, created_at: metadata.created_at ?? null, last_played_at: metadata.last_played_at ?? null, last_mode: metadata.last_mode ?? null, status: "ready" }; }
 
   getAppInfo() { const data = this.metadata(); return { ok: true, app: { name: "Yellow Beast", version: packageVersion, alpha: true, first_run_complete: Boolean(data.first_run_complete), data_path: this.paths.root } }; }
@@ -77,9 +82,17 @@ class DesktopService {
   }
   exportWorld({ world_id, destination }) { try { const source = this.worldFile(world_id); if (!destination || !path.isAbsolute(destination)) return publicError("EXPORT_DESTINATION_INVALID", "Choose an export destination."); history.loadWorld(source); fs.copyFileSync(source, destination); return { ok: true, file: destination }; } catch (error) { return publicError("WORLD_EXPORT_FAILED", "This world could not be exported."); } }
   importWorld({ source, name = null }) { try { if (!source || !path.isAbsolute(source)) return publicError("IMPORT_SOURCE_INVALID", "Choose a world export to import."); const world = history.loadWorld(source); const data = this.metadata(); if (fs.existsSync(this.worldFile(world.world_id)) || data.worlds[world.world_id]) return publicError("WORLD_CONFLICT", "A world with this identity is already present."); this.saveCanonical(world); const now = new Date().toISOString(); data.worlds[world.world_id] = { name: friendlyName(name) ? name.trim() : world.world_id, created_at: now, last_played_at: now, last_mode: null }; this.writeMetadata(data); return { ok: true, world: this.worldInfo(world, data.worlds[world.world_id]) }; } catch { return publicError("WORLD_IMPORT_FAILED", "That export is not a compatible Yellow Beast world."); } }
-  getSettings() { return { ok: true, settings: this.settings() }; }
-  updateSettings({ settings }) { if (!settings || typeof settings !== "object") return publicError("SETTINGS_INVALID", "Settings were not understood."); const next = { ...this.settings() }; if (settings.input_mode && !["structured", "natural"].includes(settings.input_mode)) return publicError("SETTINGS_INVALID", "Choose a supported input mode."); if (settings.provider && !["offline", "openai"].includes(settings.provider)) return publicError("SETTINGS_INVALID", "Choose a supported provider."); if (settings.theme && !["system", "light", "dark"].includes(settings.theme)) return publicError("SETTINGS_INVALID", "Choose a supported appearance."); Object.assign(next, settings); writeJson(this.settingsFile, next); return { ok: true, settings: next };
+  getSettings() { return { ok: true, settings: this.settings(), provider: this.getProviderStatus().provider }; }
+  updateSettings({ settings }) { if (!settings || typeof settings !== "object") return publicError("SETTINGS_INVALID", "Settings were not understood."); const next = { ...this.settings() }; if (settings.input_mode && !["structured", "natural"].includes(settings.input_mode)) return publicError("SETTINGS_INVALID", "Choose a supported input mode."); if (settings.provider && !["offline", "openai"].includes(settings.provider)) return publicError("SETTINGS_INVALID", "Choose Offline or OpenAI."); if (settings.provider === "openai" && !this.credentials.configured("openai")) return publicError("PROVIDER_CONFIGURATION_REQUIRED", "Add an OpenAI key first, or continue offline."); if (settings.theme && !["system", "light", "dark"].includes(settings.theme)) return publicError("SETTINGS_INVALID", "Choose a supported appearance."); if (settings.reduced_motion !== undefined && typeof settings.reduced_motion !== "boolean") return publicError("SETTINGS_INVALID", "Reduced motion must be on or off."); Object.assign(next, settings); delete next.api_key; writeJson(this.settingsFile, next); return { ok: true, settings: next };
   }
+  getProviderStatus() { const selected = this.settings().provider; const configured = this.credentials.configured("openai"); return { ok: true, provider: { selected, offline: selected === "offline", openai: { configured, status: selected === "openai" ? (configured ? "ready" : "configuration-required") : "inactive" }, local_provider: { supported: false, status: "not-available" } } }; }
+  configureOpenAI({ api_key, model = null }) { const stored = this.credentials.set("openai", api_key); if (!stored.ok) return publicError(stored.code, "Enter a valid OpenAI key."); const next = { ...this.settings(), provider: "openai", input_mode: "natural" }; if (model && typeof model === "string" && model.length <= 120) next.openai_model = model; writeJson(this.settingsFile, next); return { ok: true, provider: { configured: true, persistent: stored.persistent } }; }
+  removeOpenAIKey() { this.credentials.remove("openai"); const next = { ...this.settings(), provider: "offline", input_mode: "structured" }; delete next.openai_model; writeJson(this.settingsFile, next); return { ok: true }; }
+  testProvider() { const status = this.getProviderStatus().provider; if (status.selected === "offline") return { ok: true, status: "ready", message: "Offline structured play is ready." }; if (!status.openai.configured) return publicError("PROVIDER_CONFIGURATION_REQUIRED", "OpenAI needs a key. You can continue offline at any time."); return { ok: true, status: "ready", message: "OpenAI is configured. Connection is tested when you choose natural-language input." }; }
+  renameWorld({ world_id, name }) { if (!friendlyName(name)) return publicError("WORLD_NAME_INVALID", "Choose a world name between 1 and 80 characters."); const data = this.metadata(); if (!data.worlds[world_id]) return publicError("WORLD_NOT_FOUND", "This world no longer exists."); data.worlds[world_id].name = name.trim(); this.writeMetadata(data); return { ok: true, world: this.loadWorld({ world_id }).world }; }
+  restoreBackup({ world_id, confirmed = false }) { if (confirmed !== true) return publicError("RESTORE_CONFIRMATION_REQUIRED", "Confirm that restoring the previous save may lose recent changes."); try { const backup = this.backupFile(world_id); if (!fs.existsSync(backup)) return publicError("BACKUP_UNAVAILABLE", "No previous save is available for this world."); history.loadWorld(backup); fs.copyFileSync(backup, this.worldFile(world_id)); return { ok: true, world: this.loadWorld({ world_id }).world }; } catch { return publicError("BACKUP_RESTORE_FAILED", "The previous save could not be restored safely."); } }
+  exportBrokenWorld({ world_id, destination }) { try { const source = this.worldFile(world_id); if (!destination || !path.isAbsolute(destination) || !fs.existsSync(source)) return publicError("EXPORT_DESTINATION_INVALID", "Choose a destination for this world file."); fs.copyFileSync(source, destination); return { ok: true, file: destination }; } catch { return publicError("EXPORT_FAILED", "The world file could not be copied."); } }
+  getDiagnostics() { const status = this.getProviderStatus().provider; return { ok: true, diagnostics: { app_version: packageVersion, platform: process.platform, provider: status.selected, provider_status: status.offline ? "offline" : status.openai.status, save_directory: "managed application data", credentials_configured: status.openai.configured, telemetry: "disabled" } }; }
   serializeSession(world, mode, entry) { if (entry.kind === "bootstrap") return { version: 1, mode, kind: entry.kind, payload: bootstrap.saveRun(entry.run) }; if (entry.kind === "lost") return { version: 1, mode, kind: entry.kind, payload: clone(entry.run) }; return { version: 1, mode, kind: entry.kind, payload: clone(entry) }; }
   restoreSession(world, mode, saved) { if (saved?.mode !== mode) return null; if (saved.kind === "bootstrap") { const restored = bootstrap.resumeRun(saved.payload, { world }); return restored.ok ? { kind: "bootstrap", run: restored.run } : null; } if (saved.kind === "lost") return { kind: "lost", run: saved.payload }; if (saved.kind === "nullzone") return { kind: "nullzone", run_id: saved.payload.run_id }; if (saved.kind === "beck") return { kind: "beck", run_id: saved.payload.run_id }; return null; }
   session(worldId, mode) { return this.sessions.get(`${worldId}:${mode}`) ?? null; }
@@ -117,6 +130,11 @@ class DesktopService {
       else result = verb === "REVIEW_REPORT" ? { ok: true, result: desk.projection(world) } : verb === "ADVANCE" ? desk.advance(world, entry.run_id) : { ok: false, code: "ACTION_UNAVAILABLE" };
       if (!result.ok) return publicError(result.error?.code ?? result.code ?? "ACTION_REJECTED", result.error?.public_reason ?? result.public_reason ?? "That action is not available right now."); this.persistSession(world, mode, entry); return { ok: true, result: { outcome: result.outcome ?? "succeeded", public_reason: result.result?.public_reason ?? result.public_reason ?? null }, projection: this.projectionFor(world, mode, entry) };
     } catch (error) { this.log(`action failed: ${error.message}`); return publicError("ACTION_RUNTIME_ERROR", "Yellow Beast could not complete that action safely."); }
+  }
+  async submitNatural({ world_id, mode, text }) {
+    if (mode !== "field-researcher") return publicError("NATURAL_INPUT_UNAVAILABLE", "Natural-language input is currently available for Clear-Q4 only. Structured controls remain available in every role.");
+    if (this.settings().provider !== "openai") return publicError("PROVIDER_UNAVAILABLE", "Enable OpenAI in Settings, or use the structured controls below.");
+    try { const world = this.getWorld(world_id); const entry = this.session(world_id, mode) ?? this.restoreSession(world, mode, readJson(this.sessionFile(world_id, mode), null)); if (!entry || entry.kind !== "bootstrap") return publicError("SESSION_NOT_FOUND", "Start or continue this session first."); const key = this.credentials.get("openai"); if (!key) return publicError("PROVIDER_CONFIGURATION_REQUIRED", "OpenAI needs a key. Your world is safe; you can continue offline."); const provider = createOpenAIProvider({ apiKey: key, model: this.settings().openai_model || undefined, timeout: 15000 }); const result = await executeNatural({ run: entry.run, provider, player_text: text }); this.persistSession(world, mode, entry); return { ok: true, result: { intent: result.intent.kind, steps: result.steps.map((step) => ({ outcome: step.outcome, public_reason: step.public_reason, narration: step.narration?.text ?? null })), narration: result.narration?.text ?? null }, projection: this.projectionFor(world, mode, entry) }; } catch (error) { this.log(`provider unavailable: ${error.message}`); return publicError("PROVIDER_UNAVAILABLE", "AI response unavailable. Your world is safe. Continue using structured controls or try again."); }
   }
   shutdown() { for (const [key, entry] of this.sessions) { const [worldId, mode] = key.split(":"); try { this.persistSession(this.getWorld(worldId), mode, entry); } catch (error) { this.log(`shutdown save failed: ${error.message}`); } } return { ok: true }; }
 }

@@ -7,7 +7,7 @@ const test = require("node:test");
 const { DesktopService, MODES } = require("../desktop/service");
 const surfaces = require("../desktop/renderer/surfaces");
 
-function fixture() { const root = fs.mkdtempSync(path.join(os.tmpdir(), "yb-desktop-")); return { root, service: new DesktopService({ appDataPath: root }) }; }
+function fixture({ secure = false } = {}) { const root = fs.mkdtempSync(path.join(os.tmpdir(), "yb-desktop-")); const credentials = secure ? new (require("../desktop/credentials").CredentialStore)({ safeStorage: { isEncryptionAvailable: () => true, encryptString: (value) => Buffer.from(`safe:${value}`), decryptString: (value) => value.toString().slice(5) }, file: path.join(root, "credentials", "openai.bin") }) : undefined; return { root, service: new DesktopService({ appDataPath: root, credentials }) }; }
 test("desktop service supports offline first-run world and field lifecycle", () => {
   const { root, service } = fixture();
   assert.equal(service.getAppInfo().app.first_run_complete, false);
@@ -60,4 +60,29 @@ test("one desktop world retains canonical state while every mode uses an offline
   const stranded = service.startSession({ world_id: world.id, mode: "lost", seed: "lost" }); assert.equal(service.submitAction({ world_id: world.id, mode: "lost", action: "STRAND" }).ok, true);
   assert.equal(field.projection.world.id, beck.projection.world.id); assert.equal(beck.projection.world.id, civilian.projection.world.id); assert.equal(civilian.projection.world.id, stranded.projection.world.id);
   const reopened = new DesktopService({ appDataPath: root }); assert.equal(reopened.loadWorld({ world_id: world.id }).ok, true); assert.equal(reopened.listWorlds().worlds.length, 1);
+});
+test("autosave retains one accepted action and previous-good recovery restores a damaged latest world", () => {
+  const { root, service } = fixture(); const world = service.createWorld({ name: "Recovery", seed: "recovery" }).world;
+  service.startSession({ world_id: world.id, mode: "field-researcher", seed: "recovery" }); assert.equal(service.submitAction({ world_id: world.id, mode: "field-researcher", action: "LOOK" }).ok, true);
+  const file = path.join(root, "worlds", `${world.id}.json`); const saved = fs.readFileSync(file, "utf8"); assert.ok(fs.existsSync(`${file}.previous-good`));
+  fs.writeFileSync(file, "{ damaged"); assert.equal(service.loadWorld({ world_id: world.id }).ok, false); assert.equal(service.restoreBackup({ world_id: world.id, confirmed: true }).ok, true);
+  assert.equal(service.loadWorld({ world_id: world.id }).ok, true); assert.notEqual(fs.readFileSync(file, "utf8"), "{ damaged"); assert.ok(saved.includes(world.id));
+});
+test("future saves and malformed imports fail safely without overwriting a world", () => {
+  const { root, service } = fixture(); const world = service.createWorld({ name: "Versions", seed: "versions" }).world; const file = path.join(root, "worlds", `${world.id}.json`); const original = fs.readFileSync(file, "utf8");
+  fs.writeFileSync(file, JSON.stringify({ version: "yellow-beast-world-history@future", world_id: world.id })); assert.equal(service.loadWorld({ world_id: world.id }).error.code, "WORLD_VERSION_UNSUPPORTED"); fs.writeFileSync(file, original);
+  const malformed = path.join(root, "bad.yellow-beast.json"); fs.writeFileSync(malformed, JSON.stringify({ hello: "world" })); assert.equal(service.importWorld({ source: malformed }).ok, false); assert.equal(service.loadWorld({ world_id: world.id }).ok, true);
+});
+test("OpenAI credentials are host-only and excluded from exported worlds and diagnostics", () => {
+  const { root, service } = fixture({ secure: true }); const secret = "sk-test-secret-never-export"; const world = service.createWorld({ name: "Secrets", seed: "secrets" }).world;
+  assert.equal(service.configureOpenAI({ api_key: secret, model: "test-model" }).ok, true); assert.equal(service.getSettings().provider.openai.configured, true); assert.doesNotMatch(JSON.stringify(service.getSettings()), new RegExp(secret));
+  const exported = path.join(root, "export.yellow-beast.json"); assert.equal(service.exportWorld({ world_id: world.id, destination: exported }).ok, true); assert.doesNotMatch(fs.readFileSync(exported, "utf8"), new RegExp(secret)); assert.doesNotMatch(JSON.stringify(service.getDiagnostics().diagnostics), new RegExp(secret));
+  assert.equal(service.removeOpenAIKey().ok, true); assert.equal(service.getProviderStatus().provider.openai.configured, false);
+});
+test("provider selection is global presentation state and leaves canonical structured actions unchanged", () => {
+  const { service } = fixture({ secure: true }); const world = service.createWorld({ name: "Provider independence", seed: "provider" }).world;
+  service.startSession({ world_id: world.id, mode: "field-researcher", seed: "provider" }); const before = service.loadWorld({ world_id: world.id }).summary;
+  assert.equal(service.configureOpenAI({ api_key: "sk-provider-test" }).ok, true); assert.equal(service.getProviderStatus().provider.selected, "openai"); assert.equal(service.updateSettings({ settings: { provider: "offline", input_mode: "structured" } }).ok, true);
+  assert.equal(service.submitAction({ world_id: world.id, mode: "field-researcher", action: "LOOK" }).ok, true); const after = service.loadWorld({ world_id: world.id }).summary;
+  assert.equal(before.world_id, after.world_id); assert.equal(service.getProviderStatus().provider.selected, "offline"); assert.equal(service.testProvider().ok, true);
 });

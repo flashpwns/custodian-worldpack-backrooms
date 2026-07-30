@@ -64,6 +64,38 @@ presentation-only mappings of the bridge contract. Shared typography, spacing,
 status, panel, and focus tokens give the four restrained mode identities a
 coherent accessible foundation.
 
+## Settings, saves, and recovery
+
+Settings are global application state, never canonical world state. Offline /
+Structured is the default and fully playable. OpenAI is optional: the renderer
+only learns whether a key is configured, while Electron's host uses OS-backed
+`safeStorage` to encrypt the credential blob. If secure storage is unavailable,
+the key is kept only in host memory rather than written as plaintext. Local
+provider support is intentionally not displayed as a selectable feature because
+no safe runtime adapter exists yet.
+
+Provider selection changes optional natural-language interpretation and narration
+only. Structured actions and their history remain canonical and provider
+independent. Safe provider context is built from the existing observer-safe
+runtime context; hidden topology, private records, and omniscient history are
+not supplied. Clear-Q4 exposes the existing validated natural-language adapter
+only when OpenAI is enabled; its proposal is checked against the current safe
+view before canonical execution. A provider problem leaves the saved world
+intact and users can continue offline.
+
+Canonical world writes use a temporary file, validation, and replacement. Before
+replacing an existing world, the desktop retains a single `previous-good`
+backup. Session and metadata writes use the same atomic replacement pattern.
+The service classifies malformed and unsupported-newer worlds before invoking
+the runtime, exposes a confirmed previous-save restore, and never silently
+resets a damaged world.
+
+The launcher provides import/export through native dialogs. Imports are parsed
+and runtime-validated before entering managed storage; canonical identity
+conflicts are rejected. Exports contain only portable canonical world data—not
+settings, logs, credentials, or machine paths. Diagnostics are sanitized and
+report version/platform/provider/save status without secrets.
+
 ## Development
 
 `npm run desktop:dev` launches the Electron host. `npm run desktop:test` tests
