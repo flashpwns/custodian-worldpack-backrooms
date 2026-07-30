@@ -1,0 +1,8 @@
+{
+  "version": "context-input-gaps/v1",
+  "items": [
+    {"id":"archive-kane-facility-old-general","category":"archive/community","evidence":"Named in prior project context but no archive file or stable source record is present in the checkout.","disposition":"missing-manual-input","blocks_yb17":false,"required_input":"Provide the archive or a provenance-bearing index; until then it remains reference-only and cannot affect simulation."},
+    {"id":"kelowna-branch-image-gallery","category":"image/reference batch","evidence":"Historically named image-gallery context has no gallery metadata or image-derived observation record in the checkout.","disposition":"missing-manual-input","blocks_yb17":false,"required_input":"Provide gallery provenance and a bounded observation index if it should be reviewed."},
+    {"id":"transcript-overflow-reference","category":"transcript","evidence":"Overflow is named in historical context but no registered source or transcript metadata exists in the checkout.","disposition":"missing-manual-input","blocks_yb17":false,"required_input":"Provide an official source locator or transcript provenance before intake."}
+  ]
+}

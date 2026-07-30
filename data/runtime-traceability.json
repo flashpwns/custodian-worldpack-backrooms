@@ -1,0 +1,13 @@
+{
+  "version": "runtime-traceability/v1",
+  "records": [
+    {"id":"threshold-baseline-world","path":"scenario.json","authority":"scenario-optional","provenance":"threshold-baseline-is-pack-original"},
+    {"id":"field-expedition-layer","path":"tools/expedition.js","authority":"scenario-optional","provenance":"threshold-baseline-expedition-procedure"},
+    {"id":"field-observation","path":"environment/conditions.json","authority":"authoritative","provenance":"lighting-survey-depicts-local-fixture-and-tile-inspection"},
+    {"id":"local-architecture","path":"architecture/environments.json","authority":"authoritative","provenance":"pitfalls-depicts-column-corridor"},
+    {"id":"local-topology","path":"architecture/local-topology.json","authority":"authoritative","provenance":"ff2-local-transition-is-source-local-discontinuity"},
+    {"id":"anomaly-observation","path":"anomalies/observations.json","authority":"authoritative","provenance":"ff2-depicts-marked-local-surface-discontinuity"},
+    {"id":"transition-fixture","path":"transitions/observations.json","authority":"scenario-optional","provenance":"threshold-baseline-return-is-pack-original"},
+    {"id":"evidence-fixture","path":"operations/evidence-objects.json","authority":"scenario-optional","provenance":"record-review-smoke-test-lifecycle-is-pack-original"}
+  ]
+}
