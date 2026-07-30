@@ -215,7 +215,7 @@ scripts.push("tests/y23-encounter.test.js", "tests/y23-behavior.test.js");
 scripts.push("tests/y24-institution.test.js");
 scripts.push("tools/institution-report.js");
 scripts.push("tests/y25-gameplay.test.js", "tools/gameplay.js", "tools/gameplay-scenarios.js", "tools/gameplay-report.js");
-scripts.push("desktop/main.js", "desktop/preload.js", "desktop/service.js", "desktop/credentials.js", "desktop/renderer/renderer.js", "desktop/renderer/surfaces.js", "tools/build-desktop.js", "tests/y26-desktop.test.js");
+scripts.push("desktop/main.js", "desktop/preload.js", "desktop/service.js", "desktop/credentials.js", "desktop/package-smoke.js", "desktop/renderer/renderer.js", "desktop/renderer/surfaces.js", "tools/build-desktop.js", "tools/verify-desktop-artifact.js", "tests/y26-desktop.test.js");
 for (const relative of scripts) {
   const content = fs.readFileSync(path.join(root, relative), "utf8");
   assert.doesNotMatch(content, /custodian\/(runtime|state|tools)/, `${relative} uses only public Custodian imports`);
@@ -224,6 +224,6 @@ for (const relative of scripts) {
 // audited by tools/verify-alpha-artifact.js, not executable world-pack source.
 const packFiles = fs.readdirSync(root, { recursive: true }).filter((entry) => entry.endsWith(".js") && !entry.startsWith("node_modules/") && !entry.startsWith("dist/"));
 assert.deepEqual(packFiles.sort(), scripts.sort(), "Yellow Beast contains no executable world-pack logic");
-const prohibitedRawMedia = fs.readdirSync(root, { recursive: true }).filter((entry) => /\.(mp4|mov|webm|mkv|jpg|jpeg|png|gif|webp|mp3|wav|pdf)$/i.test(entry) && !entry.startsWith("dist/"));
+const prohibitedRawMedia = fs.readdirSync(root, { recursive: true }).filter((entry) => /\.(mp4|mov|webm|mkv|jpg|jpeg|png|gif|webp|mp3|wav|pdf)$/i.test(entry) && !entry.startsWith("dist/") && !entry.startsWith("node_modules/"));
 assert.deepEqual(prohibitedRawMedia, [], "Yellow Beast contains no copied raw source media or archives");
 console.log("validated Yellow Beast canon intake assets and baseline manifest");

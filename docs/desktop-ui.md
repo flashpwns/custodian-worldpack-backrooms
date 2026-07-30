@@ -109,3 +109,12 @@ Pass 3 adds provider settings, autosave/recovery UX, polished import/export,
 and usability hardening. Pass 4 handles native packaging and fresh-machine
 validation. A YB-28 candidate is profiling large timeline/projection composition
 before adding richer archived-history views.
+
+## Alpha distribution
+
+`npm run desktop:package -- --mac zip` or `npm run desktop:package -- --win zip`
+creates a native Electron artifact; `npm run desktop:verify` performs an offline
+four-mode create/action/save/resume smoke through the bundled runtime. Packages
+are unsigned in this alpha because no valid signing identity/certificate is
+available. See [desktop distribution](desktop-distribution.md) for the compact
+handoff checklist and expected Gatekeeper/SmartScreen limitation.
