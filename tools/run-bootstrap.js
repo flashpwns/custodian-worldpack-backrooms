@@ -79,7 +79,7 @@ function look(runValue) {
   const run = normalizeRun(runValue);
   const observer = run.session.startup.player.observer_id;
   if (run.procedural) {
-    const generator = generatorFor(run.procedural); const view = generator.visible(run.procedural, observer);
+    const generator = generatorFor(run.procedural); const view = generator.visible(run.procedural, observer); if (generator.VERSION === proceduralV2.VERSION) { const local = generator.observe(run.procedural, observer, run.profile_id); view.landmark = local.landmark; view.objects = local.objects; view.environment = local.environment; view.route_character = local.route_character; }
     const aliases = Object.fromEntries([...view.features.map((feature) => [feature.alias, feature.alias]), ...view.exits.map((exit) => [exit.alias, exit.alias])]);
     run.aliases = aliases;
     return { outcome: "succeeded", observer_id: observer, kind: "look", view, targets: Object.keys(aliases).map((alias) => ({ alias })), aliases: Object.keys(aliases).map((alias) => ({ alias, ref: aliases[alias] })), public_reason: null, generator_version: generator.VERSION };
