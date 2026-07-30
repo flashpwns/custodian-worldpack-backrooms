@@ -7,9 +7,11 @@ const { stdin, stdout } = require("node:process");
 const { startRun, status, act, saveRun, resumeRun } = require("./run-bootstrap");
 const { executeNatural } = require("./ai-adapter");
 const { createMockProvider } = require("./ai-mock-provider");
+const { createOpenAIProvider } = require("./ai-openai-provider");
 const { resolveAppPaths } = require("./launcher-paths");
 
 const defaults = Object.freeze({ input_mode: "structured", provider: "offline-mock", narration: true });
+function providerForEnvironment() { return process.env.YELLOW_BEAST_AI_PROVIDER === "openai" ? createOpenAIProvider() : createMockProvider(); }
 function ensureData(paths) { fs.mkdirSync(paths.saves, { recursive: true }); fs.mkdirSync(paths.logs, { recursive: true }); }
 function loadConfig(paths) {
   ensureData(paths);
@@ -29,7 +31,7 @@ async function runCommand({ paths, profile = "field-researcher", seed = "alpha",
   try {
     if (resume) { const restored = resumeRun(readSave(savePath(paths, resume))); if (!restored.ok) throw new Error("save is incompatible or corrupted"); run = restored.run; }
     else run = startRun({ profile, seed }).run;
-    const result = natural ? await executeNatural({ run, provider: createMockProvider(), player_text: natural }) : action ? act(run, action.toUpperCase(), target) : { ok: true };
+    const result = natural ? await executeNatural({ run, provider: providerForEnvironment(), player_text: natural }) : action ? act(run, action.toUpperCase(), target) : { ok: true };
     let saved = null;
     if (save) { saved = savePath(paths, save === true ? "clear-q4" : save); fs.writeFileSync(saved, `${JSON.stringify(saveRun(run), null, 2)}\n`); }
     return { ok: true, warning: loaded.warning, version: "Yellow Beast 0.2.0-alpha", custodian: "Custodian 1.5.0", status: status(run), result: natural ? { intent: result.intent, steps: result.steps } : concise(result), save: saved, paths: { saves: paths.saves, config: paths.config, logs: paths.logs } };
@@ -56,7 +58,7 @@ async function interactive(paths) {
     if (!input || input.toUpperCase() === "QUIT") break;
     if (input.toUpperCase() === "SAVE") { fs.writeFileSync(savePath(paths), `${JSON.stringify(saveRun(run), null, 2)}\n`); console.log(`Saved to ${savePath(paths)}`); continue; }
     const [verb, target] = input.split(/\s+/, 2); const structured = ["LOOK", "MOVE", "INSPECT", "USE"].includes(verb.toUpperCase());
-    const result = structured ? act(run, verb.toUpperCase(), target) : await executeNatural({ run, provider: createMockProvider(), player_text: input });
+    const result = structured ? act(run, verb.toUpperCase(), target) : await executeNatural({ run, provider: providerForEnvironment(), player_text: input });
     console.log(JSON.stringify(structured ? concise(result) : { intent: result.intent, steps: result.steps }, null, 2));
     console.log(JSON.stringify(status(run), null, 2));
   }
@@ -70,4 +72,4 @@ async function main() {
   console.log(JSON.stringify(output, null, 2)); if (!output.ok) process.exitCode = 1;
 }
 if (require.main === module) main().catch((error) => { console.error("Yellow Beast launcher failed safely:", error.message); process.exitCode = 1; });
-module.exports = { resolveAppPaths, ensureData, loadConfig, savePath, runCommand };
+module.exports = { resolveAppPaths, ensureData, loadConfig, savePath, runCommand, providerForEnvironment };

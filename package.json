@@ -1,6 +1,6 @@
 {
   "name": "yellow-beast",
-  "version": "0.2.0-alpha",
+  "version": "0.2.0-alpha.1",
   "private": true,
   "description": "Unofficial declarative Kane Pixels Backrooms world pack for Custodian.",
   "license": "MIT",
@@ -24,9 +24,12 @@
     "verify:alpha": "node tools/verify-alpha-artifact.js",
     "run-report": "node tools/run-report.js",
     "check-admission": "node tools/check-admission.js scenarios/threshold-baseline-admission.json",
-    "test": "npm run validate-assets && npm run validate-contracts && node --test tests/intake-model.test.js tests/operations-model.test.js tests/recovered-records.test.js tests/architecture-model.test.js tests/survey-model.test.js tests/anomaly-model.test.js tests/corpus-transition-model.test.js tests/profile-model.test.js tests/run-bootstrap.test.js tests/y12b.test.js tests/y12c-playable-alpha.test.js tests/y13-ai-interface.test.js tests/y14-packaging.test.js && npm run check-admission && npm run evidence-report && npm run operations-report && npm run records-report && npm run architecture-report && npm run survey-report && npm run anomaly-report && npm run corpus-report && npm run transition-report && npm run profile-report && npm run run-report && npm run conformance"
+    "test": "npm run validate-assets && npm run validate-contracts && node --test tests/intake-model.test.js tests/operations-model.test.js tests/recovered-records.test.js tests/architecture-model.test.js tests/survey-model.test.js tests/anomaly-model.test.js tests/corpus-transition-model.test.js tests/profile-model.test.js tests/run-bootstrap.test.js tests/y12b.test.js tests/y12c-playable-alpha.test.js tests/y13-ai-interface.test.js tests/y14-packaging.test.js tests/y15-openai-provider.test.js && npm run check-admission && npm run evidence-report && npm run operations-report && npm run records-report && npm run architecture-report && npm run survey-report && npm run anomaly-report && npm run corpus-report && npm run transition-report && npm run profile-report && npm run run-report && npm run conformance"
   },
   "devDependencies": {
     "custodian": "github:flashpwns/custodian#9850ff71a43dcd308f50e812a4e7d0b4249ff815"
+  },
+  "dependencies": {
+    "openai": "^7.1.0"
   }
 }
