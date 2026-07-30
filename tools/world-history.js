@@ -22,4 +22,4 @@ function knownRegions(world, profile) { assertWorld(world); if (profile !== "fie
 function summary(world, profile) { assertWorld(world); return { world_id: world.world_id, version: world.version, completed_runs: Object.values(world.runs).filter((run) => run.history_ingested).length, institutional_regions: knownRegions(world, profile).length, archived_expeditions: Object.values(world.runs).filter((run) => run.expedition_id).length }; }
 function saveWorld(file, world) { assertWorld(world); fs.mkdirSync(path.dirname(file), { recursive: true }); fs.writeFileSync(file, `${JSON.stringify(world, null, 2)}\n`); }
 function loadWorld(file) { return assertWorld(JSON.parse(fs.readFileSync(file, "utf8"))); }
-module.exports = { VERSION, createWorld, assertWorld, beginRun, ingestRun, promoteRegion, regionId, leaveRemnant, visibleArtifacts, recoverArtifact, knownRegions, summary, saveWorld, loadWorld };
+module.exports = { VERSION, createWorld, assertWorld, event, beginRun, ingestRun, promoteRegion, regionId, leaveRemnant, visibleArtifacts, recoverArtifact, knownRegions, summary, saveWorld, loadWorld };

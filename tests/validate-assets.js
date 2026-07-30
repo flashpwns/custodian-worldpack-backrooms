@@ -207,6 +207,7 @@ scripts.push("tests/y16-expedition.test.js", "tools/expedition.js", "tools/exped
 scripts.push("tests/y165-context-closure.test.js", "tools/corpus-coverage-report.js");
 scripts.push("tests/y17-procedural-complex.test.js", "tools/procedural-complex.js", "tools/procedural-report.js");
 scripts.push("tests/y18-world-history.test.js", "tools/world-history.js", "tools/world-history-report.js");
+scripts.push("tests/y19-becks-desk.test.js", "tools/becks-desk.js", "tools/management-report.js");
 for (const relative of scripts) {
   const content = fs.readFileSync(path.join(root, relative), "utf8");
   assert.doesNotMatch(content, /custodian\/(runtime|state|tools)/, `${relative} uses only public Custodian imports`);
