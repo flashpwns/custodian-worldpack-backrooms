@@ -1,22 +1,24 @@
 # Distribution gap audit
 
-The playable alpha is developer-downloadable through Node and `npm run play`; saves are portable JSON envelopes under `.saves/` by default when requested.
+YB-14 produces self-contained portable app directories with a bundled Node runtime, resolved Custodian 1.5.0 dependency, offline structured commands, and the clearly labelled Offline Interpreter. No network or API key is needed to play Async: Clear-Q4.
 
-## Critical
+## Blocks private/test downloadable alpha
 
-- End-user installation still requires Node, npm, and a GitHub-backed Custodian dependency.
-- No signed standalone macOS/Windows executable or one-click launcher exists.
-- A network AI provider is not packaged or configured; the offline structured and deterministic mock modes remain the playable fallback.
+Nothing identified. macOS is built and smoke-tested locally on the host architecture; GitHub Actions builds and smoke-tests the Windows artifact. Artifacts remain unsigned.
 
-## Important
+## Blocks public unsigned alpha
 
-- Package a stable CLI entry point and choose an OS-appropriate per-user save directory.
-- Publish/version Custodian and Yellow Beast packaging rather than relying on a Git commit dependency.
-- Add end-user error/recovery UX for corrupt or incompatible saves.
-- Future AI providers need explicit configuration, secret storage outside saves, consent, and offline structured-command fallback.
-- Provider/model selection, API-key onboarding, rate-limit/cost messaging, timeout recovery, and packaged-environment secret handling need end-user design.
+- Human review and manual upload of the CI-built macOS/Windows artifacts is still required.
+- Windows artifact execution has CI smoke coverage, not local Windows gameplay verification.
+- Clear Gatekeeper/SmartScreen instructions and support expectations must accompany distribution.
+
+## Blocks polished signed release
+
+- macOS code signing and notarization; Windows code signing.
+- Installer/auto-update polish, richer launcher UX, and a stable per-user save migration UI.
+- Optional real-provider onboarding, key storage, cost/rate-limit UX, and consent.
+- More playable scenarios and deferred verbs.
 
 ## Nice-to-have
 
-- npm distribution, executable bundling, macOS notarization, Windows signing, and a desktop UI path.
-- Graphical presentation and optional AI narration after the structured command interface remains usable offline.
+- Desktop UI, graphical presentation, AI narration beyond the offline mock, npm distribution, and platform-native installers.
