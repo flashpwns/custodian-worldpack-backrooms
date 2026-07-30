@@ -1,0 +1,12 @@
+"use strict";
+const INTENT_SCHEMA = { type: "object", additionalProperties: false, properties: { kind: { type: "string", enum: ["action", "compound", "clarification", "invalid"] }, actions: { type: "array", items: { type: "object", additionalProperties: false, properties: { verb: { type: "string", enum: ["LOOK", "MOVE", "INSPECT", "USE"] }, target_alias: { type: "string" }, parameters: { type: "object", additionalProperties: false } }, required: ["verb", "parameters"] }, maxItems: 4 }, clarification: { type: ["object", "null"], additionalProperties: false, properties: { message: { type: "string" }, candidates: { type: "array", items: { type: "string" } } }, required: ["message", "candidates"] }, public_reason: { type: ["string", "null"] } }, required: ["kind", "actions", "clarification", "public_reason"] };
+function createOpenAIProvider({ apiKey = process.env.OPENAI_API_KEY, model = process.env.YELLOW_BEAST_AI_MODEL || "gpt-5.6-luna", client, timeout = 15000 } = {}) {
+  if (!apiKey && !client) throw new Error("OpenAI provider is not configured. Set OPENAI_API_KEY or use Offline Interpreter.");
+  const sdk = client || new (require("openai"))({ apiKey, timeout, maxRetries: 0 });
+  async function request(instructions, payload, format) { const response = await sdk.responses.create({ model, store: false, instructions, input: JSON.stringify(payload), text: { format } }); if (typeof response?.output_text !== "string") throw new Error("OpenAI response had no text output"); return response.output_text; }
+  return { name: "openai", model,
+    async interpret({ player_text, context }) { return JSON.parse(await request("Return only the requested JSON. Resolve intent only from supplied observer-safe context. Never invent targets, verbs, facts, or authority.", { player_text, context }, { type: "json_schema", name: "yellow_beast_intent", strict: true, schema: INTENT_SCHEMA })); },
+    async narrate({ envelope, tone }) { return JSON.parse(await request("Write one concise player-facing sentence using only the observer-safe envelope. Do not add facts or change success/failure.", { envelope, tone }, { type: "json_schema", name: "yellow_beast_narration", strict: true, schema: { type: "object", additionalProperties: false, properties: { text: { type: "string" } }, required: ["text"] } })); }
+  };
+}
+module.exports = { createOpenAIProvider, INTENT_SCHEMA };
