@@ -7,6 +7,10 @@
 - Adds the deliberately minimal `threshold-baseline` conformant scenario.
 - Adds reviewed source-intake records, claim review states, conflict links, and
   scenario-bound canon admission validation.
+# 0.6.0-alpha
+
+- Adds Async: Beck's Desk management projection, teams, operations, resources, budget, reports, research, recovery, and survey-outpost events within persistent world history.
+
 # 0.5.0-alpha
 
 - Adds versioned persistent world history, promoted procedural regions, expedition/evidence ingestion, and bounded cross-run remnant fixtures.

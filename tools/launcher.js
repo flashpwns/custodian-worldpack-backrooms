@@ -10,6 +10,7 @@ const { createMockProvider } = require("./ai-mock-provider");
 const { createOpenAIProvider } = require("./ai-openai-provider");
 const { resolveAppPaths } = require("./launcher-paths");
 const worldHistory = require("./world-history");
+const desk = require("./becks-desk");
 const packageVersion = require("../package.json").version;
 
 const defaults = Object.freeze({ input_mode: "structured", provider: "offline-mock", narration: true });
@@ -47,6 +48,33 @@ async function runCommand({ paths, profile = "field-researcher", seed = "alpha",
     return { ok: true, warning: loaded.warning || selected?.warning || null, version: `Yellow Beast ${packageVersion}`, custodian: "Custodian 1.5.0", status: status(run), result: natural ? { intent: result.intent, steps: result.steps } : concise(result), world: world ? worldHistory.summary(world, profile) : null, save: saved, paths: { saves: paths.saves, worlds: paths.worlds, config: paths.config, logs: paths.logs } };
   } catch (error) { log(paths, `launch failure: ${error.message}`); return { ok: false, warning: loaded.warning, error: "Yellow Beast could not start that run. Check the save/configuration and try again.", detail: error.message, paths: { saves: paths.saves, config: paths.config, logs: paths.logs } }; }
 }
+function managementAction(world, runId, args) {
+  const action = String(option(args, "--management-action") || "REVIEW").toUpperCase();
+  const members = String(option(args, "--members") || "").split(",").filter(Boolean);
+  const common = { id: option(args, "--id"), team_id: option(args, "--team"), region_id: option(args, "--region"), resource: option(args, "--resource"), quantity: Number(option(args, "--quantity") || 1), members, topic: option(args, "--topic") };
+  if (action === "REVIEW") return { ok: true, outcome: "succeeded", result: desk.projection(world) };
+  if (action === "ADVANCE") return desk.advance(world, runId);
+  if (action === "TEAM") return desk.createTeam(world, runId, common);
+  if (action === "ALLOCATE") return desk.allocate(world, runId, common);
+  if (action === "DISPATCH") return desk.dispatch(world, runId, common);
+  if (action === "RECALL") return desk.recall(world, runId, common.id);
+  if (action === "PRIORITIZE") return desk.prioritize(world, runId, common.topic);
+  if (action === "BUILD") return desk.buildOutpost(world, runId, common);
+  return { ok: false, error: { code: "MANAGEMENT_ACTION_UNAVAILABLE", public_reason: "Use REVIEW, TEAM, ALLOCATE, DISPATCH, RECALL, PRIORITIZE, BUILD, or ADVANCE." } };
+}
+async function runManagementCommand({ paths, args }) {
+  const worldName = option(args, "--world");
+  if (!worldName) return { ok: false, error: "Beck's Desk requires --world <name>; management always operates on persistent history." };
+  try {
+    ensureData(paths);
+    const worldFile = path.join(paths.worlds, `${String(worldName).replace(/[^a-z0-9_-]/gi, "-")}.json`);
+    const world = fs.existsSync(worldFile) ? worldHistory.loadWorld(worldFile) : worldHistory.createWorld({ id: String(worldName), seed: option(args, "--seed") || "management" });
+    const runId = worldHistory.beginRun(world, { profile: "async-command", scenario: "becks-desk-operations-trial", seed: option(args, "--seed") || "management" });
+    const result = managementAction(world, runId, args);
+    worldHistory.saveWorld(worldFile, world);
+    return { ok: result.ok, version: `Yellow Beast ${packageVersion}`, profile: "Async: Beck's Desk", run_id: runId, result: result.ok ? result : result.error, management: desk.projection(world), world: worldHistory.summary(world, "async-command"), paths: { worlds: paths.worlds } };
+  } catch (error) { log(paths, `management failure: ${error.message}`); return { ok: false, error: "Beck's Desk could not process that management action safely.", detail: error.message }; }
+}
 async function interactive(paths) {
   console.log("YELLOW BEAST — Playable Alpha\nRecommended: Async: Clear-Q4 (PLAYABLE ALPHA)\nOther modes are experimental.");
   const prompt = readline.createInterface({ input: stdin, output: stdout });
@@ -80,8 +108,8 @@ function option(args, name) { const i = args.indexOf(name); return i < 0 ? undef
 async function main() {
   const paths = resolveAppPaths(); const args = process.argv.slice(2);
   if (args.includes("--interactive") || (!args.length && stdin.isTTY)) return interactive(paths);
-  const output = await runCommand({ paths, profile: option(args, "--profile") || "field-researcher", seed: option(args, "--seed") || "alpha", scenario: option(args, "--scenario"), world: option(args, "--world"), region: option(args, "--region"), resume: option(args, "--resume"), save: args.includes("--save") ? option(args, "--save") || true : false, action: option(args, "--action"), target: option(args, "--target"), natural: option(args, "--natural") });
+  const output = args.includes("--management") ? await runManagementCommand({ paths, args }) : await runCommand({ paths, profile: option(args, "--profile") || "field-researcher", seed: option(args, "--seed") || "alpha", scenario: option(args, "--scenario"), world: option(args, "--world"), region: option(args, "--region"), resume: option(args, "--resume"), save: args.includes("--save") ? option(args, "--save") || true : false, action: option(args, "--action"), target: option(args, "--target"), natural: option(args, "--natural") });
   console.log(JSON.stringify(output, null, 2)); if (!output.ok) process.exitCode = 1;
 }
 if (require.main === module) main().catch((error) => { console.error("Yellow Beast launcher failed safely:", error.message); process.exitCode = 1; });
-module.exports = { resolveAppPaths, ensureData, loadConfig, savePath, runCommand, providerForEnvironment, safeProviderForEnvironment };
+module.exports = { resolveAppPaths, ensureData, loadConfig, savePath, runCommand, runManagementCommand, providerForEnvironment, safeProviderForEnvironment };
