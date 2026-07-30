@@ -1,0 +1,69 @@
+{
+  "version": "yellow-beast-entity-definitions@v1",
+  "definitions": [
+    {
+      "id": "still-life-physical-presence",
+      "entity_type": "still-life",
+      "permitted_behavior_states": ["stationary"],
+      "permitted_movement_modes": [],
+      "permitted_perception_channels": [],
+      "interaction_capabilities": [],
+      "persistence": "world-history-backed",
+      "behavior_rule_ids": [],
+      "authority": "scenario-optional",
+      "provenance": "still-life-behavior-authority-ledger"
+    },
+    {
+      "id": "validation-mover",
+      "entity_type": "validation-mover",
+      "permitted_behavior_states": ["stationary", "responding", "moving"],
+      "permitted_movement_modes": ["edge"],
+      "permitted_perception_channels": ["visual"],
+      "interaction_capabilities": ["leave-trace"],
+      "persistence": "world-history-backed",
+      "behavior_rule_ids": ["validation-mover-respond", "validation-mover-move"],
+      "authority": "scenario-optional",
+      "provenance": "pack-original-validation-fixture"
+    }
+  ],
+  "behavior_rules": [
+    {
+      "rule_id": "validation-mover-respond",
+      "entity_type": "validation-mover",
+      "source_state": "stationary",
+      "trigger": "observer-detected",
+      "destination_state": "responding",
+      "required_perception_state": "detected-observer",
+      "environmental_requirements": [],
+      "topology_requirements": [],
+      "action": "none",
+      "priority": 1,
+      "authority": "scenario-optional",
+      "provenance": "pack-original-validation-fixture",
+      "simulation_classification": "validation-only"
+    },
+    {
+      "rule_id": "validation-mover-move",
+      "entity_type": "validation-mover",
+      "source_state": "responding",
+      "trigger": "advance",
+      "destination_state": "moving",
+      "required_perception_state": "detected-observer",
+      "environmental_requirements": [],
+      "topology_requirements": ["traversable-edge"],
+      "action": "move-first-valid-edge",
+      "priority": 1,
+      "authority": "scenario-optional",
+      "provenance": "pack-original-validation-fixture",
+      "simulation_classification": "validation-only"
+    }
+  ],
+  "hazard_definitions": [
+    {
+      "id": "low-visibility",
+      "allowed_consequences": ["route-unavailable", "equipment-consumed", "incapacitated", "run-failed"],
+      "authority": "scenario-optional",
+      "provenance": "pack-original-validation-fixture"
+    }
+  ]
+}
