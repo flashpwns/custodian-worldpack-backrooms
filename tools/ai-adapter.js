@@ -3,7 +3,7 @@
 const { status, act } = require("./run-bootstrap");
 
 const ACTION_KINDS = new Set(["action", "compound", "clarification", "invalid"]);
-const VERBS = new Set(["LOOK", "MOVE", "INSPECT", "USE"]);
+const VERBS = new Set(["LOOK", "MOVE", "INSPECT", "USE", "COMMUNICATE", "RECORD", "WAIT", "RETURN", "ABORT"]);
 
 function hasOnly(object, keys) { return object && typeof object === "object" && !Array.isArray(object) && Object.keys(object).every((key) => keys.has(key)); }
 function buildSafeContext(run) {
@@ -14,7 +14,7 @@ function buildSafeContext(run) {
     lifecycle: current.lifecycle,
     location: current.view.location,
     available_verbs: current.available_verbs,
-    aliases: current.view.targets.map(({ alias }) => ({ alias })),
+    aliases: [...current.view.targets.map(({ alias }) => ({ alias })), ...(current.available_verbs.includes("COMMUNICATE") ? [{ alias: "standard" }, { alias: "teammate" }] : [])],
     known_resources: current.known_resources,
     public_reason: current.view.public_reason
   };

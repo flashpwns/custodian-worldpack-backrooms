@@ -24,7 +24,10 @@ function run(args) { const out = spawnSync(node, [launcher, ...args], { encoding
 run(["--profile", "field-researcher", "--seed", "packaged", "--action", "LOOK", "--save", "cert"]);
 run(["--resume", "cert", "--action", "MOVE", "--save", "cert"]);
 run(["--resume", "cert", "--natural", "check the fixture", "--save", "cert"]);
-const completed = run(["--resume", "cert", "--natural", "use my light", "--save", "cert"]); assert.equal(completed.status.lifecycle, "completed");
-let dev = startRun({ profile: "field-researcher", seed: "packaged" }).run; act(dev, "MOVE"); act(dev, "INSPECT", look(dev).aliases[0].alias); act(dev, "USE");
+run(["--resume", "cert", "--natural", "take a picture of the fixture", "--save", "cert"]);
+run(["--resume", "cert", "--natural", "radio Standard", "--save", "cert"]);
+run(["--resume", "cert", "--action", "USE", "--target", "survey-instrument", "--save", "cert"]);
+const completed = run(["--resume", "cert", "--action", "RETURN", "--save", "cert"]); assert.equal(completed.status.lifecycle, "completed");
+let dev = startRun({ profile: "field-researcher", seed: "packaged" }).run; act(dev, "MOVE"); const target = look(dev).aliases[0].alias; act(dev, "INSPECT", target); act(dev, "RECORD", target); act(dev, "COMMUNICATE", "standard"); act(dev, "USE", "survey-instrument"); act(dev, "RETURN");
 const restored = resumeRun(JSON.parse(fs.readFileSync(path.join(data, "saves", "cert.json"), "utf8"))).run; assert.equal(restored.lifecycle, dev.lifecycle); assert.deepEqual(restored.checklist, dev.checklist);
 console.log(JSON.stringify({ artifact, smoke: "passed", save_restore: "passed", deterministic_wrapper: "passed" }, null, 2));

@@ -14,10 +14,13 @@ The second LOOK lists aliases such as `fixture-1`.
 
 ```sh
 npm run play -- --resume .saves/clear-q4.json --action INSPECT --target fixture-1 --save .saves/clear-q4.json
-npm run play -- --resume .saves/clear-q4.json --action USE --save .saves/clear-q4.json
+npm run play -- --resume .saves/clear-q4.json --action RECORD --target fixture-1 --save .saves/clear-q4.json
+npm run play -- --resume .saves/clear-q4.json --action COMMUNICATE --target standard --save .saves/clear-q4.json
+npm run play -- --resume .saves/clear-q4.json --action USE --target survey-instrument --save .saves/clear-q4.json
+npm run play -- --resume .saves/clear-q4.json --action RETURN --save .saves/clear-q4.json
 ```
 
-The run becomes `completed` after the declared traversal, successful public inspection, and successful field interaction. LOOK/status remain read-only; further mutating actions are rejected. RECORD, COMMUNICATE, and WAIT are intentionally unavailable in this alpha.
+The run becomes `completed` after the declared traversal, survey, field record, Standard check-in, and return decision. LOOK/status remain read-only; further mutating actions are rejected. `WAIT` advances a deterministic expedition interval; `ABORT` ends the expedition with a degraded result.
 
 Custodian's LOOK and INSPECT queries remain read-only. Yellow Beast therefore persists the scenario-local inspection acknowledgement in its versioned save alongside Custodian's public export; it is deterministic across the save/resume comparison and is not a substitute for hidden Custodian state.
 

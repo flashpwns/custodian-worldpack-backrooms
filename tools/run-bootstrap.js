@@ -3,12 +3,12 @@
 const fs = require("node:fs");
 const path = require("node:path");
 const { createSession, exportSession, restoreSession, stableSerialize, getAvailableSessionActions, submitSessionAction, inspectSessionObserver } = require("custodian");
+const { FIELD_SCENARIO, fieldExpedition, event, useEquipment, safeSummary, finalize } = require("./expedition");
 
 const root = path.resolve(__dirname, "..");
 const read = (relative) => JSON.parse(fs.readFileSync(path.join(root, relative), "utf8"));
 const clone = (value) => structuredClone(value);
 const FIELD_PROFILE = "field-researcher";
-const FIELD_SCENARIO = "async-field-intro";
 
 function profileFor(profileId) { return read("profiles/profiles.json").profiles.find((profile) => profile.id === profileId); }
 function startupFor(profileId) {
@@ -45,9 +45,10 @@ function configuredPack(profileId, playerId) {
   }
   return pack;
 }
-function newRun({ profile, seed, session }) {
+function newRun({ profile, seed, session, expedition }) {
   const profileRecord = profileFor(profile);
-  return { version: "yellow-beast-run@v1", profile_id: profile, profile_title: profileRecord.title, scenario: session.scenario.id, seed, session, lifecycle: "active", checklist: { moved: false, inspected: false, used: false }, aliases: {} };
+  const player = session.startup.player.observer_id;
+  return { version: "yellow-beast-run@v2", profile_id: profile, profile_title: profileRecord.title, scenario: session.scenario.id, seed, session, lifecycle: "active", checklist: { moved: false, inspected: false, used: false }, aliases: {}, expedition: expedition ?? (profile === FIELD_PROFILE ? fieldExpedition(player) : null) };
 }
 function startRun({ profile, seed = "yellow-beast-bootstrap" }) {
   const { profile: profileRecord, startup } = startupFor(profile);
@@ -59,7 +60,8 @@ function startRun({ profile, seed = "yellow-beast-bootstrap" }) {
   return { ok: restored.ok, session: result.session, run, restored_equivalent: restored.ok && stableSerialize(restored.session) === stableSerialize(result.session), summary: { session_id: result.session.id, profile, profile_title: profileRecord.title, scenario: result.session.scenario.id, seed, player: startup.player, knowledge: startup.knowledge, permissions: startup.permissions, resources: startup.resources } };
 }
 function normalizeRun(value) {
-  if (value?.version === "yellow-beast-run@v1") return value;
+  if (value?.version === "yellow-beast-run@v2") return value;
+  if (value?.version === "yellow-beast-run@v1") return newRun({ profile: value.profile_id, seed: value.seed, session: value.session, expedition: value.expedition });
   if (value?.session) return newRun({ profile: value.session.startup.profile.id, seed: value.session.seed_material?.seed ?? "restored", session: value.session });
   return newRun({ profile: value.startup.profile.id, seed: value.seed_material?.seed ?? "restored", session: value });
 }
@@ -76,7 +78,7 @@ function inspect(runValue, alias) {
   const observer = run.session.startup.player.observer_id;
   const target = run.aliases?.[alias] ?? alias;
   const result = inspectSessionObserver({ session: run.session, observer, request: { id: `inspect-${run.session.id}-${alias ?? ""}`, kind: "inspect", target } });
-  if (result.outcome === "succeeded" && run.profile_id === FIELD_PROFILE) run.checklist.inspected = true;
+  if (result.outcome === "succeeded" && run.profile_id === FIELD_PROFILE) { run.checklist.inspected = true; if (run.expedition) { run.expedition.objectives.survey.state = "satisfied"; event(run.expedition, "survey.inspected", { alias, location: look(run).view?.location ?? null }); } }
   return result;
 }
 function status(runValue) {
@@ -84,24 +86,41 @@ function status(runValue) {
   const observer = run.session.startup.player.observer_id;
   const view = look(run);
   const actions = getAvailableSessionActions({ session: run.session, actor: observer }).actions;
-  const active = run.lifecycle !== "completed";
-  return { profile_id: run.profile_id, profile_title: run.profile_title, scenario: run.scenario, lifecycle: run.lifecycle, player: observer, known_resources: (run.session.startup.resources ?? []).filter((entry) => entry.custodian === observer).map((entry) => entry.id), available_verbs: ["LOOK", ...(view.targets?.length ? ["INSPECT"] : []), ...(active && actions.includes("traverse-controlled-route") ? ["MOVE"] : []), ...(active && actions.includes("toggle-light") ? ["USE"] : [])], view: { outcome: view.outcome, location: view.view?.location ?? null, targets: (view.aliases ?? []).map(({ alias }) => ({ alias })), public_reason: view.public_reason ?? null } };
+  const active = run.lifecycle === "active";
+  const expeditionVerbs = active && run.expedition ? ["COMMUNICATE", "RECORD", "WAIT", "RETURN", "ABORT"] : [];
+  return { profile_id: run.profile_id, profile_title: run.profile_title, scenario: run.scenario, lifecycle: run.lifecycle, player: observer, known_resources: (run.session.startup.resources ?? []).filter((entry) => entry.custodian === observer).map((entry) => entry.id), available_verbs: ["LOOK", ...(active && view.targets?.length ? ["INSPECT"] : []), ...(active && actions.includes("traverse-controlled-route") ? ["MOVE"] : []), ...(active && actions.includes("toggle-light") ? ["USE"] : []), ...expeditionVerbs], view: { outcome: view.outcome, location: view.view?.location ?? null, targets: (view.aliases ?? []).map(({ alias }) => ({ alias })), public_reason: view.public_reason ?? null }, ...(run.expedition ? { expedition: safeSummary(run.expedition) } : {}) };
 }
-function completeIfReady(run) { if (run.profile_id === FIELD_PROFILE && run.checklist.moved && run.checklist.inspected && run.checklist.used) run.lifecycle = "completed"; }
+function terminal(run, decision) { finalize(run.expedition, decision); run.lifecycle = "completed"; return { ok: true, outcome: "succeeded", result: { public_reason: null, expedition_result: clone(run.expedition.result) }, run }; }
+function expeditionAction(run, verb, target) {
+  const expedition = run.expedition; const player = run.session.startup.player.observer_id;
+  if (!expedition) return { ok: false, error: { code: "UNSUPPORTED_VERB" }, run };
+  if (verb === "WAIT") { expedition.clock.interval += 1; if (expedition.objectives.check_in.state !== "satisfied" && expedition.clock.interval >= expedition.clock.check_in_due_at) { expedition.clock.check_in_overdue = true; expedition.objectives.check_in.state = "failed"; expedition.deviations.push("missed-declared-check-in"); } event(expedition, "expedition.waited", { interval: expedition.clock.interval }); return { ok: true, outcome: "succeeded", result: { public_reason: expedition.clock.check_in_overdue ? "check-in overdue" : "no notable event" }, run }; }
+  if (verb === "COMMUNICATE") { if (!["standard", "teammate", "team"].includes(target)) return { ok: false, error: { code: "RECIPIENT_UNAVAILABLE" }, run }; const radio = useEquipment(expedition, "survey-radio"); if (!radio.ok) return { ok: false, error: { code: radio.code }, run }; const recipient = target === "standard" ? "Standard" : "yb-field-peer-observer"; const delivered = target === "standard" || expedition.team.members[1].status === "active"; const message = { id: `message-${expedition.messages.length + 1}`, sender: player, intended_recipient: recipient, delivery_status: delivered ? "delivered" : "unavailable", channel: "survey-radio", provenance: "pack-original-expedition", interval: expedition.clock.interval }; expedition.messages.push(message); if (target === "standard" && delivered) expedition.objectives.check_in.state = "satisfied"; if (target !== "standard") expedition.objectives.optional_peer_status.state = delivered ? "satisfied" : "failed"; event(expedition, "communication.sent", message); return { ok: true, outcome: "succeeded", result: { public_reason: delivered ? "message delivered" : "message unavailable", message: { recipient: target, delivery_status: message.delivery_status } }, run }; }
+  if (verb === "RECORD") { const view = look(run); const alias = target ?? view.aliases[0]?.alias; if (!alias || !view.aliases.some((entry) => entry.alias === alias)) return { ok: false, error: { code: "TARGET_UNAVAILABLE" }, run }; const device = useEquipment(expedition, "recording-device"); if (!device.ok) return { ok: false, error: { code: device.code }, run }; const evidence = { id: `field-note-${expedition.evidence.length + 1}`, type: "field-note", creator: player, custodian: player, target_alias: alias, location: view.view?.location ?? null, provenance: "observer-safe-record", interval: expedition.clock.interval }; expedition.evidence.push(evidence); expedition.objectives.evidence.state = "satisfied"; event(expedition, "evidence.recorded", evidence); return { ok: true, outcome: "succeeded", result: { public_reason: null, evidence: { id: evidence.id, type: evidence.type, target_alias: alias } }, run }; }
+  if (verb === "RETURN" || verb === "ABORT") return terminal(run, verb);
+  return { ok: false, error: { code: "UNSUPPORTED_VERB" }, run };
+}
 function act(runValue, verb, target) {
   const run = normalizeRun(runValue);
   if (verb === "LOOK") return { ok: true, outcome: "succeeded", result: look(run), run };
   if (verb === "INSPECT") { const result = inspect(run, target); return { ok: true, outcome: result.outcome === "succeeded" ? "succeeded" : "rejected", result, run }; }
   if (run.lifecycle === "completed") return { ok: false, error: { code: "RUN_COMPLETE" }, run };
+  if (["COMMUNICATE", "RECORD", "WAIT", "RETURN", "ABORT"].includes(verb)) return expeditionAction(run, verb, target);
+  if (verb === "USE" && target && target !== "field-light") {
+    if (target !== "survey-instrument") return { ok: false, error: { code: "EQUIPMENT_UNAVAILABLE" }, run };
+    const used = useEquipment(run.expedition, target); if (!used.ok) return { ok: false, error: { code: used.code }, run };
+    run.expedition.objectives.survey.state = "satisfied"; event(run.expedition, "measurement.recorded", { equipment: target, interval: run.expedition.clock.interval, type: "qualitative-survey" });
+    return { ok: true, outcome: "succeeded", result: { public_reason: null, measurement: "qualitative-survey" }, run };
+  }
   const action = { MOVE: "traverse-controlled-route", USE: "toggle-light" }[verb];
   if (!action) return { ok: false, error: { code: "UNSUPPORTED_VERB" }, run };
   const result = submitSessionAction({ session: run.session, actor: run.session.startup.player.observer_id, action, target });
   if (result.session) run.session = result.session;
-  if (result.ok && result.outcome === "succeeded") { if (verb === "MOVE") run.checklist.moved = true; if (verb === "USE") run.checklist.used = true; completeIfReady(run); }
+  if (result.ok && result.outcome === "succeeded") { if (verb === "MOVE") run.checklist.moved = true; if (verb === "USE") { run.checklist.used = true; if (run.expedition) useEquipment(run.expedition, "field-light"); } }
   return { ...result, run };
 }
-function saveRun(runValue) { const run = normalizeRun(runValue); return { version: "yellow-beast-save@v1", profile_id: run.profile_id, profile_title: run.profile_title, scenario: run.scenario, seed: run.seed, lifecycle: run.lifecycle, checklist: clone(run.checklist), aliases: clone(run.aliases), envelope: exportSession(run.session).envelope }; }
-function resumeRun(save) { const restored = restoreSession(save.envelope); if (!restored.ok) return restored; return { ok: true, run: { version: "yellow-beast-run@v1", profile_id: save.profile_id, profile_title: profileFor(save.profile_id).title, scenario: save.scenario, seed: save.seed, session: restored.session, lifecycle: save.lifecycle, checklist: clone(save.checklist ?? {}), aliases: clone(save.aliases ?? {}) } }; }
+function saveRun(runValue) { const run = normalizeRun(runValue); return { version: "yellow-beast-save@v2", profile_id: run.profile_id, profile_title: run.profile_title, scenario: run.scenario, seed: run.seed, lifecycle: run.lifecycle, checklist: clone(run.checklist), aliases: clone(run.aliases), expedition: clone(run.expedition), envelope: exportSession(run.session).envelope }; }
+function resumeRun(save) { const restored = restoreSession(save.envelope); if (!restored.ok) return restored; const run = newRun({ profile: save.profile_id, seed: save.seed, session: restored.session, expedition: clone(save.expedition) }); run.lifecycle = save.lifecycle ?? "active"; run.checklist = clone(save.checklist ?? run.checklist); run.aliases = clone(save.aliases ?? {}); return { ok: true, run }; }
 
 if (require.main === module) { const args = process.argv.slice(2); const value = (name) => args[args.indexOf(name) + 1]; const result = startRun({ profile: value("--profile") || "lost", seed: value("--seed") || "yellow-beast-bootstrap" }); console.log(JSON.stringify(result.ok ? result.summary : result, null, 2)); process.exitCode = result.ok ? 0 : 1; }
 module.exports = { startRun, status, look, inspect, act, saveRun, resumeRun };

@@ -20,7 +20,10 @@ test("launcher creates safe config, survives corruption, and completes an offlin
   await runCommand({ paths, seed: "launcher", action: "LOOK", save: "alpha" });
   await runCommand({ paths, resume: "alpha", action: "MOVE", save: "alpha" });
   await runCommand({ paths, resume: "alpha", natural: "check the fixture", save: "alpha" });
-  const done = await runCommand({ paths, resume: "alpha", natural: "use my light", save: "alpha" });
+  await runCommand({ paths, resume: "alpha", natural: "take a picture of the fixture", save: "alpha" });
+  await runCommand({ paths, resume: "alpha", natural: "radio Standard", save: "alpha" });
+  await runCommand({ paths, resume: "alpha", action: "USE", target: "survey-instrument", save: "alpha" });
+  const done = await runCommand({ paths, resume: "alpha", action: "RETURN", save: "alpha" });
   assert.equal(done.ok, true); assert.equal(done.status.lifecycle, "completed"); assert.ok(fs.existsSync(path.join(paths.saves, "alpha.json")));
 });
 function launchInteractive(launcher, root, respond) {

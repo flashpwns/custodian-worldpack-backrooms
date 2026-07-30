@@ -7,6 +7,11 @@ test("OpenAI provider sends strict observer-safe structured requests", async () 
   const provider = createOpenAIProvider({ client, model: "test-model" }); const intent = await provider.interpret({ player_text: "inspect fixture", context });
   assert.equal(validateIntent(intent, context).kind, "action"); assert.equal(calls[0].store, false); assert.equal(calls[0].text.format.type, "json_schema");
 });
+test("OpenAI structured schema accepts only runtime-advertised expedition verbs and aliases", async () => {
+  const client = { responses: { create: async () => ({ output_text: JSON.stringify({ kind: "action", actions: [{ verb: "COMMUNICATE", target_alias: "standard", parameters: {} }], clarification: null, public_reason: null }) }) } };
+  const provider = createOpenAIProvider({ client, model: "test-model" }); const expeditionContext = { available_verbs: ["COMMUNICATE", "WAIT"], aliases: [{ alias: "standard" }] };
+  assert.equal(validateIntent(await provider.interpret({ player_text: "radio Standard", context: expeditionContext }), expeditionContext).kind, "action");
+});
 test("OpenAI provider rejects missing credentials", () => assert.throws(() => createOpenAIProvider({ apiKey: "" }), /not configured/));
 test("OpenAI selection without a key falls back to the offline interpreter", () => {
   const provider = process.env.YELLOW_BEAST_AI_PROVIDER; const key = process.env.OPENAI_API_KEY;
