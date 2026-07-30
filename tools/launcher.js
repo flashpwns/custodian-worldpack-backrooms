@@ -9,6 +9,7 @@ const { executeNatural } = require("./ai-adapter");
 const { createMockProvider } = require("./ai-mock-provider");
 const { createOpenAIProvider } = require("./ai-openai-provider");
 const { resolveAppPaths } = require("./launcher-paths");
+const packageVersion = require("../package.json").version;
 
 const defaults = Object.freeze({ input_mode: "structured", provider: "offline-mock", narration: true });
 function providerForEnvironment() { return process.env.YELLOW_BEAST_AI_PROVIDER === "openai" ? createOpenAIProvider() : createMockProvider(); }
@@ -39,7 +40,7 @@ async function runCommand({ paths, profile = "field-researcher", seed = "alpha",
     const result = natural ? await executeNatural({ run, provider: selected.provider, player_text: natural }) : action ? act(run, action.toUpperCase(), target) : { ok: true };
     let saved = null;
     if (save) { saved = savePath(paths, save === true ? "clear-q4" : save); fs.writeFileSync(saved, `${JSON.stringify(saveRun(run), null, 2)}\n`); }
-    return { ok: true, warning: loaded.warning || selected?.warning || null, version: "Yellow Beast 0.2.0-alpha.1", custodian: "Custodian 1.5.0", status: status(run), result: natural ? { intent: result.intent, steps: result.steps } : concise(result), save: saved, paths: { saves: paths.saves, config: paths.config, logs: paths.logs } };
+    return { ok: true, warning: loaded.warning || selected?.warning || null, version: `Yellow Beast ${packageVersion}`, custodian: "Custodian 1.5.0", status: status(run), result: natural ? { intent: result.intent, steps: result.steps } : concise(result), save: saved, paths: { saves: paths.saves, config: paths.config, logs: paths.logs } };
   } catch (error) { log(paths, `launch failure: ${error.message}`); return { ok: false, warning: loaded.warning, error: "Yellow Beast could not start that run. Check the save/configuration and try again.", detail: error.message, paths: { saves: paths.saves, config: paths.config, logs: paths.logs } }; }
 }
 async function interactive(paths) {
@@ -59,7 +60,7 @@ async function interactive(paths) {
   }
   console.log(JSON.stringify(status(run), null, 2));
   while (true) {
-    const input = (await prompt.question("Command (LOOK, MOVE, INSPECT fixture-1, USE, SAVE, QUIT, or natural text): ")).trim();
+    const input = (await prompt.question("Command (LOOK, MOVE, INSPECT fixture-1, RECORD fixture-1, COMMUNICATE standard, WAIT, USE survey-instrument, RETURN, ABORT, SAVE, QUIT, or natural text): ")).trim();
     if (!input || input.toUpperCase() === "QUIT") break;
     if (input.toUpperCase() === "SAVE") { fs.writeFileSync(savePath(paths), `${JSON.stringify(saveRun(run), null, 2)}\n`); console.log(`Saved to ${savePath(paths)}`); continue; }
     const [verb, target] = input.split(/\s+/, 2); const structured = ["LOOK", "MOVE", "INSPECT", "USE"].includes(verb.toUpperCase());

@@ -60,7 +60,8 @@ test("natural actions remain deterministic across save and restore with freshly 
   assert.equal("projection" in restoredContext, false);
   const inspect = await executeNatural({ run, provider, player_text: "check the fixture" });
   assert.equal(inspect.steps[0].outcome, "succeeded");
-  const use = await executeNatural({ run, provider, player_text: "use my light" });
-  assert.equal(use.steps[0].outcome, "succeeded");
+  await executeNatural({ run, provider, player_text: "take a picture of the fixture" });
+  await executeNatural({ run, provider, player_text: "radio Standard" });
+  assert.equal(act(run, "RETURN").outcome, "succeeded");
   assert.equal(run.lifecycle, "completed");
 });

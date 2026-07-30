@@ -20,7 +20,10 @@ function fullRun(withSave) {
     assert.equal(run.profile_id, "field-researcher");
     assert.equal(run.profile_title, "Async: Clear-Q4");
   }
-  assert.equal(act(run, "USE").outcome, "succeeded");
+  assert.equal(act(run, "RECORD", alias).outcome, "succeeded");
+  assert.equal(act(run, "COMMUNICATE", "standard").outcome, "succeeded");
+  assert.equal(act(run, "USE", "survey-instrument").outcome, "succeeded");
+  assert.equal(act(run, "RETURN").outcome, "succeeded");
   assert.equal(run.lifecycle, "completed");
   assert.equal(act(run, "USE").error.code, "RUN_COMPLETE");
   assert.equal(look(run).outcome, "succeeded", "read-only LOOK remains available after completion");
@@ -28,7 +31,7 @@ function fullRun(withSave) {
   return run;
 }
 
-test("Async: Clear-Q4 completes through public-only LOOK, MOVE, INSPECT, save, restore, and USE", () => {
+test("Async: Clear-Q4 completes through public-only expedition actions and save/restore", () => {
   const uninterrupted = fullRun(false);
   const restored = fullRun(true);
   assert.equal(stableSerialize(uninterrupted.session.projection), stableSerialize(restored.session.projection));
@@ -37,12 +40,12 @@ test("Async: Clear-Q4 completes through public-only LOOK, MOVE, INSPECT, save, r
 });
 test("LOOK and INSPECT aliases remain observer-safe and stale references are rejected", () => {
   const run = startRun({ profile: "field-researcher", seed: "stale" }).run;
-  act(run, "MOVE"); const alias = look(run).aliases[0].alias; const staleRef = run.aliases[alias]; act(run, "INSPECT", alias); act(run, "USE");
+  act(run, "MOVE"); const alias = look(run).aliases[0].alias; const staleRef = run.aliases[alias]; act(run, "INSPECT", alias); act(run, "RECORD", alias); act(run, "USE");
   const other = startRun({ profile: "field-researcher", seed: "other" }).run;
   assert.equal(act(other, "INSPECT", staleRef).result.public_reason, "target unavailable");
   assert.equal(act(run, "INSPECT", staleRef).result.public_reason, "target unavailable", "an alias becomes stale after canonical state changes");
   assert.equal(act(run, "INSPECT", "controlled-light").result.public_reason, "target unavailable");
-  assert.equal(JSON.stringify(status(run)).includes("objective"), false);
+  assert.equal("session" in status(run), false);
 });
 test("profile separation and opaque references do not expose another observer's view", () => {
   const run = startRun({ profile: "field-researcher", seed: "isolation" }).run;
