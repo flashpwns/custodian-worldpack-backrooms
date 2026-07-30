@@ -20,11 +20,48 @@ authority or arcade score.
 Session summaries and `yellow-beast-gameplay-projection@v1` are safe structured
 inputs for a future UI: offered/resolved objectives, progression, valuation,
 follow-ups, and scoped timeline entries. They exclude hidden world facts and
-private knowledge from another mode. The next passes add risk/reward and full
-cross-mode convergence.
+private knowledge from another mode.
+
+## Known risk and meaningful choices
+
+Pass 2 adds qualitative risk and an objective-linked choice contract. Risk is
+derived exclusively from supplied, observer-known facts: whether a route is
+mapped, whether a known retreat route exists, limited equipment, known team
+condition, communication status, and admitted incident summaries. It is never
+a hidden-danger lookup, probability, spawn modifier, or outcome controller.
+
+Choices require at least two valid options with different persistent
+consequence keys and disclose only rationale, known upside, known cost, and
+known risk factors. The resolver records the selected branch and may resolve
+the linked objective or offer a bounded follow-up; it does not reveal a hidden
+future result. Revisit opportunities are likewise provenance-backed and use a
+safe known-region reference rather than a hidden coordinate.
+
+The mode loops now use the same contract in curated deterministic fixtures:
+
+- Clear-Q4 weighs primary survey work, optional evidence, and a cautious
+  record-and-return partial result.
+- Nullzone weighs one carried recovery against another, with the unchosen
+  object remaining physically present and archive value remaining personal.
+- Lost weighs known landmark backtracking against an unmapped frontier while
+  light is limited; stranded outcomes keep remnants in world history.
+- Beck weighs recovery and research under finite, explicitly known priority
+  pressure. Research and infrastructure stay institutional systems, not a new
+  economy.
+
+Retreat is deliberately a valid preservation decision. It can bank evidence,
+objects, personnel, equipment, and partial success, while a deeper push can
+create a follow-up, route knowledge, or recoverable loss. Failure therefore
+creates persisted history and revisit reasons rather than deleting the run.
+
+`yellow-beast-gameplay-projection@v1` now includes `known_risk`, `choices`,
+and `revisit_opportunities`, alongside objectives, progression and summaries.
+All are JSON-safe, deterministic, side-effect free, and independent of CLI
+formatting. Remaining YB-26 work is presentation/application-shell work and
+the Pass 3 scoped cross-mode timeline/callback surface.
 
 `npm run gameplay-report` is a deterministic development harness, not user
-analytics. It flags objective counts, follow-ups, progression, duplicate or
-unreachable objective conditions, and information leakage. Future YB-25 work
-will broaden it to resource tradeoffs, retreat choices, callbacks, and
-cross-mode chains.
+analytics. It now flags risk-bearing and resource-constrained decisions,
+retreat/push options, partial outcomes, revisit incentives, duplicate choices,
+dead progression, and information leakage. Pass 3 will add the convergence
+chain and scoped cross-mode callback coverage.

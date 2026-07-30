@@ -13,14 +13,62 @@ function modeForProfile(profile) { return ({ "field-researcher": "clear-q4", "lo
 function event(world, run_id, type, payload) { return history.event(world, run_id, `gameplay.${type}`, payload, "pack-original-gameplay-simulation"); }
 function state(world) {
   history.assertWorld(world);
-  if (!world.gameplay) world.gameplay = { version: VERSION, objectives: {}, progression: Object.fromEntries([...MODES].map((mode) => [mode, { unlocks: [] }])), valuations: {}, summaries: {} };
-  const s = world.gameplay; s.version ??= VERSION; s.objectives ??= {}; s.progression ??= {}; s.valuations ??= {}; s.summaries ??= {};
+  if (!world.gameplay) world.gameplay = { version: VERSION, objectives: {}, progression: Object.fromEntries([...MODES].map((mode) => [mode, { unlocks: [] }])), valuations: {}, summaries: {}, risks: {}, decisions: {}, revisits: {} };
+  const s = world.gameplay; s.version ??= VERSION; s.objectives ??= {}; s.progression ??= {}; s.valuations ??= {}; s.summaries ??= {}; s.risks ??= {}; s.decisions ??= {}; s.revisits ??= {};
   for (const mode of MODES) { s.progression[mode] ??= { unlocks: [] }; s.progression[mode].unlocks ??= []; }
   return s;
 }
+function riskLevel(factors) { return factors.length === 0 ? "low" : factors.length === 1 ? "elevated" : factors.length >= 3 ? "high" : "elevated"; }
+function evaluateKnownRisk(world, { run_id, mode, route = {}, resources = [], team = {}, communications = {}, incidents = [] }) {
+  const s = state(world); if (!MODES.has(mode) || !world.runs[run_id]) return { ok: false, code: "RISK_CONTEXT_UNKNOWN" };
+  // Inputs are intentionally caller-scoped observations. This resolver never reads
+  // objective hazards, entities, topology, or another observer's private records.
+  const factors = [];
+  if (route.known === false) factors.push("route beyond the current landmark is unmapped");
+  if (route.retreat_available === false) factors.push("no known retreat route is available");
+  for (const item of resources.filter((item) => item && item.known !== false)) if (Number.isFinite(item.remaining) && Number.isFinite(item.caution_at) && item.remaining <= item.caution_at) factors.push(`${item.label ?? item.kind ?? "equipment"} is limited`);
+  if (["impaired", "recovering", "unavailable"].includes(team.known_status)) factors.push("known team condition may complicate withdrawal");
+  if (["pending", "unavailable", "delayed"].includes(communications.known_status)) factors.push("communication is not presently reliable");
+  for (const incident of incidents.filter((item) => item?.known !== false)) if (incident.summary) factors.push(incident.summary);
+  const id = `risk-${hash([world.world_id, run_id, mode, route, resources, team, communications, incidents]).slice(0, 16)}`;
+  const risk = { id, run_id, mode, level: riskLevel(factors), factors: [...new Set(factors)].sort(), resources: resources.filter((item) => item?.known !== false).map(({ label, kind, remaining, caution_at }) => ({ label: label ?? kind ?? "resource", remaining, caution_at })) };
+  s.risks[id] = risk; event(world, run_id, "risk_assessed", { mode, risk_id: id, level: risk.level, factor_count: risk.factors.length }); return { ok: true, risk: clone(risk) };
+}
+function createDecision(world, { run_id, mode, objective_id = null, context, options }) {
+  const s = state(world); const objective = objective_id ? s.objectives[objective_id] : null;
+  if (!MODES.has(mode) || !world.runs[run_id] || !context || !Array.isArray(options) || options.length < 2 || (objective && objective.mode !== mode)) return { ok: false, code: "DECISION_UNAVAILABLE" };
+  if (options.some((option) => !option?.action || !option?.rationale || !option?.known_upside || !option?.known_cost)) return { ok: false, code: "DECISION_CONTEXT_INCOMPLETE" };
+  const keys = options.map((option) => option.consequence_key ?? option.action);
+  if (new Set(keys).size !== keys.length) return { ok: false, code: "MEANINGLESS_DUPLICATE_CHOICE" };
+  const id = `decision-${hash([world.world_id, run_id, mode, objective_id, context, options.map(({ action, consequence_key }) => [action, consequence_key ?? action])]).slice(0, 16)}`;
+  if (s.decisions[id]) return { ok: true, idempotent: true, decision: clone(s.decisions[id]) };
+  const decision = { id, run_id, mode, objective_id, context, status: "offered", options: options.map((option, index) => ({ ref: `choice-${index + 1}`, action: option.action, rationale: option.rationale, known_upside: option.known_upside, known_cost: option.known_cost, risk_factors: clone(option.risk_factors ?? []), consequence_key: option.consequence_key ?? option.action, resolution: clone(option.resolution ?? null) })) };
+  s.decisions[id] = decision; event(world, run_id, "decision_offered", { mode, decision_id: id, objective_id, option_count: options.length }); return { ok: true, decision: clone(decision) };
+}
+function resolveDecision(world, { run_id, decision_id, choice_ref }) {
+  const s = state(world); const decision = s.decisions[decision_id]; if (!decision || decision.run_id !== run_id || decision.status !== "offered") return { ok: false, code: "DECISION_UNAVAILABLE" };
+  const choice = decision.options.find((item) => item.ref === choice_ref); if (!choice) return { ok: false, code: "CHOICE_UNAVAILABLE" };
+  let objective = null;
+  if (choice.resolution?.outcome && decision.objective_id) objective = resolveObjective(world, { run_id, objective_id: decision.objective_id, outcome: choice.resolution.outcome, follow_up: choice.resolution.follow_up ?? null }).objective;
+  decision.status = "resolved"; decision.selected_ref = choice.ref; decision.resolved_at = world.event_sequence + 1;
+  event(world, run_id, "decision_resolved", { mode: decision.mode, decision_id, choice_ref, consequence_key: choice.consequence_key });
+  return { ok: true, decision: safeDecision(decision), objective };
+}
+function createRevisitOpportunity(world, { run_id, mode, origin, region_ref, reason, objective_id = null }) {
+  const s = state(world); if (!MODES.has(mode) || !sourceKnown(world, mode, origin, run_id) || !region_ref || !reason) return { ok: false, code: "REVISIT_SOURCE_UNKNOWN" };
+  const id = `revisit-${hash([world.world_id, mode, origin, region_ref, reason, objective_id]).slice(0, 16)}`;
+  if (s.revisits[id]) return { ok: true, idempotent: true, revisit: clone(s.revisits[id]) };
+  const revisit = { id, mode, origin: clone(origin), region_ref, reason, objective_id, status: "available" }; s.revisits[id] = revisit;
+  event(world, run_id, "revisit_available", { mode, revisit_id: id, objective_id }); return { ok: true, revisit: clone(revisit) };
+}
+function safeDecision(item) { return { ref: item.id, context: item.context, status: item.status, objective_ref: item.objective_id, choices: item.options.map(({ ref, action, rationale, known_upside, known_cost, risk_factors }) => ({ ref, action, rationale, known_upside, known_cost, risk_factors: clone(risk_factors) })) }; }
+function progressionUtility(mode, type) {
+  const known = { "better-preparation": "preparation option", "follow-up-review": "institutional follow-up", "route-knowledge": "known-route planning", "archive-comparison": "archive comparison", "landmark-memory": "landmark context", "safer-preparation": "safer preparation" };
+  return known[type] ?? `${mode} operational option`;
+}
 function sourceKnown(world, mode, origin, run_id) {
   if (!origin?.kind || !origin.id) return false;
-  if (origin.kind === "objective") return Boolean(state(world).objectives[origin.id]);
+  if (origin.kind === "objective") return state(world).objectives[origin.id]?.mode === mode;
   if (origin.kind === "run") return origin.id === run_id && Boolean(world.runs[origin.id]);
   if (origin.kind === "evidence") {
     if (!world.evidence[origin.id]) return false;
@@ -74,13 +122,17 @@ function sessionSummary(world, { run_id, mode }) {
   const s = state(world); if (!MODES.has(mode) || !world.runs[run_id]) return { ok: false, code: "RUN_UNKNOWN" };
   const objectives = Object.values(s.objectives).filter((item) => item.completion?.run_id === run_id || item.origin.id === run_id).map((item) => ({ ref: item.id, type: item.type, classification: item.classification, outcome: item.status }));
   const values = Object.values(s.valuations).filter((item) => item.mode === mode).map(({ source_kind, kind, novelty, relevance }) => ({ source_kind, kind, novelty, relevance }));
-  const summary = { version: PROJECTION_VERSION, run_id, mode, objectives, recovered_values: values, progression: clone(s.progression[mode].unlocks), follow_ups: Object.values(s.objectives).filter((item) => item.parent_id && item.mode === mode && item.status === "offered").map((item) => ({ ref: item.id, type: item.type })), persistent_consequences: world.events.filter((item) => item.run_id === run_id && /(?:remnant|artifact|region\.mutated|process_failed)/.test(item.type)).map((item) => item.type) };
+  const decisions = Object.values(s.decisions).filter((item) => item.run_id === run_id).map(safeDecision);
+  const summary = { version: PROJECTION_VERSION, run_id, mode, objectives, recovered_values: values, progression: clone(s.progression[mode].unlocks).map((item) => ({ type: item.type, summary: item.summary, utility: progressionUtility(mode, item.type) })), decisions, follow_ups: Object.values(s.objectives).filter((item) => item.parent_id && item.mode === mode && item.status === "offered").map((item) => ({ ref: item.id, type: item.type })), revisit_opportunities: Object.values(s.revisits).filter((item) => item.mode === mode && item.status === "available").map(({ id, region_ref, reason, objective_id }) => ({ ref: id, region_ref, reason, objective_ref: objective_id })), persistent_consequences: world.events.filter((item) => item.run_id === run_id && /(?:remnant|artifact|region\.mutated|process_failed)/.test(item.type)).map((item) => item.type) };
   s.summaries[run_id] = clone(summary); event(world, run_id, "session_summarized", { mode, objective_count: objectives.length, follow_up_count: summary.follow_ups.length }); return { ok: true, summary };
 }
 function projection(world, { mode, run_id = null } = {}) {
   const s = state(world); if (!MODES.has(mode)) return { version: PROJECTION_VERSION, objectives: [], progression: [], timeline: [] };
   const objectives = Object.values(s.objectives).filter((item) => item.mode === mode).map(({ id, type, classification, target, known_information, status, reward, depth }) => ({ ref: id, type, classification, target, known_information: clone(known_information), status, reward: reward ? clone(reward) : null, depth }));
   const timeline = world.events.filter((item) => item.type.startsWith("gameplay.") && item.payload.mode === mode && (!run_id || item.run_id === run_id)).map((item) => ({ type: item.type.slice("gameplay.".length), sequence: item.sequence }));
-  return { version: PROJECTION_VERSION, mode, objectives, progression: clone(s.progression[mode].unlocks), evidence_values: Object.values(s.valuations).filter((item) => item.mode === mode).map(({ source_kind, kind, novelty, relevance }) => ({ source_kind, kind, novelty, relevance })), timeline, session_summary: run_id ? clone(s.summaries[run_id] ?? null) : null };
+  const risks = Object.values(s.risks).filter((item) => item.mode === mode && (!run_id || item.run_id === run_id)).map(({ id, level, factors, resources }) => ({ ref: id, level, factors: clone(factors), resources: clone(resources) }));
+  const decisions = Object.values(s.decisions).filter((item) => item.mode === mode && (!run_id || item.run_id === run_id)).map(safeDecision);
+  const revisits = Object.values(s.revisits).filter((item) => item.mode === mode && item.status === "available").map(({ id, region_ref, reason, objective_id }) => ({ ref: id, region_ref, reason, objective_ref: objective_id }));
+  return { version: PROJECTION_VERSION, mode, objectives, progression: clone(s.progression[mode].unlocks).map((item) => ({ type: item.type, summary: item.summary, utility: progressionUtility(mode, item.type) })), evidence_values: Object.values(s.valuations).filter((item) => item.mode === mode).map(({ source_kind, kind, novelty, relevance }) => ({ source_kind, kind, novelty, relevance })), known_risk: risks, choices: decisions, revisit_opportunities: revisits, timeline, session_summary: run_id ? clone(s.summaries[run_id] ?? null) : null };
 }
-module.exports = { VERSION, PROJECTION_VERSION, MAX_FOLLOW_UP_DEPTH, modeForProfile, state, createObjective, resolveObjective, assessEvidence, assessArtifact, sessionSummary, projection };
+module.exports = { VERSION, PROJECTION_VERSION, MAX_FOLLOW_UP_DEPTH, modeForProfile, state, createObjective, resolveObjective, assessEvidence, assessArtifact, evaluateKnownRisk, createDecision, resolveDecision, createRevisitOpportunity, sessionSummary, projection };
