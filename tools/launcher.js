@@ -9,6 +9,7 @@ const { executeNatural } = require("./ai-adapter");
 const { createMockProvider } = require("./ai-mock-provider");
 const { createOpenAIProvider } = require("./ai-openai-provider");
 const { resolveAppPaths } = require("./launcher-paths");
+const worldHistory = require("./world-history");
 const packageVersion = require("../package.json").version;
 
 const defaults = Object.freeze({ input_mode: "structured", provider: "offline-mock", narration: true });
@@ -17,7 +18,7 @@ function safeProviderForEnvironment() {
   try { return { provider: providerForEnvironment(), warning: null }; }
   catch (error) { return { provider: createMockProvider(), warning: `OpenAI provider is unavailable; using Offline Interpreter. ${error.message}` }; }
 }
-function ensureData(paths) { fs.mkdirSync(paths.saves, { recursive: true }); fs.mkdirSync(paths.logs, { recursive: true }); }
+function ensureData(paths) { fs.mkdirSync(paths.saves, { recursive: true }); fs.mkdirSync(paths.worlds, { recursive: true }); fs.mkdirSync(paths.logs, { recursive: true }); }
 function loadConfig(paths) {
   ensureData(paths);
   if (!fs.existsSync(paths.config)) { fs.writeFileSync(paths.config, `${JSON.stringify(defaults, null, 2)}\n`); return { config: { ...defaults }, warning: null }; }
@@ -31,16 +32,19 @@ function log(paths, message) { ensureData(paths); fs.appendFileSync(paths.log, `
 function savePath(paths, slot = "clear-q4") { return path.join(paths.saves, `${String(slot).replace(/[^a-z0-9_-]/gi, "-")}.json`); }
 function readSave(file) { return JSON.parse(fs.readFileSync(file, "utf8")); }
 function concise(result) { return result.ok ? { outcome: result.outcome, reason: result.reason, public_reason: result.result?.public_reason ?? null } : result.error; }
-async function runCommand({ paths, profile = "field-researcher", seed = "alpha", scenario, resume, save, action, target, natural }) {
+async function runCommand({ paths, profile = "field-researcher", seed = "alpha", scenario, world: worldName, region, resume, save, action, target, natural }) {
   const loaded = loadConfig(paths); let run;
   try {
-    if (resume) { const restored = resumeRun(readSave(savePath(paths, resume))); if (!restored.ok) throw new Error("save is incompatible or corrupted"); run = restored.run; }
-    else run = startRun({ profile, seed, scenario }).run;
+    const worldFile = worldName ? path.join(paths.worlds, `${String(worldName).replace(/[^a-z0-9_-]/gi, "-")}.json`) : null;
+    const world = worldFile && fs.existsSync(worldFile) ? worldHistory.loadWorld(worldFile) : worldFile ? worldHistory.createWorld({ id: String(worldName), seed }) : null;
+    if (resume) { const restored = resumeRun(readSave(savePath(paths, resume)), { world }); if (!restored.ok) throw new Error("save is incompatible or corrupted"); run = restored.run; }
+    else run = startRun({ profile, seed, scenario, world, region_id: region }).run;
     const selected = natural ? safeProviderForEnvironment() : null;
     const result = natural ? await executeNatural({ run, provider: selected.provider, player_text: natural }) : action ? act(run, action.toUpperCase(), target) : { ok: true };
     let saved = null;
     if (save) { saved = savePath(paths, save === true ? "clear-q4" : save); fs.writeFileSync(saved, `${JSON.stringify(saveRun(run), null, 2)}\n`); }
-    return { ok: true, warning: loaded.warning || selected?.warning || null, version: `Yellow Beast ${packageVersion}`, custodian: "Custodian 1.5.0", status: status(run), result: natural ? { intent: result.intent, steps: result.steps } : concise(result), save: saved, paths: { saves: paths.saves, config: paths.config, logs: paths.logs } };
+    if (worldFile) worldHistory.saveWorld(worldFile, world);
+    return { ok: true, warning: loaded.warning || selected?.warning || null, version: `Yellow Beast ${packageVersion}`, custodian: "Custodian 1.5.0", status: status(run), result: natural ? { intent: result.intent, steps: result.steps } : concise(result), world: world ? worldHistory.summary(world, profile) : null, save: saved, paths: { saves: paths.saves, worlds: paths.worlds, config: paths.config, logs: paths.logs } };
   } catch (error) { log(paths, `launch failure: ${error.message}`); return { ok: false, warning: loaded.warning, error: "Yellow Beast could not start that run. Check the save/configuration and try again.", detail: error.message, paths: { saves: paths.saves, config: paths.config, logs: paths.logs } }; }
 }
 async function interactive(paths) {
@@ -76,7 +80,7 @@ function option(args, name) { const i = args.indexOf(name); return i < 0 ? undef
 async function main() {
   const paths = resolveAppPaths(); const args = process.argv.slice(2);
   if (args.includes("--interactive") || (!args.length && stdin.isTTY)) return interactive(paths);
-  const output = await runCommand({ paths, profile: option(args, "--profile") || "field-researcher", seed: option(args, "--seed") || "alpha", scenario: option(args, "--scenario"), resume: option(args, "--resume"), save: args.includes("--save") ? option(args, "--save") || true : false, action: option(args, "--action"), target: option(args, "--target"), natural: option(args, "--natural") });
+  const output = await runCommand({ paths, profile: option(args, "--profile") || "field-researcher", seed: option(args, "--seed") || "alpha", scenario: option(args, "--scenario"), world: option(args, "--world"), region: option(args, "--region"), resume: option(args, "--resume"), save: args.includes("--save") ? option(args, "--save") || true : false, action: option(args, "--action"), target: option(args, "--target"), natural: option(args, "--natural") });
   console.log(JSON.stringify(output, null, 2)); if (!output.ok) process.exitCode = 1;
 }
 if (require.main === module) main().catch((error) => { console.error("Yellow Beast launcher failed safely:", error.message); process.exitCode = 1; });

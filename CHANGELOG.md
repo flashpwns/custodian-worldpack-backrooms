@@ -7,6 +7,10 @@
 - Adds the deliberately minimal `threshold-baseline` conformant scenario.
 - Adds reviewed source-intake records, claim review states, conflict links, and
   scenario-bound canon admission validation.
+# 0.5.0-alpha
+
+- Adds versioned persistent world history, promoted procedural regions, expedition/evidence ingestion, and bounded cross-run remnant fixtures.
+
 # 0.4.0-alpha
 
 - Adds the bounded, authority-traceable `yellow-beast-complex-generator@v1` procedural survey foundation.

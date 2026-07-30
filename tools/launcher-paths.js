@@ -10,6 +10,6 @@ function resolveAppPaths({ platform = process.platform, env = process.env, home 
     : platform === "win32"
       ? paths.join(env.APPDATA || paths.join(home, "AppData", "Roaming"), "Yellow Beast")
       : paths.join(env.XDG_DATA_HOME || paths.join(home, ".local", "share"), "yellow-beast"));
-  return { root, saves: paths.join(root, "saves"), config: paths.join(root, "config.json"), logs: paths.join(root, "logs"), log: paths.join(root, "logs", "launcher.log") };
+  return { root, saves: paths.join(root, "saves"), worlds: paths.join(root, "worlds"), config: paths.join(root, "config.json"), logs: paths.join(root, "logs"), log: paths.join(root, "logs", "launcher.log") };
 }
 module.exports = { resolveAppPaths };
