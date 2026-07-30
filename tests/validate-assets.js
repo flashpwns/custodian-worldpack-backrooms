@@ -214,7 +214,7 @@ scripts.push("tools/entity-simulation.js", "tools/entity-report.js", "tools/stil
 scripts.push("tests/y23-encounter.test.js", "tests/y23-behavior.test.js");
 scripts.push("tests/y24-institution.test.js");
 scripts.push("tools/institution-report.js");
-scripts.push("tests/y25-gameplay.test.js", "tools/gameplay.js", "tools/gameplay-report.js");
+scripts.push("tests/y25-gameplay.test.js", "tools/gameplay.js", "tools/gameplay-scenarios.js", "tools/gameplay-report.js");
 for (const relative of scripts) {
   const content = fs.readFileSync(path.join(root, relative), "utf8");
   assert.doesNotMatch(content, /custodian\/(runtime|state|tools)/, `${relative} uses only public Custodian imports`);

@@ -65,3 +65,56 @@ analytics. It now flags risk-bearing and resource-constrained decisions,
 retreat/push options, partial outcomes, revisit incentives, duplicate choices,
 dead progression, and information leakage. Pass 3 will add the convergence
 chain and scoped cross-mode callback coverage.
+
+## Callbacks and one shared world
+
+Pass 3 adds `pack-original-gameplay-callback` records. A callback is an
+observer-scoped recognition of an existing event, artifact, reviewed report,
+objective, or completed infrastructure project. It keeps the origin internally
+for deterministic provenance while the public projection contains only a safe
+reference, physical description, recognition level, and safe region reference.
+It never manufactures retrospective lore.
+
+Recognition is deliberately bounded: an observer may see an object as
+`unrecognized`, a domain may identify a relevant class of consequence, and only
+Beck can receive a specifically linked institutional reference when a reviewed
+institutional record supports it. Seeing an object never reveals another mode's
+private history.
+
+The deterministic alpha fixture **The Bag / The Survey / The Outpost** proves
+the intended chain: a stranded Lost run leaves a real remnant; Clear-Q4 reaches
+the same v2 region and recovers it locally; the resulting ASYNC report follows
+the existing delayed lifecycle and is reviewed; Beck chooses an institutional
+response that completes an existing infrastructure process; Nullzone later
+sees the same physical survey marker with no report, project, or Lost-run
+metadata. This is pack-original simulation history, not Kane canon.
+
+Callbacks, objectives, reports, artifact custody, and infrastructure all keep
+their existing world-history identity. The gameplay layer does not copy region
+objects or introduce another world truth store. Save/restore rebuilds the v2
+mutation and retains callback IDs without duplication.
+
+## Scoped timeline and UI contract
+
+`yellow-beast-gameplay-projection@v1` now composes mode identity, structured
+available actions, objectives, choices, known risk, progression, callbacks,
+revisit opportunities, session summaries, and a scoped timeline. Beck sees
+only reviewed institutional activity; Clear-Q4 sees its own field context;
+Nullzone sees personal observations and archive context; Lost remains
+intentionally minimal. It excludes master history, seeds, raw physical IDs,
+undiscovered callbacks, private notes, hidden topology, and hidden outcomes.
+
+YB-26 can use this contract together with the existing session/world, entity,
+and institution projections without parsing CLI prose. Remaining UI work is
+application shell, visual hierarchy, input ergonomics, and presentation of
+already-safe structured actions.
+
+## Development handoffs
+
+The gameplay report records callback/convergence coverage, scoped timeline
+entries, dead-content checks, branch variety, and development-only
+dominant-strategy warnings. It labels exercised content as pack-original
+scenario material, so YB-27 can audit runtime authority use without treating
+generated history as source canon. YB-28 candidates are conservative: cache
+scoped timelines per projection request and index callback lookups if history
+grows; no premature optimization is applied here.

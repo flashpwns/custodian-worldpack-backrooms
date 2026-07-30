@@ -13,8 +13,8 @@ function modeForProfile(profile) { return ({ "field-researcher": "clear-q4", "lo
 function event(world, run_id, type, payload) { return history.event(world, run_id, `gameplay.${type}`, payload, "pack-original-gameplay-simulation"); }
 function state(world) {
   history.assertWorld(world);
-  if (!world.gameplay) world.gameplay = { version: VERSION, objectives: {}, progression: Object.fromEntries([...MODES].map((mode) => [mode, { unlocks: [] }])), valuations: {}, summaries: {}, risks: {}, decisions: {}, revisits: {} };
-  const s = world.gameplay; s.version ??= VERSION; s.objectives ??= {}; s.progression ??= {}; s.valuations ??= {}; s.summaries ??= {}; s.risks ??= {}; s.decisions ??= {}; s.revisits ??= {};
+  if (!world.gameplay) world.gameplay = { version: VERSION, objectives: {}, progression: Object.fromEntries([...MODES].map((mode) => [mode, { unlocks: [] }])), valuations: {}, summaries: {}, risks: {}, decisions: {}, revisits: {}, callbacks: {} };
+  const s = world.gameplay; s.version ??= VERSION; s.objectives ??= {}; s.progression ??= {}; s.valuations ??= {}; s.summaries ??= {}; s.risks ??= {}; s.decisions ??= {}; s.revisits ??= {}; s.callbacks ??= {};
   for (const mode of MODES) { s.progression[mode] ??= { unlocks: [] }; s.progression[mode].unlocks ??= []; }
   return s;
 }
@@ -79,11 +79,44 @@ function sourceKnown(world, mode, origin, run_id) {
     const item = world.artifacts[origin.id];
     if (!item) return false;
     if (mode === "nullzone") return Boolean(world.civilian?.base?.archive.includes(origin.id));
+    if (mode === "clear-q4") return item.custody.some((entry) => entry.run_id === run_id && entry.holder === "yb-field-player");
     return item.origin_run === run_id;
   }
   if (origin.kind === "institutional-record") return mode === "beck" && Boolean(world.knowledge.institutional.records[origin.id]);
+  if (origin.kind === "report") return mode === "beck" && Boolean(world.management?.reports?.some((item) => item.id === origin.id && item.lifecycle === "reviewed"));
   return false;
 }
+function originExists(world, origin) {
+  if (!origin?.kind || !origin.id) return false;
+  if (origin.kind === "event") return world.events.some((item) => item.id === origin.id);
+  if (origin.kind === "artifact") return Boolean(world.artifacts[origin.id]);
+  if (origin.kind === "objective") return Boolean(state(world).objectives[origin.id]);
+  if (origin.kind === "institutional-record") return Boolean(world.knowledge.institutional.records[origin.id]);
+  if (origin.kind === "report") return Boolean(world.management?.reports?.some((item) => item.id === origin.id && item.lifecycle === "reviewed"));
+  if (origin.kind === "infrastructure") return Object.values(world.management?.infrastructure ?? {}).some((item) => item.id === origin.id && item.status === "completed");
+  return false;
+}
+function callbackRecognition(mode, recognition, origin) {
+  if (!recognition || recognition === "unrecognized") return "unrecognized";
+  if (recognition === "domain-recognized" && mode !== "lost") return "domain-recognized";
+  if (recognition === "specifically-linked" && mode === "beck" && origin.kind === "institutional-record") return "specifically-linked";
+  return "unrecognized";
+}
+function registerCallback(world, { run_id, mode, origin, physical_target = null, description, recognition = "unrecognized", region_ref = null, observed = false }) {
+  const s = state(world); if (!MODES.has(mode) || !world.runs[run_id] || !originExists(world, origin) || !description || observed !== true) return { ok: false, code: "CALLBACK_SOURCE_UNKNOWN" };
+  const id = `callback-${hash([world.world_id, run_id, mode, origin, physical_target, description]).slice(0, 16)}`;
+  if (s.callbacks[id]) return { ok: true, idempotent: true, callback: safeCallback(s.callbacks[id]) };
+  const callback = { id, run_id, mode, origin: clone(origin), physical_target: physical_target ? clone(physical_target) : null, description, recognition: callbackRecognition(mode, recognition, origin), region_ref, provenance: "pack-original-gameplay-callback" };
+  s.callbacks[id] = callback; event(world, run_id, "callback_recognized", { mode, callback_id: id, recognition: callback.recognition, origin_kind: origin.kind }); return { ok: true, callback: safeCallback(callback) };
+}
+function safeCallback(item) { return { ref: item.id, description: item.description, recognition: item.recognition, region_ref: item.region_ref }; }
+function scopedTimeline(world, { mode, run_id = null } = {}) {
+  const s = state(world); if (!MODES.has(mode)) return [];
+  const own = world.events.filter((item) => item.type.startsWith("gameplay.") && item.type !== "gameplay.callback_recognized" && item.payload.mode === mode && (!run_id || item.run_id === run_id)).map((item) => ({ type: item.type.slice("gameplay.".length), sequence: item.sequence }));
+  const callbacks = Object.values(s.callbacks).filter((item) => item.mode === mode && (!run_id || item.run_id === run_id)).map((item) => ({ type: "callback", ref: item.id, description: item.description, recognition: item.recognition }));
+  return [...own, ...callbacks].sort((a, b) => `${a.sequence ?? ""}:${a.ref ?? ""}`.localeCompare(`${b.sequence ?? ""}:${b.ref ?? ""}`));
+}
+function actionsFor(mode) { return { "clear-q4": ["MOVE", "INSPECT", "USE", "RECORD", "COMMUNICATE", "WAIT", "RETURN", "ABORT", "CHOOSE"], nullzone: ["PREPARE", "ENTER", "INSPECT", "RECOVER", "RETURN", "ARCHIVE", "CHOOSE"], lost: ["MOVE", "INSPECT", "DROP", "RETURN", "CHOOSE"], beck: ["REVIEW_REPORT", "APPROVE_RECOVERY", "START_RESEARCH", "APPROVE_INFRASTRUCTURE", "CHOOSE"] }[mode] ?? []; }
 function createObjective(world, { run_id, mode, type, classification = "primary", origin, target = "known-opportunity", known_information = {}, reward = null, failure_condition = null, parent_id = null, depth = 0, authority = "scenario-optional", provenance = "pack-original-gameplay-objective" }) {
   const s = state(world); if (!MODES.has(mode) || !type || !["primary", "secondary", "deviation"].includes(classification) || !sourceKnown(world, mode, origin, run_id)) return { ok: false, code: "OBJECTIVE_SOURCE_UNKNOWN" };
   if (depth > MAX_FOLLOW_UP_DEPTH) return { ok: false, code: "FOLLOW_UP_DEPTH_EXCEEDED" };
@@ -123,16 +156,17 @@ function sessionSummary(world, { run_id, mode }) {
   const objectives = Object.values(s.objectives).filter((item) => item.completion?.run_id === run_id || item.origin.id === run_id).map((item) => ({ ref: item.id, type: item.type, classification: item.classification, outcome: item.status }));
   const values = Object.values(s.valuations).filter((item) => item.mode === mode).map(({ source_kind, kind, novelty, relevance }) => ({ source_kind, kind, novelty, relevance }));
   const decisions = Object.values(s.decisions).filter((item) => item.run_id === run_id).map(safeDecision);
-  const summary = { version: PROJECTION_VERSION, run_id, mode, objectives, recovered_values: values, progression: clone(s.progression[mode].unlocks).map((item) => ({ type: item.type, summary: item.summary, utility: progressionUtility(mode, item.type) })), decisions, follow_ups: Object.values(s.objectives).filter((item) => item.parent_id && item.mode === mode && item.status === "offered").map((item) => ({ ref: item.id, type: item.type })), revisit_opportunities: Object.values(s.revisits).filter((item) => item.mode === mode && item.status === "available").map(({ id, region_ref, reason, objective_id }) => ({ ref: id, region_ref, reason, objective_ref: objective_id })), persistent_consequences: world.events.filter((item) => item.run_id === run_id && /(?:remnant|artifact|region\.mutated|process_failed)/.test(item.type)).map((item) => item.type) };
+  const callbacks = Object.values(s.callbacks).filter((item) => item.run_id === run_id && item.mode === mode).map(safeCallback);
+  const summary = { version: PROJECTION_VERSION, run_id, mode, objectives, recovered_values: values, progression: clone(s.progression[mode].unlocks).map((item) => ({ type: item.type, summary: item.summary, utility: progressionUtility(mode, item.type) })), decisions, callbacks, follow_ups: Object.values(s.objectives).filter((item) => item.parent_id && item.mode === mode && item.status === "offered").map((item) => ({ ref: item.id, type: item.type })), revisit_opportunities: Object.values(s.revisits).filter((item) => item.mode === mode && item.status === "available").map(({ id, region_ref, reason, objective_id }) => ({ ref: id, region_ref, reason, objective_ref: objective_id })), persistent_consequences: world.events.filter((item) => item.run_id === run_id && /(?:remnant|artifact|region\.mutated|process_failed)/.test(item.type)).map((item) => item.type) };
   s.summaries[run_id] = clone(summary); event(world, run_id, "session_summarized", { mode, objective_count: objectives.length, follow_up_count: summary.follow_ups.length }); return { ok: true, summary };
 }
 function projection(world, { mode, run_id = null } = {}) {
   const s = state(world); if (!MODES.has(mode)) return { version: PROJECTION_VERSION, objectives: [], progression: [], timeline: [] };
   const objectives = Object.values(s.objectives).filter((item) => item.mode === mode).map(({ id, type, classification, target, known_information, status, reward, depth }) => ({ ref: id, type, classification, target, known_information: clone(known_information), status, reward: reward ? clone(reward) : null, depth }));
-  const timeline = world.events.filter((item) => item.type.startsWith("gameplay.") && item.payload.mode === mode && (!run_id || item.run_id === run_id)).map((item) => ({ type: item.type.slice("gameplay.".length), sequence: item.sequence }));
+  const timeline = scopedTimeline(world, { mode, run_id });
   const risks = Object.values(s.risks).filter((item) => item.mode === mode && (!run_id || item.run_id === run_id)).map(({ id, level, factors, resources }) => ({ ref: id, level, factors: clone(factors), resources: clone(resources) }));
   const decisions = Object.values(s.decisions).filter((item) => item.mode === mode && (!run_id || item.run_id === run_id)).map(safeDecision);
   const revisits = Object.values(s.revisits).filter((item) => item.mode === mode && item.status === "available").map(({ id, region_ref, reason, objective_id }) => ({ ref: id, region_ref, reason, objective_ref: objective_id }));
-  return { version: PROJECTION_VERSION, mode, objectives, progression: clone(s.progression[mode].unlocks).map((item) => ({ type: item.type, summary: item.summary, utility: progressionUtility(mode, item.type) })), evidence_values: Object.values(s.valuations).filter((item) => item.mode === mode).map(({ source_kind, kind, novelty, relevance }) => ({ source_kind, kind, novelty, relevance })), known_risk: risks, choices: decisions, revisit_opportunities: revisits, timeline, session_summary: run_id ? clone(s.summaries[run_id] ?? null) : null };
+  return { version: PROJECTION_VERSION, mode, role: ({ "clear-q4": "Async: Clear-Q4", nullzone: "Nullzone Exposure", lost: "Lost", beck: "Async: Beck's Desk" })[mode], available_actions: actionsFor(mode), objectives, progression: clone(s.progression[mode].unlocks).map((item) => ({ type: item.type, summary: item.summary, utility: progressionUtility(mode, item.type) })), evidence_values: Object.values(s.valuations).filter((item) => item.mode === mode).map(({ source_kind, kind, novelty, relevance }) => ({ source_kind, kind, novelty, relevance })), known_risk: risks, choices: decisions, callbacks: Object.values(s.callbacks).filter((item) => item.mode === mode && (!run_id || item.run_id === run_id)).map(safeCallback), revisit_opportunities: revisits, timeline, session_summary: run_id ? clone(s.summaries[run_id] ?? null) : null };
 }
-module.exports = { VERSION, PROJECTION_VERSION, MAX_FOLLOW_UP_DEPTH, modeForProfile, state, createObjective, resolveObjective, assessEvidence, assessArtifact, evaluateKnownRisk, createDecision, resolveDecision, createRevisitOpportunity, sessionSummary, projection };
+module.exports = { VERSION, PROJECTION_VERSION, MAX_FOLLOW_UP_DEPTH, modeForProfile, state, createObjective, resolveObjective, assessEvidence, assessArtifact, evaluateKnownRisk, createDecision, resolveDecision, createRevisitOpportunity, registerCallback, scopedTimeline, sessionSummary, projection };
