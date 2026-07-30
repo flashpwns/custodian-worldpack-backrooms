@@ -1,0 +1,37 @@
+{
+  "version": "context-closure/v1",
+  "policy": "Every known repository or historically named context input is tracked here, in the source registry, corpus inventory, or an explicit input gap. Closure means disposition, not canon admission.",
+  "source_dispositions": {
+    "backrooms-first-contact": "partially-reviewed",
+    "backrooms-missing-persons": "deferred",
+    "backrooms-informational-video": "deferred",
+    "backrooms-autopsy-report": "partially-reviewed",
+    "backrooms-motion-detected": "partially-reviewed",
+    "backrooms-pitfalls": "partially-reviewed",
+    "backrooms-report": "deferred",
+    "backrooms-presentation": "deferred",
+    "backrooms-reunion": "deferred",
+    "backrooms-damage-control": "partially-reviewed",
+    "backrooms-lighting-tile-survey": "partially-reviewed",
+    "backrooms-static-dead-end": "deferred",
+    "backrooms-found-footage-2": "partially-reviewed",
+    "backrooms-found-footage-3": "partially-reviewed",
+    "everything-must-go": "needs-verification",
+    "found-footage-3-production-gallery": "production-artifact",
+    "backrooms-wiki-export": "reference-only",
+    "creator-discord-archive": "needs-context"
+  },
+  "corpus_disposition": "inventoried-unreviewed",
+  "known_input_gaps": [
+    "archive-kane-facility-old-general",
+    "kelowna-branch-image-gallery",
+    "transcript-overflow-reference"
+  ],
+  "closure": {
+    "known_inputs_tracked": true,
+    "unexplained_orphans": 0,
+    "runtime_authority_complete": true,
+    "unresolved_items_tracked": true,
+    "procedural_generation_context_status": "ready-with-warnings"
+  }
+}

@@ -1,0 +1,10 @@
+{
+  "version": "unresolved-items/v1",
+  "items": [
+    {"id":"directly-verified-bounded-return-traversal","topic":"route topology","source_refs":["backrooms-first-contact"],"status":"needs-direct-source-access","simulation_treatment":"prohibited-from-generalization","future_evidence":"directly checked official source","last_review":"2026-07-29"},
+    {"id":"ff2-transition-destination","topic":"spatial discontinuity destination","source_refs":["backrooms-found-footage-2"],"status":"unresolved","simulation_treatment":"local-discontinuity-only","future_evidence":"direct observation with destination evidence","last_review":"2026-07-29"},
+    {"id":"institutional-recording-scope","topic":"ASYNC operational doctrine","source_refs":["backrooms-motion-detected","backrooms-damage-control"],"status":"unresolved","simulation_treatment":"no-universal-procedure","future_evidence":"separate directly checked source","last_review":"2026-07-29"},
+    {"id":"production-versus-finished-screen-gallery","topic":"production boundary","source_refs":["found-footage-3-production-gallery"],"status":"production-artifact","simulation_treatment":"reference-only","future_evidence":"finished-screen corroboration","last_review":"2026-07-29"},
+    {"id":"creator-archive-context","topic":"creator/community archive","source_refs":["creator-discord-archive"],"status":"needs-context","simulation_treatment":"reference-only","future_evidence":"attributed message plus direct contextual review","last_review":"2026-07-29"}
+  ]
+}

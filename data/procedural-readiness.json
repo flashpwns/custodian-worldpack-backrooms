@@ -1,0 +1,12 @@
+{
+  "version":"procedural-readiness/v1",
+  "status":"ready-with-warnings",
+  "categories":[
+    {"id":"architecture","source_refs":["backrooms-pitfalls","backrooms-found-footage-3"],"authority":"authoritative-local-only","generator_rule":"may-use-only-as-local-grammar; no universal layout inference"},
+    {"id":"environment","source_refs":["backrooms-lighting-tile-survey","backrooms-pitfalls"],"authority":"authoritative-local-only","generator_rule":"may-vary-as-pack-original only when labelled; observed lighting is not global"},
+    {"id":"topology","source_refs":["backrooms-found-footage-2","backrooms-first-contact"],"authority":"authoritative-local-only","generator_rule":"do-not-generalize discontinuities or return paths"},
+    {"id":"anomalies","source_refs":["backrooms-found-footage-2"],"authority":"authoritative-local-only","generator_rule":"do-not-populate entities or infer mechanisms"}
+  ],
+  "warnings":["All observed forms are source-local.","Unreviewed corpus entries are discovery inventory, not generator input.","Pack-original generation grammar must be visibly labelled."],
+  "blockers":[]
+}
