@@ -39,6 +39,31 @@ The renderer consumes `yellow-beast-gameplay-projection@v1`,
 allowlisted structured action contract. It never imports private simulation
 state. Canonical runtime responses always replace the display after an action.
 
+## Play surfaces
+
+The shared play shell routes by stable mode ID and uses a compact capability map
+rather than four separate engines. Shared renderer code handles world identity,
+projection refresh, valid safe target choices, canonical result feedback, and
+keyboard-accessible action controls. Renderer-local state is limited to display
+selection and form state; objectives, inventory, tasks, and world state always
+come from a fresh canonical projection.
+
+Beck's Desk presents an institutional task tray, reports, personnel, research,
+infrastructure, budget, and an intentionally non-omniscient known-Complex
+summary. Clear-Q4 is a field terminal for objectives, surroundings, route
+fragments, known risk, team, equipment, communications, and evidence. Nullzone
+is organized around a civilian base, personal archive, questions, route memory,
+preparation, and current excursion. Lost remains deliberately sparse: immediate
+surroundings, remembered route fragments, light, carried items, and only
+observer-recognized callbacks.
+
+All panel content is derived from the existing safe gameplay or institution
+projections. The renderer cannot infer a callback, reveal a hidden route, or
+turn a UI action into a command string. Structured labels and targets are
+presentation-only mappings of the bridge contract. Shared typography, spacing,
+status, panel, and focus tokens give the four restrained mode identities a
+coherent accessible foundation.
+
 ## Development
 
 `npm run desktop:dev` launches the Electron host. `npm run desktop:test` tests
@@ -48,7 +73,7 @@ Pass 4.
 
 ## Next pass
 
-Pass 2 replaces the generic safe-projection viewer with separate Beck's Desk,
-Clear-Q4, Nullzone Exposure, and Lost surfaces. Pass 3 adds provider settings,
-autosave/recovery UX, and polished import/export. Pass 4 handles native
-packaging and fresh-machine validation.
+Pass 3 adds provider settings, autosave/recovery UX, polished import/export,
+and usability hardening. Pass 4 handles native packaging and fresh-machine
+validation. A YB-28 candidate is profiling large timeline/projection composition
+before adding richer archived-history views.
