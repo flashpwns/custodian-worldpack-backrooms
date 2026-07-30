@@ -10,7 +10,7 @@ npm run build:alpha
 npm run verify:alpha
 ```
 
-Artifacts appear in `dist/macos/` or `dist/windows/`. macOS builds are locally smoke-tested on the host architecture; Windows builds are produced and smoke-tested by the GitHub Actions packaging matrix. Neither platform is signed or notarized in this alpha.
+Artifacts appear in `dist/macos/` or `dist/windows/`. macOS builds are locally smoke-tested on the host architecture; Windows builds are produced and smoke-tested by the GitHub Actions packaging matrix on packaging pull requests (and may be dispatched after the workflow first reaches `main`). Neither platform is signed or notarized in this alpha.
 
 Mutable data is external: macOS uses `~/Library/Application Support/Yellow Beast/`; Windows uses `%APPDATA%\Yellow Beast\`. Existing developer saves under `.saves/` are untouched; copy a JSON save into the new `saves/` folder to import it manually. Configuration is `config.json`; logs are noncanonical under `logs/`.
 
