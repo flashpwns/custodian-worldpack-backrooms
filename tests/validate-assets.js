@@ -211,7 +211,7 @@ scripts.push("tests/y19-becks-desk.test.js", "tools/becks-desk.js", "tools/manag
 scripts.push("tests/y21-lost.test.js", "tools/lost.js", "tools/lost-report.js");
 scripts.push("tests/y22-v2-topology.test.js", "tests/y22-persistence.test.js", "tests/y22-cross-mode.test.js", "tools/procedural-complex-v2.js", "tools/complex-simulation-report.js");
 scripts.push("tools/entity-simulation.js", "tools/entity-report.js", "tools/still-life-report.js");
-scripts.push("tests/y23-encounter.test.js");
+scripts.push("tests/y23-encounter.test.js", "tests/y23-behavior.test.js");
 for (const relative of scripts) {
   const content = fs.readFileSync(path.join(root, relative), "utf8");
   assert.doesNotMatch(content, /custodian\/(runtime|state|tools)/, `${relative} uses only public Custodian imports`);
