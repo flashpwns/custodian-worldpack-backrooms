@@ -1,6 +1,6 @@
 {
   "name": "yellow-beast",
-  "version": "0.6.0-alpha",
+  "version": "0.7.0-alpha",
   "private": true,
   "description": "Unofficial declarative Kane Pixels Backrooms world pack for Custodian.",
   "license": "MIT",
@@ -28,8 +28,9 @@
     "procedural-report": "node tools/procedural-report.js",
     "world-history-report": "node tools/world-history-report.js",
     "management-report": "node tools/management-report.js",
+    "nullzone-report": "node tools/nullzone-report.js",
     "check-admission": "node tools/check-admission.js scenarios/threshold-baseline-admission.json",
-    "test": "npm run validate-assets && npm run validate-contracts && node --test tests/intake-model.test.js tests/operations-model.test.js tests/recovered-records.test.js tests/architecture-model.test.js tests/survey-model.test.js tests/anomaly-model.test.js tests/corpus-transition-model.test.js tests/profile-model.test.js tests/run-bootstrap.test.js tests/y12b.test.js tests/y12c-playable-alpha.test.js tests/y13-ai-interface.test.js tests/y14-packaging.test.js tests/y15-openai-provider.test.js tests/y16-expedition.test.js tests/y165-context-closure.test.js tests/y17-procedural-complex.test.js tests/y18-world-history.test.js tests/y19-becks-desk.test.js && npm run check-admission && npm run evidence-report && npm run operations-report && npm run records-report && npm run architecture-report && npm run survey-report && npm run anomaly-report && npm run corpus-report && npm run transition-report && npm run profile-report && npm run run-report && npm run expedition-report && npm run corpus-coverage-report && npm run procedural-report && npm run world-history-report && npm run management-report && npm run conformance"
+    "test": "npm run validate-assets && npm run validate-contracts && node --test tests/intake-model.test.js tests/operations-model.test.js tests/recovered-records.test.js tests/architecture-model.test.js tests/survey-model.test.js tests/anomaly-model.test.js tests/corpus-transition-model.test.js tests/profile-model.test.js tests/run-bootstrap.test.js tests/y12b.test.js tests/y12c-playable-alpha.test.js tests/y13-ai-interface.test.js tests/y14-packaging.test.js tests/y15-openai-provider.test.js tests/y16-expedition.test.js tests/y165-context-closure.test.js tests/y17-procedural-complex.test.js tests/y18-world-history.test.js tests/y19-becks-desk.test.js tests/y20-nullzone-exposure.test.js && npm run check-admission && npm run evidence-report && npm run operations-report && npm run records-report && npm run architecture-report && npm run survey-report && npm run anomaly-report && npm run corpus-report && npm run transition-report && npm run profile-report && npm run run-report && npm run expedition-report && npm run corpus-coverage-report && npm run procedural-report && npm run world-history-report && npm run management-report && npm run nullzone-report && npm run conformance"
   },
   "devDependencies": {
     "custodian": "github:flashpwns/custodian#9850ff71a43dcd308f50e812a4e7d0b4249ff815"
