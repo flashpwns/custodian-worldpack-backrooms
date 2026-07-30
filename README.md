@@ -2,7 +2,7 @@
 
 Yellow Beast is an unofficial, independently maintained declarative world pack
 for [Custodian](https://github.com/flashpwns/custodian).
-It targets `canonical-kernel@v1` and is currently `0.1.0-alpha`.
+It targets `canonical-kernel@v1` and is currently `0.13.0-alpha`.
 
 It is a simulation-pack foundation, not a transcript archive or a statement of
 official canon. Source metadata, claims, and simulation authority are separate:
@@ -18,6 +18,20 @@ npm run check-admission
 npm run evidence-report
 npm run conformance
 ```
+
+## Desktop shell (YB-26 alpha)
+
+The in-progress desktop shell runs without an AI provider and stores worlds in
+the platform application-data directory. For development, run:
+
+```sh
+npm run desktop:dev
+```
+
+`npm run desktop:build` performs the deterministic staging check. Native alpha
+archives can be built with `npm run desktop:package -- --mac zip` or
+`npm run desktop:package -- --win zip`; verify them with
+`npm run desktop:verify`. See [desktop distribution](docs/desktop-distribution.md).
 
 ## Canon admission
 
