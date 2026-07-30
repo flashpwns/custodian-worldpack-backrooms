@@ -18,3 +18,10 @@ recovery, and infrastructure. Research retains only reviewed report inputs and
 changes institutional capability state. Infrastructure completion additionally
 uses the same v2 mutation stream to install a physical shared-world object;
 rebuilding the region therefore preserves it without a management-only copy.
+
+Gameplay callbacks are observer-scoped `gameplay.callback_recognized` events
+that link to existing history-backed artifacts, reviewed reports, objectives,
+or completed infrastructure. They do not duplicate physical state or broaden
+knowledge domains: public callback projections retain only a safe description,
+recognition level, and region reference. The internal origin exists solely for
+deterministic provenance and rebuild validation.
