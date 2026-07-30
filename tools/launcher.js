@@ -38,8 +38,18 @@ async function runCommand({ paths, profile = "field-researcher", seed = "alpha",
 async function interactive(paths) {
   console.log("YELLOW BEAST — Playable Alpha\nRecommended: Async: Clear-Q4 (PLAYABLE ALPHA)\nOther modes are experimental.");
   const prompt = readline.createInterface({ input: stdin, output: stdout });
-  const profile = (await prompt.question("Mode [2 recommended: Async: Clear-Q4]: ")).trim();
-  let run = startRun({ profile: { "1": "async-command", "2": "field-researcher", "3": "local-anomaly", "4": "lost" }[profile] || "field-researcher", seed: "alpha" }).run;
+  ensureData(paths);
+  const defaultSave = savePath(paths);
+  let run;
+  if (fs.existsSync(defaultSave) && (await prompt.question("Resume saved Async: Clear-Q4 run? [Y/n]: ")).trim().toLowerCase() !== "n") {
+    const restored = resumeRun(readSave(defaultSave));
+    if (restored.ok) run = restored.run;
+    else console.log("Saved run is incompatible or corrupted; starting a new run.");
+  }
+  if (!run) {
+    const profile = (await prompt.question("Mode [2 recommended: Async: Clear-Q4]: ")).trim();
+    run = startRun({ profile: { "1": "async-command", "2": "field-researcher", "3": "local-anomaly", "4": "lost" }[profile] || "field-researcher", seed: "alpha" }).run;
+  }
   console.log(JSON.stringify(status(run), null, 2));
   while (true) {
     const input = (await prompt.question("Command (LOOK, MOVE, INSPECT fixture-1, USE, SAVE, QUIT, or natural text): ")).trim();
@@ -55,7 +65,7 @@ async function interactive(paths) {
 function option(args, name) { const i = args.indexOf(name); return i < 0 ? undefined : args[i + 1]; }
 async function main() {
   const paths = resolveAppPaths(); const args = process.argv.slice(2);
-  if (!args.length && stdin.isTTY) return interactive(paths);
+  if (args.includes("--interactive") || (!args.length && stdin.isTTY)) return interactive(paths);
   const output = await runCommand({ paths, profile: option(args, "--profile") || "field-researcher", seed: option(args, "--seed") || "alpha", resume: option(args, "--resume"), save: args.includes("--save") ? option(args, "--save") || true : false, action: option(args, "--action"), target: option(args, "--target"), natural: option(args, "--natural") });
   console.log(JSON.stringify(output, null, 2)); if (!output.ok) process.exitCode = 1;
 }

@@ -9,4 +9,4 @@ Saves, configuration, and launcher logs live outside the app:
 - macOS: `~/Library/Application Support/Yellow Beast/`
 - Windows: `%APPDATA%\Yellow Beast\`
 
-To resume, relaunch Yellow Beast and choose the saved run. Current alpha limits: only Async: Clear-Q4 is fully playable; other modes are experimental; RECORD, COMMUNICATE, and WAIT are unavailable. If startup fails, check `logs/launcher.log` in the application-data folder. This is an unofficial fan project, not affiliated with Kane Pixels.
+To resume, relaunch Yellow Beast and accept the **Resume saved Async: Clear-Q4 run?** prompt. Current alpha limits: only Async: Clear-Q4 is fully playable; other modes are experimental; RECORD, COMMUNICATE, and WAIT are unavailable. If startup fails, check `logs/launcher.log` in the application-data folder. This is an unofficial fan project, not affiliated with Kane Pixels.
