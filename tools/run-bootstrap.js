@@ -5,12 +5,14 @@ const path = require("node:path");
 const { createSession, exportSession, restoreSession, stableSerialize, getAvailableSessionActions, submitSessionAction, inspectSessionObserver } = require("custodian");
 const { FIELD_SCENARIO, fieldExpedition, event, useEquipment, safeSummary, finalize } = require("./expedition");
 const procedural = require("./procedural-complex");
+const proceduralV2 = require("./procedural-complex-v2");
 const history = require("./world-history");
 
 const root = path.resolve(__dirname, "..");
 const read = (relative) => JSON.parse(fs.readFileSync(path.join(root, relative), "utf8"));
 const clone = (value) => structuredClone(value);
 const FIELD_PROFILE = "field-researcher";
+function generatorFor(stateOrVersion) { const version = typeof stateOrVersion === "string" ? stateOrVersion : stateOrVersion?.version; if (version === procedural.VERSION) return procedural; if (version === proceduralV2.VERSION) return proceduralV2; throw Object.assign(new Error(`unsupported generator version: ${version ?? "missing"}`), { code: "GENERATOR_VERSION_UNSUPPORTED" }); }
 
 function profileFor(profileId) { return read("profiles/profiles.json").profiles.find((profile) => profile.id === profileId); }
 function startupFor(profileId) {
@@ -52,7 +54,7 @@ function newRun({ profile, seed, session, expedition, procedural_state, procedur
   const player = session.startup.player.observer_id;
   return { version: "yellow-beast-run@v4", profile_id: profile, profile_title: profileRecord.title, scenario: procedural_scenario ? "async-clear-q4-procedural-survey" : session.scenario.id, seed, session, lifecycle: "active", checklist: { moved: false, inspected: false, used: false }, aliases: {}, expedition: expedition ?? (profile === FIELD_PROFILE ? fieldExpedition(player) : null), procedural: procedural_scenario ? (procedural_state ?? procedural.initialize({ seed, observer: player })) : null, world_id, run_id, _world: world };
 }
-function startRun({ profile, seed = "yellow-beast-bootstrap", scenario = null, world = null, region_id = null }) {
+function startRun({ profile, seed = "yellow-beast-bootstrap", scenario = null, world = null, region_id = null, generator_version = null }) {
   const { profile: profileRecord, startup } = startupFor(profile);
   const player = startup.player.observer_id;
   const result = createSession({ world_pack: configuredPack(profile, player), scenario: configuredScenario(profile, player), startup, seed_material: { seed } });
@@ -61,8 +63,8 @@ function startRun({ profile, seed = "yellow-beast-bootstrap", scenario = null, w
   const procedural_scenario = profile === FIELD_PROFILE && scenario === "procedural-survey";
   const run_id = world ? history.beginRun(world, { profile, scenario: procedural_scenario ? "async-clear-q4-procedural-survey" : result.session.scenario.id, seed }) : null;
   const existing = region_id && world?.regions?.[region_id];
-  if (existing && existing.generator_version !== procedural.VERSION) return { ok: false, error: { code: "GENERATOR_VERSION_UNSUPPORTED" } };
-  const procedural_state = existing ? clone(existing.state) : undefined;
+  let generator; try { generator = generatorFor(existing?.generator_version ?? generator_version ?? procedural.VERSION); } catch (error) { return { ok: false, error: { code: error.code ?? "GENERATOR_VERSION_UNSUPPORTED" } }; }
+  const procedural_state = existing ? clone(history.restoreRegion(world, region_id).state) : (procedural_scenario && generator_version === proceduralV2.VERSION ? generator.initialize({ seed, observer: player, policy: "moderate" }) : undefined);
   if (procedural_state) { const known = procedural_state.discovery[player] ?? { spaces: [], edges: [], features: [] }; procedural_state.discovery = { [player]: { spaces: [], edges: [], features: [] } }; procedural_state.current = { [player]: Object.keys(procedural_state.nodes)[0] }; void known; }
   const run = newRun({ profile, seed, session: result.session, procedural_scenario, procedural_state, world_id: world?.world_id ?? null, run_id, world });
   return { ok: restored.ok, session: result.session, run, restored_equivalent: restored.ok && stableSerialize(restored.session) === stableSerialize(result.session), summary: { session_id: result.session.id, profile, profile_title: profileRecord.title, scenario: result.session.scenario.id, seed, player: startup.player, knowledge: startup.knowledge, permissions: startup.permissions, resources: startup.resources } };
@@ -77,10 +79,10 @@ function look(runValue) {
   const run = normalizeRun(runValue);
   const observer = run.session.startup.player.observer_id;
   if (run.procedural) {
-    const view = procedural.visible(run.procedural, observer);
+    const generator = generatorFor(run.procedural); const view = generator.visible(run.procedural, observer);
     const aliases = Object.fromEntries([...view.features.map((feature) => [feature.alias, feature.alias]), ...view.exits.map((exit) => [exit.alias, exit.alias])]);
     run.aliases = aliases;
-    return { outcome: "succeeded", observer_id: observer, kind: "look", view, targets: Object.keys(aliases).map((alias) => ({ alias })), aliases: Object.keys(aliases).map((alias) => ({ alias, ref: aliases[alias] })), public_reason: null, generator_version: procedural.VERSION };
+    return { outcome: "succeeded", observer_id: observer, kind: "look", view, targets: Object.keys(aliases).map((alias) => ({ alias })), aliases: Object.keys(aliases).map((alias) => ({ alias, ref: aliases[alias] })), public_reason: null, generator_version: generator.VERSION };
   }
   const result = inspectSessionObserver({ session: run.session, observer, request: { id: `look-${run.session.id}`, kind: "look" } });
   const aliases = Object.fromEntries((result.targets ?? []).map((target, index) => [`fixture-${index + 1}`, target.ref]));
@@ -91,7 +93,7 @@ function inspect(runValue, alias) {
   const run = normalizeRun(runValue);
   const observer = run.session.startup.player.observer_id;
   if (run.procedural) {
-    const result = procedural.inspect(run.procedural, observer, alias);
+    const result = generatorFor(run.procedural).inspect(run.procedural, observer, alias);
     if (result.ok && run.expedition) { run.checklist.inspected = true; run.expedition.objectives.survey.state = "satisfied"; event(run.expedition, "procedural.feature.inspected", result.detail); }
     return { outcome: result.ok ? "succeeded" : "rejected", ...(result.ok ? { details: result.detail } : {}), public_reason: result.public_reason ?? null };
   }
@@ -107,7 +109,7 @@ function status(runValue) {
   const actions = getAvailableSessionActions({ session: run.session, actor: observer }).actions;
   const active = run.lifecycle === "active";
   const expeditionVerbs = active && run.expedition ? ["COMMUNICATE", "RECORD", "WAIT", "RETURN", "ABORT"] : [];
-  return { profile_id: run.profile_id, profile_title: run.profile_title, scenario: run.scenario, lifecycle: run.lifecycle, player: observer, known_resources: (run.session.startup.resources ?? []).filter((entry) => entry.custodian === observer).map((entry) => entry.id), available_verbs: ["LOOK", ...(active && view.targets?.length ? ["INSPECT"] : []), ...(active && (run.procedural ? view.view?.exits?.length : actions.includes("traverse-controlled-route")) ? ["MOVE"] : []), ...(active && actions.includes("toggle-light") ? ["USE"] : []), ...expeditionVerbs], view: { outcome: view.outcome, location: view.view?.location ?? null, targets: (view.aliases ?? []).map(({ alias }) => ({ alias })), public_reason: view.public_reason ?? null }, ...(run.expedition ? { expedition: safeSummary(run.expedition) } : {}), ...(run.procedural ? { discovered_topology: procedural.map(run.procedural, observer), generator_version: procedural.VERSION } : {}) };
+  return { profile_id: run.profile_id, profile_title: run.profile_title, scenario: run.scenario, lifecycle: run.lifecycle, player: observer, known_resources: (run.session.startup.resources ?? []).filter((entry) => entry.custodian === observer).map((entry) => entry.id), available_verbs: ["LOOK", ...(active && view.targets?.length ? ["INSPECT"] : []), ...(active && (run.procedural ? view.view?.exits?.length : actions.includes("traverse-controlled-route")) ? ["MOVE"] : []), ...(active && actions.includes("toggle-light") ? ["USE"] : []), ...expeditionVerbs], view: { outcome: view.outcome, location: view.view?.location ?? null, targets: (view.aliases ?? []).map(({ alias }) => ({ alias })), public_reason: view.public_reason ?? null }, ...(run.expedition ? { expedition: safeSummary(run.expedition) } : {}), ...(run.procedural ? { discovered_topology: generatorFor(run.procedural).map(run.procedural, observer), generator_version: generatorFor(run.procedural).VERSION } : {}) };
 }
 function terminal(run, decision) { finalize(run.expedition, decision); run.lifecycle = "completed"; const ingestion = run._world && run.run_id ? history.ingestRun(run._world, run) : null; return { ok: true, outcome: "succeeded", result: { public_reason: null, expedition_result: clone(run.expedition.result), ...(ingestion ? { history: { run_id: ingestion.run_id, region_id: ingestion.region_id } } : {}) }, run }; }
 function expeditionAction(run, verb, target) {
@@ -125,7 +127,7 @@ function act(runValue, verb, target) {
   if (verb === "INSPECT") { const result = inspect(run, target); return { ok: true, outcome: result.outcome === "succeeded" ? "succeeded" : "rejected", result, run }; }
   if (run.lifecycle === "completed") return { ok: false, error: { code: "RUN_COMPLETE" }, run };
   if (["COMMUNICATE", "RECORD", "WAIT", "RETURN", "ABORT"].includes(verb)) return expeditionAction(run, verb, target);
-  if (verb === "MOVE" && run.procedural) { const moved = procedural.move(run.procedural, run.session.startup.player.observer_id, target); if (!moved.ok) return { ok: false, error: { code: "TARGET_UNAVAILABLE" }, result: { public_reason: moved.public_reason }, run }; run.checklist.moved = true; event(run.expedition, "procedural.space.discovered", { location: moved.view.location.alias }); return { ok: true, outcome: "succeeded", result: { public_reason: null, view: moved.view }, run }; }
+  if (verb === "MOVE" && run.procedural) { const moved = generatorFor(run.procedural).move(run.procedural, run.session.startup.player.observer_id, target); if (!moved.ok) return { ok: false, error: { code: "TARGET_UNAVAILABLE" }, result: { public_reason: moved.public_reason }, run }; run.checklist.moved = true; event(run.expedition, "procedural.space.discovered", { location: moved.view.location.alias }); return { ok: true, outcome: "succeeded", result: { public_reason: null, view: moved.view }, run }; }
   if (verb === "USE" && target && target !== "field-light") {
     if (target !== "survey-instrument") return { ok: false, error: { code: "EQUIPMENT_UNAVAILABLE" }, run };
     const used = useEquipment(run.expedition, target); if (!used.ok) return { ok: false, error: { code: used.code }, run };
@@ -140,7 +142,7 @@ function act(runValue, verb, target) {
   return { ...result, run };
 }
 function saveRun(runValue) { const run = normalizeRun(runValue); return { version: "yellow-beast-save@v4", profile_id: run.profile_id, profile_title: run.profile_title, scenario: run.scenario, seed: run.seed, lifecycle: run.lifecycle, checklist: clone(run.checklist), aliases: clone(run.aliases), expedition: clone(run.expedition), procedural: clone(run.procedural), world_id: run.world_id, run_id: run.run_id, envelope: exportSession(run.session).envelope }; }
-function resumeRun(save, { world = null } = {}) { const restored = restoreSession(save.envelope); if (!restored.ok) return restored; if (save.procedural && save.procedural.version !== procedural.VERSION) return { ok: false, error: { code: "GENERATOR_VERSION_UNSUPPORTED" } }; if (world && save.world_id && world.world_id !== save.world_id) return { ok: false, error: { code: "WORLD_ID_MISMATCH" } }; const run = newRun({ profile: save.profile_id, seed: save.seed, session: restored.session, expedition: clone(save.expedition), procedural_state: clone(save.procedural), procedural_scenario: Boolean(save.procedural), world_id: save.world_id, run_id: save.run_id, world }); run.lifecycle = save.lifecycle ?? "active"; run.checklist = clone(save.checklist ?? run.checklist); run.aliases = clone(save.aliases ?? {}); return { ok: true, run }; }
+function resumeRun(save, { world = null } = {}) { const restored = restoreSession(save.envelope); if (!restored.ok) return restored; try { if (save.procedural) generatorFor(save.procedural); } catch (error) { return { ok: false, error: { code: error.code ?? "GENERATOR_VERSION_UNSUPPORTED" } }; } if (world && save.world_id && world.world_id !== save.world_id) return { ok: false, error: { code: "WORLD_ID_MISMATCH" } }; const run = newRun({ profile: save.profile_id, seed: save.seed, session: restored.session, expedition: clone(save.expedition), procedural_state: clone(save.procedural), procedural_scenario: Boolean(save.procedural), world_id: save.world_id, run_id: save.run_id, world }); run.lifecycle = save.lifecycle ?? "active"; run.checklist = clone(save.checklist ?? run.checklist); run.aliases = clone(save.aliases ?? {}); return { ok: true, run }; }
 
 if (require.main === module) { const args = process.argv.slice(2); const value = (name) => args[args.indexOf(name) + 1]; const result = startRun({ profile: value("--profile") || "lost", seed: value("--seed") || "yellow-beast-bootstrap" }); console.log(JSON.stringify(result.ok ? result.summary : result, null, 2)); process.exitCode = result.ok ? 0 : 1; }
-module.exports = { startRun, status, look, inspect, act, saveRun, resumeRun };
+module.exports = { startRun, status, look, inspect, act, saveRun, resumeRun, generatorFor };
