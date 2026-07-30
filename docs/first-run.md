@@ -20,3 +20,14 @@ npm run play -- --resume .saves/clear-q4.json --action USE --save .saves/clear-q
 The run becomes `completed` after the declared traversal, successful public inspection, and successful field interaction. LOOK/status remain read-only; further mutating actions are rejected. RECORD, COMMUNICATE, and WAIT are intentionally unavailable in this alpha.
 
 Custodian's LOOK and INSPECT queries remain read-only. Yellow Beast therefore persists the scenario-local inspection acknowledgement in its versioned save alongside Custodian's public export; it is deterministic across the save/resume comparison and is not a substitute for hidden Custodian state.
+
+## Optional natural-language mode
+
+The shipped deterministic mock adapter works offline and does not need a key:
+
+```sh
+npm run play -- --profile field-researcher --seed yb13-demo --natural "look around"
+npm run play -- --profile field-researcher --seed yb13-demo --natural "head down the corridor"
+```
+
+Natural input is translated into the same validated structured commands. If it is ambiguous, invalid, or unavailable, no action runs; continue with the structured commands above. Future network providers are optional and use environment-only placeholder names in `.env.example`.
