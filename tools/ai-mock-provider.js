@@ -1,6 +1,7 @@
 "use strict";
 
 function firstAlias(context) { return context.aliases[0]?.alias; }
+function movementAlias(context) { return context.aliases.find(({ alias }) => alias.startsWith("passage-"))?.alias; }
 function mockIntent({ player_text, context }) {
   const input = player_text.toLowerCase();
   if (input.includes("ignore") || input.includes("hidden") || input.includes("behind every wall") || input.includes("teleport")) return { kind: "invalid", actions: [], clarification: null, public_reason: "That request cannot be resolved from your current view." };
@@ -8,7 +9,7 @@ function mockIntent({ player_text, context }) {
   if (input.includes("provider failure")) throw new Error("mock provider unavailable");
   const fixture = firstAlias(context);
   if (input.includes("door") && context.aliases.length > 1) return { kind: "clarification", actions: [], clarification: { message: "Which visible door do you mean?", candidates: context.aliases.map(({ alias }) => alias) } };
-  if ((input.includes("hall") || input.includes("corridor")) && (input.includes("inspect") || input.includes("look at")) && fixture) return { kind: "compound", actions: [{ verb: "MOVE", parameters: {} }, { verb: "INSPECT", target_alias: fixture, parameters: {} }], clarification: null };
+  if ((input.includes("hall") || input.includes("corridor")) && (input.includes("inspect") || input.includes("look at")) && fixture) return { kind: "compound", actions: [{ verb: "MOVE", ...(movementAlias(context) ? { target_alias: movementAlias(context) } : {}), parameters: {} }, { verb: "INSPECT", target_alias: fixture, parameters: {} }], clarification: null };
   if (input.includes("radio") || input.includes("standard") || input.includes("teammate")) return { kind: "action", actions: [{ verb: "COMMUNICATE", target_alias: input.includes("standard") ? "standard" : "teammate", parameters: {} }], clarification: null };
   if (input.includes("record") || input.includes("picture") || input.includes("photograph")) return fixture ? { kind: "action", actions: [{ verb: "RECORD", target_alias: fixture, parameters: {} }], clarification: null } : { kind: "clarification", actions: [], clarification: { message: "There is no visible record target yet.", candidates: [] } };
   if (input.includes("wait")) return { kind: "action", actions: [{ verb: "WAIT", parameters: {} }], clarification: null };
@@ -17,7 +18,7 @@ function mockIntent({ player_text, context }) {
   if (input.includes("use")) return { kind: "action", actions: [{ verb: "USE", parameters: {} }], clarification: null };
   if (input.includes("look")) return { kind: "action", actions: [{ verb: "LOOK", parameters: {} }], clarification: null };
   if (input.includes("inspect") || input.includes("check") || input.includes("fixture") || input.includes("light")) return fixture ? { kind: "action", actions: [{ verb: "INSPECT", target_alias: fixture, parameters: {} }], clarification: null } : { kind: "clarification", actions: [], clarification: { message: "There is no visible inspection target yet.", candidates: [] } };
-  if (input.includes("move") || input.includes("head") || input.includes("walk") || input.includes("corridor") || input.includes("hall")) return { kind: "action", actions: [{ verb: "MOVE", parameters: {} }], clarification: null };
+  if (input.includes("move") || input.includes("head") || input.includes("walk") || input.includes("corridor") || input.includes("hall")) return { kind: "action", actions: [{ verb: "MOVE", ...(movementAlias(context) ? { target_alias: movementAlias(context) } : {}), parameters: {} }], clarification: null };
   return { kind: "invalid", actions: [], clarification: null, public_reason: "I could not map that to an available action." };
 }
 function mockNarration({ envelope }) {

@@ -7,6 +7,10 @@
 - Adds the deliberately minimal `threshold-baseline` conformant scenario.
 - Adds reviewed source-intake records, claim review states, conflict links, and
   scenario-bound canon admission validation.
+# 0.4.0-alpha
+
+- Adds the bounded, authority-traceable `yellow-beast-complex-generator@v1` procedural survey foundation.
+
 # 0.3.0-alpha
 
 - Add the bounded Clear-Q4 expedition layer: team, orders, objectives, equipment, observer-safe evidence, communication, time, return/abort, and structured mission results.

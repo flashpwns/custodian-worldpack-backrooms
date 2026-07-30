@@ -4,6 +4,7 @@ const fs = require("node:fs");
 const path = require("node:path");
 const { createSession, exportSession, restoreSession, stableSerialize, getAvailableSessionActions, submitSessionAction, inspectSessionObserver } = require("custodian");
 const { FIELD_SCENARIO, fieldExpedition, event, useEquipment, safeSummary, finalize } = require("./expedition");
+const procedural = require("./procedural-complex");
 
 const root = path.resolve(__dirname, "..");
 const read = (relative) => JSON.parse(fs.readFileSync(path.join(root, relative), "utf8"));
@@ -45,29 +46,35 @@ function configuredPack(profileId, playerId) {
   }
   return pack;
 }
-function newRun({ profile, seed, session, expedition }) {
+function newRun({ profile, seed, session, expedition, procedural_state, procedural_scenario = false }) {
   const profileRecord = profileFor(profile);
   const player = session.startup.player.observer_id;
-  return { version: "yellow-beast-run@v2", profile_id: profile, profile_title: profileRecord.title, scenario: session.scenario.id, seed, session, lifecycle: "active", checklist: { moved: false, inspected: false, used: false }, aliases: {}, expedition: expedition ?? (profile === FIELD_PROFILE ? fieldExpedition(player) : null) };
+  return { version: "yellow-beast-run@v3", profile_id: profile, profile_title: profileRecord.title, scenario: procedural_scenario ? "async-clear-q4-procedural-survey" : session.scenario.id, seed, session, lifecycle: "active", checklist: { moved: false, inspected: false, used: false }, aliases: {}, expedition: expedition ?? (profile === FIELD_PROFILE ? fieldExpedition(player) : null), procedural: procedural_scenario ? (procedural_state ?? procedural.initialize({ seed, observer: player })) : null };
 }
-function startRun({ profile, seed = "yellow-beast-bootstrap" }) {
+function startRun({ profile, seed = "yellow-beast-bootstrap", scenario = null }) {
   const { profile: profileRecord, startup } = startupFor(profile);
   const player = startup.player.observer_id;
   const result = createSession({ world_pack: configuredPack(profile, player), scenario: configuredScenario(profile, player), startup, seed_material: { seed } });
   if (!result.ok) return result;
   const restored = restoreSession(exportSession(result.session).envelope);
-  const run = newRun({ profile, seed, session: result.session });
+  const run = newRun({ profile, seed, session: result.session, procedural_scenario: profile === FIELD_PROFILE && scenario === "procedural-survey" });
   return { ok: restored.ok, session: result.session, run, restored_equivalent: restored.ok && stableSerialize(restored.session) === stableSerialize(result.session), summary: { session_id: result.session.id, profile, profile_title: profileRecord.title, scenario: result.session.scenario.id, seed, player: startup.player, knowledge: startup.knowledge, permissions: startup.permissions, resources: startup.resources } };
 }
 function normalizeRun(value) {
-  if (value?.version === "yellow-beast-run@v2") return value;
-  if (value?.version === "yellow-beast-run@v1") return newRun({ profile: value.profile_id, seed: value.seed, session: value.session, expedition: value.expedition });
+  if (value?.version === "yellow-beast-run@v3") return value;
+  if (value?.version === "yellow-beast-run@v2" || value?.version === "yellow-beast-run@v1") return newRun({ profile: value.profile_id, seed: value.seed, session: value.session, expedition: value.expedition, procedural_state: value.procedural, procedural_scenario: Boolean(value.procedural) });
   if (value?.session) return newRun({ profile: value.session.startup.profile.id, seed: value.session.seed_material?.seed ?? "restored", session: value.session });
   return newRun({ profile: value.startup.profile.id, seed: value.seed_material?.seed ?? "restored", session: value });
 }
 function look(runValue) {
   const run = normalizeRun(runValue);
   const observer = run.session.startup.player.observer_id;
+  if (run.procedural) {
+    const view = procedural.visible(run.procedural, observer);
+    const aliases = Object.fromEntries([...view.features.map((feature) => [feature.alias, feature.alias]), ...view.exits.map((exit) => [exit.alias, exit.alias])]);
+    run.aliases = aliases;
+    return { outcome: "succeeded", observer_id: observer, kind: "look", view, targets: Object.keys(aliases).map((alias) => ({ alias })), aliases: Object.keys(aliases).map((alias) => ({ alias, ref: aliases[alias] })), public_reason: null, generator_version: procedural.VERSION };
+  }
   const result = inspectSessionObserver({ session: run.session, observer, request: { id: `look-${run.session.id}`, kind: "look" } });
   const aliases = Object.fromEntries((result.targets ?? []).map((target, index) => [`fixture-${index + 1}`, target.ref]));
   run.aliases = aliases;
@@ -76,6 +83,11 @@ function look(runValue) {
 function inspect(runValue, alias) {
   const run = normalizeRun(runValue);
   const observer = run.session.startup.player.observer_id;
+  if (run.procedural) {
+    const result = procedural.inspect(run.procedural, observer, alias);
+    if (result.ok && run.expedition) { run.checklist.inspected = true; run.expedition.objectives.survey.state = "satisfied"; event(run.expedition, "procedural.feature.inspected", result.detail); }
+    return { outcome: result.ok ? "succeeded" : "rejected", ...(result.ok ? { details: result.detail } : {}), public_reason: result.public_reason ?? null };
+  }
   const target = run.aliases?.[alias] ?? alias;
   const result = inspectSessionObserver({ session: run.session, observer, request: { id: `inspect-${run.session.id}-${alias ?? ""}`, kind: "inspect", target } });
   if (result.outcome === "succeeded" && run.profile_id === FIELD_PROFILE) { run.checklist.inspected = true; if (run.expedition) { run.expedition.objectives.survey.state = "satisfied"; event(run.expedition, "survey.inspected", { alias, location: look(run).view?.location ?? null }); } }
@@ -88,7 +100,7 @@ function status(runValue) {
   const actions = getAvailableSessionActions({ session: run.session, actor: observer }).actions;
   const active = run.lifecycle === "active";
   const expeditionVerbs = active && run.expedition ? ["COMMUNICATE", "RECORD", "WAIT", "RETURN", "ABORT"] : [];
-  return { profile_id: run.profile_id, profile_title: run.profile_title, scenario: run.scenario, lifecycle: run.lifecycle, player: observer, known_resources: (run.session.startup.resources ?? []).filter((entry) => entry.custodian === observer).map((entry) => entry.id), available_verbs: ["LOOK", ...(active && view.targets?.length ? ["INSPECT"] : []), ...(active && actions.includes("traverse-controlled-route") ? ["MOVE"] : []), ...(active && actions.includes("toggle-light") ? ["USE"] : []), ...expeditionVerbs], view: { outcome: view.outcome, location: view.view?.location ?? null, targets: (view.aliases ?? []).map(({ alias }) => ({ alias })), public_reason: view.public_reason ?? null }, ...(run.expedition ? { expedition: safeSummary(run.expedition) } : {}) };
+  return { profile_id: run.profile_id, profile_title: run.profile_title, scenario: run.scenario, lifecycle: run.lifecycle, player: observer, known_resources: (run.session.startup.resources ?? []).filter((entry) => entry.custodian === observer).map((entry) => entry.id), available_verbs: ["LOOK", ...(active && view.targets?.length ? ["INSPECT"] : []), ...(active && (run.procedural ? view.view?.exits?.length : actions.includes("traverse-controlled-route")) ? ["MOVE"] : []), ...(active && actions.includes("toggle-light") ? ["USE"] : []), ...expeditionVerbs], view: { outcome: view.outcome, location: view.view?.location ?? null, targets: (view.aliases ?? []).map(({ alias }) => ({ alias })), public_reason: view.public_reason ?? null }, ...(run.expedition ? { expedition: safeSummary(run.expedition) } : {}), ...(run.procedural ? { discovered_topology: procedural.map(run.procedural, observer), generator_version: procedural.VERSION } : {}) };
 }
 function terminal(run, decision) { finalize(run.expedition, decision); run.lifecycle = "completed"; return { ok: true, outcome: "succeeded", result: { public_reason: null, expedition_result: clone(run.expedition.result) }, run }; }
 function expeditionAction(run, verb, target) {
@@ -106,6 +118,7 @@ function act(runValue, verb, target) {
   if (verb === "INSPECT") { const result = inspect(run, target); return { ok: true, outcome: result.outcome === "succeeded" ? "succeeded" : "rejected", result, run }; }
   if (run.lifecycle === "completed") return { ok: false, error: { code: "RUN_COMPLETE" }, run };
   if (["COMMUNICATE", "RECORD", "WAIT", "RETURN", "ABORT"].includes(verb)) return expeditionAction(run, verb, target);
+  if (verb === "MOVE" && run.procedural) { const moved = procedural.move(run.procedural, run.session.startup.player.observer_id, target); if (!moved.ok) return { ok: false, error: { code: "TARGET_UNAVAILABLE" }, result: { public_reason: moved.public_reason }, run }; run.checklist.moved = true; event(run.expedition, "procedural.space.discovered", { location: moved.view.location.alias }); return { ok: true, outcome: "succeeded", result: { public_reason: null, view: moved.view }, run }; }
   if (verb === "USE" && target && target !== "field-light") {
     if (target !== "survey-instrument") return { ok: false, error: { code: "EQUIPMENT_UNAVAILABLE" }, run };
     const used = useEquipment(run.expedition, target); if (!used.ok) return { ok: false, error: { code: used.code }, run };
@@ -119,8 +132,8 @@ function act(runValue, verb, target) {
   if (result.ok && result.outcome === "succeeded") { if (verb === "MOVE") run.checklist.moved = true; if (verb === "USE") { run.checklist.used = true; if (run.expedition) useEquipment(run.expedition, "field-light"); } }
   return { ...result, run };
 }
-function saveRun(runValue) { const run = normalizeRun(runValue); return { version: "yellow-beast-save@v2", profile_id: run.profile_id, profile_title: run.profile_title, scenario: run.scenario, seed: run.seed, lifecycle: run.lifecycle, checklist: clone(run.checklist), aliases: clone(run.aliases), expedition: clone(run.expedition), envelope: exportSession(run.session).envelope }; }
-function resumeRun(save) { const restored = restoreSession(save.envelope); if (!restored.ok) return restored; const run = newRun({ profile: save.profile_id, seed: save.seed, session: restored.session, expedition: clone(save.expedition) }); run.lifecycle = save.lifecycle ?? "active"; run.checklist = clone(save.checklist ?? run.checklist); run.aliases = clone(save.aliases ?? {}); return { ok: true, run }; }
+function saveRun(runValue) { const run = normalizeRun(runValue); return { version: "yellow-beast-save@v3", profile_id: run.profile_id, profile_title: run.profile_title, scenario: run.scenario, seed: run.seed, lifecycle: run.lifecycle, checklist: clone(run.checklist), aliases: clone(run.aliases), expedition: clone(run.expedition), procedural: clone(run.procedural), envelope: exportSession(run.session).envelope }; }
+function resumeRun(save) { const restored = restoreSession(save.envelope); if (!restored.ok) return restored; if (save.procedural && save.procedural.version !== procedural.VERSION) return { ok: false, error: { code: "GENERATOR_VERSION_UNSUPPORTED" } }; const run = newRun({ profile: save.profile_id, seed: save.seed, session: restored.session, expedition: clone(save.expedition), procedural_state: clone(save.procedural), procedural_scenario: Boolean(save.procedural) }); run.lifecycle = save.lifecycle ?? "active"; run.checklist = clone(save.checklist ?? run.checklist); run.aliases = clone(save.aliases ?? {}); return { ok: true, run }; }
 
 if (require.main === module) { const args = process.argv.slice(2); const value = (name) => args[args.indexOf(name) + 1]; const result = startRun({ profile: value("--profile") || "lost", seed: value("--seed") || "yellow-beast-bootstrap" }); console.log(JSON.stringify(result.ok ? result.summary : result, null, 2)); process.exitCode = result.ok ? 0 : 1; }
 module.exports = { startRun, status, look, inspect, act, saveRun, resumeRun };

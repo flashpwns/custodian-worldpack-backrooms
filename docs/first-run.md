@@ -24,6 +24,16 @@ The run becomes `completed` after the declared traversal, survey, field record, 
 
 Custodian's LOOK and INSPECT queries remain read-only. Yellow Beast therefore persists the scenario-local inspection acknowledgement in its versioned save alongside Custodian's public export; it is deterministic across the save/resume comparison and is not a substitute for hidden Custodian state.
 
+## Bounded procedural survey trial
+
+The optional `procedural-survey` scenario keeps generated topology bounded and session-local. Its visible `passage-*` aliases are observer-safe and change as the frontier is explored.
+
+```sh
+npm run play -- --profile field-researcher --scenario procedural-survey --seed yb17-demo --action LOOK
+```
+
+Move only through a current visible passage alias, then LOOK again. Generated spaces, discovery aliases, and the generator version are materialized in the save wrapper; a save from an unsupported generator version is rejected rather than silently regenerated.
+
 ## Optional natural-language mode
 
 The shipped deterministic mock adapter works offline and does not need a key:
