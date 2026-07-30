@@ -49,7 +49,9 @@ fs.rmSync(artifact, { recursive: true, force: true }); fs.mkdirSync(app, { recur
 ["manifest.json", "LICENSE", "THIRD_PARTY_NOTICES.md", "START-HERE.md", "package.json", "profiles", "scenarios/threshold-baseline.json", "tools/run-bootstrap.js", "tools/ai-adapter.js", "tools/ai-mock-provider.js", "tools/launcher-paths.js", "tools/launcher.js", "node_modules"].forEach(copy);
 pruneDependencyDevelopmentFiles(path.join(app, "node_modules"));
 const runtime = path.join(artifact, "runtime"); fs.cpSync(nodeDistribution(), runtime, { recursive: true });
-for (const relative of ["include", "share", "lib/node_modules"]) fs.rmSync(path.join(runtime, relative), { recursive: true, force: true });
+// Official Node archives place bundled package-manager files under lib/node_modules
+// on Unix and node_modules on Windows. Neither is needed to run the game.
+for (const relative of ["include", "share", "lib/node_modules", "node_modules"]) fs.rmSync(path.join(runtime, relative), { recursive: true, force: true });
 if (requested === "windows") fs.writeFileSync(path.join(artifact, "Yellow Beast.bat"), "@echo off\r\nsetlocal\r\nif not defined YELLOW_BEAST_DATA_DIR set \"YELLOW_BEAST_DATA_DIR=%APPDATA%\\Yellow Beast\"\r\n\"%~dp0runtime\\node.exe\" \"%~dp0app\\tools\\launcher.js\" %*\r\n");
 else { const launcher = path.join(artifact, "Yellow Beast.command"); fs.writeFileSync(launcher, "#!/bin/sh\nDIR=\"$(CDPATH= cd -- \"$(dirname -- \"$0\")\" && pwd)\"\n: \"${YELLOW_BEAST_DATA_DIR:=$HOME/Library/Application Support/Yellow Beast}\"\nexport YELLOW_BEAST_DATA_DIR\nexec \"$DIR/runtime/bin/node\" \"$DIR/app/tools/launcher.js\" \"$@\"\n"); fs.chmodSync(launcher, 0o755); }
 console.log(JSON.stringify({ artifact, platform: requested, architecture, bundled_node: nodeVersion, custodian: require("custodian/package.json").version }, null, 2));
