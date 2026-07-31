@@ -35,6 +35,12 @@ Pass 1 complete: the desktop now leads with a player-facing World Library,
 clear creation and experience-entry flow, and safe active-world navigation.
 Presentation navigation remains separate from canonical session state.
 
+Pass 2 complete: each experience now has a reactive, observer-safe in-universe
+surface while scene and natural-language action remain primary. Clear-Q4 uses
+an operational field brief, Beck a situation-first desk, Nullzone a personal
+notebook, and Lost a stripped sensory frame. The renderer stores no world
+facts and structured offline controls remain available.
+
 1. Navigation + Information Architecture
 2. Reactive In-Universe UI
 3. Feedback, Motion + Interaction Feel
