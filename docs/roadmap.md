@@ -27,7 +27,7 @@ YB-28 provides shared phase/tutorial gameflow, a Clear-Q4 expedition, Beck's Des
 
 ## Next: YB-29 — Canon + Story Worldbuilding Integration
 
-Pass 1 complete: the canon-runtime audit reports source-to-experience coverage and canon gravity, while world history now enforces singular named-character identities and irreversible ordinary death. Pass 2 complete: source-backed ASYNC identification, staffed Threshold work, protected inspection, recording/alert behavior, and surveillance records now reach Q4 and Beck through bounded human-world contexts; generic staff and desk workflow remain explicit procedural glue. Distinctive world identity should derive primarily from supported canon; pack-original material may complete simulation gaps but must stay explicit.
+Pass 1 complete: the canon-runtime audit reports source-to-experience coverage and canon gravity, while world history now enforces singular named-character identities and irreversible ordinary death. Pass 2 complete: source-backed ASYNC identification, staffed Threshold work, protected inspection, recording/alert behavior, and surveillance records now reach Q4 and Beck through bounded human-world contexts; generic staff and desk workflow remain explicit procedural glue. Pass 3 complete: the v2 Complex generator composes a bounded source-backed environmental vocabulary while preserving source scope, deterministic baseline generation, and history-backed physical mutations. Distinctive world identity should derive primarily from supported canon; pack-original material may complete simulation gaps but must stay explicit.
 
 1. Canon runtime coverage audit
 2. ASYNC + human world expansion

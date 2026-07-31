@@ -10,4 +10,6 @@ Canon gravity is reported as meaningful categories rather than a percentage: can
 
 Pass 2 adds five source-backed human-world delivery paths: ASYNC identification, staffed Threshold operation, protected inspection, alert/recording behavior, and a recorded surveillance view. They are defined in `tools/human-world.js` and participate in the same runtime report. The report now separates those claim-backed paths from explicit pack-original human glue such as the generic operations desk, field-report form, and staffing assignment.
 
+Pass 3 adds traceable environmental delivery paths through `tools/environment-world.js`: bounded column-corridor, floor-opening, stair, furnishing, ceiling/tile, fixture, and lit-panel vocabulary. The runtime report now marks the lit-panel cluster `PARTIALLY_EXPRESSED` because it remains interpretive; source-local observations stay bounded rather than becoming universal Complex laws. `npm run environment-world-report` gives the per-category canon/procedural breakdown.
+
 The registered corpus still has no admitted named-character claims with sufficient identity, role, and temporal facts. This remains an explicit coverage gap, not permission to invent canon biographies or silently label generated characters as canon.

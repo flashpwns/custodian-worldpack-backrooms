@@ -31,7 +31,7 @@ function safeEnvironment(run, current) {
   const view = current.view ?? {}; const procedural = run.procedural;
   const environment = procedural?.environment ?? procedural?.nodes?.[procedural.current?.[current.player]]?.environment ?? null;
   const details = [];
-  if (environment && typeof environment === "object") for (const key of ["architecture", "lighting", "ceiling", "wear"]) if (typeof environment[key] === "string") details.push(human(environment[key], ""));
+  if (environment && typeof environment === "object") for (const key of ["architecture", "flooring", "ceiling", "lighting", "furniture", "wear", "transition"]) { const value = environment[key]; const text = typeof value === "string" ? value : value?.state ?? value?.description ?? null; if (typeof text === "string") details.push(human(text, "")); }
   return { location: human(view.location, "the immediate area"), details: details.filter(Boolean), visible: (view.targets ?? []).map(({ alias }) => human(alias, "nearby feature")).filter((label) => !opaque.test(label)) };
 }
 function buildSafeScene({ run, mode = run.profile_id, input = null, consequence = null, action = null, scene_type = null, previous_scene_id = null } = {}) {
