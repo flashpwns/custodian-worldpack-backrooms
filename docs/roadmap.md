@@ -85,3 +85,10 @@ workflow without adding a second world representation.
 
 Then: YB-32 Replayability + Run-to-Run Desire, followed by YB-33 Public Beta
 Candidate.
+
+## YB-32: Replayability + Run-to-Run Desire
+
+Pass 1 adds a deterministic, derived run-identity description over existing
+seeded environment realization, profile-declared startup context, bounded
+resources, and initial questions. It does not add plot tracks, rarity,
+difficulty, stat modifiers, or canonical lore.
