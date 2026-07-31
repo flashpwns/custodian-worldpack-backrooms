@@ -111,3 +111,8 @@ as mode-native unfinished business. It adds no quest system, objective marker,
 mystery ID, forced callback, or scripted beat; ordinary simulation remains the
 only resolution path. See `docs/unfinished-business.md` and
 `npm run unfinished-business-report`.
+
+Pass 6 closes YB-32 with the aggregate determinism, multi-seed, observer,
+continuity, canon-gravity, offline, save/reload, long-world, and packaging
+validation in `docs/replayability.md` and
+`npm run y32-replayability-report`.
