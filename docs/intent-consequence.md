@@ -32,6 +32,12 @@ The deterministic fallback is the offline baseline. It uses human-facing labels,
 
 One shared contract supports Clear-Q4's field context, Beck's institutional framing, Nullzone's personal/archive framing, and Lost's immediate limited-knowledge framing. These profiles alter emphasis, never objective reality or cross-mode knowledge. Scene generation is presentation only: canonical state, timing, actor behavior, and communications remain Custodian and Yellow Beast simulation responsibilities.
 
+## Pass 6: loop closure
+
+`executePlayerTurn` is the application boundary for a freeform turn: interpretation, validation, grounding, planning, canonical consequence, safe scene construction, and fallback narration execute in that order. The desktop consumes only its stable player-turn result and persists only after an accepted canonical consequence. The renderer never reconstructs pipeline stages.
+
+The freeform loop is offline-first. The deterministic interpreter and scene fallback support bounded input (4,000 characters; intent steps remain capped at 16), idempotent request IDs, reload-safe consequences, and a 50-turn fixture. Structured controls are intentionally retained as an accessibility/debug fallback, not the primary field interaction. Current limits are deliberate: generic physics and social resolution remain coarse, provider prose is optional, and mode-specific tutorials and deep UI reconstruction belong to YB-28.
+
 ## Pass 3: capability planning
 
 `yellow-beast-resolution-plan@v1` adds deterministic, non-canonical step analysis: generalized capabilities, constraints, dependencies, permission, possibility, unknowns, and interruption points. It composes mundane primitives such as locomotion, posture change, grasping, object movement, climbing, observation, listening, communication, recording, waiting, and throwing. These are not player commands.

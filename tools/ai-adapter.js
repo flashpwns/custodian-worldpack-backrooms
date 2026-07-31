@@ -57,6 +57,7 @@ function validateIntent(value, { raw_input, provider = "unknown", request_id = n
 }
 async function interpret(provider, player_text, context, { request_id = null } = {}) {
   const providerName = provider?.name ?? "unavailable";
+  if (typeof player_text === "string" && player_text.length > 4000) return bad(player_text.slice(0, 4000), providerName, "INPUT_TOO_LONG", "That description is too long to resolve safely.");
   if (typeof player_text !== "string" || !player_text.trim() || !provider?.interpret) return bad(typeof player_text === "string" ? player_text : "", providerName, "INTERPRETER_UNAVAILABLE", "Intent interpretation is unavailable.");
   try { return validateIntent(await provider.interpret({ player_text, context }), { raw_input: player_text, provider: providerName, request_id }); }
   catch { return bad(player_text, providerName, "INTERPRETER_FAILED", "Intent interpretation failed safely."); }
