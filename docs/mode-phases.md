@@ -11,3 +11,7 @@ Clear-Q4 uses BRIEFING, STAGING, FACILITY_TRANSIT, THRESHOLD, FIELD_OPERATION, R
 ## Beck's Desk
 
 Beck uses event-capable START_OF_DAY, INBOX_REVIEW, ACTIVE_DESK, INTERRUPTION, DECISION, and FOLLOWUP contexts. Its inbox and situation view derive only from supplied institutional reports and processes. A report is not objective truth; it can be delayed, incomplete, or wrong. Field state reaches Beck only through legitimate reports, communications, or institutional processes.
+
+## Nullzone Exposure
+
+Nullzone cycles HOME, EVIDENCE_REVIEW, PREPARATION, EXCURSION, RETURN, and COMPARISON. Its archive is personal presentation state drawn only from civilian evidence and records. Personal labels and remembered routes stay observer-local and explicitly remembered, never objective topology or institutional knowledge.
