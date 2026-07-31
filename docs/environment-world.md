@@ -8,6 +8,8 @@ The v2 generator stores physical layout and feature composition canonically. A s
 
 Phenomena never maintain a second environment state. A supported event that changes a visible object or environmental property records a normal world-history mutation, preserving the separation between generated baseline and later history.
 
+Derived story threads may recognize repeated region mutations or an artifact's history at a region, but cannot expose that shared location relationship to an observer who lacks the supporting history.
+
 Clear-Q4 receives field-appropriate surveyed environmental detail; Beck receives only institutionally received summaries; Nullzone can retain observed environmental evidence; Lost receives descriptive local landmarks and repetition without formal family or topology labels. Scene fallback uses observer-visible environment facts only. It does not infer hidden rooms, causes, anomaly behavior, or atmosphere events from the grammar.
 
 `npm run environment-world-report` reports vocabulary provenance, categories, procedural bounds, canon gravity, mode delivery, and persistence/safety invariants. Phenomenon behavior is separately bounded and reported by `npm run phenomena-report`.

@@ -14,4 +14,6 @@ Pass 3 adds traceable environmental delivery paths through `tools/environment-wo
 
 Pass 4 traces two FF2 phenomena through three admitted claims: the marked surface discontinuity, its observed object result, and a later local transition observation. They are explicit scenario/history admissions, not random spawn tables. The current corpus admits no source-backed entity capability; Still Life and the validation mover remain explicitly pack-original scenario fixtures.
 
+Pass 5 makes existing admitted runtime content more experientially legible through derived story threads. Threads are not claims, simulation authority, or canon facts; `npm run story-thread-report` only recognizes relationships already present in world history and observer-safe records.
+
 The registered corpus still has no admitted named-character claims with sufficient identity, role, and temporal facts. This remains an explicit coverage gap, not permission to invent canon biographies or silently label generated characters as canon.

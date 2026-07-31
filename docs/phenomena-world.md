@@ -6,4 +6,4 @@ An entity is an individuated presence only when the source supports that interpr
 
 Phenomenon effects use canonical world history. Observers can perceive an effect, capture it as evidence, or report it; these are separate from the objective event. Beck receives only explicit report content. Q4, Nullzone, and Lost see observer-safe descriptions, not internal terms, causes, or source metadata. Provider narration receives only those safe facts and is rejected if it invents anomalous behavior or player interiority.
 
-Generic Backrooms taxonomies, hostile-creature mechanics, random scare rolls, and fandom labels are not admission paths. Quiet turns remain quiet. This module deliberately leaves unresolved events as canonical history seams for YB-29 Pass 5 without creating story threads itself.
+Generic Backrooms taxonomies, hostile-creature mechanics, random scare rolls, and fandom labels are not admission paths. Quiet turns remain quiet. Derived threads may consume unresolved phenomenon events only after they exist; similar observations never become a common cause, entity population, or new capability.
