@@ -7,3 +7,7 @@ Guided Introductions default on and affect only contextual, diegetic guidance. C
 ## Clear-Q4 expedition phases
 
 Clear-Q4 uses BRIEFING, STAGING, FACILITY_TRANSIT, THRESHOLD, FIELD_OPERATION, RETURN, and DEBRIEF. Briefing establishes only the declared order, team, equipment, and reporting procedure. Staging and transit provide contextual equipment, radio, and team surfaces. Threshold crossing is guarded by canonical movement; phase metadata never crosses it for the player. Field scenes prioritize environment, team, equipment, radio, and the declared survey. Debrief distinguishes expedition record, player observation, player report, and institutional knowledge.
+
+## Beck's Desk
+
+Beck uses event-capable START_OF_DAY, INBOX_REVIEW, ACTIVE_DESK, INTERRUPTION, DECISION, and FOLLOWUP contexts. Its inbox and situation view derive only from supplied institutional reports and processes. A report is not objective truth; it can be delayed, incomplete, or wrong. Field state reaches Beck only through legitimate reports, communications, or institutional processes.

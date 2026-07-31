@@ -18,3 +18,6 @@ node tools/launcher.js --management --world operations-trial --management-action
 The management action surface is `REVIEW`, `TEAM`, `ALLOCATE`, `DISPATCH`, `RECALL`, `PRIORITIZE`, `BUILD`, and `ADVANCE`. `DISPATCH` and `BUILD` require an institutionally known persistent region ID; the projection exposes only safe known-region summaries, so a field report must establish that knowledge first.
 
 Future field-run linkage is stable through operation ID, world ID, target persistent region ID, and originating management events. A later field run may carry that operation ID and return an expedition result to it. Full tactical team AI and final UI remain out of scope.
+# Beck's Desk experience
+
+Beck's primary experience is a current institutional situation, safe inbox/report context, relevant people and processes, and freeform input. Resource panels remain secondary. Requests and decisions remain existing canonical institutional processes; a decision authorizes or requests work but never guarantees a physical outcome. The presentation works offline and does not invent reports, personnel, field knowledge, or causes.
