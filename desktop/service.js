@@ -22,6 +22,7 @@ const nullzoneExperience = require("../tools/nullzone-experience");
 const lostExperience = require("../tools/lost-experience");
 const { resolveAppPaths } = require("../tools/launcher-paths");
 const { CredentialStore } = require("./credentials");
+const developerInspection = require("../tools/dev-inspection");
 const packageVersion = require("../package.json").version;
 
 const clone = (value) => structuredClone(value);
@@ -49,12 +50,13 @@ function readJson(file, fallback) { try { return fs.existsSync(file) ? JSON.pars
 function writeJson(file, value) { ensureDirectory(path.dirname(file)); const temporary = `${file}.${process.pid}.tmp`; fs.writeFileSync(temporary, `${JSON.stringify(value, null, 2)}\n`); JSON.parse(fs.readFileSync(temporary, "utf8")); fs.renameSync(temporary, file); }
 
 class DesktopService {
-  constructor({ appDataPath = null, paths = null, logger = null, credentials = null } = {}) {
+  constructor({ appDataPath = null, paths = null, logger = null, credentials = null, developerMode = process.env.YELLOW_BEAST_DEVELOPER_MODE === "1" } = {}) {
     this.paths = paths ?? (appDataPath ? { root: appDataPath, worlds: path.join(appDataPath, "worlds"), saves: path.join(appDataPath, "saves"), logs: path.join(appDataPath, "logs"), config: path.join(appDataPath, "config.json") } : resolveAppPaths());
     this.metadataFile = path.join(this.paths.root, "desktop-worlds.json");
     this.settingsFile = path.join(this.paths.root, "desktop-settings.json");
     this.logger = logger ?? (() => {});
     this.credentials = credentials ?? new CredentialStore();
+    this.developerMode = developerMode === true;
     this.sessions = new Map();
     [this.paths.root, this.paths.worlds, this.paths.saves, this.paths.logs].forEach(ensureDirectory);
   }
@@ -71,7 +73,9 @@ class DesktopService {
   saveCanonical(world) { const file = this.worldFile(world.world_id); const temporary = `${file}.${process.pid}.tmp`; try { history.saveWorld(temporary, world); history.loadWorld(temporary); if (fs.existsSync(file)) fs.copyFileSync(file, this.backupFile(world.world_id)); fs.renameSync(temporary, file); return { ok: true }; } catch (error) { try { if (fs.existsSync(temporary)) fs.unlinkSync(temporary); } catch {} throw error; } }
   worldInfo(world, metadata = {}) { return { id: world.world_id, name: metadata.name ?? world.world_id, version: world.version, created_at: metadata.created_at ?? null, last_played_at: metadata.last_played_at ?? null, last_mode: metadata.last_mode ?? null, status: "ready" }; }
 
-  getAppInfo() { const data = this.metadata(); return { ok: true, app: { name: "Yellow Beast", version: packageVersion, alpha: true, first_run_complete: Boolean(data.first_run_complete), data_path: this.paths.root } }; }
+  getAppInfo() { const data = this.metadata(); return { ok: true, app: { name: "Yellow Beast", version: packageVersion, alpha: true, first_run_complete: Boolean(data.first_run_complete), data_path: this.paths.root, developer_mode:this.developerMode } }; }
+  getDeveloperSnapshot({ world_id, mode = null } = {}) { if (!this.developerMode) return publicError("DEVELOPER_DISABLED", "Developer tooling is disabled."); try { const world = this.getWorld(world_id); const entry = mode ? (this.session(world_id, mode) ?? this.restoreSession(world, mode, readJson(this.sessionFile(world_id, mode), null))) : null; const provider = this.getProviderStatus().provider; return { ok:true, snapshot:developerInspection.snapshot(world), active:{ mode, phase:entry?.phase ?? null, session_kind:entry?.kind ?? null }, provider:{ selected:provider.selected, offline:provider.offline, configured:provider.openai.configured, status:provider.offline ? "offline" : provider.openai.status }, provider_safe_context:entry?.kind === "bootstrap" ? developerInspection.providerSafeContext(entry.run) : null, recent_history:developerInspection.recentHistory(world) }; } catch { return publicError("DEVELOPER_SNAPSHOT_UNAVAILABLE", "The selected world could not be inspected."); } }
+  async traceDeveloperIntent({ world_id, mode, text }) { if (!this.developerMode) return publicError("DEVELOPER_DISABLED", "Developer tooling is disabled."); try { const world = this.getWorld(world_id); const entry = this.session(world_id, mode) ?? this.restoreSession(world, mode, readJson(this.sessionFile(world_id, mode), null)); if (!entry || entry.kind !== "bootstrap") return publicError("TRACE_UNAVAILABLE", "A Clear-Q4 session is required for this non-executing trace."); return { ok:true, trace:await developerInspection.intentTrace({ run:entry.run, provider:createMockProvider(), player_text:text }) }; } catch { return publicError("TRACE_UNAVAILABLE", "The selected session could not be traced."); } }
   listModes() { return { ok: true, modes: clone(MODES) }; }
   listWorlds() { const data = this.metadata(); const records = Object.entries(data.worlds).map(([id, item]) => {
     try { return this.worldInfo(this.getWorld(id), item); } catch { return { id, name: item.name ?? id, version: null, created_at: item.created_at ?? null, last_played_at: item.last_played_at ?? null, last_mode: item.last_mode ?? null, status: "unavailable" }; }

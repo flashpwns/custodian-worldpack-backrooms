@@ -1,0 +1,3 @@
+"use strict";
+const authoring=require("./authoring"); const result=authoring.validate();
+console.log(JSON.stringify({ report:"yellow-beast-authoring@v1", sources:result.sources, claims:result.claims, authority:result.authority, canon_gravity:result.authority.canon_gravity, humans:result.humans, roles:"Reusable roles remain distinct from persistent identities.", environment:result.environment, phenomena:result.phenomena, scenarios:result.scenarios, presentation:result.presentation, assets:result.assets, cross_references:result.cross_references, duplicates:{ source_ids:result.sources.duplicate_ids, claim_ids:result.claims.duplicate_ids }, untraced_content:result.cross_references.untraced, invariants:result.invariants },null,2));

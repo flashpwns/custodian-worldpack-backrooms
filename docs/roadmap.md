@@ -71,10 +71,15 @@ archives are verified as the milestone distribution check.
 
 ## Next: YB-31 — Developer Experience + Runtime Optimization
 
-1. Developer Workflow Audit
-2. Developer Console + Simulation Inspector
-3. Developer Commands + Reports
-4. Content Authoring Ergonomics
+Pass 1 complete: `docs/development.md`, `dev:check`, `validate`, `reports`, a
+read-only objective/observer snapshot, non-executing intent trace, deterministic
+150-turn fixture baseline, and `dev-workflow-report` document the current
+workflow without adding a second world representation.
+
+1. Developer Workflow Audit — complete
+2. Developer Console + Simulation Inspector — complete
+3. Developer Commands + Reports — complete
+4. Content Authoring Ergonomics — complete
 5. Runtime Profiling + Optimization
 6. Architecture Cleanup
 
