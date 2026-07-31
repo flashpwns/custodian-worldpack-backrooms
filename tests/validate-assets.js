@@ -214,6 +214,7 @@ scripts.push("tests/y28-immersive-convergence.test.js", "tools/immersive-converg
 scripts.push("tests/y29-character-continuity.test.js", "tools/canon-runtime.js", "tools/canon-runtime-report.js", "tools/character-continuity-report.js", "tools/human-world.js", "tools/human-world-report.js", "tools/environment-world.js", "tools/environment-world-report.js", "tools/phenomena-world.js", "tools/phenomena-report.js");
 scripts.push("tests/y29-canon-runtime.test.js", "tests/y29-human-world.test.js", "tests/y29-environment-world.test.js", "tests/y29-phenomena-world.test.js");
 scripts.push("tests/y29-story-threads.test.js", "tools/story-threads.js", "tools/story-thread-report.js");
+scripts.push("tests/y29-canon-convergence.test.js", "tools/canon-convergence.js", "tools/canon-convergence-report.js");
 scripts.push("tests/y16-expedition.test.js", "tools/expedition.js", "tools/expedition-report.js");
 scripts.push("tests/y165-context-closure.test.js", "tools/corpus-coverage-report.js");
 scripts.push("tests/y17-procedural-complex.test.js", "tools/procedural-complex.js", "tools/procedural-report.js");

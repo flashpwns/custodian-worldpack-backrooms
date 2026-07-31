@@ -7,7 +7,7 @@ function fixture(seed = "story-threads") {
   const artifact_id = history.leaveRemnant(world, { run_id: q4, region_id, space_id, type: "recorder", provenance: "player-history" }).artifact_id; history.recoverArtifact(world, { run_id: nullzone, artifact_id, holder: "nullzone" });
   const phenomenon = phenomena.admit(world, { run_id: q4, definition_id: "ff2-local-transition-observation", region_id, space_id }).phenomenon; phenomena.perceive(world, { run_id: q4, observer: "q4", region_id, space_id }); phenomena.perceive(world, { run_id: nullzone, observer: "nullzone", region_id, space_id });
   history.instantiateCharacter(world, { run_id: q4, identity: "fixture-researcher", display_name: "Fixture Researcher", role: "field researcher" }); history.setCharacterStatus(world, { run_id: q4, identity: "fixture-researcher", status: "dead", reason: "fixture" });
-  history.event(world, beck, "report.filed", { subject: "door-fixture", claim: "sealed" }); history.event(world, beck, "report.filed", { subject: "door-fixture", claim: "open" });
+  history.event(world, beck, "report.filed", { subject: "door-fixture", claim: "sealed", relation: "contradicts" }); history.event(world, beck, "report.filed", { subject: "door-fixture", claim: "open", relation: "contradicts" });
   return { world, q4, beck, nullzone, lost, region_id, artifact_id };
 }
 test("thread derivation is pure, deterministic, and anchored to existing canonical history", () => {

@@ -25,15 +25,17 @@ movie character arcs, or speculative Standard/Complex exchange.
 
 YB-28 provides shared phase/tutorial gameflow, a Clear-Q4 expedition, Beck's Desk situation-led institutional play, Nullzone personal investigation, and Lost sensory exploration. The mode layers are observer-safe projections over one `yellow-beast-world-history@v1` world: physical effects may converge, while labels, archive material, reports, and private context remain isolated unless a legitimate communication or evidence bridge transfers them. All four modes retain deterministic offline fallback and resume support.
 
-## Next: YB-29 — Canon + Story Worldbuilding Integration
+## YB-29: Canon + Story Worldbuilding Integration — complete
 
-Pass 1 complete: the canon-runtime audit reports source-to-experience coverage and canon gravity, while world history now enforces singular named-character identities and irreversible ordinary death. Pass 2 complete: source-backed ASYNC identification, staffed Threshold work, protected inspection, recording/alert behavior, and surveillance records now reach Q4 and Beck through bounded human-world contexts; generic staff and desk workflow remain explicit procedural glue. Pass 3 complete: the v2 Complex generator composes a bounded source-backed environmental vocabulary while preserving source scope, deterministic baseline generation, and history-backed physical mutations. Pass 4 complete: source-backed FF2 observations can now be admitted as deterministic, bounded phenomena with canonical physical consequences, explicit reports, and safe observer projections. No source-backed entity behavior is admitted; Still Life remains a stationary scenario fixture. Pass 5 complete: a deterministic, noncanonical story-thread index recognizes structured relationships already present in world history and presents them only through observer-safe views. Distinctive world identity should derive primarily from supported canon; pack-original material may complete simulation gaps but must stay explicit.
+Pass 1 audited source-to-experience coverage and canon gravity while world history enforced singular named-character identities and irreversible ordinary death. Pass 2 expressed a bounded ASYNC human world. Pass 3 made the v2 Complex generator compose a source-backed environmental grammar over deterministic, history-backed spaces. Pass 4 admitted only bounded FF2 observations, leaving entity behavior unsupported. Pass 5 added a deterministic noncanonical thread index over world history. Pass 6 validated the full source → claim → authority → runtime → experience seam across all four modes, including a 150-turn shared-world fixture, offline operation, and derived thread rebuilding. Distinctive world identity derives primarily from supported canon; pack-original material remains explicit connective glue.
 
-1. Canon runtime coverage audit
-2. ASYNC + human world expansion
-3. Complex environmental expansion
-4. Phenomena + entity expansion
-5. Emergent story thread system
-6. Canon convergence validation
+## Next: YB-30 — Player Experience + Reactive Interface
+
+1. Navigation + Information Architecture
+2. Reactive In-Universe UI
+3. Feedback, Motion + Interaction Feel
+4. Quality-of-Life Pass
+5. Accessibility + Player Preferences
+6. Reactive UX Validation
 
 Later milestones remain YB-30 Player Experience + Reactive Interface, YB-31 Developer Experience + Runtime Optimization, YB-32 Replayability + Run-to-Run Desire, and YB-33 Public Beta Candidate.

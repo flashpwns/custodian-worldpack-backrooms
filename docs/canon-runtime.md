@@ -16,4 +16,6 @@ Pass 4 traces two FF2 phenomena through three admitted claims: the marked surfac
 
 Pass 5 makes existing admitted runtime content more experientially legible through derived story threads. Threads are not claims, simulation authority, or canon facts; `npm run story-thread-report` only recognizes relationships already present in world history and observer-safe records.
 
+Pass 6 closes YB-29 with `npm run canon-convergence-report`. It aggregates the existing trace reports and runs a deterministic shared-world fixture covering source-backed human procedures, generated environment, bounded phenomena, persistent object history, irreversible character death, observer-safe thread views, save/reload rebuild, and offline operation. The report is validation-only and does not admit content or mutate a player world.
+
 The registered corpus still has no admitted named-character claims with sufficient identity, role, and temporal facts. This remains an explicit coverage gap, not permission to invent canon biographies or silently label generated characters as canon.
