@@ -211,6 +211,10 @@ scripts.push("tests/y28-beck.test.js", "tools/beck-experience.js", "tools/beck-r
 scripts.push("tests/y28-nullzone.test.js", "tools/nullzone-experience.js");
 scripts.push("tests/y28-lost.test.js", "tools/lost-experience.js");
 scripts.push("tests/y28-immersive-convergence.test.js", "tools/immersive-convergence.js", "tools/immersive-report.js");
+scripts.push("tests/y29-character-continuity.test.js", "tools/canon-runtime.js", "tools/canon-runtime-report.js", "tools/character-continuity-report.js", "tools/human-world.js", "tools/human-world-report.js", "tools/environment-world.js", "tools/environment-world-report.js", "tools/phenomena-world.js", "tools/phenomena-report.js");
+scripts.push("tests/y29-canon-runtime.test.js", "tests/y29-human-world.test.js", "tests/y29-environment-world.test.js", "tests/y29-phenomena-world.test.js");
+scripts.push("tests/y29-story-threads.test.js", "tools/story-threads.js", "tools/story-thread-report.js");
+scripts.push("tests/y29-canon-convergence.test.js", "tools/canon-convergence.js", "tools/canon-convergence-report.js");
 scripts.push("tests/y16-expedition.test.js", "tools/expedition.js", "tools/expedition-report.js");
 scripts.push("tests/y165-context-closure.test.js", "tools/corpus-coverage-report.js");
 scripts.push("tests/y17-procedural-complex.test.js", "tools/procedural-complex.js", "tools/procedural-report.js");
@@ -228,6 +232,7 @@ for (const relative of scripts) {
   const content = fs.readFileSync(path.join(root, relative), "utf8");
   assert.doesNotMatch(content, /custodian\/(runtime|state|tools)/, `${relative} uses only public Custodian imports`);
 }
+assert.ok(fs.existsSync(path.join(root, "data/phenomenon-definitions.json")), "phenomenon definitions are tracked data");
 // Build output is intentionally ignored here: it is a disposable runtime artifact
 // audited by tools/verify-alpha-artifact.js, not executable world-pack source.
 const packFiles = fs.readdirSync(root, { recursive: true }).filter((entry) => entry.endsWith(".js") && !entry.startsWith("node_modules/") && !entry.startsWith("dist/"));

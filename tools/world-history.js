@@ -16,7 +16,7 @@ function assertRegion(region) {
   if (version === GENERATOR_V2 && region.state.version !== GENERATOR_V2) throw Object.assign(new Error("v2 region state/version mismatch"), { code: "REGION_VERSION_MISMATCH" });
   return version;
 }
-function createWorld({ id = null, seed = "yellow-beast-world" } = {}) { const world_id = id ?? `world-${digest(["world", seed]).slice(0, 12)}`; return { version: VERSION, world_id, seed, next_run: 1, event_sequence: 0, runs: {}, regions: {}, evidence: {}, artifacts: {}, events: [], knowledge: { institutional: { records: {} }, civilian: { records: {} } } }; }
+function createWorld({ id = null, seed = "yellow-beast-world" } = {}) { const world_id = id ?? `world-${digest(["world", seed]).slice(0, 12)}`; return { version: VERSION, world_id, seed, next_run: 1, event_sequence: 0, runs: {}, regions: {}, evidence: {}, artifacts: {}, characters: {}, phenomena: {}, events: [], knowledge: { institutional: { records: {} }, civilian: { records: {} } } }; }
 function assertWorld(world) { if (!world || world.version !== VERSION || !world.world_id) throw Object.assign(new Error("unsupported world history"), { code: "WORLD_VERSION_UNSUPPORTED" }); return world; }
 function event(world, run_id, type, payload, authority = "pack-original-world-history") { const sequence = ++world.event_sequence; const id = `history-${digest([world.world_id, sequence, run_id, type, payload]).slice(0, 16)}`; const record = { id, world_id: world.world_id, run_id, sequence, type, payload: clone(payload), authority, provenance: "yellow-beast-structured-result" }; world.events.push(record); return record; }
 function beginRun(world, { profile, scenario, seed }) { assertWorld(world); const ordinal = world.next_run++; const run_id = `run-${digest([world.world_id, ordinal, profile, scenario, seed]).slice(0, 16)}`; world.runs[run_id] = { id: run_id, world_id: world.world_id, ordinal, profile, scenario, seed, status: "active", history_ingested: false }; event(world, run_id, "run.started", { profile, scenario, seed }); return run_id; }
@@ -43,8 +43,39 @@ function rebuildRegion(world, region_id) { assertWorld(world); const region = wo
 function restoreRegion(world, region_id) { const region = world.regions[region_id]; const version = assertRegion(region); const state = version === GENERATOR_V2 ? rebuildRegion(world, region_id) : clone(region.state); return { generator_version: version, state }; }
 function mutateRegion(world,{run_id,region_id,space_id,target_type="node-property",target,value,operation="set",provenance="pack-original-v2-mutation",authority="scenario-optional"}) { assertWorld(world); const region=world.regions[region_id]; if(!region || generatorVersion(region)!==GENERATOR_V2) return {ok:false,code:"REGION_VERSION_UNSUPPORTED"}; if (!region.state.nodes[space_id]) return {ok:false,code:"MUTATION_TARGET_MISSING"}; const mutation={id:`history-mutation-${digest([world.world_id,run_id,region_id,space_id,target_type,target,operation,value]).slice(0,16)}`,run_id,space_id,target_type,target,value:clone(value),operation,provenance,authority}; const existing = mutationEvents(world, region_id).find((entry) => entry.payload.mutation.id === mutation.id); if (existing) return {ok:true,idempotent:true,mutation:clone(existing.payload.mutation)}; const candidate = applyMutation(region.state, mutation); const record = event(world,run_id,"region.mutated",{region_id,space_id,target_type,target,operation,value:clone(value),provenance,authority,mutation}); region.state = candidate; return {ok:true,idempotent:false,mutation, event_id:record.id}; }
 function recoverArtifact(world, { run_id, artifact_id, holder }) { const item = world.artifacts[artifact_id]; if (!item || item.state !== "at-location") return { ok: false, public_reason: "target unavailable" }; item.state = "recovered"; item.custody.push({ holder, event: "recovered", run_id }); event(world, run_id, "artifact.recovered", { artifact_id, holder }); return { ok: true, artifact: clone(item) }; }
+// Character records are canonical world state plus append-only history events.
+// The object index is a cacheable current-state view: it can be rebuilt from
+// character.* events and is never an observer knowledge ledger or role table.
+function characterState(world) { assertWorld(world); world.characters ??= {}; return world.characters; }
+function character(world, identity) { return characterState(world)[identity] ?? null; }
+function canInstantiateCharacter(world, identity) { return !character(world, identity); }
+function instantiateCharacter(world, { run_id, identity, display_name, role = null, classification = "named-character", provenance = "pack-original-character-fixture", authority = "scenario-optional", source_claim_ids = [] }) {
+  if (!identity || !display_name || !canInstantiateCharacter(world, identity)) return { ok: false, code: "CHARACTER_IDENTITY_UNAVAILABLE" };
+  const record = { identity, display_name, role, classification, status: "active", provenance, authority, source_claim_ids: clone(source_claim_ids), instantiated_by: run_id, death: null };
+  characterState(world)[identity] = record; event(world, run_id, "character.instantiated", { identity, display_name, role, classification, provenance, authority, source_claim_ids: clone(source_claim_ids) }, authority);
+  return { ok: true, character: clone(record) };
+}
+function setCharacterStatus(world, { run_id, identity, status, reason = null }) {
+  const record = character(world, identity); if (!record) return { ok: false, code: "CHARACTER_UNKNOWN" };
+  if (record.status === "dead" && status !== "dead") return { ok: false, code: "CHARACTER_DEATH_IRREVERSIBLE" };
+  if (!["active", "unavailable", "missing", "unknown", "retired", "removed", "dead"].includes(status)) return { ok: false, code: "CHARACTER_STATUS_INVALID" };
+  record.status = status;
+  if (status === "dead") { record.death ??= { run_id, reason }; event(world, run_id, "character.died", { identity, reason }, record.authority); }
+  else event(world, run_id, "character.status.changed", { identity, status, reason }, record.authority);
+  return { ok: true, character: clone(record) };
+}
+function rebuildCharacters(world) {
+  assertWorld(world); const rebuilt = {};
+  for (const entry of world.events.filter((item) => item.type === "character.instantiated" || item.type === "character.died" || item.type === "character.status.changed").sort((a, b) => a.sequence - b.sequence)) {
+    const payload = entry.payload ?? {};
+    if (entry.type === "character.instantiated" && !rebuilt[payload.identity]) rebuilt[payload.identity] = { identity: payload.identity, display_name: payload.display_name, role: payload.role ?? null, classification: payload.classification, status: "active", provenance: payload.provenance, authority: payload.authority, source_claim_ids: clone(payload.source_claim_ids ?? []), instantiated_by: entry.run_id, death: null };
+    if (entry.type === "character.died" && rebuilt[payload.identity]) { rebuilt[payload.identity].status = "dead"; rebuilt[payload.identity].death = { run_id: entry.run_id, reason: payload.reason ?? null }; }
+    if (entry.type === "character.status.changed" && rebuilt[payload.identity] && rebuilt[payload.identity].status !== "dead") rebuilt[payload.identity].status = payload.status;
+  }
+  return rebuilt;
+}
 function knownRegions(world, profile) { assertWorld(world); if (profile !== "field-researcher" && profile !== "async-command") return []; return Object.values(world.knowledge.institutional.records).filter((record) => record.id.startsWith("institutional-region-")).map((record) => ({ record_id: record.id, region_id: record.payload.region_id })); }
 function summary(world, profile) { assertWorld(world); return { world_id: world.world_id, version: world.version, completed_runs: Object.values(world.runs).filter((run) => run.history_ingested).length, institutional_regions: knownRegions(world, profile).length, archived_expeditions: Object.values(world.runs).filter((run) => run.expedition_id).length }; }
 function saveWorld(file, world) { assertWorld(world); fs.mkdirSync(path.dirname(file), { recursive: true }); fs.writeFileSync(file, `${JSON.stringify(world, null, 2)}\n`); }
-function loadWorld(file) { const world = assertWorld(JSON.parse(fs.readFileSync(file, "utf8"))); for (const region of Object.values(world.regions)) { if (!region.generator_version && region.state?.version === GENERATOR_V1) region.generator_version = GENERATOR_V1; assertRegion(region); if (region.generator_version === GENERATOR_V2) region.state = rebuildRegion(world, region.id); } return world; }
-module.exports = { VERSION, GENERATOR_V1, GENERATOR_V2, SUPPORTED_GENERATORS, createWorld, assertWorld, event, beginRun, ingestRun, promoteRegion, regionId, generatorVersion, restoreRegion, rebuildRegion, leaveRemnant, visibleArtifacts, mutateRegion, recoverArtifact, recordInstitutionalRegionSummary, knownRegions, summary, saveWorld, loadWorld };
+function loadWorld(file) { const world = assertWorld(JSON.parse(fs.readFileSync(file, "utf8"))); const rebuiltCharacters = rebuildCharacters(world); if (Object.keys(rebuiltCharacters).length) world.characters = rebuiltCharacters; else world.characters ??= {}; for (const region of Object.values(world.regions)) { if (!region.generator_version && region.state?.version === GENERATOR_V1) region.generator_version = GENERATOR_V1; assertRegion(region); if (region.generator_version === GENERATOR_V2) region.state = rebuildRegion(world, region.id); } return world; }
+module.exports = { VERSION, GENERATOR_V1, GENERATOR_V2, SUPPORTED_GENERATORS, createWorld, assertWorld, event, beginRun, ingestRun, promoteRegion, regionId, generatorVersion, restoreRegion, rebuildRegion, leaveRemnant, visibleArtifacts, mutateRegion, recoverArtifact, characterState, character, canInstantiateCharacter, instantiateCharacter, setCharacterStatus, rebuildCharacters, recordInstitutionalRegionSummary, knownRegions, summary, saveWorld, loadWorld };

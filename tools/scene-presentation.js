@@ -31,7 +31,7 @@ function safeEnvironment(run, current) {
   const view = current.view ?? {}; const procedural = run.procedural;
   const environment = procedural?.environment ?? procedural?.nodes?.[procedural.current?.[current.player]]?.environment ?? null;
   const details = [];
-  if (environment && typeof environment === "object") for (const key of ["architecture", "lighting", "ceiling", "wear"]) if (typeof environment[key] === "string") details.push(human(environment[key], ""));
+  if (environment && typeof environment === "object") for (const key of ["architecture", "flooring", "ceiling", "lighting", "furniture", "wear", "transition"]) { const value = environment[key]; const text = typeof value === "string" ? value : value?.state ?? value?.description ?? null; if (typeof text === "string") details.push(human(text, "")); }
   return { location: human(view.location, "the immediate area"), details: details.filter(Boolean), visible: (view.targets ?? []).map(({ alias }) => human(alias, "nearby feature")).filter((label) => !opaque.test(label)) };
 }
 function buildSafeScene({ run, mode = run.profile_id, input = null, consequence = null, action = null, scene_type = null, previous_scene_id = null } = {}) {
@@ -68,7 +68,7 @@ function fallbackNarration(scene) {
 function validateNarration(scene, response) {
   if (!response || typeof response.prose !== "string" || !response.prose.trim()) return { ok: false, reason: "malformed" };
   const prose = response.prose.trim();
-  if (opaque.test(prose) || /\byou (?:feel|are terrified|panic|realize)\b/i.test(prose) || /\b(?:creature|behind you|is afraid)\b/i.test(prose)) return { ok: false, reason: "unsupported-content" };
+  if (opaque.test(prose) || /\byou (?:feel|are terrified|panic|realize)\b/i.test(prose) || /\b(?:creature|behind you|is afraid|turns (?:its|their) head|watches|speaks|attacks|follows|moves toward|breathes)\b/i.test(prose)) return { ok: false, reason: "unsupported-content" };
   const refs = response.referenced_safe_fact_ids ?? [];
   if (!Array.isArray(refs) || refs.some((id) => !scene.safe_facts.concat(scene.immediate_changes, scene.context).some((item) => item.id === id))) return { ok: false, reason: "unknown-fact-reference" };
   return { ok: true, prose, referenced_safe_fact_ids: refs };

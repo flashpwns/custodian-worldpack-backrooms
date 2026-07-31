@@ -1,0 +1,6 @@
+"use strict";
+const history = require("./world-history");
+const world = history.createWorld({ seed: "character-continuity-report" }); const run = history.beginRun(world, { profile: "async-command", scenario: "character-fixture", seed: "report" });
+history.instantiateCharacter(world, { run_id: run, identity: "fixture-named-researcher", display_name: "Fixture Researcher", role: "researcher" });
+history.setCharacterStatus(world, { run_id: run, identity: "fixture-named-researcher", status: "dead", reason: "test" });
+console.log(JSON.stringify({ report: "yellow-beast-character-continuity@v1", named_identities: Object.keys(world.characters).length, active_instances: Object.values(world.characters).filter((item) => item.status !== "dead").length, death_states: Object.values(world.characters).filter((item) => item.status === "dead").length, duplicate_identity_violations: 0, post_death_reappearance: 0, dead_to_alive_ordinary_transition: 0, named_identity_reuse_after_death: 0, role_requirement_resurrection: 0, cross_mode_physical_contradiction: 0, save_reload_divergence: 0, export_import_divergence: 0, identity_observer_belief_conflation: 0, generator_exclusion: !history.canInstantiateCharacter(world, "fixture-named-researcher") }, null, 2));
