@@ -77,7 +77,7 @@ read-only objective/observer snapshot, non-executing intent trace, deterministic
 workflow without adding a second world representation.
 
 1. Developer Workflow Audit — complete
-2. Developer Console + Simulation Inspector
+2. Developer Console + Simulation Inspector — complete
 3. Developer Commands + Reports
 4. Content Authoring Ergonomics
 5. Runtime Profiling + Optimization

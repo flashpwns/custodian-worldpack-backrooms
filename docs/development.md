@@ -58,3 +58,7 @@ Pass 2 builds a developer console from the separated snapshot; Pass 3 adds
 focused commands, trace bundles, and report consistency; Pass 4 improves
 authoring ergonomics; Pass 5 profiles long-world/render/save hotspots; Pass 6
 cleans up only seams proven by those passes.
+
+Pass 2 is now available locally with `YELLOW_BEAST_DEVELOPER_MODE=1 npm run
+desktop:dev`. See [developer console](developer-console.md). It is read-only;
+developer commands remain Pass 3 work.
