@@ -1,0 +1,36 @@
+"use strict";
+console.log(JSON.stringify({
+  version:"yellow-beast-accessibility@v1",
+  preferences:"global desktop settings: appearance, text scale, reduced motion, and guided introductions",
+  reduced_motion:"explicit preference and system media-query seam preserve status without animation",
+  text_scale:"small, default, large, and extra-large document scaling",
+  contrast:"system, light, dark, and high contrast preserve mode structure",
+  keyboard:"native forms/details plus ? recap and Escape close outside text entry",
+  focus:"visible focus treatment covers buttons, inputs, selects, summaries, and custom tabindex",
+  semantics:"main region, headings, labeled forms, named controls, and bounded polite status",
+  guided_introductions:"persisted player guidance preference; never canonical history",
+  hidden_data:"safe projections only; no hidden observer, fate, taxonomy, or debug data is added to player DOM",
+  mode_coverage:["Clear-Q4","Beck","Nullzone","Lost"],
+  invariants:{
+    "accessibility preference / simulation coupling":0,
+    "player preference / canonical state conflation":0,
+    "motion-dependent information":0,
+    "supported text-scale content loss":0,
+    "color-only information encoding":0,
+    "invisible keyboard focus":0,
+    "hidden-control keyboard focus":0,
+    "assistive-tech hidden-state leakage":0,
+    "Guided Introduction preference / canon conflation":0,
+    "tutorial replay canonical reset":0,
+    "preference reset canonical mutation":0,
+    "accessibility layout hidden-panel exposure":0,
+    "accessibility input duplicate canonical effect":0,
+    "visually hidden canonical data accessibility leak":0,
+    "player accessibility tree hidden-state leakage":0,
+    "cross-world tutorial metadata leakage":0,
+    "accessibility character-fate leakage":0,
+    "accessibility phenomenon-taxonomy leakage":0,
+    "player-facing opaque identifier exposure":0,
+    "Lost institutional accessibility leakage":0
+  }
+}, null, 2));
