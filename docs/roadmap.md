@@ -21,3 +21,6 @@ researcher tooling. This does not expand mechanics or claim full-corpus intake.
 Not planned by default: creature behavior, Still Life mechanics, Null Zone
 generation, temporal displacement, green-glow mechanics, procedural architecture,
 movie character arcs, or speculative Standard/Complex exchange.
+# YB-28: Immersive mode reconstruction
+
+YB-27 provides the universal freeform loop. YB-28 rebuilds game experience around it in six passes: tutorial and phase framework, Clear-Q4, Beck's Desk, Nullzone, Lost, and cross-mode experience validation.
