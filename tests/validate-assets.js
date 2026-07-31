@@ -206,6 +206,7 @@ scripts.push("tests/y15-openai-provider.test.js", "tests/y27-intent.test.js", "t
 scripts.push("tests/y28-scene.test.js", "tools/scene-presentation.js", "tools/scene-report.js");
 scripts.push("tests/y27-freeform-loop.test.js", "tools/player-turn.js", "tools/freeform-report.js");
 scripts.push("tests/y28-phase.test.js", "tools/mode-phases.js", "tools/phase-report.js");
+scripts.push("tests/y28-q4.test.js", "tools/q4-experience.js", "tools/q4-report.js");
 scripts.push("tests/y16-expedition.test.js", "tools/expedition.js", "tools/expedition-report.js");
 scripts.push("tests/y165-context-closure.test.js", "tools/corpus-coverage-report.js");
 scripts.push("tests/y17-procedural-complex.test.js", "tools/procedural-complex.js", "tools/procedural-report.js");
