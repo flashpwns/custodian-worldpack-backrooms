@@ -248,6 +248,7 @@ scripts.push("tests/y24-institution.test.js");
 scripts.push("tools/institution-report.js");
 scripts.push("tests/y25-gameplay.test.js", "tools/gameplay.js", "tools/gameplay-scenarios.js", "tools/gameplay-report.js");
 scripts.push("desktop/main.js", "desktop/preload.js", "desktop/service.js", "desktop/credentials.js", "desktop/package-smoke.js", "desktop/renderer/renderer.js", "desktop/renderer/surfaces.js", "tools/build-desktop.js", "tools/verify-desktop-artifact.js", "tests/y26-desktop.test.js");
+scripts.push("tools/mode-attempt-resolution.js");
 for (const relative of scripts) {
   const content = fs.readFileSync(path.join(root, relative), "utf8");
   assert.doesNotMatch(content, /custodian\/(runtime|state|tools)/, `${relative} uses only public Custodian imports`);

@@ -12,6 +12,7 @@ const bootstrap = require("../tools/run-bootstrap");
 const nullzone = require("../tools/nullzone-exposure");
 const lost = require("../tools/lost");
 const { executePlayerTurn } = require("../tools/player-turn");
+const { resolveModeAttempt } = require("../tools/mode-attempt-resolution");
 const { createOpenAIProvider } = require("../tools/ai-openai-provider");
 const { createMockProvider } = require("../tools/ai-mock-provider");
 const { buildSafeScene, fallbackNarration } = require("../tools/scene-presentation");
@@ -120,7 +121,29 @@ class DesktopService {
     } catch (error) { this.log(`session start failed: ${error.message}`); return publicError("SESSION_START_FAILED", "This session could not start safely."); }
   }
   resumeSession({ world_id, mode }) { try { const world = this.getWorld(world_id); const saved = readJson(this.sessionFile(world_id, mode), null); const entry = this.restoreSession(world, mode, saved); if (!entry) return publicError("SESSION_NOT_FOUND", "There is no compatible session to continue."); this.sessions.set(`${world_id}:${mode}`, entry); return { ok: true, session: { world_id, mode, resumable: true }, projection: this.projectionFor(world, mode, entry) }; } catch { return publicError("SESSION_RESUME_FAILED", "This session could not be resumed safely."); } }
-  sceneFor(entry, mode, options = {}, world = null) { if (entry.kind === "bootstrap") { const phase = options.phase ?? entry.phase?.phase_id; const q4View = q4.presentation(entry.run, entry.phase ?? phases.createPhase({ mode })); const context_facts = phase === "BRIEFING" ? [q4View.briefing, `Assignment: ${q4View.mission ?? "the declared survey"}.`, `Team present: ${(q4View.team ?? []).map((member) => member.name).join(" and ") || "the assigned field team"}.`, "Next: confirm readiness to stage."] : []; const scene = buildSafeScene({ run: entry.run, mode, context_facts, ...options }); return { ...scene, narration: fallbackNarration(scene), narration_source: "fallback" }; } return this.modeScene(world, mode, entry, { consequence: { result: { accepted: options.accepted !== false, observer_safe_summary: options.public_reason ?? "The current situation remains unchanged." } } }); }
+  briefingScene(entry, mode, phaseId = entry.phase?.phase_id) {
+    const view = q4.presentation(entry.run, entry.phase ?? phases.createPhase({ mode }));
+    const team = view.team.map((member) => member.name).join(" and ") || "the assigned field team";
+    const equipment = view.equipment.map((item) => item.label).join(", ") || "the assigned field kit";
+    const facts = [
+      ["location", "location", phaseId === "BRIEFING" ? "an ASYNC operations briefing context" : phaseId === "STAGING" ? "an ASYNC staging context" : phaseId === "FACILITY_TRANSIT" ? "a controlled facility transit context" : "the approach to the Threshold"],
+      ["assignment", "assignment", view.display_mission ?? "the Clear-Q4 field assignment"],
+      ["team", "personnel", `Assigned personnel: ${team}.`],
+      ["equipment", "readiness", `Readiness: ${equipment}.`],
+      ["reporting", "reporting", view.reporting ? `Reporting: ${view.reporting}.` : "Reporting expectations will be confirmed before departure."],
+      ["next-step", "next-step", phaseId === "BRIEFING" ? "Before departure, review the assignment and confirm readiness to stage." : phaseId === "STAGING" ? "The next step is to proceed with the team and equipment." : phaseId === "FACILITY_TRANSIT" ? "The next step is to approach the Threshold with the team accounted for." : "Crossing the Threshold remains a player decision after the approach is complete."]
+    ].map(([id, category, text]) => ({ id, category, text, required: true }));
+    const context = [
+      ...(view.restrictions ?? []).map((text, index) => ({ id: `constraint-${index + 1}`, category: "constraint", text, required: false })),
+      ...(view.human_context?.procedures ?? []).map((text, index) => ({ id: `procedure-${index + 1}`, category: "procedure", text, required: false }))
+    ];
+    const scene = { version: "yellow-beast-scene@v1", scene_id: `briefing-${entry.run.run_id ?? entry.run.session.id}`, world_ref: entry.run.world_id ?? null, session_ref: entry.run.session.id, turn_ref: "briefing", observer_ref: "yb-field-player", mode, profile: "clear-q4", scene_type: "briefing", significance: "MEANINGFUL", location: facts[0].text, safe_facts: facts, immediate_changes: [], visible_actors: [], communications: [], sensory_facts: [], inventory: [], object_state_changes: [], unresolved_facts: [], continuing_conditions: [], context, interaction_prompt: "Confirm when you are ready to stage.", provenance: { source: "observer-safe-q4-briefing", input: null } };
+    const sentence = (text) => String(text).replace(/[.]+$/, "") + ".";
+    scene.narration = `You are in ${sentence(facts[0].text)} ${facts.slice(1).map((fact) => sentence(fact.text)).join(" ")}`;
+    scene.narration_source = "fallback";
+    return scene;
+  }
+  sceneFor(entry, mode, options = {}, world = null) { if (entry.kind === "bootstrap") { const phase = options.phase ?? entry.phase?.phase_id; if (phase !== "FIELD_OPERATION" && phase !== "RETURN" && phase !== "DEBRIEF") return this.briefingScene(entry, mode, phase); const scene = buildSafeScene({ run: entry.run, mode, ...options }); return { ...scene, narration: fallbackNarration(scene), narration_source: "fallback" }; } return this.modeScene(world, mode, entry, { consequence: { result: { accepted: options.accepted !== false, observer_safe_summary: options.public_reason ?? "The current situation remains unchanged." } } }); }
   projectionFor(world, mode, entry) { const descriptor = this.getMode(mode); const runId = entry.run_id ?? entry.run?.run_id ?? null; let surface;
     if (entry.kind === "bootstrap") surface = bootstrap.status(entry.run); else if (entry.kind === "lost") surface = lost.projection(entry.run); else if (entry.kind === "nullzone") surface = { ...nullzone.projection(world), local_observation: nullzone.observeRegion(world) }; else surface = desk.projection(world);
     const phase = entry.phase ?? phases.createPhase({ mode, guided: this.settings().guided_introductions !== false }); const unfinished = consequenceEchoes.unfinishedBusiness(world, mode, { run_id: runId }); return { version: "yellow-beast-desktop-projection@v1", world: this.worldInfo(world, this.metadata().worlds[world.world_id] ?? {}), mode: clone(descriptor), gameplay: gameplay.projection(world, { mode: descriptor.gameplay_mode, run_id: runId }), institution: mode === "async-command" ? desk.projection(world) : null, consequence_echoes: consequenceEchoes.observerView(world, mode, { run_id: runId }), unfinished_business: unfinished, surface: clone(surface), phase: clone(phase), q4: entry.kind === "bootstrap" ? q4.presentation(entry.run, phase, unfinished) : null, beck: entry.kind === "beck" ? beckExperience.presentation(world, surface, phase, unfinished) : null, nullzone: entry.kind === "nullzone" ? nullzoneExperience.presentation(world, phase, surface, unfinished) : null, lost: entry.kind === "lost" ? lostExperience.presentation(surface, phase, unfinished) : null, scene: this.sceneFor(entry, mode, {}, world), available_actions: this.availableFor(world, mode, entry), settings: this.settings() };
@@ -129,8 +152,10 @@ class DesktopService {
   getInstitutionProjection({ world_id }) { try { return { ok: true, projection: desk.projection(this.getWorld(world_id)) }; } catch { return publicError("INSTITUTION_UNAVAILABLE", "Institution state is not available."); } }
   availableFor(world, mode, entry) {
     if (entry.kind === "bootstrap") {
+      const phaseActions = { BRIEFING: "READY", STAGING: "PROCEED", FACILITY_TRANSIT: "APPROACH", THRESHOLD: "CROSS" };
       const state = bootstrap.status(entry.run); const observed = bootstrap.look(entry.run); const targets = state.view.targets.map(({ alias }) => ({ ref: alias, label: alias })); const exits = (observed.view?.exits ?? []).map(({ alias }) => ({ ref: alias, label: alias }));
-      return state.available_verbs.map((type) => ({ type, target_required: ["MOVE", "INSPECT", "USE", "RECORD", "COMMUNICATE"].includes(type), targets: type === "COMMUNICATE" ? [{ ref: "standard", label: "Standard" }, { ref: "team", label: "Team" }] : type === "MOVE" ? exits : ["INSPECT", "RECORD"].includes(type) ? targets : type === "USE" ? [{ ref: "survey-instrument", label: "Survey instrument" }] : [] }));
+      const actions = state.available_verbs.map((type) => ({ type, target_required: ["MOVE", "INSPECT", "USE", "RECORD", "COMMUNICATE"].includes(type), targets: type === "COMMUNICATE" ? [{ ref: "standard", label: "Standard" }, { ref: "team", label: "Team" }] : type === "MOVE" ? exits : ["INSPECT", "RECORD"].includes(type) ? targets : type === "USE" ? [{ ref: "survey-instrument", label: "Survey instrument" }] : [] }));
+      return phaseActions[entry.phase?.phase_id] ? [{ type: phaseActions[entry.phase.phase_id], target_required: false, targets: [] }, ...actions] : actions;
     }
     if (entry.kind === "lost") { const view = lost.projection(entry.run); return [{ type: "MOVE", target_required: true, targets: view.surroundings.exits.map(({ alias }) => ({ ref: alias, label: alias })) }, { type: "DROP", target_required: true, targets: view.status.carried.map((item) => ({ ref: item, label: item })) }, { type: "RETURN", target_required: false, targets: [] }, { type: "STRAND", target_required: false, targets: [] }]; }
     if (entry.kind === "nullzone") return [{ type: "EXPAND", target_required: false, targets: [] }, { type: "DISCOVER", target_required: false, targets: [] }, { type: "RETURN", target_required: false, targets: [] }];
@@ -139,7 +164,19 @@ class DesktopService {
   getAvailableActions({ world_id, mode }) { const current = this.getGameplayProjection({ world_id, mode }); return current.ok ? { ok: true, actions: current.projection.available_actions } : current; }
   submitAction({ world_id, mode, action, target = null }) {
     try { const world = this.getWorld(world_id); const entry = this.session(world_id, mode) ?? this.restoreSession(world, mode, readJson(this.sessionFile(world_id, mode), null)); if (!entry) return publicError("SESSION_NOT_FOUND", "Start or continue a session first."); const verb = String(action ?? "").toUpperCase(); let result;
-      if (entry.kind === "bootstrap") result = bootstrap.act(entry.run, verb, target);
+      if (entry.kind === "bootstrap" && ["READY", "PROCEED", "APPROACH", "CROSS"].includes(verb)) {
+        const phase = entry.phase?.phase_id;
+        const expected = { BRIEFING: "READY", STAGING: "PROCEED", FACILITY_TRANSIT: "APPROACH", THRESHOLD: "CROSS" }[phase];
+        if (verb !== expected) return publicError("PHASE_GUARD_REJECTED", "That transition is not available from the current expedition phase.");
+        if (verb === "CROSS") {
+          const exit = bootstrap.look(entry.run).view?.exits?.[0]?.alias;
+          result = exit ? bootstrap.act(entry.run, "MOVE", exit) : { ok: false, code: "PHASE_GUARD_REJECTED" };
+          if (result.ok) { const advanced = q4.nextPhase(entry.phase, { action: verb, canonical_crossed: true }); if (!advanced.ok) return publicError(advanced.code, "The expedition cannot cross from its current state."); entry.phase = advanced.phase; }
+        } else {
+          result = { ok: true, outcome: "phase-advanced" };
+          const advanced = q4.nextPhase(entry.phase, { action: verb }); if (!advanced.ok) return publicError(advanced.code, "The expedition cannot advance from its current state."); entry.phase = advanced.phase;
+        }
+      } else if (entry.kind === "bootstrap") result = bootstrap.act(entry.run, verb, target);
       else if (entry.kind === "lost") { if (verb === "MOVE") result = lost.move(world, entry.run, target); else if (verb === "DROP") result = lost.drop(world, entry.run, target); else if (verb === "RETURN") result = lost.escape(world, entry.run); else if (verb === "STRAND") result = lost.strand(world, entry.run); else result = { ok: false, code: "ACTION_UNAVAILABLE" }; }
       else if (entry.kind === "nullzone") { if (verb === "EXPAND") result = nullzone.expand(world, entry.run_id); else if (verb === "DISCOVER") result = nullzone.discoverArtifact(world, entry.run_id); else if (verb === "RETURN") result = nullzone.returnBase(world, entry.run_id); else result = { ok: false, code: "ACTION_UNAVAILABLE" }; }
       else result = verb === "REVIEW_REPORT" ? { ok: true, result: desk.projection(world) } : verb === "ADVANCE" ? desk.advance(world, entry.run_id) : { ok: false, code: "ACTION_UNAVAILABLE" };
@@ -152,11 +189,14 @@ class DesktopService {
     const surface = projection.surface ?? {}; const location = surface.view?.location?.alias ?? surface.surroundings?.location?.alias ?? surface.base?.known_access_point ?? "the current setting";
     return { version: "yellow-beast-interpretation-context@v1", profile_title: projection.mode.label, scenario: projection.mode.description, lifecycle: "active", observer_location: location, visible_reference_labels: labels, known_resource_labels: surface.status?.carried ?? [], public_reason: null, grounding: { version: "yellow-beast-observer-grounding-context@v1", candidates: labels.map((label) => ({ ref: label, label, category: "entity", source: "visible", aliases: [label], attributes: [] })) } };
   }
-  modeActionFromPlan(mode, plan, available) {
-    const text = plan.steps.map((step) => step.attempted_behavior).join(" ").toLowerCase(); const capabilities = plan.steps.flatMap((step) => step.capability_requirements);
-    const preferred = mode === "async-command" ? (/advance|wait|continue|next/.test(text) ? "ADVANCE" : "REVIEW_REPORT") : mode === "local-anomaly" ? (/return|home|leave|back/.test(text) ? "RETURN" : /record|capture|document|discover|collect/.test(text) ? "DISCOVER" : "EXPAND") : (/return|home|leave|back/.test(text) ? "RETURN" : /strand|stop|remain/.test(text) ? "STRAND" : /drop|discard/.test(text) ? "DROP" : /move|go|walk|follow|crawl|cross/.test(text) || capabilities.includes("locomotion") ? "MOVE" : null);
-    const selected = available.find((item) => item.type === preferred) ?? available.find((item) => item.type === (mode === "async-command" ? "REVIEW_REPORT" : mode === "local-anomaly" ? "EXPAND" : "MOVE"));
-    return selected ? { action: selected.type, target: selected.target_required ? selected.targets?.[0]?.ref : null } : null;
+  resolveQ4Attempt({ world_id, mode, entry, plan }) {
+    const phase = entry.phase?.phase_id;
+    const language = [plan.intent?.goals ?? [], plan.steps.map((step) => step.attempted_behavior), plan.intent?.methods ?? []].flat().join(" ").toLowerCase();
+    const affordance = { BRIEFING: ["ready", "stage", "confirm"], STAGING: ["proceed", "depart", "prepare"], FACILITY_TRANSIT: ["approach", "continue", "reach"], THRESHOLD: ["cross", "enter"] }[phase];
+    if (!affordance?.some((term) => language.includes(term))) return null;
+    const action = { BRIEFING: "READY", STAGING: "PROCEED", FACILITY_TRANSIT: "APPROACH", THRESHOLD: "CROSS" }[phase];
+    const result = this.submitAction({ world_id, mode, action });
+    return { result: { accepted: result.ok, duplicate: false, canonical_event_ids: [], attempted_steps: plan.steps.map((step) => step.id), completed_steps: result.ok ? plan.steps.map((step) => step.id) : [], failed_steps: result.ok ? [] : plan.steps.map((step) => step.id), interrupted_steps: [], partial_steps: [], time_advanced: 0, observer_safe_summary: result.ok ? "The expedition advances to its next operational context." : "The expedition remains in its current operational context." } };
   }
   modeScene(world, mode, entry, natural) {
     const surface = entry.kind === "lost" ? lost.projection(entry.run) : entry.kind === "nullzone" ? { ...nullzone.projection(world), local_observation: nullzone.observeRegion(world) } : entry.kind === "beck" ? desk.projection(world) : {}; const location = surface.view?.location?.alias ?? surface.surroundings?.location?.alias ?? surface.base?.known_access_point ?? "the current setting";
@@ -172,7 +212,7 @@ class DesktopService {
       if (configured && !key) return publicError("PROVIDER_CONFIGURATION_REQUIRED", "Language assistance needs an access key. Your world is safe; you can continue offline.");
       const provider = configured ? createOpenAIProvider({ apiKey: key, model: this.settings().openai_model || undefined, timeout: 15000 }) : createMockProvider();
       const nonBootstrap = entry.kind !== "bootstrap"; const adapterRun = nonBootstrap ? { session: { startup: { player: { observer_id: mode } } }, profile_id: mode } : entry.run; const available = this.availableFor(world, mode, entry);
-      const turn = await executePlayerTurn({ run: adapterRun, mode, provider, player_text: text, request_id: `desktop-natural-${world_id}-${Date.now()}`, context: nonBootstrap ? this.naturalContext(world, mode, entry) : null, consequenceResolver: nonBootstrap ? ({ plan }) => { const selected = this.modeActionFromPlan(mode, plan, available); if (!selected) return { result: { accepted: false, duplicate: false, canonical_event_ids: [], partial_steps: [], failed_steps: plan.steps.map((step) => step.id), interrupted_steps: [], time_advanced: 0, observer_safe_summary: "Nothing observable changes here." } }; const result = this.submitAction({ world_id, mode, ...selected }); return { result: { accepted: result.ok, duplicate: false, canonical_event_ids: [], partial_steps: [], failed_steps: result.ok ? [] : plan.steps.map((step) => step.id), interrupted_steps: [], time_advanced: 0, observer_safe_summary: result.ok ? "The attempt leaves the current situation as observed." : "Nothing observable changes here." } }; } : null, sceneBuilder: nonBootstrap ? ({ natural: resolved }) => this.modeScene(world, mode, entry, resolved) : null });
+      const turn = await executePlayerTurn({ run: adapterRun, mode, provider, player_text: text, request_id: `desktop-natural-${world_id}-${Date.now()}`, context: nonBootstrap ? this.naturalContext(world, mode, entry) : null, consequenceResolver: entry.kind === "bootstrap" ? ({ plan }) => this.resolveQ4Attempt({ world_id, mode, entry, plan }) : ({ plan }) => resolveModeAttempt({ service: this, world_id, mode, plan, available }), sceneBuilder: entry.kind === "bootstrap" ? () => this.sceneFor(entry, mode, {}, world) : ({ natural: resolved }) => this.modeScene(world, mode, entry, resolved) });
       if (turn.save_required) this.persistSession(world, mode, entry);
       const scene = { ...turn.scene, narration: turn.narration.prose, narration_source: turn.narration.source };
       return { ok: true, result: { turn_status: turn.status, clarification_required: turn.status === "CLARIFICATION_REQUIRED", clarification_question: turn.clarification?.question ?? null, executed: turn.save_required, summary: scene.narration, scene }, projection: this.projectionFor(world, mode, entry) };
