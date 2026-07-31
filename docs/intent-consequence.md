@@ -13,3 +13,13 @@ The interpreter receives only the observer-safe context generated from the publi
 The current structured controls remain canonical play infrastructure. Their compatibility direction is one-way: a legacy structured command can be represented as an intent proposal, but a freeform intent is never forced back into an action menu. The experimental desktop language field now reports only that a proposal was captured; it performs no action and persists no world change.
 
 Pass 2 will ground observer-safe references such as “the chair”, “him”, “that door”, and “the noise”. Later passes will separately perform capability/constraint checks and consequence resolution under Custodian’s canonical authority.
+
+## Pass 2: observer-safe grounding
+
+`yellow-beast-grounded-intent@v1` preserves the original intent and adds deterministic grounding results. Each result records the original reference, a machine-usable canonical ref only after it was selected from a safe candidate, its player-safe label, source (`visible`, `inventory`, `memory`, `discourse`, `role`, `phenomenon`, or `self`), category, and match type. Candidate indexes are derived from the observer projection and never from raw simulation state.
+
+Ambiguous references return stable, minimal clarification with safe labels only. Unresolved references remain unresolved, including conceptual unknowns such as “whatever made that sound”; a perceived phenomenon can ground without inventing its source. Partial grounding is allowed. Recent grounded referents form a bounded, eight-item discourse cache, rather than a second truth store. Remembered candidates remain memory-sourced and are not upgraded to objective certainty.
+
+Each mode supplies its own safe candidates: Clear-Q4 can expose observed equipment and known team labels; Beck exposes only reviewed institutional knowledge; Nullzone exposes civilian labels and archive memory; Lost exposes only immediate surroundings and legitimately remembered landmarks. Grounding cannot create a candidate from another mode’s knowledge. It does not mutate world state, time, inventory, knowledge, or events, and does not decide ability, permission, reachability, or success.
+
+Pass 3 will consume grounded references for capability and constraint resolution. It must not be inferred from Pass 2 output that an attempt can happen or succeeds.

@@ -32,7 +32,11 @@ function buildSafeContext(run) {
     observer_location: current.view.location,
     visible_reference_labels: current.view.targets.map(({ alias }) => alias),
     known_resource_labels: current.known_resources.map((item) => item.id ?? item),
-    public_reason: current.view.public_reason
+    public_reason: current.view.public_reason,
+    grounding: { version: "yellow-beast-observer-grounding-context@v1", candidates: [
+      ...current.view.targets.map(({ alias }) => ({ ref: alias, label: alias, category: "entity", source: "visible", aliases: [alias], attributes: [] })),
+      ...current.known_resources.map((item) => ({ ref: item.id ?? item, label: item.label ?? item.id ?? item, category: "inventory", source: "inventory", aliases: [], attributes: [] }))
+    ] }
   };
 }
 function validateIntent(value, { raw_input, provider = "unknown", request_id = null } = {}) {
@@ -66,6 +70,8 @@ function legacyActionToIntent({ verb, target_alias = null, actor = null, raw_inp
 async function executeNatural({ run, provider, player_text, request_id = null }) {
   const context = buildSafeContext(run);
   const intent = await interpret(provider, player_text, context, { request_id });
-  return { run, context, intent, steps: [], narration: null, executed: false };
+  const { groundIntent } = require("./intent-grounding");
+  const grounded_intent = intent.status === "proposal" ? groundIntent(intent, context.grounding) : null;
+  return { run, context, intent, grounded_intent, steps: [], narration: null, executed: false };
 }
 module.exports = { INTENT_VERSION, buildSafeContext, validateIntent, interpret, legacyActionToIntent, executeNatural };
