@@ -6,6 +6,10 @@ const clone = (value) => structuredClone(value);
 const digest = (value) => crypto.createHash("sha256").update(JSON.stringify(value)).digest("hex").slice(0, 16);
 const eventOrder = (a, b) => a.sequence - b.sequence || a.id.localeCompare(b.id);
 const threadId = (world, type, anchor) => `thread-${digest([world.world_id, type, anchor])}`;
+// Derived-only caches. WeakMap scope means abandoned worlds cannot be retained,
+// while the revision tuple invalidates the entry after normal history appends.
+const indexCache = new WeakMap();
+const observerCache = new WeakMap();
 const TYPE_LABELS = {
   RECOVERED_OBJECT: { "field-researcher": "Equipment with an incomplete field history", "async-command": "Unreturned equipment record", "local-anomaly": "An object seen again", lost: null },
   REPEATED_PHENOMENON: { "field-researcher": "Repeated field observation", "async-command": "Repeated reported observation", "local-anomaly": "A repeated observation", lost: null },
@@ -17,7 +21,12 @@ function eventsFor(world) { return [...world.events].sort(eventOrder); }
 function relation(type, anchor, entries, extra = {}) { return { type, anchor, event_refs: entries.map((entry) => entry.id), first_seen_at: entries[0]?.sequence ?? null, last_updated_at: entries.at(-1)?.sequence ?? null, status: entries.length > 2 ? "ACTIVE" : "CANDIDATE", significance: Math.min(3, entries.length), provenance: "derived-from-canonical-history", ...extra }; }
 function indexBy(events, select) { const groups = new Map(); for (const entry of events) { const key = select(entry); if (!key) continue; (groups.get(key) ?? groups.set(key, []).get(key)).push(entry); } return groups; }
 function derive(world) {
-  history.assertWorld(world); const events = eventsFor(world); const candidates = [];
+  history.assertWorld(world);
+  const last = world.events.at(-1);
+  const revision = `${world.event_sequence}:${world.events.length}:${last?.id ?? ""}`;
+  const cached = indexCache.get(world);
+  if (cached?.revision === revision) return cached.index;
+  const events = eventsFor(world); const candidates = [];
   for (const [artifact_id, entries] of indexBy(events, (entry) => entry.payload?.artifact_id ?? null)) if (entries.length >= 2) candidates.push(relation("RECOVERED_OBJECT", artifact_id, entries));
   for (const [phenomenon_id, entries] of indexBy(events, (entry) => entry.payload?.phenomenon_id ?? null)) if (entries.length >= 2) candidates.push(relation("REPEATED_PHENOMENON", phenomenon_id, entries));
   for (const [identity, entries] of indexBy(events.filter((entry) => entry.type === "character.died" || entry.type === "character.status.changed"), (entry) => entry.payload?.identity ?? null)) if (entries.length) candidates.push(relation("PERSONNEL_DISAPPEARANCE", identity, entries, { status: "ACTIVE", significance: 2 }));
@@ -25,12 +34,22 @@ function derive(world) {
   const reports = events.filter((entry) => entry.type === "report.filed" && entry.payload?.subject && entry.payload?.claim && entry.payload?.relation === "contradicts");
   for (const [subject, entries] of indexBy(reports, (entry) => entry.payload.subject)) if (new Set(entries.map((entry) => entry.payload.claim)).size > 1) candidates.push(relation("CONTRADICTORY_REPORTS", subject, entries, { status: "ACTIVE", significance: 2, relation_strength: "structured-conflict" }));
   const threads = candidates.map((item) => ({ version: "yellow-beast-story-thread@v1", thread_id: threadId(world, item.type, item.anchor), ...item })).sort((a, b) => a.thread_id.localeCompare(b.thread_id));
-  return { version: "yellow-beast-story-thread-index@v1", world_id: world.world_id, history_digest: digest(events.map(({ id }) => id)), threads };
+  const index = { version: "yellow-beast-story-thread-index@v1", world_id: world.world_id, history_digest: digest(events.map(({ id }) => id)), threads };
+  indexCache.set(world, { revision, index });
+  observerCache.set(index, new Map());
+  return index;
 }
-function allowedEvents(world, profile) { const runs = new Set(Object.values(world.runs).filter((run) => run.profile === profile).map((run) => run.id)); return new Set(eventsFor(world).filter((entry) => runs.has(entry.run_id)).map((entry) => entry.id)); }
+function allowedEvents(world, index, profile) {
+  const cached = observerCache.get(index);
+  if (cached?.has(profile)) return cached.get(profile);
+  const runs = new Set(Object.values(world.runs).filter((run) => run.profile === profile).map((run) => run.id));
+  const allowed = new Set(eventsFor(world).filter((entry) => runs.has(entry.run_id)).map((entry) => entry.id));
+  cached?.set(profile, allowed);
+  return allowed;
+}
 function observerView(world, index, profile) {
   if (profile === "lost") return { profile, threads: [], implicit_continuity: true };
-  const allowed = allowedEvents(world, profile); const threads = index.threads.filter((thread) => thread.event_refs.some((id) => allowed.has(id))).map((thread) => ({ type: thread.type, status: thread.status, significance: thread.significance, title: TYPE_LABELS[thread.type]?.[profile] ?? "A related matter", latest_known_event_ref: thread.event_refs.filter((id) => allowed.has(id)).at(-1) ?? null })).filter((thread) => thread.title);
+  const allowed = allowedEvents(world, index, profile); const threads = index.threads.filter((thread) => thread.event_refs.some((id) => allowed.has(id))).map((thread) => ({ type: thread.type, status: thread.status, significance: thread.significance, title: TYPE_LABELS[thread.type]?.[profile] ?? "A related matter", latest_known_event_ref: thread.event_refs.filter((id) => allowed.has(id)).at(-1) ?? null })).filter((thread) => thread.title);
   return { profile, threads, implicit_continuity: false };
 }
 function fallbackSummary(view) { if (!view.threads.length) return view.implicit_continuity ? "No explicit matter is presented." : "No related matter is currently available."; return view.threads.map((thread) => thread.title).join(". "); }
