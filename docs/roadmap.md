@@ -41,6 +41,11 @@ an operational field brief, Beck a situation-first desk, Nullzone a personal
 notebook, and Lost a stripped sensory frame. The renderer stores no world
 facts and structured offline controls remain available.
 
+Pass 3 complete: feedback now distinguishes submitted, resolving, result,
+in-world refusal, and application failure without treating latency as world
+state. Renderer-local request tokens prevent duplicate and stale world/mode
+responses; restrained result-only motion has no hidden-state meaning.
+
 1. Navigation + Information Architecture
 2. Reactive In-Universe UI
 3. Feedback, Motion + Interaction Feel

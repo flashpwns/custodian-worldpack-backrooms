@@ -217,6 +217,7 @@ scripts.push("tests/y29-story-threads.test.js", "tools/story-threads.js", "tools
 scripts.push("tests/y29-canon-convergence.test.js", "tools/canon-convergence.js", "tools/canon-convergence-report.js");
 scripts.push("tests/y30-navigation.test.js", "tools/navigation-report.js");
 scripts.push("tests/y30-reactive-ui.test.js", "tools/reactive-ui-report.js");
+scripts.push("tests/y30-interaction-feel.test.js", "tools/interaction-report.js", "desktop/renderer/interaction.js");
 scripts.push("tests/y16-expedition.test.js", "tools/expedition.js", "tools/expedition-report.js");
 scripts.push("tests/y165-context-closure.test.js", "tools/corpus-coverage-report.js");
 scripts.push("tests/y17-procedural-complex.test.js", "tools/procedural-complex.js", "tools/procedural-report.js");

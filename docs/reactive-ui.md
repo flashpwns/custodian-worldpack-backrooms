@@ -25,3 +25,10 @@ invariants cover canonical mutation, hidden or private-state leakage, opaque
 identifiers and implementation language, Lost institutional chrome,
 provider-internal metadata, unsupported threat claims, and natural-language
 input priority.
+
+Pass 3 adds no world knowledge to this layer. Submitted, resolving, and result
+feedback belongs only to an application request. A reply is rendered only if it
+still belongs to the active world and mode; navigation invalidates pending
+renderer requests. Motion is a short scene-result settle transition, not an
+indication of danger, discovery, character fate, provider latency, or hidden
+phenomena.
