@@ -85,3 +85,34 @@ workflow without adding a second world representation.
 
 Then: YB-32 Replayability + Run-to-Run Desire, followed by YB-33 Public Beta
 Candidate.
+
+## YB-32: Replayability + Run-to-Run Desire
+
+Pass 1 adds a deterministic, derived run-identity description over existing
+seeded environment realization, profile-declared startup context, bounded
+resources, and initial questions. It does not add plot tracks, rarity,
+difficulty, stat modifiers, or canonical lore.
+
+Pass 2 increases discovery density through observer-safe presentation of
+already materialized environmental distinctions, landmarks, mundane objects,
+remembered routes, questions, and institutional context. It adds no new
+phenomena, entities, quests, taxonomy, or canonical authority; see
+`docs/discovery-density.md` and `npm run discovery-density-report`.
+
+Pass 3 adds bounded consequence echoes derived from existing world-history
+events. Prior object custody, staffing status, reports, communications,
+evidence, remembered routes, and region changes can reappear only through the
+observer domain that already has the supporting history. No callback events,
+resurrection, omniscience, or narrative scheduling is introduced; see
+`docs/consequence-echoes.md` and `npm run consequence-echo-report`.
+
+Pass 4 surfaces unresolved conditions from those same observer-safe records
+as mode-native unfinished business. It adds no quest system, objective marker,
+mystery ID, forced callback, or scripted beat; ordinary simulation remains the
+only resolution path. See `docs/unfinished-business.md` and
+`npm run unfinished-business-report`.
+
+Pass 6 closes YB-32 with the aggregate determinism, multi-seed, observer,
+continuity, canon-gravity, offline, save/reload, long-world, and packaging
+validation in `docs/replayability.md` and
+`npm run y32-replayability-report`.

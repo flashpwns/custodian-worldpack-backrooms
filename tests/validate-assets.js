@@ -227,6 +227,11 @@ scripts.push("tests/y31-dev-commands.test.js", "tools/dev-commands.js", "tools/d
 scripts.push("tests/y31-authoring.test.js", "tools/authoring.js", "tools/authoring-report.js");
 scripts.push("tests/y31-performance.test.js", "tools/performance-report.js");
 scripts.push("tests/y31-closure.test.js", "tools/y31-closure-report.js");
+scripts.push("tests/y32-run-identity.test.js", "tools/run-identity.js", "tools/run-identity-report.js");
+scripts.push("tests/y32-discovery-density.test.js", "tools/discovery-density-report.js");
+scripts.push("tests/y32-consequence-echoes.test.js", "tools/consequence-echoes.js", "tools/consequence-echo-report.js");
+scripts.push("tests/y32-unfinished-business.test.js", "tools/unfinished-business-report.js");
+scripts.push("tests/y32-replayability.test.js", "tools/y32-replayability-report.js");
 scripts.push("tests/y16-expedition.test.js", "tools/expedition.js", "tools/expedition-report.js");
 scripts.push("tests/y165-context-closure.test.js", "tools/corpus-coverage-report.js");
 scripts.push("tests/y17-procedural-complex.test.js", "tools/procedural-complex.js", "tools/procedural-report.js");

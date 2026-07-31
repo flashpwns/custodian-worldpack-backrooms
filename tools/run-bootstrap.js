@@ -7,6 +7,7 @@ const { FIELD_SCENARIO, fieldExpedition, event, useEquipment, safeSummary, final
 const procedural = require("./procedural-complex");
 const proceduralV2 = require("./procedural-complex-v2");
 const history = require("./world-history");
+const runIdentity = require("./run-identity");
 
 const root = path.resolve(__dirname, "..");
 const read = (relative) => JSON.parse(fs.readFileSync(path.join(root, relative), "utf8"));
@@ -52,7 +53,9 @@ function configuredPack(profileId, playerId) {
 function newRun({ profile, seed, session, expedition, procedural_state, procedural_scenario = false, world_id = null, run_id = null, world = null }) {
   const profileRecord = profileFor(profile);
   const player = session.startup.player.observer_id;
-  return { version: "yellow-beast-run@v4", profile_id: profile, profile_title: profileRecord.title, scenario: procedural_scenario ? "async-clear-q4-procedural-survey" : session.scenario.id, seed, session, lifecycle: "active", checklist: { moved: false, inspected: false, used: false }, aliases: {}, expedition: expedition ?? (profile === FIELD_PROFILE ? fieldExpedition(player) : null), procedural: procedural_scenario ? (procedural_state ?? procedural.initialize({ seed, observer: player })) : null, world_id, run_id, _world: world };
+  const run = { version: "yellow-beast-run@v4", profile_id: profile, profile_title: profileRecord.title, scenario: procedural_scenario ? "async-clear-q4-procedural-survey" : session.scenario.id, seed, session, lifecycle: "active", checklist: { moved: false, inspected: false, used: false }, aliases: {}, expedition: expedition ?? (profile === FIELD_PROFILE ? fieldExpedition(player) : null), procedural: procedural_scenario ? (procedural_state ?? procedural.initialize({ seed, observer: player })) : null, world_id, run_id, _world: world };
+  run.identity = runIdentity.describe(run);
+  return run;
 }
 function startRun({ profile, seed = "yellow-beast-bootstrap", scenario = null, world = null, region_id = null, generator_version = null }) {
   const { profile: profileRecord, startup } = startupFor(profile);
@@ -109,7 +112,7 @@ function status(runValue) {
   const actions = getAvailableSessionActions({ session: run.session, actor: observer }).actions;
   const active = run.lifecycle === "active";
   const expeditionVerbs = active && run.expedition ? ["COMMUNICATE", "RECORD", "WAIT", "RETURN", "ABORT"] : [];
-  return { profile_id: run.profile_id, profile_title: run.profile_title, scenario: run.scenario, lifecycle: run.lifecycle, player: observer, known_resources: (run.session.startup.resources ?? []).filter((entry) => entry.custodian === observer).map((entry) => entry.id), available_verbs: ["LOOK", ...(active && view.targets?.length ? ["INSPECT"] : []), ...(active && (run.procedural ? view.view?.exits?.length : actions.includes("traverse-controlled-route")) ? ["MOVE"] : []), ...(active && actions.includes("toggle-light") ? ["USE"] : []), ...expeditionVerbs], view: { outcome: view.outcome, location: view.view?.location ?? null, targets: (view.aliases ?? []).map(({ alias }) => ({ alias })), public_reason: view.public_reason ?? null }, ...(run.expedition ? { expedition: safeSummary(run.expedition) } : {}), ...(run.procedural ? { discovered_topology: generatorFor(run.procedural).map(run.procedural, observer), generator_version: generatorFor(run.procedural).VERSION } : {}) };
+  return { profile_id: run.profile_id, profile_title: run.profile_title, scenario: run.scenario, lifecycle: run.lifecycle, player: observer, run_identity: runIdentity.describe(run), known_resources: (run.session.startup.resources ?? []).filter((entry) => entry.custodian === observer).map((entry) => entry.id), available_verbs: ["LOOK", ...(active && view.targets?.length ? ["INSPECT"] : []), ...(active && (run.procedural ? view.view?.exits?.length : actions.includes("traverse-controlled-route")) ? ["MOVE"] : []), ...(active && actions.includes("toggle-light") ? ["USE"] : []), ...expeditionVerbs], view: { outcome: view.outcome, location: view.view?.location ?? null, targets: (view.aliases ?? []).map(({ alias }) => ({ alias })), observations: { environment: view.view?.environment ?? {}, landmark: view.view?.landmark ?? null, objects: view.view?.objects ?? [], route_character: view.view?.route_character ?? null }, public_reason: view.public_reason ?? null }, ...(run.expedition ? { expedition: safeSummary(run.expedition) } : {}), ...(run.procedural ? { discovered_topology: generatorFor(run.procedural).map(run.procedural, observer), generator_version: generatorFor(run.procedural).VERSION } : {}) };
 }
 function terminal(run, decision) { finalize(run.expedition, decision); run.lifecycle = "completed"; const ingestion = run._world && run.run_id ? history.ingestRun(run._world, run) : null; return { ok: true, outcome: "succeeded", result: { public_reason: null, expedition_result: clone(run.expedition.result), ...(ingestion ? { history: { run_id: ingestion.run_id, region_id: ingestion.region_id } } : {}) }, run }; }
 function expeditionAction(run, verb, target) {

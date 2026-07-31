@@ -8,21 +8,21 @@
   const named = (items, fallback) => bounded(items).map((item) => text(item?.alias ?? item?.name ?? item?.description ?? item?.type ?? item) || fallback).filter(Boolean);
   const section = (heading, items, search = false) => ({ heading, items: bounded(items), search });
   function recap(projection) {
-    const state = projection.surface ?? {}; const scene = text(projection.scene?.narration);
+    const state = projection.surface ?? {}; const scene = text(projection.scene?.narration); const unfinished = (projection.unfinished_business?.items ?? []).map((item) => item.text);
     if (projection.mode.id === "field-researcher") {
       const expedition = state.expedition ?? {}; const objectives = [...(projection.gameplay?.objectives ?? []).map((item) => item.target ?? item.type), ...Object.values(expedition.objectives ?? {}).map((item) => item?.state)].filter(Boolean);
-      return { title:"Field recap", sections:[section("Current situation", [scene || text(state.view?.location?.alias) || "Observe the current area."]), section("Operational concerns", objectives), section("Carrying", (projection.scene?.inventory ?? []).map((item) => item.text)), section("Recent radio", expedition.message_count ? [`${expedition.message_count} message${expedition.message_count === 1 ? "" : "s"} sent.`] : [])] };
+      return { title:"Field recap", sections:[section("Current situation", [scene || text(state.view?.location?.alias) || "Observe the current area."]), section("Operational concerns", [...objectives, ...unfinished]), section("Carrying", (projection.scene?.inventory ?? []).map((item) => item.text)), section("Recent radio", expedition.message_count ? [`${expedition.message_count} message${expedition.message_count === 1 ? "" : "s"} sent.`] : [])] };
     }
     if (projection.mode.id === "async-command") {
       const desk = projection.institution ?? state;
-      return { title:"Desk recap", sections:[section("Matters on the desk", (desk.tasks ?? []).map((item) => item.summary ?? item.context ?? item.type), true), section("Recent reports and calls", [...(desk.inbox ?? []), ...(desk.communications ?? [])].map((item) => item.summary ?? item.type), true), section("People and teams", [...(desk.personnel ?? []).map((item) => item.role), ...(desk.teams ?? []).map((item) => item.name)], true)] };
+      return { title:"Desk recap", sections:[section("Matters on the desk", [...(desk.tasks ?? []).map((item) => item.summary ?? item.context ?? item.type), ...unfinished], true), section("Recent reports and calls", [...(desk.inbox ?? []), ...(desk.communications ?? [])].map((item) => item.summary ?? item.type), true), section("People and teams", [...(desk.personnel ?? []).map((item) => item.role), ...(desk.teams ?? []).map((item) => item.name)], true)] };
     }
     if (projection.mode.id === "local-anomaly") {
       const base = state.base ?? {}; const excursion = state.current_excursion ?? {};
-      return { title:"Notebook recap", sections:[section("Open questions", (state.investigation?.unresolved ?? []).map(title), true), section("Personal evidence", (base.archived_artifacts ?? []).map((item) => title(item.type)), true), section("What you carry", (excursion.carried ?? []).map(title)), section("Recent observation", [text(state.local_observation?.landmark?.description)].filter(Boolean))] };
+      return { title:"Notebook recap", sections:[section("Open questions", [...(state.investigation?.unresolved ?? []).map(title), ...unfinished], true), section("Personal evidence", (base.archived_artifacts ?? []).map((item) => title(item.type)), true), section("What you carry", (excursion.carried ?? []).map(title)), section("Recent observation", [text(state.local_observation?.landmark?.description)].filter(Boolean))] };
     }
     const around = state.surroundings ?? {};
-    return { title:"What you remember", sections:[section("Here", [text(around.landmark?.description) || text(around.location?.alias) || "Nothing certain stands out."]), section("What remains", [`Light: ${state.status?.light_charge ?? 0}`, ...(state.status?.carried ?? []).map(title)]), section("Nearby memory", named([...(state.known_routes?.spaces ?? []), ...(state.known_routes?.connections ?? [])], "remembered path"))] };
+    return { title:"What you remember", sections:[section("Here", [text(around.landmark?.description) || text(around.location?.alias) || "Nothing certain stands out."]), section("What remains", [`Light: ${state.status?.light_charge ?? 0}`, ...(state.status?.carried ?? []).map(title), ...unfinished]), section("Nearby memory", named([...(state.known_routes?.spaces ?? []), ...(state.known_routes?.connections ?? [])], "remembered path"))] };
   }
   function history(projection, limit = 6) {
     if (projection.mode.id === "async-command") return bounded([...(projection.institution?.inbox ?? []), ...(projection.institution?.communications ?? []), ...(projection.institution?.tasks ?? [])].map((item) => text(item.summary ?? item.context ?? item.type)), limit);
