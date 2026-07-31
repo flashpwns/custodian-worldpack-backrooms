@@ -8,4 +8,6 @@ Runtime coverage is audit metadata, not a new authority tier. `FULLY_EXPRESSED` 
 
 Canon gravity is reported as meaningful categories rather than a percentage: canon-supported distinctive runtime items, explicitly pack-original distinctive runtime items, generic procedural fill, and untraced distinctive runtime items. A generic procedural chair never substitutes for source-supported distinctive world identity. Runtime traceability and pack-original provenance remain developer/report-only metadata, never ordinary player UI.
 
-Current Pass-1 audit result: the registered corpus has no admitted named-character claims. That is an explicit coverage gap for Pass 2, not permission to invent canon biographies or silently label generated characters as canon.
+Pass 2 adds five source-backed human-world delivery paths: ASYNC identification, staffed Threshold operation, protected inspection, alert/recording behavior, and a recorded surveillance view. They are defined in `tools/human-world.js` and participate in the same runtime report. The report now separates those claim-backed paths from explicit pack-original human glue such as the generic operations desk, field-report form, and staffing assignment.
+
+The registered corpus still has no admitted named-character claims with sufficient identity, role, and temporal facts. This remains an explicit coverage gap, not permission to invent canon biographies or silently label generated characters as canon.

@@ -6,7 +6,7 @@ const clone = (value) => structuredClone(value);
 const hash = (value) => crypto.createHash("sha256").update(JSON.stringify(value)).digest("hex");
 const VERSION = "yellow-beast-becks-desk@v2";
 const PROCESS_VERSION = "yellow-beast-institution-process@v1";
-const PERSONNEL = [{ id: "personnel-field-1", role: "field-researcher" }, { id: "personnel-field-2", role: "field-researcher" }, { id: "personnel-engineer-1", role: "engineer" }, { id: "personnel-doctor-1", role: "doctor" }, { id: "personnel-researcher-1", role: "researcher" }];
+const PERSONNEL = [{ id: "personnel-field-1", role: "field-researcher" }, { id: "personnel-field-2", role: "field-researcher" }, { id: "personnel-engineer-1", role: "engineer" }, { id: "personnel-doctor-1", role: "doctor" }, { id: "personnel-researcher-1", role: "researcher" }].map((person) => ({ ...person, classification: "procedural-role-occupant", provenance: "pack-original-human-glue", named: false }));
 const processId = (world, type, origin) => `institution-process-${hash([world.world_id, type, origin]).slice(0, 16)}`;
 function managementEvent(world, run_id, type, payload) { return history.event(world, run_id, `management.${type}`, payload, "pack-original-management-simulation"); }
 function institutionEvent(world, run_id, type, payload) { return history.event(world, run_id, `institution.${type}`, payload, "pack-original-institutional-simulation"); }
