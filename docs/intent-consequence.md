@@ -24,6 +24,14 @@ Each mode supplies its own safe candidates: Clear-Q4 can expose observed equipme
 
 Pass 3 will consume grounded references for capability and constraint resolution. It must not be inferred from Pass 2 output that an attempt can happen or succeeds.
 
+## Pass 5: observer-safe scene presentation
+
+`yellow-beast-scene@v1` is a non-canonical, provider-neutral presentation contract built only from the observer-safe run projection and Pass 4's observer-safe consequence result. It has a stable identity derived from the session, turn, safe location, and fact ledger; it never stores or reads hidden session state as prose material. Required facts (location and material consequence) are distinguished from optional environmental, visible, inventory, and contextual facts. Significance (`MICRO` through `CRITICAL`) controls the fallback's density: orientation and new-area scenes include safe environment facts, while delta scenes report changes without repeating the room.
+
+The deterministic fallback is the offline baseline. It uses human-facing labels, preserves uncertainty supplied by safe facts, and never adds player emotions, motives, hidden causes, actor thoughts, dialogue, entities, exits, or opaque IDs. Provider narration is optional and may receive only the scene, mode profile, and bounded safe context. Its structured response must reference known safe fact IDs; unsupported content or provider failure falls back without rerunning or changing the canonical consequence.
+
+One shared contract supports Clear-Q4's field context, Beck's institutional framing, Nullzone's personal/archive framing, and Lost's immediate limited-knowledge framing. These profiles alter emphasis, never objective reality or cross-mode knowledge. Scene generation is presentation only: canonical state, timing, actor behavior, and communications remain Custodian and Yellow Beast simulation responsibilities.
+
 ## Pass 3: capability planning
 
 `yellow-beast-resolution-plan@v1` adds deterministic, non-canonical step analysis: generalized capabilities, constraints, dependencies, permission, possibility, unknowns, and interruption points. It composes mundane primitives such as locomotion, posture change, grasping, object movement, climbing, observation, listening, communication, recording, waiting, and throwing. These are not player commands.
