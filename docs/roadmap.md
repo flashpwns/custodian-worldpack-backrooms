@@ -98,3 +98,10 @@ already materialized environmental distinctions, landmarks, mundane objects,
 remembered routes, questions, and institutional context. It adds no new
 phenomena, entities, quests, taxonomy, or canonical authority; see
 `docs/discovery-density.md` and `npm run discovery-density-report`.
+
+Pass 3 adds bounded consequence echoes derived from existing world-history
+events. Prior object custody, staffing status, reports, communications,
+evidence, remembered routes, and region changes can reappear only through the
+observer domain that already has the supporting history. No callback events,
+resurrection, omniscience, or narrative scheduling is introduced; see
+`docs/consequence-echoes.md` and `npm run consequence-echo-report`.
