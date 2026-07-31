@@ -6,6 +6,8 @@ Those observations remain scoped. Grid openings only appear at a generated entry
 
 The v2 generator stores physical layout and feature composition canonically. A seed determines the baseline; history records later mutations to objects, doors/edges, or node properties. Rebuilding and save/reload start from that baseline and replay mutations, so generation never resets moved objects, light state, or other physical history. Environment implementation family names and stable IDs remain developer-only.
 
+Phenomena never maintain a second environment state. A supported event that changes a visible object or environmental property records a normal world-history mutation, preserving the separation between generated baseline and later history.
+
 Clear-Q4 receives field-appropriate surveyed environmental detail; Beck receives only institutionally received summaries; Nullzone can retain observed environmental evidence; Lost receives descriptive local landmarks and repetition without formal family or topology labels. Scene fallback uses observer-visible environment facts only. It does not infer hidden rooms, causes, anomaly behavior, or atmosphere events from the grammar.
 
-`npm run environment-world-report` reports vocabulary provenance, categories, procedural bounds, canon gravity, mode delivery, and persistence/safety invariants. Phenomenon and entity behavior remain reserved for Pass 4.
+`npm run environment-world-report` reports vocabulary provenance, categories, procedural bounds, canon gravity, mode delivery, and persistence/safety invariants. Phenomenon behavior is separately bounded and reported by `npm run phenomena-report`.

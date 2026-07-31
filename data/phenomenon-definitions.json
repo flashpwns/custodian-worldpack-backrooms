@@ -1,0 +1,25 @@
+{
+  "version": "yellow-beast-phenomenon-definitions@v1",
+  "definitions": [
+    {
+      "id": "ff2-marked-surface-discontinuity",
+      "category": "surface-discontinuity",
+      "claim_ids": ["ff2-depicts-marked-local-surface-discontinuity", "ff2-repeats-local-object-interaction-result"],
+      "authority": "authoritative",
+      "scope": "single-context",
+      "admission": "explicit-scenario-or-history",
+      "observable_description": "a blue-tape-marked area of floor",
+      "capabilities": {"persistence":"during-observation","object_interaction":"tested object no longer visible","movement":"unsupported","perception":"unsupported","communication":"unsupported","harm":"unsupported","environmental_interaction":"local marked surface only"}
+    },
+    {
+      "id": "ff2-local-transition-observation",
+      "category": "environmental-transition",
+      "claim_ids": ["ff2-later-local-transition-is-observed"],
+      "authority": "authoritative",
+      "scope": "single-context",
+      "admission": "explicit-scenario-or-history",
+      "observable_description": "the local arrangement no longer matches the earlier recorded view",
+      "capabilities": {"persistence":"observed-once","object_interaction":"unsupported","movement":"unsupported","perception":"unsupported","communication":"unsupported","harm":"unsupported","environmental_interaction":"observed mismatch only"}
+    }
+  ]
+}

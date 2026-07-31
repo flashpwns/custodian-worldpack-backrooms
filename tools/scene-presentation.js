@@ -68,7 +68,7 @@ function fallbackNarration(scene) {
 function validateNarration(scene, response) {
   if (!response || typeof response.prose !== "string" || !response.prose.trim()) return { ok: false, reason: "malformed" };
   const prose = response.prose.trim();
-  if (opaque.test(prose) || /\byou (?:feel|are terrified|panic|realize)\b/i.test(prose) || /\b(?:creature|behind you|is afraid)\b/i.test(prose)) return { ok: false, reason: "unsupported-content" };
+  if (opaque.test(prose) || /\byou (?:feel|are terrified|panic|realize)\b/i.test(prose) || /\b(?:creature|behind you|is afraid|turns (?:its|their) head|watches|speaks|attacks|follows|moves toward|breathes)\b/i.test(prose)) return { ok: false, reason: "unsupported-content" };
   const refs = response.referenced_safe_fact_ids ?? [];
   if (!Array.isArray(refs) || refs.some((id) => !scene.safe_facts.concat(scene.immediate_changes, scene.context).some((item) => item.id === id))) return { ok: false, reason: "unknown-fact-reference" };
   return { ok: true, prose, referenced_safe_fact_ids: refs };

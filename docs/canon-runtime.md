@@ -12,4 +12,6 @@ Pass 2 adds five source-backed human-world delivery paths: ASYNC identification,
 
 Pass 3 adds traceable environmental delivery paths through `tools/environment-world.js`: bounded column-corridor, floor-opening, stair, furnishing, ceiling/tile, fixture, and lit-panel vocabulary. The runtime report now marks the lit-panel cluster `PARTIALLY_EXPRESSED` because it remains interpretive; source-local observations stay bounded rather than becoming universal Complex laws. `npm run environment-world-report` gives the per-category canon/procedural breakdown.
 
+Pass 4 traces two FF2 phenomena through three admitted claims: the marked surface discontinuity, its observed object result, and a later local transition observation. They are explicit scenario/history admissions, not random spawn tables. The current corpus admits no source-backed entity capability; Still Life and the validation mover remain explicitly pack-original scenario fixtures.
+
 The registered corpus still has no admitted named-character claims with sufficient identity, role, and temporal facts. This remains an explicit coverage gap, not permission to invent canon biographies or silently label generated characters as canon.

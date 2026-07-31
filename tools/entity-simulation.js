@@ -48,7 +48,7 @@ function addHazard(world, { run_id, type, region_id, space_id, authority, proven
 }
 
 function localItems(world, region_id, space_id) { state(world); return { entities: Object.values(world.entities).filter((item) => item.active && item.region_id === region_id && item.space_id === space_id), hazards: Object.values(world.hazards).filter((item) => item.active && item.region_id === region_id && item.space_id === space_id), traces: Object.values(world.traces).filter((item) => item.active && item.region_id === region_id && item.space_id === space_id) }; }
-function safeEntity(item) { return { kind: item.type, presence: "visible-physical-presence" }; }
+function safeEntity(item) { return { description: "a stationary physical presence", presence: "visible-physical-presence" }; }
 function safeHazard(item) { return { type: item.type, warning: item.warning, effect: item.effect }; }
 function safeTrace(item) { return { kind: item.type, description: item.description }; }
 function resolveObserverPerception(world, { run_id, observer, region_id, space_id }) {
