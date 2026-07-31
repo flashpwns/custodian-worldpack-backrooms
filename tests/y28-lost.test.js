@@ -1,0 +1,3 @@
+"use strict";
+const test = require("node:test"), assert = require("node:assert/strict"); const phases = require("../tools/mode-phases"), lost = require("../tools/lost-experience");
+test("Lost surface is scene-first, minimally guided, and excludes map/institutional metadata", () => { const phase = phases.createPhase({ mode: "lost", guided: true }); const view = lost.presentation({ surroundings: { exits: [{ alias: "hidden-exit" }] }, status: { carried: ["field-light"] } }, phase); assert.equal(view.phase_visible, false); assert.equal(view.entry_hint, "What do you do?"); assert.equal(view.map, null); assert.equal(view.institutional_context, null); assert.equal(view.carrying[0].label, "field light"); assert.doesNotMatch(JSON.stringify(view), /hidden-exit|ENTRY/); });

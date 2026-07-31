@@ -15,3 +15,7 @@ Beck uses event-capable START_OF_DAY, INBOX_REVIEW, ACTIVE_DESK, INTERRUPTION, D
 ## Nullzone Exposure
 
 Nullzone cycles HOME, EVIDENCE_REVIEW, PREPARATION, EXCURSION, RETURN, and COMPARISON. Its archive is personal presentation state drawn only from civilian evidence and records. Personal labels and remembered routes stay observer-local and explicitly remembered, never objective topology or institutional knowledge.
+
+## Lost
+
+Lost uses ENTRY, WANDERING, SIGNIFICANT_DISCOVERY, and RECOVERY_OR_CONTINUATION internally, but never exposes phase labels in ordinary player presentation. Its surface is scene-first with compact carried objects and a minimal optional prompt. It intentionally has no institutional context, map, formal objective, or risk meter; uncertainty comes from limited observation, not false narration.
