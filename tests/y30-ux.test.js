@@ -9,6 +9,7 @@ const { RequestGate } = require("../desktop/renderer/interaction");
 const qol = require("../desktop/renderer/qol");
 const surfaces = require("../desktop/renderer/surfaces");
 const report = require("../tools/ux-report.js");
+require("./y31-dev-workflow.test.js");
 
 function fixture() {
   const service = new DesktopService({ appDataPath:fs.mkdtempSync(path.join(os.tmpdir(), "yb-ux-")) });
