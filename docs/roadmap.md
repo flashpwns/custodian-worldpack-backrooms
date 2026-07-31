@@ -130,3 +130,8 @@ Pass 2 adds the deterministic all-mode long-world torture workload in
 history growth, derived indexes, save/reload, restart, provider fallback,
 preferences, inspection, recap, and stale-response boundaries without adding
 gameplay or changing canonical authority.
+
+Pass 3 records the public beta candidate audit in
+`docs/public-beta-rc.md`. The candidate remains on the existing
+`0.13.0-alpha` version because the repository has no beta-version policy; all
+software, report, and packaged-artifact checks are green.
