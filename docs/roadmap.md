@@ -116,3 +116,11 @@ Pass 6 closes YB-32 with the aggregate determinism, multi-seed, observer,
 continuity, canon-gravity, offline, save/reload, long-world, and packaging
 validation in `docs/replayability.md` and
 `npm run y32-replayability-report`.
+
+## YB-33: Public Beta Candidate
+
+Pass 1 adds the deterministic stranger flow and manual checklist in
+`docs/stranger-test.md`. It validates a fresh launch, named world creation,
+all four understandable mode choices, Guided Introduction, natural-language
+play, contextual recap, save/resume, offline recovery, accessibility settings,
+and the player/debug boundary without exposing simulation internals.

@@ -232,6 +232,7 @@ scripts.push("tests/y32-discovery-density.test.js", "tools/discovery-density-rep
 scripts.push("tests/y32-consequence-echoes.test.js", "tools/consequence-echoes.js", "tools/consequence-echo-report.js");
 scripts.push("tests/y32-unfinished-business.test.js", "tools/unfinished-business-report.js");
 scripts.push("tests/y32-replayability.test.js", "tools/y32-replayability-report.js");
+scripts.push("tests/y33-stranger-flow.test.js", "tools/stranger-flow-report.js");
 scripts.push("tests/y16-expedition.test.js", "tools/expedition.js", "tools/expedition-report.js");
 scripts.push("tests/y165-context-closure.test.js", "tools/corpus-coverage-report.js");
 scripts.push("tests/y17-procedural-complex.test.js", "tools/procedural-complex.js", "tools/procedural-report.js");
