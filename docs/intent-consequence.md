@@ -23,3 +23,9 @@ Ambiguous references return stable, minimal clarification with safe labels only.
 Each mode supplies its own safe candidates: Clear-Q4 can expose observed equipment and known team labels; Beck exposes only reviewed institutional knowledge; Nullzone exposes civilian labels and archive memory; Lost exposes only immediate surroundings and legitimately remembered landmarks. Grounding cannot create a candidate from another mode’s knowledge. It does not mutate world state, time, inventory, knowledge, or events, and does not decide ability, permission, reachability, or success.
 
 Pass 3 will consume grounded references for capability and constraint resolution. It must not be inferred from Pass 2 output that an attempt can happen or succeeds.
+
+## Pass 3: capability planning
+
+`yellow-beast-resolution-plan@v1` adds deterministic, non-canonical step analysis: generalized capabilities, constraints, dependencies, permission, possibility, unknowns, and interruption points. It composes mundane primitives such as locomotion, posture change, grasping, object movement, climbing, observation, listening, communication, recording, waiting, and throwing. These are not player commands.
+
+Possible, permitted, and successful are separate states. A prohibited attempt can still be physically possible; an unknown property remains unknown; a plan never implies success. Plans preserve player constraints, conditional structure, preferences, parallel/ordered steps, and expose only safe explanations. Pass 4 alone may execute canonical attempts and consequences.

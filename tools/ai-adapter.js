@@ -72,6 +72,8 @@ async function executeNatural({ run, provider, player_text, request_id = null })
   const intent = await interpret(provider, player_text, context, { request_id });
   const { groundIntent } = require("./intent-grounding");
   const grounded_intent = intent.status === "proposal" ? groundIntent(intent, context.grounding) : null;
-  return { run, context, intent, grounded_intent, steps: [], narration: null, executed: false };
+  const { planResolution } = require("./capability-planning");
+  const resolution_plan = grounded_intent ? planResolution(grounded_intent) : null;
+  return { run, context, intent, grounded_intent, resolution_plan, steps: [], narration: null, executed: false };
 }
 module.exports = { INTENT_VERSION, buildSafeContext, validateIntent, interpret, legacyActionToIntent, executeNatural };
