@@ -16,3 +16,9 @@ timing tokens and honors `prefers-reduced-motion`; it has no decorative horror
 effects, fabricated progress, hidden-threat signal, or factual meaning. Turn
 controls lock while resolving, while report/notebook/detail panels remain
 usable and never affect turn resolution.
+
+Pass 4’s recovery control is deliberately presentation-only: **Refresh view**
+may retrieve a safe current projection after an application failure, but it
+never retries a submitted turn. Opening recap or history panels leaves an
+unfinished draft in place. Keyboard recap shortcuts never run while a text
+control is active and never resolve an action.

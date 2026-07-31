@@ -46,6 +46,11 @@ in-world refusal, and application failure without treating latency as world
 state. Renderer-local request tokens prevent duplicate and stale world/mode
 responses; restrained result-only motion has no hidden-state meaning.
 
+Pass 4 complete: observer-safe recap, bounded mode history, Beck/Nullzone
+local filtering, presentation-only drafts and pins, resume summary, export and
+delete clarity, and safe keyboard conveniences reduce long-session friction.
+These tools organize known experience only and never inspect raw world truth.
+
 1. Navigation + Information Architecture
 2. Reactive In-Universe UI
 3. Feedback, Motion + Interaction Feel

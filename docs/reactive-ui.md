@@ -32,3 +32,8 @@ still belongs to the active world and mode; navigation invalidates pending
 renderer requests. Motion is a short scene-result settle transition, not an
 indication of danger, discovery, character fate, provider latency, or hidden
 phenomena.
+
+Pass 4 reuses those safe projections for recap, bounded history, and local
+filtering. Recap panels, pins, and drafts are presentation metadata keyed to a
+world and mode; they cannot cross observers or add a world fact. The Lost recap
+is intentionally sparse and does not become a map or investigation board.
