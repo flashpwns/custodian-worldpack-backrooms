@@ -25,3 +25,7 @@ metadata, never world identity.
 The only retry offered after an application failure is **Refresh view**, which
 retrieves the current safe projection and never resubmits a canonical action.
 Pass 5 owns accessibility and player-preference expansion.
+
+Pass 5 keeps QoL metadata separate while making it operable at all supported
+text sizes, high contrast, reduced motion, keyboard focus, and assistive-tech
+status paths. Pins retain their presentation-only meaning.

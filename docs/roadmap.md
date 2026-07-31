@@ -51,6 +51,11 @@ local filtering, presentation-only drafts and pins, resume summary, export and
 delete clarity, and safe keyboard conveniences reduce long-session friction.
 These tools organize known experience only and never inspect raw world truth.
 
+Pass 5 complete: persisted player preferences now control text scale,
+appearance/high contrast, reduced motion, and Guided Introductions. The
+renderer improves focus, semantic scene/status structure, and keyboard support
+without changing simulation, knowledge, or mode boundaries.
+
 1. Navigation + Information Architecture
 2. Reactive In-Universe UI
 3. Feedback, Motion + Interaction Feel

@@ -37,3 +37,7 @@ Pass 4 reuses those safe projections for recap, bounded history, and local
 filtering. Recap panels, pins, and drafts are presentation metadata keyed to a
 world and mode; they cannot cross observers or add a world fact. The Lost recap
 is intentionally sparse and does not become a map or investigation board.
+
+Pass 5 applies accessibility presentation attributes before rendering a safe
+projection. Text size, contrast, focus treatment, and screen-reader structure
+are presentation-only and do not broaden any mode’s observer view.

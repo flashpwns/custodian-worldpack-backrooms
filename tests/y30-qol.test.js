@@ -7,6 +7,7 @@ const test = require("node:test");
 const qol = require("../desktop/renderer/qol");
 const { DesktopService } = require("../desktop/service");
 const report = require("../tools/qol-report.js");
+require("./y30-accessibility.test.js");
 
 function projection(mode, extra = {}) { return { world:{ id:"world-visible", name:"Visible world" }, mode:{ id:mode }, scene:{ narration:"A room with two chairs.", inventory:[{ text:"field light" }] }, gameplay:{ timeline:[{ description:"A visible observation." }], objectives:[{ target:"Return by the marked door" }] }, surface:{ ...extra } }; }
 test("mode-specific recap uses observer-safe material and never hidden fate or taxonomy", () => {

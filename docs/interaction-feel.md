@@ -22,3 +22,8 @@ may retrieve a safe current projection after an application failure, but it
 never retries a submitted turn. Opening recap or history panels leaves an
 unfinished draft in place. Keyboard recap shortcuts never run while a text
 control is active and never resolve an action.
+
+Pass 5 applies the player Reduced Motion preference through the same centralized
+motion seam. Submitted, resolving, result, offline, and application-error
+feedback remain textual and politely announced; animation is never required to
+understand a change.

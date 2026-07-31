@@ -11,3 +11,7 @@ organizes only the active observer’s known material and remains mode-specific.
 The library stays recent-first, supports name filtering and metadata-only
 renaming, and explains export. Resume reuses an existing compatible session
 without silently advancing the world.
+
+Pass 5 makes the same navigation keyboard-operable with visible focus and
+bounded text scaling. Appearance, motion, and Guided Introductions are global
+player preferences; they never alter canonical world identity or progress.
