@@ -1,29 +1,26 @@
 "use strict";
-
-function firstAlias(context) { return context.aliases[0]?.alias; }
-function movementAlias(context) { return context.aliases.find(({ alias }) => alias.startsWith("passage-"))?.alias; }
-function mockIntent({ player_text, context }) {
+const { INTENT_VERSION } = require("./ai-adapter");
+const refs = (text, scope = "entity") => [{ text, scope, resolution: "unresolved" }];
+function proposal(fields = {}) { return { version: INTENT_VERSION, status: "proposal", noncanonical: true, actor: "player", goals: [], steps: [], methods: [], referenced_entities: [], referenced_locations: [], referenced_people: [], referenced_inventory: [], conditions: [], preferences: [], social_intent: [], communication_content: [], temporal_order: [], uncertainties: [], assumptions: [], clarification_required: false, clarification: null, ...fields }; }
+function step(id, attempt, { relation = "sequence", goals = [attempt], methods = [], references = [], constraints = [], uncertain = false } = {}) { return { id, relation, attempt, goals, methods, references, constraints, uncertain }; }
+function mockIntent({ player_text }) {
   const input = player_text.toLowerCase();
-  if (input.includes("ignore") || input.includes("hidden") || input.includes("behind every wall") || input.includes("teleport")) return { kind: "invalid", actions: [], clarification: null, public_reason: "That request cannot be resolved from your current view." };
-  if (input.includes("malformed")) return { kind: "action", actions: [{ verb: "OPEN", target_alias: "hidden-room" }], clarification: null, injected: true };
   if (input.includes("provider failure")) throw new Error("mock provider unavailable");
-  const fixture = firstAlias(context);
-  if (input.includes("door") && context.aliases.length > 1) return { kind: "clarification", actions: [], clarification: { message: "Which visible door do you mean?", candidates: context.aliases.map(({ alias }) => alias) } };
-  if ((input.includes("hall") || input.includes("corridor")) && (input.includes("inspect") || input.includes("look at")) && fixture) return { kind: "compound", actions: [{ verb: "MOVE", ...(movementAlias(context) ? { target_alias: movementAlias(context) } : {}), parameters: {} }, { verb: "INSPECT", target_alias: fixture, parameters: {} }], clarification: null };
-  if (input.includes("radio") || input.includes("standard") || input.includes("teammate")) return { kind: "action", actions: [{ verb: "COMMUNICATE", target_alias: input.includes("standard") ? "standard" : "teammate", parameters: {} }], clarification: null };
-  if (input.includes("record") || input.includes("picture") || input.includes("photograph")) return fixture ? { kind: "action", actions: [{ verb: "RECORD", target_alias: fixture, parameters: {} }], clarification: null } : { kind: "clarification", actions: [], clarification: { message: "There is no visible record target yet.", candidates: [] } };
-  if (input.includes("wait")) return { kind: "action", actions: [{ verb: "WAIT", parameters: {} }], clarification: null };
-  if (input.includes("abort")) return { kind: "action", actions: [{ verb: "ABORT", parameters: {} }], clarification: null };
-  if (input.includes("return")) return { kind: "action", actions: [{ verb: "RETURN", parameters: {} }], clarification: null };
-  if (input.includes("use")) return { kind: "action", actions: [{ verb: "USE", parameters: {} }], clarification: null };
-  if (input.includes("look")) return { kind: "action", actions: [{ verb: "LOOK", parameters: {} }], clarification: null };
-  if (input.includes("inspect") || input.includes("check") || input.includes("fixture") || input.includes("light")) return fixture ? { kind: "action", actions: [{ verb: "INSPECT", target_alias: fixture, parameters: {} }], clarification: null } : { kind: "clarification", actions: [], clarification: { message: "There is no visible inspection target yet.", candidates: [] } };
-  if (input.includes("move") || input.includes("head") || input.includes("walk") || input.includes("corridor") || input.includes("hall")) return { kind: "action", actions: [{ verb: "MOVE", ...(movementAlias(context) ? { target_alias: movementAlias(context) } : {}), parameters: {} }], clarification: null };
-  return { kind: "invalid", actions: [], clarification: null, public_reason: "I could not map that to an available action." };
+  if (input.includes("malformed")) return { nope: true };
+  if (/put it over there/.test(input)) return proposal({ goals: ["place an unspecified object at an unspecified destination"], referenced_entities: refs("it"), referenced_locations: refs("over there", "location"), clarification_required: true, clarification: { question: "What should be moved, and where should it go?", candidate_reference_labels: [] }, uncertainties: ["ambiguous target", "ambiguous destination"] });
+  if (input.includes("drag the chair")) { const chair = refs("the chair"); const light = refs("the light", "location"); const diffuser = refs("the diffuser"); return proposal({ goals: ["reach and remove the diffuser"], methods: ["drag chair", "climb", "wrap sleeve around hand"], referenced_entities: [...chair, ...diffuser], referenced_locations: light, steps: [step("step-1", "drag the chair under the light", { references: [...chair, ...light] }), step("step-2", "climb onto the chair", { references: chair }), step("step-3", "try to unscrew the diffuser", { methods: ["sleeve wrapped around hand"], references: diffuser, uncertain: true })], temporal_order: [{ before: "step-1", after: "step-2" }, { before: "step-2", after: "step-3" }], uncertainties: ["unscrewing may not succeed"] }); }
+  if (input.includes("while i hold the door")) return proposal({ goals: ["hold a door while directing Ellis"], steps: [step("step-1", "hold the door", { references: refs("the door") }), step("step-2", "tell Ellis to go through", { relation: "parallel", references: refs("Ellis", "person") })], temporal_order: [{ before: "step-1", after: "step-2" }], social_intent: [{ kind: "order", addressee: "Ellis", tone: null, deceptive_intent: false }], communication_content: [{ kind: "order", content: "go through", addressee: "Ellis" }] });
+  if (input.startsWith("if ") && !input.includes("care more about")) return proposal({ goals: ["follow conditional plan"], steps: [step("step-1", player_text, { uncertain: true })], conditions: [{ when: player_text, then_steps: ["step-1"], otherwise_steps: [] }], uncertainties: ["condition must be evaluated during later resolution"] });
+  if (input.includes("care more about")) return proposal({ goals: ["preserve stated priority"], steps: [step("step-1", player_text, { uncertain: true })], preferences: [player_text] });
+  if (input.includes("then")) { const [first, second] = player_text.split(/\bthen\b/i).map((part) => part.trim().replace(/,$/, "")); return proposal({ goals: ["perform ordered actions"], steps: [step("step-1", first), step("step-2", second)], temporal_order: [{ before: "step-1", after: "step-2" }] }); }
+  if (input.includes("and listen")) return proposal({ goals: ["alter conditions and perceive"], steps: [step("step-1", "turn off the light", { references: refs("the light") }), step("step-2", "listen", { references: refs("the sound", "phenomenon") })], temporal_order: [{ before: "step-1", after: "step-2" }] });
+  if (input.includes("ask") || input.includes("tell") || input.includes("lie")) { const person = input.includes("operations") ? "Operations" : input.includes("doctor") ? "the doctor" : "Ellis"; const kind = input.includes("lie") ? "declaration" : input.includes("ask") ? "question" : "declaration"; return proposal({ goals: ["communicate with another person"], steps: [step("step-1", player_text, { references: refs(person, "person") })], referenced_people: refs(person, "person"), social_intent: [{ kind, addressee: person, tone: input.includes("quietly") ? "quiet" : null, deceptive_intent: input.includes("lie") }], communication_content: [{ kind, content: player_text, addressee: person }] }); }
+  const negative = input.includes("without entering") ? ["do not enter the room"] : input.includes("keep my distance") ? ["keep distance"] : input.includes("don't answer") ? ["do not answer the radio"] : [];
+  const uncertain = /try|test whether|force/.test(input);
+  const referenceText = input.includes("door") ? "the door" : input.includes("chair") ? "the chair" : input.includes("cabinet") ? "the cabinet" : input.includes("carpet") ? "the carpet" : input.includes("recorder") ? "the recorder" : input.includes("wall") ? "the wall" : input.includes("ellis") || input.includes("him") ? (input.includes("him") ? "him" : "Ellis") : input.includes("light") ? "the light" : null;
+  const referenceScope = referenceText === "him" || referenceText === "Ellis" ? "person" : "entity";
+  const allRefs = referenceText ? refs(referenceText, referenceScope) : [];
+  return proposal({ goals: [player_text], steps: [step("step-1", player_text, { references: allRefs, constraints: negative, uncertain })], referenced_entities: referenceScope === "entity" ? allRefs : [], referenced_people: referenceScope === "person" ? allRefs : [], methods: input.includes("ear against") ? ["put ear against door"] : input.includes("sleeve") ? ["use sleeve as a substitute"] : [], uncertainties: uncertain ? ["attempt does not imply success"] : [] });
 }
-function mockNarration({ envelope }) {
-  if (envelope.outcome === "succeeded") return { text: `${envelope.verb}: completed from your current view.` };
-  return { text: `${envelope.verb}: ${envelope.public_reason ?? "unavailable"}.` };
-}
-function createMockProvider() { return { name: "deterministic-mock", interpret: mockIntent, narrate: mockNarration }; }
+function createMockProvider() { return { name: "deterministic-mock", interpret: mockIntent }; }
 module.exports = { createMockProvider };

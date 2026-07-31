@@ -1,86 +1,71 @@
 "use strict";
 
-const { status, act } = require("./run-bootstrap");
+// Intent interpretation is deliberately separate from grounding and simulation.
+// Nothing in this module imports or calls a Custodian mutation API.
+const INTENT_VERSION = "yellow-beast-intent@v1";
+const STEP_RELATIONS = new Set(["sequence", "parallel"]);
+const REFERENCE_SCOPES = new Set(["entity", "location", "person", "inventory", "phenomenon"]);
+const REFERENCE_STATES = new Set(["unresolved", "contextual"]);
 
-const ACTION_KINDS = new Set(["action", "compound", "clarification", "invalid"]);
-const VERBS = new Set(["LOOK", "MOVE", "INSPECT", "USE", "COMMUNICATE", "RECORD", "WAIT", "RETURN", "ABORT"]);
-
-function hasOnly(object, keys) { return object && typeof object === "object" && !Array.isArray(object) && Object.keys(object).every((key) => keys.has(key)); }
+function plain(value) { return Boolean(value) && typeof value === "object" && !Array.isArray(value) && Object.getPrototypeOf(value) === Object.prototype; }
+function only(value, keys) { return plain(value) && Object.keys(value).every((key) => keys.has(key)); }
+function strings(value) { return Array.isArray(value) && value.every((item) => typeof item === "string" && item.length > 0); }
+function reference(value) { return only(value, new Set(["text", "scope", "resolution"])) && typeof value.text === "string" && value.text.length > 0 && REFERENCE_SCOPES.has(value.scope) && REFERENCE_STATES.has(value.resolution); }
+function references(value) { return Array.isArray(value) && value.every(reference); }
+function textObjects(value, allowed) { return Array.isArray(value) && value.every((item) => only(item, allowed)); }
+function bad(raw_input, provider, code, message) {
+  return {
+    version: INTENT_VERSION, status: "interpretation_error", noncanonical: true, raw_input,
+    actor: null, goals: [], steps: [], methods: [], referenced_entities: [], referenced_locations: [], referenced_people: [], referenced_inventory: [], conditions: [], preferences: [], social_intent: [], communication_content: [], temporal_order: [], uncertainties: [code], assumptions: [], clarification_required: false, clarification: null,
+    provenance: { provider, request_id: null, schema_version: INTENT_VERSION }, error: { code, message }
+  };
+}
 function buildSafeContext(run) {
+  // `status` is a public observer projection. Do not add sessions, topology, or aliases with hidden refs here.
+  const { status } = require("./run-bootstrap");
   const current = status(run);
   return {
+    version: "yellow-beast-interpretation-context@v1",
     profile_title: current.profile_title,
     scenario: current.scenario,
     lifecycle: current.lifecycle,
-    location: current.view.location,
-    available_verbs: current.available_verbs,
-    aliases: [...current.view.targets.map(({ alias }) => ({ alias })), ...(current.available_verbs.includes("COMMUNICATE") ? [{ alias: "standard" }, { alias: "teammate" }] : [])],
-    known_resources: current.known_resources,
+    observer_location: current.view.location,
+    visible_reference_labels: current.view.targets.map(({ alias }) => alias),
+    known_resource_labels: current.known_resources.map((item) => item.id ?? item),
     public_reason: current.view.public_reason
   };
 }
-function invalid(public_reason = "AI interpretation unavailable; use a structured command.") { return { kind: "invalid", actions: [], clarification: null, public_reason }; }
-function validateIntent(value, context) {
-  if (!hasOnly(value, new Set(["kind", "actions", "clarification", "public_reason"])) || !ACTION_KINDS.has(value.kind) || !Array.isArray(value.actions) || value.actions.length > 4) return invalid("AI response was not a valid intent.");
-  const aliases = new Set(context.aliases.map(({ alias }) => alias));
-  const actions = [];
-  for (const item of value.actions) {
-    if (!hasOnly(item, new Set(["verb", "target_alias", "parameters"])) || !VERBS.has(item.verb) || !context.available_verbs.includes(item.verb)) return invalid("That action is not currently available.");
-    if (item.verb === "INSPECT" && item.target_alias === undefined) return invalid("That target is unavailable.");
-    if (item.target_alias !== undefined && (typeof item.target_alias !== "string" || !aliases.has(item.target_alias))) return invalid("That target is unavailable.");
-    if (item.parameters !== undefined && (!hasOnly(item.parameters, new Set()) || Array.isArray(item.parameters))) return invalid("AI response contained invalid action parameters.");
-    actions.push({ verb: item.verb, ...(item.target_alias === undefined ? {} : { target_alias: item.target_alias }), parameters: item.parameters ?? {} });
-  }
-  if ((value.kind === "action" && actions.length !== 1) || (value.kind === "compound" && actions.length < 2) || ((value.kind === "clarification" || value.kind === "invalid") && actions.length !== 0)) return invalid("AI response had an invalid action sequence.");
-  if (value.kind === "clarification") {
-    const clarification = value.clarification;
-    if (!hasOnly(clarification, new Set(["message", "candidates"])) || typeof clarification.message !== "string" || !Array.isArray(clarification.candidates) || clarification.candidates.some((candidate) => !aliases.has(candidate))) return invalid("AI response requested an unsafe clarification.");
-  }
-  return { kind: value.kind, actions, clarification: value.kind === "clarification" ? value.clarification : null, public_reason: typeof value.public_reason === "string" ? value.public_reason : null };
+function validateIntent(value, { raw_input, provider = "unknown", request_id = null } = {}) {
+  if (typeof raw_input !== "string") return bad("", provider, "RAW_INPUT_INVALID", "Player input must be text.");
+  const allowed = new Set(["version", "status", "noncanonical", "actor", "goals", "steps", "methods", "referenced_entities", "referenced_locations", "referenced_people", "referenced_inventory", "conditions", "preferences", "social_intent", "communication_content", "temporal_order", "uncertainties", "assumptions", "clarification_required", "clarification"]);
+  if (!only(value, allowed) || value.version !== INTENT_VERSION || value.status !== "proposal" || value.noncanonical !== true) return bad(raw_input, provider, "MALFORMED_INTERPRETATION", "The interpreter returned an invalid intent proposal.");
+  const required = ["actor", "goals", "steps", "methods", "referenced_entities", "referenced_locations", "referenced_people", "referenced_inventory", "conditions", "preferences", "social_intent", "communication_content", "temporal_order", "uncertainties", "assumptions", "clarification_required", "clarification"];
+  if (required.some((key) => !(key in value)) || !(value.actor === null || typeof value.actor === "string") || !strings(value.goals) || !strings(value.methods) || !references(value.referenced_entities) || !references(value.referenced_locations) || !references(value.referenced_people) || !references(value.referenced_inventory) || !strings(value.preferences) || !strings(value.uncertainties) || !strings(value.assumptions) || typeof value.clarification_required !== "boolean") return bad(raw_input, provider, "MALFORMED_INTERPRETATION", "The interpreter returned invalid intent fields.");
+  if (!Array.isArray(value.steps) || value.steps.length > 16 || !value.steps.every((step, index) => only(step, new Set(["id", "relation", "attempt", "goals", "methods", "references", "constraints", "uncertain"])) && step.id === `step-${index + 1}` && STEP_RELATIONS.has(step.relation) && typeof step.attempt === "string" && strings(step.goals) && strings(step.methods) && references(step.references) && strings(step.constraints) && typeof step.uncertain === "boolean")) return bad(raw_input, provider, "MALFORMED_INTERPRETATION", "The interpreter returned invalid intent steps.");
+  if (!textObjects(value.conditions, new Set(["when", "then_steps", "otherwise_steps"])) || !value.conditions.every((item) => typeof item.when === "string" && strings(item.then_steps) && strings(item.otherwise_steps))) return bad(raw_input, provider, "MALFORMED_INTERPRETATION", "The interpreter returned invalid conditions.");
+  if (!textObjects(value.social_intent, new Set(["kind", "addressee", "tone", "deceptive_intent"])) || !value.social_intent.every((item) => typeof item.kind === "string" && (item.addressee === null || typeof item.addressee === "string") && (item.tone === null || typeof item.tone === "string") && typeof item.deceptive_intent === "boolean")) return bad(raw_input, provider, "MALFORMED_INTERPRETATION", "The interpreter returned invalid social intent.");
+  if (!textObjects(value.communication_content, new Set(["kind", "content", "addressee"])) || !value.communication_content.every((item) => typeof item.kind === "string" && typeof item.content === "string" && (item.addressee === null || typeof item.addressee === "string"))) return bad(raw_input, provider, "MALFORMED_INTERPRETATION", "The interpreter returned invalid communication content.");
+  if (!textObjects(value.temporal_order, new Set(["before", "after"])) || !value.temporal_order.every((item) => typeof item.before === "string" && typeof item.after === "string")) return bad(raw_input, provider, "MALFORMED_INTERPRETATION", "The interpreter returned invalid temporal ordering.");
+  if (value.clarification_required) {
+    if (!only(value.clarification, new Set(["question", "candidate_reference_labels"])) || typeof value.clarification.question !== "string" || !strings(value.clarification.candidate_reference_labels)) return bad(raw_input, provider, "MALFORMED_INTERPRETATION", "The interpreter returned an unsafe clarification.");
+  } else if (value.clarification !== null) return bad(raw_input, provider, "MALFORMED_INTERPRETATION", "The interpreter returned an invalid clarification.");
+  return { ...value, raw_input, provenance: { provider, request_id, schema_version: INTENT_VERSION } };
 }
-function safeResult(run, verb, outcome) {
-  const current = buildSafeContext(run);
-  return {
-    verb,
-    outcome: outcome.ok ? outcome.outcome : "rejected",
-    public_reason: outcome.result?.public_reason ?? outcome.error?.code ?? null,
-    lifecycle: current.lifecycle,
-    location: current.location,
-    available_verbs: current.available_verbs,
-    aliases: current.aliases
-  };
+async function interpret(provider, player_text, context, { request_id = null } = {}) {
+  const providerName = provider?.name ?? "unavailable";
+  if (typeof player_text !== "string" || !player_text.trim() || !provider?.interpret) return bad(typeof player_text === "string" ? player_text : "", providerName, "INTERPRETER_UNAVAILABLE", "Intent interpretation is unavailable.");
+  try { return validateIntent(await provider.interpret({ player_text, context }), { raw_input: player_text, provider: providerName, request_id }); }
+  catch { return bad(player_text, providerName, "INTERPRETER_FAILED", "Intent interpretation failed safely."); }
 }
-function fallbackNarration(envelope) {
-  if (envelope.outcome === "succeeded") return `${envelope.verb} succeeded.`;
-  return `${envelope.verb} was not completed${envelope.public_reason ? `: ${envelope.public_reason}.` : "."}`;
+function legacyActionToIntent({ verb, target_alias = null, actor = null, raw_input = null, request_id = null }) {
+  const text = raw_input ?? `${verb}${target_alias ? ` ${target_alias}` : ""}`;
+  const ref = target_alias ? [{ text: target_alias, scope: "entity", resolution: "contextual" }] : [];
+  return validateIntent({ version: INTENT_VERSION, status: "proposal", noncanonical: true, actor, goals: [`perform legacy structured ${String(verb).toLowerCase()} input`], steps: [{ id: "step-1", relation: "sequence", attempt: text, goals: [`perform ${String(verb).toLowerCase()}`], methods: [], references: ref, constraints: [], uncertain: true }], methods: [], referenced_entities: ref, referenced_locations: [], referenced_people: [], referenced_inventory: [], conditions: [], preferences: [], social_intent: [], communication_content: [], temporal_order: [], uncertainties: ["legacy structured input still requires later grounding and resolution"], assumptions: [], clarification_required: false, clarification: null }, { raw_input: text, provider: "legacy-structured-adapter", request_id });
 }
-async function narrate(provider, envelope) {
-  if (!provider?.narrate) return { source: "fallback", text: fallbackNarration(envelope) };
-  try {
-    const result = await provider.narrate({ envelope, tone: envelope.profile_title });
-    if (!hasOnly(result, new Set(["text"])) || typeof result.text !== "string" || !result.text.trim()) throw new Error("invalid narration");
-    return { source: "provider", text: result.text };
-  } catch { return { source: "fallback", text: fallbackNarration(envelope) }; }
+// Compatibility name retained for callers. Pass 1 intentionally never executes an intent.
+async function executeNatural({ run, provider, player_text, request_id = null }) {
+  const context = buildSafeContext(run);
+  const intent = await interpret(provider, player_text, context, { request_id });
+  return { run, context, intent, steps: [], narration: null, executed: false };
 }
-async function interpret(provider, player_text, context) {
-  if (typeof player_text !== "string" || !player_text.trim() || !provider?.interpret) return invalid();
-  try { return validateIntent(await provider.interpret({ player_text, context }), context); } catch { return invalid(); }
-}
-async function executeNatural({ run, provider, player_text }) {
-  let context = buildSafeContext(run);
-  const intent = await interpret(provider, player_text, context);
-  if (intent.kind === "clarification" || intent.kind === "invalid") return { run, intent, context, steps: [], narration: await narrate(provider, { verb: "INPUT", outcome: "rejected", public_reason: intent.public_reason, ...context }) };
-  const steps = [];
-  for (const proposed of intent.actions) {
-    context = buildSafeContext(run);
-    const validStep = validateIntent({ kind: "action", actions: [proposed], clarification: null }, context);
-    if (validStep.kind === "invalid") { steps.push({ proposed, outcome: "rejected", public_reason: validStep.public_reason }); break; }
-    const outcome = act(run, proposed.verb, proposed.target_alias);
-    const envelope = { ...safeResult(run, proposed.verb, outcome), profile_title: context.profile_title };
-    steps.push({ proposed, outcome: envelope.outcome, public_reason: envelope.public_reason, narration: await narrate(provider, envelope) });
-    if (envelope.outcome !== "succeeded") break;
-  }
-  return { run, intent, context: buildSafeContext(run), steps };
-}
-
-module.exports = { buildSafeContext, validateIntent, interpret, executeNatural, narrate, fallbackNarration };
+module.exports = { INTENT_VERSION, buildSafeContext, validateIntent, interpret, legacyActionToIntent, executeNatural };
