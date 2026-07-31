@@ -12,6 +12,7 @@ const report = require("../tools/ux-report.js");
 require("./y31-dev-workflow.test.js");
 require("./y31-dev-console.test.js");
 require("./y31-dev-commands.test.js");
+require("./y31-authoring.test.js");
 
 function fixture() {
   const service = new DesktopService({ appDataPath:fs.mkdtempSync(path.join(os.tmpdir(), "yb-ux-")) });

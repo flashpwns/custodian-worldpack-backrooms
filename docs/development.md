@@ -65,3 +65,7 @@ Pass 3 adds [developer commands](developer-commands.md): `npm run dev -- help`
 lists explicitly classified read-only inspection/report commands and isolated
 simulation-driving reproduction/fixture commands. Both console and CLI consume
 the same derived inspection service.
+
+Pass 4 adds the [canon-safe authoring map](authoring.md). `npm run authoring-report`
+and `npm run dev -- author validate` check existing source, claim, authority,
+runtime, domain, and asset boundaries without authoring a world or content fact.

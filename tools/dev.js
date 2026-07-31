@@ -1,14 +1,16 @@
 #!/usr/bin/env node
 "use strict";
 const commands = require("./dev-commands");
+const authoring = require("./authoring");
 const args = process.argv.slice(2); const command = args[0] ?? "help";
 const value = (name, fallback = undefined) => { const index = args.indexOf(name); return index < 0 ? fallback : args[index + 1]; };
 const has = (name) => args.includes(name);
 const json = has("--json");
 const write = (value) => console.log(json ? JSON.stringify(value, null, 2) : JSON.stringify(value, null, 2));
-const help = () => console.log(`Yellow Beast developer commands\n\nREAD_ONLY: inspect, snapshot, trace, thread-rebuild, reports, report, bug-bundle\nSIMULATION_DRIVING: reproduce, fixture\n\nExamples:\n  npm run dev -- inspect actor --id convergence-researcher --json\n  npm run dev -- trace --phrase "look around, then record the doorway" --json\n  npm run dev -- reproduce --seed case-12 --mode field-researcher --actions "look around|inspect fixture-1" --json\n  npm run dev -- fixtures --list\n  npm run dev -- reports --list\n\nRead-only commands change canonical state: NO. Reproduce/fixture create fresh isolated worlds and use normal session/action paths.`);
+const help = () => console.log(`Yellow Beast developer commands\n\nREAD_ONLY: inspect, snapshot, trace, thread-rebuild, reports, report, bug-bundle, author\nSIMULATION_DRIVING: reproduce, fixture\n\nExamples:\n  npm run dev -- inspect actor --id convergence-researcher --json\n  npm run dev -- trace --phrase "look around, then record the doorway" --json\n  npm run dev -- reproduce --seed case-12 --mode field-researcher --actions "look around|inspect fixture-1" --json\n  npm run dev -- fixtures --list\n  npm run dev -- reports --list\n  npm run dev -- author claim\n  npm run dev -- author validate\n\nRead-only commands change canonical state: NO. Reproduce/fixture create fresh isolated worlds and use normal session/action paths.`);
 async function main() {
   if (has("--help") || has("-h") || command === "help") return help();
+  if (command === "author") { const kind=args[1] ?? "help"; if (kind === "validate") return write(authoring.validate()); if (kind === "inspect" || kind === "preview") return write(authoring.preview(args[2])); if (kind === "asset") return write(authoring.assetCheck({ path:value("--path"), type:value("--type") })); if (kind === "help") return console.log("READ_ONLY author commands: source, claim, human, environment, phenomenon, scenario, asset (templates); validate; inspect <kind>. Templates are incomplete and never write files or worlds."); return write(authoring.preview(kind)); }
   if (["character","object","region","phenomenon","thread","event"].includes(command)) return write(commands.inspect({ target:command === "character" ? "actor" : command, id:value("--id", args[1]?.startsWith("--") ? undefined : args[1]), observer:value("--observer", "field-researcher"), seed:value("--seed"), fixture:value("--fixture") }));
   if (command === "inspect" || command === "snapshot") return write(commands.inspect({ target:command === "snapshot" ? "world" : args[1] ?? "world", id:value("--id"), observer:value("--observer", "field-researcher"), seed:value("--seed"), fixture:value("--fixture") }));
   if (command === "compare") return write(commands.compare({ target:value("--subject", "actor"), id:value("--id"), seed:value("--seed"), fixture:value("--fixture") }));

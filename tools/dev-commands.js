@@ -35,6 +35,7 @@ const reportRegistry = Object.freeze({
   "dev-workflow-report": { category:"developer", purpose:"developer workflow audit" },
   "dev-console-report": { category:"developer", purpose:"read-only inspector contract" },
   "dev-command-report": { category:"developer", purpose:"safe command contract" },
+  "authoring-report": { category:"developer", purpose:"canon-safe content authoring validation" },
   "dev:check": { category:"developer", purpose:"fast validation path" },
   validate: { category:"developer", purpose:"full validation path" }
 });

@@ -53,6 +53,12 @@ do not maintain competing world representations. Commands exit `0` on success
 and `2` for usage/runtime/validation errors. Command diagnostics are not written
 to canonical history.
 
-Pass 4 will address authoring ergonomics. This command layer intentionally has
-no JSON/state editor, eval surface, spawn action, teleport, forced outcome,
+## Authoring previews
+
+`author source|claim|human|environment|phenomenon|scenario|asset` prints an
+incomplete, deterministic template; `author validate` checks provenance and
+cross references; `author inspect <kind>` previews the classification contract.
+These are all read-only and cannot mutate an active world. See
+[canon-safe authoring](authoring.md). The command layer intentionally has no
+JSON/state editor, eval surface, spawn action, teleport, forced outcome,
 knowledge edit, entity behavior invocation, or save import/export format.
