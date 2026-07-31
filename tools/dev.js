@@ -18,7 +18,7 @@ async function main() {
   if (command === "thread-rebuild") return write(commands.threadRebuild({ seed:value("--seed"), fixture:value("--fixture") }));
   if (command === "bug-bundle") return write(commands.bugBundle({ seed:value("--seed"), fixture:value("--fixture"), subject:value("--subject", "world"), id:value("--id"), observer:value("--observer", "field-researcher"), mode:value("--mode", "field-researcher") }));
   if (command === "fixtures") return write({ version:"yellow-beast-dev-fixtures@v1", mutation:"READ_ONLY", fixtures:Object.entries(commands.fixtureRegistry).map(([name, entry]) => ({ name, category:entry.category, seed:entry.seed, turns:entry.turns, assertion:entry.assertion })) });
-  if (command === "fixture") { const name = value("--name", "convergence"), seed = value("--seed"); const run = commands.fixtureRegistry[name]?.run(seed); if (!run) throw Object.assign(new Error(`Unknown fixture '${name}'.`), { code:"FIXTURE_UNKNOWN" }); return write({ version:"yellow-beast-dev-fixture@v1", mutation:"SIMULATION_DRIVING", isolated:true, name, seed:run.world.seed, turns:run.turns, snapshot:require("./dev-inspection").snapshot(run.world) }); }
+  if (command === "fixture") return write(commands.fixture({ name:value("--name", "convergence"), seed:value("--seed") }));
   if (command === "reproduce") return write(await commands.reproduce({ seed:value("--seed"), mode:value("--mode", "field-researcher"), actions:(value("--actions", "").split("|").map((item) => item.trim()).filter(Boolean)) }));
   if (command === "reports") return write(commands.reports({ category:value("--category") }));
   if (command === "report") return write(value("--category") ? commands.runReports(value("--category")) : commands.runReport(value("--name", args[1])));

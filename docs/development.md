@@ -69,3 +69,13 @@ the same derived inspection service.
 Pass 4 adds the [canon-safe authoring map](authoring.md). `npm run authoring-report`
 and `npm run dev -- author validate` check existing source, claim, authority,
 runtime, domain, and asset boundaries without authoring a world or content fact.
+
+Pass 5 profiles the deterministic 150-turn and 5,000-event workloads with
+`npm run performance-report`; the bounded story-thread index is derived in a
+world-scoped WeakMap and is never serialized. Pass 6 closes the seam in
+`tools/dev-inspection.js`: DesktopService, CLI commands, and developer reports
+share the same read-only snapshot, subject selection, observer profile list,
+and bounded recent-history helper. `npm run y31-closure-report` aggregates the
+closure invariants. `reproduce` and `fixture` are the only simulation-driving
+developer commands; freeform trace, inspection, reports, and authoring remain
+read-only.

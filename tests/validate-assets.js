@@ -226,6 +226,7 @@ scripts.push("tests/y31-dev-console.test.js", "tools/dev-console-report.js");
 scripts.push("tests/y31-dev-commands.test.js", "tools/dev-commands.js", "tools/dev.js", "tools/dev-command-report.js");
 scripts.push("tests/y31-authoring.test.js", "tools/authoring.js", "tools/authoring-report.js");
 scripts.push("tests/y31-performance.test.js", "tools/performance-report.js");
+scripts.push("tests/y31-closure.test.js", "tools/y31-closure-report.js");
 scripts.push("tests/y16-expedition.test.js", "tools/expedition.js", "tools/expedition-report.js");
 scripts.push("tests/y165-context-closure.test.js", "tools/corpus-coverage-report.js");
 scripts.push("tests/y17-procedural-complex.test.js", "tools/procedural-complex.js", "tools/procedural-report.js");
