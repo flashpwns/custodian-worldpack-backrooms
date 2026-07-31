@@ -69,15 +69,16 @@ function legacyActionToIntent({ verb, target_alias = null, actor = null, raw_inp
 }
 // Compatibility name retained for callers. Interpretation and grounding remain
 // noncanonical; a ready resolution plan is applied through Custodian below.
-async function executeNatural({ run, provider, player_text, request_id = null }) {
-  const context = buildSafeContext(run);
+async function executeNatural({ run, provider, player_text, request_id = null, context: suppliedContext = null, consequenceResolver = null }) {
+  const context = suppliedContext ?? buildSafeContext(run);
   const intent = await interpret(provider, player_text, context, { request_id });
   const { groundIntent } = require("./intent-grounding");
   const grounded_intent = intent.status === "proposal" ? groundIntent(intent, context.grounding) : null;
   const { planResolution } = require("./capability-planning");
   const resolution_plan = grounded_intent ? planResolution(grounded_intent) : null;
   const { resolveConsequences } = require("./consequence-resolution");
-  const consequence = resolution_plan && !resolution_plan.clarification_required ? resolveConsequences({ run, plan: resolution_plan, request_id: request_id ?? `natural-${run.session.id}-${intent.raw_input}` }) : null;
+  const resolver = consequenceResolver ?? resolveConsequences;
+  const consequence = resolution_plan && !resolution_plan.clarification_required ? resolver({ run, plan: resolution_plan, request_id: request_id ?? `natural-${run.session.id}-${intent.raw_input}` }) : null;
   return { run, context, intent, grounded_intent, resolution_plan, consequence, steps: [], narration: null, executed: Boolean(consequence?.result.accepted) };
 }
 module.exports = { INTENT_VERSION, buildSafeContext, validateIntent, interpret, legacyActionToIntent, executeNatural };

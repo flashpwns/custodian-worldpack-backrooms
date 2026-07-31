@@ -1,7 +1,7 @@
 "use strict";
 const { applySessionEffects } = require("custodian");
 const VERSION = "yellow-beast-consequence-result@v1";
-const safe = (result) => ({ version: VERSION, accepted: result.status !== "REJECTED", duplicate: Boolean(result.duplicate), canonical_event_ids: result.canonical_event_refs, attempted_steps: result.effect_results.map((x) => x.effect_id), completed_steps: result.applied_effects, failed_steps: result.failed_effects, interrupted_steps: result.skipped_effects, partial_steps: result.status === "PARTIAL" ? result.applied_effects : [], time_advanced: result.time_after - result.time_before, observer_safe_summary: result.status === "APPLIED" ? "Your attempt is resolved." : result.status === "PARTIAL" ? "Part of your attempt is resolved." : "Your attempt could not be resolved." });
+const safe = (result) => ({ version: VERSION, accepted: result.status !== "REJECTED", duplicate: Boolean(result.duplicate), canonical_event_ids: result.canonical_event_refs, attempted_steps: result.effect_results.map((x) => x.effect_id), completed_steps: result.applied_effects, failed_steps: result.failed_effects, interrupted_steps: result.skipped_effects, partial_steps: result.status === "PARTIAL" ? result.applied_effects : [], time_advanced: result.time_after - result.time_before, observer_safe_summary: result.status === "APPLIED" ? "The attempt leaves the current situation as observed." : result.status === "PARTIAL" ? "Only part of the attempt changes what is observable here." : "Nothing observable changes here." });
 function effectsFor(plan, { actor_ref } = {}) {
   return plan.steps.flatMap((step) => {
     if (!step.possible) return [];
@@ -15,7 +15,7 @@ function effectsFor(plan, { actor_ref } = {}) {
     return [{ ...common, type: "APPEND_EVENT", event_type: "yellow-beast.freeform-attempt", payload: { step: step.id, capabilities: step.capability_requirements, attempt: step.attempted_behavior } }];
   });
 }
-function rejected(plan, summary) { return { version: VERSION, accepted: false, duplicate: false, canonical_event_ids: [], attempted_steps: [], completed_steps: [], failed_steps: plan.steps.filter((x) => !x.possible).map((x) => x.id), interrupted_steps: [], partial_steps: [], time_advanced: 0, observer_safe_summary: summary }; }
+function rejected(plan, summary) { return { version: VERSION, accepted: false, duplicate: false, canonical_event_ids: [], attempted_steps: [], completed_steps: [], failed_steps: plan.steps.filter((x) => !x.possible).map((x) => x.id), interrupted_steps: [], partial_steps: [], time_advanced: 0, observer_safe_summary: summary || "Nothing observable changes here." }; }
 function resolveConsequences({ run, plan, request_id }) {
   const actor_ref = run.session.startup.player.actor_id ?? `yb-actor-${run.session.startup.player.observer_id}`;
   const effects = effectsFor(plan, { actor_ref });

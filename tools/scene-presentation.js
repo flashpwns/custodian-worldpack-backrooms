@@ -7,7 +7,7 @@ const crypto = require("node:crypto");
 const { status } = require("./run-bootstrap");
 const VERSION = "yellow-beast-scene@v1";
 const SIGNIFICANCE = new Set(["MICRO", "ROUTINE", "MEANINGFUL", "MAJOR", "CRITICAL"]);
-const opaque = /(?:^|\b)(?:actor|object|corridor|fixture|entity|region|space)-[a-f0-9]{4,}\b/i;
+const opaque = /(?:^|\b)(?:actor|object|corridor|fixture|entity|region|space|passage|surface|landmark|cluster|mutation|artifact|process|route|node|edge)(?:[- _]?[a-f0-9]{5,}|[- _]\d{5,})\b/i;
 const hash = (value) => crypto.createHash("sha256").update(JSON.stringify(value)).digest("hex").slice(0, 20);
 const human = (value, fallback = "the area") => {
   const text = String(value ?? "").replace(/[-_]+/g, " ").replace(/\s+/g, " ").trim();
@@ -39,7 +39,7 @@ function safeEnvironment(run, current) {
   for (const object of observations.objects ?? []) if (object.alias) visible.push(human(object.alias, "nearby object"));
   return { location: human(view.location?.alias ?? view.location, "the immediate area"), details: [...new Set(details.filter(Boolean))], visible: [...new Set(visible.filter((label) => !opaque.test(label)))].slice(0, 8) };
 }
-function buildSafeScene({ run, mode = run.profile_id, input = null, consequence = null, action = null, scene_type = null, previous_scene_id = null } = {}) {
+function buildSafeScene({ run, mode = run.profile_id, input = null, consequence = null, action = null, scene_type = null, previous_scene_id = null, context_facts = [] } = {}) {
   if (!run?.session) throw new Error("run required");
   const current = status(run); // Public observer projection only; no canonical mutation.
   const environment = safeEnvironment(run, current);
@@ -51,10 +51,11 @@ function buildSafeScene({ run, mode = run.profile_id, input = null, consequence 
   else if (consequence?.result && !consequence.result.accepted) changes.push(fact("consequence", "change", consequence.result.observer_safe_summary, true, { outcome: "failure" }));
   else if (action === "WAIT") changes.push(fact("quiet", "change", "No notable change is apparent.", false));
   const inventory = (current.known_resources ?? []).map((item, index) => fact(`inventory-${index + 1}`, "inventory", human(item, "carried equipment"), false));
-  const objective = current.expedition?.objectives?.survey?.state === "active" ? fact("objective", "context", "Continue the declared survey.", false) : null;
+  const objective = current.expedition?.objectives?.survey?.state === "active" ? fact("objective", "context", "The declared survey remains the immediate assignment.", false) : null;
   const provenance = { source: "observer-safe-projection", consequence_request: consequence?.result?.canonical_event_ids?.length ? "resolved" : null, input: typeof input === "string" ? "player-supplied" : null };
   const seed = { session: run.session.id, mode, type, previous_scene_id, location: environment.location, input: input ?? null, facts: [...facts, ...changes].map(({ id, text }) => [id, text]) };
-  return { version: VERSION, scene_id: `scene-${hash(seed)}`, world_ref: run.world_id ?? null, session_ref: run.session.id, turn_ref: consequence?.result?.canonical_event_ids?.[0] ?? action ?? "orientation", observer_ref: current.player, mode, profile: modeProfile(mode), scene_type: type, significance: SIGNIFICANCE.has(level) ? level : "ROUTINE", location: environment.location, safe_facts: facts, immediate_changes: changes, visible_actors: [], communications: [], sensory_facts: [], inventory, object_state_changes: [], unresolved_facts: [], continuing_conditions: [], context: objective ? [objective] : [], interaction_prompt: "What do you do?", provenance };
+  const context = [...(objective ? [objective] : []), ...context_facts.map((item, index) => fact(`context-${index + 1}`, "context", human(item, "The current assignment remains in view."), false))];
+  return { version: VERSION, scene_id: `scene-${hash(seed)}`, world_ref: run.world_id ?? null, session_ref: run.session.id, turn_ref: consequence?.result?.canonical_event_ids?.[0] ?? action ?? "orientation", observer_ref: current.player, mode, profile: modeProfile(mode), scene_type: type, significance: SIGNIFICANCE.has(level) ? level : "ROUTINE", location: environment.location, safe_facts: facts, immediate_changes: changes, visible_actors: [], communications: [], sensory_facts: [], inventory, object_state_changes: [], unresolved_facts: [], continuing_conditions: [], context, interaction_prompt: "What do you do?", provenance };
 }
 function fallbackNarration(scene) {
   const sentence = (text) => text.endsWith(".") ? text : `${text}.`;
