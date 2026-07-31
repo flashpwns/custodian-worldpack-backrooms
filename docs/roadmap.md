@@ -124,3 +124,9 @@ Pass 1 adds the deterministic stranger flow and manual checklist in
 all four understandable mode choices, Guided Introduction, natural-language
 play, contextual recap, save/resume, offline recovery, accessibility settings,
 and the player/debug boundary without exposing simulation internals.
+
+Pass 2 adds the deterministic all-mode long-world torture workload in
+`docs/long-world-torture.md` and `npm run yb33-torture-report`. It stresses
+history growth, derived indexes, save/reload, restart, provider fallback,
+preferences, inspection, recap, and stale-response boundaries without adding
+gameplay or changing canonical authority.
