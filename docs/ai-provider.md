@@ -2,7 +2,7 @@
 
 YB-13 ships with the deterministic offline mock provider used by tests and `npm run play -- --natural "..."`. No network provider or credentials are required.
 
-Providers expose two asynchronous methods: `interpret({ player_text, context })` and `narrate({ envelope, tone })`. Intent responses are strict objects with `kind`, `actions`, and optional observer-safe clarification candidates. Yellow Beast validates every field, verb, and alias against a freshly built safe context before any action is attempted.
+Providers expose `interpret({ player_text, context })`. Intent responses are strict `yellow-beast-intent@v1` non-canonical proposals with decomposable steps, unresolved references, uncertainty, and optional observer-safe clarification candidates. Yellow Beast validates every field before any future grounding or action is considered.
 
 The context contains only profile title, scenario, lifecycle, safe location, available verbs, visible aliases, resources, and public reason. It never contains a session, projection, opaque Custodian target reference, hidden actor, or other observer state.
 
