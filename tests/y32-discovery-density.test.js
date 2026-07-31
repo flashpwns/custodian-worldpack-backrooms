@@ -1,0 +1,13 @@
+"use strict";
+const assert = require("node:assert/strict");
+const test = require("node:test");
+const { startRun, status } = require("../tools/run-bootstrap");
+const { buildSafeScene } = require("../tools/scene-presentation");
+const v2 = require("../tools/procedural-complex-v2");
+const lost = require("../tools/lost");
+const history = require("../tools/world-history");
+const phases = require("../tools/mode-phases");
+const lostExperience = require("../tools/lost-experience");
+test("v2 local material is visible to the ordinary scene projection", () => { const run = startRun({ profile: "field-researcher", seed: "density-test", scenario: "procedural-survey", generator_version: v2.VERSION }).run; const scene = buildSafeScene({ run, action: "LOOK" }); assert.ok(scene.safe_facts.some((item) => item.category === "visible" && /fixture|tile|furnishing|opening|chair|container|debris/i.test(item.text))); assert.doesNotMatch(JSON.stringify(scene), /(?:actor|object|corridor|fixture|entity|region|space)-[a-f0-9]{4,}/i); });
+test("same seed gives identical multi-mode discovery surfaces", () => { const field = (seed) => { const run = startRun({ profile: "field-researcher", seed, scenario: "procedural-survey", generator_version: v2.VERSION }).run; return buildSafeScene({ run, action: "LOOK" }); }; assert.deepEqual(field("density-repeat"), field("density-repeat")); const world = history.createWorld({ id: "density-lost-test", seed: "density-lost-test" }); const first = lostExperience.presentation(lost.projection(lost.start(world, "density-lost")), phases.createPhase({ mode: "lost" })); const secondWorld = history.createWorld({ id: "density-lost-test", seed: "density-lost-test" }); const second = lostExperience.presentation(lost.projection(lost.start(secondWorld, "density-lost")), phases.createPhase({ mode: "lost" })); assert.deepEqual(first, second); });
+test("discovery presentation remains bounded and does not expose hidden topology", () => { const run = startRun({ profile: "field-researcher", seed: "density-bound", scenario: "procedural-survey", generator_version: v2.VERSION }).run; const current = status(run); const scene = buildSafeScene({ run, action: "LOOK" }); assert.ok(scene.safe_facts.filter((item) => item.category === "visible").length <= 8); assert.equal(current.view.observations.objects.every((item) => !item.id && item.alias && item.kind), true); assert.equal(current.view.observations.landmark.id, undefined); assert.doesNotMatch(JSON.stringify(scene.safe_facts), /junction_density|architecture_bias|frontier_policy|rule_id|claim_ids|provenance/); });

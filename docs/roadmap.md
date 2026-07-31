@@ -92,3 +92,9 @@ Pass 1 adds a deterministic, derived run-identity description over existing
 seeded environment realization, profile-declared startup context, bounded
 resources, and initial questions. It does not add plot tracks, rarity,
 difficulty, stat modifiers, or canonical lore.
+
+Pass 2 increases discovery density through observer-safe presentation of
+already materialized environmental distinctions, landmarks, mundane objects,
+remembered routes, questions, and institutional context. It adds no new
+phenomena, entities, quests, taxonomy, or canonical authority; see
+`docs/discovery-density.md` and `npm run discovery-density-report`.

@@ -31,8 +31,13 @@ function safeEnvironment(run, current) {
   const view = current.view ?? {}; const procedural = run.procedural;
   const environment = procedural?.environment ?? procedural?.nodes?.[procedural.current?.[current.player]]?.environment ?? null;
   const details = [];
-  if (environment && typeof environment === "object") for (const key of ["architecture", "flooring", "ceiling", "lighting", "furniture", "wear", "transition"]) { const value = environment[key]; const text = typeof value === "string" ? value : value?.state ?? value?.description ?? null; if (typeof text === "string") details.push(human(text, "")); }
-  return { location: human(view.location, "the immediate area"), details: details.filter(Boolean), visible: (view.targets ?? []).map(({ alias }) => human(alias, "nearby feature")).filter((label) => !opaque.test(label)) };
+  const observations = view.observations ?? {};
+  const observedEnvironment = observations.environment ?? environment;
+  if (observedEnvironment && typeof observedEnvironment === "object") for (const key of ["architecture", "flooring", "ceiling", "lighting", "furniture", "wear", "transition"]) { const value = observedEnvironment[key]; const text = typeof value === "string" ? value : value?.state ?? value?.description ?? null; if (typeof text === "string") details.push(human(text, "")); }
+  const visible = (view.targets ?? []).map(({ alias }) => human(alias, "nearby feature"));
+  if (observations.landmark?.alias) visible.push(human(observations.landmark.alias, "nearby landmark"));
+  for (const object of observations.objects ?? []) if (object.alias) visible.push(human(object.alias, "nearby object"));
+  return { location: human(view.location?.alias ?? view.location, "the immediate area"), details: [...new Set(details.filter(Boolean))], visible: [...new Set(visible.filter((label) => !opaque.test(label)))].slice(0, 8) };
 }
 function buildSafeScene({ run, mode = run.profile_id, input = null, consequence = null, action = null, scene_type = null, previous_scene_id = null } = {}) {
   if (!run?.session) throw new Error("run required");
