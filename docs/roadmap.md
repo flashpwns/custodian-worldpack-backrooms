@@ -27,6 +27,8 @@ YB-28 provides shared phase/tutorial gameflow, a Clear-Q4 expedition, Beck's Des
 
 ## Next: YB-29 — Canon + Story Worldbuilding Integration
 
+Pass 1 complete: the canon-runtime audit reports source-to-experience coverage and canon gravity, while world history now enforces singular named-character identities and irreversible ordinary death. Distinctive world identity should derive primarily from supported canon; pack-original material may complete simulation gaps but must stay explicit.
+
 1. Canon runtime coverage audit
 2. ASYNC + human world expansion
 3. Complex environmental expansion
