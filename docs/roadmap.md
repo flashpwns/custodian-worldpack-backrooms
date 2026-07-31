@@ -78,7 +78,7 @@ workflow without adding a second world representation.
 
 1. Developer Workflow Audit — complete
 2. Developer Console + Simulation Inspector — complete
-3. Developer Commands + Reports
+3. Developer Commands + Reports — complete
 4. Content Authoring Ergonomics
 5. Runtime Profiling + Optimization
 6. Architecture Cleanup

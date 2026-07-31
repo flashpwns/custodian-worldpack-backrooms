@@ -24,5 +24,7 @@ consequence resolution. Provider diagnostics include only selection/status and
 the already safe context; credentials are never returned or logged.
 
 `npm run dev-console-report` records the console contract and invariants. Pass
-3 may add safe explicit developer operations and report controls; this pass
-adds no mutation command, state editor, or debug save format.
+3's CLI shares this console's `tools/dev-inspection.js` source for snapshot and
+trace output; see [developer commands](developer-commands.md). The console
+itself remains read-only and has no mutation command, state editor, or debug
+save format.

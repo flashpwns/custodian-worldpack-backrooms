@@ -61,4 +61,7 @@ cleans up only seams proven by those passes.
 
 Pass 2 is now available locally with `YELLOW_BEAST_DEVELOPER_MODE=1 npm run
 desktop:dev`. See [developer console](developer-console.md). It is read-only;
-developer commands remain Pass 3 work.
+Pass 3 adds [developer commands](developer-commands.md): `npm run dev -- help`
+lists explicitly classified read-only inspection/report commands and isolated
+simulation-driving reproduction/fixture commands. Both console and CLI consume
+the same derived inspection service.

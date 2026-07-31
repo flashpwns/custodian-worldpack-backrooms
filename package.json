@@ -64,6 +64,8 @@
     "ux-report": "node tools/ux-report.js",
     "dev-workflow-report": "node tools/dev-workflow-report.js",
     "dev-console-report": "node tools/dev-console-report.js",
+    "dev-command-report": "node tools/dev-command-report.js",
+    "dev": "node tools/dev.js",
     "dev:check": "npm run validate-assets && node --test tests/y30-navigation.test.js tests/y30-reactive-ui.test.js tests/y30-interaction-feel.test.js tests/y30-qol.test.js tests/y30-ux.test.js && npm run desktop:test && git diff --check",
     "validate": "npm test && npm run desktop:build",
     "reports": "npm run canon-runtime-report && npm run canon-convergence-report && npm run environment-world-report && npm run phenomena-report && npm run q4-report && npm run beck-report && npm run nullzone-report && npm run lost-report && npm run immersive-report && npm run navigation-report && npm run reactive-ui-report && npm run interaction-report && npm run qol-report && npm run accessibility-report && npm run ux-report && npm run dev-workflow-report",
