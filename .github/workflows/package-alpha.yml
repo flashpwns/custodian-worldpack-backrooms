@@ -33,7 +33,19 @@ jobs:
       - run: npm run desktop:package -- --win zip
         if: runner.os == 'Windows'
       - run: npm run desktop:verify
-      - uses: actions/upload-artifact@v4
+      - name: Retain validated macOS desktop alpha
+        if: runner.os == 'macOS' && success()
+        uses: actions/upload-artifact@v4
         with:
-          name: yellow-beast-alpha-${{ runner.os }}
-          path: dist/
+          name: yellow-beast-0.13.0-alpha-macos-arm64
+          path: dist/desktop/Yellow Beast-0.13.0-alpha-arm64-mac.zip
+          if-no-files-found: error
+          retention-days: 14
+      - name: Retain validated Windows desktop alpha
+        if: runner.os == 'Windows' && success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: yellow-beast-0.13.0-alpha-windows
+          path: dist/desktop/Yellow Beast-0.13.0-alpha-win.zip
+          if-no-files-found: error
+          retention-days: 14
