@@ -32,6 +32,14 @@ const MODES = Object.freeze([
   { id: "lost", gameplay_mode: "lost", label: "Lost", role: "Survival", description: "Survive and navigate the Complex with limited knowledge and uncertain escape." }
 ]);
 const DEFAULT_SETTINGS = Object.freeze({ version: 3, input_mode: "structured", provider: "offline", theme: "system", text_scale:"default", reduced_motion: false, guided_introductions: true, reopen_last_world: true, mode_onboarding: {} });
+// Non-Q4 language is deliberately a small phrase-to-existing-control adapter.
+// It cannot invent a target or capability: recognised phrases only select an
+// action already available in the active, observer-safe session.
+const NATURAL_ACTION_HINTS = Object.freeze({
+  "async-command": [[/\b(review|read|check).*(report|desk)|\breports?\b/i, "REVIEW_REPORT"], [/\b(advance|wait|continue)\b/i, "ADVANCE"]],
+  "local-anomaly": [[/\b(explore|expand|look around)\b/i, "EXPAND"], [/\b(record|capture|document|discover)\b/i, "DISCOVER"], [/\b(return|go back|leave)\b/i, "RETURN"]],
+  lost: [[/\b(return|go back|leave)\b/i, "RETURN"], [/\b(strand|stop)\b/i, "STRAND"], [/\b(drop|leave)\b/i, "DROP"], [/\b(move|go|walk|follow)\b/i, "MOVE"]]
+});
 
 function publicError(code, message) { return { ok: false, error: { code, message } }; }
 function safeId(value) { return typeof value === "string" && /^[a-z0-9][a-z0-9_-]{0,100}$/i.test(value); }
@@ -139,9 +147,37 @@ class DesktopService {
       if (!result.ok) return publicError(result.error?.code ?? result.code ?? "ACTION_REJECTED", result.error?.public_reason ?? result.public_reason ?? "That action is not available right now."); this.persistSession(world, mode, entry); const scene = this.sceneFor(entry, mode, { action: verb, scene_type: verb === "LOOK" ? "observation" : "delta" }); return { ok: true, result: { outcome: result.outcome ?? "succeeded", public_reason: result.result?.public_reason ?? result.public_reason ?? null, scene }, projection: this.projectionFor(world, mode, entry) };
     } catch (error) { this.log(`action failed: ${error.message}`); return publicError("ACTION_RUNTIME_ERROR", "Yellow Beast could not complete that action safely."); }
   }
+  naturalActionFor(world, mode, entry, text) {
+    const phrase = String(text ?? "").trim().toLowerCase();
+    if (!phrase) return null;
+    const available = this.availableFor(world, mode, entry);
+    const hint = (NATURAL_ACTION_HINTS[mode] ?? []).find(([pattern]) => pattern.test(phrase));
+    if (!hint) return null;
+    const action = available.find((item) => item.type === hint[1]);
+    if (!action) return null;
+    if (!action.target_required) return { action: action.type, target: null };
+    const target = (action.targets ?? []).find((item) => phrase.includes(String(item.label ?? item.ref).toLowerCase()));
+    return target ? { action: action.type, target: target.ref } : null;
+  }
   async submitNatural({ world_id, mode, text }) {
-    if (mode !== "field-researcher") return publicError("NATURAL_INPUT_UNAVAILABLE", "Natural-language input is currently available for Clear-Q4 only. Structured controls remain available in every role.");
-    try { const world = this.getWorld(world_id); const entry = this.session(world_id, mode) ?? this.restoreSession(world, mode, readJson(this.sessionFile(world_id, mode), null)); if (!entry || entry.kind !== "bootstrap") return publicError("SESSION_NOT_FOUND", "Start or continue this session first."); const configured = this.settings().provider === "openai"; const key = configured ? this.credentials.get("openai") : null; if (configured && !key) return publicError("PROVIDER_CONFIGURATION_REQUIRED", "OpenAI needs a key. Your world is safe; you can continue offline."); const provider = configured ? createOpenAIProvider({ apiKey: key, model: this.settings().openai_model || undefined, timeout: 15000 }) : createMockProvider(); const turn = await executePlayerTurn({ run: entry.run, mode, provider, player_text: text, request_id: `desktop-natural-${world_id}-${Date.now()}` }); if (turn.save_required) this.persistSession(world, mode, entry); const scene = { ...turn.scene, narration: turn.narration.prose, narration_source: turn.narration.source }; return { ok: true, result: { turn_status: turn.status, clarification_required: turn.status === "CLARIFICATION_REQUIRED", clarification_question: turn.clarification?.question ?? null, executed: turn.save_required, summary: scene.narration, scene }, projection: this.projectionFor(world, mode, entry) }; } catch (error) { this.log(`provider unavailable: ${error.message}`); return publicError("PROVIDER_UNAVAILABLE", "AI response unavailable. Your world is safe. Continue using structured controls or try again."); }
+    try {
+      const world = this.getWorld(world_id);
+      const entry = this.session(world_id, mode) ?? this.restoreSession(world, mode, readJson(this.sessionFile(world_id, mode), null));
+      if (!entry) return publicError("SESSION_NOT_FOUND", "Start or continue this session first.");
+      if (entry.kind !== "bootstrap") {
+        const selected = this.naturalActionFor(world, mode, entry, text);
+        if (!selected) return publicError("NATURAL_INPUT_CLARIFICATION", "Try describing one available action using a known person, item, or route.");
+        const result = this.submitAction({ world_id, mode, ...selected });
+        return result.ok ? { ...result, result: { ...result.result, executed:true, summary:result.result.public_reason ?? "Your attempt was recorded." } } : result;
+      }
+      const configured = this.settings().provider === "openai"; const key = configured ? this.credentials.get("openai") : null;
+      if (configured && !key) return publicError("PROVIDER_CONFIGURATION_REQUIRED", "Language assistance needs an access key. Your world is safe; you can continue offline.");
+      const provider = configured ? createOpenAIProvider({ apiKey: key, model: this.settings().openai_model || undefined, timeout: 15000 }) : createMockProvider();
+      const turn = await executePlayerTurn({ run: entry.run, mode, provider, player_text: text, request_id: `desktop-natural-${world_id}-${Date.now()}` });
+      if (turn.save_required) this.persistSession(world, mode, entry);
+      const scene = { ...turn.scene, narration: turn.narration.prose, narration_source: turn.narration.source };
+      return { ok: true, result: { turn_status: turn.status, clarification_required: turn.status === "CLARIFICATION_REQUIRED", clarification_question: turn.clarification?.question ?? null, executed: turn.save_required, summary: scene.narration, scene }, projection: this.projectionFor(world, mode, entry) };
+    } catch (error) { this.log(`provider unavailable: ${error.message}`); return publicError("PROVIDER_UNAVAILABLE", "Language assistance is unavailable. Your world is safe. Continue using structured controls or try again."); }
   }
   shutdown() { for (const [key, entry] of this.sessions) { const [worldId, mode] = key.split(":"); try { this.persistSession(this.getWorld(worldId), mode, entry); } catch (error) { this.log(`shutdown save failed: ${error.message}`); } } return { ok: true }; }
 }

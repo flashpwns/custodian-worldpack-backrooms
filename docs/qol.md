@@ -29,3 +29,7 @@ Pass 5 owns accessibility and player-preference expansion.
 Pass 5 keeps QoL metadata separate while making it operable at all supported
 text sizes, high contrast, reduced motion, keyboard focus, and assistive-tech
 status paths. Pins retain their presentation-only meaning.
+
+Pass 6’s long-session fixture exercises 150 mixed presentation interactions.
+History stays bounded, and neither pending request tokens nor panel state are
+restored with a session.

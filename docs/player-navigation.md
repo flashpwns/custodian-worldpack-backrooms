@@ -15,3 +15,10 @@ without silently advancing the world.
 Pass 5 makes the same navigation keyboard-operable with visible focus and
 bounded text scaling. Appearance, motion, and Guided Introductions are global
 player preferences; they never alter canonical world identity or progress.
+
+YB-30 closes with a small deterministic natural-language adapter for Beck,
+Nullzone, and Lost. It recognizes only plain phrases for controls already
+available to the active observer and never guesses targets, capabilities, or
+facts. Clear-Q4 retains its existing full natural-language interpretation.
+This preserves primary free-text agency without making the renderer a command
+authority.

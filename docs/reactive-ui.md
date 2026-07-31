@@ -41,3 +41,7 @@ is intentionally sparse and does not become a map or investigation board.
 Pass 5 applies accessibility presentation attributes before rendering a safe
 projection. Text size, contrast, focus treatment, and screen-reader structure
 are presentation-only and do not broaden any mode’s observer view.
+
+Pass 6 validates the whole shell through `npm run ux-report`. The renderer’s
+only durable application state remains explicitly presentation-scoped; it
+cannot retain canonical outcomes, observer truth, or request lifecycle state.

@@ -29,7 +29,7 @@ YB-28 provides shared phase/tutorial gameflow, a Clear-Q4 expedition, Beck's Des
 
 Pass 1 audited source-to-experience coverage and canon gravity while world history enforced singular named-character identities and irreversible ordinary death. Pass 2 expressed a bounded ASYNC human world. Pass 3 made the v2 Complex generator compose a source-backed environmental grammar over deterministic, history-backed spaces. Pass 4 admitted only bounded FF2 observations, leaving entity behavior unsupported. Pass 5 added a deterministic noncanonical thread index over world history. Pass 6 validated the full source → claim → authority → runtime → experience seam across all four modes, including a 150-turn shared-world fixture, offline operation, and derived thread rebuilding. Distinctive world identity derives primarily from supported canon; pack-original material remains explicit connective glue.
 
-## Next: YB-30 — Player Experience + Reactive Interface
+## YB-30: Player Experience + Reactive Interface — complete
 
 Pass 1 complete: the desktop now leads with a player-facing World Library,
 clear creation and experience-entry flow, and safe active-world navigation.
@@ -56,6 +56,12 @@ appearance/high contrast, reduced motion, and Guided Introductions. The
 renderer improves focus, semantic scene/status structure, and keyboard support
 without changing simulation, knowledge, or mode boundaries.
 
+Pass 6 complete: end-to-end UX fixtures validate creation/resume, all four
+observer-distinct modes, natural-language submission, offline fallback, race
+safety, bounded QoL, accessibility preferences, persistence, and the player /
+debug boundary. The `ux-report` records closure invariants; native desktop
+archives are verified as the milestone distribution check.
+
 1. Navigation + Information Architecture
 2. Reactive In-Universe UI
 3. Feedback, Motion + Interaction Feel
@@ -63,4 +69,14 @@ without changing simulation, knowledge, or mode boundaries.
 5. Accessibility + Player Preferences
 6. Reactive UX Validation
 
-Later milestones remain YB-30 Player Experience + Reactive Interface, YB-31 Developer Experience + Runtime Optimization, YB-32 Replayability + Run-to-Run Desire, and YB-33 Public Beta Candidate.
+## Next: YB-31 — Developer Experience + Runtime Optimization
+
+1. Developer Workflow Audit
+2. Developer Console + Simulation Inspector
+3. Developer Commands + Reports
+4. Content Authoring Ergonomics
+5. Runtime Profiling + Optimization
+6. Architecture Cleanup
+
+Then: YB-32 Replayability + Run-to-Run Desire, followed by YB-33 Public Beta
+Candidate.

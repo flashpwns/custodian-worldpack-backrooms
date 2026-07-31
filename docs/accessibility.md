@@ -22,4 +22,6 @@ Guided Introductions remain guidance only. Toggling them changes future
 presentation context, not a world, phase consequence, inventory, actor, or
 history. Narration density is deferred: no safe existing presentation-density
 seam currently changes wording without risking a divergent factual surface.
-Pass 6 validates the complete UX milestone.
+Pass 6 validates the complete UX milestone with reduced motion, maximum text
+scale, high-contrast, keyboard-only, and hidden-data coverage. These checks
+change presentation only and keep Lost’s sparse observer-safe structure.

@@ -27,3 +27,8 @@ Pass 5 applies the player Reduced Motion preference through the same centralized
 motion seam. Submitted, resolving, result, offline, and application-error
 feedback remain textual and politely announced; animation is never required to
 understand a change.
+
+Pass 6 extends the natural-language seam to every mode without adding a second
+simulation path: the non-Q4 adapter can only select a current structured action
+and a currently named target. Unrecognised wording asks for clarification;
+neither case advances a world.
