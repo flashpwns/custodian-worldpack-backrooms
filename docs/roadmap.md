@@ -105,3 +105,9 @@ evidence, remembered routes, and region changes can reappear only through the
 observer domain that already has the supporting history. No callback events,
 resurrection, omniscience, or narrative scheduling is introduced; see
 `docs/consequence-echoes.md` and `npm run consequence-echo-report`.
+
+Pass 4 surfaces unresolved conditions from those same observer-safe records
+as mode-native unfinished business. It adds no quest system, objective marker,
+mystery ID, forced callback, or scripted beat; ordinary simulation remains the
+only resolution path. See `docs/unfinished-business.md` and
+`npm run unfinished-business-report`.

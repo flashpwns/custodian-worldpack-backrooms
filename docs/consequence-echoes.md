@@ -7,3 +7,8 @@ Consequence echoes are bounded, derived cues over existing world-history events.
 The observer view is deliberately conservative. Field and institutional observers receive only cues from their own profile-scoped history; Nullzone receives its own personal observation/evidence history; Lost retains implicit continuity unless its own run history supplies a safe cue. Shared physical persistence remains delivered by the existing region/artifact projections, while character death remains irreversible objective state.
 
 `npm run consequence-echo-report` runs the deterministic 150-turn convergence fixture, repeats read-only derivation, checks save/reload reconstruction, and reports observer differences and continuity invariants.
+
+Pass 4 reuses this derived index to identify only unresolved conditions. The
+unfinished-business view is mode-native and does not turn a thread into a
+quest: Q4 receives operational follow-up, Beck pending matters, Nullzone open
+questions/evidence, and Lost implicit memory. See `docs/unfinished-business.md`.

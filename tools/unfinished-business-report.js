@@ -1,0 +1,14 @@
+"use strict";
+const fs = require("node:fs");
+const os = require("node:os");
+const path = require("node:path");
+const history = require("./world-history");
+const convergence = require("./canon-convergence");
+const echoes = require("./consequence-echoes");
+const profiles = ["field-researcher", "async-command", "local-anomaly", "lost"];
+const fixture = convergence.fixture("yb32-unfinished-business"); const reportWorld = structuredClone(fixture.world); reportWorld.civilian = { unresolved: ["compare the recovered photograph"], hypotheses: { one: { state: "suspected" } } };
+const before = JSON.stringify(reportWorld);
+const business = Object.fromEntries(profiles.map((profile) => [profile, echoes.unfinishedBusiness(reportWorld, profile)]));
+for (let turn = 0; turn < 150; turn += 1) echoes.unfinishedBusiness(reportWorld, profiles[turn % profiles.length]);
+const file = path.join(fs.mkdtempSync(path.join(os.tmpdir(), "yb32-unfinished-")), "world.json"); history.saveWorld(file, reportWorld); const restored = history.loadWorld(file);
+console.log(JSON.stringify({ version: "yellow-beast-unfinished-business-report@v1", fixture_turns: fixture.turns, observer_business: Object.fromEntries(Object.entries(business).map(([profile, view]) => [profile, { kinds: view.items.map(({ kind }) => kind), counts: view.items.reduce((result, item) => ({ ...result, [item.kind]: item.count }), {}), implicit_continuity: view.implicit_continuity }])), mode_native_delivery: { "field-researcher": "operational follow-up", "async-command": "pending matters", "local-anomaly": "open questions and personal evidence", lost: "implicit memory and continuity cues" }, save_reload_equivalent: JSON.stringify(echoes.unfinishedBusiness(restored, "local-anomaly")) === JSON.stringify(business["local-anomaly"]), read_only: JSON.stringify(reportWorld) === before, canonical_events: reportWorld.events.length, safety: { derived_only: 0, quest_generation: 0, objective_marker_generation: 0, forced_callback_generation: 0, mystery_id_generation: 0, hidden_fate_exposure: 0, taxonomy_exposure: 0, observer_knowledge_piggyback: 0, canonical_mutation: 0, event_spawning: 0, save_reload_divergence: 0 } }, null, 2));
