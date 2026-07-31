@@ -210,6 +210,7 @@ scripts.push("tests/y28-q4.test.js", "tools/q4-experience.js", "tools/q4-report.
 scripts.push("tests/y28-beck.test.js", "tools/beck-experience.js", "tools/beck-report.js");
 scripts.push("tests/y28-nullzone.test.js", "tools/nullzone-experience.js");
 scripts.push("tests/y28-lost.test.js", "tools/lost-experience.js");
+scripts.push("tests/y28-immersive-convergence.test.js", "tools/immersive-convergence.js", "tools/immersive-report.js");
 scripts.push("tests/y16-expedition.test.js", "tools/expedition.js", "tools/expedition-report.js");
 scripts.push("tests/y165-context-closure.test.js", "tools/corpus-coverage-report.js");
 scripts.push("tests/y17-procedural-complex.test.js", "tools/procedural-complex.js", "tools/procedural-report.js");
