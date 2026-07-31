@@ -51,7 +51,7 @@
     "electron-builder": "^26.15.3"
   },
   "dependencies": {
-    "custodian": "github:flashpwns/custodian#9850ff71a43dcd308f50e812a4e7d0b4249ff815",
+    "custodian": "github:flashpwns/custodian#b3738da433c78ee4bdb341114933b36a379bd6a4",
     "openai": "^7.1.0"
   },
   "build": {

@@ -1,6 +1,6 @@
 # AI interface contract
 
-Custodian remains simulation authority; Yellow Beast owns setting semantics. The YB-13 AI adapter only interprets natural language, requests clarification, and presents observer-safe results.
+Custodian remains simulation authority; Yellow Beast owns setting semantics. The adapter interprets natural language, requests clarification, and presents observer-safe results. A fully interpreted, grounded, and planned attempt may then be resolved through Custodian's generic effects API.
 
 ```
 Player language → strict freeform intent validation → later grounding

@@ -66,7 +66,8 @@ function legacyActionToIntent({ verb, target_alias = null, actor = null, raw_inp
   const ref = target_alias ? [{ text: target_alias, scope: "entity", resolution: "contextual" }] : [];
   return validateIntent({ version: INTENT_VERSION, status: "proposal", noncanonical: true, actor, goals: [`perform legacy structured ${String(verb).toLowerCase()} input`], steps: [{ id: "step-1", relation: "sequence", attempt: text, goals: [`perform ${String(verb).toLowerCase()}`], methods: [], references: ref, constraints: [], uncertain: true }], methods: [], referenced_entities: ref, referenced_locations: [], referenced_people: [], referenced_inventory: [], conditions: [], preferences: [], social_intent: [], communication_content: [], temporal_order: [], uncertainties: ["legacy structured input still requires later grounding and resolution"], assumptions: [], clarification_required: false, clarification: null }, { raw_input: text, provider: "legacy-structured-adapter", request_id });
 }
-// Compatibility name retained for callers. Pass 1 intentionally never executes an intent.
+// Compatibility name retained for callers. Interpretation and grounding remain
+// noncanonical; a ready resolution plan is applied through Custodian below.
 async function executeNatural({ run, provider, player_text, request_id = null }) {
   const context = buildSafeContext(run);
   const intent = await interpret(provider, player_text, context, { request_id });
@@ -74,6 +75,8 @@ async function executeNatural({ run, provider, player_text, request_id = null })
   const grounded_intent = intent.status === "proposal" ? groundIntent(intent, context.grounding) : null;
   const { planResolution } = require("./capability-planning");
   const resolution_plan = grounded_intent ? planResolution(grounded_intent) : null;
-  return { run, context, intent, grounded_intent, resolution_plan, steps: [], narration: null, executed: false };
+  const { resolveConsequences } = require("./consequence-resolution");
+  const consequence = resolution_plan && !resolution_plan.clarification_required ? resolveConsequences({ run, plan: resolution_plan, request_id: request_id ?? `natural-${run.session.id}-${intent.raw_input}` }) : null;
+  return { run, context, intent, grounded_intent, resolution_plan, consequence, steps: [], narration: null, executed: Boolean(consequence?.result.accepted) };
 }
 module.exports = { INTENT_VERSION, buildSafeContext, validateIntent, interpret, legacyActionToIntent, executeNatural };
