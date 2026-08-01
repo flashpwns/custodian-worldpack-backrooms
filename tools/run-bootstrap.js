@@ -10,6 +10,7 @@ const history = require("./world-history");
 const q4Personnel = require("./q4-personnel");
 const q4Equipment = require("./q4-equipment");
 const q4Missions = require("./q4-missions");
+const q4Continuity = require("./q4-continuity");
 const runIdentity = require("./run-identity");
 
 const root = path.resolve(__dirname, "..");
@@ -122,7 +123,7 @@ function status(runValue) {
   const expeditionVerbs = active && run.expedition ? ["COMMUNICATE", "RECORD", "WAIT", "RETURN", "ABORT"] : [];
   return { profile_id: run.profile_id, profile_title: run.profile_title, scenario: run.scenario, lifecycle: run.lifecycle, player: observer, run_identity: runIdentity.describe(run), known_resources: (run.session.startup.resources ?? []).filter((entry) => entry.custodian === observer).map((entry) => entry.id), available_verbs: ["LOOK", ...(active && view.targets?.length ? ["INSPECT"] : []), ...(active && (run.procedural ? view.view?.exits?.length : actions.includes("traverse-controlled-route")) ? ["MOVE"] : []), ...(active && actions.includes("toggle-light") ? ["USE"] : []), ...expeditionVerbs], view: { outcome: view.outcome, location: view.view?.location ?? null, targets: (view.aliases ?? []).map(({ alias }) => ({ alias })), observations: { environment: view.view?.environment ?? {}, landmark: view.view?.landmark ?? null, objects: view.view?.objects ?? [], route_character: view.view?.route_character ?? null }, public_reason: view.public_reason ?? null }, ...(run.expedition ? { expedition: safeSummary(run.expedition) } : {}), ...(run.procedural ? { discovered_topology: generatorFor(run.procedural).map(run.procedural, observer), generator_version: generatorFor(run.procedural).VERSION } : {}) };
 }
-function terminal(run, decision) { finalize(run.expedition, decision); run.lifecycle = "completed"; if (run._world && run.run_id && run.expedition?.mission) history.updateQ4Mission(run._world, run.run_id, run.expedition.mission.id, { status: run.expedition.mission.status }); const ingestion = run._world && run.run_id ? history.ingestRun(run._world, run) : null; return { ok: true, outcome: "succeeded", result: { public_reason: null, expedition_result: clone(run.expedition.result), ...(ingestion ? { history: { run_id: ingestion.run_id, region_id: ingestion.region_id } } : {}) }, run }; }
+function terminal(run, decision) { finalize(run.expedition, decision); run.lifecycle = "completed"; const continuity = run._world && run.run_id ? q4Continuity.commitOutcome(run._world, run, decision) : null; if (run._world && run.run_id && run.expedition?.mission) history.updateQ4Mission(run._world, run.run_id, run.expedition.mission.id, { status: run.expedition.mission.status }); const ingestion = run._world && run.run_id ? history.ingestRun(run._world, run) : null; return { ok: true, outcome: "succeeded", result: { public_reason: null, expedition_result: clone(run.expedition.result), ...(continuity ? { continuity: { outcome: continuity.outcome, review_id: continuity.review.mission_id } } : {}), ...(ingestion ? { history: { run_id: ingestion.run_id, region_id: ingestion.region_id } } : {}) }, run }; }
 function expeditionAction(run, verb, target) {
   const expedition = run.expedition; const player = run.session.startup.player.observer_id;
   if (!expedition) return { ok: false, error: { code: "UNSUPPORTED_VERB" }, run };

@@ -22,6 +22,7 @@ const q4Interactions = require("../tools/q4-interactions");
 const q4Personnel = require("../tools/q4-personnel");
 const q4Equipment = require("../tools/q4-equipment");
 const q4Trajectories = require("../tools/q4-trajectories");
+const q4Continuity = require("../tools/q4-continuity");
 const { event: expeditionEvent } = require("../tools/expedition");
 const beckExperience = require("../tools/beck-experience");
 const nullzoneExperience = require("../tools/nullzone-experience");
@@ -160,6 +161,7 @@ class DesktopService {
       const phaseActions = { BRIEFING: "READY", STAGING: "PROCEED", FACILITY_TRANSIT: "APPROACH", THRESHOLD: "CROSS" };
       const state = bootstrap.status(entry.run); const observed = bootstrap.look(entry.run); const targets = state.view.targets.map(({ alias }) => ({ ref: alias, label: alias })); const exits = (observed.view?.exits ?? []).map(({ alias }) => ({ ref: alias, label: alias }));
       const actions = state.available_verbs.filter((type) => type !== "COMMUNICATE" || entry.phase?.phase_id !== "BRIEFING").map((type) => ({ type, target_required: ["MOVE", "INSPECT", "USE", "RECORD", "COMMUNICATE"].includes(type), targets: type === "COMMUNICATE" ? [{ ref: "standard", label: "Standard" }, { ref: "team", label: "Team" }] : type === "MOVE" ? exits : ["INSPECT", "RECORD"].includes(type) ? targets : type === "USE" ? [{ ref: "survey-instrument", label: "Survey instrument" }] : [] }));
+      if (entry.run.lifecycle === "completed" && entry.phase?.phase_id === "DEBRIEF") return [{ type: "ADVANCE_OPERATIONS", target_required: false, targets: [] }];
       return phaseActions[entry.phase?.phase_id] ? [{ type: phaseActions[entry.phase.phase_id], target_required: false, targets: [] }, ...actions] : actions;
     }
     if (entry.kind === "lost") { const view = lost.projection(entry.run); return [{ type: "MOVE", target_required: true, targets: view.surroundings.exits.map(({ alias }) => ({ ref: alias, label: alias })) }, { type: "DROP", target_required: true, targets: view.status.carried.map((item) => ({ ref: item, label: item })) }, { type: "RETURN", target_required: false, targets: [] }, { type: "STRAND", target_required: false, targets: [] }]; }
@@ -167,6 +169,15 @@ class DesktopService {
     return [{ type: "REVIEW_REPORT", target_required: false, targets: [] }, { type: "ADVANCE", target_required: false, targets: [] }];
   }
   getAvailableActions({ world_id, mode }) { const current = this.getGameplayProjection({ world_id, mode }); return current.ok ? { ok: true, actions: current.projection.available_actions } : current; }
+  advanceQ4Operations({ world_id }) {
+    try {
+      const world = this.getWorld(world_id); const entry = this.session(world_id, "field-researcher") ?? this.restoreSession(world, "field-researcher", readJson(this.sessionFile(world_id, "field-researcher"), null));
+      if (!entry || entry.kind !== "bootstrap" || entry.run.lifecycle !== "completed" || entry.phase?.phase_id !== "DEBRIEF") return publicError("REVIEW_REQUIRED", "Complete the current review before advancing operations.");
+      const seed = q4Continuity.nextSeed(world, entry.run.expedition?.mission?.id ?? entry.run.expedition?.id); q4Continuity.advanceOperations(world);
+      const started = bootstrap.startRun({ profile: "field-researcher", seed, scenario: "procedural-survey", world }); if (!started.ok) return publicError("NEXT_EXPEDITION_UNAVAILABLE", "The next assignment could not be prepared safely.");
+      const next = { kind: "bootstrap", run: started.run, phase: phases.createPhase({ mode: "field-researcher", guided: this.settings().guided_introductions !== false }) }; this.persistSession(world, "field-researcher", next); return { ok: true, result: { outcome: "operations-advanced", public_reason: "Institutional time advances to the next Clear-Q4 assignment." }, projection: this.projectionFor(world, "field-researcher", next) };
+    } catch { return publicError("NEXT_EXPEDITION_UNAVAILABLE", "The next assignment could not be prepared safely."); }
+  }
   recordQ4Action(entry, text, result, world = null) {
     const verb = String(text).trim().split(/\s+/, 1)[0].toUpperCase();
     if (verb === "RETURN" && entry.run.expedition?.mission?.hidden_trajectory?.state?.status !== "dormant") q4Trajectories.contain({ world, expedition: entry.run.expedition, run_id: entry.run.run_id, reason: "early return or completed field work" });
@@ -246,6 +257,7 @@ class DesktopService {
   }
   submitAction({ world_id, mode, action, target = null }) {
     try { const world = this.getWorld(world_id); const entry = this.session(world_id, mode) ?? this.restoreSession(world, mode, readJson(this.sessionFile(world_id, mode), null)); if (!entry) return publicError("SESSION_NOT_FOUND", "Start or continue a session first."); const verb = String(action ?? "").toUpperCase(); let result;
+      if (entry.kind === "bootstrap" && verb === "ADVANCE_OPERATIONS") return this.advanceQ4Operations({ world_id });
       if (entry.kind === "bootstrap" && verb === "COMMUNICATE") return this.submitQ4Communication({ world_id, channel: String(target).toLowerCase() === "standard" ? "standard" : "local", text: String(target).toLowerCase() === "standard" ? "Check-in to Standard." : "Check in with the team.", target });
       if (entry.kind === "bootstrap" && ["READY", "PROCEED", "APPROACH", "CROSS"].includes(verb)) {
         const phase = entry.phase?.phase_id;
@@ -260,11 +272,11 @@ class DesktopService {
           if (verb === "PROCEED") { const readiness = q4Equipment.projection(entry.run.expedition, entry.run.session.startup.player.observer_id); if (!readiness.readiness) { entry.run.expedition.deviations.push("proceeded-with-required-equipment-unavailable"); expeditionEvent(entry.run.expedition, "q4.loadout.proceeded_without_required", { missing: readiness.missing }); } }
           const advanced = q4.nextPhase(entry.phase, { action: verb }); if (!advanced.ok) return publicError(advanced.code, "The expedition cannot advance from its current state."); entry.phase = advanced.phase; q4Equipment.updatePhase(entry.run.expedition, entry.phase.phase_id);
         }
-      } else if (entry.kind === "bootstrap") result = bootstrap.act(entry.run, verb, target);
+      } else if (entry.kind === "bootstrap") { if ((verb === "RETURN" || verb === "ABORT") && verb === "RETURN" && !q4Continuity.canReturn(entry.run)) return publicError("RETURN_ROUTE_UNCONFIRMED", "The return route and threshold access are not confirmed from the current field state."); result = bootstrap.act(entry.run, verb, target); }
       else if (entry.kind === "lost") { if (verb === "MOVE") result = lost.move(world, entry.run, target); else if (verb === "DROP") result = lost.drop(world, entry.run, target); else if (verb === "RETURN") result = lost.escape(world, entry.run); else if (verb === "STRAND") result = lost.strand(world, entry.run); else result = { ok: false, code: "ACTION_UNAVAILABLE" }; }
       else if (entry.kind === "nullzone") { if (verb === "EXPAND") result = nullzone.expand(world, entry.run_id); else if (verb === "DISCOVER") result = nullzone.discoverArtifact(world, entry.run_id); else if (verb === "RETURN") result = nullzone.returnBase(world, entry.run_id); else result = { ok: false, code: "ACTION_UNAVAILABLE" }; }
       else result = verb === "REVIEW_REPORT" ? { ok: true, result: desk.projection(world) } : verb === "ADVANCE" ? desk.advance(world, entry.run_id) : { ok: false, code: "ACTION_UNAVAILABLE" };
-      if (!result.ok) return publicError(result.error?.code ?? result.code ?? "ACTION_REJECTED", result.error?.public_reason ?? result.public_reason ?? "That action is not available right now."); if (entry.kind === "bootstrap") { this.recordQ4Action(entry, `${verb}${target ? ` ${target}` : ""}`, result, world); if (entry.run.lifecycle === "completed" && entry.run.expedition?.mission) history.updateQ4Mission(world, entry.run.run_id, entry.run.expedition.mission.id, { status: entry.run.expedition.mission.status }); } this.persistSession(world, mode, entry); const scene = this.sceneFor(entry, mode, { action: verb, scene_type: verb === "LOOK" ? "observation" : "delta", accepted: true, public_reason: result.result?.public_reason ?? result.public_reason }, world); return { ok: true, result: { outcome: result.outcome ?? "succeeded", public_reason: result.result?.public_reason ?? result.public_reason ?? null, scene }, projection: this.projectionFor(world, mode, entry) };
+      if (!result.ok) return publicError(result.error?.code ?? result.code ?? "ACTION_REJECTED", result.error?.public_reason ?? result.public_reason ?? "That action is not available right now."); if (entry.kind === "bootstrap") { this.recordQ4Action(entry, `${verb}${target ? ` ${target}` : ""}`, result, world); if (entry.run.lifecycle === "completed" && entry.run.expedition?.mission) { q4Continuity.commitOutcome(world, entry.run, verb); history.updateQ4Mission(world, entry.run.run_id, entry.run.expedition.mission.id, { status: entry.run.expedition.mission.status }); const returned = phases.transition(entry.phase, "RETURN", { reason: verb.toLowerCase(), guard: true }); entry.phase = returned.ok ? phases.transition(returned.phase, "DEBRIEF", { reason: "mission-review", guard: true }).phase : entry.phase; } } this.persistSession(world, mode, entry); const scene = this.sceneFor(entry, mode, { action: verb, scene_type: verb === "LOOK" ? "observation" : "delta", accepted: true, public_reason: result.result?.public_reason ?? result.public_reason }, world); return { ok: true, result: { outcome: result.outcome ?? "succeeded", public_reason: result.result?.public_reason ?? result.public_reason ?? null, scene }, projection: this.projectionFor(world, mode, entry) };
     } catch (error) { this.log(`action failed: ${error.message}`); return publicError("ACTION_RUNTIME_ERROR", "Yellow Beast could not complete that action safely."); }
   }
   naturalContext(world, mode, entry) {
