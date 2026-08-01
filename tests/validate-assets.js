@@ -255,6 +255,8 @@ scripts.push("tools/q4-equipment.js");
 scripts.push("tools/q4-evidence.js");
 scripts.push("tools/q4-visuals.js");
 scripts.push("tools/q4-render-adapters.js");
+scripts.push("tools/q4-cognition.js");
+scripts.push("tools/q4-replayability.js");
 scripts.push("tools/q4-missions.js");
 scripts.push("tools/q4-trajectories.js");
 scripts.push("tools/q4-continuity.js");
@@ -267,6 +269,7 @@ scripts.push("tests/y40-q4-trajectories.test.js");
 scripts.push("tests/y41-q4-continuity.test.js");
 scripts.push("tests/y42-q4-async-interface.test.js");
 scripts.push("tests/y43-q4-visual-assets.test.js");
+scripts.push("tests/y44-q4-replayability.test.js");
 for (const relative of scripts) {
   const content = fs.readFileSync(path.join(root, relative), "utf8");
   assert.doesNotMatch(content, /custodian\/(runtime|state|tools)/, `${relative} uses only public Custodian imports`);

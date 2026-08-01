@@ -22,7 +22,7 @@ const FIELD_PROFILE = "field-researcher";
 function generatorFor(stateOrVersion) { const version = typeof stateOrVersion === "string" ? stateOrVersion : stateOrVersion?.version; if (version === procedural.VERSION) return procedural; if (version === proceduralV2.VERSION) return proceduralV2; throw Object.assign(new Error(`unsupported generator version: ${version ?? "missing"}`), { code: "GENERATOR_VERSION_UNSUPPORTED" }); }
 
 function profileFor(profileId) { return read("profiles/profiles.json").profiles.find((profile) => profile.id === profileId); }
-function startupFor(profileId) {
+function startupFor(profileId, playerOverride = null) {
   const profile = profileFor(profileId);
   const config = read("profiles/startups.json").startups.find((entry) => entry.profile === profileId);
   if (!profile || !config) throw new Error(`unknown profile: ${profileId}`);
@@ -30,7 +30,8 @@ function startupFor(profileId) {
   const permissions = read("profiles/permissions.json").sets.find((entry) => entry.id === profile.starting_permissions);
   const resources = read("profiles/resources.json").profiles.find((entry) => entry.id === profile.starting_resource_profile);
   const declared = profileId === FIELD_PROFILE ? ["traverse-controlled-route", "toggle-light"] : [];
-  return { profile, startup: { profile: { id: profile.id }, player: config.player, knowledge: [...knowledge.institutional_records, ...config.knowledge.map((entry) => entry.reference)].map((reference, index) => ({ observer_id: config.player.observer_id, kind: config.knowledge[index]?.kind ?? "institutional_record", reference })), permissions: [...permissions.permissions, ...declared].map((permission) => ({ observer_id: config.player.observer_id, permission })), resources: resources.resources.map((id) => ({ id, custodian: config.player.observer_id, quantity: 1 })), metadata: config.metadata } };
+  const player = playerOverride ? { ...config.player, observer_id: playerOverride } : config.player;
+  return { profile, startup: { profile: { id: profile.id }, player, knowledge: [...knowledge.institutional_records, ...config.knowledge.map((entry) => entry.reference)].map((reference, index) => ({ observer_id: player.observer_id, kind: config.knowledge[index]?.kind ?? "institutional_record", reference })), permissions: [...permissions.permissions, ...declared].map((permission) => ({ observer_id: player.observer_id, permission })), resources: resources.resources.map((id) => ({ id, custodian: player.observer_id, quantity: 1 })), metadata: config.metadata } };
 }
 function configuredScenario(profileId, playerId) {
   const scenario = clone(read("scenarios/threshold-baseline.json"));
@@ -63,15 +64,16 @@ function newRun({ profile, seed, session, expedition, staffing = null, loadout =
   run.identity = runIdentity.describe(run);
   return run;
 }
-function startRun({ profile, seed = "yellow-beast-bootstrap", scenario = null, world = null, region_id = null, generator_version = null }) {
-  const { profile: profileRecord, startup } = startupFor(profile);
+function startRun({ profile, seed = "yellow-beast-bootstrap", scenario = null, world = null, region_id = null, generator_version = null, player_identity = null }) {
+  const controlled = player_identity ?? world?.q4_operations?.controlled_player ?? null;
+  const { profile: profileRecord, startup } = startupFor(profile, profile === FIELD_PROFILE ? controlled : null);
   const player = startup.player.observer_id;
   const result = createSession({ world_pack: configuredPack(profile, player), scenario: configuredScenario(profile, player), startup, seed_material: { seed } });
   if (!result.ok) return result;
   const restored = restoreSession(exportSession(result.session).envelope);
   const procedural_scenario = profile === FIELD_PROFILE && scenario === "procedural-survey";
   const run_id = world ? history.beginRun(world, { profile, scenario: procedural_scenario ? "async-clear-q4-procedural-survey" : result.session.scenario.id, seed }) : null;
-  const staffing = profile === FIELD_PROFILE && world ? q4Personnel.staffQ4(world, run_id, player) : null;
+  const staffing = profile === FIELD_PROFILE && world ? q4Personnel.staffQ4(world, run_id, player, seed) : null;
   if (staffing && !staffing.ok) return { ok: false, error: { code: staffing.code } };
   const mission = profile === FIELD_PROFILE ? q4Missions.generate({ world, run_id, seed, staffing }) : null;
   if (mission && world) history.recordQ4Mission(world, run_id, mission);

@@ -23,6 +23,7 @@ const q4Personnel = require("../tools/q4-personnel");
 const q4Equipment = require("../tools/q4-equipment");
 const q4Trajectories = require("../tools/q4-trajectories");
 const q4Continuity = require("../tools/q4-continuity");
+const q4Cognition = require("../tools/q4-cognition");
 const { event: expeditionEvent } = require("../tools/expedition");
 const beckExperience = require("../tools/beck-experience");
 const nullzoneExperience = require("../tools/nullzone-experience");
@@ -173,9 +174,9 @@ class DesktopService {
     try {
       const world = this.getWorld(world_id); const entry = this.session(world_id, "field-researcher") ?? this.restoreSession(world, "field-researcher", readJson(this.sessionFile(world_id, "field-researcher"), null));
       if (!entry || entry.kind !== "bootstrap" || entry.run.lifecycle !== "completed" || entry.phase?.phase_id !== "DEBRIEF") return publicError("REVIEW_REQUIRED", "Complete the current review before advancing operations.");
-      const seed = q4Continuity.nextSeed(world, entry.run.expedition?.mission?.id ?? entry.run.expedition?.id); q4Continuity.advanceOperations(world);
-      const started = bootstrap.startRun({ profile: "field-researcher", seed, scenario: "procedural-survey", world }); if (!started.ok) return publicError("NEXT_EXPEDITION_UNAVAILABLE", "The next assignment could not be prepared safely.");
-      const next = { kind: "bootstrap", run: started.run, phase: phases.createPhase({ mode: "field-researcher", guided: this.settings().guided_introductions !== false }) }; this.persistSession(world, "field-researcher", next); return { ok: true, result: { outcome: "operations-advanced", public_reason: "Institutional time advances to the next Clear-Q4 assignment." }, projection: this.projectionFor(world, "field-researcher", next) };
+      const seed = q4Continuity.nextSeed(world, entry.run.expedition?.mission?.id ?? entry.run.expedition?.id); q4Continuity.advanceOperations(world); const current = world.q4_operations?.controlled_player; const currentPerson = current ? history.character(world, current) : null; const succession = currentPerson?.status === "dead" ? q4Personnel.selectSuccessor(world, entry.run.run_id, seed) : null; if (succession && !succession.ok) return publicError("SUCCESSOR_UNAVAILABLE", "No living Q4-capable successor is available.");
+      const started = bootstrap.startRun({ profile: "field-researcher", seed, scenario: "procedural-survey", world, player_identity: succession?.successor?.identity ?? current }); if (!started.ok) return publicError("NEXT_EXPEDITION_UNAVAILABLE", "The next assignment could not be prepared safely.");
+      const next = { kind: "bootstrap", run: started.run, phase: phases.createPhase({ mode: "field-researcher", guided: this.settings().guided_introductions !== false }) }; this.persistSession(world, "field-researcher", next); return { ok: true, result: { outcome: "operations-advanced", public_reason: succession ? `Personnel control transferred from ${succession.handover.former} (${succession.handover.final_status}) to ${succession.handover.new_controlled_person}.` : "Institutional time advances to the next Clear-Q4 assignment.", handover: succession?.handover ?? null }, projection: this.projectionFor(world, "field-researcher", next) };
     } catch { return publicError("NEXT_EXPEDITION_UNAVAILABLE", "The next assignment could not be prepared safely."); }
   }
   recordQ4Action(entry, text, result, world = null) {
@@ -203,7 +204,8 @@ class DesktopService {
           return publicError("LOCAL_TARGET_UNAVAILABLE", "No nearby teammate is available for local conversation here.");
         }
         const request = /\b(hand|pass|give|bring|transfer)\b/i.test(message);
-        const response = request ? `${peer.first_name}: I hear the request. The equipment remains with me until we complete a physical handoff.` : `${peer.first_name}: I can hear you. I can answer from what the team has shared locally.`;
+        const cognitive = q4Cognition.respond({ person: person ?? peer, local_history: q4Interactions.history(expedition, "local"), mission: expedition.mission, relationship_history: person?.relationship_history ?? [], observation: message, concern: request ? "equipment handoff" : "local conversation" });
+        const response = request ? `${peer.first_name}: I hear the request. The equipment remains with me until we complete a physical handoff.` : `${peer.first_name}: ${cognitive.decision.text}`;
         const interaction = q4Interactions.record(expedition, { channel, speaker: "You", targets: [peer.display_name], player_text: message, attempted_behavior: "speak with a nearby teammate", eligibility: "eligible", delivery: "heard", time_cost: 1, presentation: { result: "heard", response } });
         q4Trajectories.noteCommunication({ world, expedition, run_id: entry.run.run_id, channel: "local", delivered: true, text: message });
         this.persistSession(world, "field-researcher", entry);

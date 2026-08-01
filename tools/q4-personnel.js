@@ -32,16 +32,31 @@ function assign(world, run_id, person, assignment) {
   history.event(world, run_id, "character.assignment.changed", { identity: person.identity, assignment: next }, person.authority);
   return { ok: true, person };
 }
-function staffQ4(world, run_id, player_identity = DEFAULTS.player.identity) {
+function staffQ4(world, run_id, player_identity = DEFAULTS.player.identity, seed = "q4") {
   const playerSpec = player_identity === DEFAULTS.player.identity ? DEFAULTS.player : { ...DEFAULTS.player, identity: player_identity };
   const player = ensure(world, run_id, playerSpec);
   if (player.status === "dead") return { ok: false, code: "PLAYER_PERSONNEL_DECEASED" };
   const candidates = [DEFAULTS.peer, ...DEFAULTS.relief].map((spec) => history.character(world, spec.identity) ?? ensure(world, run_id, spec)).filter((person) => person.status === "active");
-  const peer = candidates[0];
+  const recentTeams = Object.values(world.q4_missions ?? {}).slice(-3).map((mission) => new Set(mission.assigned_personnel ?? []));
+  const ranked = candidates.map((person) => ({ person, score: cryptoScore([seed, person.identity, world.next_run]) + (recentTeams.some((team) => team.has(person.identity)) ? 1000 : 0) })).sort((a, b) => a.score - b.score || a.person.identity.localeCompare(b.person.identity));
+  const peer = Object.keys(world.q4_missions ?? {}).length === 0 ? (candidates.find((person) => person.identity === DEFAULTS.peer.identity) ?? (ranked[0] ?? {}).person) : (ranked[0] ?? {}).person;
   if (!peer) return { ok: false, code: "Q4_TEAM_UNAVAILABLE" };
   assign(world, run_id, player, { id: "clear-q4-field-survey-alpha", expedition_id: "clear-q4-field-survey-alpha", role: player.role });
   assign(world, run_id, peer, { id: "clear-q4-field-survey-alpha", expedition_id: "clear-q4-field-survey-alpha", role: peer.role });
+  world.q4_operations ??= { institutional_time: 0, last_review: null };
+  world.q4_operations.controlled_player = player.identity;
   return { ok: true, player: safePerson(player), peer: safePerson(peer) };
+}
+function cryptoScore(value) { let total = 0; for (const char of JSON.stringify(value)) total = (total * 33 + char.charCodeAt(0)) % 1000003; return total; }
+function selectSuccessor(world, run_id, seed = "succession") {
+  world.q4_operations ??= { institutional_time: 0, last_review: null };
+  const former = world.q4_operations.controlled_player ?? DEFAULTS.player.identity;
+  const candidates = [DEFAULTS.peer, ...DEFAULTS.relief].map((spec) => history.character(world, spec.identity) ?? ensure(world, run_id, spec)).filter((person) => person.identity !== former && person.status === "active" && person.role && person.clearance);
+  const next = candidates.sort((a, b) => cryptoScore([seed, a.identity]) - cryptoScore([seed, b.identity]) || a.identity.localeCompare(b.identity))[0];
+  if (!next) return { ok: false, code: "SUCCESSOR_UNAVAILABLE" };
+  world.q4_operations.controlled_player = next.identity;
+  history.event(world, run_id, "q4.player.succession", { former, former_status: "dead", successor: next.identity, handover: "explicit-operational-control-transfer" }, "recorded-world-history-only");
+  return { ok: true, former, successor: safePerson(next), handover: { former, final_status: "dead", former_status: "dead", new_controlled_person: next.identity, role: next.role, clearance: next.clearance, institutional_context: "future Clear-Q4 operations continue under a different assigned person" } };
 }
 function teamMember(person, role, expedition_id) {
   return { id: person.identity, personnel_id: person.identity, first_name: person.first_name, last_name: person.last_name, display_name: displayName(person), role, status: "active", contact_category: "NEARBY", observed_condition: "appears-normal", last_contact: "assigned", assignment: { id: expedition_id, role } };
@@ -63,4 +78,4 @@ function publicTeam(run, phase = "FIELD_OPERATION", world = null) {
   });
 }
 
-module.exports = { VERSION, DEFAULTS, displayName, safePerson, staffQ4, assign, teamMember, observerStatus, publicTeam };
+module.exports = { VERSION, DEFAULTS, displayName, safePerson, staffQ4, selectSuccessor, assign, teamMember, observerStatus, publicTeam };

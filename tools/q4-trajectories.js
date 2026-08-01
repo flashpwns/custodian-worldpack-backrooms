@@ -21,8 +21,10 @@ const INTENSITIES = Object.freeze(["QUIET", "SUBTLE", "SIGNIFICANT", "SEVERE"]);
 const intensityFor = (value) => { const n = parseInt(digest(value).slice(0, 8), 16) % 100; return n < 55 ? "QUIET" : n < 85 ? "SUBTLE" : n < 97 ? "SIGNIFICANT" : "SEVERE"; };
 
 function catalog() { return CATALOG.map(clone); }
+const FAMILY_GROUPS = Object.freeze({ layout: ["layout-survey", "layout-extension", "layout-comparison", "layout-shift-verification", "route-marker-audit", "prior-site-revisit", "threshold-access-confirmation"], infrastructure: ["infrastructure-material", "lighting-material-survey", "environmental-discrepancy", "outpost-inspection"], personnel: ["personnel-recovery", "contact-loss-investigation", "missing-person-search", "equipment-recovery", "recovered-media-follow-up", "radio-dead-zone-verification"] });
+function familyMatches(list, family) { return list.includes(family) || Object.values(FAMILY_GROUPS).some((group) => group.includes(family) && list.some((entry) => group.includes(entry))); }
 function chooseFamily(mission, seed) {
-  const eligible = CATALOG.filter((item) => item.compatible.includes(mission?.family));
+  const eligible = CATALOG.filter((item) => familyMatches(item.compatible, mission?.family));
   return eligible[parseInt(digest([mission?.id, seed, "trajectory-family"]).slice(0, 8), 16) % eligible.length] ?? CATALOG[0];
 }
 function attach(mission, { world = null, seed = "yellow-beast-q4" } = {}) {
@@ -31,7 +33,7 @@ function attach(mission, { world = null, seed = "yellow-beast-q4" } = {}) {
   const next = clone(mission); next.hidden_trajectory = hidden; return next;
 }
 function hidden(expedition) { return expedition?.mission?.hidden_trajectory ?? null; }
-function compatible(mission, trajectory) { return Boolean(trajectory && CATALOG.some((item) => item.id === trajectory.family && item.compatible.includes(mission?.family))); }
+function compatible(mission, trajectory) { return Boolean(trajectory && CATALOG.some((item) => item.id === trajectory.family && familyMatches(item.compatible, mission?.family))); }
 function gateOpen(trajectory, { phase, verb, observation_kind, equipment_available = true, comparison = false } = {}) {
   if (!trajectory || phase !== "FIELD_OPERATION") return false;
   const gate = trajectory.observability_gates?.[0]?.id;

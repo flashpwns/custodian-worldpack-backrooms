@@ -48,6 +48,7 @@
     "freeform-report": "node tools/freeform-report.js",
     "phase-report": "node tools/phase-report.js",
     "q4-report": "node tools/q4-report.js",
+    "q4-replayability": "node tools/q4-replayability.js",
     "beck-report": "node tools/beck-report.js",
     "immersive-report": "node tools/immersive-report.js",
     "canon-runtime-report": "node tools/canon-runtime-report.js",
