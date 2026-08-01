@@ -37,6 +37,23 @@ rows to appear complete.
 | MISSION_REVIEW | Existing `DEBRIEF` metadata and expedition/report distinctions | Partial | Derive a complete review from recorded history |
 | NEXT_EXPEDITION | No diegetic continuation loop in the desktop flow | Missing | Continue from reviewed history without feeling like a level reset |
 
+## Three-channel foundation
+
+Clear-Q4 now exposes three interaction lanes over the existing canonical
+expedition timeline. `ACTION` remains the dominant physical/environmental
+lane; `LOCAL` handles nearby dialogue; and `STANDARD` handles reachable radio
+communication. Each attempt is recorded in a shared interaction envelope with
+channel, grounding, eligibility, delivery, time cost, canonical effects, and
+observer-safe knowledge/presentation. The lanes have separate histories, but
+they do not create separate simulations or a realtime scheduler.
+
+Communication advances only a small deterministic communication interval and
+does not erase the current physical scene, phase, or location. A successful
+Standard transmission records what the player reported as reported
+institutional knowledge; it does not turn the report into objective world
+truth. Local conversation remains local unless existing world rules explicitly
+carry information onward.
+
 ## Future requirements (recorded, not implemented here)
 
 ### Interaction channels
@@ -45,9 +62,9 @@ rows to appear complete.
 - `LOCAL`: dialogue with physically present personnel.
 - `STANDARD`: radio dialogue with ASYNC/Threshold Control.
 
-These channels must coexist. Dialogue must not consume physical
-locomotion/action opportunities merely because both are expressed through the
-same player input surface.
+The remaining work is to deepen these channels without forcing dialogue to
+consume physical locomotion/action opportunities merely because both are
+expressed through the same player input surface.
 
 ### Personnel
 

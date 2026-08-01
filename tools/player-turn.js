@@ -9,6 +9,6 @@ async function executePlayerTurn({ run, mode = run.profile_id, provider, narrati
     ? sceneBuilder({ run, mode, input: player_text, natural })
     : buildSafeScene({ run, mode, input: player_text, consequence: natural.consequence, scene_type: natural.executed ? "delta" : "observation" });
   const narration = await narrateScene({ scene, provider: narration_provider });
-  return { version: VERSION, request_id, submitted_text: player_text, status, clarification: natural.grounded_intent?.clarification ?? natural.intent.clarification ?? null, scene, narration, save_required: Boolean(natural.consequence?.result.accepted), safe_diagnostics: { executed: natural.executed, duplicate: Boolean(natural.consequence?.result.duplicate) } };
+  return { version: VERSION, request_id, submitted_text: player_text, status, clarification: natural.grounded_intent?.clarification ?? natural.intent.clarification ?? null, scene, narration, consequence: natural.consequence, save_required: Boolean(natural.consequence?.result.accepted), safe_diagnostics: { executed: natural.executed, duplicate: Boolean(natural.consequence?.result.duplicate) } };
 }
 module.exports = { VERSION, executePlayerTurn };

@@ -5,7 +5,7 @@
 // projections of it, rather than additional stores of world truth.
 const VERSION = "yellow-beast-immersive-convergence@v1";
 const PROFILES = Object.freeze({
-  "field-researcher": { observer: "field", primary: ["scene", "mission", "team", "radio", "equipment", "input"], phase_style: "linear", guidance: "briefing/radio/field" },
+  "field-researcher": { observer: "field", primary: ["scene", "action", "local", "standard", "mission", "team", "radio", "equipment", "input"], phase_style: "linear", guidance: "briefing/action/local/standard/field" },
   "async-command": { observer: "beck", primary: ["situation", "inbox", "people", "processes", "input"], phase_style: "event-driven", guidance: "report/response" },
   "local-anomaly": { observer: "nullzone", primary: ["scene", "archive", "notebook", "preparation", "input"], phase_style: "cyclic", guidance: "evidence/archive" },
   lost: { observer: "lost", primary: ["scene", "input", "carrying", "landmarks"], phase_style: "minimal", guidance: "minimal" }

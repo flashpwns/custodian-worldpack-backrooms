@@ -19,8 +19,8 @@ function fieldExpedition(player) {
       "survey-instrument": { custodian: player, state: "usable", charges: 1, used: 0 },
       "survey-radio": { custodian: player, state: "usable", charges: 2, used: 0 }
     },
-    clock: { interval: 0, check_in_due_at: 2, check_in_overdue: false },
-    evidence: [], messages: [], deviations: [], history: [], outcome: null, result: null
+    clock: { interval: 0, check_in_due_at: 2, check_in_overdue: false, communication_ticks: 0 },
+    evidence: [], messages: [], interaction_history: [], deviations: [], history: [], outcome: null, result: null
   };
 }
 function event(expedition, kind, payload) { expedition.history.push({ sequence: expedition.history.length + 1, kind, payload: clone(payload) }); }
