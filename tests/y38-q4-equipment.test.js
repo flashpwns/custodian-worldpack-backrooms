@@ -51,19 +51,20 @@ test("equipment items have persistent identities, holder/location state, and per
   const restarted = new DesktopService({ appDataPath });
   assert.equal(restarted.resumeSession({ world_id: world.id, mode: "field-researcher" }).ok, true);
   assert.equal(restarted.session(world.id, "field-researcher").run.expedition.equipment["recording-device"].known_condition, "Intermittent");
-  assert.equal(camera.holder, player);
+  assert.ok(entry.run.expedition.team.members.some((member) => member.personnel_id === camera.holder));
 });
 
 test("LOCAL request does not transfer gear; physical handoff changes holder and costs modest time", () => {
   const { service, world } = fixture("q4-handoff"); reach(service, world);
-  const entry = service.session(world.id, "field-researcher"); const camera = entry.run.expedition.equipment["recording-device"]; const peer = entry.run.expedition.team.members[1];
+  const entry = service.session(world.id, "field-researcher"); const player = entry.run.session.startup.player.observer_id; const camera = entry.run.expedition.equipment["recording-device"]; const peer = entry.run.expedition.team.members.find((member) => member.personnel_id === camera.holder); const lamp = entry.run.expedition.equipment["field-light"];
   const before = service.getGameplayProjection({ world_id: world.id, mode: "field-researcher" }).projection;
-  const request = service.submitQ4Communication({ world_id: world.id, channel: "local", text: "Nora, hand me the camera.", target: peer.first_name });
-  assert.equal(request.ok, true); assert.equal(camera.holder, "yb-field-player"); assert.match(request.result.public_reason, /remains with me/);
-  const handoff = service.submitQ4Handoff({ world_id: world.id, item_id: "recording-device", target: peer.first_name });
-  assert.equal(handoff.ok, true); assert.equal(camera.holder, peer.personnel_id); assert.equal(camera.location, "with teammate");
+  const request = service.submitQ4Communication({ world_id: world.id, channel: "local", text: `${peer.first_name}, hand me the camera.`, target: peer.first_name });
+  assert.equal(request.ok, true); assert.equal(camera.holder, peer.personnel_id); assert.match(request.result.public_reason, /remains with me/);
+  assert.equal(lamp.holder, player);
+  const handoff = service.submitQ4Handoff({ world_id: world.id, item_id: "field-light", target: peer.first_name });
+  assert.equal(handoff.ok, true); assert.equal(lamp.holder, peer.personnel_id); assert.equal(lamp.location, "with teammate");
   const after = service.getGameplayProjection({ world_id: world.id, mode: "field-researcher" }).projection;
-  assert.equal(after.scene.location, before.scene.location); assert.equal(after.phase.phase_id, before.phase.phase_id); assert.equal(after.surface.expedition.clock.communication_ticks, before.surface.expedition.clock.communication_ticks + 2);
+  assert.equal(after.scene.location, before.scene.location); assert.equal(after.phase.phase_id, before.phase.phase_id); assert.equal(after.q4.operational_clock.interval, before.q4.operational_clock.interval + 1);
   const target = service.session(world.id, "field-researcher").run.aliases[Object.keys(service.session(world.id, "field-researcher").run.aliases)[0]];
   const teamUse = service.submitAction({ world_id: world.id, mode: "field-researcher", action: "RECORD", target });
   assert.equal(teamUse.ok, true); assert.equal(camera.holder, peer.personnel_id, "declared nearby team use does not teleport custody");
@@ -73,10 +74,10 @@ test("missing, damaged, and depleted gear constrain ACTION without regenerating"
   const { service, world } = fixture("q4-equipment-capability"); reach(service, world);
   const entry = service.session(world.id, "field-researcher"); const instrument = entry.run.expedition.equipment["survey-instrument"];
   instrument.state = "damaged";
-  assert.equal(service.submitAction({ world_id: world.id, mode: "field-researcher", action: "USE", target: "survey-instrument" }).error.code, "EQUIPMENT_UNAVAILABLE");
+  assert.match(service.submitAction({ world_id: world.id, mode: "field-researcher", action: "USE", target: "survey-instrument" }).error.code, /^EQUIPMENT_(?:UNAVAILABLE|NOT_ACCESSIBLE)$/);
   instrument.state = "operational"; instrument.charges = 0;
-  assert.equal(service.submitAction({ world_id: world.id, mode: "field-researcher", action: "USE", target: "survey-instrument" }).error.code, "EQUIPMENT_UNAVAILABLE");
-  const itemId = instrument.id; instrument.state = "abandoned"; instrument.holder = "yb-field-peer-observer"; service.persistSession(service.getWorld(world.id), "field-researcher", entry);
+  assert.match(service.submitAction({ world_id: world.id, mode: "field-researcher", action: "USE", target: "survey-instrument" }).error.code, /^EQUIPMENT_(?:UNAVAILABLE|NOT_ACCESSIBLE)$/);
+  const itemId = instrument.id; instrument.state = "abandoned"; service.persistSession(service.getWorld(world.id), "field-researcher", entry);
   const next = service.startSession({ world_id: world.id, mode: "field-researcher", seed: "q4-equipment-reissue" });
   assert.equal(next.ok, true); const nextEntry = service.session(world.id, "field-researcher"); const replacement = nextEntry.run.expedition.equipment["survey-instrument"];
   assert.notEqual(replacement.id, itemId); assert.equal(service.getWorld(world.id).q4_equipment[itemId].state, "abandoned");

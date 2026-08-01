@@ -1,60 +1,29 @@
 "use strict";
 
-const VERSION = "yellow-beast-q4-time@v2";
+// Compatibility facade for saves and older callers. Operational time has one
+// authority in operational-time; check-in lifecycle lives in communications.
+const operationalTime = require("./operational-time");
+const communications = require("./communication-runtime");
+const VERSION = "yellow-beast-q4-time@v3";
 
-function ensure(expedition) {
-  expedition.clock ??= {};
-  expedition.clock.interval = Number.isFinite(expedition.clock.interval) ? expedition.clock.interval : 0;
-  expedition.clock.check_in_due_at = Number.isFinite(expedition.clock.check_in_due_at) ? expedition.clock.check_in_due_at : null;
-  expedition.clock.check_in_overdue = Boolean(expedition.clock.check_in_overdue);
-  expedition.clock.check_in_missed = Boolean(expedition.clock.check_in_missed);
-  expedition.clock.check_in_completed_at = Number.isFinite(expedition.clock.check_in_completed_at) ? expedition.clock.check_in_completed_at : null;
-  return expedition.clock;
-}
+function ensure(expedition) { operationalTime.migrate(expedition); communications.ensure(expedition); return expedition.clock; }
 
 function schedule(expedition, intervals = 3) {
-  const clock = ensure(expedition);
-  if (clock.check_in_due_at === null || clock.check_in_due_at <= clock.interval) clock.check_in_due_at = clock.interval + Math.max(1, intervals);
-  clock.check_in_overdue = false;
-  clock.check_in_missed = false;
-  clock.check_in_completed_at = null;
-  return status(expedition);
+  ensure(expedition); const existing = expedition.communications.check_ins[0];
+  if (!existing) expedition.communications.check_ins.push({ id: "legacy-field-check-in", label: "Scheduled field status report", scheduled_at: expedition.clock.interval, due_at: expedition.clock.interval + Math.max(1, intervals), missed_at: expedition.clock.interval + Math.max(1, intervals) + 2, approaching_within: 1, state: "scheduled", completed_at: null, waived_at: null, message_id: null, history: [{ sequence: 1, from: null, to: "scheduled", at: expedition.clock.interval, reason: "explicit legacy check-in migration" }] });
+  communications.updateCheckIns(expedition); return status(expedition);
 }
 
-function advance(expedition, amount = 1) {
-  const clock = ensure(expedition);
-  clock.interval += Math.max(0, amount);
-  if (clock.check_in_due_at !== null && clock.interval > clock.check_in_due_at && clock.check_in_completed_at === null) {
-    clock.check_in_overdue = true;
-    clock.check_in_missed = true;
-    if (!expedition.deviations?.includes("missed-declared-check-in")) expedition.deviations?.push("missed-declared-check-in");
-  }
-  return status(expedition);
-}
-
+function advance(expedition, amount = 1) { operationalTime.advance(expedition, Math.max(0, Number(amount) || 0), "legacy-time-facade"); communications.updateCheckIns(expedition); return status(expedition); }
 function complete(expedition) {
-  const clock = ensure(expedition);
-  if (clock.check_in_due_at === null) return status(expedition);
-  clock.check_in_completed_at ??= clock.interval;
-  if (clock.interval > clock.check_in_due_at) {
-    clock.check_in_overdue = true;
-    clock.check_in_missed = true;
-    if (!expedition.deviations?.includes("missed-declared-check-in")) expedition.deviations?.push("missed-declared-check-in");
-  }
-  return status(expedition);
+  ensure(expedition); const checkIn = expedition.communications.check_ins[0]; if (!checkIn) return status(expedition);
+  const message = { id: `legacy-check-in-${expedition.clock.interval}`, purpose: "scheduled-check-in", check_in_id: checkIn.id };
+  communications.completeCheckIn(expedition, message); return status(expedition);
 }
-
 function status(expedition) {
-  const clock = ensure(expedition);
-  if (clock.check_in_due_at === null) return { state: "not-scheduled", label: "NOT SCHEDULED", due_at: null, remaining: null };
-  const remaining = clock.check_in_due_at - clock.interval;
-  if (clock.check_in_completed_at !== null) {
-    const late = Math.max(0, clock.check_in_completed_at - clock.check_in_due_at);
-    return { state: late ? "completed-late" : "completed", label: late ? `CHECK-IN COMPLETE · LATE BY ${late} ${late === 1 ? "INTERVAL" : "INTERVALS"}` : "CHECK-IN COMPLETE", due_at: clock.check_in_due_at, remaining, completed_at: clock.check_in_completed_at };
-  }
-  if (clock.check_in_overdue || remaining < 0) return { state: "overdue", label: `OVERDUE BY ${Math.abs(remaining)} ${Math.abs(remaining) === 1 ? "INTERVAL" : "INTERVALS"}`, due_at: clock.check_in_due_at, remaining };
-  if (remaining === 0) return { state: "due", label: "CHECK-IN DUE", due_at: clock.check_in_due_at, remaining: 0 };
-  return { state: "scheduled", label: `DUE IN ${remaining} ${remaining === 1 ? "INTERVAL" : "INTERVALS"}`, due_at: clock.check_in_due_at, remaining };
+  const projected = communications.project(expedition).check_ins[0];
+  if (!projected) return { state: "not-scheduled", label: "NOT SCHEDULED", due_at: null, remaining: null };
+  return { state: projected.state, label: projected.state_label.toUpperCase(), due_at: projected.due_at, remaining: projected.due_at - expedition.clock.interval, completed_at: projected.completed_at, summary: projected.summary };
 }
 
 module.exports = { VERSION, ensure, schedule, advance, complete, status };

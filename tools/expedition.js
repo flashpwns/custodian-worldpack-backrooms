@@ -2,24 +2,28 @@
 
 const clone = (value) => structuredClone(value);
 const q4Equipment = require("./q4-equipment");
+const personnelGeneration = require("./personnel-generation");
 const FIELD_SCENARIO = "async-clear-q4-field-survey";
 
-function fieldExpedition(player, staffing = null, loadout = null, mission = null) {
-  const playerPerson = staffing?.player ?? { identity: player, first_name: "Alex", last_name: "Morgan", display_name: "Alex Morgan", role: "field surveyor", clearance: "field", condition: "normal", status: "active" };
-  const peerPerson = staffing?.peer ?? { identity: "yb-field-peer-observer", first_name: "Nora", last_name: "Vale", display_name: "Nora Vale", role: "survey technician", clearance: "field", condition: "normal", status: "active" };
-  const assistantPerson = staffing ? staffing.assistant : { identity: "yb-field-alex-morgan", first_name: "Alex", last_name: "Morgan", display_name: "Alex Morgan", role: "field surveyor", clearance: "field", condition: "normal", status: "active" };
-  const assignedMission = mission ?? { id: "CQ4-LAYOUT-SURVEY-001", family: "layout-survey", family_label: "Layout / Survey", rationale: "ASYNC has assigned a bounded field record.", site: { label: "the declared survey boundary", boundary: "survey boundary" }, objective: { primary: "Record the layout across the declared survey boundary.", procedures: ["Record accessible layout and retain a field record."], completion_criteria: ["The assigned boundary is addressed and the field record is retained."] }, assigned_personnel: [playerPerson.identity, peerPerson.identity, assistantPerson.identity], required_equipment: [...q4Equipment.REQUIRED], reporting: { summary: "Transmit a check-in and retain evidence." }, status: "assigned" };
+function fieldExpedition(player, staffing = null, loadout = null, mission = null, seed = "standalone-field-team", staffingRules = {}) {
+  const playerPerson = staffing?.player ?? { identity: player, first_name: "Field", last_name: "Researcher", display_name: "Field Researcher", role: "field researcher", clearance: "field", condition: "normal", status: "active" };
+  const generated = staffing ? null : personnelGeneration.generate({ seed, world_id: "standalone", player: playerPerson, staffing: staffingRules });
+  const coworkers = staffing ? (staffing.coworkers ?? staffing.team?.filter((person) => person.identity !== playerPerson.identity) ?? [staffing.peer, staffing.assistant].filter(Boolean)) : generated.coworkers;
+  const teamPeople = [playerPerson, ...coworkers].filter(Boolean);
+  if (teamPeople.length < 3 || teamPeople.length > 5) throw new Error("field expedition staffing must contain three to five personnel");
+  const assignedMission = mission ?? { id: "CQ4-LAYOUT-SURVEY-001", family: "layout-survey", family_label: "Layout / Survey", rationale: "ASYNC has assigned a bounded field record.", site: { label: "the declared survey boundary", boundary: "survey boundary" }, objective: { primary: "Record the layout across the declared survey boundary.", procedures: ["Record accessible layout and retain a field record."], completion_criteria: ["The assigned boundary is addressed and the field record is retained."] }, assigned_personnel: teamPeople.map((person) => person.identity), required_equipment: [...q4Equipment.REQUIRED], reporting: { summary: "Transmit a check-in and retain evidence." }, status: "assigned" };
   return {
-    version: "yellow-beast-expedition@v2",
+    version: "yellow-beast-expedition@v3",
     id: "clear-q4-field-survey-alpha",
     title: "Clear-Q4 Field Survey Alpha",
-    team: { id: "clear-q4-survey-team", members: [playerPerson, peerPerson, assistantPerson].filter(Boolean).map((person) => ({ id: person.identity, personnel_id: person.identity, first_name: person.first_name, last_name: person.last_name, display_name: person.display_name, role: person.role, clearance: person.clearance, status: "active", contact_category: "NEARBY", observed_condition: "appears-normal", last_contact: "assigned" })) },
+    team: { id: "clear-q4-survey-team", generation: staffing?.generation ?? { version: personnelGeneration.VERSION, seed, total: teamPeople.length }, members: teamPeople.map((person) => ({ id: person.identity, personnel_id: person.identity, first_name: person.first_name, last_name: person.last_name, display_name: person.display_name, role: person.role, clearance: person.clearance, status: "active", health: "uninjured", condition: "normal", contact_category: "NEARBY", observed_condition: "appears-normal", last_contact: "assigned" })) },
     mission: clone(assignedMission), mission_id: assignedMission.id,
     order: { issuer: "Standard", primary: assignedMission.objective.primary, constraints: assignedMission.objective.procedures, reporting: assignedMission.reporting.summary ?? "Transmit a check-in and retain evidence.", authority: "institutional-instruction-not-objective-truth" },
     equipment: loadout?.required ?? q4Equipment.expeditionEquipment(null, player),
     optional_stores: loadout?.optional ?? {},
     loadout: { required: [...(assignedMission.required_equipment ?? q4Equipment.REQUIRED)], optional: [...q4Equipment.OPTIONAL], phase: "BRIEFING" },
     clock: { interval: 0, check_in_due_at: null, check_in_overdue: false, check_in_missed: false, check_in_completed_at: null, communication_ticks: 0 },
+    operational: { version: "yellow-beast-operational-time@v1", clock: { interval: 0, check_in_due_at: null, check_in_overdue: false, check_in_missed: false, check_in_completed_at: null, communication_ticks: 0 }, events: [], event_history: [], cycle_history: [], evaluation_revision: 0, consequences: [], consequence_revision: 0 },
     radio: { version: "yellow-beast-q4-radio@v1", state: "unavailable", check_completed: false, authorized: false, last_transition: "expedition-created", last_delivery: null },
     evidence: [], messages: [], interaction_history: [], deviations: [], history: [], outcome: null, result: null
   };

@@ -1,6 +1,6 @@
 {
   "version": "yellow-beast-playable-spine-acceptance@v1",
-  "generated_at": "2026-08-01T08:06:21.695Z",
+  "generated_at": "2026-08-01T10:00:01.308Z",
   "evidence_kind": "deterministic rendered-surface and persisted-state capture",
   "world_name": "ClearQ4est",
   "opening_controls": [
@@ -21,8 +21,10 @@
       "player": "Jack Rocha",
       "controlled_personnel": "Jack Rocha · YOU",
       "coworkers": [
-        "Nora Vale",
-        "Alex Morgan"
+        "Jennifer Dorsey",
+        "Esther Henderson",
+        "Margaret McKee",
+        "Victoria Swanson"
       ],
       "mission": "CQ4-LAYOUT-EXTENSION-002-1673",
       "equipment": [
@@ -34,13 +36,13 @@
         },
         {
           "id": "q4-recording-device-01",
-          "holder": "Alex Morgan",
+          "holder": "Esther Henderson",
           "state": "Operational",
           "verification": "visually confirmed"
         },
         {
           "id": "q4-survey-instrument-01",
-          "holder": "Nora Vale",
+          "holder": "Jennifer Dorsey",
           "state": "Operational",
           "verification": "visually confirmed"
         },
@@ -76,11 +78,19 @@
                 "status": "present"
               },
               {
-                "name": "Nora Vale",
+                "name": "Jennifer Dorsey",
                 "status": "present"
               },
               {
-                "name": "Alex Morgan",
+                "name": "Esther Henderson",
+                "status": "present"
+              },
+              {
+                "name": "Margaret McKee",
+                "status": "present"
+              },
+              {
+                "name": "Victoria Swanson",
                 "status": "present"
               }
             ]
@@ -103,8 +113,10 @@
       "player": "Jack Rocha",
       "controlled_personnel": "Jack Rocha · YOU",
       "coworkers": [
-        "Nora Vale",
-        "Alex Morgan"
+        "Jennifer Dorsey",
+        "Esther Henderson",
+        "Margaret McKee",
+        "Victoria Swanson"
       ],
       "mission": "CQ4-LAYOUT-EXTENSION-002-1673",
       "equipment": [
@@ -116,13 +128,13 @@
         },
         {
           "id": "q4-recording-device-01",
-          "holder": "Alex Morgan",
+          "holder": "Esther Henderson",
           "state": "Operational",
           "verification": "visually confirmed"
         },
         {
           "id": "q4-survey-instrument-01",
-          "holder": "Nora Vale",
+          "holder": "Jennifer Dorsey",
           "state": "Operational",
           "verification": "visually confirmed"
         },
@@ -140,7 +152,7 @@
       "standard_history": [
         {
           "speaker": "YOU",
-          "text": "Standard, Clear-Q4 team Complex-side. 3 personnel accounted for.",
+          "text": "Standard, Clear-Q4 team Complex-side. 5 personnel accounted for.",
           "delivery": "delivered"
         },
         {
@@ -151,9 +163,11 @@
       ],
       "check_in": {
         "state": "scheduled",
-        "label": "DUE IN 3 INTERVALS",
-        "due_at": 3,
-        "remaining": 3
+        "label": "SCHEDULED",
+        "due_at": 12,
+        "remaining": 8,
+        "completed_at": null,
+        "summary": "Due at operational interval 12."
       },
       "location": "Threshold-Side Entry",
       "observation": null,
@@ -193,11 +207,19 @@
                 "status": "present"
               },
               {
-                "name": "Nora Vale",
+                "name": "Jennifer Dorsey",
                 "status": "present"
               },
               {
-                "name": "Alex Morgan",
+                "name": "Esther Henderson",
+                "status": "present"
+              },
+              {
+                "name": "Margaret McKee",
+                "status": "present"
+              },
+              {
+                "name": "Victoria Swanson",
                 "status": "present"
               }
             ]
@@ -218,7 +240,7 @@
             "from": "threshold-room",
             "to": "threshold-side-entry",
             "connection_id": "threshold-crossing",
-            "at": 0
+            "at": 2
           }
         ]
       }
@@ -228,8 +250,10 @@
       "player": "Jack Rocha",
       "controlled_personnel": "Jack Rocha · YOU",
       "coworkers": [
-        "Nora Vale",
-        "Alex Morgan"
+        "Jennifer Dorsey",
+        "Esther Henderson",
+        "Margaret McKee",
+        "Victoria Swanson"
       ],
       "mission": "CQ4-LAYOUT-EXTENSION-002-1673",
       "equipment": [
@@ -241,13 +265,13 @@
         },
         {
           "id": "q4-recording-device-01",
-          "holder": "Alex Morgan",
+          "holder": "Esther Henderson",
           "state": "Operational",
           "verification": "visually confirmed"
         },
         {
           "id": "q4-survey-instrument-01",
-          "holder": "Nora Vale",
+          "holder": "Jennifer Dorsey",
           "state": "Operational",
           "verification": "visually confirmed"
         },
@@ -265,7 +289,7 @@
       "standard_history": [
         {
           "speaker": "YOU",
-          "text": "Standard, Clear-Q4 team Complex-side. 3 personnel accounted for.",
+          "text": "Standard, Clear-Q4 team Complex-side. 5 personnel accounted for.",
           "delivery": "delivered"
         },
         {
@@ -276,12 +300,14 @@
       ],
       "check_in": {
         "state": "scheduled",
-        "label": "DUE IN 3 INTERVALS",
-        "due_at": 3,
-        "remaining": 3
+        "label": "SCHEDULED",
+        "due_at": 12,
+        "remaining": 7,
+        "completed_at": null,
+        "summary": "Due at operational interval 12."
       },
       "location": "Utility Room",
-      "observation": "You take stock of the utility room. A fluorescent fixture hums steadily overhead. Shallow scuffs cross the bare floor without forming a confirmed route marker. A shallow metal service panel sits flush with the east wall. A threshold-side entry leads back. A columned corridor continues west. An open passage leads southeast. Nora and Alex remain within speaking range.",
+      "observation": "You take stock of the utility room. A fluorescent fixture hums steadily overhead. Shallow scuffs cross the bare floor without forming a confirmed route marker. A shallow metal service panel sits flush with the east wall. A threshold-side entry leads back. A columned corridor continues west. An open passage leads southeast. Jennifer, Esther, Margaret, and Victoria remain within speaking range.",
       "map": {
         "nodes": [
           {
@@ -324,11 +350,19 @@
                 "status": "present"
               },
               {
-                "name": "Nora Vale",
+                "name": "Jennifer Dorsey",
                 "status": "present"
               },
               {
-                "name": "Alex Morgan",
+                "name": "Esther Henderson",
+                "status": "present"
+              },
+              {
+                "name": "Margaret McKee",
+                "status": "present"
+              },
+              {
+                "name": "Victoria Swanson",
                 "status": "present"
               }
             ]
@@ -356,28 +390,30 @@
             "from": "threshold-room",
             "to": "threshold-side-entry",
             "connection_id": "threshold-crossing",
-            "at": 0
+            "at": 2
           },
           {
             "sequence": 2,
             "from": "threshold-side-entry",
             "to": "utility-room",
             "connection_id": "entry-to-utility",
-            "at": 0
+            "at": 4
           }
         ]
       }
     },
     "orientation": {
-      "narration": "You take stock of the utility room. A fluorescent fixture hums steadily overhead. Shallow scuffs cross the bare floor without forming a confirmed route marker. A shallow metal service panel sits flush with the east wall. A threshold-side entry leads back. A columned corridor continues west. An open passage leads southeast. Nora and Alex remain within speaking range."
+      "narration": "You take stock of the utility room. A fluorescent fixture hums steadily overhead. Shallow scuffs cross the bare floor without forming a confirmed route marker. A shallow metal service panel sits flush with the east wall. A threshold-side entry leads back. A columned corridor continues west. An open passage leads southeast. Jennifer, Esther, Margaret, and Victoria remain within speaking range."
     },
     "moved": {
       "phase": "FIELD_OPERATION",
       "player": "Jack Rocha",
       "controlled_personnel": "Jack Rocha · YOU",
       "coworkers": [
-        "Nora Vale",
-        "Alex Morgan"
+        "Jennifer Dorsey",
+        "Esther Henderson",
+        "Margaret McKee",
+        "Victoria Swanson"
       ],
       "mission": "CQ4-LAYOUT-EXTENSION-002-1673",
       "equipment": [
@@ -389,13 +425,13 @@
         },
         {
           "id": "q4-recording-device-01",
-          "holder": "Alex Morgan",
+          "holder": "Esther Henderson",
           "state": "Operational",
           "verification": "visually confirmed"
         },
         {
           "id": "q4-survey-instrument-01",
-          "holder": "Nora Vale",
+          "holder": "Jennifer Dorsey",
           "state": "Operational",
           "verification": "visually confirmed"
         },
@@ -413,7 +449,7 @@
       "standard_history": [
         {
           "speaker": "YOU",
-          "text": "Standard, Clear-Q4 team Complex-side. 3 personnel accounted for.",
+          "text": "Standard, Clear-Q4 team Complex-side. 5 personnel accounted for.",
           "delivery": "delivered"
         },
         {
@@ -424,12 +460,14 @@
       ],
       "check_in": {
         "state": "scheduled",
-        "label": "DUE IN 2 INTERVALS",
-        "due_at": 3,
-        "remaining": 2
+        "label": "SCHEDULED",
+        "due_at": 12,
+        "remaining": 6,
+        "completed_at": null,
+        "summary": "Due at operational interval 12."
       },
       "location": "Columned Corridor",
-      "observation": "You take stock of the columned corridor. Square columns break the westward sightline into regular intervals. A utility room lies east. Nora and Alex remain within speaking range.",
+      "observation": "You take stock of the columned corridor. Square columns break the westward sightline into regular intervals. A utility room lies east. Jennifer, Esther, Margaret, and Victoria remain within speaking range.",
       "map": {
         "nodes": [
           {
@@ -478,11 +516,19 @@
                 "status": "present"
               },
               {
-                "name": "Nora Vale",
+                "name": "Jennifer Dorsey",
                 "status": "present"
               },
               {
-                "name": "Alex Morgan",
+                "name": "Esther Henderson",
+                "status": "present"
+              },
+              {
+                "name": "Margaret McKee",
+                "status": "present"
+              },
+              {
+                "name": "Victoria Swanson",
                 "status": "present"
               }
             ]
@@ -495,21 +541,21 @@
             "from": "threshold-room",
             "to": "threshold-side-entry",
             "connection_id": "threshold-crossing",
-            "at": 0
+            "at": 2
           },
           {
             "sequence": 2,
             "from": "threshold-side-entry",
             "to": "utility-room",
             "connection_id": "entry-to-utility",
-            "at": 0
+            "at": 4
           },
           {
             "sequence": 3,
             "from": "utility-room",
             "to": "columned-corridor",
             "connection_id": "utility-to-corridor",
-            "at": 1
+            "at": 6
           }
         ]
       }
@@ -519,8 +565,10 @@
       "player": "Jack Rocha",
       "controlled_personnel": "Jack Rocha · YOU",
       "coworkers": [
-        "Nora Vale",
-        "Alex Morgan"
+        "Jennifer Dorsey",
+        "Esther Henderson",
+        "Margaret McKee",
+        "Victoria Swanson"
       ],
       "mission": "CQ4-LAYOUT-EXTENSION-002-1673",
       "equipment": [
@@ -532,13 +580,13 @@
         },
         {
           "id": "q4-recording-device-01",
-          "holder": "Alex Morgan",
+          "holder": "Esther Henderson",
           "state": "Operational",
           "verification": "visually confirmed"
         },
         {
           "id": "q4-survey-instrument-01",
-          "holder": "Nora Vale",
+          "holder": "Jennifer Dorsey",
           "state": "Operational",
           "verification": "visually confirmed"
         },
@@ -556,7 +604,7 @@
       "standard_history": [
         {
           "speaker": "YOU",
-          "text": "Standard, Clear-Q4 team Complex-side. 3 personnel accounted for.",
+          "text": "Standard, Clear-Q4 team Complex-side. 5 personnel accounted for.",
           "delivery": "delivered"
         },
         {
@@ -567,12 +615,14 @@
       ],
       "check_in": {
         "state": "scheduled",
-        "label": "DUE IN 2 INTERVALS",
-        "due_at": 3,
-        "remaining": 2
+        "label": "SCHEDULED",
+        "due_at": 12,
+        "remaining": 6,
+        "completed_at": null,
+        "summary": "Due at operational interval 12."
       },
       "location": "Columned Corridor",
-      "observation": "You take stock of the columned corridor. Square columns break the westward sightline into regular intervals. A utility room lies east. Nora and Alex remain within speaking range.",
+      "observation": "You take stock of the columned corridor. Square columns break the westward sightline into regular intervals. A utility room lies east. Jennifer, Esther, Margaret, and Victoria remain within speaking range.",
       "map": {
         "nodes": [
           {
@@ -621,11 +671,19 @@
                 "status": "present"
               },
               {
-                "name": "Nora Vale",
+                "name": "Jennifer Dorsey",
                 "status": "present"
               },
               {
-                "name": "Alex Morgan",
+                "name": "Esther Henderson",
+                "status": "present"
+              },
+              {
+                "name": "Margaret McKee",
+                "status": "present"
+              },
+              {
+                "name": "Victoria Swanson",
                 "status": "present"
               }
             ]
@@ -638,21 +696,21 @@
             "from": "threshold-room",
             "to": "threshold-side-entry",
             "connection_id": "threshold-crossing",
-            "at": 0
+            "at": 2
           },
           {
             "sequence": 2,
             "from": "threshold-side-entry",
             "to": "utility-room",
             "connection_id": "entry-to-utility",
-            "at": 0
+            "at": 4
           },
           {
             "sequence": 3,
             "from": "utility-room",
             "to": "columned-corridor",
             "connection_id": "utility-to-corridor",
-            "at": 1
+            "at": 6
           }
         ]
       }

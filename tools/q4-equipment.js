@@ -1,7 +1,7 @@
 "use strict";
 
 const history = require("./world-history");
-const VERSION = "yellow-beast-q4-equipment@v1";
+const VERSION = "yellow-beast-q4-equipment@v2";
 const REQUIRED = Object.freeze(["field-light", "recording-device", "survey-instrument", "survey-radio"]);
 const OPTIONAL = Object.freeze(["field-notebook", "spare-film", "route-marker-kit"]);
 const DEFINITIONS = Object.freeze({
@@ -14,7 +14,9 @@ const DEFINITIONS = Object.freeze({
   "route-marker-kit": { type: "route-marker-kit", label: "Numbered route-marker kit", model: "adhesive numbered survey tabs", capability: "route marking", consumable: { kind: "numbered tabs", remaining: 4 } }
 });
 const clone = (value) => structuredClone(value);
-const DEFAULT_HOLDER_NAMES = Object.freeze({ "yb-field-peer-observer": "Nora Vale", "yb-field-alex-morgan": "Alex Morgan" });
+// Display fallback for migrated v1 saves only; new holders are resolved from
+// the persisted generated roster supplied to projection().
+const LEGACY_HOLDER_NAMES = Object.freeze({ "yb-field-peer-observer": "Nora Vale", "yb-field-alex-morgan": "Alex Morgan" });
 function makeId(world, key) { const entries = Object.keys(world?.q4_equipment ?? {}).filter((id) => id.startsWith(`q4-${key}-`)); return `q4-${key}-${String(entries.length + 1).padStart(2, "0")}`; }
 function createItem(world, key, { owner, holder, container = "field case", location = "staging locker", id = null } = {}) {
   const definition = DEFINITIONS[key]; if (!definition) throw new Error(`unknown Q4 equipment type: ${key}`);
@@ -30,12 +32,14 @@ function ensureWorldItem(world, run_id, key, player, preferredId = null) {
   history.event(world, run_id, "q4.equipment.issued", { equipment_id: item.id, type: item.type, holder: item.holder, location: item.location });
   return item;
 }
-function prepare(world, run_id, { player, peer, assistant = null, required_keys = REQUIRED }) {
+function prepare(world, run_id, { player, peer = null, assistant = null, coworkers = [], required_keys = REQUIRED }) {
   const required = Object.fromEntries(required_keys.map((key) => [key, clone(ensureWorldItem(world, run_id, key, player))]));
   const optional = Object.fromEntries(OPTIONAL.map((key) => { const id = `q4-${key}-stores`; world.q4_equipment ??= {}; world.q4_equipment[id] ??= createItem(world, key, { owner: "q4-stores", holder: "q4-stores", container: "optional stores", location: "staging locker", id }); return [key, clone(world.q4_equipment[id])]; }));
-  const holders = { "field-light": player, "recording-device": assistant ?? player, "survey-instrument": peer ?? player, "survey-radio": player };
+  const people = coworkers.length ? coworkers : [peer, assistant].filter(Boolean);
+  const roleHolder = (pattern, fallback = player) => people.find((person) => pattern.test(String(person.role ?? "")))?.identity ?? people.find((person) => typeof person === "string") ?? fallback;
+  const holders = { "field-light": player, "recording-device": roleHolder(/documentation/i), "survey-instrument": roleHolder(/survey technician/i), "survey-radio": player };
   for (const [key, item] of Object.entries(required)) { const holder = holders[key] ?? player; item.assigned_to = holder; item.holder = holder; item.container = "field case"; item.location = "staging locker"; if (holder !== player) item.history.push({ event: "assigned-to-team-member", holder, location: item.location }); }
-  return { required, optional, player, peer, assistant };
+  return { required, optional, player, peer: holders["survey-instrument"], assistant: holders["recording-device"], coworkers: people.map((person) => person.identity ?? person) };
 }
 function expeditionEquipment(loadout, player) {
   const values = loadout?.required ?? {};
@@ -75,7 +79,7 @@ function syncWorld(world, expedition) { if (!world || !expedition?.equipment) re
 function publicItem(item, player, known = true, holderNames = {}, context = {}) {
   const own = item.holder === player; const actualState = stateUsable(item) ? (item.known_condition ?? "Operational") : String(item.state ?? "unavailable").replace(/(^|[-_])\w/g, (part) => part.replace(/[-_]/, " ").toUpperCase()); const state = known ? actualState : "Unknown condition";
   const stores = item.holder === "q4-stores";
-  const names = { ...DEFAULT_HOLDER_NAMES, ...holderNames };
+  const names = { ...LEGACY_HOLDER_NAMES, ...holderNames };
   const holderStatus = context.personnel_status?.[item.holder];
   const missing = ["dead", "missing", "unavailable", "unknown"].includes(holderStatus?.status);
   const sameLocation = own || stores || (!missing && Boolean(context.spatial && context.observer && context.spatial.personnel_locations?.[item.holder] && context.spatial.personnel_locations[item.holder] === context.spatial.personnel_locations[context.observer]));

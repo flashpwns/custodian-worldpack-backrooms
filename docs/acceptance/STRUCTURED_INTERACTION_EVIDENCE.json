@@ -1,6 +1,6 @@
 {
   "version": "yellow-beast-structured-interaction-acceptance@v1",
-  "generated_at": "2026-08-01T08:06:22.559Z",
+  "generated_at": "2026-08-01T10:00:02.416Z",
   "evidence_kind": "deterministic rendered-surface and persisted-state capture",
   "actions": [
     "INSPECT fluorescent fixture",
@@ -18,7 +18,7 @@
     "initial_object_observation": {
       "phase": "FIELD_OPERATION",
       "location": "Utility Room",
-      "observation": "You take stock of the utility room. A fluorescent fixture hums steadily overhead. Shallow scuffs cross the bare floor without forming a confirmed route marker. A shallow metal service panel sits flush with the east wall. A threshold-side entry leads back. A columned corridor continues west. An open passage leads southeast. Nora and Alex remain within speaking range.",
+      "observation": "You take stock of the utility room. A fluorescent fixture hums steadily overhead. Shallow scuffs cross the bare floor without forming a confirmed route marker. A shallow metal service panel sits flush with the east wall. A threshold-side entry leads back. A columned corridor continues west. An open passage leads southeast. Deborah, Judith, and Alana remain within speaking range.",
       "interactables": [
         {
           "name": "fluorescent fixture",
@@ -121,14 +121,14 @@
         },
         {
           "label": "35mm field camera",
-          "holder": "Alex Morgan",
+          "holder": "Judith Newman",
           "state": "Operational",
           "verification": "visually confirmed",
           "remaining": 12
         },
         {
           "label": "Portable survey instrument",
-          "holder": "Nora Vale",
+          "holder": "Deborah Cantrell",
           "state": "Operational",
           "verification": "visually confirmed",
           "remaining": "checked"
@@ -148,26 +148,33 @@
           "remaining": 4
         }
       ],
-      "operational_time": "T+0 intervals",
+      "operational_time": "T+5 intervals",
       "check_in": {
         "state": "scheduled",
-        "label": "DUE IN 3 INTERVALS",
-        "due_at": 3,
-        "remaining": 3
+        "label": "SCHEDULED",
+        "due_at": 12,
+        "remaining": 7,
+        "completed_at": null,
+        "summary": "Due at operational interval 12."
       },
       "team": [
         {
           "name": "Jack Rocha · YOU",
           "location": "utility-room",
-          "contact": "LOCAL"
+          "contact": "SELF"
         },
         {
-          "name": "Nora Vale",
+          "name": "Deborah Cantrell",
           "location": "utility-room",
           "contact": "LOCAL"
         },
         {
-          "name": "Alex Morgan",
+          "name": "Judith Newman",
+          "location": "utility-room",
+          "contact": "LOCAL"
+        },
+        {
+          "name": "Alana Roman",
           "location": "utility-room",
           "contact": "LOCAL"
         }
@@ -215,11 +222,15 @@
                 "status": "present"
               },
               {
-                "name": "Nora Vale",
+                "name": "Deborah Cantrell",
                 "status": "present"
               },
               {
-                "name": "Alex Morgan",
+                "name": "Judith Newman",
+                "status": "present"
+              },
+              {
+                "name": "Alana Roman",
                 "status": "present"
               }
             ]
@@ -231,14 +242,14 @@
             "from": "threshold-room",
             "to": "threshold-side-entry",
             "connection_id": "threshold-crossing",
-            "at": 0
+            "at": 2
           },
           {
             "sequence": 2,
             "from": "threshold-side-entry",
             "to": "utility-room",
             "connection_id": "entry-to-utility",
-            "at": 0
+            "at": 4
           }
         ]
       }
@@ -246,7 +257,7 @@
     "inspection_result": {
       "phase": "FIELD_OPERATION",
       "location": "Utility Room",
-      "observation": "You take stock of the utility room. A fluorescent fixture hums steadily overhead. Shallow scuffs cross the bare floor without forming a confirmed route marker. A shallow metal service panel sits flush with the east wall. A threshold-side entry leads back. A columned corridor continues west. An open passage leads southeast. Nora and Alex remain within speaking range.",
+      "observation": "You take stock of the utility room. A fluorescent fixture hums steadily overhead. Shallow scuffs cross the bare floor without forming a confirmed route marker. A shallow metal service panel sits flush with the east wall. A threshold-side entry leads back. A columned corridor continues west. An open passage leads southeast. Deborah, Judith, and Alana remain within speaking range.",
       "interactables": [
         {
           "name": "fluorescent fixture",
@@ -355,14 +366,14 @@
         },
         {
           "label": "35mm field camera",
-          "holder": "Alex Morgan",
+          "holder": "Judith Newman",
           "state": "Operational",
           "verification": "visually confirmed",
           "remaining": 12
         },
         {
           "label": "Portable survey instrument",
-          "holder": "Nora Vale",
+          "holder": "Deborah Cantrell",
           "state": "Operational",
           "verification": "visually confirmed",
           "remaining": "checked"
@@ -382,26 +393,33 @@
           "remaining": 4
         }
       ],
-      "operational_time": "T+0 intervals",
+      "operational_time": "T+5 intervals",
       "check_in": {
         "state": "scheduled",
-        "label": "DUE IN 3 INTERVALS",
-        "due_at": 3,
-        "remaining": 3
+        "label": "SCHEDULED",
+        "due_at": 12,
+        "remaining": 7,
+        "completed_at": null,
+        "summary": "Due at operational interval 12."
       },
       "team": [
         {
           "name": "Jack Rocha · YOU",
           "location": "utility-room",
-          "contact": "LOCAL"
+          "contact": "SELF"
         },
         {
-          "name": "Nora Vale",
+          "name": "Deborah Cantrell",
           "location": "utility-room",
           "contact": "LOCAL"
         },
         {
-          "name": "Alex Morgan",
+          "name": "Judith Newman",
+          "location": "utility-room",
+          "contact": "LOCAL"
+        },
+        {
+          "name": "Alana Roman",
           "location": "utility-room",
           "contact": "LOCAL"
         }
@@ -449,11 +467,15 @@
                 "status": "present"
               },
               {
-                "name": "Nora Vale",
+                "name": "Deborah Cantrell",
                 "status": "present"
               },
               {
-                "name": "Alex Morgan",
+                "name": "Judith Newman",
+                "status": "present"
+              },
+              {
+                "name": "Alana Roman",
                 "status": "present"
               }
             ]
@@ -465,14 +487,14 @@
             "from": "threshold-room",
             "to": "threshold-side-entry",
             "connection_id": "threshold-crossing",
-            "at": 0
+            "at": 2
           },
           {
             "sequence": 2,
             "from": "threshold-side-entry",
             "to": "utility-room",
             "connection_id": "entry-to-utility",
-            "at": 0
+            "at": 4
           }
         ]
       }
@@ -480,7 +502,7 @@
     "successful_state_mutation": {
       "phase": "FIELD_OPERATION",
       "location": "Utility Room",
-      "observation": "You take stock of the utility room. The fluorescent fixture remains steady overhead and is now tagged in the survey record. Shallow scuffs cross the bare floor without forming a confirmed route marker. A shallow metal service panel sits flush with the east wall. A threshold-side entry leads back. A columned corridor continues west. An open passage leads southeast. Nora and Alex remain within speaking range.",
+      "observation": "You take stock of the utility room. The fluorescent fixture remains steady overhead and is now tagged in the survey record. Shallow scuffs cross the bare floor without forming a confirmed route marker. A shallow metal service panel sits flush with the east wall. A threshold-side entry leads back. A columned corridor continues west. An open passage leads southeast. Deborah, Judith, and Alana remain within speaking range.",
       "interactables": [
         {
           "name": "fluorescent fixture",
@@ -584,11 +606,11 @@
           "type": "fixture-test",
           "source": "fluorescent fixture",
           "condition": "The active fixture held a steady output during the instrument test.",
-          "observer": "Nora Vale",
+          "observer": "Deborah Cantrell",
           "device": "Portable survey instrument",
           "location": "Utility Room",
           "time": {
-            "interval": 1
+            "interval": 6
           },
           "reporting_state": "unreported"
         }
@@ -603,14 +625,14 @@
         },
         {
           "label": "35mm field camera",
-          "holder": "Alex Morgan",
+          "holder": "Judith Newman",
           "state": "Operational",
           "verification": "visually confirmed",
           "remaining": 12
         },
         {
           "label": "Portable survey instrument",
-          "holder": "Nora Vale",
+          "holder": "Deborah Cantrell",
           "state": "Depleted",
           "verification": "visually confirmed",
           "remaining": "checked"
@@ -630,26 +652,33 @@
           "remaining": 4
         }
       ],
-      "operational_time": "T+1 intervals",
+      "operational_time": "T+6 intervals",
       "check_in": {
         "state": "scheduled",
-        "label": "DUE IN 2 INTERVALS",
-        "due_at": 3,
-        "remaining": 2
+        "label": "SCHEDULED",
+        "due_at": 12,
+        "remaining": 6,
+        "completed_at": null,
+        "summary": "Due at operational interval 12."
       },
       "team": [
         {
           "name": "Jack Rocha · YOU",
           "location": "utility-room",
-          "contact": "LOCAL"
+          "contact": "SELF"
         },
         {
-          "name": "Nora Vale",
+          "name": "Deborah Cantrell",
           "location": "utility-room",
           "contact": "LOCAL"
         },
         {
-          "name": "Alex Morgan",
+          "name": "Judith Newman",
+          "location": "utility-room",
+          "contact": "LOCAL"
+        },
+        {
+          "name": "Alana Roman",
           "location": "utility-room",
           "contact": "LOCAL"
         }
@@ -697,11 +726,15 @@
                 "status": "present"
               },
               {
-                "name": "Nora Vale",
+                "name": "Deborah Cantrell",
                 "status": "present"
               },
               {
-                "name": "Alex Morgan",
+                "name": "Judith Newman",
+                "status": "present"
+              },
+              {
+                "name": "Alana Roman",
                 "status": "present"
               }
             ]
@@ -713,14 +746,14 @@
             "from": "threshold-room",
             "to": "threshold-side-entry",
             "connection_id": "threshold-crossing",
-            "at": 0
+            "at": 2
           },
           {
             "sequence": 2,
             "from": "threshold-side-entry",
             "to": "utility-room",
             "connection_id": "entry-to-utility",
-            "at": 0
+            "at": 4
           }
         ]
       }
@@ -728,7 +761,7 @@
     "route_marker_placed": {
       "phase": "FIELD_OPERATION",
       "location": "Utility Room",
-      "observation": "You take stock of the utility room. The fluorescent fixture remains steady overhead and is now tagged in the survey record. The numbered route marker you placed remains visible beside the west-wall scuffs. A shallow metal service panel sits flush with the east wall. A threshold-side entry leads back. A columned corridor continues west. An open passage leads southeast. Nora and Alex remain within speaking range.",
+      "observation": "You take stock of the utility room. The fluorescent fixture remains steady overhead and is now tagged in the survey record. The numbered route marker you placed remains visible beside the west-wall scuffs. A shallow metal service panel sits flush with the east wall. A threshold-side entry leads back. A columned corridor continues west. An open passage leads southeast. Deborah, Judith, and Alana remain within speaking range.",
       "interactables": [
         {
           "name": "fluorescent fixture",
@@ -838,11 +871,11 @@
           "type": "fixture-test",
           "source": "fluorescent fixture",
           "condition": "The active fixture held a steady output during the instrument test.",
-          "observer": "Nora Vale",
+          "observer": "Deborah Cantrell",
           "device": "Portable survey instrument",
           "location": "Utility Room",
           "time": {
-            "interval": 1
+            "interval": 6
           },
           "reporting_state": "unreported"
         }
@@ -857,14 +890,14 @@
         },
         {
           "label": "35mm field camera",
-          "holder": "Alex Morgan",
+          "holder": "Judith Newman",
           "state": "Operational",
           "verification": "visually confirmed",
           "remaining": 12
         },
         {
           "label": "Portable survey instrument",
-          "holder": "Nora Vale",
+          "holder": "Deborah Cantrell",
           "state": "Depleted",
           "verification": "visually confirmed",
           "remaining": "checked"
@@ -884,26 +917,33 @@
           "remaining": 3
         }
       ],
-      "operational_time": "T+2 intervals",
+      "operational_time": "T+7 intervals",
       "check_in": {
         "state": "scheduled",
-        "label": "DUE IN 1 INTERVAL",
-        "due_at": 3,
-        "remaining": 1
+        "label": "SCHEDULED",
+        "due_at": 12,
+        "remaining": 5,
+        "completed_at": null,
+        "summary": "Due at operational interval 12."
       },
       "team": [
         {
           "name": "Jack Rocha · YOU",
           "location": "utility-room",
-          "contact": "LOCAL"
+          "contact": "SELF"
         },
         {
-          "name": "Nora Vale",
+          "name": "Deborah Cantrell",
           "location": "utility-room",
           "contact": "LOCAL"
         },
         {
-          "name": "Alex Morgan",
+          "name": "Judith Newman",
+          "location": "utility-room",
+          "contact": "LOCAL"
+        },
+        {
+          "name": "Alana Roman",
           "location": "utility-room",
           "contact": "LOCAL"
         }
@@ -951,11 +991,15 @@
                 "status": "present"
               },
               {
-                "name": "Nora Vale",
+                "name": "Deborah Cantrell",
                 "status": "present"
               },
               {
-                "name": "Alex Morgan",
+                "name": "Judith Newman",
+                "status": "present"
+              },
+              {
+                "name": "Alana Roman",
                 "status": "present"
               }
             ]
@@ -967,14 +1011,14 @@
             "from": "threshold-room",
             "to": "threshold-side-entry",
             "connection_id": "threshold-crossing",
-            "at": 0
+            "at": 2
           },
           {
             "sequence": 2,
             "from": "threshold-side-entry",
             "to": "utility-room",
             "connection_id": "entry-to-utility",
-            "at": 0
+            "at": 4
           }
         ]
       }
@@ -982,7 +1026,7 @@
     "panel_opened": {
       "phase": "FIELD_OPERATION",
       "location": "Utility Room",
-      "observation": "You take stock of the utility room. The fluorescent fixture remains steady overhead and is now tagged in the survey record. The numbered route marker you placed remains visible beside the west-wall scuffs. The service panel stands open on the east wall, its shallow intact interior visible. A threshold-side entry leads back. A columned corridor continues west. An open passage leads southeast. Nora and Alex remain within speaking range.",
+      "observation": "You take stock of the utility room. The fluorescent fixture remains steady overhead and is now tagged in the survey record. The numbered route marker you placed remains visible beside the west-wall scuffs. The service panel stands open on the east wall, its shallow intact interior visible. A threshold-side entry leads back. A columned corridor continues west. An open passage leads southeast. Deborah, Judith, and Alana remain within speaking range.",
       "interactables": [
         {
           "name": "fluorescent fixture",
@@ -1098,11 +1142,11 @@
           "type": "fixture-test",
           "source": "fluorescent fixture",
           "condition": "The active fixture held a steady output during the instrument test.",
-          "observer": "Nora Vale",
+          "observer": "Deborah Cantrell",
           "device": "Portable survey instrument",
           "location": "Utility Room",
           "time": {
-            "interval": 1
+            "interval": 6
           },
           "reporting_state": "unreported"
         }
@@ -1117,14 +1161,14 @@
         },
         {
           "label": "35mm field camera",
-          "holder": "Alex Morgan",
+          "holder": "Judith Newman",
           "state": "Operational",
           "verification": "visually confirmed",
           "remaining": 12
         },
         {
           "label": "Portable survey instrument",
-          "holder": "Nora Vale",
+          "holder": "Deborah Cantrell",
           "state": "Depleted",
           "verification": "visually confirmed",
           "remaining": "checked"
@@ -1144,26 +1188,33 @@
           "remaining": 3
         }
       ],
-      "operational_time": "T+3 intervals",
+      "operational_time": "T+8 intervals",
       "check_in": {
-        "state": "due",
-        "label": "CHECK-IN DUE",
-        "due_at": 3,
-        "remaining": 0
+        "state": "scheduled",
+        "label": "SCHEDULED",
+        "due_at": 12,
+        "remaining": 4,
+        "completed_at": null,
+        "summary": "Due at operational interval 12."
       },
       "team": [
         {
           "name": "Jack Rocha · YOU",
           "location": "utility-room",
-          "contact": "LOCAL"
+          "contact": "SELF"
         },
         {
-          "name": "Nora Vale",
+          "name": "Deborah Cantrell",
           "location": "utility-room",
           "contact": "LOCAL"
         },
         {
-          "name": "Alex Morgan",
+          "name": "Judith Newman",
+          "location": "utility-room",
+          "contact": "LOCAL"
+        },
+        {
+          "name": "Alana Roman",
           "location": "utility-room",
           "contact": "LOCAL"
         }
@@ -1211,11 +1262,15 @@
                 "status": "present"
               },
               {
-                "name": "Nora Vale",
+                "name": "Deborah Cantrell",
                 "status": "present"
               },
               {
-                "name": "Alex Morgan",
+                "name": "Judith Newman",
+                "status": "present"
+              },
+              {
+                "name": "Alana Roman",
                 "status": "present"
               }
             ]
@@ -1227,14 +1282,14 @@
             "from": "threshold-room",
             "to": "threshold-side-entry",
             "connection_id": "threshold-crossing",
-            "at": 0
+            "at": 2
           },
           {
             "sequence": 2,
             "from": "threshold-side-entry",
             "to": "utility-room",
             "connection_id": "entry-to-utility",
-            "at": 0
+            "at": 4
           }
         ]
       }
@@ -1242,7 +1297,7 @@
     "moved_away": {
       "phase": "FIELD_OPERATION",
       "location": "Columned Corridor",
-      "observation": "You take stock of the columned corridor. Square columns break the westward sightline into regular intervals. A utility room lies east. Nora and Alex remain within speaking range.",
+      "observation": "You take stock of the columned corridor. Square columns break the westward sightline into regular intervals. A utility room lies east. Deborah, Judith, and Alana remain within speaking range.",
       "interactables": [],
       "objectives": [
         {
@@ -1277,7 +1332,7 @@
         },
         {
           "label": "Maintain the scheduled check-in",
-          "state": "failed",
+          "state": "active",
           "required": true
         },
         {
@@ -1297,11 +1352,11 @@
           "type": "fixture-test",
           "source": "fluorescent fixture",
           "condition": "The active fixture held a steady output during the instrument test.",
-          "observer": "Nora Vale",
+          "observer": "Deborah Cantrell",
           "device": "Portable survey instrument",
           "location": "Utility Room",
           "time": {
-            "interval": 1
+            "interval": 6
           },
           "reporting_state": "unreported"
         }
@@ -1316,14 +1371,14 @@
         },
         {
           "label": "35mm field camera",
-          "holder": "Alex Morgan",
+          "holder": "Judith Newman",
           "state": "Operational",
           "verification": "visually confirmed",
           "remaining": 12
         },
         {
           "label": "Portable survey instrument",
-          "holder": "Nora Vale",
+          "holder": "Deborah Cantrell",
           "state": "Depleted",
           "verification": "visually confirmed",
           "remaining": "checked"
@@ -1343,26 +1398,33 @@
           "remaining": 3
         }
       ],
-      "operational_time": "T+4 intervals",
+      "operational_time": "T+9 intervals",
       "check_in": {
-        "state": "overdue",
-        "label": "OVERDUE BY 1 INTERVAL",
-        "due_at": 3,
-        "remaining": -1
+        "state": "scheduled",
+        "label": "SCHEDULED",
+        "due_at": 12,
+        "remaining": 3,
+        "completed_at": null,
+        "summary": "Due at operational interval 12."
       },
       "team": [
         {
           "name": "Jack Rocha · YOU",
           "location": "columned-corridor",
-          "contact": "LOCAL"
+          "contact": "SELF"
         },
         {
-          "name": "Nora Vale",
+          "name": "Deborah Cantrell",
           "location": "columned-corridor",
           "contact": "LOCAL"
         },
         {
-          "name": "Alex Morgan",
+          "name": "Judith Newman",
+          "location": "columned-corridor",
+          "contact": "LOCAL"
+        },
+        {
+          "name": "Alana Roman",
           "location": "columned-corridor",
           "contact": "LOCAL"
         }
@@ -1415,11 +1477,15 @@
                 "status": "present"
               },
               {
-                "name": "Nora Vale",
+                "name": "Deborah Cantrell",
                 "status": "present"
               },
               {
-                "name": "Alex Morgan",
+                "name": "Judith Newman",
+                "status": "present"
+              },
+              {
+                "name": "Alana Roman",
                 "status": "present"
               }
             ]
@@ -1431,21 +1497,21 @@
             "from": "threshold-room",
             "to": "threshold-side-entry",
             "connection_id": "threshold-crossing",
-            "at": 0
+            "at": 2
           },
           {
             "sequence": 2,
             "from": "threshold-side-entry",
             "to": "utility-room",
             "connection_id": "entry-to-utility",
-            "at": 0
+            "at": 4
           },
           {
             "sequence": 3,
             "from": "utility-room",
             "to": "columned-corridor",
             "connection_id": "utility-to-corridor",
-            "at": 4
+            "at": 9
           }
         ]
       }
@@ -1453,7 +1519,7 @@
     "returned_to_changed_room": {
       "phase": "FIELD_OPERATION",
       "location": "Utility Room",
-      "observation": "You take stock of the utility room. The fluorescent fixture remains steady overhead and is now tagged in the survey record. The numbered route marker you placed remains visible beside the west-wall scuffs. The service panel stands open on the east wall, its shallow intact interior visible. A threshold-side entry leads back. A columned corridor continues west. An open passage leads southeast. Nora and Alex remain within speaking range.",
+      "observation": "You take stock of the utility room. The fluorescent fixture remains steady overhead and is now tagged in the survey record. The numbered route marker you placed remains visible beside the west-wall scuffs. The service panel stands open on the east wall, its shallow intact interior visible. A threshold-side entry leads back. A columned corridor continues west. An open passage leads southeast. Deborah, Judith, and Alana remain within speaking range.",
       "interactables": [
         {
           "name": "fluorescent fixture",
@@ -1549,7 +1615,7 @@
         },
         {
           "label": "Maintain the scheduled check-in",
-          "state": "failed",
+          "state": "active",
           "required": true
         },
         {
@@ -1569,11 +1635,11 @@
           "type": "fixture-test",
           "source": "fluorescent fixture",
           "condition": "The active fixture held a steady output during the instrument test.",
-          "observer": "Nora Vale",
+          "observer": "Deborah Cantrell",
           "device": "Portable survey instrument",
           "location": "Utility Room",
           "time": {
-            "interval": 1
+            "interval": 6
           },
           "reporting_state": "unreported"
         }
@@ -1588,14 +1654,14 @@
         },
         {
           "label": "35mm field camera",
-          "holder": "Alex Morgan",
+          "holder": "Judith Newman",
           "state": "Operational",
           "verification": "visually confirmed",
           "remaining": 12
         },
         {
           "label": "Portable survey instrument",
-          "holder": "Nora Vale",
+          "holder": "Deborah Cantrell",
           "state": "Depleted",
           "verification": "visually confirmed",
           "remaining": "checked"
@@ -1615,26 +1681,33 @@
           "remaining": 3
         }
       ],
-      "operational_time": "T+5 intervals",
+      "operational_time": "T+10 intervals",
       "check_in": {
-        "state": "overdue",
-        "label": "OVERDUE BY 2 INTERVALS",
-        "due_at": 3,
-        "remaining": -2
+        "state": "approaching",
+        "label": "APPROACHING",
+        "due_at": 12,
+        "remaining": 2,
+        "completed_at": null,
+        "summary": "Due in 2 interval."
       },
       "team": [
         {
           "name": "Jack Rocha · YOU",
           "location": "utility-room",
-          "contact": "LOCAL"
+          "contact": "SELF"
         },
         {
-          "name": "Nora Vale",
+          "name": "Deborah Cantrell",
           "location": "utility-room",
           "contact": "LOCAL"
         },
         {
-          "name": "Alex Morgan",
+          "name": "Judith Newman",
+          "location": "utility-room",
+          "contact": "LOCAL"
+        },
+        {
+          "name": "Alana Roman",
           "location": "utility-room",
           "contact": "LOCAL"
         }
@@ -1682,11 +1755,15 @@
                 "status": "present"
               },
               {
-                "name": "Nora Vale",
+                "name": "Deborah Cantrell",
                 "status": "present"
               },
               {
-                "name": "Alex Morgan",
+                "name": "Judith Newman",
+                "status": "present"
+              },
+              {
+                "name": "Alana Roman",
                 "status": "present"
               }
             ]
@@ -1703,28 +1780,28 @@
             "from": "threshold-room",
             "to": "threshold-side-entry",
             "connection_id": "threshold-crossing",
-            "at": 0
+            "at": 2
           },
           {
             "sequence": 2,
             "from": "threshold-side-entry",
             "to": "utility-room",
             "connection_id": "entry-to-utility",
-            "at": 0
+            "at": 4
           },
           {
             "sequence": 3,
             "from": "utility-room",
             "to": "columned-corridor",
             "connection_id": "utility-to-corridor",
-            "at": 4
+            "at": 9
           },
           {
             "sequence": 4,
             "from": "columned-corridor",
             "to": "utility-room",
             "connection_id": "utility-to-corridor",
-            "at": 5
+            "at": 10
           }
         ]
       }
@@ -1732,7 +1809,7 @@
     "post_restart_resume": {
       "phase": "FIELD_OPERATION",
       "location": "Utility Room",
-      "observation": "You take stock of the utility room. The fluorescent fixture remains steady overhead and is now tagged in the survey record. The numbered route marker you placed remains visible beside the west-wall scuffs. The service panel stands open on the east wall, its shallow intact interior visible. A threshold-side entry leads back. A columned corridor continues west. An open passage leads southeast. Nora and Alex remain within speaking range.",
+      "observation": "You take stock of the utility room. The fluorescent fixture remains steady overhead and is now tagged in the survey record. The numbered route marker you placed remains visible beside the west-wall scuffs. The service panel stands open on the east wall, its shallow intact interior visible. A threshold-side entry leads back. A columned corridor continues west. An open passage leads southeast. Deborah, Judith, and Alana remain within speaking range.",
       "interactables": [
         {
           "name": "fluorescent fixture",
@@ -1828,7 +1905,7 @@
         },
         {
           "label": "Maintain the scheduled check-in",
-          "state": "failed",
+          "state": "active",
           "required": true
         },
         {
@@ -1848,11 +1925,11 @@
           "type": "fixture-test",
           "source": "fluorescent fixture",
           "condition": "The active fixture held a steady output during the instrument test.",
-          "observer": "Nora Vale",
+          "observer": "Deborah Cantrell",
           "device": "Portable survey instrument",
           "location": "Utility Room",
           "time": {
-            "interval": 1
+            "interval": 6
           },
           "reporting_state": "unreported"
         }
@@ -1867,14 +1944,14 @@
         },
         {
           "label": "35mm field camera",
-          "holder": "Alex Morgan",
+          "holder": "Judith Newman",
           "state": "Operational",
           "verification": "visually confirmed",
           "remaining": 12
         },
         {
           "label": "Portable survey instrument",
-          "holder": "Nora Vale",
+          "holder": "Deborah Cantrell",
           "state": "Depleted",
           "verification": "visually confirmed",
           "remaining": "checked"
@@ -1894,26 +1971,33 @@
           "remaining": 3
         }
       ],
-      "operational_time": "T+5 intervals",
+      "operational_time": "T+10 intervals",
       "check_in": {
-        "state": "overdue",
-        "label": "OVERDUE BY 2 INTERVALS",
-        "due_at": 3,
-        "remaining": -2
+        "state": "approaching",
+        "label": "APPROACHING",
+        "due_at": 12,
+        "remaining": 2,
+        "completed_at": null,
+        "summary": "Due in 2 interval."
       },
       "team": [
         {
           "name": "Jack Rocha · YOU",
           "location": "utility-room",
-          "contact": "LOCAL"
+          "contact": "SELF"
         },
         {
-          "name": "Nora Vale",
+          "name": "Deborah Cantrell",
           "location": "utility-room",
           "contact": "LOCAL"
         },
         {
-          "name": "Alex Morgan",
+          "name": "Judith Newman",
+          "location": "utility-room",
+          "contact": "LOCAL"
+        },
+        {
+          "name": "Alana Roman",
           "location": "utility-room",
           "contact": "LOCAL"
         }
@@ -1961,11 +2045,15 @@
                 "status": "present"
               },
               {
-                "name": "Nora Vale",
+                "name": "Deborah Cantrell",
                 "status": "present"
               },
               {
-                "name": "Alex Morgan",
+                "name": "Judith Newman",
+                "status": "present"
+              },
+              {
+                "name": "Alana Roman",
                 "status": "present"
               }
             ]
@@ -1982,28 +2070,28 @@
             "from": "threshold-room",
             "to": "threshold-side-entry",
             "connection_id": "threshold-crossing",
-            "at": 0
+            "at": 2
           },
           {
             "sequence": 2,
             "from": "threshold-side-entry",
             "to": "utility-room",
             "connection_id": "entry-to-utility",
-            "at": 0
+            "at": 4
           },
           {
             "sequence": 3,
             "from": "utility-room",
             "to": "columned-corridor",
             "connection_id": "utility-to-corridor",
-            "at": 4
+            "at": 9
           },
           {
             "sequence": 4,
             "from": "columned-corridor",
             "to": "utility-room",
             "connection_id": "utility-to-corridor",
-            "at": 5
+            "at": 10
           }
         ]
       }

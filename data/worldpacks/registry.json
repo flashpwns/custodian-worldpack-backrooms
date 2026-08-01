@@ -12,7 +12,8 @@
       "display_order": 1,
       "spatial_record": "data/worldpacks/clear-q4/spatial.json",
       "interaction_record": "data/worldpacks/clear-q4/interactions.json",
-      "mission_record": "data/worldpacks/clear-q4/mission.json"
+      "mission_record": "data/worldpacks/clear-q4/mission.json",
+      "dynamics_record": "data/worldpacks/clear-q4/dynamics.json"
     },
     {
       "id": "lost",

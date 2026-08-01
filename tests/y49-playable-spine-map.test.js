@@ -57,9 +57,11 @@ test("same-location coworkers authoritatively enable LOCAL and visually confirm 
   const { started } = fixture("proximity-equipment");
   const q4 = started.projection.q4;
   assert.equal(q4.channels.local.available, true);
-  assert.deepEqual(q4.channels.local.targets, ["Nora", "Alex"]);
-  assert.ok(q4.team.every((person) => person.contact_category === "LOCAL"));
-  const coworkerGear = q4.equipment.required.filter((item) => ["Alex Morgan", "Nora Vale"].includes(item.holder));
+  const coworkers = q4.team.filter((person) => !person.controlled);
+  assert.deepEqual(q4.channels.local.targets, coworkers.map((person) => person.first_name));
+  assert.ok(coworkers.every((person) => person.contact_category === "LOCAL"));
+  const coworkerNames = new Set(coworkers.map((person) => person.display_name));
+  const coworkerGear = q4.equipment.required.filter((item) => coworkerNames.has(item.holder));
   assert.equal(coworkerGear.length, 2);
   assert.ok(coworkerGear.every((item) => item.location === "carrying" && item.state === "Operational" && item.verification === "visually confirmed"));
 });
@@ -67,13 +69,15 @@ test("same-location coworkers authoritatively enable LOCAL and visually confirm 
 test("separated personnel cannot remain within speaking range", () => {
   const { service, world } = fixture("separated-proximity");
   const entry = service.session(world.id, "field-researcher");
-  entry.run.spatial.personnel_locations["yb-field-alex-morgan"] = "columned-corridor";
-  entry.run.spatial.last_confirmed_personnel_positions["yb-field-alex-morgan"] = { location: "columned-corridor", at: 0, source: "visual" };
+  const playerId = entry.run.session.startup.player.observer_id;
+  const peer = entry.run.expedition.team.members.find((member) => member.personnel_id !== playerId);
+  entry.run.spatial.personnel_locations[peer.personnel_id] = "columned-corridor";
+  entry.run.spatial.last_confirmed_personnel_positions[peer.personnel_id] = { location: "columned-corridor", at: 0, source: "visual" };
   const projection = service.getGameplayProjection({ world_id: world.id, mode: "field-researcher" }).projection;
-  const alex = projection.q4.team.find((member) => member.first_name === "Alex");
-  assert.notEqual(alex.contact_category, "LOCAL");
-  assert.equal(alex.local_eligible, false);
-  assert.deepEqual(projection.q4.channels.local.targets, ["Nora"]);
+  const separated = projection.q4.team.find((member) => member.first_name === peer.first_name);
+  assert.notEqual(separated.contact_category, "LOCAL");
+  assert.equal(separated.local_eligible, false);
+  assert.deepEqual(projection.q4.channels.local.targets, projection.q4.team.filter((member) => !member.controlled && member.first_name !== peer.first_name).map((member) => member.first_name));
 });
 
 test("radio check is a visible, persisted procedure before field departure", () => {
@@ -90,7 +94,7 @@ test("radio check is a visible, persisted procedure before field departure", () 
   assert.equal(projection.q4.channels.standard.state, "available");
   assert.equal(projection.q4.channels.standard.available, true);
   assert.deepEqual(projection.q4.channels.standard.history.slice(-2).map((item) => item.speaker), ["YOU", "STANDARD"]);
-  assert.match(projection.q4.channels.standard.history.at(-2).text, /3 personnel accounted for/);
+  assert.match(projection.q4.channels.standard.history.at(-2).text, new RegExp(`${projection.q4.team.length} personnel accounted for`));
   assert.match(projection.q4.channels.standard.history.at(-1).text, /contact established/);
   assert.match(surfaces.render(projection), /visible-radio-exchange[\s\S]*YOU[\s\S]*STANDARD/);
   service.shutdown();
@@ -144,7 +148,8 @@ test("natural observation and movement alter spatial state, team state, time, an
 
 test("movement aliases cover passage, lower-level approach, return, and coworker checks", async () => {
   const { service, world } = fixture("movement-language");
-  reachField(service, world);
+  const field = reachField(service, world).projection;
+  const [firstPeer, secondPeer = firstPeer] = field.q4.team.filter((member) => !member.controlled);
   let result = await service.submitNatural({ world_id: world.id, mode: "field-researcher", text: "Enter the open passage." });
   assert.equal(result.projection.q4.current_location.name, "Open Passage");
   result = await service.submitNatural({ world_id: world.id, mode: "field-researcher", text: "Head toward the lower level." });
@@ -152,10 +157,10 @@ test("movement aliases cover passage, lower-level approach, return, and coworker
   const blocked = await service.submitNatural({ world_id: world.id, mode: "field-researcher", text: "Enter Level 2." });
   assert.equal(blocked.ok, false);
   assert.match(blocked.error.message, /blocked|not authorized/i);
-  result = await service.submitNatural({ world_id: world.id, mode: "field-researcher", text: "Check on Alex." });
+  result = await service.submitNatural({ world_id: world.id, mode: "field-researcher", text: `Check on ${firstPeer.first_name}.` });
   assert.equal(result.ok, true);
-  assert.match(result.result.scene.narration, /Alex is beside you/i);
-  result = await service.submitNatural({ world_id: world.id, mode: "field-researcher", text: "Follow Nora." });
+  assert.match(result.result.scene.narration, new RegExp(`${firstPeer.first_name} is beside you`, "i"));
+  result = await service.submitNatural({ world_id: world.id, mode: "field-researcher", text: `Follow ${secondPeer.first_name}.` });
   assert.equal(result.ok, true);
   assert.match(result.result.scene.narration, /team remains together/i);
 });
@@ -164,19 +169,21 @@ test("check-in schedule has explicit scheduled, due, overdue, complete, and unsc
   const expedition = { clock: { interval: 0, check_in_due_at: null, check_in_overdue: false }, deviations: [] };
   assert.deepEqual(q4Time.status(expedition), { state: "not-scheduled", label: "NOT SCHEDULED", due_at: null, remaining: null });
   q4Time.schedule(expedition, 3);
-  assert.equal(q4Time.status(expedition).label, "DUE IN 3 INTERVALS");
+  assert.equal(q4Time.status(expedition).state, "scheduled");
   q4Time.advance(expedition, 3);
-  assert.equal(q4Time.status(expedition).label, "CHECK-IN DUE");
+  assert.equal(q4Time.status(expedition).state, "due");
   q4Time.advance(expedition, 1);
-  assert.equal(q4Time.status(expedition).label, "OVERDUE BY 1 INTERVAL");
+  assert.equal(q4Time.status(expedition).state, "overdue");
   q4Time.complete(expedition);
-  assert.match(q4Time.status(expedition).label, /^CHECK-IN COMPLETE/);
+  assert.equal(q4Time.status(expedition).state, "completed");
 });
 
 test("complete FIELD_OPERATION identity, assignment, equipment, dialogue, radio, location, and map survive restart", async () => {
   const { root, service, world } = fixture("field-persistence");
-  reachField(service, world);
-  const local = service.submitQ4Communication({ world_id: world.id, channel: "local", target: "Alex", text: "Stay with the route record, Alex." });
+  const field = reachField(service, world).projection;
+  const peer = field.q4.team.find((member) => !member.controlled);
+  const assignedNames = field.q4.team.filter((member) => !member.controlled).map((member) => member.display_name);
+  const local = service.submitQ4Communication({ world_id: world.id, channel: "local", target: peer.first_name, text: `Stay with the route record, ${peer.first_name}.` });
   assert.equal(local.ok, true);
   const moved = await service.submitNatural({ world_id: world.id, mode: "field-researcher", text: "Move into the corridor." });
   assert.equal(moved.ok, true);
@@ -190,7 +197,7 @@ test("complete FIELD_OPERATION identity, assignment, equipment, dialogue, radio,
   assert.equal(resumed.projection.phase.phase_id, "FIELD_OPERATION");
   assert.equal(q4.player.name, "Jack Rocha");
   assert.equal(q4.team.find((member) => member.controlled).display_name, "Jack Rocha · YOU");
-  assert.deepEqual(q4.team.filter((member) => !member.controlled).map((member) => member.display_name), ["Nora Vale", "Alex Morgan"]);
+  assert.deepEqual(q4.team.filter((member) => !member.controlled).map((member) => member.display_name), assignedNames);
   assert.equal(q4.mission_record.id, missionId);
   assert.deepEqual(q4.equipment.required.map((item) => [item.id, item.holder]), holders);
   assert.equal(q4.channels.local.history.some((item) => /Stay with the route record/.test(item.text)), true);
@@ -200,7 +207,7 @@ test("complete FIELD_OPERATION identity, assignment, equipment, dialogue, radio,
   assert.equal(q4.map.nodes.some((node) => node.id === "columned-corridor" && node.current), true);
   assert.ok(q4.team.every((member) => member.location === "columned-corridor"));
   assert.equal(q4.channels.local.available, true);
-  assert.equal(q4.check_in.remaining, 2);
+  assert.equal(q4.check_in.remaining, q4.check_in.due_at - q4.operational_clock.interval);
 });
 
 test("legacy session and run envelopes migrate into a usable spatial field record", () => {

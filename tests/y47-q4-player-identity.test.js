@@ -34,11 +34,12 @@ test("fresh Clear-Q4 requires personnel creation before assignment generation", 
   assert.equal(started.projection.q4.player.name, "Jack Rocha");
 });
 
-test("player is a distinct controlled person from Alex Morgan and Nora Vale", () => {
+test("player is distinct from a bounded generated coworker roster", () => {
   const { service, world } = fixture(); const started = createAndStart(service, world); const team = started.projection.q4.team;
-  assert.equal(team.length, 3);
+  assert.ok(team.length >= 3 && team.length <= 5);
   assert.equal(team[0].display_name, "Jack Rocha · YOU");
-  assert.deepEqual(team.slice(1).map((person) => person.display_name), ["Nora Vale", "Alex Morgan"]);
+  assert.equal(new Set(team.slice(1).map((person) => person.display_name)).size, team.length - 1);
+  assert.ok(team.slice(1).every((person) => person.display_name && !person.controlled));
   assert.ok(team.every((person) => person.display_name !== "Jack Rocha" || person.controlled));
 });
 
@@ -46,15 +47,16 @@ test("created identity persists and equipment holders name the actual people", (
   const { service, world } = fixture("identity-persistence"); const started = createAndStart(service, world); const before = started.projection.q4;
   assert.deepEqual(before.q4?.player, undefined);
   const holders = before.equipment.required.map((item) => item.holder);
-  assert.deepEqual(holders, ["You", "Alex Morgan", "Nora Vale", "You"]);
+  assert.equal(holders.filter((holder) => holder === "You").length, 2);
+  assert.ok(holders.filter((holder) => holder !== "You").every((holder) => before.team.some((person) => person.display_name === holder)));
   const restarted = new DesktopService({ appDataPath: service.paths.root }); const resumed = restarted.resumeSession({ world_id: world.id, mode: "field-researcher" });
   assert.equal(resumed.ok, true); assert.equal(resumed.projection.q4.player.name, "Jack Rocha");
 });
 
-test("LOCAL is delivered to Nora before field entry while Standard remains procedurally gated", () => {
-  const { service, world } = fixture("communication-gates"); createAndStart(service, world);
-  const local = service.submitQ4Communication({ world_id: world.id, channel: "local", target: "Nora", text: "Good morning, Nora." });
-  assert.equal(local.ok, true); assert.match(local.result.public_reason, /^Nora:/);
+test("LOCAL is delivered to a generated coworker before field entry while Standard remains procedurally gated", () => {
+  const { service, world } = fixture("communication-gates"); const started = createAndStart(service, world); const peer = started.projection.q4.team.find((member) => !member.controlled);
+  const local = service.submitQ4Communication({ world_id: world.id, channel: "local", target: peer.first_name, text: `Good morning, ${peer.first_name}.` });
+  assert.equal(local.ok, true); assert.match(local.result.public_reason, new RegExp(`^${peer.first_name}:`));
   const standard = service.submitQ4Communication({ world_id: world.id, channel: "standard", text: "Hello?" });
   assert.equal(standard.ok, false); assert.match(standard.error.message, /not active during briefing/i);
   advanceTo(service, world, ["READY", "PROCEED", "APPROACH"]);

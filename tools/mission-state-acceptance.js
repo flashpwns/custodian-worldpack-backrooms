@@ -90,9 +90,9 @@ async function main() {
   assert.equal(report.projection.q4.mission_progress.required_objectives.find((item) => item.name === "Report field evidence").state, "satisfied");
   assert.equal(report.projection.q4.mission_progress.required_objectives.find((item) => item.name === "Maintain the scheduled check-in").state, "satisfied");
 
-  const movedAway = await service.submitNatural({ world_id: world.id, mode: "field-researcher", text: "Move into the corridor." });
+  const movedAway = await service.submitNatural({ world_id: world.id, mode: "field-researcher", text: "Move into the open passage." });
   assert.equal(movedAway.ok, true);
-  const returnedToSurvey = await service.submitNatural({ world_id: world.id, mode: "field-researcher", text: "Return east to the utility room." });
+  const returnedToSurvey = await service.submitNatural({ world_id: world.id, mode: "field-researcher", text: "Return northwest to the utility room." });
   assert.equal(returnedToSurvey.ok, true);
   action(service, world, "MOVE", "back");
   action(service, world, "INSPECT", "return marker");
@@ -130,7 +130,7 @@ async function main() {
     optional_condition_satisfied: secondEvidence.projection.q4.mission_progress.optional_objectives[0].state === "satisfied",
     survey_condition_satisfied: survey.projection.q4.mission_progress.required_objectives.find((item) => item.name === "Establish Utility Room conditions").state === "satisfied",
     reporting_and_check_in_satisfied: report.projection.q4.mission_progress.required_objectives.filter((item) => ["Report field evidence", "Maintain the scheduled check-in"].includes(item.name)).every((item) => item.state === "satisfied"),
-    movement_and_return_persisted: movedAway.projection.q4.current_location.name === "Columned Corridor" && returnedToSurvey.projection.q4.current_location.name === "Utility Room",
+    movement_and_return_persisted: movedAway.projection.q4.current_location.name === "Open Passage" && returnedToSurvey.projection.q4.current_location.name === "Utility Room",
     route_and_readiness_derived: route.projection.q4.mission_progress.return_readiness.ready === true,
     return_not_instant_completion: returnBegun.projection.phase.phase_id === "RETURN" && returnBegun.projection.q4.review === null,
     combined_outcome_derived: debrief.projection.q4.review.outcome === "clean-completion-with-optional",

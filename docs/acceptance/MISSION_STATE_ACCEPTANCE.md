@@ -85,7 +85,7 @@ Projection suppresses next requirements for inactive objectives, chooses separat
 
 ## Persistence and migration
 
-Mission definitions and state are independently versioned. The run envelope is `yellow-beast-save@v7`; the desktop session is `yellow-beast-session@5`. Restore explicitly accepts earlier envelopes, initializes missing registered state, maps `survey`, `evidence`, `check_in`, `return_decision`, and `route_verification` into current objective IDs, retains satisfied progress/history, and reevaluates from the preserved spatial/object/evidence/equipment/personnel/radio/time facts. Unknown versions do not silently reset.
+Mission definitions and state are independently versioned. The run envelope is `yellow-beast-save@v8`; the desktop session is `yellow-beast-session@6`. Restore explicitly accepts earlier envelopes, initializes missing registered state, maps `survey`, `evidence`, `check_in`, `return_decision`, and `route_verification` into current objective IDs, retains satisfied progress/history, and reevaluates from the preserved spatial/object/evidence/equipment/personnel/radio/time facts. Unknown versions do not silently reset.
 
 Focused tests compare partial blocked state and complete final state across shutdown/restart. The acceptance compares mission/objective/history/result, object state, evidence, equipment, personnel, map/spatial state, radio/messages, and operational clock exactly.
 

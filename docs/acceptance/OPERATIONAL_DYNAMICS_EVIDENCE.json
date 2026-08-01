@@ -1,0 +1,4850 @@
+{
+  "version": "yellow-beast-operational-dynamics-acceptance@v1",
+  "generated_at": "2026-08-01T10:00:05.547Z",
+  "evidence_kind": "deterministic renderer-backed and machine-readable authoritative-state capture",
+  "primary_seed": "operational-dynamics-acceptance",
+  "second_seed": "operational-dynamics-second-seed",
+  "primary_roster": [
+    "Jack Rocha",
+    "Tara Cruz",
+    "Jade Bentley",
+    "Audrey Mason"
+  ],
+  "second_roster": [
+    "Jack Rocha",
+    "Cristina Espinoza",
+    "Amara Adams"
+  ],
+  "stages": {
+    "generated_briefing": {
+      "phase": "BRIEFING",
+      "interval": 0,
+      "next_known_event": null,
+      "mission_lifecycle": "briefing",
+      "objectives": [
+        {
+          "name": "Establish radio contact",
+          "state": "inactive",
+          "required": true,
+          "summary": "The Standard radio-check phase has not begun.",
+          "blocking_reason": null,
+          "recent_transition": null
+        },
+        {
+          "name": "Enter the declared survey area",
+          "state": "inactive",
+          "required": true,
+          "summary": "Field departure has not begun.",
+          "blocking_reason": null,
+          "recent_transition": null
+        },
+        {
+          "name": "Establish Utility Room conditions",
+          "state": "inactive",
+          "required": true,
+          "summary": "The declared Utility Room is not yet part of the current field record.",
+          "blocking_reason": null,
+          "recent_transition": null
+        },
+        {
+          "name": "Capture mission evidence",
+          "state": "inactive",
+          "required": true,
+          "summary": "Evidence collection has not begun in the field.",
+          "blocking_reason": null,
+          "recent_transition": null
+        },
+        {
+          "name": "Report field evidence",
+          "state": "inactive",
+          "required": true,
+          "summary": "No captured field evidence is ready for reporting.",
+          "blocking_reason": null,
+          "recent_transition": null
+        },
+        {
+          "name": "Verify the return route",
+          "state": "inactive",
+          "required": true,
+          "summary": "The field return route has not yet been entered.",
+          "blocking_reason": null,
+          "recent_transition": null
+        },
+        {
+          "name": "Maintain the scheduled check-in",
+          "state": "inactive",
+          "required": true,
+          "summary": "No field check-in is currently scheduled.",
+          "blocking_reason": null,
+          "recent_transition": null
+        },
+        {
+          "name": "Return with accountability",
+          "state": "inactive",
+          "required": true,
+          "summary": "No return or controlled abort has been requested.",
+          "blocking_reason": null,
+          "recent_transition": null
+        },
+        {
+          "name": "Document an additional field condition",
+          "state": "inactive",
+          "required": false,
+          "summary": "The optional second record becomes available after the first valid evidence item.",
+          "blocking_reason": null,
+          "recent_transition": null
+        }
+      ],
+      "return_readiness": {
+        "route_available": false,
+        "ready": false,
+        "returning": false,
+        "closure_ready": false,
+        "summary": "No confirmed field-to-Threshold route is available from the current record.",
+        "unresolved": [
+          {
+            "name": "Establish radio contact",
+            "state": "inactive",
+            "summary": "The Standard radio-check phase has not begun."
+          },
+          {
+            "name": "Enter the declared survey area",
+            "state": "inactive",
+            "summary": "Field departure has not begun."
+          },
+          {
+            "name": "Establish Utility Room conditions",
+            "state": "inactive",
+            "summary": "The declared Utility Room is not yet part of the current field record."
+          },
+          {
+            "name": "Capture mission evidence",
+            "state": "inactive",
+            "summary": "Evidence collection has not begun in the field."
+          },
+          {
+            "name": "Report field evidence",
+            "state": "inactive",
+            "summary": "No captured field evidence is ready for reporting."
+          },
+          {
+            "name": "Verify the return route",
+            "state": "inactive",
+            "summary": "The field return route has not yet been entered."
+          },
+          {
+            "name": "Maintain the scheduled check-in",
+            "state": "inactive",
+            "summary": "No field check-in is currently scheduled."
+          },
+          {
+            "name": "Return with accountability",
+            "state": "inactive",
+            "summary": "No return or controlled abort has been requested."
+          },
+          {
+            "name": "Document an additional field condition",
+            "state": "inactive",
+            "summary": "The optional second record becomes available after the first valid evidence item."
+          }
+        ]
+      },
+      "team": [
+        {
+          "display_name": "Jack Rocha · YOU",
+          "role": "field researcher · YOU",
+          "contact_state": "SELF",
+          "current_or_last_known_location": "async-briefing-room",
+          "condition": "normal",
+          "last_contact": "visually confirmed now",
+          "current_task": "player-directed",
+          "assigned_equipment": [
+            "field-light",
+            "survey-radio"
+          ],
+          "equipment_verification": "confirmed"
+        },
+        {
+          "display_name": "Tara Cruz",
+          "role": "survey technician",
+          "contact_state": "LOCAL",
+          "current_or_last_known_location": "async-briefing-room",
+          "condition": "normal",
+          "last_contact": "visually confirmed now",
+          "current_task": "follow",
+          "assigned_equipment": [
+            "survey-instrument"
+          ],
+          "equipment_verification": "confirmed"
+        },
+        {
+          "display_name": "Jade Bentley",
+          "role": "documentation specialist",
+          "contact_state": "LOCAL",
+          "current_or_last_known_location": "async-briefing-room",
+          "condition": "normal",
+          "last_contact": "visually confirmed now",
+          "current_task": "follow",
+          "assigned_equipment": [
+            "recording-device"
+          ],
+          "equipment_verification": "confirmed"
+        },
+        {
+          "display_name": "Audrey Mason",
+          "role": "field safety specialist",
+          "contact_state": "LOCAL",
+          "current_or_last_known_location": "async-briefing-room",
+          "condition": "normal",
+          "last_contact": "visually confirmed now",
+          "current_task": "follow",
+          "assigned_equipment": [],
+          "equipment_verification": "confirmed"
+        }
+      ],
+      "check_ins": [],
+      "messages": [],
+      "hazards": [],
+      "equipment": [
+        {
+          "label": "Battery field lamp",
+          "holder": "You",
+          "location": "carrying",
+          "state": "Operational",
+          "verification": "visually confirmed",
+          "remaining": "checked"
+        },
+        {
+          "label": "35mm field camera",
+          "holder": "Jade Bentley",
+          "location": "carrying",
+          "state": "Operational",
+          "verification": "visually confirmed",
+          "remaining": 12
+        },
+        {
+          "label": "Portable survey instrument",
+          "holder": "Tara Cruz",
+          "location": "carrying",
+          "state": "Operational",
+          "verification": "visually confirmed",
+          "remaining": "checked"
+        },
+        {
+          "label": "Handheld field radio",
+          "holder": "You",
+          "location": "carrying",
+          "state": "Operational",
+          "verification": "visually confirmed",
+          "remaining": "checked"
+        }
+      ],
+      "evidence": [],
+      "location": "ASYNC Briefing Room",
+      "operational_updates": [],
+      "review": null
+    },
+    "scheduled_check_in": {
+      "phase": "FIELD_OPERATION",
+      "interval": 5,
+      "next_known_event": 12,
+      "mission_lifecycle": "return_available",
+      "objectives": [
+        {
+          "name": "Establish radio contact",
+          "state": "satisfied",
+          "required": true,
+          "summary": "Standard acknowledged the field team and authorized departure.",
+          "blocking_reason": null,
+          "recent_transition": {
+            "state": "satisfied",
+            "summary": "Standard acknowledged the field team and authorized departure.",
+            "at": 4
+          }
+        },
+        {
+          "name": "Enter the declared survey area",
+          "state": "satisfied",
+          "required": true,
+          "summary": "The team physically entered the declared Utility Room survey area.",
+          "blocking_reason": null,
+          "recent_transition": {
+            "state": "satisfied",
+            "summary": "The team physically entered the declared Utility Room survey area.",
+            "at": 4
+          }
+        },
+        {
+          "name": "Establish Utility Room conditions",
+          "state": "active",
+          "required": true,
+          "summary": "The fixture, floor scuffs, and service panel are not yet all established, and one feature still needs validation.",
+          "blocking_reason": null,
+          "recent_transition": {
+            "state": "active",
+            "summary": "The fixture, floor scuffs, and service panel are not yet all established, and one feature still needs validation.",
+            "at": 4
+          }
+        },
+        {
+          "name": "Capture mission evidence",
+          "state": "active",
+          "required": true,
+          "summary": "No valid object-specific field record has been captured.",
+          "blocking_reason": null,
+          "recent_transition": {
+            "state": "active",
+            "summary": "No valid object-specific field record has been captured.",
+            "at": 4
+          }
+        },
+        {
+          "name": "Report field evidence",
+          "state": "blocked",
+          "required": true,
+          "summary": "A valid object-specific field record is required before a report can be sent.",
+          "blocking_reason": "A valid object-specific field record is required before a report can be sent.",
+          "recent_transition": {
+            "state": "blocked",
+            "summary": "A valid object-specific field record is required before a report can be sent.",
+            "at": 4
+          }
+        },
+        {
+          "name": "Verify the return route",
+          "state": "active",
+          "required": true,
+          "summary": "The Threshold-side marker has not yet been verified and secured.",
+          "blocking_reason": null,
+          "recent_transition": {
+            "state": "active",
+            "summary": "The Threshold-side marker has not yet been verified and secured.",
+            "at": 4
+          }
+        },
+        {
+          "name": "Maintain the scheduled check-in",
+          "state": "active",
+          "required": true,
+          "summary": "The scheduled check-in remains pending within its declared window.",
+          "blocking_reason": null,
+          "recent_transition": {
+            "state": "active",
+            "summary": "The scheduled check-in remains pending within its declared window.",
+            "at": 4
+          }
+        },
+        {
+          "name": "Return with accountability",
+          "state": "inactive",
+          "required": true,
+          "summary": "No return or controlled abort has been requested.",
+          "blocking_reason": null,
+          "recent_transition": null
+        },
+        {
+          "name": "Document an additional field condition",
+          "state": "blocked",
+          "required": false,
+          "summary": "A first valid field record is required before expanding the evidence set.",
+          "blocking_reason": "A first valid field record is required before expanding the evidence set.",
+          "recent_transition": {
+            "state": "blocked",
+            "summary": "A first valid field record is required before expanding the evidence set.",
+            "at": 4
+          }
+        }
+      ],
+      "return_readiness": {
+        "route_available": true,
+        "ready": false,
+        "returning": false,
+        "closure_ready": false,
+        "summary": "A known route returns to the Threshold, but required field work remains unresolved.",
+        "unresolved": [
+          {
+            "name": "Establish Utility Room conditions",
+            "state": "active",
+            "summary": "The fixture, floor scuffs, and service panel are not yet all established, and one feature still needs validation."
+          },
+          {
+            "name": "Capture mission evidence",
+            "state": "active",
+            "summary": "No valid object-specific field record has been captured."
+          },
+          {
+            "name": "Report field evidence",
+            "state": "blocked",
+            "summary": "A valid object-specific field record is required before a report can be sent."
+          },
+          {
+            "name": "Verify the return route",
+            "state": "active",
+            "summary": "The Threshold-side marker has not yet been verified and secured."
+          },
+          {
+            "name": "Maintain the scheduled check-in",
+            "state": "active",
+            "summary": "The scheduled check-in remains pending within its declared window."
+          },
+          {
+            "name": "Return with accountability",
+            "state": "inactive",
+            "summary": "No return or controlled abort has been requested."
+          },
+          {
+            "name": "Document an additional field condition",
+            "state": "blocked",
+            "summary": "A first valid field record is required before expanding the evidence set."
+          }
+        ]
+      },
+      "team": [
+        {
+          "display_name": "Jack Rocha · YOU",
+          "role": "field researcher · YOU",
+          "contact_state": "SELF",
+          "current_or_last_known_location": "utility-room",
+          "condition": "normal",
+          "last_contact": "visually confirmed now",
+          "current_task": "player-directed",
+          "assigned_equipment": [
+            "field-light",
+            "survey-radio"
+          ],
+          "equipment_verification": "confirmed"
+        },
+        {
+          "display_name": "Tara Cruz",
+          "role": "survey technician",
+          "contact_state": "LOCAL",
+          "current_or_last_known_location": "utility-room",
+          "condition": "normal",
+          "last_contact": "visually confirmed now",
+          "current_task": "follow",
+          "assigned_equipment": [
+            "survey-instrument"
+          ],
+          "equipment_verification": "confirmed"
+        },
+        {
+          "display_name": "Jade Bentley",
+          "role": "documentation specialist",
+          "contact_state": "LOCAL",
+          "current_or_last_known_location": "utility-room",
+          "condition": "normal",
+          "last_contact": "visually confirmed now",
+          "current_task": "follow",
+          "assigned_equipment": [
+            "recording-device"
+          ],
+          "equipment_verification": "confirmed"
+        },
+        {
+          "display_name": "Audrey Mason",
+          "role": "field safety specialist",
+          "contact_state": "LOCAL",
+          "current_or_last_known_location": "utility-room",
+          "condition": "normal",
+          "last_contact": "visually confirmed now",
+          "current_task": "follow",
+          "assigned_equipment": [],
+          "equipment_verification": "confirmed"
+        }
+      ],
+      "check_ins": [
+        {
+          "label": "Scheduled field status report",
+          "state": "scheduled",
+          "due_at": 12,
+          "completed_at": null,
+          "summary": "Due at operational interval 12."
+        }
+      ],
+      "messages": [
+        {
+          "sender": "You",
+          "recipient": "Standard",
+          "channel": "FIELD_RADIO",
+          "purpose": "radio-check",
+          "sent_at": 3,
+          "state": "acknowledged",
+          "delivered_at": 4,
+          "acknowledged_at": 4,
+          "known_reason": null
+        }
+      ],
+      "hazards": [],
+      "equipment": [
+        {
+          "label": "Battery field lamp",
+          "holder": "You",
+          "location": "carrying",
+          "state": "Operational",
+          "verification": "visually confirmed",
+          "remaining": "checked"
+        },
+        {
+          "label": "35mm field camera",
+          "holder": "Jade Bentley",
+          "location": "carrying",
+          "state": "Operational",
+          "verification": "visually confirmed",
+          "remaining": 12
+        },
+        {
+          "label": "Portable survey instrument",
+          "holder": "Tara Cruz",
+          "location": "carrying",
+          "state": "Operational",
+          "verification": "visually confirmed",
+          "remaining": "checked"
+        },
+        {
+          "label": "Handheld field radio",
+          "holder": "You",
+          "location": "carrying",
+          "state": "Operational",
+          "verification": "visually confirmed",
+          "remaining": "checked"
+        },
+        {
+          "label": "Numbered route-marker kit",
+          "holder": "You",
+          "location": "carrying",
+          "state": "Operational",
+          "verification": "visually confirmed",
+          "remaining": 4
+        }
+      ],
+      "evidence": [],
+      "location": "Utility Room",
+      "operational_updates": [],
+      "review": null
+    },
+    "evidence_recorded": {
+      "phase": "FIELD_OPERATION",
+      "interval": 7,
+      "next_known_event": 12,
+      "mission_lifecycle": "return_available",
+      "objectives": [
+        {
+          "name": "Establish radio contact",
+          "state": "satisfied",
+          "required": true,
+          "summary": "Standard acknowledged the field team and authorized departure.",
+          "blocking_reason": null,
+          "recent_transition": {
+            "state": "satisfied",
+            "summary": "Standard acknowledged the field team and authorized departure.",
+            "at": 4
+          }
+        },
+        {
+          "name": "Enter the declared survey area",
+          "state": "satisfied",
+          "required": true,
+          "summary": "The team physically entered the declared Utility Room survey area.",
+          "blocking_reason": null,
+          "recent_transition": {
+            "state": "satisfied",
+            "summary": "The team physically entered the declared Utility Room survey area.",
+            "at": 4
+          }
+        },
+        {
+          "name": "Establish Utility Room conditions",
+          "state": "satisfied",
+          "required": true,
+          "summary": "The declared fixture, floor, and panel conditions are known and at least one feature was validated.",
+          "blocking_reason": null,
+          "recent_transition": {
+            "state": "satisfied",
+            "summary": "The declared fixture, floor, and panel conditions are known and at least one feature was validated.",
+            "at": 7
+          }
+        },
+        {
+          "name": "Capture mission evidence",
+          "state": "satisfied",
+          "required": true,
+          "summary": "At least one valid condition-specific field record is retained.",
+          "blocking_reason": null,
+          "recent_transition": {
+            "state": "satisfied",
+            "summary": "At least one valid condition-specific field record is retained.",
+            "at": 6
+          }
+        },
+        {
+          "name": "Report field evidence",
+          "state": "active",
+          "required": true,
+          "summary": "A valid field record is retained. Standard has not yet received it.",
+          "blocking_reason": null,
+          "recent_transition": {
+            "state": "active",
+            "summary": "A valid field record is retained. Standard has not yet received it.",
+            "at": 6
+          }
+        },
+        {
+          "name": "Verify the return route",
+          "state": "active",
+          "required": true,
+          "summary": "The Threshold-side marker has not yet been verified and secured.",
+          "blocking_reason": null,
+          "recent_transition": {
+            "state": "active",
+            "summary": "The Threshold-side marker has not yet been verified and secured.",
+            "at": 4
+          }
+        },
+        {
+          "name": "Maintain the scheduled check-in",
+          "state": "active",
+          "required": true,
+          "summary": "The scheduled check-in remains pending within its declared window.",
+          "blocking_reason": null,
+          "recent_transition": {
+            "state": "active",
+            "summary": "The scheduled check-in remains pending within its declared window.",
+            "at": 4
+          }
+        },
+        {
+          "name": "Return with accountability",
+          "state": "inactive",
+          "required": true,
+          "summary": "No return or controlled abort has been requested.",
+          "blocking_reason": null,
+          "recent_transition": null
+        },
+        {
+          "name": "Document an additional field condition",
+          "state": "active",
+          "required": false,
+          "summary": "One field condition is documented; a second distinct object record remains optional.",
+          "blocking_reason": null,
+          "recent_transition": {
+            "state": "active",
+            "summary": "One field condition is documented; a second distinct object record remains optional.",
+            "at": 6
+          }
+        }
+      ],
+      "return_readiness": {
+        "route_available": true,
+        "ready": false,
+        "returning": false,
+        "closure_ready": false,
+        "summary": "A known route returns to the Threshold, but required field work remains unresolved.",
+        "unresolved": [
+          {
+            "name": "Report field evidence",
+            "state": "active",
+            "summary": "A valid field record is retained. Standard has not yet received it."
+          },
+          {
+            "name": "Verify the return route",
+            "state": "active",
+            "summary": "The Threshold-side marker has not yet been verified and secured."
+          },
+          {
+            "name": "Maintain the scheduled check-in",
+            "state": "active",
+            "summary": "The scheduled check-in remains pending within its declared window."
+          },
+          {
+            "name": "Return with accountability",
+            "state": "inactive",
+            "summary": "No return or controlled abort has been requested."
+          },
+          {
+            "name": "Document an additional field condition",
+            "state": "active",
+            "summary": "One field condition is documented; a second distinct object record remains optional."
+          }
+        ]
+      },
+      "team": [
+        {
+          "display_name": "Jack Rocha · YOU",
+          "role": "field researcher · YOU",
+          "contact_state": "SELF",
+          "current_or_last_known_location": "utility-room",
+          "condition": "normal",
+          "last_contact": "visually confirmed now",
+          "current_task": "player-directed",
+          "assigned_equipment": [
+            "field-light",
+            "survey-radio"
+          ],
+          "equipment_verification": "confirmed"
+        },
+        {
+          "display_name": "Tara Cruz",
+          "role": "survey technician",
+          "contact_state": "LOCAL",
+          "current_or_last_known_location": "utility-room",
+          "condition": "normal",
+          "last_contact": "visually confirmed now",
+          "current_task": "follow",
+          "assigned_equipment": [
+            "survey-instrument"
+          ],
+          "equipment_verification": "confirmed"
+        },
+        {
+          "display_name": "Jade Bentley",
+          "role": "documentation specialist",
+          "contact_state": "LOCAL",
+          "current_or_last_known_location": "utility-room",
+          "condition": "normal",
+          "last_contact": "visually confirmed now",
+          "current_task": "follow",
+          "assigned_equipment": [
+            "recording-device"
+          ],
+          "equipment_verification": "confirmed"
+        },
+        {
+          "display_name": "Audrey Mason",
+          "role": "field safety specialist",
+          "contact_state": "LOCAL",
+          "current_or_last_known_location": "utility-room",
+          "condition": "normal",
+          "last_contact": "visually confirmed now",
+          "current_task": "follow",
+          "assigned_equipment": [],
+          "equipment_verification": "confirmed"
+        }
+      ],
+      "check_ins": [
+        {
+          "label": "Scheduled field status report",
+          "state": "scheduled",
+          "due_at": 12,
+          "completed_at": null,
+          "summary": "Due at operational interval 12."
+        }
+      ],
+      "messages": [
+        {
+          "sender": "You",
+          "recipient": "Standard",
+          "channel": "FIELD_RADIO",
+          "purpose": "radio-check",
+          "sent_at": 3,
+          "state": "acknowledged",
+          "delivered_at": 4,
+          "acknowledged_at": 4,
+          "known_reason": null
+        }
+      ],
+      "hazards": [],
+      "equipment": [
+        {
+          "label": "Battery field lamp",
+          "holder": "You",
+          "location": "carrying",
+          "state": "Operational",
+          "verification": "visually confirmed",
+          "remaining": "checked"
+        },
+        {
+          "label": "35mm field camera",
+          "holder": "Jade Bentley",
+          "location": "carrying",
+          "state": "Operational",
+          "verification": "visually confirmed",
+          "remaining": 11
+        },
+        {
+          "label": "Portable survey instrument",
+          "holder": "Tara Cruz",
+          "location": "carrying",
+          "state": "Operational",
+          "verification": "visually confirmed",
+          "remaining": "checked"
+        },
+        {
+          "label": "Handheld field radio",
+          "holder": "You",
+          "location": "carrying",
+          "state": "Operational",
+          "verification": "visually confirmed",
+          "remaining": "checked"
+        },
+        {
+          "label": "Numbered route-marker kit",
+          "holder": "You",
+          "location": "carrying",
+          "state": "Operational",
+          "verification": "visually confirmed",
+          "remaining": 3
+        }
+      ],
+      "evidence": [
+        {
+          "type": "surface-photograph",
+          "source": "scuffed floor",
+          "condition": "The photograph records the floor pattern and whether a survey marker is present.",
+          "reporting_state": "unreported",
+          "observer": "Jade Bentley"
+        }
+      ],
+      "location": "Utility Room",
+      "operational_updates": [],
+      "review": null
+    },
+    "accepted_order_and_contact_loss": {
+      "phase": "FIELD_OPERATION",
+      "interval": 8,
+      "next_known_event": 12,
+      "mission_lifecycle": "return_available",
+      "objectives": [
+        {
+          "name": "Establish radio contact",
+          "state": "satisfied",
+          "required": true,
+          "summary": "Standard acknowledged the field team and authorized departure.",
+          "blocking_reason": null,
+          "recent_transition": {
+            "state": "satisfied",
+            "summary": "Standard acknowledged the field team and authorized departure.",
+            "at": 4
+          }
+        },
+        {
+          "name": "Enter the declared survey area",
+          "state": "satisfied",
+          "required": true,
+          "summary": "The team physically entered the declared Utility Room survey area.",
+          "blocking_reason": null,
+          "recent_transition": {
+            "state": "satisfied",
+            "summary": "The team physically entered the declared Utility Room survey area.",
+            "at": 4
+          }
+        },
+        {
+          "name": "Establish Utility Room conditions",
+          "state": "satisfied",
+          "required": true,
+          "summary": "The declared fixture, floor, and panel conditions are known and at least one feature was validated.",
+          "blocking_reason": null,
+          "recent_transition": {
+            "state": "satisfied",
+            "summary": "The declared fixture, floor, and panel conditions are known and at least one feature was validated.",
+            "at": 7
+          }
+        },
+        {
+          "name": "Capture mission evidence",
+          "state": "satisfied",
+          "required": true,
+          "summary": "At least one valid condition-specific field record is retained.",
+          "blocking_reason": null,
+          "recent_transition": {
+            "state": "satisfied",
+            "summary": "At least one valid condition-specific field record is retained.",
+            "at": 6
+          }
+        },
+        {
+          "name": "Report field evidence",
+          "state": "active",
+          "required": true,
+          "summary": "A valid field record is retained. Standard has not yet received it.",
+          "blocking_reason": null,
+          "recent_transition": {
+            "state": "active",
+            "summary": "A valid field record is retained. Standard has not yet received it.",
+            "at": 6
+          }
+        },
+        {
+          "name": "Verify the return route",
+          "state": "active",
+          "required": true,
+          "summary": "The Threshold-side marker has not yet been verified and secured.",
+          "blocking_reason": null,
+          "recent_transition": {
+            "state": "active",
+            "summary": "The Threshold-side marker has not yet been verified and secured.",
+            "at": 4
+          }
+        },
+        {
+          "name": "Maintain the scheduled check-in",
+          "state": "active",
+          "required": true,
+          "summary": "The scheduled check-in remains pending within its declared window.",
+          "blocking_reason": null,
+          "recent_transition": {
+            "state": "active",
+            "summary": "The scheduled check-in remains pending within its declared window.",
+            "at": 4
+          }
+        },
+        {
+          "name": "Return with accountability",
+          "state": "inactive",
+          "required": true,
+          "summary": "No return or controlled abort has been requested.",
+          "blocking_reason": null,
+          "recent_transition": null
+        },
+        {
+          "name": "Document an additional field condition",
+          "state": "active",
+          "required": false,
+          "summary": "One field condition is documented; a second distinct object record remains optional.",
+          "blocking_reason": null,
+          "recent_transition": {
+            "state": "active",
+            "summary": "One field condition is documented; a second distinct object record remains optional.",
+            "at": 6
+          }
+        }
+      ],
+      "return_readiness": {
+        "route_available": true,
+        "ready": false,
+        "returning": false,
+        "closure_ready": false,
+        "summary": "A known route returns to the Threshold, but required field work remains unresolved.",
+        "unresolved": [
+          {
+            "name": "Report field evidence",
+            "state": "active",
+            "summary": "A valid field record is retained. Standard has not yet received it."
+          },
+          {
+            "name": "Verify the return route",
+            "state": "active",
+            "summary": "The Threshold-side marker has not yet been verified and secured."
+          },
+          {
+            "name": "Maintain the scheduled check-in",
+            "state": "active",
+            "summary": "The scheduled check-in remains pending within its declared window."
+          },
+          {
+            "name": "Return with accountability",
+            "state": "inactive",
+            "summary": "No return or controlled abort has been requested."
+          },
+          {
+            "name": "Document an additional field condition",
+            "state": "active",
+            "summary": "One field condition is documented; a second distinct object record remains optional."
+          }
+        ]
+      },
+      "team": [
+        {
+          "display_name": "Jack Rocha · YOU",
+          "role": "field researcher · YOU",
+          "contact_state": "SELF",
+          "current_or_last_known_location": "utility-room",
+          "condition": "normal",
+          "last_contact": "visually confirmed now",
+          "current_task": "player-directed",
+          "assigned_equipment": [
+            "field-light",
+            "survey-radio"
+          ],
+          "equipment_verification": "confirmed"
+        },
+        {
+          "display_name": "Tara Cruz",
+          "role": "survey technician",
+          "contact_state": "CONTACT LOST",
+          "current_or_last_known_location": "columned-corridor",
+          "condition": "normal",
+          "last_contact": "last confirmed at interval 8",
+          "current_task": "Unknown while contact is lost",
+          "assigned_equipment": [
+            "survey-instrument"
+          ],
+          "equipment_verification": "last confirmed with teammate"
+        },
+        {
+          "display_name": "Jade Bentley",
+          "role": "documentation specialist",
+          "contact_state": "LOCAL",
+          "current_or_last_known_location": "utility-room",
+          "condition": "normal",
+          "last_contact": "visually confirmed now",
+          "current_task": "follow",
+          "assigned_equipment": [
+            "recording-device"
+          ],
+          "equipment_verification": "confirmed"
+        },
+        {
+          "display_name": "Audrey Mason",
+          "role": "field safety specialist",
+          "contact_state": "LOCAL",
+          "current_or_last_known_location": "utility-room",
+          "condition": "normal",
+          "last_contact": "visually confirmed now",
+          "current_task": "follow",
+          "assigned_equipment": [],
+          "equipment_verification": "confirmed"
+        }
+      ],
+      "check_ins": [
+        {
+          "label": "Scheduled field status report",
+          "state": "scheduled",
+          "due_at": 12,
+          "completed_at": null,
+          "summary": "Due at operational interval 12."
+        }
+      ],
+      "messages": [
+        {
+          "sender": "You",
+          "recipient": "Standard",
+          "channel": "FIELD_RADIO",
+          "purpose": "radio-check",
+          "sent_at": 3,
+          "state": "acknowledged",
+          "delivered_at": 4,
+          "acknowledged_at": 4,
+          "known_reason": null
+        }
+      ],
+      "hazards": [],
+      "equipment": [
+        {
+          "label": "Battery field lamp",
+          "holder": "You",
+          "location": "carrying",
+          "state": "Operational",
+          "verification": "visually confirmed",
+          "remaining": "checked"
+        },
+        {
+          "label": "35mm field camera",
+          "holder": "Jade Bentley",
+          "location": "carrying",
+          "state": "Operational",
+          "verification": "visually confirmed",
+          "remaining": 11
+        },
+        {
+          "label": "Portable survey instrument",
+          "holder": "Assigned teammate",
+          "location": "location unknown",
+          "state": "Last observed operational",
+          "verification": "last known",
+          "remaining": "Unknown"
+        },
+        {
+          "label": "Handheld field radio",
+          "holder": "You",
+          "location": "carrying",
+          "state": "Operational",
+          "verification": "visually confirmed",
+          "remaining": "checked"
+        },
+        {
+          "label": "Numbered route-marker kit",
+          "holder": "You",
+          "location": "carrying",
+          "state": "Operational",
+          "verification": "visually confirmed",
+          "remaining": 3
+        }
+      ],
+      "evidence": [
+        {
+          "type": "surface-photograph",
+          "source": "scuffed floor",
+          "condition": "The photograph records the floor pattern and whether a survey marker is present.",
+          "reporting_state": "unreported",
+          "observer": "Jade Bentley"
+        }
+      ],
+      "location": "Utility Room",
+      "operational_updates": [],
+      "review": null
+    },
+    "observed_hazard_consequence": {
+      "phase": "FIELD_OPERATION",
+      "interval": 9,
+      "next_known_event": 12,
+      "mission_lifecycle": "return_available",
+      "objectives": [
+        {
+          "name": "Establish radio contact",
+          "state": "satisfied",
+          "required": true,
+          "summary": "Standard acknowledged the field team and authorized departure.",
+          "blocking_reason": null,
+          "recent_transition": {
+            "state": "satisfied",
+            "summary": "Standard acknowledged the field team and authorized departure.",
+            "at": 4
+          }
+        },
+        {
+          "name": "Enter the declared survey area",
+          "state": "satisfied",
+          "required": true,
+          "summary": "The team physically entered the declared Utility Room survey area.",
+          "blocking_reason": null,
+          "recent_transition": {
+            "state": "satisfied",
+            "summary": "The team physically entered the declared Utility Room survey area.",
+            "at": 4
+          }
+        },
+        {
+          "name": "Establish Utility Room conditions",
+          "state": "satisfied",
+          "required": true,
+          "summary": "The declared fixture, floor, and panel conditions are known and at least one feature was validated.",
+          "blocking_reason": null,
+          "recent_transition": {
+            "state": "satisfied",
+            "summary": "The declared fixture, floor, and panel conditions are known and at least one feature was validated.",
+            "at": 7
+          }
+        },
+        {
+          "name": "Capture mission evidence",
+          "state": "satisfied",
+          "required": true,
+          "summary": "At least one valid condition-specific field record is retained.",
+          "blocking_reason": null,
+          "recent_transition": {
+            "state": "satisfied",
+            "summary": "At least one valid condition-specific field record is retained.",
+            "at": 6
+          }
+        },
+        {
+          "name": "Report field evidence",
+          "state": "active",
+          "required": true,
+          "summary": "A valid field record is retained. Standard has not yet received it.",
+          "blocking_reason": null,
+          "recent_transition": {
+            "state": "active",
+            "summary": "A valid field record is retained. Standard has not yet received it.",
+            "at": 6
+          }
+        },
+        {
+          "name": "Verify the return route",
+          "state": "active",
+          "required": true,
+          "summary": "The Threshold-side marker has not yet been verified and secured.",
+          "blocking_reason": null,
+          "recent_transition": {
+            "state": "active",
+            "summary": "The Threshold-side marker has not yet been verified and secured.",
+            "at": 4
+          }
+        },
+        {
+          "name": "Maintain the scheduled check-in",
+          "state": "active",
+          "required": true,
+          "summary": "The scheduled check-in remains pending within its declared window.",
+          "blocking_reason": null,
+          "recent_transition": {
+            "state": "active",
+            "summary": "The scheduled check-in remains pending within its declared window.",
+            "at": 4
+          }
+        },
+        {
+          "name": "Return with accountability",
+          "state": "inactive",
+          "required": true,
+          "summary": "No return or controlled abort has been requested.",
+          "blocking_reason": null,
+          "recent_transition": null
+        },
+        {
+          "name": "Document an additional field condition",
+          "state": "active",
+          "required": false,
+          "summary": "One field condition is documented; a second distinct object record remains optional.",
+          "blocking_reason": null,
+          "recent_transition": {
+            "state": "active",
+            "summary": "One field condition is documented; a second distinct object record remains optional.",
+            "at": 6
+          }
+        }
+      ],
+      "return_readiness": {
+        "route_available": true,
+        "ready": false,
+        "returning": false,
+        "closure_ready": false,
+        "summary": "A known route returns to the Threshold, but required field work remains unresolved.",
+        "unresolved": [
+          {
+            "name": "Report field evidence",
+            "state": "active",
+            "summary": "A valid field record is retained. Standard has not yet received it."
+          },
+          {
+            "name": "Verify the return route",
+            "state": "active",
+            "summary": "The Threshold-side marker has not yet been verified and secured."
+          },
+          {
+            "name": "Maintain the scheduled check-in",
+            "state": "active",
+            "summary": "The scheduled check-in remains pending within its declared window."
+          },
+          {
+            "name": "Return with accountability",
+            "state": "inactive",
+            "summary": "No return or controlled abort has been requested."
+          },
+          {
+            "name": "Document an additional field condition",
+            "state": "active",
+            "summary": "One field condition is documented; a second distinct object record remains optional."
+          }
+        ]
+      },
+      "team": [
+        {
+          "display_name": "Jack Rocha · YOU",
+          "role": "field researcher · YOU",
+          "contact_state": "SELF",
+          "current_or_last_known_location": "columned-corridor",
+          "condition": "normal",
+          "last_contact": "visually confirmed now",
+          "current_task": "player-directed",
+          "assigned_equipment": [
+            "field-light",
+            "survey-radio"
+          ],
+          "equipment_verification": "confirmed"
+        },
+        {
+          "display_name": "Tara Cruz",
+          "role": "survey technician",
+          "contact_state": "LOCAL",
+          "current_or_last_known_location": "columned-corridor",
+          "condition": "minor injury",
+          "last_contact": "visually confirmed now",
+          "current_task": "investigate",
+          "assigned_equipment": [
+            "survey-instrument"
+          ],
+          "equipment_verification": "confirmed"
+        },
+        {
+          "display_name": "Jade Bentley",
+          "role": "documentation specialist",
+          "contact_state": "LOCAL",
+          "current_or_last_known_location": "columned-corridor",
+          "condition": "normal",
+          "last_contact": "visually confirmed now",
+          "current_task": "follow",
+          "assigned_equipment": [
+            "recording-device"
+          ],
+          "equipment_verification": "confirmed"
+        },
+        {
+          "display_name": "Audrey Mason",
+          "role": "field safety specialist",
+          "contact_state": "LOCAL",
+          "current_or_last_known_location": "columned-corridor",
+          "condition": "normal",
+          "last_contact": "visually confirmed now",
+          "current_task": "follow",
+          "assigned_equipment": [],
+          "equipment_verification": "confirmed"
+        }
+      ],
+      "check_ins": [
+        {
+          "label": "Scheduled field status report",
+          "state": "scheduled",
+          "due_at": 12,
+          "completed_at": null,
+          "summary": "Due at operational interval 12."
+        }
+      ],
+      "messages": [
+        {
+          "sender": "You",
+          "recipient": "Standard",
+          "channel": "FIELD_RADIO",
+          "purpose": "radio-check",
+          "sent_at": 3,
+          "state": "acknowledged",
+          "delivered_at": 4,
+          "acknowledged_at": 4,
+          "known_reason": null
+        }
+      ],
+      "hazards": [
+        {
+          "category": "structural",
+          "state": "active",
+          "warning": "A service bracket above the column line is sitting out of square.",
+          "observed_change": "The loose service bracket shifted and struck the team position.",
+          "mitigation_available": true,
+          "summary": "The loose service bracket shifted and struck the team position."
+        }
+      ],
+      "equipment": [
+        {
+          "label": "Battery field lamp",
+          "holder": "You",
+          "location": "carrying",
+          "state": "Operational",
+          "verification": "visually confirmed",
+          "remaining": "checked"
+        },
+        {
+          "label": "35mm field camera",
+          "holder": "Jade Bentley",
+          "location": "carrying",
+          "state": "Operational",
+          "verification": "visually confirmed",
+          "remaining": 11
+        },
+        {
+          "label": "Portable survey instrument",
+          "holder": "Assigned teammate",
+          "location": "location unknown",
+          "state": "Last observed operational",
+          "verification": "last known",
+          "remaining": "Unknown"
+        },
+        {
+          "label": "Handheld field radio",
+          "holder": "You",
+          "location": "carrying",
+          "state": "Operational",
+          "verification": "visually confirmed",
+          "remaining": "checked"
+        },
+        {
+          "label": "Numbered route-marker kit",
+          "holder": "You",
+          "location": "carrying",
+          "state": "Operational",
+          "verification": "visually confirmed",
+          "remaining": 3
+        }
+      ],
+      "evidence": [
+        {
+          "type": "surface-photograph",
+          "source": "scuffed floor",
+          "condition": "The photograph records the floor pattern and whether a survey marker is present.",
+          "reporting_state": "unreported",
+          "observer": "Jade Bentley"
+        }
+      ],
+      "location": "Columned Corridor",
+      "operational_updates": [
+        {
+          "kind": "hazard-detected",
+          "hazard_id": "overhead-service-bracket",
+          "summary": "A service bracket above the column line is sitting out of square.",
+          "at": 9
+        },
+        {
+          "kind": "hazard-consequence-observed",
+          "hazard_id": "overhead-service-bracket",
+          "summary": "The loose service bracket shifted and struck the team position.",
+          "consequence": "A teammate was struck and dropped assigned equipment. The complication can be recovered in place.",
+          "at": 9
+        }
+      ],
+      "review": null
+    },
+    "delayed_order": {
+      "phase": "FIELD_OPERATION",
+      "interval": 10,
+      "next_known_event": 12,
+      "mission_lifecycle": "return_available",
+      "objectives": [
+        {
+          "name": "Establish radio contact",
+          "state": "satisfied",
+          "required": true,
+          "summary": "Standard acknowledged the field team and authorized departure.",
+          "blocking_reason": null,
+          "recent_transition": {
+            "state": "satisfied",
+            "summary": "Standard acknowledged the field team and authorized departure.",
+            "at": 4
+          }
+        },
+        {
+          "name": "Enter the declared survey area",
+          "state": "satisfied",
+          "required": true,
+          "summary": "The team physically entered the declared Utility Room survey area.",
+          "blocking_reason": null,
+          "recent_transition": {
+            "state": "satisfied",
+            "summary": "The team physically entered the declared Utility Room survey area.",
+            "at": 4
+          }
+        },
+        {
+          "name": "Establish Utility Room conditions",
+          "state": "satisfied",
+          "required": true,
+          "summary": "The declared fixture, floor, and panel conditions are known and at least one feature was validated.",
+          "blocking_reason": null,
+          "recent_transition": {
+            "state": "satisfied",
+            "summary": "The declared fixture, floor, and panel conditions are known and at least one feature was validated.",
+            "at": 7
+          }
+        },
+        {
+          "name": "Capture mission evidence",
+          "state": "satisfied",
+          "required": true,
+          "summary": "At least one valid condition-specific field record is retained.",
+          "blocking_reason": null,
+          "recent_transition": {
+            "state": "satisfied",
+            "summary": "At least one valid condition-specific field record is retained.",
+            "at": 6
+          }
+        },
+        {
+          "name": "Report field evidence",
+          "state": "active",
+          "required": true,
+          "summary": "A valid field record is retained. Standard has not yet received it.",
+          "blocking_reason": null,
+          "recent_transition": {
+            "state": "active",
+            "summary": "A valid field record is retained. Standard has not yet received it.",
+            "at": 6
+          }
+        },
+        {
+          "name": "Verify the return route",
+          "state": "active",
+          "required": true,
+          "summary": "The Threshold-side marker has not yet been verified and secured.",
+          "blocking_reason": null,
+          "recent_transition": {
+            "state": "active",
+            "summary": "The Threshold-side marker has not yet been verified and secured.",
+            "at": 4
+          }
+        },
+        {
+          "name": "Maintain the scheduled check-in",
+          "state": "active",
+          "required": true,
+          "summary": "The scheduled check-in remains pending within its declared window.",
+          "blocking_reason": null,
+          "recent_transition": {
+            "state": "active",
+            "summary": "The scheduled check-in remains pending within its declared window.",
+            "at": 4
+          }
+        },
+        {
+          "name": "Return with accountability",
+          "state": "inactive",
+          "required": true,
+          "summary": "No return or controlled abort has been requested.",
+          "blocking_reason": null,
+          "recent_transition": null
+        },
+        {
+          "name": "Document an additional field condition",
+          "state": "active",
+          "required": false,
+          "summary": "One field condition is documented; a second distinct object record remains optional.",
+          "blocking_reason": null,
+          "recent_transition": {
+            "state": "active",
+            "summary": "One field condition is documented; a second distinct object record remains optional.",
+            "at": 6
+          }
+        }
+      ],
+      "return_readiness": {
+        "route_available": true,
+        "ready": false,
+        "returning": false,
+        "closure_ready": false,
+        "summary": "A known route returns to the Threshold, but required field work remains unresolved.",
+        "unresolved": [
+          {
+            "name": "Report field evidence",
+            "state": "active",
+            "summary": "A valid field record is retained. Standard has not yet received it."
+          },
+          {
+            "name": "Verify the return route",
+            "state": "active",
+            "summary": "The Threshold-side marker has not yet been verified and secured."
+          },
+          {
+            "name": "Maintain the scheduled check-in",
+            "state": "active",
+            "summary": "The scheduled check-in remains pending within its declared window."
+          },
+          {
+            "name": "Return with accountability",
+            "state": "inactive",
+            "summary": "No return or controlled abort has been requested."
+          },
+          {
+            "name": "Document an additional field condition",
+            "state": "active",
+            "summary": "One field condition is documented; a second distinct object record remains optional."
+          }
+        ]
+      },
+      "team": [
+        {
+          "display_name": "Jack Rocha · YOU",
+          "role": "field researcher · YOU",
+          "contact_state": "SELF",
+          "current_or_last_known_location": "columned-corridor",
+          "condition": "normal",
+          "last_contact": "visually confirmed now",
+          "current_task": "player-directed",
+          "assigned_equipment": [
+            "field-light",
+            "survey-radio"
+          ],
+          "equipment_verification": "confirmed"
+        },
+        {
+          "display_name": "Tara Cruz",
+          "role": "survey technician",
+          "contact_state": "LOCAL",
+          "current_or_last_known_location": "columned-corridor",
+          "condition": "minor injury",
+          "last_contact": "visually confirmed now",
+          "current_task": "investigate",
+          "assigned_equipment": [
+            "survey-instrument"
+          ],
+          "equipment_verification": "confirmed"
+        },
+        {
+          "display_name": "Jade Bentley",
+          "role": "documentation specialist",
+          "contact_state": "LOCAL",
+          "current_or_last_known_location": "columned-corridor",
+          "condition": "normal",
+          "last_contact": "visually confirmed now",
+          "current_task": "follow",
+          "assigned_equipment": [
+            "recording-device"
+          ],
+          "equipment_verification": "confirmed"
+        },
+        {
+          "display_name": "Audrey Mason",
+          "role": "field safety specialist",
+          "contact_state": "LOCAL",
+          "current_or_last_known_location": "columned-corridor",
+          "condition": "normal",
+          "last_contact": "visually confirmed now",
+          "current_task": "follow",
+          "assigned_equipment": [],
+          "equipment_verification": "confirmed"
+        }
+      ],
+      "check_ins": [
+        {
+          "label": "Scheduled field status report",
+          "state": "approaching",
+          "due_at": 12,
+          "completed_at": null,
+          "summary": "Due in 2 interval."
+        }
+      ],
+      "messages": [
+        {
+          "sender": "You",
+          "recipient": "Standard",
+          "channel": "FIELD_RADIO",
+          "purpose": "radio-check",
+          "sent_at": 3,
+          "state": "acknowledged",
+          "delivered_at": 4,
+          "acknowledged_at": 4,
+          "known_reason": null
+        }
+      ],
+      "hazards": [
+        {
+          "category": "structural",
+          "state": "active",
+          "warning": "A service bracket above the column line is sitting out of square.",
+          "observed_change": "The loose service bracket shifted and struck the team position.",
+          "mitigation_available": true,
+          "summary": "The loose service bracket shifted and struck the team position."
+        }
+      ],
+      "equipment": [
+        {
+          "label": "Battery field lamp",
+          "holder": "You",
+          "location": "carrying",
+          "state": "Operational",
+          "verification": "visually confirmed",
+          "remaining": "checked"
+        },
+        {
+          "label": "35mm field camera",
+          "holder": "Jade Bentley",
+          "location": "carrying",
+          "state": "Operational",
+          "verification": "visually confirmed",
+          "remaining": 11
+        },
+        {
+          "label": "Portable survey instrument",
+          "holder": "Assigned teammate",
+          "location": "location unknown",
+          "state": "Last observed operational",
+          "verification": "last known",
+          "remaining": "Unknown"
+        },
+        {
+          "label": "Handheld field radio",
+          "holder": "You",
+          "location": "carrying",
+          "state": "Operational",
+          "verification": "visually confirmed",
+          "remaining": "checked"
+        },
+        {
+          "label": "Numbered route-marker kit",
+          "holder": "You",
+          "location": "carrying",
+          "state": "Operational",
+          "verification": "visually confirmed",
+          "remaining": 3
+        }
+      ],
+      "evidence": [
+        {
+          "type": "surface-photograph",
+          "source": "scuffed floor",
+          "condition": "The photograph records the floor pattern and whether a survey marker is present.",
+          "reporting_state": "unreported",
+          "observer": "Jade Bentley"
+        }
+      ],
+      "location": "Columned Corridor",
+      "operational_updates": [],
+      "review": null
+    },
+    "recovery_and_mitigation": {
+      "phase": "FIELD_OPERATION",
+      "interval": 13,
+      "next_known_event": 14,
+      "mission_lifecycle": "return_available",
+      "objectives": [
+        {
+          "name": "Establish radio contact",
+          "state": "satisfied",
+          "required": true,
+          "summary": "Standard acknowledged the field team and authorized departure.",
+          "blocking_reason": null,
+          "recent_transition": {
+            "state": "satisfied",
+            "summary": "Standard acknowledged the field team and authorized departure.",
+            "at": 4
+          }
+        },
+        {
+          "name": "Enter the declared survey area",
+          "state": "satisfied",
+          "required": true,
+          "summary": "The team physically entered the declared Utility Room survey area.",
+          "blocking_reason": null,
+          "recent_transition": {
+            "state": "satisfied",
+            "summary": "The team physically entered the declared Utility Room survey area.",
+            "at": 4
+          }
+        },
+        {
+          "name": "Establish Utility Room conditions",
+          "state": "satisfied",
+          "required": true,
+          "summary": "The declared fixture, floor, and panel conditions are known and at least one feature was validated.",
+          "blocking_reason": null,
+          "recent_transition": {
+            "state": "satisfied",
+            "summary": "The declared fixture, floor, and panel conditions are known and at least one feature was validated.",
+            "at": 7
+          }
+        },
+        {
+          "name": "Capture mission evidence",
+          "state": "satisfied",
+          "required": true,
+          "summary": "At least one valid condition-specific field record is retained.",
+          "blocking_reason": null,
+          "recent_transition": {
+            "state": "satisfied",
+            "summary": "At least one valid condition-specific field record is retained.",
+            "at": 6
+          }
+        },
+        {
+          "name": "Report field evidence",
+          "state": "active",
+          "required": true,
+          "summary": "A valid field record is retained. Standard has not yet received it.",
+          "blocking_reason": null,
+          "recent_transition": {
+            "state": "active",
+            "summary": "A valid field record is retained. Standard has not yet received it.",
+            "at": 6
+          }
+        },
+        {
+          "name": "Verify the return route",
+          "state": "active",
+          "required": true,
+          "summary": "The Threshold-side marker has not yet been verified and secured.",
+          "blocking_reason": null,
+          "recent_transition": {
+            "state": "active",
+            "summary": "The Threshold-side marker has not yet been verified and secured.",
+            "at": 4
+          }
+        },
+        {
+          "name": "Maintain the scheduled check-in",
+          "state": "active",
+          "required": true,
+          "summary": "The scheduled check-in remains pending within its declared window.",
+          "blocking_reason": null,
+          "recent_transition": {
+            "state": "active",
+            "summary": "The scheduled check-in remains pending within its declared window.",
+            "at": 4
+          }
+        },
+        {
+          "name": "Return with accountability",
+          "state": "inactive",
+          "required": true,
+          "summary": "No return or controlled abort has been requested.",
+          "blocking_reason": null,
+          "recent_transition": null
+        },
+        {
+          "name": "Document an additional field condition",
+          "state": "active",
+          "required": false,
+          "summary": "One field condition is documented; a second distinct object record remains optional.",
+          "blocking_reason": null,
+          "recent_transition": {
+            "state": "active",
+            "summary": "One field condition is documented; a second distinct object record remains optional.",
+            "at": 6
+          }
+        }
+      ],
+      "return_readiness": {
+        "route_available": true,
+        "ready": false,
+        "returning": false,
+        "closure_ready": false,
+        "summary": "A known route returns to the Threshold, but required field work remains unresolved.",
+        "unresolved": [
+          {
+            "name": "Report field evidence",
+            "state": "active",
+            "summary": "A valid field record is retained. Standard has not yet received it."
+          },
+          {
+            "name": "Verify the return route",
+            "state": "active",
+            "summary": "The Threshold-side marker has not yet been verified and secured."
+          },
+          {
+            "name": "Maintain the scheduled check-in",
+            "state": "active",
+            "summary": "The scheduled check-in remains pending within its declared window."
+          },
+          {
+            "name": "Return with accountability",
+            "state": "inactive",
+            "summary": "No return or controlled abort has been requested."
+          },
+          {
+            "name": "Document an additional field condition",
+            "state": "active",
+            "summary": "One field condition is documented; a second distinct object record remains optional."
+          }
+        ]
+      },
+      "team": [
+        {
+          "display_name": "Jack Rocha · YOU",
+          "role": "field researcher · YOU",
+          "contact_state": "SELF",
+          "current_or_last_known_location": "columned-corridor",
+          "condition": "normal",
+          "last_contact": "visually confirmed now",
+          "current_task": "player-directed",
+          "assigned_equipment": [
+            "field-light",
+            "survey-radio"
+          ],
+          "equipment_verification": "confirmed"
+        },
+        {
+          "display_name": "Tara Cruz",
+          "role": "survey technician",
+          "contact_state": "LOCAL",
+          "current_or_last_known_location": "columned-corridor",
+          "condition": "stabilized minor injury",
+          "last_contact": "visually confirmed now",
+          "current_task": "wait",
+          "assigned_equipment": [
+            "survey-instrument"
+          ],
+          "equipment_verification": "confirmed"
+        },
+        {
+          "display_name": "Jade Bentley",
+          "role": "documentation specialist",
+          "contact_state": "LOCAL",
+          "current_or_last_known_location": "columned-corridor",
+          "condition": "normal",
+          "last_contact": "visually confirmed now",
+          "current_task": "follow",
+          "assigned_equipment": [
+            "recording-device"
+          ],
+          "equipment_verification": "confirmed"
+        },
+        {
+          "display_name": "Audrey Mason",
+          "role": "field safety specialist",
+          "contact_state": "LOCAL",
+          "current_or_last_known_location": "columned-corridor",
+          "condition": "normal",
+          "last_contact": "visually confirmed now",
+          "current_task": "follow",
+          "assigned_equipment": [],
+          "equipment_verification": "confirmed"
+        }
+      ],
+      "check_ins": [
+        {
+          "label": "Scheduled field status report",
+          "state": "overdue",
+          "due_at": 12,
+          "completed_at": null,
+          "summary": "The report is overdue, but a late transmission may still be received."
+        }
+      ],
+      "messages": [
+        {
+          "sender": "You",
+          "recipient": "Standard",
+          "channel": "FIELD_RADIO",
+          "purpose": "radio-check",
+          "sent_at": 3,
+          "state": "acknowledged",
+          "delivered_at": 4,
+          "acknowledged_at": 4,
+          "known_reason": null
+        }
+      ],
+      "hazards": [
+        {
+          "category": "structural",
+          "state": "mitigated",
+          "warning": "A service bracket above the column line is sitting out of square.",
+          "observed_change": "The loose service bracket shifted and struck the team position.",
+          "mitigation_available": false,
+          "summary": "The bracket is secured clear of the working route."
+        }
+      ],
+      "equipment": [
+        {
+          "label": "Battery field lamp",
+          "holder": "You",
+          "location": "carrying",
+          "state": "Operational",
+          "verification": "visually confirmed",
+          "remaining": "checked"
+        },
+        {
+          "label": "35mm field camera",
+          "holder": "Jade Bentley",
+          "location": "carrying",
+          "state": "Operational",
+          "verification": "visually confirmed",
+          "remaining": 11
+        },
+        {
+          "label": "Portable survey instrument",
+          "holder": "You",
+          "location": "carrying",
+          "state": "Operational",
+          "verification": "visually confirmed",
+          "remaining": "checked"
+        },
+        {
+          "label": "Handheld field radio",
+          "holder": "You",
+          "location": "carrying",
+          "state": "Operational",
+          "verification": "visually confirmed",
+          "remaining": "checked"
+        },
+        {
+          "label": "Numbered route-marker kit",
+          "holder": "You",
+          "location": "carrying",
+          "state": "Operational",
+          "verification": "visually confirmed",
+          "remaining": 3
+        }
+      ],
+      "evidence": [
+        {
+          "type": "surface-photograph",
+          "source": "scuffed floor",
+          "condition": "The photograph records the floor pattern and whether a survey marker is present.",
+          "reporting_state": "unreported",
+          "observer": "Jade Bentley"
+        }
+      ],
+      "location": "Columned Corridor",
+      "operational_updates": [],
+      "review": null
+    },
+    "delayed_message_and_missed_window": {
+      "phase": "FIELD_OPERATION",
+      "interval": 14,
+      "next_known_event": 23,
+      "mission_lifecycle": "return_available",
+      "objectives": [
+        {
+          "name": "Establish radio contact",
+          "state": "satisfied",
+          "required": true,
+          "summary": "Standard acknowledged the field team and authorized departure.",
+          "blocking_reason": null,
+          "recent_transition": {
+            "state": "satisfied",
+            "summary": "Standard acknowledged the field team and authorized departure.",
+            "at": 4
+          }
+        },
+        {
+          "name": "Enter the declared survey area",
+          "state": "satisfied",
+          "required": true,
+          "summary": "The team physically entered the declared Utility Room survey area.",
+          "blocking_reason": null,
+          "recent_transition": {
+            "state": "satisfied",
+            "summary": "The team physically entered the declared Utility Room survey area.",
+            "at": 4
+          }
+        },
+        {
+          "name": "Establish Utility Room conditions",
+          "state": "satisfied",
+          "required": true,
+          "summary": "The declared fixture, floor, and panel conditions are known and at least one feature was validated.",
+          "blocking_reason": null,
+          "recent_transition": {
+            "state": "satisfied",
+            "summary": "The declared fixture, floor, and panel conditions are known and at least one feature was validated.",
+            "at": 7
+          }
+        },
+        {
+          "name": "Capture mission evidence",
+          "state": "satisfied",
+          "required": true,
+          "summary": "At least one valid condition-specific field record is retained.",
+          "blocking_reason": null,
+          "recent_transition": {
+            "state": "satisfied",
+            "summary": "At least one valid condition-specific field record is retained.",
+            "at": 6
+          }
+        },
+        {
+          "name": "Report field evidence",
+          "state": "active",
+          "required": true,
+          "summary": "A valid field record is retained. Standard has not yet received it.",
+          "blocking_reason": null,
+          "recent_transition": {
+            "state": "active",
+            "summary": "A valid field record is retained. Standard has not yet received it.",
+            "at": 6
+          }
+        },
+        {
+          "name": "Verify the return route",
+          "state": "active",
+          "required": true,
+          "summary": "The Threshold-side marker has not yet been verified and secured.",
+          "blocking_reason": null,
+          "recent_transition": {
+            "state": "active",
+            "summary": "The Threshold-side marker has not yet been verified and secured.",
+            "at": 4
+          }
+        },
+        {
+          "name": "Maintain the scheduled check-in",
+          "state": "failed",
+          "required": true,
+          "summary": "The declared check-in window passed without a delivered report.",
+          "blocking_reason": null,
+          "recent_transition": {
+            "state": "failed",
+            "summary": "The declared check-in window passed without a delivered report.",
+            "at": 14
+          }
+        },
+        {
+          "name": "Return with accountability",
+          "state": "inactive",
+          "required": true,
+          "summary": "No return or controlled abort has been requested.",
+          "blocking_reason": null,
+          "recent_transition": null
+        },
+        {
+          "name": "Document an additional field condition",
+          "state": "active",
+          "required": false,
+          "summary": "One field condition is documented; a second distinct object record remains optional.",
+          "blocking_reason": null,
+          "recent_transition": {
+            "state": "active",
+            "summary": "One field condition is documented; a second distinct object record remains optional.",
+            "at": 6
+          }
+        }
+      ],
+      "return_readiness": {
+        "route_available": true,
+        "ready": false,
+        "returning": false,
+        "closure_ready": false,
+        "summary": "A known route returns to the Threshold, but required field work remains unresolved.",
+        "unresolved": [
+          {
+            "name": "Report field evidence",
+            "state": "active",
+            "summary": "A valid field record is retained. Standard has not yet received it."
+          },
+          {
+            "name": "Verify the return route",
+            "state": "active",
+            "summary": "The Threshold-side marker has not yet been verified and secured."
+          },
+          {
+            "name": "Maintain the scheduled check-in",
+            "state": "failed",
+            "summary": "The declared check-in window passed without a delivered report."
+          },
+          {
+            "name": "Return with accountability",
+            "state": "inactive",
+            "summary": "No return or controlled abort has been requested."
+          },
+          {
+            "name": "Document an additional field condition",
+            "state": "active",
+            "summary": "One field condition is documented; a second distinct object record remains optional."
+          }
+        ]
+      },
+      "team": [
+        {
+          "display_name": "Jack Rocha · YOU",
+          "role": "field researcher · YOU",
+          "contact_state": "SELF",
+          "current_or_last_known_location": "columned-corridor",
+          "condition": "normal",
+          "last_contact": "visually confirmed now",
+          "current_task": "player-directed",
+          "assigned_equipment": [
+            "field-light",
+            "survey-radio"
+          ],
+          "equipment_verification": "confirmed"
+        },
+        {
+          "display_name": "Tara Cruz",
+          "role": "survey technician",
+          "contact_state": "LOCAL",
+          "current_or_last_known_location": "columned-corridor",
+          "condition": "stabilized minor injury",
+          "last_contact": "visually confirmed now",
+          "current_task": "wait",
+          "assigned_equipment": [
+            "survey-instrument"
+          ],
+          "equipment_verification": "confirmed"
+        },
+        {
+          "display_name": "Jade Bentley",
+          "role": "documentation specialist",
+          "contact_state": "LOCAL",
+          "current_or_last_known_location": "columned-corridor",
+          "condition": "normal",
+          "last_contact": "visually confirmed now",
+          "current_task": "follow",
+          "assigned_equipment": [
+            "recording-device"
+          ],
+          "equipment_verification": "confirmed"
+        },
+        {
+          "display_name": "Audrey Mason",
+          "role": "field safety specialist",
+          "contact_state": "LOCAL",
+          "current_or_last_known_location": "columned-corridor",
+          "condition": "normal",
+          "last_contact": "visually confirmed now",
+          "current_task": "follow",
+          "assigned_equipment": [],
+          "equipment_verification": "confirmed"
+        }
+      ],
+      "check_ins": [
+        {
+          "label": "Scheduled field status report",
+          "state": "missed",
+          "due_at": 12,
+          "completed_at": null,
+          "summary": "The reporting window closed without delivery."
+        }
+      ],
+      "messages": [
+        {
+          "sender": "You",
+          "recipient": "Standard",
+          "channel": "FIELD_RADIO",
+          "purpose": "radio-check",
+          "sent_at": 3,
+          "state": "acknowledged",
+          "delivered_at": 4,
+          "acknowledged_at": 4,
+          "known_reason": null
+        },
+        {
+          "sender": "You",
+          "recipient": "Standard",
+          "channel": "FIELD_RADIO",
+          "purpose": "evidence-report",
+          "sent_at": 13,
+          "state": "delayed",
+          "delivered_at": null,
+          "acknowledged_at": null,
+          "known_reason": "The column line breaks the field-radio signal; delivery cannot yet be confirmed."
+        }
+      ],
+      "hazards": [
+        {
+          "category": "structural",
+          "state": "mitigated",
+          "warning": "A service bracket above the column line is sitting out of square.",
+          "observed_change": "The loose service bracket shifted and struck the team position.",
+          "mitigation_available": false,
+          "summary": "The bracket is secured clear of the working route."
+        }
+      ],
+      "equipment": [
+        {
+          "label": "Battery field lamp",
+          "holder": "You",
+          "location": "carrying",
+          "state": "Operational",
+          "verification": "visually confirmed",
+          "remaining": "checked"
+        },
+        {
+          "label": "35mm field camera",
+          "holder": "Jade Bentley",
+          "location": "carrying",
+          "state": "Operational",
+          "verification": "visually confirmed",
+          "remaining": 11
+        },
+        {
+          "label": "Portable survey instrument",
+          "holder": "You",
+          "location": "carrying",
+          "state": "Operational",
+          "verification": "visually confirmed",
+          "remaining": "checked"
+        },
+        {
+          "label": "Handheld field radio",
+          "holder": "You",
+          "location": "carrying",
+          "state": "Depleted",
+          "verification": "visually confirmed",
+          "remaining": "checked"
+        },
+        {
+          "label": "Numbered route-marker kit",
+          "holder": "You",
+          "location": "carrying",
+          "state": "Operational",
+          "verification": "visually confirmed",
+          "remaining": 3
+        }
+      ],
+      "evidence": [
+        {
+          "type": "surface-photograph",
+          "source": "scuffed floor",
+          "condition": "The photograph records the floor pattern and whether a survey marker is present.",
+          "reporting_state": "unreported",
+          "observer": "Jade Bentley"
+        }
+      ],
+      "location": "Columned Corridor",
+      "operational_updates": [
+        {
+          "kind": "scheduled-event",
+          "summary": "communication transmit resolved.",
+          "at": 14
+        },
+        {
+          "kind": "scheduled-event",
+          "summary": "check in missed resolved.",
+          "at": 14
+        }
+      ],
+      "review": null
+    },
+    "late_delivery_and_mission_recovery": {
+      "phase": "FIELD_OPERATION",
+      "interval": 23,
+      "next_known_event": 24,
+      "mission_lifecycle": "return_available",
+      "objectives": [
+        {
+          "name": "Establish radio contact",
+          "state": "satisfied",
+          "required": true,
+          "summary": "Standard acknowledged the field team and authorized departure.",
+          "blocking_reason": null,
+          "recent_transition": {
+            "state": "satisfied",
+            "summary": "Standard acknowledged the field team and authorized departure.",
+            "at": 4
+          }
+        },
+        {
+          "name": "Enter the declared survey area",
+          "state": "satisfied",
+          "required": true,
+          "summary": "The team physically entered the declared Utility Room survey area.",
+          "blocking_reason": null,
+          "recent_transition": {
+            "state": "satisfied",
+            "summary": "The team physically entered the declared Utility Room survey area.",
+            "at": 4
+          }
+        },
+        {
+          "name": "Establish Utility Room conditions",
+          "state": "satisfied",
+          "required": true,
+          "summary": "The declared fixture, floor, and panel conditions are known and at least one feature was validated.",
+          "blocking_reason": null,
+          "recent_transition": {
+            "state": "satisfied",
+            "summary": "The declared fixture, floor, and panel conditions are known and at least one feature was validated.",
+            "at": 7
+          }
+        },
+        {
+          "name": "Capture mission evidence",
+          "state": "satisfied",
+          "required": true,
+          "summary": "At least one valid condition-specific field record is retained.",
+          "blocking_reason": null,
+          "recent_transition": {
+            "state": "satisfied",
+            "summary": "At least one valid condition-specific field record is retained.",
+            "at": 6
+          }
+        },
+        {
+          "name": "Report field evidence",
+          "state": "satisfied",
+          "required": true,
+          "summary": "Standard received a report tied to the retained field evidence.",
+          "blocking_reason": null,
+          "recent_transition": {
+            "state": "satisfied",
+            "summary": "Standard received a report tied to the retained field evidence.",
+            "at": 23
+          }
+        },
+        {
+          "name": "Verify the return route",
+          "state": "active",
+          "required": true,
+          "summary": "The Threshold-side marker has not yet been verified and secured.",
+          "blocking_reason": null,
+          "recent_transition": {
+            "state": "active",
+            "summary": "The Threshold-side marker has not yet been verified and secured.",
+            "at": 4
+          }
+        },
+        {
+          "name": "Maintain the scheduled check-in",
+          "state": "satisfied",
+          "required": true,
+          "summary": "Standard received the scheduled field check-in.",
+          "blocking_reason": null,
+          "recent_transition": {
+            "state": "satisfied",
+            "summary": "Standard received the scheduled field check-in.",
+            "at": 23
+          }
+        },
+        {
+          "name": "Return with accountability",
+          "state": "inactive",
+          "required": true,
+          "summary": "No return or controlled abort has been requested.",
+          "blocking_reason": null,
+          "recent_transition": null
+        },
+        {
+          "name": "Document an additional field condition",
+          "state": "active",
+          "required": false,
+          "summary": "One field condition is documented; a second distinct object record remains optional.",
+          "blocking_reason": null,
+          "recent_transition": {
+            "state": "active",
+            "summary": "One field condition is documented; a second distinct object record remains optional.",
+            "at": 6
+          }
+        }
+      ],
+      "return_readiness": {
+        "route_available": true,
+        "ready": false,
+        "returning": false,
+        "closure_ready": false,
+        "summary": "A known route returns to the Threshold, but required field work remains unresolved.",
+        "unresolved": [
+          {
+            "name": "Verify the return route",
+            "state": "active",
+            "summary": "The Threshold-side marker has not yet been verified and secured."
+          },
+          {
+            "name": "Return with accountability",
+            "state": "inactive",
+            "summary": "No return or controlled abort has been requested."
+          },
+          {
+            "name": "Document an additional field condition",
+            "state": "active",
+            "summary": "One field condition is documented; a second distinct object record remains optional."
+          }
+        ]
+      },
+      "team": [
+        {
+          "display_name": "Jack Rocha · YOU",
+          "role": "field researcher · YOU",
+          "contact_state": "SELF",
+          "current_or_last_known_location": "columned-corridor",
+          "condition": "normal",
+          "last_contact": "visually confirmed now",
+          "current_task": "player-directed",
+          "assigned_equipment": [
+            "field-light",
+            "survey-radio"
+          ],
+          "equipment_verification": "confirmed"
+        },
+        {
+          "display_name": "Tara Cruz",
+          "role": "survey technician",
+          "contact_state": "LOCAL",
+          "current_or_last_known_location": "columned-corridor",
+          "condition": "stabilized minor injury",
+          "last_contact": "visually confirmed now",
+          "current_task": "wait",
+          "assigned_equipment": [
+            "survey-instrument"
+          ],
+          "equipment_verification": "confirmed"
+        },
+        {
+          "display_name": "Jade Bentley",
+          "role": "documentation specialist",
+          "contact_state": "LOCAL",
+          "current_or_last_known_location": "columned-corridor",
+          "condition": "normal",
+          "last_contact": "visually confirmed now",
+          "current_task": "follow",
+          "assigned_equipment": [
+            "recording-device"
+          ],
+          "equipment_verification": "confirmed"
+        },
+        {
+          "display_name": "Audrey Mason",
+          "role": "field safety specialist",
+          "contact_state": "LOCAL",
+          "current_or_last_known_location": "columned-corridor",
+          "condition": "normal",
+          "last_contact": "visually confirmed now",
+          "current_task": "follow",
+          "assigned_equipment": [],
+          "equipment_verification": "confirmed"
+        }
+      ],
+      "check_ins": [
+        {
+          "label": "Scheduled field status report",
+          "state": "completed",
+          "due_at": 12,
+          "completed_at": 23,
+          "summary": "Standard received the field report."
+        }
+      ],
+      "messages": [
+        {
+          "sender": "You",
+          "recipient": "Standard",
+          "channel": "FIELD_RADIO",
+          "purpose": "radio-check",
+          "sent_at": 3,
+          "state": "acknowledged",
+          "delivered_at": 4,
+          "acknowledged_at": 4,
+          "known_reason": null
+        },
+        {
+          "sender": "You",
+          "recipient": "Standard",
+          "channel": "FIELD_RADIO",
+          "purpose": "evidence-report",
+          "sent_at": 13,
+          "state": "delivered",
+          "delivered_at": 23,
+          "acknowledged_at": null,
+          "known_reason": "The column line breaks the field-radio signal; delivery cannot yet be confirmed."
+        }
+      ],
+      "hazards": [
+        {
+          "category": "structural",
+          "state": "mitigated",
+          "warning": "A service bracket above the column line is sitting out of square.",
+          "observed_change": "The loose service bracket shifted and struck the team position.",
+          "mitigation_available": false,
+          "summary": "The bracket is secured clear of the working route."
+        }
+      ],
+      "equipment": [
+        {
+          "label": "Battery field lamp",
+          "holder": "You",
+          "location": "carrying",
+          "state": "Operational",
+          "verification": "visually confirmed",
+          "remaining": "checked"
+        },
+        {
+          "label": "35mm field camera",
+          "holder": "Jade Bentley",
+          "location": "carrying",
+          "state": "Operational",
+          "verification": "visually confirmed",
+          "remaining": 11
+        },
+        {
+          "label": "Portable survey instrument",
+          "holder": "You",
+          "location": "carrying",
+          "state": "Operational",
+          "verification": "visually confirmed",
+          "remaining": "checked"
+        },
+        {
+          "label": "Handheld field radio",
+          "holder": "You",
+          "location": "carrying",
+          "state": "Depleted",
+          "verification": "visually confirmed",
+          "remaining": "checked"
+        },
+        {
+          "label": "Numbered route-marker kit",
+          "holder": "You",
+          "location": "carrying",
+          "state": "Operational",
+          "verification": "visually confirmed",
+          "remaining": 3
+        }
+      ],
+      "evidence": [
+        {
+          "type": "surface-photograph",
+          "source": "scuffed floor",
+          "condition": "The photograph records the floor pattern and whether a survey marker is present.",
+          "reporting_state": "reported-to-standard",
+          "observer": "Jade Bentley"
+        }
+      ],
+      "location": "Columned Corridor",
+      "operational_updates": [
+        {
+          "kind": "scheduled-event",
+          "summary": "communication deliver resolved.",
+          "at": 23
+        }
+      ],
+      "review": null
+    },
+    "return_ready": {
+      "phase": "FIELD_OPERATION",
+      "interval": 28,
+      "next_known_event": null,
+      "mission_lifecycle": "return_available",
+      "objectives": [
+        {
+          "name": "Establish radio contact",
+          "state": "satisfied",
+          "required": true,
+          "summary": "Standard acknowledged the field team and authorized departure.",
+          "blocking_reason": null,
+          "recent_transition": {
+            "state": "satisfied",
+            "summary": "Standard acknowledged the field team and authorized departure.",
+            "at": 4
+          }
+        },
+        {
+          "name": "Enter the declared survey area",
+          "state": "satisfied",
+          "required": true,
+          "summary": "The team physically entered the declared Utility Room survey area.",
+          "blocking_reason": null,
+          "recent_transition": {
+            "state": "satisfied",
+            "summary": "The team physically entered the declared Utility Room survey area.",
+            "at": 4
+          }
+        },
+        {
+          "name": "Establish Utility Room conditions",
+          "state": "satisfied",
+          "required": true,
+          "summary": "The declared fixture, floor, and panel conditions are known and at least one feature was validated.",
+          "blocking_reason": null,
+          "recent_transition": {
+            "state": "satisfied",
+            "summary": "The declared fixture, floor, and panel conditions are known and at least one feature was validated.",
+            "at": 7
+          }
+        },
+        {
+          "name": "Capture mission evidence",
+          "state": "satisfied",
+          "required": true,
+          "summary": "At least one valid condition-specific field record is retained.",
+          "blocking_reason": null,
+          "recent_transition": {
+            "state": "satisfied",
+            "summary": "At least one valid condition-specific field record is retained.",
+            "at": 6
+          }
+        },
+        {
+          "name": "Report field evidence",
+          "state": "satisfied",
+          "required": true,
+          "summary": "Standard received a report tied to the retained field evidence.",
+          "blocking_reason": null,
+          "recent_transition": {
+            "state": "satisfied",
+            "summary": "Standard received a report tied to the retained field evidence.",
+            "at": 23
+          }
+        },
+        {
+          "name": "Verify the return route",
+          "state": "satisfied",
+          "required": true,
+          "summary": "The Threshold-side marker is secured on the traversed return route.",
+          "blocking_reason": null,
+          "recent_transition": {
+            "state": "satisfied",
+            "summary": "The Threshold-side marker is secured on the traversed return route.",
+            "at": 28
+          }
+        },
+        {
+          "name": "Maintain the scheduled check-in",
+          "state": "satisfied",
+          "required": true,
+          "summary": "Standard received the scheduled field check-in.",
+          "blocking_reason": null,
+          "recent_transition": {
+            "state": "satisfied",
+            "summary": "Standard received the scheduled field check-in.",
+            "at": 23
+          }
+        },
+        {
+          "name": "Return with accountability",
+          "state": "inactive",
+          "required": true,
+          "summary": "No return or controlled abort has been requested.",
+          "blocking_reason": null,
+          "recent_transition": null
+        },
+        {
+          "name": "Document an additional field condition",
+          "state": "satisfied",
+          "required": false,
+          "summary": "Distinct conditions from at least two field objects were documented.",
+          "blocking_reason": null,
+          "recent_transition": {
+            "state": "satisfied",
+            "summary": "Distinct conditions from at least two field objects were documented.",
+            "at": 26
+          }
+        }
+      ],
+      "return_readiness": {
+        "route_available": true,
+        "ready": true,
+        "returning": false,
+        "closure_ready": false,
+        "summary": "The route is known and required field work is resolved; the team may begin return.",
+        "unresolved": [
+          {
+            "name": "Return with accountability",
+            "state": "inactive",
+            "summary": "No return or controlled abort has been requested."
+          }
+        ]
+      },
+      "team": [
+        {
+          "display_name": "Jack Rocha · YOU",
+          "role": "field researcher · YOU",
+          "contact_state": "SELF",
+          "current_or_last_known_location": "threshold-side-entry",
+          "condition": "normal",
+          "last_contact": "visually confirmed now",
+          "current_task": "player-directed",
+          "assigned_equipment": [
+            "field-light",
+            "survey-radio"
+          ],
+          "equipment_verification": "confirmed"
+        },
+        {
+          "display_name": "Tara Cruz",
+          "role": "survey technician",
+          "contact_state": "LOCAL",
+          "current_or_last_known_location": "threshold-side-entry",
+          "condition": "stabilized minor injury",
+          "last_contact": "visually confirmed now",
+          "current_task": "follow",
+          "assigned_equipment": [
+            "survey-instrument"
+          ],
+          "equipment_verification": "confirmed"
+        },
+        {
+          "display_name": "Jade Bentley",
+          "role": "documentation specialist",
+          "contact_state": "LOCAL",
+          "current_or_last_known_location": "threshold-side-entry",
+          "condition": "normal",
+          "last_contact": "visually confirmed now",
+          "current_task": "follow",
+          "assigned_equipment": [
+            "recording-device"
+          ],
+          "equipment_verification": "confirmed"
+        },
+        {
+          "display_name": "Audrey Mason",
+          "role": "field safety specialist",
+          "contact_state": "LOCAL",
+          "current_or_last_known_location": "threshold-side-entry",
+          "condition": "normal",
+          "last_contact": "visually confirmed now",
+          "current_task": "follow",
+          "assigned_equipment": [],
+          "equipment_verification": "confirmed"
+        }
+      ],
+      "check_ins": [
+        {
+          "label": "Scheduled field status report",
+          "state": "completed",
+          "due_at": 12,
+          "completed_at": 23,
+          "summary": "Standard received the field report."
+        }
+      ],
+      "messages": [
+        {
+          "sender": "You",
+          "recipient": "Standard",
+          "channel": "FIELD_RADIO",
+          "purpose": "radio-check",
+          "sent_at": 3,
+          "state": "acknowledged",
+          "delivered_at": 4,
+          "acknowledged_at": 4,
+          "known_reason": null
+        },
+        {
+          "sender": "You",
+          "recipient": "Standard",
+          "channel": "FIELD_RADIO",
+          "purpose": "evidence-report",
+          "sent_at": 13,
+          "state": "acknowledged",
+          "delivered_at": 23,
+          "acknowledged_at": 24,
+          "known_reason": "The column line breaks the field-radio signal; delivery cannot yet be confirmed."
+        }
+      ],
+      "hazards": [
+        {
+          "category": "structural",
+          "state": "mitigated",
+          "warning": "A service bracket above the column line is sitting out of square.",
+          "observed_change": "The loose service bracket shifted and struck the team position.",
+          "mitigation_available": false,
+          "summary": "The bracket is secured clear of the working route."
+        }
+      ],
+      "equipment": [
+        {
+          "label": "Battery field lamp",
+          "holder": "You",
+          "location": "carrying",
+          "state": "Operational",
+          "verification": "visually confirmed",
+          "remaining": "checked"
+        },
+        {
+          "label": "35mm field camera",
+          "holder": "Jade Bentley",
+          "location": "carrying",
+          "state": "Operational",
+          "verification": "visually confirmed",
+          "remaining": 11
+        },
+        {
+          "label": "Portable survey instrument",
+          "holder": "You",
+          "location": "carrying",
+          "state": "Depleted",
+          "verification": "visually confirmed",
+          "remaining": "checked"
+        },
+        {
+          "label": "Handheld field radio",
+          "holder": "You",
+          "location": "carrying",
+          "state": "Depleted",
+          "verification": "visually confirmed",
+          "remaining": "checked"
+        },
+        {
+          "label": "Numbered route-marker kit",
+          "holder": "You",
+          "location": "carrying",
+          "state": "Operational",
+          "verification": "visually confirmed",
+          "remaining": 2
+        }
+      ],
+      "evidence": [
+        {
+          "type": "surface-photograph",
+          "source": "scuffed floor",
+          "condition": "The photograph records the floor pattern and whether a survey marker is present.",
+          "reporting_state": "reported-to-standard",
+          "observer": "Jade Bentley"
+        },
+        {
+          "type": "fixture-test",
+          "source": "fluorescent fixture",
+          "condition": "The active fixture held a steady output during the instrument test.",
+          "reporting_state": "unreported",
+          "observer": "YOU"
+        }
+      ],
+      "location": "Threshold-Side Entry",
+      "operational_updates": [],
+      "review": null
+    },
+    "derived_debrief": {
+      "phase": "DEBRIEF",
+      "interval": 29,
+      "next_known_event": null,
+      "mission_lifecycle": "completed",
+      "objectives": [
+        {
+          "name": "Establish radio contact",
+          "state": "satisfied",
+          "required": true,
+          "summary": "Standard acknowledged the field team and authorized departure.",
+          "blocking_reason": null,
+          "recent_transition": {
+            "state": "satisfied",
+            "summary": "Standard acknowledged the field team and authorized departure.",
+            "at": 4
+          }
+        },
+        {
+          "name": "Enter the declared survey area",
+          "state": "satisfied",
+          "required": true,
+          "summary": "The team physically entered the declared Utility Room survey area.",
+          "blocking_reason": null,
+          "recent_transition": {
+            "state": "satisfied",
+            "summary": "The team physically entered the declared Utility Room survey area.",
+            "at": 4
+          }
+        },
+        {
+          "name": "Establish Utility Room conditions",
+          "state": "satisfied",
+          "required": true,
+          "summary": "The declared fixture, floor, and panel conditions are known and at least one feature was validated.",
+          "blocking_reason": null,
+          "recent_transition": {
+            "state": "satisfied",
+            "summary": "The declared fixture, floor, and panel conditions are known and at least one feature was validated.",
+            "at": 7
+          }
+        },
+        {
+          "name": "Capture mission evidence",
+          "state": "satisfied",
+          "required": true,
+          "summary": "At least one valid condition-specific field record is retained.",
+          "blocking_reason": null,
+          "recent_transition": {
+            "state": "satisfied",
+            "summary": "At least one valid condition-specific field record is retained.",
+            "at": 6
+          }
+        },
+        {
+          "name": "Report field evidence",
+          "state": "satisfied",
+          "required": true,
+          "summary": "Standard received a report tied to the retained field evidence.",
+          "blocking_reason": null,
+          "recent_transition": {
+            "state": "satisfied",
+            "summary": "Standard received a report tied to the retained field evidence.",
+            "at": 23
+          }
+        },
+        {
+          "name": "Verify the return route",
+          "state": "satisfied",
+          "required": true,
+          "summary": "The Threshold-side marker is secured on the traversed return route.",
+          "blocking_reason": null,
+          "recent_transition": {
+            "state": "satisfied",
+            "summary": "The Threshold-side marker is secured on the traversed return route.",
+            "at": 28
+          }
+        },
+        {
+          "name": "Maintain the scheduled check-in",
+          "state": "satisfied",
+          "required": true,
+          "summary": "Standard received the scheduled field check-in.",
+          "blocking_reason": null,
+          "recent_transition": {
+            "state": "satisfied",
+            "summary": "Standard received the scheduled field check-in.",
+            "at": 23
+          }
+        },
+        {
+          "name": "Return with accountability",
+          "state": "satisfied",
+          "required": true,
+          "summary": "The team reached the Threshold-side entry and equipment and field-record outcomes were reconciled.",
+          "blocking_reason": null,
+          "recent_transition": {
+            "state": "satisfied",
+            "summary": "The team reached the Threshold-side entry and equipment and field-record outcomes were reconciled.",
+            "at": 28
+          }
+        },
+        {
+          "name": "Document an additional field condition",
+          "state": "satisfied",
+          "required": false,
+          "summary": "Distinct conditions from at least two field objects were documented.",
+          "blocking_reason": null,
+          "recent_transition": {
+            "state": "satisfied",
+            "summary": "Distinct conditions from at least two field objects were documented.",
+            "at": 26
+          }
+        }
+      ],
+      "return_readiness": {
+        "route_available": true,
+        "ready": true,
+        "returning": true,
+        "closure_ready": true,
+        "summary": "The route is known and required field work is resolved; the team may begin return.",
+        "unresolved": []
+      },
+      "team": [
+        {
+          "display_name": "Jack Rocha · YOU",
+          "role": "field researcher · YOU",
+          "contact_state": "SELF",
+          "current_or_last_known_location": "threshold-side-entry",
+          "condition": "normal",
+          "last_contact": "visually confirmed now",
+          "current_task": "player-directed",
+          "assigned_equipment": [
+            "field-light",
+            "survey-radio"
+          ],
+          "equipment_verification": "confirmed"
+        },
+        {
+          "display_name": "Tara Cruz",
+          "role": "survey technician",
+          "contact_state": "LOCAL",
+          "current_or_last_known_location": "threshold-side-entry",
+          "condition": "stabilized minor injury",
+          "last_contact": "visually confirmed now",
+          "current_task": "follow",
+          "assigned_equipment": [
+            "survey-instrument"
+          ],
+          "equipment_verification": "confirmed"
+        },
+        {
+          "display_name": "Jade Bentley",
+          "role": "documentation specialist",
+          "contact_state": "LOCAL",
+          "current_or_last_known_location": "threshold-side-entry",
+          "condition": "normal",
+          "last_contact": "visually confirmed now",
+          "current_task": "follow",
+          "assigned_equipment": [
+            "recording-device"
+          ],
+          "equipment_verification": "confirmed"
+        },
+        {
+          "display_name": "Audrey Mason",
+          "role": "field safety specialist",
+          "contact_state": "LOCAL",
+          "current_or_last_known_location": "threshold-side-entry",
+          "condition": "normal",
+          "last_contact": "visually confirmed now",
+          "current_task": "follow",
+          "assigned_equipment": [],
+          "equipment_verification": "confirmed"
+        }
+      ],
+      "check_ins": [
+        {
+          "label": "Scheduled field status report",
+          "state": "completed",
+          "due_at": 12,
+          "completed_at": 23,
+          "summary": "Standard received the field report."
+        }
+      ],
+      "messages": [
+        {
+          "sender": "You",
+          "recipient": "Standard",
+          "channel": "FIELD_RADIO",
+          "purpose": "radio-check",
+          "sent_at": 3,
+          "state": "acknowledged",
+          "delivered_at": 4,
+          "acknowledged_at": 4,
+          "known_reason": null
+        },
+        {
+          "sender": "You",
+          "recipient": "Standard",
+          "channel": "FIELD_RADIO",
+          "purpose": "evidence-report",
+          "sent_at": 13,
+          "state": "acknowledged",
+          "delivered_at": 23,
+          "acknowledged_at": 24,
+          "known_reason": "The column line breaks the field-radio signal; delivery cannot yet be confirmed."
+        }
+      ],
+      "hazards": [
+        {
+          "category": "structural",
+          "state": "mitigated",
+          "warning": "A service bracket above the column line is sitting out of square.",
+          "observed_change": "The loose service bracket shifted and struck the team position.",
+          "mitigation_available": false,
+          "summary": "The bracket is secured clear of the working route."
+        }
+      ],
+      "equipment": [
+        {
+          "label": "Battery field lamp",
+          "holder": "You",
+          "location": "carrying",
+          "state": "Operational",
+          "verification": "visually confirmed",
+          "remaining": "checked"
+        },
+        {
+          "label": "35mm field camera",
+          "holder": "Jade Bentley",
+          "location": "carrying",
+          "state": "Operational",
+          "verification": "visually confirmed",
+          "remaining": 11
+        },
+        {
+          "label": "Portable survey instrument",
+          "holder": "You",
+          "location": "carrying",
+          "state": "Depleted",
+          "verification": "visually confirmed",
+          "remaining": "checked"
+        },
+        {
+          "label": "Handheld field radio",
+          "holder": "You",
+          "location": "carrying",
+          "state": "Depleted",
+          "verification": "visually confirmed",
+          "remaining": "checked"
+        },
+        {
+          "label": "Numbered route-marker kit",
+          "holder": "You",
+          "location": "carrying",
+          "state": "Operational",
+          "verification": "visually confirmed",
+          "remaining": 2
+        }
+      ],
+      "evidence": [
+        {
+          "type": "surface-photograph",
+          "source": "scuffed floor",
+          "condition": "The photograph records the floor pattern and whether a survey marker is present.",
+          "reporting_state": "reported-to-standard",
+          "observer": "Jade Bentley"
+        },
+        {
+          "type": "fixture-test",
+          "source": "fluorescent fixture",
+          "condition": "The active fixture held a steady output during the instrument test.",
+          "reporting_state": "unreported",
+          "observer": "YOU"
+        }
+      ],
+      "location": "Threshold-Side Entry",
+      "operational_updates": [],
+      "review": {
+        "version": "yellow-beast-q4-continuity@v2",
+        "mission_id": "CQ4-INFRASTRUCTURE-MATERIAL-002-7679",
+        "outcome": "recovered-complication",
+        "final_mission_state": "completed",
+        "public_debrief_summary": "The team returned with its required record after recovering a missed communication window; the late delivery remains part of the operational outcome. A teammate returned with a recorded injury. A field complication was recovered before closure. The scheduled communication record includes a missed reporting window.",
+        "assignment": {
+          "objective": "Inspect and document the declared lighting and material conditions within the survey boundary.",
+          "completion_status": "completed",
+          "deviations": [
+            "missed-declared-check-in"
+          ],
+          "objective_outcomes": [
+            {
+              "name": "Establish radio contact",
+              "kind": "required",
+              "state": "satisfied"
+            },
+            {
+              "name": "Enter the declared survey area",
+              "kind": "required",
+              "state": "satisfied"
+            },
+            {
+              "name": "Establish Utility Room conditions",
+              "kind": "required",
+              "state": "satisfied"
+            },
+            {
+              "name": "Capture mission evidence",
+              "kind": "required",
+              "state": "satisfied"
+            },
+            {
+              "name": "Report field evidence",
+              "kind": "required",
+              "state": "satisfied"
+            },
+            {
+              "name": "Verify the return route",
+              "kind": "required",
+              "state": "satisfied"
+            },
+            {
+              "name": "Maintain the scheduled check-in",
+              "kind": "required",
+              "state": "satisfied"
+            },
+            {
+              "name": "Return with accountability",
+              "kind": "required",
+              "state": "satisfied"
+            },
+            {
+              "name": "Document an additional field condition",
+              "kind": "optional",
+              "state": "satisfied"
+            }
+          ]
+        },
+        "personnel": [
+          {
+            "identity": "q4-player-35a5e8690a027e84",
+            "display_name": "Jack Rocha",
+            "role": "field researcher",
+            "status": "returned",
+            "last_contact": "visually confirmed now",
+            "provenance": "Q4 team status and canonical run history"
+          },
+          {
+            "identity": "yb-personnel-38195d1aa89ad6353175",
+            "display_name": "Tara Cruz",
+            "role": "survey technician",
+            "status": "returned",
+            "last_contact": "visually confirmed now",
+            "provenance": "Q4 team status and canonical run history"
+          },
+          {
+            "identity": "yb-personnel-4aaf3425ba12437e332d",
+            "display_name": "Jade Bentley",
+            "role": "documentation specialist",
+            "status": "returned",
+            "last_contact": "visually confirmed now",
+            "provenance": "Q4 team status and canonical run history"
+          },
+          {
+            "identity": "yb-personnel-fdef0e1c866d52ab2b0a",
+            "display_name": "Audrey Mason",
+            "role": "field safety specialist",
+            "status": "returned",
+            "last_contact": "visually confirmed now",
+            "provenance": "Q4 team status and canonical run history"
+          }
+        ],
+        "equipment": [
+          {
+            "id": "q4-field-light-01",
+            "label": "Battery field lamp",
+            "status": "returned",
+            "holder": "q4-player-35a5e8690a027e84",
+            "location": "with the field kit",
+            "origin_run": "run-25b4e0601a55383a",
+            "provenance": "persistent Q4 equipment record"
+          },
+          {
+            "id": "q4-recording-device-01",
+            "label": "35mm field camera",
+            "status": "returned",
+            "holder": "yb-personnel-4aaf3425ba12437e332d",
+            "location": "with the field kit",
+            "origin_run": "run-25b4e0601a55383a",
+            "provenance": "persistent Q4 equipment record"
+          },
+          {
+            "id": "q4-survey-instrument-01",
+            "label": "Portable survey instrument",
+            "status": "depleted",
+            "holder": "q4-player-35a5e8690a027e84",
+            "location": "carried",
+            "origin_run": "run-25b4e0601a55383a",
+            "provenance": "persistent Q4 equipment record"
+          },
+          {
+            "id": "q4-survey-radio-01",
+            "label": "Handheld field radio",
+            "status": "depleted",
+            "holder": "q4-player-35a5e8690a027e84",
+            "location": "with the field kit",
+            "origin_run": "run-25b4e0601a55383a",
+            "provenance": "persistent Q4 equipment record"
+          },
+          {
+            "id": "q4-route-marker-kit-stores",
+            "label": "Numbered route-marker kit",
+            "status": "returned",
+            "holder": "q4-player-35a5e8690a027e84",
+            "location": "with the field kit",
+            "origin_run": "run-25b4e0601a55383a",
+            "provenance": "persistent Q4 equipment record"
+          }
+        ],
+        "communications": {
+          "required_check_ins": [
+            "Confirm departure at the Threshold.",
+            "Transmit a field check-in within the declared operational window.",
+            "Confirm return or report an authorized abort."
+          ],
+          "delivered": [
+            {
+              "id": "message-8e8177ee02ebd68d7b",
+              "sender": "q4-player-35a5e8690a027e84",
+              "intended_recipient": "Standard",
+              "intended_recipients": [
+                "Standard"
+              ],
+              "actual_recipients": [
+                "Standard"
+              ],
+              "channel": "FIELD_RADIO",
+              "purpose": "radio-check",
+              "text": "Standard, Clear-Q4 team Complex-side. 4 personnel accounted for.",
+              "state": "acknowledged",
+              "delivery_status": "delivered",
+              "sent_at": 3,
+              "interval": 3,
+              "delivered_at": 4,
+              "acknowledged_at": 4,
+              "interference": null,
+              "failure_reason": null,
+              "evidence_ids": [],
+              "provenance": "authoritative-communication-runtime",
+              "history": [
+                {
+                  "sequence": 1,
+                  "from": null,
+                  "to": "composed",
+                  "at": 3,
+                  "reason": "message composed"
+                },
+                {
+                  "sequence": 2,
+                  "from": "composed",
+                  "to": "queued",
+                  "at": 3,
+                  "reason": "accepted into the field-radio transmission queue"
+                },
+                {
+                  "sequence": 3,
+                  "from": "queued",
+                  "to": "transmitting",
+                  "at": 4,
+                  "reason": "field-radio transmission begun"
+                },
+                {
+                  "sequence": 4,
+                  "from": "transmitting",
+                  "to": "delivered",
+                  "at": 4,
+                  "reason": "the intended recipient received the radio message"
+                },
+                {
+                  "sequence": 5,
+                  "from": "delivered",
+                  "to": "acknowledged",
+                  "at": 4,
+                  "reason": "Standard acknowledged the delivered message"
+                }
+              ],
+              "institutional_recorded": "q4-delivered-communication-message-8e8177ee02ebd68d7b"
+            },
+            {
+              "id": "message-6450285d1fe4610068",
+              "sender": "q4-player-35a5e8690a027e84",
+              "intended_recipient": "Standard",
+              "intended_recipients": [
+                "Standard"
+              ],
+              "actual_recipients": [
+                "Standard"
+              ],
+              "channel": "FIELD_RADIO",
+              "purpose": "evidence-report",
+              "text": "Scheduled check-in and evidence report: scuff field record retained.",
+              "state": "acknowledged",
+              "delivery_status": "delivered",
+              "sent_at": 13,
+              "interval": 13,
+              "delivered_at": 23,
+              "acknowledged_at": 24,
+              "interference": {
+                "id": "columned-corridor-radio-shadow",
+                "public_description": "The column line breaks the field-radio signal; delivery cannot yet be confirmed.",
+                "additional_delay": 9
+              },
+              "failure_reason": null,
+              "evidence_ids": [
+                "object-evidence-49785b4cef50a146aa7d"
+              ],
+              "provenance": "authoritative-communication-runtime",
+              "history": [
+                {
+                  "sequence": 1,
+                  "from": null,
+                  "to": "composed",
+                  "at": 13,
+                  "reason": "message composed"
+                },
+                {
+                  "sequence": 2,
+                  "from": "composed",
+                  "to": "queued",
+                  "at": 13,
+                  "reason": "accepted into the field-radio transmission queue"
+                },
+                {
+                  "sequence": 3,
+                  "from": "queued",
+                  "to": "delayed",
+                  "at": 14,
+                  "reason": "The column line breaks the field-radio signal; delivery cannot yet be confirmed."
+                },
+                {
+                  "sequence": 4,
+                  "from": "delayed",
+                  "to": "delivered",
+                  "at": 23,
+                  "reason": "the intended recipient received the radio message"
+                },
+                {
+                  "sequence": 5,
+                  "from": "delivered",
+                  "to": "acknowledged",
+                  "at": 24,
+                  "reason": "Standard acknowledged the delivered message"
+                }
+              ],
+              "check_in_id": "field-status-check-in",
+              "institutional_recorded": "q4-delivered-communication-message-6450285d1fe4610068"
+            }
+          ],
+          "missed": [
+            "declared check-in"
+          ],
+          "outcome": {
+            "radio_check_completed": true,
+            "check_in_completed": true,
+            "check_in_missed": true,
+            "check_ins": [
+              {
+                "id": "field-status-check-in",
+                "state": "completed",
+                "due_at": 12,
+                "completed_at": 23
+              }
+            ],
+            "messages": [
+              {
+                "purpose": "radio-check",
+                "state": "acknowledged",
+                "sent_at": 3,
+                "delivered_at": 4,
+                "acknowledged_at": 4
+              },
+              {
+                "purpose": "evidence-report",
+                "state": "acknowledged",
+                "sent_at": 13,
+                "delivered_at": 23,
+                "acknowledged_at": 24
+              }
+            ],
+            "closure_delivered": false
+          }
+        },
+        "evidence": [
+          {
+            "version": "yellow-beast-object-evidence@v1",
+            "id": "object-evidence-49785b4cef50a146aa7d",
+            "type": "surface-photograph",
+            "source_object": "utility-route-surface",
+            "source_name": "scuffed floor",
+            "source_location": "utility-room",
+            "source_location_name": "Utility Room",
+            "location": "utility-room",
+            "creator": "yb-personnel-4aaf3425ba12437e332d",
+            "capturing_observer": "yb-personnel-4aaf3425ba12437e332d",
+            "custodian": "yb-personnel-4aaf3425ba12437e332d",
+            "capture_event": "object.evidence.captured",
+            "method": "35mm photograph",
+            "device_id": "q4-recording-device-01",
+            "device": "35mm field camera",
+            "object_condition": {
+              "condition": "ordinary-wear",
+              "intact": true,
+              "marked": false,
+              "custom.marker_kind": null
+            },
+            "condition_fingerprint": "d42db40337aaaf3e0251",
+            "condition_summary": "The photograph records the floor pattern and whether a survey marker is present.",
+            "captured_at": {
+              "interval": 6
+            },
+            "interval": 6,
+            "available_to_player": true,
+            "available_to_standard": true,
+            "reporting_state": "reported-to-standard",
+            "storage": "with the camera record",
+            "visible_objects": [
+              "scuffed floor"
+            ],
+            "target_observation": "The photograph records the floor pattern and whether a survey marker is present.",
+            "provenance": "worldpack-authored-object-interaction",
+            "valid": true,
+            "mission_id": "CQ4-INFRASTRUCTURE-MATERIAL-002-7679",
+            "render": {
+              "id": "render-874b80a668cf2b59",
+              "evidence_id": "object-evidence-49785b4cef50a146aa7d",
+              "adapter": "fallback",
+              "workflow": "observer-safe-q4-evidence",
+              "status": "fallback-ready",
+              "attempts": 0,
+              "source_fact_digest": "f7f225f65da3e73360d31c04196d0f0d0d442b227de5e7da95a5a9ebfd01e765",
+              "created_at": "simulation-recorded",
+              "result": {
+                "status": "fallback",
+                "kind": "schematic-capture",
+                "label": "Observer-safe field capture",
+                "reason": "renderer-disabled",
+                "source_fact_digest": "f7f225f65da3e73360d31c04196d0f0d0d442b227de5e7da95a5a9ebfd01e765",
+                "asset_id": "fallback-object-evidence-49785b4cef50a146aa7d",
+                "provenance": "local-deterministic-fallback"
+              }
+            },
+            "visual": {
+              "status": "fallback",
+              "kind": "schematic-capture",
+              "label": "Observer-safe field capture",
+              "reason": "renderer-disabled",
+              "source_fact_digest": "f7f225f65da3e73360d31c04196d0f0d0d442b227de5e7da95a5a9ebfd01e765",
+              "asset_id": "fallback-object-evidence-49785b4cef50a146aa7d",
+              "provenance": "local-deterministic-fallback"
+            }
+          },
+          {
+            "version": "yellow-beast-object-evidence@v1",
+            "id": "object-evidence-79fb1514ade0224e4b71",
+            "type": "fixture-test",
+            "source_object": "utility-fluorescent-fixture",
+            "source_name": "fluorescent fixture",
+            "source_location": "utility-room",
+            "source_location_name": "Utility Room",
+            "location": "utility-room",
+            "creator": "q4-player-35a5e8690a027e84",
+            "capturing_observer": "q4-player-35a5e8690a027e84",
+            "custodian": "q4-player-35a5e8690a027e84",
+            "capture_event": "object.evidence.captured",
+            "method": "instrument test",
+            "device_id": "q4-survey-instrument-01",
+            "device": "Portable survey instrument",
+            "object_condition": {
+              "condition": "steady-surveyed",
+              "active": true,
+              "intact": true,
+              "custom.tested": true
+            },
+            "condition_fingerprint": "50f43d126fa4dcde757c",
+            "condition_summary": "The active fixture held a steady output during the instrument test.",
+            "captured_at": {
+              "interval": 26
+            },
+            "interval": 26,
+            "available_to_player": true,
+            "available_to_standard": false,
+            "reporting_state": "unreported",
+            "storage": "with the field survey record",
+            "visible_objects": [
+              "fluorescent fixture"
+            ],
+            "target_observation": "The active fixture held a steady output during the instrument test.",
+            "provenance": "worldpack-authored-object-interaction",
+            "valid": true,
+            "mission_id": "CQ4-INFRASTRUCTURE-MATERIAL-002-7679",
+            "render": {
+              "id": "render-556f9b2fb3671fb5",
+              "evidence_id": "object-evidence-79fb1514ade0224e4b71",
+              "adapter": "fallback",
+              "workflow": "observer-safe-q4-evidence",
+              "status": "fallback-ready",
+              "attempts": 0,
+              "source_fact_digest": "1560367cdb27d6e6c2a0b124d121569a4fe8670ac1ec2d064dac2102afb14fac",
+              "created_at": "simulation-recorded",
+              "result": {
+                "status": "fallback",
+                "kind": "schematic-capture",
+                "label": "Observer-safe field capture",
+                "reason": "renderer-disabled",
+                "source_fact_digest": "1560367cdb27d6e6c2a0b124d121569a4fe8670ac1ec2d064dac2102afb14fac",
+                "asset_id": "fallback-object-evidence-79fb1514ade0224e4b71",
+                "provenance": "local-deterministic-fallback"
+              }
+            },
+            "visual": {
+              "status": "fallback",
+              "kind": "schematic-capture",
+              "label": "Observer-safe field capture",
+              "reason": "renderer-disabled",
+              "source_fact_digest": "1560367cdb27d6e6c2a0b124d121569a4fe8670ac1ec2d064dac2102afb14fac",
+              "asset_id": "fallback-object-evidence-79fb1514ade0224e4b71",
+              "provenance": "local-deterministic-fallback"
+            }
+          }
+        ],
+        "evidence_outcome": {
+          "captured": 2,
+          "retained": 2,
+          "reported": 1,
+          "quality": "condition-specific"
+        },
+        "return_outcome": {
+          "requested": true,
+          "controlled_abort": false,
+          "route_available": true,
+          "return_ready": true,
+          "completed": true,
+          "location": "threshold-side-entry"
+        },
+        "operational_outcome": {
+          "consequence_count": 1,
+          "consequences": [
+            {
+              "classification": "temporary-complication",
+              "public_summary": "A teammate was struck and dropped assigned equipment. The complication can be recovered in place.",
+              "recovered": true
+            }
+          ],
+          "hazard_states": {
+            "overhead-service-bracket": "mitigated"
+          },
+          "team_decisions": 87
+        },
+        "institutional_consequence_hooks": [
+          "recovered_complication",
+          "missed_check_in",
+          "personnel_injury"
+        ],
+        "institutional_findings": {
+          "reported": [
+            {
+              "text": "Standard, Clear-Q4 team Complex-side. 4 personnel accounted for.",
+              "status": "reported",
+              "provenance": "q4-interaction-5"
+            }
+          ],
+          "unresolved": [],
+          "recommendations": [
+            "Review the recorded personnel, equipment, and evidence status before the next assignment."
+          ]
+        },
+        "knowledge_scope": {
+          "player": "recorded field history and personal observations",
+          "standard": "delivered reports and returned evidence only",
+          "objective": "canonical run/equipment/personnel/mission records"
+        },
+        "provenance": "condition-driven Q4 mission result"
+      }
+    },
+    "post_restart_final_record": {
+      "phase": "DEBRIEF",
+      "interval": 29,
+      "next_known_event": null,
+      "mission_lifecycle": "completed",
+      "objectives": [
+        {
+          "name": "Establish radio contact",
+          "state": "satisfied",
+          "required": true,
+          "summary": "Standard acknowledged the field team and authorized departure.",
+          "blocking_reason": null,
+          "recent_transition": {
+            "state": "satisfied",
+            "summary": "Standard acknowledged the field team and authorized departure.",
+            "at": 4
+          }
+        },
+        {
+          "name": "Enter the declared survey area",
+          "state": "satisfied",
+          "required": true,
+          "summary": "The team physically entered the declared Utility Room survey area.",
+          "blocking_reason": null,
+          "recent_transition": {
+            "state": "satisfied",
+            "summary": "The team physically entered the declared Utility Room survey area.",
+            "at": 4
+          }
+        },
+        {
+          "name": "Establish Utility Room conditions",
+          "state": "satisfied",
+          "required": true,
+          "summary": "The declared fixture, floor, and panel conditions are known and at least one feature was validated.",
+          "blocking_reason": null,
+          "recent_transition": {
+            "state": "satisfied",
+            "summary": "The declared fixture, floor, and panel conditions are known and at least one feature was validated.",
+            "at": 7
+          }
+        },
+        {
+          "name": "Capture mission evidence",
+          "state": "satisfied",
+          "required": true,
+          "summary": "At least one valid condition-specific field record is retained.",
+          "blocking_reason": null,
+          "recent_transition": {
+            "state": "satisfied",
+            "summary": "At least one valid condition-specific field record is retained.",
+            "at": 6
+          }
+        },
+        {
+          "name": "Report field evidence",
+          "state": "satisfied",
+          "required": true,
+          "summary": "Standard received a report tied to the retained field evidence.",
+          "blocking_reason": null,
+          "recent_transition": {
+            "state": "satisfied",
+            "summary": "Standard received a report tied to the retained field evidence.",
+            "at": 23
+          }
+        },
+        {
+          "name": "Verify the return route",
+          "state": "satisfied",
+          "required": true,
+          "summary": "The Threshold-side marker is secured on the traversed return route.",
+          "blocking_reason": null,
+          "recent_transition": {
+            "state": "satisfied",
+            "summary": "The Threshold-side marker is secured on the traversed return route.",
+            "at": 28
+          }
+        },
+        {
+          "name": "Maintain the scheduled check-in",
+          "state": "satisfied",
+          "required": true,
+          "summary": "Standard received the scheduled field check-in.",
+          "blocking_reason": null,
+          "recent_transition": {
+            "state": "satisfied",
+            "summary": "Standard received the scheduled field check-in.",
+            "at": 23
+          }
+        },
+        {
+          "name": "Return with accountability",
+          "state": "satisfied",
+          "required": true,
+          "summary": "The team reached the Threshold-side entry and equipment and field-record outcomes were reconciled.",
+          "blocking_reason": null,
+          "recent_transition": {
+            "state": "satisfied",
+            "summary": "The team reached the Threshold-side entry and equipment and field-record outcomes were reconciled.",
+            "at": 28
+          }
+        },
+        {
+          "name": "Document an additional field condition",
+          "state": "satisfied",
+          "required": false,
+          "summary": "Distinct conditions from at least two field objects were documented.",
+          "blocking_reason": null,
+          "recent_transition": {
+            "state": "satisfied",
+            "summary": "Distinct conditions from at least two field objects were documented.",
+            "at": 26
+          }
+        }
+      ],
+      "return_readiness": {
+        "route_available": true,
+        "ready": true,
+        "returning": true,
+        "closure_ready": true,
+        "summary": "The route is known and required field work is resolved; the team may begin return.",
+        "unresolved": []
+      },
+      "team": [
+        {
+          "display_name": "Jack Rocha · YOU",
+          "role": "field researcher · YOU",
+          "contact_state": "SELF",
+          "current_or_last_known_location": "threshold-side-entry",
+          "condition": "normal",
+          "last_contact": "visually confirmed now",
+          "current_task": "player-directed",
+          "assigned_equipment": [
+            "field-light",
+            "survey-radio"
+          ],
+          "equipment_verification": "confirmed"
+        },
+        {
+          "display_name": "Tara Cruz",
+          "role": "survey technician",
+          "contact_state": "LOCAL",
+          "current_or_last_known_location": "threshold-side-entry",
+          "condition": "stabilized minor injury",
+          "last_contact": "visually confirmed now",
+          "current_task": "follow",
+          "assigned_equipment": [
+            "survey-instrument"
+          ],
+          "equipment_verification": "confirmed"
+        },
+        {
+          "display_name": "Jade Bentley",
+          "role": "documentation specialist",
+          "contact_state": "LOCAL",
+          "current_or_last_known_location": "threshold-side-entry",
+          "condition": "normal",
+          "last_contact": "visually confirmed now",
+          "current_task": "follow",
+          "assigned_equipment": [
+            "recording-device"
+          ],
+          "equipment_verification": "confirmed"
+        },
+        {
+          "display_name": "Audrey Mason",
+          "role": "field safety specialist",
+          "contact_state": "LOCAL",
+          "current_or_last_known_location": "threshold-side-entry",
+          "condition": "normal",
+          "last_contact": "visually confirmed now",
+          "current_task": "follow",
+          "assigned_equipment": [],
+          "equipment_verification": "confirmed"
+        }
+      ],
+      "check_ins": [
+        {
+          "label": "Scheduled field status report",
+          "state": "completed",
+          "due_at": 12,
+          "completed_at": 23,
+          "summary": "Standard received the field report."
+        }
+      ],
+      "messages": [
+        {
+          "sender": "You",
+          "recipient": "Standard",
+          "channel": "FIELD_RADIO",
+          "purpose": "radio-check",
+          "sent_at": 3,
+          "state": "acknowledged",
+          "delivered_at": 4,
+          "acknowledged_at": 4,
+          "known_reason": null
+        },
+        {
+          "sender": "You",
+          "recipient": "Standard",
+          "channel": "FIELD_RADIO",
+          "purpose": "evidence-report",
+          "sent_at": 13,
+          "state": "acknowledged",
+          "delivered_at": 23,
+          "acknowledged_at": 24,
+          "known_reason": "The column line breaks the field-radio signal; delivery cannot yet be confirmed."
+        }
+      ],
+      "hazards": [
+        {
+          "category": "structural",
+          "state": "mitigated",
+          "warning": "A service bracket above the column line is sitting out of square.",
+          "observed_change": "The loose service bracket shifted and struck the team position.",
+          "mitigation_available": false,
+          "summary": "The bracket is secured clear of the working route."
+        }
+      ],
+      "equipment": [
+        {
+          "label": "Battery field lamp",
+          "holder": "You",
+          "location": "carrying",
+          "state": "Operational",
+          "verification": "visually confirmed",
+          "remaining": "checked"
+        },
+        {
+          "label": "35mm field camera",
+          "holder": "Jade Bentley",
+          "location": "carrying",
+          "state": "Operational",
+          "verification": "visually confirmed",
+          "remaining": 11
+        },
+        {
+          "label": "Portable survey instrument",
+          "holder": "You",
+          "location": "carrying",
+          "state": "Depleted",
+          "verification": "visually confirmed",
+          "remaining": "checked"
+        },
+        {
+          "label": "Handheld field radio",
+          "holder": "You",
+          "location": "carrying",
+          "state": "Depleted",
+          "verification": "visually confirmed",
+          "remaining": "checked"
+        },
+        {
+          "label": "Numbered route-marker kit",
+          "holder": "You",
+          "location": "carrying",
+          "state": "Operational",
+          "verification": "visually confirmed",
+          "remaining": 2
+        }
+      ],
+      "evidence": [
+        {
+          "type": "surface-photograph",
+          "source": "scuffed floor",
+          "condition": "The photograph records the floor pattern and whether a survey marker is present.",
+          "reporting_state": "reported-to-standard",
+          "observer": "Jade Bentley"
+        },
+        {
+          "type": "fixture-test",
+          "source": "fluorescent fixture",
+          "condition": "The active fixture held a steady output during the instrument test.",
+          "reporting_state": "unreported",
+          "observer": "YOU"
+        }
+      ],
+      "location": "Threshold-Side Entry",
+      "operational_updates": [],
+      "review": {
+        "version": "yellow-beast-q4-continuity@v2",
+        "mission_id": "CQ4-INFRASTRUCTURE-MATERIAL-002-7679",
+        "outcome": "recovered-complication",
+        "final_mission_state": "completed",
+        "public_debrief_summary": "The team returned with its required record after recovering a missed communication window; the late delivery remains part of the operational outcome. A teammate returned with a recorded injury. A field complication was recovered before closure. The scheduled communication record includes a missed reporting window.",
+        "assignment": {
+          "objective": "Inspect and document the declared lighting and material conditions within the survey boundary.",
+          "completion_status": "completed",
+          "deviations": [
+            "missed-declared-check-in"
+          ],
+          "objective_outcomes": [
+            {
+              "name": "Establish radio contact",
+              "kind": "required",
+              "state": "satisfied"
+            },
+            {
+              "name": "Enter the declared survey area",
+              "kind": "required",
+              "state": "satisfied"
+            },
+            {
+              "name": "Establish Utility Room conditions",
+              "kind": "required",
+              "state": "satisfied"
+            },
+            {
+              "name": "Capture mission evidence",
+              "kind": "required",
+              "state": "satisfied"
+            },
+            {
+              "name": "Report field evidence",
+              "kind": "required",
+              "state": "satisfied"
+            },
+            {
+              "name": "Verify the return route",
+              "kind": "required",
+              "state": "satisfied"
+            },
+            {
+              "name": "Maintain the scheduled check-in",
+              "kind": "required",
+              "state": "satisfied"
+            },
+            {
+              "name": "Return with accountability",
+              "kind": "required",
+              "state": "satisfied"
+            },
+            {
+              "name": "Document an additional field condition",
+              "kind": "optional",
+              "state": "satisfied"
+            }
+          ]
+        },
+        "personnel": [
+          {
+            "identity": "q4-player-35a5e8690a027e84",
+            "display_name": "Jack Rocha",
+            "role": "field researcher",
+            "status": "returned",
+            "last_contact": "visually confirmed now",
+            "provenance": "Q4 team status and canonical run history"
+          },
+          {
+            "identity": "yb-personnel-38195d1aa89ad6353175",
+            "display_name": "Tara Cruz",
+            "role": "survey technician",
+            "status": "returned",
+            "last_contact": "visually confirmed now",
+            "provenance": "Q4 team status and canonical run history"
+          },
+          {
+            "identity": "yb-personnel-4aaf3425ba12437e332d",
+            "display_name": "Jade Bentley",
+            "role": "documentation specialist",
+            "status": "returned",
+            "last_contact": "visually confirmed now",
+            "provenance": "Q4 team status and canonical run history"
+          },
+          {
+            "identity": "yb-personnel-fdef0e1c866d52ab2b0a",
+            "display_name": "Audrey Mason",
+            "role": "field safety specialist",
+            "status": "returned",
+            "last_contact": "visually confirmed now",
+            "provenance": "Q4 team status and canonical run history"
+          }
+        ],
+        "equipment": [
+          {
+            "id": "q4-field-light-01",
+            "label": "Battery field lamp",
+            "status": "returned",
+            "holder": "q4-player-35a5e8690a027e84",
+            "location": "with the field kit",
+            "origin_run": "run-25b4e0601a55383a",
+            "provenance": "persistent Q4 equipment record"
+          },
+          {
+            "id": "q4-recording-device-01",
+            "label": "35mm field camera",
+            "status": "returned",
+            "holder": "yb-personnel-4aaf3425ba12437e332d",
+            "location": "with the field kit",
+            "origin_run": "run-25b4e0601a55383a",
+            "provenance": "persistent Q4 equipment record"
+          },
+          {
+            "id": "q4-survey-instrument-01",
+            "label": "Portable survey instrument",
+            "status": "depleted",
+            "holder": "q4-player-35a5e8690a027e84",
+            "location": "carried",
+            "origin_run": "run-25b4e0601a55383a",
+            "provenance": "persistent Q4 equipment record"
+          },
+          {
+            "id": "q4-survey-radio-01",
+            "label": "Handheld field radio",
+            "status": "depleted",
+            "holder": "q4-player-35a5e8690a027e84",
+            "location": "with the field kit",
+            "origin_run": "run-25b4e0601a55383a",
+            "provenance": "persistent Q4 equipment record"
+          },
+          {
+            "id": "q4-route-marker-kit-stores",
+            "label": "Numbered route-marker kit",
+            "status": "returned",
+            "holder": "q4-player-35a5e8690a027e84",
+            "location": "with the field kit",
+            "origin_run": "run-25b4e0601a55383a",
+            "provenance": "persistent Q4 equipment record"
+          }
+        ],
+        "communications": {
+          "required_check_ins": [
+            "Confirm departure at the Threshold.",
+            "Transmit a field check-in within the declared operational window.",
+            "Confirm return or report an authorized abort."
+          ],
+          "delivered": [
+            {
+              "id": "message-8e8177ee02ebd68d7b",
+              "sender": "q4-player-35a5e8690a027e84",
+              "intended_recipient": "Standard",
+              "intended_recipients": [
+                "Standard"
+              ],
+              "actual_recipients": [
+                "Standard"
+              ],
+              "channel": "FIELD_RADIO",
+              "purpose": "radio-check",
+              "text": "Standard, Clear-Q4 team Complex-side. 4 personnel accounted for.",
+              "state": "acknowledged",
+              "delivery_status": "delivered",
+              "sent_at": 3,
+              "interval": 3,
+              "delivered_at": 4,
+              "acknowledged_at": 4,
+              "interference": null,
+              "failure_reason": null,
+              "evidence_ids": [],
+              "provenance": "authoritative-communication-runtime",
+              "history": [
+                {
+                  "sequence": 1,
+                  "from": null,
+                  "to": "composed",
+                  "at": 3,
+                  "reason": "message composed"
+                },
+                {
+                  "sequence": 2,
+                  "from": "composed",
+                  "to": "queued",
+                  "at": 3,
+                  "reason": "accepted into the field-radio transmission queue"
+                },
+                {
+                  "sequence": 3,
+                  "from": "queued",
+                  "to": "transmitting",
+                  "at": 4,
+                  "reason": "field-radio transmission begun"
+                },
+                {
+                  "sequence": 4,
+                  "from": "transmitting",
+                  "to": "delivered",
+                  "at": 4,
+                  "reason": "the intended recipient received the radio message"
+                },
+                {
+                  "sequence": 5,
+                  "from": "delivered",
+                  "to": "acknowledged",
+                  "at": 4,
+                  "reason": "Standard acknowledged the delivered message"
+                }
+              ],
+              "institutional_recorded": "q4-delivered-communication-message-8e8177ee02ebd68d7b"
+            },
+            {
+              "id": "message-6450285d1fe4610068",
+              "sender": "q4-player-35a5e8690a027e84",
+              "intended_recipient": "Standard",
+              "intended_recipients": [
+                "Standard"
+              ],
+              "actual_recipients": [
+                "Standard"
+              ],
+              "channel": "FIELD_RADIO",
+              "purpose": "evidence-report",
+              "text": "Scheduled check-in and evidence report: scuff field record retained.",
+              "state": "acknowledged",
+              "delivery_status": "delivered",
+              "sent_at": 13,
+              "interval": 13,
+              "delivered_at": 23,
+              "acknowledged_at": 24,
+              "interference": {
+                "id": "columned-corridor-radio-shadow",
+                "public_description": "The column line breaks the field-radio signal; delivery cannot yet be confirmed.",
+                "additional_delay": 9
+              },
+              "failure_reason": null,
+              "evidence_ids": [
+                "object-evidence-49785b4cef50a146aa7d"
+              ],
+              "provenance": "authoritative-communication-runtime",
+              "history": [
+                {
+                  "sequence": 1,
+                  "from": null,
+                  "to": "composed",
+                  "at": 13,
+                  "reason": "message composed"
+                },
+                {
+                  "sequence": 2,
+                  "from": "composed",
+                  "to": "queued",
+                  "at": 13,
+                  "reason": "accepted into the field-radio transmission queue"
+                },
+                {
+                  "sequence": 3,
+                  "from": "queued",
+                  "to": "delayed",
+                  "at": 14,
+                  "reason": "The column line breaks the field-radio signal; delivery cannot yet be confirmed."
+                },
+                {
+                  "sequence": 4,
+                  "from": "delayed",
+                  "to": "delivered",
+                  "at": 23,
+                  "reason": "the intended recipient received the radio message"
+                },
+                {
+                  "sequence": 5,
+                  "from": "delivered",
+                  "to": "acknowledged",
+                  "at": 24,
+                  "reason": "Standard acknowledged the delivered message"
+                }
+              ],
+              "check_in_id": "field-status-check-in",
+              "institutional_recorded": "q4-delivered-communication-message-6450285d1fe4610068"
+            }
+          ],
+          "missed": [
+            "declared check-in"
+          ],
+          "outcome": {
+            "radio_check_completed": true,
+            "check_in_completed": true,
+            "check_in_missed": true,
+            "check_ins": [
+              {
+                "id": "field-status-check-in",
+                "state": "completed",
+                "due_at": 12,
+                "completed_at": 23
+              }
+            ],
+            "messages": [
+              {
+                "purpose": "radio-check",
+                "state": "acknowledged",
+                "sent_at": 3,
+                "delivered_at": 4,
+                "acknowledged_at": 4
+              },
+              {
+                "purpose": "evidence-report",
+                "state": "acknowledged",
+                "sent_at": 13,
+                "delivered_at": 23,
+                "acknowledged_at": 24
+              }
+            ],
+            "closure_delivered": false
+          }
+        },
+        "evidence": [
+          {
+            "version": "yellow-beast-object-evidence@v1",
+            "id": "object-evidence-49785b4cef50a146aa7d",
+            "type": "surface-photograph",
+            "source_object": "utility-route-surface",
+            "source_name": "scuffed floor",
+            "source_location": "utility-room",
+            "source_location_name": "Utility Room",
+            "location": "utility-room",
+            "creator": "yb-personnel-4aaf3425ba12437e332d",
+            "capturing_observer": "yb-personnel-4aaf3425ba12437e332d",
+            "custodian": "yb-personnel-4aaf3425ba12437e332d",
+            "capture_event": "object.evidence.captured",
+            "method": "35mm photograph",
+            "device_id": "q4-recording-device-01",
+            "device": "35mm field camera",
+            "object_condition": {
+              "condition": "ordinary-wear",
+              "intact": true,
+              "marked": false,
+              "custom.marker_kind": null
+            },
+            "condition_fingerprint": "d42db40337aaaf3e0251",
+            "condition_summary": "The photograph records the floor pattern and whether a survey marker is present.",
+            "captured_at": {
+              "interval": 6
+            },
+            "interval": 6,
+            "available_to_player": true,
+            "available_to_standard": true,
+            "reporting_state": "reported-to-standard",
+            "storage": "with the camera record",
+            "visible_objects": [
+              "scuffed floor"
+            ],
+            "target_observation": "The photograph records the floor pattern and whether a survey marker is present.",
+            "provenance": "worldpack-authored-object-interaction",
+            "valid": true,
+            "mission_id": "CQ4-INFRASTRUCTURE-MATERIAL-002-7679",
+            "render": {
+              "id": "render-874b80a668cf2b59",
+              "evidence_id": "object-evidence-49785b4cef50a146aa7d",
+              "adapter": "fallback",
+              "workflow": "observer-safe-q4-evidence",
+              "status": "fallback-ready",
+              "attempts": 0,
+              "source_fact_digest": "f7f225f65da3e73360d31c04196d0f0d0d442b227de5e7da95a5a9ebfd01e765",
+              "created_at": "simulation-recorded",
+              "result": {
+                "status": "fallback",
+                "kind": "schematic-capture",
+                "label": "Observer-safe field capture",
+                "reason": "renderer-disabled",
+                "source_fact_digest": "f7f225f65da3e73360d31c04196d0f0d0d442b227de5e7da95a5a9ebfd01e765",
+                "asset_id": "fallback-object-evidence-49785b4cef50a146aa7d",
+                "provenance": "local-deterministic-fallback"
+              }
+            },
+            "visual": {
+              "status": "fallback",
+              "kind": "schematic-capture",
+              "label": "Observer-safe field capture",
+              "reason": "renderer-disabled",
+              "source_fact_digest": "f7f225f65da3e73360d31c04196d0f0d0d442b227de5e7da95a5a9ebfd01e765",
+              "asset_id": "fallback-object-evidence-49785b4cef50a146aa7d",
+              "provenance": "local-deterministic-fallback"
+            }
+          },
+          {
+            "version": "yellow-beast-object-evidence@v1",
+            "id": "object-evidence-79fb1514ade0224e4b71",
+            "type": "fixture-test",
+            "source_object": "utility-fluorescent-fixture",
+            "source_name": "fluorescent fixture",
+            "source_location": "utility-room",
+            "source_location_name": "Utility Room",
+            "location": "utility-room",
+            "creator": "q4-player-35a5e8690a027e84",
+            "capturing_observer": "q4-player-35a5e8690a027e84",
+            "custodian": "q4-player-35a5e8690a027e84",
+            "capture_event": "object.evidence.captured",
+            "method": "instrument test",
+            "device_id": "q4-survey-instrument-01",
+            "device": "Portable survey instrument",
+            "object_condition": {
+              "condition": "steady-surveyed",
+              "active": true,
+              "intact": true,
+              "custom.tested": true
+            },
+            "condition_fingerprint": "50f43d126fa4dcde757c",
+            "condition_summary": "The active fixture held a steady output during the instrument test.",
+            "captured_at": {
+              "interval": 26
+            },
+            "interval": 26,
+            "available_to_player": true,
+            "available_to_standard": false,
+            "reporting_state": "unreported",
+            "storage": "with the field survey record",
+            "visible_objects": [
+              "fluorescent fixture"
+            ],
+            "target_observation": "The active fixture held a steady output during the instrument test.",
+            "provenance": "worldpack-authored-object-interaction",
+            "valid": true,
+            "mission_id": "CQ4-INFRASTRUCTURE-MATERIAL-002-7679",
+            "render": {
+              "id": "render-556f9b2fb3671fb5",
+              "evidence_id": "object-evidence-79fb1514ade0224e4b71",
+              "adapter": "fallback",
+              "workflow": "observer-safe-q4-evidence",
+              "status": "fallback-ready",
+              "attempts": 0,
+              "source_fact_digest": "1560367cdb27d6e6c2a0b124d121569a4fe8670ac1ec2d064dac2102afb14fac",
+              "created_at": "simulation-recorded",
+              "result": {
+                "status": "fallback",
+                "kind": "schematic-capture",
+                "label": "Observer-safe field capture",
+                "reason": "renderer-disabled",
+                "source_fact_digest": "1560367cdb27d6e6c2a0b124d121569a4fe8670ac1ec2d064dac2102afb14fac",
+                "asset_id": "fallback-object-evidence-79fb1514ade0224e4b71",
+                "provenance": "local-deterministic-fallback"
+              }
+            },
+            "visual": {
+              "status": "fallback",
+              "kind": "schematic-capture",
+              "label": "Observer-safe field capture",
+              "reason": "renderer-disabled",
+              "source_fact_digest": "1560367cdb27d6e6c2a0b124d121569a4fe8670ac1ec2d064dac2102afb14fac",
+              "asset_id": "fallback-object-evidence-79fb1514ade0224e4b71",
+              "provenance": "local-deterministic-fallback"
+            }
+          }
+        ],
+        "evidence_outcome": {
+          "captured": 2,
+          "retained": 2,
+          "reported": 1,
+          "quality": "condition-specific"
+        },
+        "return_outcome": {
+          "requested": true,
+          "controlled_abort": false,
+          "route_available": true,
+          "return_ready": true,
+          "completed": true,
+          "location": "threshold-side-entry"
+        },
+        "operational_outcome": {
+          "consequence_count": 1,
+          "consequences": [
+            {
+              "classification": "temporary-complication",
+              "public_summary": "A teammate was struck and dropped assigned equipment. The complication can be recovered in place.",
+              "recovered": true
+            }
+          ],
+          "hazard_states": {
+            "overhead-service-bracket": "mitigated"
+          },
+          "team_decisions": 87
+        },
+        "institutional_consequence_hooks": [
+          "recovered_complication",
+          "missed_check_in",
+          "personnel_injury"
+        ],
+        "institutional_findings": {
+          "reported": [
+            {
+              "text": "Standard, Clear-Q4 team Complex-side. 4 personnel accounted for.",
+              "status": "reported",
+              "provenance": "q4-interaction-5"
+            }
+          ],
+          "unresolved": [],
+          "recommendations": [
+            "Review the recorded personnel, equipment, and evidence status before the next assignment."
+          ]
+        },
+        "knowledge_scope": {
+          "player": "recorded field history and personal observations",
+          "standard": "delivered reports and returned evidence only",
+          "objective": "canonical run/equipment/personnel/mission records"
+        },
+        "provenance": "condition-driven Q4 mission result"
+      }
+    },
+    "second_seed_generated_team": {
+      "phase": "BRIEFING",
+      "interval": 0,
+      "next_known_event": null,
+      "mission_lifecycle": "briefing",
+      "objectives": [
+        {
+          "name": "Establish radio contact",
+          "state": "inactive",
+          "required": true,
+          "summary": "The Standard radio-check phase has not begun.",
+          "blocking_reason": null,
+          "recent_transition": null
+        },
+        {
+          "name": "Enter the declared survey area",
+          "state": "inactive",
+          "required": true,
+          "summary": "Field departure has not begun.",
+          "blocking_reason": null,
+          "recent_transition": null
+        },
+        {
+          "name": "Establish Utility Room conditions",
+          "state": "inactive",
+          "required": true,
+          "summary": "The declared Utility Room is not yet part of the current field record.",
+          "blocking_reason": null,
+          "recent_transition": null
+        },
+        {
+          "name": "Capture mission evidence",
+          "state": "inactive",
+          "required": true,
+          "summary": "Evidence collection has not begun in the field.",
+          "blocking_reason": null,
+          "recent_transition": null
+        },
+        {
+          "name": "Report field evidence",
+          "state": "inactive",
+          "required": true,
+          "summary": "No captured field evidence is ready for reporting.",
+          "blocking_reason": null,
+          "recent_transition": null
+        },
+        {
+          "name": "Verify the return route",
+          "state": "inactive",
+          "required": true,
+          "summary": "The field return route has not yet been entered.",
+          "blocking_reason": null,
+          "recent_transition": null
+        },
+        {
+          "name": "Maintain the scheduled check-in",
+          "state": "inactive",
+          "required": true,
+          "summary": "No field check-in is currently scheduled.",
+          "blocking_reason": null,
+          "recent_transition": null
+        },
+        {
+          "name": "Return with accountability",
+          "state": "inactive",
+          "required": true,
+          "summary": "No return or controlled abort has been requested.",
+          "blocking_reason": null,
+          "recent_transition": null
+        },
+        {
+          "name": "Document an additional field condition",
+          "state": "inactive",
+          "required": false,
+          "summary": "The optional second record becomes available after the first valid evidence item.",
+          "blocking_reason": null,
+          "recent_transition": null
+        }
+      ],
+      "return_readiness": {
+        "route_available": false,
+        "ready": false,
+        "returning": false,
+        "closure_ready": false,
+        "summary": "No confirmed field-to-Threshold route is available from the current record.",
+        "unresolved": [
+          {
+            "name": "Establish radio contact",
+            "state": "inactive",
+            "summary": "The Standard radio-check phase has not begun."
+          },
+          {
+            "name": "Enter the declared survey area",
+            "state": "inactive",
+            "summary": "Field departure has not begun."
+          },
+          {
+            "name": "Establish Utility Room conditions",
+            "state": "inactive",
+            "summary": "The declared Utility Room is not yet part of the current field record."
+          },
+          {
+            "name": "Capture mission evidence",
+            "state": "inactive",
+            "summary": "Evidence collection has not begun in the field."
+          },
+          {
+            "name": "Report field evidence",
+            "state": "inactive",
+            "summary": "No captured field evidence is ready for reporting."
+          },
+          {
+            "name": "Verify the return route",
+            "state": "inactive",
+            "summary": "The field return route has not yet been entered."
+          },
+          {
+            "name": "Maintain the scheduled check-in",
+            "state": "inactive",
+            "summary": "No field check-in is currently scheduled."
+          },
+          {
+            "name": "Return with accountability",
+            "state": "inactive",
+            "summary": "No return or controlled abort has been requested."
+          },
+          {
+            "name": "Document an additional field condition",
+            "state": "inactive",
+            "summary": "The optional second record becomes available after the first valid evidence item."
+          }
+        ]
+      },
+      "team": [
+        {
+          "display_name": "Jack Rocha · YOU",
+          "role": "field researcher · YOU",
+          "contact_state": "SELF",
+          "current_or_last_known_location": "async-briefing-room",
+          "condition": "normal",
+          "last_contact": "visually confirmed now",
+          "current_task": "player-directed",
+          "assigned_equipment": [
+            "field-light",
+            "survey-radio"
+          ],
+          "equipment_verification": "confirmed"
+        },
+        {
+          "display_name": "Cristina Espinoza",
+          "role": "survey technician",
+          "contact_state": "LOCAL",
+          "current_or_last_known_location": "async-briefing-room",
+          "condition": "normal",
+          "last_contact": "visually confirmed now",
+          "current_task": "follow",
+          "assigned_equipment": [
+            "survey-instrument"
+          ],
+          "equipment_verification": "confirmed"
+        },
+        {
+          "display_name": "Amara Adams",
+          "role": "documentation specialist",
+          "contact_state": "LOCAL",
+          "current_or_last_known_location": "async-briefing-room",
+          "condition": "normal",
+          "last_contact": "visually confirmed now",
+          "current_task": "follow",
+          "assigned_equipment": [
+            "recording-device"
+          ],
+          "equipment_verification": "confirmed"
+        }
+      ],
+      "check_ins": [],
+      "messages": [],
+      "hazards": [],
+      "equipment": [
+        {
+          "label": "Battery field lamp",
+          "holder": "You",
+          "location": "carrying",
+          "state": "Operational",
+          "verification": "visually confirmed",
+          "remaining": "checked"
+        },
+        {
+          "label": "35mm field camera",
+          "holder": "Amara Adams",
+          "location": "carrying",
+          "state": "Operational",
+          "verification": "visually confirmed",
+          "remaining": 12
+        },
+        {
+          "label": "Portable survey instrument",
+          "holder": "Cristina Espinoza",
+          "location": "carrying",
+          "state": "Operational",
+          "verification": "visually confirmed",
+          "remaining": "checked"
+        },
+        {
+          "label": "Handheld field radio",
+          "holder": "You",
+          "location": "carrying",
+          "state": "Operational",
+          "verification": "visually confirmed",
+          "remaining": "checked"
+        }
+      ],
+      "evidence": [],
+      "location": "ASYNC Briefing Room",
+      "operational_updates": [],
+      "review": null
+    },
+    "second_seed_post_restart": {
+      "phase": "BRIEFING",
+      "interval": 0,
+      "next_known_event": null,
+      "mission_lifecycle": "briefing",
+      "objectives": [
+        {
+          "name": "Establish radio contact",
+          "state": "inactive",
+          "required": true,
+          "summary": "The Standard radio-check phase has not begun.",
+          "blocking_reason": null,
+          "recent_transition": null
+        },
+        {
+          "name": "Enter the declared survey area",
+          "state": "inactive",
+          "required": true,
+          "summary": "Field departure has not begun.",
+          "blocking_reason": null,
+          "recent_transition": null
+        },
+        {
+          "name": "Establish Utility Room conditions",
+          "state": "inactive",
+          "required": true,
+          "summary": "The declared Utility Room is not yet part of the current field record.",
+          "blocking_reason": null,
+          "recent_transition": null
+        },
+        {
+          "name": "Capture mission evidence",
+          "state": "inactive",
+          "required": true,
+          "summary": "Evidence collection has not begun in the field.",
+          "blocking_reason": null,
+          "recent_transition": null
+        },
+        {
+          "name": "Report field evidence",
+          "state": "inactive",
+          "required": true,
+          "summary": "No captured field evidence is ready for reporting.",
+          "blocking_reason": null,
+          "recent_transition": null
+        },
+        {
+          "name": "Verify the return route",
+          "state": "inactive",
+          "required": true,
+          "summary": "The field return route has not yet been entered.",
+          "blocking_reason": null,
+          "recent_transition": null
+        },
+        {
+          "name": "Maintain the scheduled check-in",
+          "state": "inactive",
+          "required": true,
+          "summary": "No field check-in is currently scheduled.",
+          "blocking_reason": null,
+          "recent_transition": null
+        },
+        {
+          "name": "Return with accountability",
+          "state": "inactive",
+          "required": true,
+          "summary": "No return or controlled abort has been requested.",
+          "blocking_reason": null,
+          "recent_transition": null
+        },
+        {
+          "name": "Document an additional field condition",
+          "state": "inactive",
+          "required": false,
+          "summary": "The optional second record becomes available after the first valid evidence item.",
+          "blocking_reason": null,
+          "recent_transition": null
+        }
+      ],
+      "return_readiness": {
+        "route_available": false,
+        "ready": false,
+        "returning": false,
+        "closure_ready": false,
+        "summary": "No confirmed field-to-Threshold route is available from the current record.",
+        "unresolved": [
+          {
+            "name": "Establish radio contact",
+            "state": "inactive",
+            "summary": "The Standard radio-check phase has not begun."
+          },
+          {
+            "name": "Enter the declared survey area",
+            "state": "inactive",
+            "summary": "Field departure has not begun."
+          },
+          {
+            "name": "Establish Utility Room conditions",
+            "state": "inactive",
+            "summary": "The declared Utility Room is not yet part of the current field record."
+          },
+          {
+            "name": "Capture mission evidence",
+            "state": "inactive",
+            "summary": "Evidence collection has not begun in the field."
+          },
+          {
+            "name": "Report field evidence",
+            "state": "inactive",
+            "summary": "No captured field evidence is ready for reporting."
+          },
+          {
+            "name": "Verify the return route",
+            "state": "inactive",
+            "summary": "The field return route has not yet been entered."
+          },
+          {
+            "name": "Maintain the scheduled check-in",
+            "state": "inactive",
+            "summary": "No field check-in is currently scheduled."
+          },
+          {
+            "name": "Return with accountability",
+            "state": "inactive",
+            "summary": "No return or controlled abort has been requested."
+          },
+          {
+            "name": "Document an additional field condition",
+            "state": "inactive",
+            "summary": "The optional second record becomes available after the first valid evidence item."
+          }
+        ]
+      },
+      "team": [
+        {
+          "display_name": "Jack Rocha · YOU",
+          "role": "field researcher · YOU",
+          "contact_state": "SELF",
+          "current_or_last_known_location": "async-briefing-room",
+          "condition": "normal",
+          "last_contact": "visually confirmed now",
+          "current_task": "player-directed",
+          "assigned_equipment": [
+            "field-light",
+            "survey-radio"
+          ],
+          "equipment_verification": "confirmed"
+        },
+        {
+          "display_name": "Cristina Espinoza",
+          "role": "survey technician",
+          "contact_state": "LOCAL",
+          "current_or_last_known_location": "async-briefing-room",
+          "condition": "normal",
+          "last_contact": "visually confirmed now",
+          "current_task": "follow",
+          "assigned_equipment": [
+            "survey-instrument"
+          ],
+          "equipment_verification": "confirmed"
+        },
+        {
+          "display_name": "Amara Adams",
+          "role": "documentation specialist",
+          "contact_state": "LOCAL",
+          "current_or_last_known_location": "async-briefing-room",
+          "condition": "normal",
+          "last_contact": "visually confirmed now",
+          "current_task": "follow",
+          "assigned_equipment": [
+            "recording-device"
+          ],
+          "equipment_verification": "confirmed"
+        }
+      ],
+      "check_ins": [],
+      "messages": [],
+      "hazards": [],
+      "equipment": [
+        {
+          "label": "Battery field lamp",
+          "holder": "You",
+          "location": "carrying",
+          "state": "Operational",
+          "verification": "visually confirmed",
+          "remaining": "checked"
+        },
+        {
+          "label": "35mm field camera",
+          "holder": "Amara Adams",
+          "location": "carrying",
+          "state": "Operational",
+          "verification": "visually confirmed",
+          "remaining": 12
+        },
+        {
+          "label": "Portable survey instrument",
+          "holder": "Cristina Espinoza",
+          "location": "carrying",
+          "state": "Operational",
+          "verification": "visually confirmed",
+          "remaining": "checked"
+        },
+        {
+          "label": "Handheld field radio",
+          "holder": "You",
+          "location": "carrying",
+          "state": "Operational",
+          "verification": "visually confirmed",
+          "remaining": "checked"
+        }
+      ],
+      "evidence": [],
+      "location": "ASYNC Briefing Room",
+      "operational_updates": [],
+      "review": null
+    }
+  },
+  "checks": {
+    "generated_team_bounded_and_persistent": true,
+    "second_seed_differs_but_is_deterministic": true,
+    "one_authoritative_clock_advanced": true,
+    "scheduled_check_in_released_by_time": true,
+    "accepted_order_and_independent_route_movement": true,
+    "last_known_projection_hides_remote_injury": true,
+    "delayed_order_has_grounded_reason": true,
+    "hazard_and_consequence_are_persistent_state": true,
+    "personnel_and_equipment_recovered": true,
+    "mitigation_persisted": true,
+    "interference_delayed_delivery_truthfully": true,
+    "late_check_in_recovered_without_erasure": true,
+    "equipment_dependent_interaction_completed": true,
+    "return_and_outcome_are_condition_derived": true,
+    "exact_shutdown_restart": true
+  }
+}

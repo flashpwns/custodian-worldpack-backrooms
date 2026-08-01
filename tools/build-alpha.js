@@ -67,7 +67,7 @@ function nodeDistribution() {
   return cache;
 }
 fs.rmSync(artifact, { recursive: true, force: true }); fs.mkdirSync(app, { recursive: true });
-["manifest.json", "LICENSE", "THIRD_PARTY_NOTICES.md", "START-HERE.md", "package.json", "profiles", "scenarios/threshold-baseline.json", "data", "canon/operational-spatial-schema.json", "canon/operational-interaction-schema.json", "canon/operational-mission-schema.json", "node_modules"].forEach(copy);
+["manifest.json", "LICENSE", "THIRD_PARTY_NOTICES.md", "START-HERE.md", "package.json", "profiles", "scenarios/threshold-baseline.json", "data", "canon/operational-spatial-schema.json", "canon/operational-interaction-schema.json", "canon/operational-mission-schema.json", "canon/operational-dynamics-schema.json", "node_modules"].forEach(copy);
 const runtimeFiles = copyRuntimeClosure(["tools/launcher.js", "tools/entity-simulation.js", "tools/nullzone-exposure.js", "tools/lost.js", "tools/gameplay.js", "tools/player-turn.js"]);
 pruneDependencyDevelopmentFiles(path.join(app, "node_modules"));
 const runtime = path.join(artifact, "runtime"); fs.cpSync(nodeDistribution(), runtime, { recursive: true });

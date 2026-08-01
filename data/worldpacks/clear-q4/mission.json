@@ -118,8 +118,8 @@
         "dependencies": ["capture-field-evidence"],
         "activation": { "source": "mission", "predicate": "phase_in", "values": ["FIELD_OPERATION", "RETURN", "DEBRIEF"] },
         "satisfaction": { "source": "evidence", "predicate": "reported" },
-        "blocking": { "source": "communication", "predicate": "unavailable", "equipment_id": "survey-radio" },
-        "waiver": { "all": [{ "source": "mission", "predicate": "return_requested" }, { "source": "communication", "predicate": "unavailable", "equipment_id": "survey-radio" }] },
+        "blocking": { "all": [{ "source": "communication", "predicate": "unavailable", "equipment_id": "survey-radio" }, { "not": { "source": "evidence", "predicate": "reported" } }] },
+        "waiver": { "all": [{ "source": "mission", "predicate": "return_requested" }, { "source": "communication", "predicate": "unavailable", "equipment_id": "survey-radio" }, { "not": { "source": "evidence", "predicate": "reported" } }] },
         "public": {
           "inactive": "No captured field evidence is ready for reporting.",
           "blocked": "The evidence report cannot proceed under the current known conditions.",
@@ -163,13 +163,13 @@
         "id": "maintain-check-ins",
         "name": "Maintain the scheduled check-in",
         "kind": "required",
-        "behavior": "irrecoverable",
+        "behavior": "recoverable",
         "initial_state": "inactive",
         "activation": { "any": [{ "source": "time", "predicate": "deadline_pending", "deadline": "check_in" }, { "source": "time", "predicate": "deadline_due", "deadline": "check_in" }, { "source": "time", "predicate": "deadline_exceeded", "deadline": "check_in" }] },
         "satisfaction": { "source": "communication", "predicate": "check_in_completed" },
         "failure": { "source": "communication", "predicate": "check_in_missed" },
-        "blocking": { "source": "communication", "predicate": "unavailable", "equipment_id": "survey-radio" },
-        "waiver": { "all": [{ "source": "communication", "predicate": "unavailable", "equipment_id": "survey-radio" }, { "source": "time", "predicate": "deadline_exceeded", "deadline": "check_in" }] },
+        "blocking": { "all": [{ "source": "communication", "predicate": "unavailable", "equipment_id": "survey-radio" }, { "not": { "source": "communication", "predicate": "check_in_completed" } }] },
+        "waiver": { "all": [{ "source": "communication", "predicate": "check_in_missed" }, { "source": "communication", "predicate": "unavailable", "equipment_id": "survey-radio" }, { "source": "time", "predicate": "deadline_exceeded", "deadline": "check_in" }, { "not": { "source": "communication", "predicate": "check_in_completed" } }] },
         "public": {
           "inactive": "No field check-in is currently scheduled.",
           "blocked": "The scheduled report cannot be transmitted while communication is unavailable.",
@@ -308,6 +308,8 @@
             { "source": "mission", "predicate": "required_group_complete", "objective_ids": ["establish-radio-contact", "enter-survey-area", "establish-utility-conditions", "capture-field-evidence", "report-field-evidence", "verify-return-route", "maintain-check-ins", "return-accountability"], "states": ["satisfied", "waived"] },
             { "source": "mission", "predicate": "objective_state", "objective_id": "additional-condition-record", "states": ["satisfied"] },
             { "source": "personnel", "predicate": "assigned_equipment_retained", "role": "all_assigned" },
+            { "not": { "source": "personnel", "predicate": "injured", "role": "team" } },
+            { "not": { "source": "communication", "predicate": "check_in_ever_missed" } },
             { "source": "evidence", "predicate": "retained" }
           ]
         },
@@ -322,12 +324,28 @@
         "when": { "all": [
           { "source": "mission", "predicate": "required_group_complete", "objective_ids": ["establish-radio-contact", "enter-survey-area", "establish-utility-conditions", "capture-field-evidence", "report-field-evidence", "verify-return-route", "maintain-check-ins", "return-accountability"], "states": ["satisfied", "waived"] },
           { "source": "personnel", "predicate": "assigned_equipment_retained", "role": "all_assigned" },
+          { "not": { "source": "personnel", "predicate": "injured", "role": "team" } },
+          { "not": { "source": "communication", "predicate": "check_in_ever_missed" } },
           { "source": "evidence", "predicate": "retained" }
         ] },
         "final_state": "completed",
         "classification": "clean-completion",
         "public_summary": "The team returned with the required survey, evidence, reporting, route, and accountability conditions resolved.",
         "institutional_hooks": ["clean_completion"]
+      },
+      {
+        "id": "recovered-complication",
+        "priority": 70,
+        "when": { "all": [
+          { "source": "mission", "predicate": "required_group_complete", "objective_ids": ["establish-radio-contact", "enter-survey-area", "establish-utility-conditions", "capture-field-evidence", "report-field-evidence", "verify-return-route", "maintain-check-ins", "return-accountability"], "states": ["satisfied", "waived"] },
+          { "source": "communication", "predicate": "check_in_ever_missed" },
+          { "source": "personnel", "predicate": "assigned_equipment_retained", "role": "all_assigned" },
+          { "source": "evidence", "predicate": "retained" }
+        ] },
+        "final_state": "completed",
+        "classification": "recovered-complication",
+        "public_summary": "The team returned with its required record after recovering a missed communication window; the late delivery remains part of the operational outcome.",
+        "institutional_hooks": ["recovered_complication", "missed_check_in"]
       },
       {
         "id": "degraded-completion",
