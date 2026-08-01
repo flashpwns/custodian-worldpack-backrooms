@@ -75,14 +75,17 @@ expressed through the same player input surface.
 
 ### Remaining personnel work
 
-Future Q4 personnel need persistent generated first-and-last identities,
-roles, applicable clearance/access, and basic condition/status. Dialogue uses
-first names. An ordinary NPC should not be presented as generic “Researcher”.
+The identity/status foundation exists. Future Q4 work may deepen personnel
+records and dialogue without adding biographies, relationships, or advanced
+NPC cognition.
 
-### Equipment
+### Equipment foundation and remaining work
 
-Equipment remains persistent state with player-facing operational
-descriptions and status, rather than videogame-style “charges”.
+Clear-Q4 now uses persistent physical item records with period-compatible
+labels, holders, locations, operational states, required/optional loadouts,
+staging readiness, and canonical handoff/loss behavior. Player presentation
+uses operational descriptions rather than videogame-style “charges”. Full
+mission generation and historical assignment continuity remain future work.
 
 ### Mission generation and review
 

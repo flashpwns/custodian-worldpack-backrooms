@@ -20,6 +20,8 @@ const phases = require("../tools/mode-phases");
 const q4 = require("../tools/q4-experience");
 const q4Interactions = require("../tools/q4-interactions");
 const q4Personnel = require("../tools/q4-personnel");
+const q4Equipment = require("../tools/q4-equipment");
+const { event: expeditionEvent } = require("../tools/expedition");
 const beckExperience = require("../tools/beck-experience");
 const nullzoneExperience = require("../tools/nullzone-experience");
 const lostExperience = require("../tools/lost-experience");
@@ -113,7 +115,7 @@ class DesktopService {
   serializeSession(world, mode, entry) { const phase = entry.phase ?? phases.createPhase({ mode, guided: this.settings().guided_introductions !== false }); if (entry.kind === "bootstrap") return { version: 1, mode, kind: entry.kind, phase, payload: bootstrap.saveRun(entry.run) }; if (entry.kind === "lost") return { version: 1, mode, kind: entry.kind, phase, payload: clone(entry.run) }; return { version: 1, mode, kind: entry.kind, phase, payload: clone(entry) }; }
   restoreSession(world, mode, saved) { if (saved?.mode !== mode) return null; const phase = saved.phase ?? phases.createPhase({ mode, guided: this.settings().guided_introductions !== false }); if (saved.kind === "bootstrap") { const restored = bootstrap.resumeRun(saved.payload, { world }); return restored.ok ? { kind: "bootstrap", run: restored.run, phase } : null; } if (saved.kind === "lost") return { kind: "lost", run: saved.payload, phase }; if (saved.kind === "nullzone") return { kind: "nullzone", run_id: saved.payload.run_id, phase }; if (saved.kind === "beck") return { kind: "beck", run_id: saved.payload.run_id, phase }; return null; }
   session(worldId, mode) { return this.sessions.get(`${worldId}:${mode}`) ?? null; }
-  persistSession(world, mode, entry) { writeJson(this.sessionFile(world.world_id, mode), this.serializeSession(world, mode, entry)); this.sessions.set(`${world.world_id}:${mode}`, entry); this.saveCanonical(world); const data = this.metadata(); if (data.worlds[world.world_id]) { data.worlds[world.world_id].last_played_at = new Date().toISOString(); data.worlds[world.world_id].last_mode = mode; data.last_world_id = world.world_id; this.writeMetadata(data); } }
+  persistSession(world, mode, entry) { if (entry.kind === "bootstrap") q4Equipment.syncWorld(world, entry.run.expedition); writeJson(this.sessionFile(world.world_id, mode), this.serializeSession(world, mode, entry)); this.sessions.set(`${world.world_id}:${mode}`, entry); this.saveCanonical(world); const data = this.metadata(); if (data.worlds[world.world_id]) { data.worlds[world.world_id].last_played_at = new Date().toISOString(); data.worlds[world.world_id].last_mode = mode; data.last_world_id = world.world_id; this.writeMetadata(data); } }
   startSession({ world_id, mode, seed = "desktop" }) {
     try { const world = this.getWorld(world_id); const descriptor = this.getMode(mode); if (!descriptor) return publicError("MODE_INVALID", "Choose one of the available roles."); let entry;
       if (mode === "field-researcher") { const started = bootstrap.startRun({ profile: mode, seed, scenario: "procedural-survey", world }); if (!started.ok) return publicError("SESSION_START_FAILED", "The field session could not start."); entry = { kind: "bootstrap", run: started.run, phase: phases.createPhase({ mode, guided: this.settings().guided_introductions !== false }) }; }
@@ -126,7 +128,7 @@ class DesktopService {
   briefingScene(entry, mode, phaseId = entry.phase?.phase_id, world = null) {
     const view = q4.presentation(entry.run, entry.phase ?? phases.createPhase({ mode }), null, world);
     const team = view.team.map((member) => member.display_name).join(" and ") || "the assigned field team";
-    const equipment = view.equipment.map((item) => item.label).join(", ") || "the assigned field kit";
+    const equipment = (view.equipment?.required ?? []).map((item) => item.label).join(", ") || "the assigned field kit";
     const facts = [
       ["location", "location", phaseId === "BRIEFING" ? "an ASYNC operations briefing context" : phaseId === "STAGING" ? "an ASYNC staging context" : phaseId === "FACILITY_TRANSIT" ? "a controlled facility transit context" : "the approach to the Threshold"],
       ["assignment", "assignment", view.display_mission ?? "the Clear-Q4 field assignment"],
@@ -184,14 +186,15 @@ class DesktopService {
           this.persistSession(world, "field-researcher", entry);
           return publicError("LOCAL_TARGET_UNAVAILABLE", "No nearby teammate is available for local conversation here.");
         }
-        const response = `${peer.first_name}: I can hear you. I can answer from what the team has shared locally.`;
+        const request = /\b(hand|pass|give|bring|transfer)\b/i.test(message);
+        const response = request ? `${peer.first_name}: I hear the request. The equipment remains with me until we complete a physical handoff.` : `${peer.first_name}: I can hear you. I can answer from what the team has shared locally.`;
         const interaction = q4Interactions.record(expedition, { channel, speaker: "You", targets: [peer.display_name], player_text: message, attempted_behavior: "speak with a nearby teammate", eligibility: "eligible", delivery: "heard", time_cost: 1, presentation: { result: "heard", response } });
         this.persistSession(world, "field-researcher", entry);
         const scene = this.sceneFor(entry, "field-researcher", { scene_type: "delta", accepted: true, action: "LOCAL", public_reason: response }, world);
         return { ok: true, result: { outcome: "succeeded", public_reason: response, scene }, projection: this.projectionFor(world, "field-researcher", entry) };
       }
       const radio = expedition.equipment?.["survey-radio"];
-      if (entry.phase?.phase_id === "BRIEFING" || radio?.state !== "usable" || radio.charges <= 0) {
+      if (entry.phase?.phase_id === "BRIEFING" || !q4Equipment.stateUsable(radio) || radio.holder !== entry.run.session.startup.player.observer_id || radio.charges <= 0) {
         q4Interactions.record(expedition, { channel, speaker: "You", targets: ["Standard"], player_text: message, attempted_behavior: "transmit over the survey radio", eligibility: "radio-unavailable", delivery: "not-delivered", presentation: { result: "The radio channel is not available from this operational context." } });
         this.persistSession(world, "field-researcher", entry);
         return publicError("STANDARD_UNAVAILABLE", "The Standard radio channel is not available from here.");
@@ -206,6 +209,34 @@ class DesktopService {
       return { ok: true, result: { outcome: "succeeded", public_reason: "The transmission is delivered as a report.", scene }, projection: this.projectionFor(world, "field-researcher", entry) };
     } catch (error) { this.log(`Q4 communication failed: ${error.message}`); return publicError("COMMUNICATION_RUNTIME_ERROR", "The communication could not be resolved safely."); }
   }
+  submitQ4Handoff({ world_id, item_id, target = null }) {
+    try {
+      const world = this.getWorld(world_id); const entry = this.session(world_id, "field-researcher") ?? this.restoreSession(world, "field-researcher", readJson(this.sessionFile(world_id, "field-researcher"), null));
+      if (!entry || entry.kind !== "bootstrap") return publicError("SESSION_NOT_FOUND", "Start or continue Clear-Q4 before handing over equipment.");
+      const player = entry.run.session.startup.player.observer_id; const peer = entry.run.expedition.team.members.find((member) => member.personnel_id !== player); const peerPerson = history.character(world, peer?.personnel_id ?? peer?.id); const observed = q4Personnel.observerStatus(peer, peerPerson, entry.phase?.phase_id);
+      const targetText = String(target ?? peer?.first_name ?? "").toLowerCase(); const validTarget = observed.local_eligible && [peer?.personnel_id, peer?.first_name, peer?.display_name, "team", "teammate"].filter(Boolean).map((value) => String(value).toLowerCase()).includes(targetText);
+      if (!validTarget) return publicError("HANDOFF_TARGET_UNAVAILABLE", "That person is not available for a physical handoff here.");
+      const key = entry.run.expedition.equipment[item_id] ? item_id : Object.entries(entry.run.expedition.equipment).find(([, item]) => item.id === item_id)?.[0];
+      const transferred = q4Equipment.transfer(entry.run.expedition, key, player, peer.personnel_id, "with teammate");
+      if (!transferred.ok) return publicError(transferred.code, "The equipment cannot be handed over in its current condition.");
+      q4Interactions.record(entry.run.expedition, { channel: "action", speaker: "You", targets: [peer.display_name], player_text: `hand over ${transferred.item.label}`, attempted_behavior: "physically hand equipment to a nearby teammate", eligibility: "eligible", delivery: "transferred", time_cost: 1, canonical_effects: ["equipment.handoff"], presentation: { result: "transferred" } });
+      history.event(world, entry.run.run_id, "q4.equipment.handed_over", { equipment_id: transferred.item.id, from: player, to: peer.personnel_id });
+      this.persistSession(world, "field-researcher", entry);
+      return { ok: true, result: { outcome: "succeeded", public_reason: `${peer.first_name} takes the ${transferred.item.label}.` }, projection: this.projectionFor(world, "field-researcher", entry) };
+    } catch (error) { this.log(`Q4 handoff failed: ${error.message}`); return publicError("HANDOFF_RUNTIME_ERROR", "The physical handoff could not be resolved safely."); }
+  }
+  selectQ4OptionalStore({ world_id, item_id }) {
+    try {
+      const world = this.getWorld(world_id); const entry = this.session(world_id, "field-researcher") ?? this.restoreSession(world, "field-researcher", readJson(this.sessionFile(world_id, "field-researcher"), null));
+      if (!entry || entry.kind !== "bootstrap") return publicError("SESSION_NOT_FOUND", "Start or continue Clear-Q4 before selecting stores.");
+      if (entry.phase?.phase_id !== "STAGING") return publicError("STAGING_REQUIRED", "Optional stores can only be selected during staging.");
+      const selected = q4Equipment.selectOptional(entry.run.expedition, item_id, entry.run.session.startup.player.observer_id);
+      if (!selected.ok) return publicError(selected.code, "That optional store is not available from staging.");
+      expeditionEvent(entry.run.expedition, "q4.loadout.optional_selected", { equipment_id: selected.item.id, type: selected.item.type });
+      this.persistSession(world, "field-researcher", entry);
+      return { ok: true, result: { outcome: "succeeded", public_reason: `${selected.item.label} added to the field case.` }, projection: this.projectionFor(world, "field-researcher", entry) };
+    } catch (error) { this.log(`Q4 store selection failed: ${error.message}`); return publicError("STAGING_RUNTIME_ERROR", "The optional store could not be selected safely."); }
+  }
   submitAction({ world_id, mode, action, target = null }) {
     try { const world = this.getWorld(world_id); const entry = this.session(world_id, mode) ?? this.restoreSession(world, mode, readJson(this.sessionFile(world_id, mode), null)); if (!entry) return publicError("SESSION_NOT_FOUND", "Start or continue a session first."); const verb = String(action ?? "").toUpperCase(); let result;
       if (entry.kind === "bootstrap" && verb === "COMMUNICATE") return this.submitQ4Communication({ world_id, channel: String(target).toLowerCase() === "standard" ? "standard" : "local", text: String(target).toLowerCase() === "standard" ? "Check-in to Standard." : "Check in with the team.", target });
@@ -216,10 +247,11 @@ class DesktopService {
         if (verb === "CROSS") {
           const exit = bootstrap.look(entry.run).view?.exits?.[0]?.alias;
           result = exit ? bootstrap.act(entry.run, "MOVE", exit) : { ok: false, code: "PHASE_GUARD_REJECTED" };
-          if (result.ok) { const advanced = q4.nextPhase(entry.phase, { action: verb, canonical_crossed: true }); if (!advanced.ok) return publicError(advanced.code, "The expedition cannot cross from its current state."); entry.phase = advanced.phase; }
+          if (result.ok) { const advanced = q4.nextPhase(entry.phase, { action: verb, canonical_crossed: true }); if (!advanced.ok) return publicError(advanced.code, "The expedition cannot cross from its current state."); entry.phase = advanced.phase; q4Equipment.updatePhase(entry.run.expedition, entry.phase.phase_id); }
         } else {
           result = { ok: true, outcome: "phase-advanced" };
-          const advanced = q4.nextPhase(entry.phase, { action: verb }); if (!advanced.ok) return publicError(advanced.code, "The expedition cannot advance from its current state."); entry.phase = advanced.phase;
+          if (verb === "PROCEED") { const readiness = q4Equipment.projection(entry.run.expedition, entry.run.session.startup.player.observer_id); if (!readiness.readiness) { entry.run.expedition.deviations.push("proceeded-with-required-equipment-unavailable"); expeditionEvent(entry.run.expedition, "q4.loadout.proceeded_without_required", { missing: readiness.missing }); } }
+          const advanced = q4.nextPhase(entry.phase, { action: verb }); if (!advanced.ok) return publicError(advanced.code, "The expedition cannot advance from its current state."); entry.phase = advanced.phase; q4Equipment.updatePhase(entry.run.expedition, entry.phase.phase_id);
         }
       } else if (entry.kind === "bootstrap") result = bootstrap.act(entry.run, verb, target);
       else if (entry.kind === "lost") { if (verb === "MOVE") result = lost.move(world, entry.run, target); else if (verb === "DROP") result = lost.drop(world, entry.run, target); else if (verb === "RETURN") result = lost.escape(world, entry.run); else if (verb === "STRAND") result = lost.strand(world, entry.run); else result = { ok: false, code: "ACTION_UNAVAILABLE" }; }

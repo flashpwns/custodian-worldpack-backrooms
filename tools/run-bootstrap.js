@@ -8,6 +8,7 @@ const procedural = require("./procedural-complex");
 const proceduralV2 = require("./procedural-complex-v2");
 const history = require("./world-history");
 const q4Personnel = require("./q4-personnel");
+const q4Equipment = require("./q4-equipment");
 const runIdentity = require("./run-identity");
 
 const root = path.resolve(__dirname, "..");
@@ -51,10 +52,10 @@ function configuredPack(profileId, playerId) {
   }
   return pack;
 }
-function newRun({ profile, seed, session, expedition, staffing = null, procedural_state, procedural_scenario = false, world_id = null, run_id = null, world = null }) {
+function newRun({ profile, seed, session, expedition, staffing = null, loadout = null, procedural_state, procedural_scenario = false, world_id = null, run_id = null, world = null }) {
   const profileRecord = profileFor(profile);
   const player = session.startup.player.observer_id;
-  const run = { version: "yellow-beast-run@v4", profile_id: profile, profile_title: profileRecord.title, scenario: procedural_scenario ? "async-clear-q4-procedural-survey" : session.scenario.id, seed, session, lifecycle: "active", checklist: { moved: false, inspected: false, used: false }, aliases: {}, expedition: expedition ?? (profile === FIELD_PROFILE ? fieldExpedition(player, staffing) : null), procedural: procedural_scenario ? (procedural_state ?? procedural.initialize({ seed, observer: player })) : null, world_id, run_id, _world: world };
+  const run = { version: "yellow-beast-run@v4", profile_id: profile, profile_title: profileRecord.title, scenario: procedural_scenario ? "async-clear-q4-procedural-survey" : session.scenario.id, seed, session, lifecycle: "active", checklist: { moved: false, inspected: false, used: false }, aliases: {}, expedition: expedition ?? (profile === FIELD_PROFILE ? fieldExpedition(player, staffing, loadout) : null), procedural: procedural_scenario ? (procedural_state ?? procedural.initialize({ seed, observer: player })) : null, world_id, run_id, _world: world };
   run.identity = runIdentity.describe(run);
   return run;
 }
@@ -68,11 +69,12 @@ function startRun({ profile, seed = "yellow-beast-bootstrap", scenario = null, w
   const run_id = world ? history.beginRun(world, { profile, scenario: procedural_scenario ? "async-clear-q4-procedural-survey" : result.session.scenario.id, seed }) : null;
   const staffing = profile === FIELD_PROFILE && world ? q4Personnel.staffQ4(world, run_id, player) : null;
   if (staffing && !staffing.ok) return { ok: false, error: { code: staffing.code } };
+  const loadout = profile === FIELD_PROFILE && world ? q4Equipment.prepare(world, run_id, { player: staffing.player.identity, peer: staffing.peer.identity }) : null;
   const existing = region_id && world?.regions?.[region_id];
   let generator; try { generator = generatorFor(existing?.generator_version ?? generator_version ?? procedural.VERSION); } catch (error) { return { ok: false, error: { code: error.code ?? "GENERATOR_VERSION_UNSUPPORTED" } }; }
   const procedural_state = existing ? clone(history.restoreRegion(world, region_id).state) : (procedural_scenario && generator_version === proceduralV2.VERSION ? generator.initialize({ seed, observer: player, policy: "moderate" }) : undefined);
   if (procedural_state) { const known = procedural_state.discovery[player] ?? { spaces: [], edges: [], features: [] }; procedural_state.discovery = { [player]: { spaces: [], edges: [], features: [] } }; procedural_state.current = { [player]: Object.keys(procedural_state.nodes)[0] }; void known; }
-  const run = newRun({ profile, seed, session: result.session, staffing, procedural_scenario, procedural_state, world_id: world?.world_id ?? null, run_id, world });
+  const run = newRun({ profile, seed, session: result.session, staffing, loadout, procedural_scenario, procedural_state, world_id: world?.world_id ?? null, run_id, world });
   return { ok: restored.ok, session: result.session, run, restored_equivalent: restored.ok && stableSerialize(restored.session) === stableSerialize(result.session), summary: { session_id: result.session.id, profile, profile_title: profileRecord.title, scenario: result.session.scenario.id, seed, player: startup.player, knowledge: startup.knowledge, permissions: startup.permissions, resources: startup.resources } };
 }
 function normalizeRun(value) {
@@ -122,8 +124,8 @@ function expeditionAction(run, verb, target) {
   const expedition = run.expedition; const player = run.session.startup.player.observer_id;
   if (!expedition) return { ok: false, error: { code: "UNSUPPORTED_VERB" }, run };
   if (verb === "WAIT") { expedition.clock.interval += 1; if (expedition.objectives.check_in.state !== "satisfied" && expedition.clock.interval >= expedition.clock.check_in_due_at) { expedition.clock.check_in_overdue = true; expedition.objectives.check_in.state = "failed"; expedition.deviations.push("missed-declared-check-in"); } event(expedition, "expedition.waited", { interval: expedition.clock.interval }); return { ok: true, outcome: "succeeded", result: { public_reason: expedition.clock.check_in_overdue ? "check-in overdue" : "no notable event" }, run }; }
-  if (verb === "COMMUNICATE") { if (!["standard", "teammate", "team"].includes(target)) return { ok: false, error: { code: "RECIPIENT_UNAVAILABLE" }, run }; const radio = useEquipment(expedition, "survey-radio"); if (!radio.ok) return { ok: false, error: { code: radio.code }, run }; const recipient = target === "standard" ? "Standard" : "yb-field-peer-observer"; const delivered = target === "standard" || expedition.team.members[1].status === "active"; const message = { id: `message-${expedition.messages.length + 1}`, sender: player, intended_recipient: recipient, delivery_status: delivered ? "delivered" : "unavailable", channel: "survey-radio", provenance: "pack-original-expedition", interval: expedition.clock.interval }; expedition.messages.push(message); if (target === "standard" && delivered) expedition.objectives.check_in.state = "satisfied"; if (target !== "standard") expedition.objectives.optional_peer_status.state = delivered ? "satisfied" : "failed"; event(expedition, "communication.sent", message); return { ok: true, outcome: "succeeded", result: { public_reason: delivered ? "message delivered" : "message unavailable", message: { recipient: target, delivery_status: message.delivery_status } }, run }; }
-  if (verb === "RECORD") { const view = look(run); const alias = target ?? view.aliases[0]?.alias; if (!alias || !view.aliases.some((entry) => entry.alias === alias)) return { ok: false, error: { code: "TARGET_UNAVAILABLE" }, run }; const device = useEquipment(expedition, "recording-device"); if (!device.ok) return { ok: false, error: { code: device.code }, run }; const evidence = { id: `field-note-${expedition.evidence.length + 1}`, type: "field-note", creator: player, custodian: player, target_alias: alias, location: view.view?.location ?? null, provenance: "observer-safe-record", interval: expedition.clock.interval }; expedition.evidence.push(evidence); expedition.objectives.evidence.state = "satisfied"; event(expedition, "evidence.recorded", evidence); return { ok: true, outcome: "succeeded", result: { public_reason: null, evidence: { id: evidence.id, type: evidence.type, target_alias: alias } }, run }; }
+  if (verb === "COMMUNICATE") { if (!["standard", "teammate", "team"].includes(target)) return { ok: false, error: { code: "RECIPIENT_UNAVAILABLE" }, run }; const radio = useEquipment(expedition, "survey-radio", player); if (!radio.ok) return { ok: false, error: { code: radio.code }, run }; const recipient = target === "standard" ? "Standard" : "yb-field-peer-observer"; const delivered = target === "standard" || expedition.team.members[1].status === "active"; const message = { id: `message-${expedition.messages.length + 1}`, sender: player, intended_recipient: recipient, delivery_status: delivered ? "delivered" : "unavailable", channel: "survey-radio", provenance: "pack-original-expedition", interval: expedition.clock.interval }; expedition.messages.push(message); if (target === "standard" && delivered) expedition.objectives.check_in.state = "satisfied"; if (target !== "standard") expedition.objectives.optional_peer_status.state = delivered ? "satisfied" : "failed"; event(expedition, "communication.sent", message); return { ok: true, outcome: "succeeded", result: { public_reason: delivered ? "message delivered" : "message unavailable", message: { recipient: target, delivery_status: message.delivery_status } }, run }; }
+  if (verb === "RECORD") { const view = look(run); const alias = target ?? view.aliases[0]?.alias; if (!alias || !view.aliases.some((entry) => entry.alias === alias)) return { ok: false, error: { code: "TARGET_UNAVAILABLE" }, run }; const device = useEquipment(expedition, "recording-device", player); if (!device.ok) return { ok: false, error: { code: device.code }, run }; const evidence = { id: `field-note-${expedition.evidence.length + 1}`, type: "field-note", creator: player, custodian: player, target_alias: alias, location: view.view?.location ?? null, provenance: "observer-safe-record", interval: expedition.clock.interval }; expedition.evidence.push(evidence); expedition.objectives.evidence.state = "satisfied"; event(expedition, "evidence.recorded", evidence); return { ok: true, outcome: "succeeded", result: { public_reason: null, evidence: { id: evidence.id, type: evidence.type, target_alias: alias } }, run }; }
   if (verb === "RETURN" || verb === "ABORT") return terminal(run, verb);
   return { ok: false, error: { code: "UNSUPPORTED_VERB" }, run };
 }
@@ -136,15 +138,16 @@ function act(runValue, verb, target) {
   if (verb === "MOVE" && run.procedural) { const moved = generatorFor(run.procedural).move(run.procedural, run.session.startup.player.observer_id, target); if (!moved.ok) return { ok: false, error: { code: "TARGET_UNAVAILABLE" }, result: { public_reason: moved.public_reason }, run }; run.checklist.moved = true; event(run.expedition, "procedural.space.discovered", { location: moved.view.location.alias }); return { ok: true, outcome: "succeeded", result: { public_reason: null, view: moved.view }, run }; }
   if (verb === "USE" && target && target !== "field-light") {
     if (target !== "survey-instrument") return { ok: false, error: { code: "EQUIPMENT_UNAVAILABLE" }, run };
-    const used = useEquipment(run.expedition, target); if (!used.ok) return { ok: false, error: { code: used.code }, run };
+    const used = useEquipment(run.expedition, target, run.session.startup.player.observer_id); if (!used.ok) return { ok: false, error: { code: used.code }, run };
     run.expedition.objectives.survey.state = "satisfied"; event(run.expedition, "measurement.recorded", { equipment: target, interval: run.expedition.clock.interval, type: "qualitative-survey" });
     return { ok: true, outcome: "succeeded", result: { public_reason: null, measurement: "qualitative-survey" }, run };
   }
   const action = { MOVE: "traverse-controlled-route", USE: "toggle-light" }[verb];
   if (!action) return { ok: false, error: { code: "UNSUPPORTED_VERB" }, run };
+  if (verb === "USE") { const lamp = run.expedition?.equipment?.["field-light"]; if (!lamp || lamp.holder !== run.session.startup.player.observer_id) return { ok: false, error: { code: "EQUIPMENT_NOT_ACCESSIBLE" }, run }; if (!q4Equipment.stateUsable(lamp) || lamp.charges <= 0) return { ok: false, error: { code: "EQUIPMENT_UNAVAILABLE" }, run }; }
   const result = submitSessionAction({ session: run.session, actor: run.session.startup.player.observer_id, action, target });
   if (result.session) run.session = result.session;
-  if (result.ok && result.outcome === "succeeded") { if (verb === "MOVE") run.checklist.moved = true; if (verb === "USE") { run.checklist.used = true; if (run.expedition) useEquipment(run.expedition, "field-light"); } }
+  if (result.ok && result.outcome === "succeeded") { if (verb === "MOVE") run.checklist.moved = true; if (verb === "USE") { run.checklist.used = true; if (run.expedition) useEquipment(run.expedition, "field-light", run.session.startup.player.observer_id); } }
   return { ...result, run };
 }
 function saveRun(runValue) { const run = normalizeRun(runValue); return { version: "yellow-beast-save@v4", profile_id: run.profile_id, profile_title: run.profile_title, scenario: run.scenario, seed: run.seed, lifecycle: run.lifecycle, checklist: clone(run.checklist), aliases: clone(run.aliases), expedition: clone(run.expedition), procedural: clone(run.procedural), world_id: run.world_id, run_id: run.run_id, envelope: exportSession(run.session).envelope }; }

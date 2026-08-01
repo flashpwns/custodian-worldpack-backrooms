@@ -1,9 +1,10 @@
 "use strict";
 
 const clone = (value) => structuredClone(value);
+const q4Equipment = require("./q4-equipment");
 const FIELD_SCENARIO = "async-clear-q4-field-survey";
 
-function fieldExpedition(player, staffing = null) {
+function fieldExpedition(player, staffing = null, loadout = null) {
   const playerPerson = staffing?.player ?? { identity: player, first_name: "Alex", last_name: "Morgan", display_name: "Alex Morgan", role: "field surveyor", clearance: "field", condition: "normal", status: "active" };
   const peerPerson = staffing?.peer ?? { identity: "yb-field-peer-observer", first_name: "Nora", last_name: "Vale", display_name: "Nora Vale", role: "survey partner", clearance: "field", condition: "normal", status: "active" };
   return {
@@ -15,19 +16,16 @@ function fieldExpedition(player, staffing = null) {
     objectives: {
       survey: { required: true, state: "active" }, evidence: { required: true, state: "pending" }, check_in: { required: true, state: "pending" }, return_decision: { required: true, state: "pending" }, optional_peer_status: { required: false, state: "pending" }
     },
-    equipment: {
-      "field-light": { custodian: player, state: "usable", charges: 1, used: 0 },
-      "recording-device": { custodian: player, state: "usable", charges: 2, used: 0 },
-      "survey-instrument": { custodian: player, state: "usable", charges: 1, used: 0 },
-      "survey-radio": { custodian: player, state: "usable", charges: 2, used: 0 }
-    },
+    equipment: loadout?.required ?? q4Equipment.expeditionEquipment(null, player),
+    optional_stores: loadout?.optional ?? {},
+    loadout: { required: [...q4Equipment.REQUIRED], optional: [...q4Equipment.OPTIONAL], phase: "BRIEFING" },
     clock: { interval: 0, check_in_due_at: 2, check_in_overdue: false, communication_ticks: 0 },
     evidence: [], messages: [], interaction_history: [], deviations: [], history: [], outcome: null, result: null
   };
 }
 function event(expedition, kind, payload) { expedition.history.push({ sequence: expedition.history.length + 1, kind, payload: clone(payload) }); }
 function equipment(expedition, id) { return expedition.equipment[id]; }
-function useEquipment(expedition, id) { const item = equipment(expedition, id); if (!item || item.state !== "usable" || item.charges <= 0) return { ok: false, code: "EQUIPMENT_UNAVAILABLE" }; item.charges -= 1; item.used += 1; return { ok: true, item }; }
+function useEquipment(expedition, id, holder = null) { return q4Equipment.use(expedition, id, holder ?? expedition.equipment[id]?.holder ?? null); }
 function safeSummary(expedition) { return { id: expedition.id, title: expedition.title, team: expedition.team.members.map(({ id, role, status }) => ({ id, role, status })), objectives: Object.fromEntries(Object.entries(expedition.objectives).map(([id, value]) => [id, { required: value.required, state: value.state }])), clock: clone(expedition.clock), equipment: Object.fromEntries(Object.entries(expedition.equipment).map(([id, value]) => [id, { state: value.state, charges: value.charges }])), evidence_count: expedition.evidence.length, message_count: expedition.messages.length, deviations: clone(expedition.deviations), outcome: expedition.outcome };
 }
 function finalize(expedition, decision) {
