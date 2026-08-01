@@ -13,8 +13,8 @@ test("Pass 10 caveat matrix classifies every release-gate item exactly once", ()
   for (const item of matrix.items) assert.ok(matrix.classifications.includes(item.beta_classification), item.identifier);
   assert.equal(new Set(matrix.items.map((item) => item.identifier)).size, matrix.items.length);
   const icon = matrix.items.find((item) => item.identifier === "app-icon-source");
-  assert.equal(icon.beta_classification, "A. BETA BLOCKER");
-  assert.match(icon.description, /not mounted|not present/i);
+  assert.equal(icon.beta_classification, "B. REQUIRED BETA POLISH");
+  assert.match(icon.description, /preserved|packaged icon/i);
 });
 
 test("Q4 session schema is versioned, backward-compatible, and report export is observer-safe", () => {
@@ -46,10 +46,10 @@ test("Pass 10 settings accept reduced sensory and bounded audio controls", () =>
 });
 
 test("requested application icon source is explicit and never silently substituted", () => {
-  const source = "/mnt/data/ASYNC_Logo.webp";
+  const source = path.join(__dirname, "..", "desktop/assets/icon-source/ASYNC_Logo.png");
   const icon = matrix.items.find((item) => item.identifier === "app-icon-source");
-  assert.equal(icon.beta_classification, "A. BETA BLOCKER");
-  if (fs.existsSync(source)) assert.equal(icon.beta_classification, "A. BETA BLOCKER", "icon work must update this matrix before packaging");
-  assert.match(icon.decision, /derive icon|verify bundle/i);
+  assert.ok(fs.existsSync(source));
+  assert.equal(icon.current_implementation_state.startsWith("resolved"), true);
+  assert.equal(icon.beta_classification, "B. REQUIRED BETA POLISH");
   assert.equal(betaReport.report({ world: { id: "w" } }).save_schema_version, "yellow-beast-session@2");
 });

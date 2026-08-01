@@ -98,7 +98,7 @@
     "productName": "Yellow Beast",
     "directories": { "output": "dist/desktop" },
     "files": ["desktop/**/*", "tools/**/*", "profiles/**/*", "scenarios/**/*", "data/**/*", "manifest.json", "package.json", "LICENSE", "THIRD_PARTY_NOTICES.md", "START-HERE.md", "!tests/**/*", "!docs/**/*", "!dist/**/*", "!**/*.test.js"],
-    "mac": { "target": ["zip"], "category": "public.app-category.games" },
+    "mac": { "target": ["zip"], "category": "public.app-category.games", "icon": "desktop/assets/async-icon.icns" },
     "win": { "target": ["zip"] }
   }
 }

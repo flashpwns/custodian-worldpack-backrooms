@@ -3,6 +3,7 @@ const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const path = require("node:path");
 const root = path.resolve(__dirname, "..");
+const packageJson = JSON.parse(fs.readFileSync(path.join(root, "package.json"), "utf8"));
 const read = (relative) => JSON.parse(fs.readFileSync(path.join(root, relative), "utf8"));
 const registry = read("canon/source-registry.json");
 const claims = [...read("canon/claims/foundation.json").claims, ...read("canon/claims/operations.json").claims, ...read("canon/claims/recovered-records.json").claims, ...read("canon/claims/architecture.json").claims, ...read("canon/claims/environmental-survey.json").claims, ...read("canon/claims/anomalies.json").claims, ...read("canon/claims/transitions.json").claims];
@@ -280,6 +281,13 @@ assert.ok(fs.existsSync(path.join(root, "data/phenomenon-definitions.json")), "p
 // audited by tools/verify-alpha-artifact.js, not executable world-pack source.
 const packFiles = fs.readdirSync(root, { recursive: true }).filter((entry) => entry.endsWith(".js") && !entry.startsWith("node_modules/") && !entry.startsWith("dist/"));
 assert.deepEqual(packFiles.sort(), scripts.sort(), "Yellow Beast contains no executable world-pack logic");
-const prohibitedRawMedia = fs.readdirSync(root, { recursive: true }).filter((entry) => /\.(mp4|mov|webm|mkv|jpg|jpeg|png|gif|webp|mp3|wav|pdf)$/i.test(entry) && !entry.startsWith("dist/") && !entry.startsWith("node_modules/"));
+const iconSource = "desktop/assets/icon-source/ASYNC_Logo.png";
+const iconMaster = "desktop/assets/async-icon-master.png";
+const iconIcns = "desktop/assets/async-icon.icns";
+const iconSet = ["icon_16x16.png", "icon_16x16@2x.png", "icon_32x32.png", "icon_32x32@2x.png", "icon_128x128.png", "icon_128x128@2x.png", "icon_256x256.png", "icon_256x256@2x.png", "icon_512x512.png", "icon_512x512@2x.png"].map((name) => `desktop/assets/macos-icon.iconset/${name}`);
+for (const asset of [iconSource, iconMaster, iconIcns, ...iconSet]) assert.ok(fs.existsSync(path.join(root, asset)), `required application icon asset is missing: ${asset}`);
+assert.equal(packageJson.build?.mac?.icon, iconIcns, "electron-builder must use the verified macOS icon");
+const permittedIconMedia = new Set([iconSource, iconMaster, iconIcns, ...iconSet]);
+const prohibitedRawMedia = fs.readdirSync(root, { recursive: true }).filter((entry) => /\.(mp4|mov|webm|mkv|jpg|jpeg|png|gif|webp|mp3|wav|pdf)$/i.test(entry) && !entry.startsWith("dist/") && !entry.startsWith("node_modules/") && !permittedIconMedia.has(entry));
 assert.deepEqual(prohibitedRawMedia, [], "Yellow Beast contains no copied raw source media or archives");
 console.log("validated Yellow Beast canon intake assets and baseline manifest");
