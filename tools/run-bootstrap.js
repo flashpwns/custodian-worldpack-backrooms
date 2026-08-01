@@ -77,7 +77,7 @@ function startRun({ profile, seed = "yellow-beast-bootstrap", scenario = null, w
   if (staffing && !staffing.ok) return { ok: false, error: { code: staffing.code } };
   const mission = profile === FIELD_PROFILE ? q4Missions.generate({ world, run_id, seed, staffing }) : null;
   if (mission && world) history.recordQ4Mission(world, run_id, mission);
-  const loadout = profile === FIELD_PROFILE && world ? q4Equipment.prepare(world, run_id, { player: staffing.player.identity, peer: staffing.peer.identity, required_keys: mission.required_equipment }) : null;
+  const loadout = profile === FIELD_PROFILE && world ? q4Equipment.prepare(world, run_id, { player: staffing.player.identity, peer: staffing.assistant ? staffing.peer.identity : null, assistant: staffing.assistant?.identity, required_keys: mission.required_equipment }) : null;
   const existing = region_id && world?.regions?.[region_id];
   let generator; try { generator = generatorFor(existing?.generator_version ?? generator_version ?? procedural.VERSION); } catch (error) { return { ok: false, error: { code: error.code ?? "GENERATOR_VERSION_UNSUPPORTED" } }; }
   const procedural_state = existing ? clone(history.restoreRegion(world, region_id).state) : (procedural_scenario && generator_version === proceduralV2.VERSION ? generator.initialize({ seed, observer: player, policy: "moderate" }) : undefined);

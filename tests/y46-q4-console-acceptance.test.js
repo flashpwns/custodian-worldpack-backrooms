@@ -10,6 +10,7 @@ const surfaces = require("../desktop/renderer/surfaces");
 function fixture(seed = "console-acceptance") {
   const service = new DesktopService({ appDataPath: fs.mkdtempSync(path.join(os.tmpdir(), "yb-q4-console-")) });
   const world = service.createWorld({ name: "Console acceptance", seed }).world;
+  service.createQ4Personnel({ world_id: world.id, first_name: "Jack", last_name: "Rocha" });
   const started = service.startSession({ world_id: world.id, mode: "field-researcher", seed });
   return { service, world, projection: started.projection };
 }

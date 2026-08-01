@@ -9,6 +9,8 @@ mark the result from automated tests. Record one result only: `PASS`,
 - [ ] ASYNC boot sequence is visible and can be skipped.
 - [ ] Title/access surface identifies Yellow Beast as an unofficial project.
 - [ ] A fresh world can be created offline.
+- [ ] Clear-Q4 requests first and last name before displaying an assignment.
+- [ ] Personnel confirmation clearly identifies the controlled person before briefing.
 - [ ] BRIEFING explains assignment, team, equipment, reporting, and next step.
 - [ ] STAGING_AND_EQUIPMENT shows required and optional gear without silently equipping it.
 - [ ] THRESHOLD_ROOM is understandable and does not render the Complex early.
@@ -16,8 +18,11 @@ mark the result from automated tests. Record one result only: `PASS`,
 - [ ] First Standard radio check is available only when radio capability exists.
 
 At a 1536×1024-equivalent desktop viewport, capture these screenshots from the
-exact packaged build: untouched BRIEFING, guidance collapsed, LOCAL conversation
-with a nearby teammate, STAGING, and THRESHOLD ROOM. ACTION, LOCAL, STANDARD,
+exact packaged build: personnel creation, personnel confirmation, briefing with
+the controlled person marked YOU and Alex/Nora as NPCs, LOCAL greeting with a
+visible response, Standard unavailable during briefing, staging with named
+equipment holders, visible Proceed to Threshold Room, THRESHOLD ROOM, Standard
+radio check, and the first field-operation screen. ACTION, LOCAL, STANDARD,
 team/loadout, mission summary, and compact layout must be visible without
 whole-window scrolling.
 

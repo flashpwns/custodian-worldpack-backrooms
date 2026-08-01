@@ -13,6 +13,7 @@ const DEFINITIONS = Object.freeze({
   "spare-film": { type: "35mm-film", label: "Spare film roll", model: "35mm documentation film", capability: "photographic documentation", consumable: { kind: "film exposures", remaining: 24 } }
 });
 const clone = (value) => structuredClone(value);
+const DEFAULT_HOLDER_NAMES = Object.freeze({ "yb-field-peer-observer": "Nora Vale", "yb-field-alex-morgan": "Alex Morgan" });
 function makeId(world, key) { const entries = Object.keys(world?.q4_equipment ?? {}).filter((id) => id.startsWith(`q4-${key}-`)); return `q4-${key}-${String(entries.length + 1).padStart(2, "0")}`; }
 function createItem(world, key, { owner, holder, container = "field case", location = "staging locker", id = null } = {}) {
   const definition = DEFINITIONS[key]; if (!definition) throw new Error(`unknown Q4 equipment type: ${key}`);
@@ -28,11 +29,12 @@ function ensureWorldItem(world, run_id, key, player, preferredId = null) {
   history.event(world, run_id, "q4.equipment.issued", { equipment_id: item.id, type: item.type, holder: item.holder, location: item.location });
   return item;
 }
-function prepare(world, run_id, { player, peer, required_keys = REQUIRED }) {
+function prepare(world, run_id, { player, peer, assistant = null, required_keys = REQUIRED }) {
   const required = Object.fromEntries(required_keys.map((key) => [key, clone(ensureWorldItem(world, run_id, key, player))]));
-  const optional = Object.fromEntries(OPTIONAL.map((key) => { const id = `q4-${key}-stores`; world.q4_equipment ??= {}; world.q4_equipment[id] ??= createItem(world, key, { owner: player, holder: "q4-stores", container: "optional stores", location: "staging locker", id }); return [key, clone(world.q4_equipment[id])]; }));
-  for (const item of Object.values(required)) { item.assigned_to = player; item.holder = player; item.container = "field case"; item.location = "staging locker"; }
-  return { required, optional, player, peer };
+  const optional = Object.fromEntries(OPTIONAL.map((key) => { const id = `q4-${key}-stores`; world.q4_equipment ??= {}; world.q4_equipment[id] ??= createItem(world, key, { owner: "q4-stores", holder: "q4-stores", container: "optional stores", location: "staging locker", id }); return [key, clone(world.q4_equipment[id])]; }));
+  const holders = { "field-light": player, "recording-device": assistant ?? player, "survey-instrument": peer ?? player, "survey-radio": player };
+  for (const [key, item] of Object.entries(required)) { const holder = holders[key] ?? player; item.assigned_to = holder; item.holder = holder; item.container = "field case"; item.location = "staging locker"; if (holder !== player) item.history.push({ event: "assigned-to-team-member", holder, location: item.location }); }
+  return { required, optional, player, peer, assistant };
 }
 function expeditionEquipment(loadout, player) {
   const values = loadout?.required ?? {};
@@ -68,11 +70,12 @@ function selectOptional(expedition, key, holder) {
   item.holder = holder; item.assigned_to = holder; item.container = "field case"; item.location = "staging locker"; item.history ??= []; item.history.push({ event: "selected-from-stores", holder, location: item.location }); expedition.equipment[key] = item; delete expedition.optional_stores[key]; return { ok: true, item: clone(item) };
 }
 function syncWorld(world, expedition) { if (!world || !expedition?.equipment) return; world.q4_equipment ??= {}; for (const item of Object.values(expedition.equipment)) world.q4_equipment[item.id] = clone(item); }
-function publicItem(item, player, known = true) {
+function publicItem(item, player, known = true, holderNames = {}) {
   const own = item.holder === player; const state = known ? (item.state === "usable" ? "Operational" : item.known_condition ?? item.state) : "Unknown condition";
   const stores = item.holder === "q4-stores";
   const observerState = !own && !stores ? (item.known_condition === "Operational" ? "Last observed operational" : "Unknown condition") : state;
-  return { category: item.type, label: item.label, model: item.model, holder: own ? "You" : stores ? "Optional stores" : item.holder ? "Assigned teammate" : "Unknown holder", location: own || stores ? item.location : "Known only by last contact", state: observerState, capability: item.capability, consumable: own || stores ? clone(item.consumable) : { kind: item.consumable?.kind ?? "operational measure", remaining: "Unknown" }, available: (own || stores) && stateUsable(item) };
+  const names = { ...DEFAULT_HOLDER_NAMES, ...holderNames };
+  return { category: item.type, label: item.label, model: item.model, holder: own ? "You" : stores ? "Team stores" : names[item.holder] ?? "Assigned teammate", location: own || stores ? item.location : "Known only by last contact", state: observerState, capability: item.capability, consumable: own || stores ? clone(item.consumable) : { kind: item.consumable?.kind ?? "operational measure", remaining: "Unknown" }, available: (own || stores) && stateUsable(item) };
 }
-function projection(expedition, player) { const items = Object.entries(expedition.equipment ?? {}); return { required: items.map(([ref, item]) => ({ ...publicItem(item, player), ref })), optional: Object.entries(expedition.optional_stores ?? {}).map(([ref, item]) => ({ ...publicItem(item, player), ref })), readiness: items.every(([, item]) => stateUsable(item) && item.holder === player), missing: items.filter(([, item]) => !stateUsable(item) || item.holder !== player).map(([, item]) => item.label) }; }
+function projection(expedition, player, holderNames = {}) { const items = Object.entries(expedition.equipment ?? {}); return { required: items.map(([ref, item]) => ({ ...publicItem(item, player, true, holderNames), ref })), optional: Object.entries(expedition.optional_stores ?? {}).map(([ref, item]) => ({ ...publicItem(item, player, true, holderNames), ref })), readiness: items.every(([, item]) => stateUsable(item)), missing: items.filter(([, item]) => !stateUsable(item)).map(([, item]) => item.label) }; }
 module.exports = { VERSION, REQUIRED, OPTIONAL, DEFINITIONS, prepare, expeditionEquipment, updatePhase, stateUsable, use, transfer, selectOptional, syncWorld, publicItem, projection };
