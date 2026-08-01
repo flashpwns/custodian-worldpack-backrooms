@@ -15,6 +15,7 @@ function fixture(seed = "player-identity") {
 function createAndStart(service, world, first_name = "Jack", last_name = "Rocha") {
   const created = service.createQ4Personnel({ world_id: world.id, first_name, last_name });
   assert.equal(created.ok, true);
+  assert.equal(service.confirmQ4Personnel({ world_id: world.id }).ok, true);
   return service.startSession({ world_id: world.id, mode: "field-researcher", seed: "player-identity", require_personnel: true });
 }
 function advanceTo(service, world, actions = ["READY", "PROCEED", "APPROACH", "CROSS"]) {

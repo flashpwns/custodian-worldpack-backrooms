@@ -272,7 +272,7 @@ scripts.push("tests/y41-q4-continuity.test.js");
 scripts.push("tests/y42-q4-async-interface.test.js");
 scripts.push("tests/y43-q4-visual-assets.test.js");
 scripts.push("tests/y44-q4-replayability.test.js");
-scripts.push("tests/y46-q4-console-acceptance.test.js");
+scripts.push("tests/y46-q4-console-acceptance.test.js", "tests/y48-q4-prefield-flow.test.js");
 scripts.push("tests/y47-q4-player-identity.test.js");
 for (const relative of scripts) {
   const content = fs.readFileSync(path.join(root, relative), "utf8");

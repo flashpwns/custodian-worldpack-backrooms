@@ -11,6 +11,7 @@ function fixture(seed = "console-acceptance") {
   const service = new DesktopService({ appDataPath: fs.mkdtempSync(path.join(os.tmpdir(), "yb-q4-console-")) });
   const world = service.createWorld({ name: "Console acceptance", seed }).world;
   service.createQ4Personnel({ world_id: world.id, first_name: "Jack", last_name: "Rocha" });
+  service.confirmQ4Personnel({ world_id: world.id });
   const started = service.startSession({ world_id: world.id, mode: "field-researcher", seed });
   return { service, world, projection: started.projection };
 }
@@ -71,6 +72,6 @@ test("ordinary header uses short mission ID and phase-specific briefing next ste
   assert.match(renderer, /shortMissionId/);
   assert.match(renderer, /MISSION \$\{escape\(shortMissionId\(mission\)\)\}/);
   assert.equal(projection.available_actions[0].type, "READY");
-  assert.match(surfaces.render(projection), /Review the assignment and confirm readiness to stage/);
+  assert.match(surfaces.render(projection), /Review the assignment and assigned team/);
   assert.doesNotMatch(renderer, /MISSION \$\{escape\(mission\.id/);
 });
