@@ -15,7 +15,10 @@ const schemas = [
   read("canon/derived-report-schema.json"),
   read("canon/environment-observation-schema.json"), read("canon/local-topology-schema.json"), read("canon/architecture-grammar-schema.json"), read("canon/production-reference-schema.json"), read("canon/environmental-condition-schema.json"), read("canon/survey-observation-schema.json"), read("canon/anomaly-observation-schema.json"), read("canon/anomaly-interaction-schema.json"), read("canon/corpus-root-schema.json"), read("canon/corpus-video-schema.json"), read("canon/transition-schema.json"), read("canon/scenario-profile-schema.json"),
   read("canon/communication-record-schema.json"),
-  read("canon/scenario-admission-schema.json")
+  read("canon/scenario-admission-schema.json"),
+  read("canon/operational-logistics-schema.json"),
+  read("canon/institutional-response-schema.json"),
+  read("canon/complete-operation-schema.json")
 ];
 const ajv = new Ajv2020({ allErrors: true, strict: false });
 for (const schema of schemas) ajv.addSchema(schema);
@@ -49,4 +52,10 @@ for (const item of read("corpus/videos.json").videos) validate("https://yellowbe
 for (const item of read("transitions/observations.json").transitions) validate("https://yellowbeast.dev/schemas/transition-observation/v1", item, `transition ${item.id}`);
 for (const item of read("profiles/profiles.json").profiles) validate("https://yellowbeast.dev/schemas/scenario-profile/v1", item, `profile ${item.id}`);
 validate("https://yellowbeast.dev/schemas/scenario-admission/v1", read("scenarios/threshold-baseline-admission.json"), "Threshold Baseline admission");
+validate("yellow-beast-operational-logistics-schema@v1", read("data/worldpacks/clear-q4/logistics.json"), "Clear-Q4 logistics");
+validate("yellow-beast-operational-logistics-schema@v1", read("data/worldpacks/authoring-fixture/logistics.json"), "fixture logistics");
+validate("yellow-beast-institutional-response-schema@v1", read("data/worldpacks/clear-q4/institution.json"), "Clear-Q4 institutional response");
+validate("yellow-beast-institutional-response-schema@v1", read("data/worldpacks/authoring-fixture/institution.json"), "fixture institutional response");
+validate("yellow-beast-complete-operation-schema@v1", read("data/worldpacks/clear-q4/operation.json"), "Clear-Q4 complete operation");
+validate("yellow-beast-complete-operation-schema@v1", read("data/worldpacks/authoring-fixture/operation.json"), "fixture complete operation");
 console.log("validated Yellow Beast intake and admission contracts");

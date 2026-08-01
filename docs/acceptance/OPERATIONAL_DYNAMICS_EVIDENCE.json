@@ -1,6 +1,6 @@
 {
   "version": "yellow-beast-operational-dynamics-acceptance@v1",
-  "generated_at": "2026-08-01T10:00:05.547Z",
+  "generated_at": "2026-08-01T11:45:28.233Z",
   "evidence_kind": "deterministic renderer-backed and machine-readable authoritative-state capture",
   "primary_seed": "operational-dynamics-acceptance",
   "second_seed": "operational-dynamics-second-seed",
@@ -212,7 +212,7 @@
           "location": "carrying",
           "state": "Operational",
           "verification": "visually confirmed",
-          "remaining": "checked"
+          "remaining": 1
         },
         {
           "label": "35mm field camera",
@@ -228,7 +228,7 @@
           "location": "carrying",
           "state": "Operational",
           "verification": "visually confirmed",
-          "remaining": "checked"
+          "remaining": 1
         },
         {
           "label": "Handheld field radio",
@@ -236,7 +236,7 @@
           "location": "carrying",
           "state": "Operational",
           "verification": "visually confirmed",
-          "remaining": "checked"
+          "remaining": 8
         }
       ],
       "evidence": [],
@@ -472,6 +472,17 @@
           "delivered_at": 4,
           "acknowledged_at": 4,
           "known_reason": null
+        },
+        {
+          "sender": "Standard",
+          "recipient": "You",
+          "channel": "FIELD_RADIO",
+          "purpose": "acknowledge-report",
+          "sent_at": 5,
+          "state": "delivered",
+          "delivered_at": 5,
+          "acknowledged_at": null,
+          "known_reason": null
         }
       ],
       "hazards": [],
@@ -482,7 +493,7 @@
           "location": "carrying",
           "state": "Operational",
           "verification": "visually confirmed",
-          "remaining": "checked"
+          "remaining": 1
         },
         {
           "label": "35mm field camera",
@@ -498,28 +509,34 @@
           "location": "carrying",
           "state": "Operational",
           "verification": "visually confirmed",
-          "remaining": "checked"
+          "remaining": 1
         },
         {
           "label": "Handheld field radio",
           "holder": "You",
           "location": "carrying",
-          "state": "Operational",
+          "state": "operational",
           "verification": "visually confirmed",
-          "remaining": "checked"
+          "remaining": 7
         },
         {
           "label": "Numbered route-marker kit",
           "holder": "You",
           "location": "carrying",
-          "state": "Operational",
+          "state": "operational",
           "verification": "visually confirmed",
           "remaining": 4
         }
       ],
       "evidence": [],
       "location": "Utility Room",
-      "operational_updates": [],
+      "operational_updates": [
+        {
+          "kind": "scheduled-event",
+          "summary": "institution response resolved.",
+          "at": 5
+        }
+      ],
       "review": null
     },
     "evidence_recorded": {
@@ -740,6 +757,17 @@
           "delivered_at": 4,
           "acknowledged_at": 4,
           "known_reason": null
+        },
+        {
+          "sender": "Standard",
+          "recipient": "You",
+          "channel": "FIELD_RADIO",
+          "purpose": "acknowledge-report",
+          "sent_at": 5,
+          "state": "delivered",
+          "delivered_at": 5,
+          "acknowledged_at": null,
+          "known_reason": null
         }
       ],
       "hazards": [],
@@ -750,13 +778,13 @@
           "location": "carrying",
           "state": "Operational",
           "verification": "visually confirmed",
-          "remaining": "checked"
+          "remaining": 1
         },
         {
           "label": "35mm field camera",
           "holder": "Jade Bentley",
           "location": "carrying",
-          "state": "Operational",
+          "state": "operational",
           "verification": "visually confirmed",
           "remaining": 11
         },
@@ -766,21 +794,21 @@
           "location": "carrying",
           "state": "Operational",
           "verification": "visually confirmed",
-          "remaining": "checked"
+          "remaining": 1
         },
         {
           "label": "Handheld field radio",
           "holder": "You",
           "location": "carrying",
-          "state": "Operational",
+          "state": "operational",
           "verification": "visually confirmed",
-          "remaining": "checked"
+          "remaining": 7
         },
         {
           "label": "Numbered route-marker kit",
           "holder": "You",
           "location": "carrying",
-          "state": "Operational",
+          "state": "operational",
           "verification": "visually confirmed",
           "remaining": 3
         }
@@ -1016,6 +1044,17 @@
           "delivered_at": 4,
           "acknowledged_at": 4,
           "known_reason": null
+        },
+        {
+          "sender": "Standard",
+          "recipient": "You",
+          "channel": "FIELD_RADIO",
+          "purpose": "acknowledge-report",
+          "sent_at": 5,
+          "state": "delivered",
+          "delivered_at": 5,
+          "acknowledged_at": null,
+          "known_reason": null
         }
       ],
       "hazards": [],
@@ -1026,13 +1065,13 @@
           "location": "carrying",
           "state": "Operational",
           "verification": "visually confirmed",
-          "remaining": "checked"
+          "remaining": 1
         },
         {
           "label": "35mm field camera",
           "holder": "Jade Bentley",
           "location": "carrying",
-          "state": "Operational",
+          "state": "operational",
           "verification": "visually confirmed",
           "remaining": 11
         },
@@ -1048,15 +1087,15 @@
           "label": "Handheld field radio",
           "holder": "You",
           "location": "carrying",
-          "state": "Operational",
+          "state": "operational",
           "verification": "visually confirmed",
-          "remaining": "checked"
+          "remaining": 7
         },
         {
           "label": "Numbered route-marker kit",
           "holder": "You",
           "location": "carrying",
-          "state": "Operational",
+          "state": "operational",
           "verification": "visually confirmed",
           "remaining": 3
         }
@@ -1292,6 +1331,17 @@
           "delivered_at": 4,
           "acknowledged_at": 4,
           "known_reason": null
+        },
+        {
+          "sender": "Standard",
+          "recipient": "You",
+          "channel": "FIELD_RADIO",
+          "purpose": "acknowledge-report",
+          "sent_at": 5,
+          "state": "delivered",
+          "delivered_at": 5,
+          "acknowledged_at": null,
+          "known_reason": null
         }
       ],
       "hazards": [
@@ -1311,13 +1361,13 @@
           "location": "carrying",
           "state": "Operational",
           "verification": "visually confirmed",
-          "remaining": "checked"
+          "remaining": 1
         },
         {
           "label": "35mm field camera",
           "holder": "Jade Bentley",
           "location": "carrying",
-          "state": "Operational",
+          "state": "operational",
           "verification": "visually confirmed",
           "remaining": 11
         },
@@ -1333,15 +1383,15 @@
           "label": "Handheld field radio",
           "holder": "You",
           "location": "carrying",
-          "state": "Operational",
+          "state": "operational",
           "verification": "visually confirmed",
-          "remaining": "checked"
+          "remaining": 7
         },
         {
           "label": "Numbered route-marker kit",
           "holder": "You",
           "location": "carrying",
-          "state": "Operational",
+          "state": "operational",
           "verification": "visually confirmed",
           "remaining": 3
         }
@@ -1591,6 +1641,17 @@
           "delivered_at": 4,
           "acknowledged_at": 4,
           "known_reason": null
+        },
+        {
+          "sender": "Standard",
+          "recipient": "You",
+          "channel": "FIELD_RADIO",
+          "purpose": "acknowledge-report",
+          "sent_at": 5,
+          "state": "delivered",
+          "delivered_at": 5,
+          "acknowledged_at": null,
+          "known_reason": null
         }
       ],
       "hazards": [
@@ -1610,13 +1671,13 @@
           "location": "carrying",
           "state": "Operational",
           "verification": "visually confirmed",
-          "remaining": "checked"
+          "remaining": 1
         },
         {
           "label": "35mm field camera",
           "holder": "Jade Bentley",
           "location": "carrying",
-          "state": "Operational",
+          "state": "operational",
           "verification": "visually confirmed",
           "remaining": 11
         },
@@ -1632,15 +1693,15 @@
           "label": "Handheld field radio",
           "holder": "You",
           "location": "carrying",
-          "state": "Operational",
+          "state": "operational",
           "verification": "visually confirmed",
-          "remaining": "checked"
+          "remaining": 7
         },
         {
           "label": "Numbered route-marker kit",
           "holder": "You",
           "location": "carrying",
-          "state": "Operational",
+          "state": "operational",
           "verification": "visually confirmed",
           "remaining": 3
         }
@@ -1876,6 +1937,17 @@
           "delivered_at": 4,
           "acknowledged_at": 4,
           "known_reason": null
+        },
+        {
+          "sender": "Standard",
+          "recipient": "You",
+          "channel": "FIELD_RADIO",
+          "purpose": "acknowledge-report",
+          "sent_at": 5,
+          "state": "delivered",
+          "delivered_at": 5,
+          "acknowledged_at": null,
+          "known_reason": null
         }
       ],
       "hazards": [
@@ -1895,13 +1967,13 @@
           "location": "carrying",
           "state": "Operational",
           "verification": "visually confirmed",
-          "remaining": "checked"
+          "remaining": 1
         },
         {
           "label": "35mm field camera",
           "holder": "Jade Bentley",
           "location": "carrying",
-          "state": "Operational",
+          "state": "operational",
           "verification": "visually confirmed",
           "remaining": 11
         },
@@ -1911,23 +1983,23 @@
           "location": "carrying",
           "state": "Operational",
           "verification": "visually confirmed",
-          "remaining": "checked"
+          "remaining": 1
         },
         {
           "label": "Handheld field radio",
           "holder": "You",
           "location": "carrying",
-          "state": "Operational",
+          "state": "operational",
           "verification": "visually confirmed",
-          "remaining": "checked"
+          "remaining": 7
         },
         {
           "label": "Numbered route-marker kit",
           "holder": "You",
           "location": "carrying",
-          "state": "Operational",
+          "state": "operational",
           "verification": "visually confirmed",
-          "remaining": 3
+          "remaining": 2
         }
       ],
       "evidence": [
@@ -1946,7 +2018,7 @@
     "delayed_message_and_missed_window": {
       "phase": "FIELD_OPERATION",
       "interval": 14,
-      "next_known_event": 23,
+      "next_known_event": 15,
       "mission_lifecycle": "return_available",
       "objectives": [
         {
@@ -2163,6 +2235,17 @@
           "known_reason": null
         },
         {
+          "sender": "Standard",
+          "recipient": "You",
+          "channel": "FIELD_RADIO",
+          "purpose": "acknowledge-report",
+          "sent_at": 5,
+          "state": "delivered",
+          "delivered_at": 5,
+          "acknowledged_at": null,
+          "known_reason": null
+        },
+        {
           "sender": "You",
           "recipient": "Standard",
           "channel": "FIELD_RADIO",
@@ -2191,13 +2274,13 @@
           "location": "carrying",
           "state": "Operational",
           "verification": "visually confirmed",
-          "remaining": "checked"
+          "remaining": 1
         },
         {
           "label": "35mm field camera",
           "holder": "Jade Bentley",
           "location": "carrying",
-          "state": "Operational",
+          "state": "operational",
           "verification": "visually confirmed",
           "remaining": 11
         },
@@ -2207,23 +2290,23 @@
           "location": "carrying",
           "state": "Operational",
           "verification": "visually confirmed",
-          "remaining": "checked"
+          "remaining": 1
         },
         {
           "label": "Handheld field radio",
           "holder": "You",
           "location": "carrying",
-          "state": "Depleted",
+          "state": "operational",
           "verification": "visually confirmed",
-          "remaining": "checked"
+          "remaining": 6
         },
         {
           "label": "Numbered route-marker kit",
           "holder": "You",
           "location": "carrying",
-          "state": "Operational",
+          "state": "operational",
           "verification": "visually confirmed",
-          "remaining": 3
+          "remaining": 2
         }
       ],
       "evidence": [
@@ -2460,6 +2543,17 @@
           "known_reason": null
         },
         {
+          "sender": "Standard",
+          "recipient": "You",
+          "channel": "FIELD_RADIO",
+          "purpose": "acknowledge-report",
+          "sent_at": 5,
+          "state": "delivered",
+          "delivered_at": 5,
+          "acknowledged_at": null,
+          "known_reason": null
+        },
+        {
           "sender": "You",
           "recipient": "Standard",
           "channel": "FIELD_RADIO",
@@ -2469,6 +2563,17 @@
           "delivered_at": 23,
           "acknowledged_at": null,
           "known_reason": "The column line breaks the field-radio signal; delivery cannot yet be confirmed."
+        },
+        {
+          "sender": "Standard",
+          "recipient": "You",
+          "channel": "FIELD_RADIO",
+          "purpose": "schedule-extra-check-in",
+          "sent_at": 15,
+          "state": "delivered",
+          "delivered_at": 15,
+          "acknowledged_at": null,
+          "known_reason": null
         }
       ],
       "hazards": [
@@ -2488,13 +2593,13 @@
           "location": "carrying",
           "state": "Operational",
           "verification": "visually confirmed",
-          "remaining": "checked"
+          "remaining": 1
         },
         {
           "label": "35mm field camera",
           "holder": "Jade Bentley",
           "location": "carrying",
-          "state": "Operational",
+          "state": "operational",
           "verification": "visually confirmed",
           "remaining": 11
         },
@@ -2504,23 +2609,23 @@
           "location": "carrying",
           "state": "Operational",
           "verification": "visually confirmed",
-          "remaining": "checked"
+          "remaining": 1
         },
         {
           "label": "Handheld field radio",
           "holder": "You",
           "location": "carrying",
-          "state": "Depleted",
+          "state": "operational",
           "verification": "visually confirmed",
-          "remaining": "checked"
+          "remaining": 6
         },
         {
           "label": "Numbered route-marker kit",
           "holder": "You",
           "location": "carrying",
-          "state": "Operational",
+          "state": "operational",
           "verification": "visually confirmed",
-          "remaining": 3
+          "remaining": 2
         }
       ],
       "evidence": [
@@ -2742,6 +2847,17 @@
           "known_reason": null
         },
         {
+          "sender": "Standard",
+          "recipient": "You",
+          "channel": "FIELD_RADIO",
+          "purpose": "acknowledge-report",
+          "sent_at": 5,
+          "state": "delivered",
+          "delivered_at": 5,
+          "acknowledged_at": null,
+          "known_reason": null
+        },
+        {
           "sender": "You",
           "recipient": "Standard",
           "channel": "FIELD_RADIO",
@@ -2751,6 +2867,28 @@
           "delivered_at": 23,
           "acknowledged_at": 24,
           "known_reason": "The column line breaks the field-radio signal; delivery cannot yet be confirmed."
+        },
+        {
+          "sender": "Standard",
+          "recipient": "You",
+          "channel": "FIELD_RADIO",
+          "purpose": "schedule-extra-check-in",
+          "sent_at": 15,
+          "state": "delivered",
+          "delivered_at": 15,
+          "acknowledged_at": null,
+          "known_reason": null
+        },
+        {
+          "sender": "Standard",
+          "recipient": "You",
+          "channel": "FIELD_RADIO",
+          "purpose": "prioritize-evidence",
+          "sent_at": 24,
+          "state": "delivered",
+          "delivered_at": 24,
+          "acknowledged_at": null,
+          "known_reason": null
         }
       ],
       "hazards": [
@@ -2770,13 +2908,13 @@
           "location": "carrying",
           "state": "Operational",
           "verification": "visually confirmed",
-          "remaining": "checked"
+          "remaining": 1
         },
         {
           "label": "35mm field camera",
           "holder": "Jade Bentley",
           "location": "carrying",
-          "state": "Operational",
+          "state": "operational",
           "verification": "visually confirmed",
           "remaining": 11
         },
@@ -2786,23 +2924,23 @@
           "location": "carrying",
           "state": "Depleted",
           "verification": "visually confirmed",
-          "remaining": "checked"
+          "remaining": 0
         },
         {
           "label": "Handheld field radio",
           "holder": "You",
           "location": "carrying",
-          "state": "Depleted",
+          "state": "operational",
           "verification": "visually confirmed",
-          "remaining": "checked"
+          "remaining": 6
         },
         {
           "label": "Numbered route-marker kit",
           "holder": "You",
           "location": "carrying",
-          "state": "Operational",
+          "state": "operational",
           "verification": "visually confirmed",
-          "remaining": 2
+          "remaining": 1
         }
       ],
       "evidence": [
@@ -2828,7 +2966,7 @@
     "derived_debrief": {
       "phase": "DEBRIEF",
       "interval": 29,
-      "next_known_event": null,
+      "next_known_event": 30,
       "mission_lifecycle": "completed",
       "objectives": [
         {
@@ -3023,6 +3161,17 @@
           "known_reason": null
         },
         {
+          "sender": "Standard",
+          "recipient": "You",
+          "channel": "FIELD_RADIO",
+          "purpose": "acknowledge-report",
+          "sent_at": 5,
+          "state": "delivered",
+          "delivered_at": 5,
+          "acknowledged_at": null,
+          "known_reason": null
+        },
+        {
           "sender": "You",
           "recipient": "Standard",
           "channel": "FIELD_RADIO",
@@ -3032,6 +3181,39 @@
           "delivered_at": 23,
           "acknowledged_at": 24,
           "known_reason": "The column line breaks the field-radio signal; delivery cannot yet be confirmed."
+        },
+        {
+          "sender": "Standard",
+          "recipient": "You",
+          "channel": "FIELD_RADIO",
+          "purpose": "schedule-extra-check-in",
+          "sent_at": 15,
+          "state": "delivered",
+          "delivered_at": 15,
+          "acknowledged_at": null,
+          "known_reason": null
+        },
+        {
+          "sender": "Standard",
+          "recipient": "You",
+          "channel": "FIELD_RADIO",
+          "purpose": "prioritize-evidence",
+          "sent_at": 24,
+          "state": "delivered",
+          "delivered_at": 24,
+          "acknowledged_at": null,
+          "known_reason": null
+        },
+        {
+          "sender": "You",
+          "recipient": "Standard",
+          "channel": "FIELD_RADIO",
+          "purpose": "mission-closure",
+          "sent_at": 28,
+          "state": "delivered",
+          "delivered_at": 29,
+          "acknowledged_at": null,
+          "known_reason": null
         }
       ],
       "hazards": [
@@ -3049,15 +3231,15 @@
           "label": "Battery field lamp",
           "holder": "You",
           "location": "carrying",
-          "state": "Operational",
+          "state": "operational",
           "verification": "visually confirmed",
-          "remaining": "checked"
+          "remaining": 1
         },
         {
           "label": "35mm field camera",
           "holder": "Jade Bentley",
           "location": "carrying",
-          "state": "Operational",
+          "state": "operational",
           "verification": "visually confirmed",
           "remaining": 11
         },
@@ -3067,23 +3249,23 @@
           "location": "carrying",
           "state": "Depleted",
           "verification": "visually confirmed",
-          "remaining": "checked"
+          "remaining": 0
         },
         {
           "label": "Handheld field radio",
           "holder": "You",
           "location": "carrying",
-          "state": "Depleted",
+          "state": "operational",
           "verification": "visually confirmed",
-          "remaining": "checked"
+          "remaining": 5
         },
         {
           "label": "Numbered route-marker kit",
           "holder": "You",
           "location": "carrying",
-          "state": "Operational",
+          "state": "operational",
           "verification": "visually confirmed",
-          "remaining": 2
+          "remaining": 1
         }
       ],
       "evidence": [
@@ -3103,13 +3285,24 @@
         }
       ],
       "location": "Threshold-Side Entry",
-      "operational_updates": [],
+      "operational_updates": [
+        {
+          "kind": "scheduled-event",
+          "summary": "communication transmit resolved.",
+          "at": 29
+        },
+        {
+          "kind": "scheduled-event",
+          "summary": "communication deliver resolved.",
+          "at": 29
+        }
+      ],
       "review": {
-        "version": "yellow-beast-q4-continuity@v2",
+        "version": "yellow-beast-q4-continuity@v3",
         "mission_id": "CQ4-INFRASTRUCTURE-MATERIAL-002-7679",
         "outcome": "recovered-complication",
         "final_mission_state": "completed",
-        "public_debrief_summary": "The team returned with its required record after recovering a missed communication window; the late delivery remains part of the operational outcome. A teammate returned with a recorded injury. A field complication was recovered before closure. The scheduled communication record includes a missed reporting window.",
+        "public_debrief_summary": "The team returned with its required record after recovering an operational complication; the complication remains part of the outcome record. A teammate returned with a recorded injury. A field complication was recovered before closure. The scheduled communication record includes a missed reporting window.",
         "assignment": {
           "objective": "Inspect and document the declared lighting and material conditions within the survey boundary.",
           "completion_status": "completed",
@@ -3204,7 +3397,7 @@
             "label": "Battery field lamp",
             "status": "returned",
             "holder": "q4-player-35a5e8690a027e84",
-            "location": "with the field kit",
+            "location": "threshold-side-entry",
             "origin_run": "run-25b4e0601a55383a",
             "provenance": "persistent Q4 equipment record"
           },
@@ -3213,7 +3406,7 @@
             "label": "35mm field camera",
             "status": "returned",
             "holder": "yb-personnel-4aaf3425ba12437e332d",
-            "location": "with the field kit",
+            "location": "threshold-side-entry",
             "origin_run": "run-25b4e0601a55383a",
             "provenance": "persistent Q4 equipment record"
           },
@@ -3222,16 +3415,16 @@
             "label": "Portable survey instrument",
             "status": "depleted",
             "holder": "q4-player-35a5e8690a027e84",
-            "location": "carried",
+            "location": "threshold-side-entry",
             "origin_run": "run-25b4e0601a55383a",
             "provenance": "persistent Q4 equipment record"
           },
           {
             "id": "q4-survey-radio-01",
             "label": "Handheld field radio",
-            "status": "depleted",
+            "status": "returned",
             "holder": "q4-player-35a5e8690a027e84",
-            "location": "with the field kit",
+            "location": "threshold-side-entry",
             "origin_run": "run-25b4e0601a55383a",
             "provenance": "persistent Q4 equipment record"
           },
@@ -3240,9 +3433,114 @@
             "label": "Numbered route-marker kit",
             "status": "returned",
             "holder": "q4-player-35a5e8690a027e84",
-            "location": "with the field kit",
+            "location": "threshold-side-entry",
             "origin_run": "run-25b4e0601a55383a",
             "provenance": "persistent Q4 equipment record"
+          }
+        ],
+        "containers": [
+          {
+            "id": "player-harness",
+            "name": "Personal field harness",
+            "kind": "personal",
+            "status": "returned",
+            "holder": "q4-player-35a5e8690a027e84",
+            "location": "threshold-side-entry",
+            "contents": [
+              "field-light",
+              "route-marker-kit",
+              "survey-instrument",
+              "survey-radio"
+            ],
+            "provenance": "persistent logistics container record"
+          },
+          {
+            "id": "field-case",
+            "name": "Field equipment case",
+            "kind": "field-case",
+            "status": "returned",
+            "holder": "q4-player-35a5e8690a027e84",
+            "location": "threshold-side-entry",
+            "contents": [],
+            "provenance": "persistent logistics container record"
+          },
+          {
+            "id": "staging-locker",
+            "name": "Issued-equipment locker",
+            "kind": "staging",
+            "status": "returned",
+            "holder": "institutional-stores",
+            "location": "equipment-staging",
+            "contents": [
+              "evidence-sleeves",
+              "field-notebook",
+              "spare-film"
+            ],
+            "provenance": "persistent logistics container record"
+          },
+          {
+            "id": "evidence-case",
+            "name": "Numbered evidence case",
+            "kind": "evidence",
+            "status": "returned",
+            "holder": "q4-player-35a5e8690a027e84",
+            "location": "threshold-side-entry",
+            "contents": [],
+            "provenance": "persistent logistics container record"
+          },
+          {
+            "id": "relay-cache",
+            "name": "Relay service cache",
+            "kind": "fixed-field",
+            "status": "returned",
+            "holder": null,
+            "location": "relay-alcove",
+            "contents": [
+              "spare-battery"
+            ],
+            "provenance": "persistent logistics container record"
+          },
+          {
+            "id": "return-locker",
+            "name": "Return reconciliation locker",
+            "kind": "institutional",
+            "status": "returned",
+            "holder": "institutional-stores",
+            "location": "equipment-staging",
+            "contents": [],
+            "provenance": "persistent logistics container record"
+          },
+          {
+            "id": "personal-439e64281665a41321",
+            "name": "Tara Cruz field harness",
+            "kind": "personal",
+            "status": "returned",
+            "holder": "yb-personnel-38195d1aa89ad6353175",
+            "location": "threshold-side-entry",
+            "contents": [],
+            "provenance": "persistent logistics container record"
+          },
+          {
+            "id": "personal-11659b4b6dc365a08c",
+            "name": "Jade Bentley field harness",
+            "kind": "personal",
+            "status": "returned",
+            "holder": "yb-personnel-4aaf3425ba12437e332d",
+            "location": "threshold-side-entry",
+            "contents": [
+              "recording-device"
+            ],
+            "provenance": "persistent logistics container record"
+          },
+          {
+            "id": "personal-1711ae3a52bd7f99a4",
+            "name": "Audrey Mason field harness",
+            "kind": "personal",
+            "status": "returned",
+            "holder": "yb-personnel-fdef0e1c866d52ab2b0a",
+            "location": "threshold-side-entry",
+            "contents": [],
+            "provenance": "persistent logistics container record"
           }
         ],
         "communications": {
@@ -3315,7 +3613,47 @@
               "institutional_recorded": "q4-delivered-communication-message-8e8177ee02ebd68d7b"
             },
             {
-              "id": "message-6450285d1fe4610068",
+              "id": "standard-institution-decision-b68f946ca570cbc15e",
+              "sender": "Standard",
+              "intended_recipient": "q4-player-35a5e8690a027e84",
+              "intended_recipients": [
+                "q4-player-35a5e8690a027e84"
+              ],
+              "actual_recipients": [
+                "q4-player-35a5e8690a027e84"
+              ],
+              "channel": "FIELD_RADIO",
+              "purpose": "acknowledge-report",
+              "text": "Standard acknowledges the delivered status report.",
+              "state": "delivered",
+              "delivery_status": "delivered",
+              "sent_at": 5,
+              "interval": 5,
+              "delivered_at": 5,
+              "acknowledged_at": null,
+              "interference": null,
+              "failure_reason": null,
+              "evidence_ids": [],
+              "provenance": "institutional-decision:institution-decision-b68f946ca570cbc15e",
+              "history": [
+                {
+                  "sequence": 1,
+                  "from": null,
+                  "to": "composed",
+                  "at": 5,
+                  "reason": "message composed"
+                },
+                {
+                  "sequence": 2,
+                  "from": "composed",
+                  "to": "delivered",
+                  "at": 5,
+                  "reason": "scheduled Standard response resolved"
+                }
+              ]
+            },
+            {
+              "id": "message-74b5ad6d5d582aead0",
               "sender": "q4-player-35a5e8690a027e84",
               "intended_recipient": "Standard",
               "intended_recipients": [
@@ -3381,7 +3719,141 @@
                 }
               ],
               "check_in_id": "field-status-check-in",
-              "institutional_recorded": "q4-delivered-communication-message-6450285d1fe4610068"
+              "institutional_recorded": "q4-delivered-communication-message-74b5ad6d5d582aead0"
+            },
+            {
+              "id": "standard-institution-decision-4572e00e17d3148d8d",
+              "sender": "Standard",
+              "intended_recipient": "q4-player-35a5e8690a027e84",
+              "intended_recipients": [
+                "q4-player-35a5e8690a027e84"
+              ],
+              "actual_recipients": [
+                "q4-player-35a5e8690a027e84"
+              ],
+              "channel": "FIELD_RADIO",
+              "purpose": "schedule-extra-check-in",
+              "text": "Standard records the missed reporting window and adds an accountability check to the next assignment.",
+              "state": "delivered",
+              "delivery_status": "delivered",
+              "sent_at": 15,
+              "interval": 15,
+              "delivered_at": 15,
+              "acknowledged_at": null,
+              "interference": null,
+              "failure_reason": null,
+              "evidence_ids": [],
+              "provenance": "institutional-decision:institution-decision-4572e00e17d3148d8d",
+              "history": [
+                {
+                  "sequence": 1,
+                  "from": null,
+                  "to": "composed",
+                  "at": 15,
+                  "reason": "message composed"
+                },
+                {
+                  "sequence": 2,
+                  "from": "composed",
+                  "to": "delivered",
+                  "at": 15,
+                  "reason": "scheduled Standard response resolved"
+                }
+              ]
+            },
+            {
+              "id": "standard-institution-decision-97eb73aa92abe8bc2c",
+              "sender": "Standard",
+              "intended_recipient": "q4-player-35a5e8690a027e84",
+              "intended_recipients": [
+                "q4-player-35a5e8690a027e84"
+              ],
+              "actual_recipients": [
+                "q4-player-35a5e8690a027e84"
+              ],
+              "channel": "FIELD_RADIO",
+              "purpose": "prioritize-evidence",
+              "text": "Standard acknowledges the evidence record and prioritizes it for return review.",
+              "state": "delivered",
+              "delivery_status": "delivered",
+              "sent_at": 24,
+              "interval": 24,
+              "delivered_at": 24,
+              "acknowledged_at": null,
+              "interference": null,
+              "failure_reason": null,
+              "evidence_ids": [],
+              "provenance": "institutional-decision:institution-decision-97eb73aa92abe8bc2c",
+              "history": [
+                {
+                  "sequence": 1,
+                  "from": null,
+                  "to": "composed",
+                  "at": 24,
+                  "reason": "message composed"
+                },
+                {
+                  "sequence": 2,
+                  "from": "composed",
+                  "to": "delivered",
+                  "at": 24,
+                  "reason": "scheduled Standard response resolved"
+                }
+              ]
+            },
+            {
+              "id": "message-ff09ba6e4898cca645",
+              "sender": "q4-player-35a5e8690a027e84",
+              "intended_recipient": "Standard",
+              "intended_recipients": [
+                "Standard"
+              ],
+              "actual_recipients": [
+                "Standard"
+              ],
+              "channel": "FIELD_RADIO",
+              "purpose": "mission-closure",
+              "text": "Return accountability and mission closure report.",
+              "state": "delivered",
+              "delivery_status": "delivered",
+              "sent_at": 28,
+              "interval": 28,
+              "delivered_at": 29,
+              "acknowledged_at": null,
+              "interference": null,
+              "failure_reason": null,
+              "evidence_ids": [],
+              "provenance": "authoritative-communication-runtime",
+              "history": [
+                {
+                  "sequence": 1,
+                  "from": null,
+                  "to": "composed",
+                  "at": 28,
+                  "reason": "message composed"
+                },
+                {
+                  "sequence": 2,
+                  "from": "composed",
+                  "to": "queued",
+                  "at": 28,
+                  "reason": "accepted into the field-radio transmission queue"
+                },
+                {
+                  "sequence": 3,
+                  "from": "queued",
+                  "to": "transmitting",
+                  "at": 29,
+                  "reason": "field-radio transmission begun"
+                },
+                {
+                  "sequence": 4,
+                  "from": "transmitting",
+                  "to": "delivered",
+                  "at": 29,
+                  "reason": "the intended recipient received the radio message"
+                }
+              ]
             }
           ],
           "missed": [
@@ -3408,14 +3880,42 @@
                 "acknowledged_at": 4
               },
               {
+                "purpose": "acknowledge-report",
+                "state": "delivered",
+                "sent_at": 5,
+                "delivered_at": 5,
+                "acknowledged_at": null
+              },
+              {
                 "purpose": "evidence-report",
                 "state": "acknowledged",
                 "sent_at": 13,
                 "delivered_at": 23,
                 "acknowledged_at": 24
+              },
+              {
+                "purpose": "schedule-extra-check-in",
+                "state": "delivered",
+                "sent_at": 15,
+                "delivered_at": 15,
+                "acknowledged_at": null
+              },
+              {
+                "purpose": "prioritize-evidence",
+                "state": "delivered",
+                "sent_at": 24,
+                "delivered_at": 24,
+                "acknowledged_at": null
+              },
+              {
+                "purpose": "mission-closure",
+                "state": "delivered",
+                "sent_at": 28,
+                "delivered_at": 29,
+                "acknowledged_at": null
               }
             ],
-            "closure_delivered": false
+            "closure_delivered": true
           }
         },
         "evidence": [
@@ -3580,7 +4080,8 @@
             }
           ],
           "hazard_states": {
-            "overhead-service-bracket": "mitigated"
+            "overhead-service-bracket": "mitigated",
+            "relay-isolation-fault": "dormant"
           },
           "team_decisions": 87
         },
@@ -3599,7 +4100,7 @@
           ],
           "unresolved": [],
           "recommendations": [
-            "Review the recorded personnel, equipment, and evidence status before the next assignment."
+            "Review the recorded personnel, equipment, container, and evidence status before the next assignment."
           ]
         },
         "knowledge_scope": {
@@ -3613,7 +4114,7 @@
     "post_restart_final_record": {
       "phase": "DEBRIEF",
       "interval": 29,
-      "next_known_event": null,
+      "next_known_event": 30,
       "mission_lifecycle": "completed",
       "objectives": [
         {
@@ -3808,6 +4309,17 @@
           "known_reason": null
         },
         {
+          "sender": "Standard",
+          "recipient": "You",
+          "channel": "FIELD_RADIO",
+          "purpose": "acknowledge-report",
+          "sent_at": 5,
+          "state": "delivered",
+          "delivered_at": 5,
+          "acknowledged_at": null,
+          "known_reason": null
+        },
+        {
           "sender": "You",
           "recipient": "Standard",
           "channel": "FIELD_RADIO",
@@ -3817,6 +4329,39 @@
           "delivered_at": 23,
           "acknowledged_at": 24,
           "known_reason": "The column line breaks the field-radio signal; delivery cannot yet be confirmed."
+        },
+        {
+          "sender": "Standard",
+          "recipient": "You",
+          "channel": "FIELD_RADIO",
+          "purpose": "schedule-extra-check-in",
+          "sent_at": 15,
+          "state": "delivered",
+          "delivered_at": 15,
+          "acknowledged_at": null,
+          "known_reason": null
+        },
+        {
+          "sender": "Standard",
+          "recipient": "You",
+          "channel": "FIELD_RADIO",
+          "purpose": "prioritize-evidence",
+          "sent_at": 24,
+          "state": "delivered",
+          "delivered_at": 24,
+          "acknowledged_at": null,
+          "known_reason": null
+        },
+        {
+          "sender": "You",
+          "recipient": "Standard",
+          "channel": "FIELD_RADIO",
+          "purpose": "mission-closure",
+          "sent_at": 28,
+          "state": "delivered",
+          "delivered_at": 29,
+          "acknowledged_at": null,
+          "known_reason": null
         }
       ],
       "hazards": [
@@ -3834,15 +4379,15 @@
           "label": "Battery field lamp",
           "holder": "You",
           "location": "carrying",
-          "state": "Operational",
+          "state": "operational",
           "verification": "visually confirmed",
-          "remaining": "checked"
+          "remaining": 1
         },
         {
           "label": "35mm field camera",
           "holder": "Jade Bentley",
           "location": "carrying",
-          "state": "Operational",
+          "state": "operational",
           "verification": "visually confirmed",
           "remaining": 11
         },
@@ -3852,23 +4397,23 @@
           "location": "carrying",
           "state": "Depleted",
           "verification": "visually confirmed",
-          "remaining": "checked"
+          "remaining": 0
         },
         {
           "label": "Handheld field radio",
           "holder": "You",
           "location": "carrying",
-          "state": "Depleted",
+          "state": "operational",
           "verification": "visually confirmed",
-          "remaining": "checked"
+          "remaining": 5
         },
         {
           "label": "Numbered route-marker kit",
           "holder": "You",
           "location": "carrying",
-          "state": "Operational",
+          "state": "operational",
           "verification": "visually confirmed",
-          "remaining": 2
+          "remaining": 1
         }
       ],
       "evidence": [
@@ -3888,13 +4433,24 @@
         }
       ],
       "location": "Threshold-Side Entry",
-      "operational_updates": [],
+      "operational_updates": [
+        {
+          "kind": "scheduled-event",
+          "summary": "communication transmit resolved.",
+          "at": 29
+        },
+        {
+          "kind": "scheduled-event",
+          "summary": "communication deliver resolved.",
+          "at": 29
+        }
+      ],
       "review": {
-        "version": "yellow-beast-q4-continuity@v2",
+        "version": "yellow-beast-q4-continuity@v3",
         "mission_id": "CQ4-INFRASTRUCTURE-MATERIAL-002-7679",
         "outcome": "recovered-complication",
         "final_mission_state": "completed",
-        "public_debrief_summary": "The team returned with its required record after recovering a missed communication window; the late delivery remains part of the operational outcome. A teammate returned with a recorded injury. A field complication was recovered before closure. The scheduled communication record includes a missed reporting window.",
+        "public_debrief_summary": "The team returned with its required record after recovering an operational complication; the complication remains part of the outcome record. A teammate returned with a recorded injury. A field complication was recovered before closure. The scheduled communication record includes a missed reporting window.",
         "assignment": {
           "objective": "Inspect and document the declared lighting and material conditions within the survey boundary.",
           "completion_status": "completed",
@@ -3989,7 +4545,7 @@
             "label": "Battery field lamp",
             "status": "returned",
             "holder": "q4-player-35a5e8690a027e84",
-            "location": "with the field kit",
+            "location": "threshold-side-entry",
             "origin_run": "run-25b4e0601a55383a",
             "provenance": "persistent Q4 equipment record"
           },
@@ -3998,7 +4554,7 @@
             "label": "35mm field camera",
             "status": "returned",
             "holder": "yb-personnel-4aaf3425ba12437e332d",
-            "location": "with the field kit",
+            "location": "threshold-side-entry",
             "origin_run": "run-25b4e0601a55383a",
             "provenance": "persistent Q4 equipment record"
           },
@@ -4007,16 +4563,16 @@
             "label": "Portable survey instrument",
             "status": "depleted",
             "holder": "q4-player-35a5e8690a027e84",
-            "location": "carried",
+            "location": "threshold-side-entry",
             "origin_run": "run-25b4e0601a55383a",
             "provenance": "persistent Q4 equipment record"
           },
           {
             "id": "q4-survey-radio-01",
             "label": "Handheld field radio",
-            "status": "depleted",
+            "status": "returned",
             "holder": "q4-player-35a5e8690a027e84",
-            "location": "with the field kit",
+            "location": "threshold-side-entry",
             "origin_run": "run-25b4e0601a55383a",
             "provenance": "persistent Q4 equipment record"
           },
@@ -4025,9 +4581,114 @@
             "label": "Numbered route-marker kit",
             "status": "returned",
             "holder": "q4-player-35a5e8690a027e84",
-            "location": "with the field kit",
+            "location": "threshold-side-entry",
             "origin_run": "run-25b4e0601a55383a",
             "provenance": "persistent Q4 equipment record"
+          }
+        ],
+        "containers": [
+          {
+            "id": "player-harness",
+            "name": "Personal field harness",
+            "kind": "personal",
+            "status": "returned",
+            "holder": "q4-player-35a5e8690a027e84",
+            "location": "threshold-side-entry",
+            "contents": [
+              "field-light",
+              "route-marker-kit",
+              "survey-instrument",
+              "survey-radio"
+            ],
+            "provenance": "persistent logistics container record"
+          },
+          {
+            "id": "field-case",
+            "name": "Field equipment case",
+            "kind": "field-case",
+            "status": "returned",
+            "holder": "q4-player-35a5e8690a027e84",
+            "location": "threshold-side-entry",
+            "contents": [],
+            "provenance": "persistent logistics container record"
+          },
+          {
+            "id": "staging-locker",
+            "name": "Issued-equipment locker",
+            "kind": "staging",
+            "status": "returned",
+            "holder": "institutional-stores",
+            "location": "equipment-staging",
+            "contents": [
+              "evidence-sleeves",
+              "field-notebook",
+              "spare-film"
+            ],
+            "provenance": "persistent logistics container record"
+          },
+          {
+            "id": "evidence-case",
+            "name": "Numbered evidence case",
+            "kind": "evidence",
+            "status": "returned",
+            "holder": "q4-player-35a5e8690a027e84",
+            "location": "threshold-side-entry",
+            "contents": [],
+            "provenance": "persistent logistics container record"
+          },
+          {
+            "id": "relay-cache",
+            "name": "Relay service cache",
+            "kind": "fixed-field",
+            "status": "returned",
+            "holder": null,
+            "location": "relay-alcove",
+            "contents": [
+              "spare-battery"
+            ],
+            "provenance": "persistent logistics container record"
+          },
+          {
+            "id": "return-locker",
+            "name": "Return reconciliation locker",
+            "kind": "institutional",
+            "status": "returned",
+            "holder": "institutional-stores",
+            "location": "equipment-staging",
+            "contents": [],
+            "provenance": "persistent logistics container record"
+          },
+          {
+            "id": "personal-439e64281665a41321",
+            "name": "Tara Cruz field harness",
+            "kind": "personal",
+            "status": "returned",
+            "holder": "yb-personnel-38195d1aa89ad6353175",
+            "location": "threshold-side-entry",
+            "contents": [],
+            "provenance": "persistent logistics container record"
+          },
+          {
+            "id": "personal-11659b4b6dc365a08c",
+            "name": "Jade Bentley field harness",
+            "kind": "personal",
+            "status": "returned",
+            "holder": "yb-personnel-4aaf3425ba12437e332d",
+            "location": "threshold-side-entry",
+            "contents": [
+              "recording-device"
+            ],
+            "provenance": "persistent logistics container record"
+          },
+          {
+            "id": "personal-1711ae3a52bd7f99a4",
+            "name": "Audrey Mason field harness",
+            "kind": "personal",
+            "status": "returned",
+            "holder": "yb-personnel-fdef0e1c866d52ab2b0a",
+            "location": "threshold-side-entry",
+            "contents": [],
+            "provenance": "persistent logistics container record"
           }
         ],
         "communications": {
@@ -4100,7 +4761,47 @@
               "institutional_recorded": "q4-delivered-communication-message-8e8177ee02ebd68d7b"
             },
             {
-              "id": "message-6450285d1fe4610068",
+              "id": "standard-institution-decision-b68f946ca570cbc15e",
+              "sender": "Standard",
+              "intended_recipient": "q4-player-35a5e8690a027e84",
+              "intended_recipients": [
+                "q4-player-35a5e8690a027e84"
+              ],
+              "actual_recipients": [
+                "q4-player-35a5e8690a027e84"
+              ],
+              "channel": "FIELD_RADIO",
+              "purpose": "acknowledge-report",
+              "text": "Standard acknowledges the delivered status report.",
+              "state": "delivered",
+              "delivery_status": "delivered",
+              "sent_at": 5,
+              "interval": 5,
+              "delivered_at": 5,
+              "acknowledged_at": null,
+              "interference": null,
+              "failure_reason": null,
+              "evidence_ids": [],
+              "provenance": "institutional-decision:institution-decision-b68f946ca570cbc15e",
+              "history": [
+                {
+                  "sequence": 1,
+                  "from": null,
+                  "to": "composed",
+                  "at": 5,
+                  "reason": "message composed"
+                },
+                {
+                  "sequence": 2,
+                  "from": "composed",
+                  "to": "delivered",
+                  "at": 5,
+                  "reason": "scheduled Standard response resolved"
+                }
+              ]
+            },
+            {
+              "id": "message-74b5ad6d5d582aead0",
               "sender": "q4-player-35a5e8690a027e84",
               "intended_recipient": "Standard",
               "intended_recipients": [
@@ -4166,7 +4867,141 @@
                 }
               ],
               "check_in_id": "field-status-check-in",
-              "institutional_recorded": "q4-delivered-communication-message-6450285d1fe4610068"
+              "institutional_recorded": "q4-delivered-communication-message-74b5ad6d5d582aead0"
+            },
+            {
+              "id": "standard-institution-decision-4572e00e17d3148d8d",
+              "sender": "Standard",
+              "intended_recipient": "q4-player-35a5e8690a027e84",
+              "intended_recipients": [
+                "q4-player-35a5e8690a027e84"
+              ],
+              "actual_recipients": [
+                "q4-player-35a5e8690a027e84"
+              ],
+              "channel": "FIELD_RADIO",
+              "purpose": "schedule-extra-check-in",
+              "text": "Standard records the missed reporting window and adds an accountability check to the next assignment.",
+              "state": "delivered",
+              "delivery_status": "delivered",
+              "sent_at": 15,
+              "interval": 15,
+              "delivered_at": 15,
+              "acknowledged_at": null,
+              "interference": null,
+              "failure_reason": null,
+              "evidence_ids": [],
+              "provenance": "institutional-decision:institution-decision-4572e00e17d3148d8d",
+              "history": [
+                {
+                  "sequence": 1,
+                  "from": null,
+                  "to": "composed",
+                  "at": 15,
+                  "reason": "message composed"
+                },
+                {
+                  "sequence": 2,
+                  "from": "composed",
+                  "to": "delivered",
+                  "at": 15,
+                  "reason": "scheduled Standard response resolved"
+                }
+              ]
+            },
+            {
+              "id": "standard-institution-decision-97eb73aa92abe8bc2c",
+              "sender": "Standard",
+              "intended_recipient": "q4-player-35a5e8690a027e84",
+              "intended_recipients": [
+                "q4-player-35a5e8690a027e84"
+              ],
+              "actual_recipients": [
+                "q4-player-35a5e8690a027e84"
+              ],
+              "channel": "FIELD_RADIO",
+              "purpose": "prioritize-evidence",
+              "text": "Standard acknowledges the evidence record and prioritizes it for return review.",
+              "state": "delivered",
+              "delivery_status": "delivered",
+              "sent_at": 24,
+              "interval": 24,
+              "delivered_at": 24,
+              "acknowledged_at": null,
+              "interference": null,
+              "failure_reason": null,
+              "evidence_ids": [],
+              "provenance": "institutional-decision:institution-decision-97eb73aa92abe8bc2c",
+              "history": [
+                {
+                  "sequence": 1,
+                  "from": null,
+                  "to": "composed",
+                  "at": 24,
+                  "reason": "message composed"
+                },
+                {
+                  "sequence": 2,
+                  "from": "composed",
+                  "to": "delivered",
+                  "at": 24,
+                  "reason": "scheduled Standard response resolved"
+                }
+              ]
+            },
+            {
+              "id": "message-ff09ba6e4898cca645",
+              "sender": "q4-player-35a5e8690a027e84",
+              "intended_recipient": "Standard",
+              "intended_recipients": [
+                "Standard"
+              ],
+              "actual_recipients": [
+                "Standard"
+              ],
+              "channel": "FIELD_RADIO",
+              "purpose": "mission-closure",
+              "text": "Return accountability and mission closure report.",
+              "state": "delivered",
+              "delivery_status": "delivered",
+              "sent_at": 28,
+              "interval": 28,
+              "delivered_at": 29,
+              "acknowledged_at": null,
+              "interference": null,
+              "failure_reason": null,
+              "evidence_ids": [],
+              "provenance": "authoritative-communication-runtime",
+              "history": [
+                {
+                  "sequence": 1,
+                  "from": null,
+                  "to": "composed",
+                  "at": 28,
+                  "reason": "message composed"
+                },
+                {
+                  "sequence": 2,
+                  "from": "composed",
+                  "to": "queued",
+                  "at": 28,
+                  "reason": "accepted into the field-radio transmission queue"
+                },
+                {
+                  "sequence": 3,
+                  "from": "queued",
+                  "to": "transmitting",
+                  "at": 29,
+                  "reason": "field-radio transmission begun"
+                },
+                {
+                  "sequence": 4,
+                  "from": "transmitting",
+                  "to": "delivered",
+                  "at": 29,
+                  "reason": "the intended recipient received the radio message"
+                }
+              ]
             }
           ],
           "missed": [
@@ -4193,14 +5028,42 @@
                 "acknowledged_at": 4
               },
               {
+                "purpose": "acknowledge-report",
+                "state": "delivered",
+                "sent_at": 5,
+                "delivered_at": 5,
+                "acknowledged_at": null
+              },
+              {
                 "purpose": "evidence-report",
                 "state": "acknowledged",
                 "sent_at": 13,
                 "delivered_at": 23,
                 "acknowledged_at": 24
+              },
+              {
+                "purpose": "schedule-extra-check-in",
+                "state": "delivered",
+                "sent_at": 15,
+                "delivered_at": 15,
+                "acknowledged_at": null
+              },
+              {
+                "purpose": "prioritize-evidence",
+                "state": "delivered",
+                "sent_at": 24,
+                "delivered_at": 24,
+                "acknowledged_at": null
+              },
+              {
+                "purpose": "mission-closure",
+                "state": "delivered",
+                "sent_at": 28,
+                "delivered_at": 29,
+                "acknowledged_at": null
               }
             ],
-            "closure_delivered": false
+            "closure_delivered": true
           }
         },
         "evidence": [
@@ -4365,7 +5228,8 @@
             }
           ],
           "hazard_states": {
-            "overhead-service-bracket": "mitigated"
+            "overhead-service-bracket": "mitigated",
+            "relay-isolation-fault": "dormant"
           },
           "team_decisions": 87
         },
@@ -4384,7 +5248,7 @@
           ],
           "unresolved": [],
           "recommendations": [
-            "Review the recorded personnel, equipment, and evidence status before the next assignment."
+            "Review the recorded personnel, equipment, container, and evidence status before the next assignment."
           ]
         },
         "knowledge_scope": {
@@ -4580,7 +5444,7 @@
           "location": "carrying",
           "state": "Operational",
           "verification": "visually confirmed",
-          "remaining": "checked"
+          "remaining": 1
         },
         {
           "label": "35mm field camera",
@@ -4596,7 +5460,7 @@
           "location": "carrying",
           "state": "Operational",
           "verification": "visually confirmed",
-          "remaining": "checked"
+          "remaining": 1
         },
         {
           "label": "Handheld field radio",
@@ -4604,7 +5468,7 @@
           "location": "carrying",
           "state": "Operational",
           "verification": "visually confirmed",
-          "remaining": "checked"
+          "remaining": 8
         }
       ],
       "evidence": [],
@@ -4797,7 +5661,7 @@
           "location": "carrying",
           "state": "Operational",
           "verification": "visually confirmed",
-          "remaining": "checked"
+          "remaining": 1
         },
         {
           "label": "35mm field camera",
@@ -4813,7 +5677,7 @@
           "location": "carrying",
           "state": "Operational",
           "verification": "visually confirmed",
-          "remaining": "checked"
+          "remaining": 1
         },
         {
           "label": "Handheld field radio",
@@ -4821,7 +5685,7 @@
           "location": "carrying",
           "state": "Operational",
           "verification": "visually confirmed",
-          "remaining": "checked"
+          "remaining": 8
         }
       ],
       "evidence": [],

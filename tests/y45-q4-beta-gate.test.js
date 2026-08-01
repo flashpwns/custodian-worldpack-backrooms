@@ -24,9 +24,9 @@ test("Q4 session schema is versioned, backward-compatible, and report export is 
   const started = service.startSession({ world_id: world.id, mode: "field-researcher", seed: "beta-gate" });
   assert.equal(started.ok, true);
   const save = JSON.parse(fs.readFileSync(path.join(root, "saves", `${world.id}-field-researcher.json`), "utf8"));
-  assert.equal(save.version, 6);
-  assert.equal(save.schema, "yellow-beast-session@6");
-  assert.equal(service.getDiagnostics().diagnostics.save_schema_version, "yellow-beast-session@6");
+  assert.equal(save.version, 7);
+  assert.equal(save.schema, "yellow-beast-session@7");
+  assert.equal(service.getDiagnostics().diagnostics.save_schema_version, "yellow-beast-session@7");
   const report = service.exportTesterReport({ world_id: world.id, mode: "field-researcher", note: "offline gate" });
   assert.equal(report.ok, true);
   assert.equal(report.report.provider_status, "offline");

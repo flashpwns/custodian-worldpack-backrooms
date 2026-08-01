@@ -17,6 +17,8 @@ const teamRuntime = require("./team-runtime");
 const communicationRuntime = require("./communication-runtime");
 const operationalTime = require("./operational-time");
 const hazardRuntime = require("./hazard-runtime");
+const logisticsRuntime = require("./logistics-runtime");
+const institutionalRuntime = require("./institutional-runtime");
 const cloneUpdates = (value) => structuredClone(value ?? []);
 
 const VERSION = "yellow-beast-clear-q4-experience@v3";
@@ -82,6 +84,8 @@ function presentation(run, phase, unfinished = null, world = null) {
   const topology = operationalMap ?? safeStatus.discovered_topology ?? { spaces: [], connections: [], unknown_exits: [] };
   const context = personnelContext(world, team);
   const equip = equipmentModel.projection(expedition, playerId, context.names, { spatial: run.spatial, observer: playerId, personnel_status: context.status, radio_confirmed_holders: [] });
+  const institutional = world && run.spatial_pack_id ? institutionalRuntime.project(world, bootstrap.institutionalDefinitionFor(run.spatial_pack_id)) : null;
+  const inventory = run.spatial_pack_id ? logisticsRuntime.project(expedition, bootstrap.logisticsDefinitionFor(run.spatial_pack_id), playerId, { player: playerId, actor: playerId, team: expedition.team?.members ?? [], names: context.names, spatial: run.spatial, location: run.spatial?.player_location, at: expedition.clock?.interval ?? 0, phase: phase.phase_id, restrictions: institutional?.restrictions?.equipment ?? [] }) : null;
   const evidence = (expedition?.evidence ?? []).map((item) => ({ id: item.id, mission_id: mission?.id ?? null, type: item.type, capture_event: item.capture_event ?? "evidence.recorded", method: item.method ?? "field record", device: item.device ?? "field recording device", observer: (item.capturing_observer ?? item.creator) === playerId ? "YOU" : context.names[item.capturing_observer ?? item.creator] ?? "assigned personnel", source: item.source_name ?? item.target_alias ?? "observed field feature", condition: item.condition_summary ?? item.target_observation ?? "Condition recorded at capture", location: item.source_location_name ?? item.location?.alias ?? item.location ?? null, time: item.captured_at ?? { interval: item.interval ?? 0 }, provenance: item.provenance, storage: item.storage ?? "with field record", reporting_state: item.reporting_state ?? (item.available_to_standard ? "reported" : "unreported"), render: item.render ?? { status: "fallback-ready" }, visual: q4Visuals.mediaVisual(item), available_to_player: item.available_to_player !== false, available_to_standard: item.available_to_standard === true }));
   const mapNames = Object.fromEntries((operationalMap?.nodes ?? []).map((node) => [node.id, node.name]));
   const layout = {
@@ -128,6 +132,8 @@ function presentation(run, phase, unfinished = null, world = null) {
     player: player ? { name: String(player.display_name).replace(/ · YOU$/, ""), first_name: player.first_name, role: String(player.role ?? "").replace(/ · YOU$/, ""), clearance: player.clearance, condition: player.condition, assignment: player.assignment, visual: q4Visuals.personnelVisual(safePlayer) } : null,
     team: safeTeam,
     equipment: equip,
+    inventory,
+    institution: institutional,
     radio: communication.messages.slice(-5),
     communications: communication,
     channels,
@@ -138,7 +144,7 @@ function presentation(run, phase, unfinished = null, world = null) {
     interactables,
     evidence,
     hazards: hazardView,
-    operational_updates: cloneUpdates(run._last_operational_updates),
+    operational_updates: cloneUpdates(run._last_operational_updates ?? expedition.operational?.recent_public_updates),
     visuals: q4Visuals.projection({ team: safeTeam, equipment: equip, evidence, channels, layout, review: phase.phase_id === "DEBRIEF" }),
     field_conditions: phase.phase_id === "FIELD_OPERATION" ? trajectories.publicState(expedition) : null,
     review: phase.phase_id === "DEBRIEF" ? continuity.review(world, mission?.id) : null,

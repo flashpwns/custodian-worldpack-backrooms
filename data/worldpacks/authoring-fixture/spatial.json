@@ -1,0 +1,18 @@
+{
+  "version": "yellow-beast-spatial-worldpack@v1",
+  "worldpack_id": "authoring-fixture",
+  "display_name": "Authoring Fixture Map",
+  "initial_location": "fixture-base",
+  "field_entry_location": "fixture-worksite",
+  "phase_locations": { "BRIEFING": "fixture-base", "STAGING": "fixture-base", "FIELD_OPERATION": "fixture-worksite", "RETURN": "fixture-base" },
+  "locations": [
+    { "id": "fixture-base", "name": "Fixture Base", "type": "controlled", "short_description": "A small controlled origin.", "coordinates": { "x": 40, "y": 100, "level": 0 }, "entry_state": "institutional-record", "environment": {}, "landmarks": [], "hazards": [], "tags": ["return-route"] },
+    { "id": "fixture-worksite", "name": "Fixture Worksite", "type": "mission-area", "short_description": "A bounded equipment test area.", "coordinates": { "x": 180, "y": 100, "level": 0 }, "entry_state": "unmapped", "environment": {}, "landmarks": [], "hazards": [], "tags": ["field"] },
+    { "id": "fixture-bypass", "name": "Fixture Bypass", "type": "alternate-route", "short_description": "A marked alternate return link.", "coordinates": { "x": 110, "y": 30, "level": 0 }, "entry_state": "unmapped", "environment": {}, "landmarks": [], "hazards": [], "tags": ["field", "alternate-return"] }
+  ],
+  "connections": [
+    { "id": "fixture-primary", "from": "fixture-base", "to": "fixture-worksite", "direction": "east", "reverse_direction": "west", "relationship": "primary route", "transition": "The team reaches the worksite.", "reverse_transition": "The team returns to base.", "requirements": [], "lock_state": "open", "hazard_state": "clear", "visibility": "institutional", "discovery": "on-traversal", "bidirectional": true },
+    { "id": "fixture-worksite-bypass", "from": "fixture-worksite", "to": "fixture-bypass", "direction": "northwest", "reverse_direction": "southeast", "relationship": "alternate route", "transition": "The team enters the bypass.", "reverse_transition": "The team returns to the worksite.", "requirements": [], "lock_state": "open", "hazard_state": "caution", "visibility": "visible", "discovery": "on-traversal", "bidirectional": true },
+    { "id": "fixture-bypass-base", "from": "fixture-bypass", "to": "fixture-base", "direction": "southwest", "reverse_direction": "northeast", "relationship": "alternate return", "transition": "The bypass returns to base.", "reverse_transition": "The team enters the bypass from base.", "requirements": [], "lock_state": "open", "hazard_state": "clear", "visibility": "visible", "discovery": "on-traversal", "bidirectional": true }
+  ]
+}

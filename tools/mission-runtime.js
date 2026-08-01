@@ -25,7 +25,7 @@ const SOURCE_PREDICATES = Object.freeze({
   personnel: new Set(["alive", "active", "injured", "missing", "separated", "within_speaking_range", "returned", "accounted", "assigned_equipment_retained", "assigned_equipment_lost"]),
   communication: new Set(["radio_check_completed", "message_delivered", "report_sent", "evidence_reported", "check_in_completed", "check_in_missed", "check_in_ever_missed", "acknowledgment_received", "unavailable", "closure_delivered"]),
   time: new Set(["interval_reached", "deadline_pending", "deadline_due", "deadline_exceeded", "action_before", "action_after"]),
-  mission: new Set(["objective_state", "minimum_objective_count", "required_group_complete", "return_authorized", "abort_condition", "phase_in", "lifecycle", "return_requested", "abort_requested", "closure_requested"])
+  mission: new Set(["objective_state", "minimum_objective_count", "required_group_complete", "return_authorized", "abort_condition", "phase_in", "lifecycle", "return_requested", "abort_requested", "closure_requested", "consequence_recorded", "consequence_recovered"])
 });
 
 const BASE_TRANSITIONS = Object.freeze({
@@ -353,6 +353,8 @@ function evaluateLeaf(condition, context, objectiveSnapshot) {
     if (predicate === "return_requested") return missionState.return.requested === true;
     if (predicate === "abort_requested") return missionState.return.abort_requested === true;
     if (predicate === "closure_requested") return missionState.return.closure_requested === true;
+    if (predicate === "consequence_recorded") return (expedition.operational?.consequences ?? []).some((record) => !condition.state || record.classification === condition.state || record.status === condition.state);
+    if (predicate === "consequence_recovered") return (expedition.operational?.consequences ?? []).some((record) => Boolean(record.recovery));
   }
   return false;
 }

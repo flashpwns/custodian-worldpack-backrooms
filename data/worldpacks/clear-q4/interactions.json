@@ -448,10 +448,67 @@
       ],
       "hazard_hooks": [],
       "persistence": "persistent"
+    },
+    {
+      "id": "relay-service-unit",
+      "display_name": "relay service unit",
+      "aliases": ["relay", "service relay", "relay bank"],
+      "location": "relay-alcove",
+      "object_type": "electrical-service-unit",
+      "initial_state": { "condition": "cycling-irregularly", "open": false, "active": true, "intact": true, "marked": false, "moved": false, "holder": null, "container": null, "custom": { "tested": false, "isolated": false } },
+      "visible_properties": [{ "id": "relay-cycle", "text": "The isolation lamp fades between irregular relay cycles.", "reveal_by": ["inspect", "test"] }],
+      "hidden_properties": [{ "id": "relay-isolation-fault", "text": "The supply side is feeding back into the survey lead during the weak cycle.", "reveal_by": ["test", "repair"] }],
+      "affordances": [
+        { "type": "inspect", "label": "Inspect the relay unit", "known_when": "visible", "time_cost": 0, "result": "The isolation lamp fades in step with the irregular relay chatter." },
+        { "type": "test", "label": "Test the relay cycle", "known_when": "inspected", "requirements": { "inspected": true, "inspection_failure": "Inspect the relay indicators before connecting an instrument.", "state": [{ "path": "custom.tested", "equals": false, "failure": "The relay fault is already established." }], "equipment": [{ "key": "survey-instrument", "capability": "qualitative measurement", "consume": 1, "allow_team_use": true, "unavailable": "An operational survey instrument is required to test the relay.", "separated": "The instrument holder is outside confirmed working range." }] }, "mutations": [{ "path": "condition", "value": "isolation-fault-confirmed" }, { "path": "custom.tested", "value": true }], "reveals": ["relay-isolation-fault"], "time_cost": 1, "result": "{tool_holder_first_name} confirms feedback on the survey lead while you record the fading isolation cycle.", "evidence": { "type": "relay-test-record", "method": "qualitative instrument reading and field notation", "device_key": "survey-instrument", "condition_fields": ["condition", "active", "custom.tested", "custom.isolated"], "condition_summary": "The field record correlates an irregular relay cycle with supply-side feedback.", "storage": "with the instrument record", "repeat_failure": "The existing test already captures this relay condition." } },
+        { "type": "repair", "label": "Isolate the relay", "known_when": "inspected", "requirements": { "inspected": true, "inspection_failure": "Establish the relay condition before attempting isolation.", "state": [{ "path": "custom.isolated", "equals": false, "failure": "The relay is already isolated." }], "equipment": [{ "key": "spare-battery", "capability": "equipment replenishment", "consume": 1, "allow_team_use": false, "unavailable": "A carried spare field battery is required to hold the isolation circuit." }] }, "mutations": [{ "path": "condition", "value": "isolated-stable" }, { "path": "active", "value": false }, { "path": "custom.isolated", "value": true }], "reveals": ["relay-isolation-fault"], "time_cost": 1, "result": "You bridge the isolation circuit with the spare battery. The relay chatter stops and the service line settles." }
+      ],
+      "rejections": { "damage": "Damaging the relay would energize an unverified service path." },
+      "observation_text_by_condition": [{ "when": [{ "path": "custom.isolated", "equals": true }], "text": "The relay bank is quiet beneath a steady isolation lamp." }, { "default": true, "text": "The aging relay bank chatters irregularly in the narrow alcove." }],
+      "inspection_text_by_condition": [{ "when": [{ "path": "custom.isolated", "equals": true }], "text": "The field battery holds the isolated service circuit stable." }, { "default": true, "text": "The isolation lamp fades between cycles; the supply side can be tested without opening the cabinet." }],
+      "hazard_hooks": [{ "when_action": "repair", "hazard_id": "relay-isolation-fault", "transition": "mitigated", "recovery_effects": [{ "kind": "route-cleared", "connection_id": "corridor-to-relay" }] }],
+      "persistence": "persistent"
+    },
+    {
+      "id": "annex-record-fragment",
+      "display_name": "record fragment",
+      "aliases": ["paper fragment", "annex record", "record"],
+      "location": "records-annex",
+      "object_type": "physical-record",
+      "initial_state": { "condition": "water-marked-stable", "open": null, "active": null, "intact": true, "marked": false, "moved": false, "holder": null, "container": "wall-slot", "custom": { "documented": false, "contained": false } },
+      "visible_properties": [{ "id": "fragment-watermark", "text": "A water-marked paper fragment remains in the lowest wall slot.", "reveal_by": ["inspect", "record"] }],
+      "hidden_properties": [{ "id": "fragment-linework", "text": "Faint route linework continues beneath the water mark without a legible destination label.", "reveal_by": ["inspect", "record", "take"] }],
+      "affordances": [
+        { "type": "inspect", "label": "Inspect the record fragment", "known_when": "visible", "time_cost": 0, "result": "The fragment is stable enough to document or recover without inventing its missing text." },
+        { "type": "record", "label": "Record the fragment", "known_when": "inspected", "requirements": { "inspected": true, "inspection_failure": "Inspect the fragment before recording it.", "equipment": [{ "key": "recording-device", "capability": "photographic documentation", "consume": 1, "allow_team_use": true, "unavailable": "The field camera cannot make the annex exposure.", "separated": "The camera holder is outside working range." }] }, "mutations": [{ "path": "custom.documented", "value": true }], "time_cost": 1, "result": "{tool_holder_first_name} records the water mark and surviving linework while you keep the missing label unresolved.", "evidence": { "type": "annex-document-record", "method": "35mm photograph and condition note", "device_key": "recording-device", "condition_fields": ["condition", "intact", "container", "custom.documented", "custom.contained"], "condition_summary": "The record preserves the fragment's water mark and faint route linework without assigning a destination.", "storage": "awaiting evidence containment", "repeat_failure": "The fragment is already recorded in this condition." } },
+        { "type": "take", "label": "Contain the fragment", "known_when": "inspected", "requirements": { "inspected": true, "inspection_failure": "Inspect the fragment before moving it.", "state": [{ "path": "custom.contained", "equals": false, "failure": "The fragment is already contained." }], "equipment": [{ "key": "evidence-sleeves", "capability": "evidence containment", "consume": 1, "allow_team_use": false, "unavailable": "A carried evidence sleeve is required for physical recovery." }] }, "mutations": [{ "path": "condition", "value": "contained-stable" }, { "path": "moved", "value": true }, { "path": "container", "value": "evidence-case" }, { "path": "custom.contained", "value": true }], "reveals": ["fragment-linework"], "time_cost": 1, "result": "You slide the stable fragment into a numbered sleeve and place it in the evidence case." }
+      ],
+      "rejections": { "move": "Use a rated evidence sleeve rather than moving the fragment loose." },
+      "observation_text_by_condition": [{ "when": [{ "path": "custom.contained", "equals": true }], "text": "The lowest wall slot is empty; the fragment is secured in the evidence case." }, { "default": true, "text": "A water-marked paper fragment rests in the lowest wall slot." }],
+      "inspection_text_by_condition": [{ "when": [{ "path": "custom.contained", "equals": true }], "text": "The numbered sleeve holds the fragment flat and preserves its custody record." }, { "default": true, "text": "Faint linework survives under the water mark, but its destination label is not legible." }],
+      "hazard_hooks": [], "persistence": "persistent"
+    },
+    {
+      "id": "bypass-guide-marker",
+      "display_name": "bypass guide line",
+      "aliases": ["guide line", "bypass marker", "painted line"],
+      "location": "service-bypass",
+      "object_type": "route-marker",
+      "initial_state": { "condition": "faded-continuous", "open": null, "active": null, "intact": true, "marked": false, "moved": false, "holder": null, "container": null, "custom": { "verified": false, "reinforced": false } },
+      "visible_properties": [{ "id": "bypass-line-continuity", "text": "The faded guide line remains continuous toward the Threshold-side junction.", "reveal_by": ["inspect", "mark"] }],
+      "hidden_properties": [{ "id": "bypass-return-alignment", "text": "The guide line aligns with the known Threshold-side entry rather than the blocked relay branch.", "reveal_by": ["inspect", "mark", "record"] }],
+      "affordances": [
+        { "type": "inspect", "label": "Verify the guide line", "known_when": "visible", "mutations": [{ "path": "custom.verified", "value": true }], "reveals": ["bypass-return-alignment"], "time_cost": 0, "result": "The guide line remains continuous to the Threshold-side junction and provides a valid alternate return." },
+        { "type": "mark", "label": "Reinforce the bypass marker", "known_when": "inspected", "requirements": { "inspected": true, "inspection_failure": "Verify the line before reinforcing it.", "state": [{ "path": "custom.reinforced", "equals": false, "failure": "The bypass marker is already reinforced." }], "equipment": [{ "key": "route-marker-kit", "capability": "route marking", "consume": 1, "allow_team_use": false, "unavailable": "A carried route-marker kit is required to reinforce the bypass." }] }, "mutations": [{ "path": "condition", "value": "verified-reinforced" }, { "path": "marked", "value": true }, { "path": "custom.reinforced", "value": true }], "reveals": ["bypass-return-alignment"], "time_cost": 1, "result": "You reinforce the faded line with a numbered tab at the Threshold return bearing." }
+      ],
+      "rejections": {},
+      "observation_text_by_condition": [{ "when": [{ "path": "custom.reinforced", "equals": true }], "text": "A numbered tab reinforces the continuous guide line." }, { "default": true, "text": "A faded guide line follows the service walkway toward the Threshold side." }],
+      "inspection_text_by_condition": [{ "default": true, "text": "The continuous line aligns with the known Threshold-side junction and avoids the relay branch." }],
+      "hazard_hooks": [], "persistence": "persistent"
     }
   ],
   "known_limitations": [
     "Object interactions are deterministic and local to authored affordances.",
-    "General containers, loose-object inventory, and hazard consequences remain deferred."
+    "Physical evidence containment is bounded to authored evidence objects and rated containers."
   ]
 }

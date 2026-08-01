@@ -1,0 +1,7 @@
+{
+  "version": "yellow-beast-worldpack-manifest@v1",
+  "id": "clear-q4",
+  "display_name": "Clear-Q4 Complete Operation",
+  "records": { "spatial": "spatial.json", "interactions": "interactions.json", "mission": "mission.json", "dynamics": "dynamics.json", "logistics": "logistics.json", "institution": "institution.json", "operation": "operation.json" },
+  "authoring_version": 1
+}

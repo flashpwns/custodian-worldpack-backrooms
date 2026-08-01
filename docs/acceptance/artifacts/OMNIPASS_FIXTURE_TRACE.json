@@ -1,0 +1,114 @@
+{
+  "action": {
+    "action": "HAND_OVER",
+    "actor": "fixture-player",
+    "at": 0,
+    "id": "logistics-64e7b0cae7892622d7",
+    "item_id": "fixture-meter",
+    "sequence": 1,
+    "summary": "Fixture meter transferred from fixture-player to fixture-coworker-1."
+  },
+  "authoritative_truth": {
+    "clock": 1,
+    "container_contents": [
+      {
+        "contents": [],
+        "id": "fixture-case"
+      },
+      {
+        "contents": [
+          "fixture-meter"
+        ],
+        "id": "personal-6881bcf1797f38cb85"
+      },
+      {
+        "contents": [],
+        "id": "personal-8c1f906eb0787945ef"
+      }
+    ],
+    "event_queue": [],
+    "final_outcome_candidates": [
+      "clean-completion",
+      "recovered-complication"
+    ],
+    "hazard_state": [
+      {
+        "id": "fixture-trip-edge",
+        "state": "dormant"
+      }
+    ],
+    "institutional_knowledge": [],
+    "item_custody": [
+      {
+        "container": "personal-6881bcf1797f38cb85",
+        "holder": "fixture-coworker-1",
+        "id": "fixture-meter"
+      }
+    ],
+    "objective_candidates": [
+      "fixture-inspect"
+    ],
+    "standard_response_queue": [],
+    "teammate_locations": {
+      "fixture-coworker-1": "fixture-base",
+      "fixture-coworker-2": "fixture-base",
+      "fixture-player": "fixture-base"
+    }
+  },
+  "clock": 1,
+  "communications": [
+    {
+      "purpose": "routine-report",
+      "state": "delivered"
+    }
+  ],
+  "consequences": [
+    "fixture-drop"
+  ],
+  "hazards": [
+    {
+      "id": "fixture-trip-edge",
+      "initial_state": "dormant"
+    }
+  ],
+  "institutional_transitions": [],
+  "inventory_mutations": [
+    {
+      "action": "HAND_OVER",
+      "actor": "fixture-player",
+      "at": 0,
+      "id": "logistics-64e7b0cae7892622d7",
+      "item_id": "fixture-meter",
+      "sequence": 1,
+      "summary": "Fixture meter transferred from fixture-player to fixture-coworker-1."
+    }
+  ],
+  "mission_transitions": [
+    {
+      "objective": "fixture-inspect",
+      "state": "active"
+    }
+  ],
+  "observer_safe_projection": {
+    "inventory": [
+      {
+        "condition": "operational",
+        "holder": "Assigned teammate",
+        "label": "Fixture meter"
+      }
+    ],
+    "known_hazards": [],
+    "location": "fixture-base"
+  },
+  "scheduled_events": [],
+  "seed": "omnipass-fixture-trace",
+  "teammate_decisions": [
+    {
+      "actor": "fixture-coworker-1",
+      "decision": "accepted-transfer"
+    }
+  ],
+  "time_cost": 1,
+  "version": "yellow-beast-worldpack-trace@v1",
+  "worldpack_id": "authoring-fixture"
+}

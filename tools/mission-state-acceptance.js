@@ -106,7 +106,7 @@ async function main() {
   assert.equal(service.session(world.id, "field-researcher").run.expedition.result, null);
   const debrief = action(service, world, "COMPLETE_RETURN");
   assert.equal(debrief.projection.phase.phase_id, "DEBRIEF");
-  assert.equal(debrief.projection.q4.review.outcome, "clean-completion-with-optional");
+  assert.equal(debrief.projection.q4.review.outcome, "enhanced-completion");
   assert.ok(debrief.projection.q4.review.institutional_consequence_hooks.includes("optional_success"));
 
   const beforeRestartSafe = safeFacts(debrief.projection);
@@ -133,7 +133,7 @@ async function main() {
     movement_and_return_persisted: movedAway.projection.q4.current_location.name === "Open Passage" && returnedToSurvey.projection.q4.current_location.name === "Utility Room",
     route_and_readiness_derived: route.projection.q4.mission_progress.return_readiness.ready === true,
     return_not_instant_completion: returnBegun.projection.phase.phase_id === "RETURN" && returnBegun.projection.q4.review === null,
-    combined_outcome_derived: debrief.projection.q4.review.outcome === "clean-completion-with-optional",
+    combined_outcome_derived: debrief.projection.q4.review.outcome === "enhanced-completion",
     exact_shutdown_restart: JSON.stringify(beforeRestartCanonical) === JSON.stringify(afterRestartCanonical) && JSON.stringify(beforeRestartSafe) === JSON.stringify(afterRestartSafe)
   };
   assert.ok(Object.values(checks).every(Boolean));

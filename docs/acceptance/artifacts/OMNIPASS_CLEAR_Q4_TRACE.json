@@ -1,0 +1,339 @@
+{
+  "action": {
+    "action": "HAND_OVER",
+    "actor": "fixture-player",
+    "at": 0,
+    "id": "logistics-4e6ad03f59d885494e",
+    "item_id": "field-light",
+    "sequence": 1,
+    "summary": "Battery field lamp transferred from fixture-player to fixture-coworker-1."
+  },
+  "authoritative_truth": {
+    "clock": 1,
+    "container_contents": [
+      {
+        "contents": [
+          "survey-radio"
+        ],
+        "id": "player-harness"
+      },
+      {
+        "contents": [],
+        "id": "field-case"
+      },
+      {
+        "contents": [
+          "evidence-sleeves",
+          "field-notebook",
+          "route-marker-kit",
+          "spare-film"
+        ],
+        "id": "staging-locker"
+      },
+      {
+        "contents": [],
+        "id": "evidence-case"
+      },
+      {
+        "contents": [
+          "spare-battery"
+        ],
+        "id": "relay-cache"
+      },
+      {
+        "contents": [],
+        "id": "return-locker"
+      },
+      {
+        "contents": [
+          "field-light",
+          "survey-instrument"
+        ],
+        "id": "personal-f46991a1e45929ce3c"
+      },
+      {
+        "contents": [
+          "recording-device"
+        ],
+        "id": "personal-e8354f3e2ff9456121"
+      }
+    ],
+    "event_queue": [
+      {
+        "cancellation_reason": null,
+        "created_at": 1,
+        "event_type": "institution.response",
+        "id": "institution-response-institution-decision-1a9c19d3e20b262cbd",
+        "payload": {
+          "decision_id": "institution-decision-1a9c19d3e20b262cbd"
+        },
+        "repeating": null,
+        "resolution_history": [],
+        "scheduled_interval": 2,
+        "source": "Standard",
+        "status": "scheduled",
+        "target": "trace-8646605d25c3",
+        "visibility_policy": "known-when-resolved"
+      }
+    ],
+    "final_outcome_candidates": [
+      "clean-completion",
+      "enhanced-completion",
+      "recovered-complication",
+      "degraded-completion",
+      "controlled-abort",
+      "mission-failure",
+      "personnel-loss"
+    ],
+    "hazard_state": [
+      {
+        "id": "overhead-service-bracket",
+        "state": "dormant"
+      },
+      {
+        "id": "relay-isolation-fault",
+        "state": "dormant"
+      }
+    ],
+    "institutional_knowledge": [],
+    "item_custody": [
+      {
+        "container": "personal-f46991a1e45929ce3c",
+        "holder": "fixture-coworker-1",
+        "id": "field-light"
+      },
+      {
+        "container": "personal-e8354f3e2ff9456121",
+        "holder": "fixture-coworker-2",
+        "id": "recording-device"
+      },
+      {
+        "container": "personal-f46991a1e45929ce3c",
+        "holder": "fixture-coworker-1",
+        "id": "survey-instrument"
+      },
+      {
+        "container": "player-harness",
+        "holder": "fixture-player",
+        "id": "survey-radio"
+      },
+      {
+        "container": "staging-locker",
+        "holder": "institutional-stores",
+        "id": "field-notebook"
+      },
+      {
+        "container": "staging-locker",
+        "holder": "institutional-stores",
+        "id": "spare-film"
+      },
+      {
+        "container": "staging-locker",
+        "holder": "institutional-stores",
+        "id": "route-marker-kit"
+      },
+      {
+        "container": "staging-locker",
+        "holder": "institutional-stores",
+        "id": "evidence-sleeves"
+      },
+      {
+        "container": "relay-cache",
+        "holder": null,
+        "id": "spare-battery"
+      }
+    ],
+    "objective_candidates": [
+      "establish-radio-contact",
+      "enter-survey-area",
+      "establish-utility-conditions",
+      "capture-field-evidence",
+      "report-field-evidence",
+      "verify-return-route",
+      "maintain-check-ins",
+      "return-accountability",
+      "additional-condition-record"
+    ],
+    "standard_response_queue": [
+      {
+        "decision": "acknowledge-report",
+        "due_at": 2,
+        "follow_up_id": null,
+        "id": "institution-decision-1a9c19d3e20b262cbd",
+        "private_rationale": "A delivered routine report satisfies the current information expectation.",
+        "public_response": "Standard acknowledges the delivered status report.",
+        "resolved_at": null,
+        "rule_id": "acknowledge-routine-report",
+        "scheduled_at": 1,
+        "state_changes": {
+          "information_confidence": "provisional"
+        },
+        "status": "scheduled",
+        "trigger_provenance": {
+          "id": "trace-report-omnipass-authoring-trace",
+          "kind": "communication"
+        }
+      }
+    ],
+    "teammate_locations": {
+      "fixture-coworker-1": "async-briefing-room",
+      "fixture-coworker-2": "async-briefing-room",
+      "fixture-player": "async-briefing-room"
+    }
+  },
+  "clock": 1,
+  "communications": [
+    {
+      "purpose": "routine-report",
+      "state": "delivered"
+    }
+  ],
+  "consequences": [
+    "bracket-strike-complication",
+    "relay-fault-consequence"
+  ],
+  "hazards": [
+    {
+      "id": "overhead-service-bracket",
+      "initial_state": "dormant"
+    },
+    {
+      "id": "relay-isolation-fault",
+      "initial_state": "dormant"
+    }
+  ],
+  "institutional_transitions": [
+    {
+      "decision": "acknowledge-report",
+      "due_at": 2
+    }
+  ],
+  "inventory_mutations": [
+    {
+      "action": "HAND_OVER",
+      "actor": "fixture-player",
+      "at": 0,
+      "id": "logistics-4e6ad03f59d885494e",
+      "item_id": "field-light",
+      "sequence": 1,
+      "summary": "Battery field lamp transferred from fixture-player to fixture-coworker-1."
+    }
+  ],
+  "mission_transitions": [
+    {
+      "objective": "establish-radio-contact",
+      "state": "inactive"
+    },
+    {
+      "objective": "enter-survey-area",
+      "state": "inactive"
+    },
+    {
+      "objective": "establish-utility-conditions",
+      "state": "inactive"
+    },
+    {
+      "objective": "capture-field-evidence",
+      "state": "inactive"
+    },
+    {
+      "objective": "report-field-evidence",
+      "state": "inactive"
+    },
+    {
+      "objective": "verify-return-route",
+      "state": "inactive"
+    },
+    {
+      "objective": "maintain-check-ins",
+      "state": "inactive"
+    },
+    {
+      "objective": "return-accountability",
+      "state": "inactive"
+    },
+    {
+      "objective": "additional-condition-record",
+      "state": "inactive"
+    }
+  ],
+  "observer_safe_projection": {
+    "inventory": [
+      {
+        "condition": "operational",
+        "holder": "Assigned teammate",
+        "label": "Battery field lamp"
+      },
+      {
+        "condition": "operational",
+        "holder": "Assigned teammate",
+        "label": "35mm field camera"
+      },
+      {
+        "condition": "operational",
+        "holder": "Assigned teammate",
+        "label": "Portable survey instrument"
+      },
+      {
+        "condition": "operational",
+        "holder": "You",
+        "label": "Handheld field radio"
+      },
+      {
+        "condition": "operational",
+        "holder": "Team stores",
+        "label": "Field notebook"
+      },
+      {
+        "condition": "operational",
+        "holder": "Team stores",
+        "label": "Spare film roll"
+      },
+      {
+        "condition": "operational",
+        "holder": "Team stores",
+        "label": "Numbered route-marker kit"
+      },
+      {
+        "condition": "operational",
+        "holder": "Team stores",
+        "label": "Sealable evidence sleeves"
+      },
+      {
+        "condition": "unknown",
+        "holder": "No confirmed holder",
+        "label": "Spare instrument battery"
+      }
+    ],
+    "known_hazards": [],
+    "location": "async-briefing-room"
+  },
+  "scheduled_events": [
+    {
+      "cancellation_reason": null,
+      "created_at": 1,
+      "event_type": "institution.response",
+      "id": "institution-response-institution-decision-1a9c19d3e20b262cbd",
+      "payload": {
+        "decision_id": "institution-decision-1a9c19d3e20b262cbd"
+      },
+      "repeating": null,
+      "resolution_history": [],
+      "scheduled_interval": 2,
+      "source": "Standard",
+      "status": "scheduled",
+      "target": "trace-8646605d25c3",
+      "visibility_policy": "known-when-resolved"
+    }
+  ],
+  "seed": "omnipass-authoring-trace",
+  "teammate_decisions": [
+    {
+      "actor": "fixture-coworker-1",
+      "decision": "accepted-transfer"
+    }
+  ],
+  "time_cost": 1,
+  "version": "yellow-beast-worldpack-trace@v1",
+  "worldpack_id": "clear-q4"
+}

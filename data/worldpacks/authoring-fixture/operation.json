@@ -1,0 +1,7 @@
+{
+  "version": "yellow-beast-complete-operation@v1", "worldpack_id": "authoring-fixture",
+  "mission_arc": [{ "id": "stage", "label": "Stage and transfer", "location_ids": ["fixture-base"] }, { "id": "inspect", "label": "Inspect the worksite", "location_ids": ["fixture-worksite"] }, { "id": "return", "label": "Choose a return route", "location_ids": ["fixture-bypass", "fixture-base"] }],
+  "meaningful_choices": [{ "id": "fixture-route", "prompt": "Use the primary or alternate return route.", "options": [{ "id": "primary", "summary": "Return directly.", "state_hooks": ["clean-completion"] }, { "id": "alternate", "summary": "Test the bypass.", "state_hooks": ["hazard-exposure", "alternate-outcome"] }] }],
+  "outcome_families": [{ "id": "primary", "mission_classification": "clean-completion", "public_summary": "The primary route returned cleanly." }, { "id": "alternate", "mission_classification": "recovered-complication", "public_summary": "The alternate route produced a recoverable equipment drop." }],
+  "presentation": { "observer_safe": true, "deterministic_fallback": "Report the chosen route and only observed consequences.", "ai_assistance": "disabled" }
+}

@@ -1,6 +1,7 @@
 "use strict";
 
 const consequenceRuntime = require("./consequence-runtime");
+const logisticsRuntime = require("./logistics-runtime");
 
 const VERSION = "yellow-beast-hazard-runtime@v1";
 const STATES = Object.freeze(["dormant", "active", "mitigated", "resolved"]);
@@ -86,9 +87,24 @@ function mitigate(run, definition, hazardId, actor) {
   if (!state.detected_by[actor]) return { ok: false, code: "HAZARD_UNDETECTED", reason: "No observable warning supports that mitigation." };
   if (["mitigated", "resolved"].includes(state.state)) return { ok: true, idempotent: true, public_reason: authored.public.mitigated };
   const actorLocation = run.spatial?.personnel_locations?.[actor]; if (actorLocation !== authored.scope.location_id) return { ok: false, code: "HAZARD_OUT_OF_RANGE", reason: "Reach the observed warning location before attempting mitigation." };
-  const kit = run.expedition.equipment?.["route-marker-kit"]; if (!kit || kit.holder !== actor || !["operational", "serviceable", "usable"].includes(String(kit.state).toLowerCase()) || kit.charges <= 0) return { ok: false, code: "MITIGATION_EQUIPMENT_REQUIRED", reason: "The selected route-marker kit is required to secure the loose bracket." };
-  kit.charges -= 1; kit.used = (kit.used ?? 0) + 1; kit.history ??= []; kit.history.push({ event: "hazard-mitigation", hazard_id: hazardId, holder: actor, at: run.expedition.clock.interval });
+  const requirement = authored.mitigation_requirements ?? {}; const match = Object.entries(run.expedition.equipment ?? {}).find(([id, item]) => (requirement.equipment_id ? id === requirement.equipment_id : requirement.capability ? item.capability === requirement.capability : true) && item.holder === actor); const kit = match?.[1]; if (!kit || !["operational", "serviceable", "usable"].includes(String(kit.state).toLowerCase()) || kit.charges < Number(requirement.consume ?? 0)) return { ok: false, code: "MITIGATION_EQUIPMENT_REQUIRED", reason: authored.public.mitigation_unavailable ?? "The declared mitigation equipment is not available in operational custody." };
+  const consume = Number(requirement.consume ?? 0); if (consume > 0) { kit.charges -= consume; kit.used = (kit.used ?? 0) + consume; kit.history ??= []; kit.history.push({ event: "hazard-mitigation", hazard_id: hazardId, holder: actor, at: run.expedition.clock.interval }); const authoritative = run.expedition.logistics?.items?.[match[0]]; if (authoritative) { authoritative.charges = kit.charges; authoritative.history.push({ action: "MITIGATE", actor, hazard_id: hazardId, at: run.expedition.clock.interval }); logisticsRuntime.attach(run.expedition); } }
   transition(run, runtime, hazardId, "mitigated", "the declared field mitigation was completed"); state.mitigated_at = run.expedition.clock.interval; return { ok: true, public_reason: authored.public.mitigated };
+}
+
+function applyInteractionHook(run, definition, hook, action, actor) {
+  if (!hook || hook.when_action !== action || !["mitigated", "resolved"].includes(hook.transition)) return { ok: false, code: "HAZARD_HOOK_NOT_APPLICABLE" };
+  const authored = definition.hazards.find((entry) => entry.id === hook.hazard_id); if (!authored) return { ok: false, code: "HAZARD_UNKNOWN" };
+  const runtime = ensure(run, definition); const state = runtime.states[hook.hazard_id];
+  const wasTerminal = ["mitigated", "resolved"].includes(state.state);
+  let recovery = null;
+  if (hook.recovery_effects?.length) {
+    recovery = consequenceRuntime.recover(run, { source: hook.hazard_id, actor, effects: hook.recovery_effects, public_summary: authored.public.mitigated, observable_to: [actor] });
+    if (!recovery.ok && recovery.code !== "ROUTE_NOT_BLOCKED") return recovery;
+  }
+  if (!["mitigated", "resolved"].includes(state.state)) { transition(run, runtime, hook.hazard_id, hook.transition, `authored ${action} interaction completed the declared mitigation`); state.mitigated_at = run.expedition.clock.interval; }
+  state.detected_by[actor] ??= { at: run.expedition.clock.interval, description: authored.public.warning };
+  return { ok: true, idempotent: wasTerminal && !recovery?.ok, recovery: recovery?.recovery ?? null, public_reason: authored.public.mitigated };
 }
 
 function project(run, definition) {
@@ -97,4 +113,4 @@ function project(run, definition) {
   return (definition.hazards ?? []).flatMap((authored) => { const state = runtime.states?.[authored.id]; const known = state?.detected_by?.[observer]; if (!known) return []; const exposures = runtime.exposure_history.filter((entry) => entry.hazard_id === authored.id && entry.observed_by_player); return [{ id: authored.id, category: authored.category, state: state.state, warning: known.description, observed_change: exposures.length ? authored.public.observed : null, mitigation_available: !["mitigated", "resolved"].includes(state.state), mitigation_options: [...authored.mitigation_options], summary: state.state === "mitigated" ? authored.public.mitigated : exposures.length ? authored.public.observed : authored.public.warning }]; });
 }
 
-module.exports = { VERSION, STATES, ensure, evaluateCondition, transition, resolve, mitigate, project };
+module.exports = { VERSION, STATES, ensure, evaluateCondition, transition, resolve, mitigate, applyInteractionHook, project };

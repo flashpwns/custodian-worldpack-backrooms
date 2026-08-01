@@ -1,0 +1,35 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "yellow-beast-operational-logistics-schema@v1",
+  "title": "Yellow Beast logistics worldpack",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["version", "worldpack_id", "item_definitions", "containers", "item_instances", "loadout"],
+  "properties": {
+    "version": { "const": "yellow-beast-logistics-worldpack@v1" },
+    "worldpack_id": { "$ref": "#/$defs/id" },
+    "personal_capacity": { "type": "number", "minimum": 0 },
+    "item_definitions": { "type": "array", "items": { "$ref": "#/$defs/itemDefinition" } },
+    "containers": { "type": "array", "items": { "$ref": "#/$defs/container" } },
+    "item_instances": { "type": "array", "items": { "$ref": "#/$defs/itemInstance" } },
+    "loadout": {
+      "type": "object", "additionalProperties": false, "required": ["required", "optional", "waiver_allowed", "public_recommendations"],
+      "properties": { "required": { "type": "array", "items": { "$ref": "#/$defs/id" }, "uniqueItems": true }, "optional": { "type": "array", "items": { "$ref": "#/$defs/id" }, "uniqueItems": true }, "waiver_allowed": { "type": "boolean" }, "public_recommendations": { "type": "array", "items": { "type": "string" } } }
+    }
+  },
+  "$defs": {
+    "id": { "type": "string", "pattern": "^[a-z0-9][a-z0-9-]*$" },
+    "itemDefinition": {
+      "type": "object", "additionalProperties": false, "required": ["id", "display_name", "category", "capabilities", "capacity_contribution", "consumable"],
+      "properties": { "id": { "$ref": "#/$defs/id" }, "display_name": { "type": "string", "minLength": 1 }, "category": { "type": "string", "minLength": 1 }, "model": { "type": "string" }, "capabilities": { "type": "array", "items": { "type": "string" }, "uniqueItems": true }, "replenishes_definitions": { "type": "array", "items": { "$ref": "#/$defs/id" }, "uniqueItems": true }, "capacity_contribution": { "type": "number", "minimum": 0 }, "maximum_charges": { "type": "integer", "minimum": 0 }, "consumable": { "type": "boolean" } }
+    },
+    "container": {
+      "type": "object", "additionalProperties": false, "required": ["id", "display_name", "kind", "capacity", "allowed_categories", "initial_open", "initial_accessible"],
+      "properties": { "id": { "$ref": "#/$defs/id" }, "display_name": { "type": "string", "minLength": 1 }, "kind": { "type": "string" }, "capacity": { "type": "number", "minimum": 0 }, "allowed_categories": { "type": "array", "minItems": 1, "items": { "type": "string" }, "uniqueItems": true }, "initial_open": { "type": "boolean" }, "initial_accessible": { "type": "boolean" }, "holder": { "enum": ["player", "institution"] }, "location": { "type": "string" }, "parent_container": { "$ref": "#/$defs/id" } }
+    },
+    "itemInstance": {
+      "type": "object", "additionalProperties": false, "required": ["id", "definition_id", "assignment"],
+      "properties": { "id": { "$ref": "#/$defs/id" }, "definition_id": { "$ref": "#/$defs/id" }, "assignment": { "type": "object", "additionalProperties": false, "properties": { "holder": { "enum": ["player", "institution"] }, "role": { "type": "string" } }, "minProperties": 1 }, "initial_container": { "$ref": "#/$defs/id" }, "initial_location": { "type": "string" }, "initial_charges": { "type": "integer", "minimum": 0 }, "initial_quantity": { "type": "integer", "minimum": 0 } }
+    }
+  }
+}

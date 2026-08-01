@@ -1,0 +1,8 @@
+{
+  "version": "yellow-beast-complete-operation@v1",
+  "worldpack_id": "minimal-mission",
+  "mission_arc": [{ "id": "briefing", "label": "Briefing", "location_ids": ["origin"] }, { "id": "work", "label": "Inspection", "location_ids": ["work-site"] }, { "id": "return", "label": "Return", "location_ids": ["origin"] }],
+  "meaningful_choices": [{ "id": "inspect-or-abort", "prompt": "Inspect the record or abort.", "options": [{ "id": "inspect", "summary": "Inspect the record.", "state_hooks": ["record-inspected"] }, { "id": "abort", "summary": "Declare a controlled abort.", "state_hooks": ["controlled-abort"] }] }],
+  "outcome_families": [{ "id": "complete", "mission_classification": "clean-completion", "public_summary": "The record was inspected." }, { "id": "abort", "mission_classification": "controlled-abort", "public_summary": "The inspection was aborted." }],
+  "presentation": { "observer_safe": true, "deterministic_fallback": "Describe the inspected record or controlled abort.", "ai_assistance": "disabled" }
+}

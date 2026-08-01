@@ -1,6 +1,6 @@
 {
   "version": "yellow-beast-playable-spine-acceptance@v1",
-  "generated_at": "2026-08-01T10:00:01.308Z",
+  "generated_at": "2026-08-01T11:44:46.231Z",
   "evidence_kind": "deterministic rendered-surface and persisted-state capture",
   "world_name": "ClearQ4est",
   "opening_controls": [
@@ -141,7 +141,7 @@
         {
           "id": "q4-survey-radio-01",
           "holder": "You",
-          "state": "Operational",
+          "state": "operational",
           "verification": "visually confirmed"
         }
       ],
@@ -232,6 +232,13 @@
             "direction": "forward",
             "status": "unresolved",
             "hazard": "clear"
+          },
+          {
+            "ref": "bypass-to-entry",
+            "label": "SOUTHEAST — Service Bypass",
+            "direction": "southeast",
+            "status": "unresolved",
+            "hazard": "clear"
           }
         ],
         "route_history": [
@@ -278,7 +285,7 @@
         {
           "id": "q4-survey-radio-01",
           "holder": "You",
-          "state": "Operational",
+          "state": "operational",
           "verification": "visually confirmed"
         }
       ],
@@ -438,7 +445,7 @@
         {
           "id": "q4-survey-radio-01",
           "holder": "You",
-          "state": "Operational",
+          "state": "operational",
           "verification": "visually confirmed"
         }
       ],
@@ -467,7 +474,7 @@
         "summary": "Due at operational interval 12."
       },
       "location": "Columned Corridor",
-      "observation": "You take stock of the columned corridor. Square columns break the westward sightline into regular intervals. A utility room lies east. Jennifer, Esther, Margaret, and Victoria remain within speaking range.",
+      "observation": "You take stock of the columned corridor. Square columns break the westward sightline into regular intervals. A utility room lies east. A relay alcove lies west. Jennifer, Esther, Margaret, and Victoria remain within speaking range.",
       "map": {
         "nodes": [
           {
@@ -534,7 +541,15 @@
             ]
           }
         ],
-        "unresolved_exits": [],
+        "unresolved_exits": [
+          {
+            "ref": "corridor-to-relay",
+            "label": "WEST — Relay Alcove",
+            "direction": "west",
+            "status": "unresolved",
+            "hazard": "caution"
+          }
+        ],
         "route_history": [
           {
             "sequence": 1,
@@ -593,7 +608,7 @@
         {
           "id": "q4-survey-radio-01",
           "holder": "You",
-          "state": "Operational",
+          "state": "operational",
           "verification": "visually confirmed"
         }
       ],
@@ -622,7 +637,7 @@
         "summary": "Due at operational interval 12."
       },
       "location": "Columned Corridor",
-      "observation": "You take stock of the columned corridor. Square columns break the westward sightline into regular intervals. A utility room lies east. Jennifer, Esther, Margaret, and Victoria remain within speaking range.",
+      "observation": "You take stock of the columned corridor. Square columns break the westward sightline into regular intervals. A utility room lies east. A relay alcove lies west. Jennifer, Esther, Margaret, and Victoria remain within speaking range.",
       "map": {
         "nodes": [
           {
@@ -689,7 +704,15 @@
             ]
           }
         ],
-        "unresolved_exits": [],
+        "unresolved_exits": [
+          {
+            "ref": "corridor-to-relay",
+            "label": "WEST — Relay Alcove",
+            "direction": "west",
+            "status": "unresolved",
+            "hazard": "caution"
+          }
+        ],
         "route_history": [
           {
             "sequence": 1,

@@ -13,7 +13,10 @@
       "spatial_record": "data/worldpacks/clear-q4/spatial.json",
       "interaction_record": "data/worldpacks/clear-q4/interactions.json",
       "mission_record": "data/worldpacks/clear-q4/mission.json",
-      "dynamics_record": "data/worldpacks/clear-q4/dynamics.json"
+      "dynamics_record": "data/worldpacks/clear-q4/dynamics.json",
+      "logistics_record": "data/worldpacks/clear-q4/logistics.json",
+      "institutional_record": "data/worldpacks/clear-q4/institution.json",
+      "complete_operation_record": "data/worldpacks/clear-q4/operation.json"
     },
     {
       "id": "lost",
