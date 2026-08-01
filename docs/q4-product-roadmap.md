@@ -30,7 +30,7 @@ rows to appear complete.
 | STANDARD_RADIO_CHECK | Expedition `COMMUNICATE` and reporting objective | Partial | Make the Standard channel diegetic and distinct from physical action |
 | COMPLEX_TRAVERSAL | Procedural movement and observer-safe field scene | Exists | Keep traversal prose natural and acceptance-focused |
 | SITE_DISCOVERY | LOOK/INSPECT/RECORD and observer-safe generated site state | Partial | Define site discovery as mission progress without opaque labels |
-| ASSIGNMENT_WORK | Bounded survey/evidence objectives and equipment use | Partial | Let the generated mundane assignment define legitimate work |
+| ASSIGNMENT_WORK | Bounded, canon-authorized mission objective/procedures and equipment use | Partial | Add deeper assignment-work consequences without adding hidden X-factor behavior |
 | X_FACTOR | Existing admitted phenomena/evidence boundaries; no Q4 escalation loop | Missing | Add only through canonical world state, not narrator invention |
 | PLAYER_DECISION | Existing return/abort and bounded consequence outcomes | Partial | Present meaningful obey, investigate, leave, or failure decisions |
 | RETURN_OR_FAILURE | Expedition `RETURN` / `ABORT`, including degraded outcomes | Exists | Improve continuity into review |
@@ -84,8 +84,20 @@ NPC cognition.
 Clear-Q4 now uses persistent physical item records with period-compatible
 labels, holders, locations, operational states, required/optional loadouts,
 staging readiness, and canonical handoff/loss behavior. Player presentation
-uses operational descriptions rather than videogame-style “charges”. Full
-mission generation and historical assignment continuity remain future work.
+uses operational descriptions rather than videogame-style “charges”.
+
+### Mission-generation foundation
+
+Pass 5 adds a persistent Q4 mission record and a finite authority-traceable
+catalog. Clear-Q4 is assigned a bounded layout/survey or
+infrastructure/material task using admitted runtime claims plus conservative
+procedural glue; personnel/recovery becomes eligible only when actual world
+history records missing personnel or unrecovered equipment. The mission record
+travels through briefing, staging, equipment, reporting, field history, and
+terminal status. Mission selection remains institutional: the player chooses
+conduct, not the assignment. Phenomenon, civilian-response, and hazard catalog
+rows remain authoring extension points and are not selected without a real
+admitted or recorded trigger.
 
 ### Mission generation and review
 

@@ -9,6 +9,7 @@ const proceduralV2 = require("./procedural-complex-v2");
 const history = require("./world-history");
 const q4Personnel = require("./q4-personnel");
 const q4Equipment = require("./q4-equipment");
+const q4Missions = require("./q4-missions");
 const runIdentity = require("./run-identity");
 
 const root = path.resolve(__dirname, "..");
@@ -52,10 +53,10 @@ function configuredPack(profileId, playerId) {
   }
   return pack;
 }
-function newRun({ profile, seed, session, expedition, staffing = null, loadout = null, procedural_state, procedural_scenario = false, world_id = null, run_id = null, world = null }) {
+function newRun({ profile, seed, session, expedition, staffing = null, loadout = null, mission = null, procedural_state, procedural_scenario = false, world_id = null, run_id = null, world = null }) {
   const profileRecord = profileFor(profile);
   const player = session.startup.player.observer_id;
-  const run = { version: "yellow-beast-run@v4", profile_id: profile, profile_title: profileRecord.title, scenario: procedural_scenario ? "async-clear-q4-procedural-survey" : session.scenario.id, seed, session, lifecycle: "active", checklist: { moved: false, inspected: false, used: false }, aliases: {}, expedition: expedition ?? (profile === FIELD_PROFILE ? fieldExpedition(player, staffing, loadout) : null), procedural: procedural_scenario ? (procedural_state ?? procedural.initialize({ seed, observer: player })) : null, world_id, run_id, _world: world };
+  const run = { version: "yellow-beast-run@v4", profile_id: profile, profile_title: profileRecord.title, scenario: procedural_scenario ? "async-clear-q4-procedural-survey" : session.scenario.id, seed, session, lifecycle: "active", checklist: { moved: false, inspected: false, used: false }, aliases: {}, expedition: expedition ?? (profile === FIELD_PROFILE ? fieldExpedition(player, staffing, loadout, mission) : null), procedural: procedural_scenario ? (procedural_state ?? procedural.initialize({ seed, observer: player })) : null, world_id, run_id, _world: world };
   run.identity = runIdentity.describe(run);
   return run;
 }
@@ -69,12 +70,14 @@ function startRun({ profile, seed = "yellow-beast-bootstrap", scenario = null, w
   const run_id = world ? history.beginRun(world, { profile, scenario: procedural_scenario ? "async-clear-q4-procedural-survey" : result.session.scenario.id, seed }) : null;
   const staffing = profile === FIELD_PROFILE && world ? q4Personnel.staffQ4(world, run_id, player) : null;
   if (staffing && !staffing.ok) return { ok: false, error: { code: staffing.code } };
-  const loadout = profile === FIELD_PROFILE && world ? q4Equipment.prepare(world, run_id, { player: staffing.player.identity, peer: staffing.peer.identity }) : null;
+  const mission = profile === FIELD_PROFILE ? q4Missions.generate({ world, run_id, seed, staffing }) : null;
+  if (mission && world) history.recordQ4Mission(world, run_id, mission);
+  const loadout = profile === FIELD_PROFILE && world ? q4Equipment.prepare(world, run_id, { player: staffing.player.identity, peer: staffing.peer.identity, required_keys: mission.required_equipment }) : null;
   const existing = region_id && world?.regions?.[region_id];
   let generator; try { generator = generatorFor(existing?.generator_version ?? generator_version ?? procedural.VERSION); } catch (error) { return { ok: false, error: { code: error.code ?? "GENERATOR_VERSION_UNSUPPORTED" } }; }
   const procedural_state = existing ? clone(history.restoreRegion(world, region_id).state) : (procedural_scenario && generator_version === proceduralV2.VERSION ? generator.initialize({ seed, observer: player, policy: "moderate" }) : undefined);
   if (procedural_state) { const known = procedural_state.discovery[player] ?? { spaces: [], edges: [], features: [] }; procedural_state.discovery = { [player]: { spaces: [], edges: [], features: [] } }; procedural_state.current = { [player]: Object.keys(procedural_state.nodes)[0] }; void known; }
-  const run = newRun({ profile, seed, session: result.session, staffing, loadout, procedural_scenario, procedural_state, world_id: world?.world_id ?? null, run_id, world });
+  const run = newRun({ profile, seed, session: result.session, staffing, loadout, mission, procedural_scenario, procedural_state, world_id: world?.world_id ?? null, run_id, world });
   return { ok: restored.ok, session: result.session, run, restored_equivalent: restored.ok && stableSerialize(restored.session) === stableSerialize(result.session), summary: { session_id: result.session.id, profile, profile_title: profileRecord.title, scenario: result.session.scenario.id, seed, player: startup.player, knowledge: startup.knowledge, permissions: startup.permissions, resources: startup.resources } };
 }
 function normalizeRun(value) {
@@ -119,7 +122,7 @@ function status(runValue) {
   const expeditionVerbs = active && run.expedition ? ["COMMUNICATE", "RECORD", "WAIT", "RETURN", "ABORT"] : [];
   return { profile_id: run.profile_id, profile_title: run.profile_title, scenario: run.scenario, lifecycle: run.lifecycle, player: observer, run_identity: runIdentity.describe(run), known_resources: (run.session.startup.resources ?? []).filter((entry) => entry.custodian === observer).map((entry) => entry.id), available_verbs: ["LOOK", ...(active && view.targets?.length ? ["INSPECT"] : []), ...(active && (run.procedural ? view.view?.exits?.length : actions.includes("traverse-controlled-route")) ? ["MOVE"] : []), ...(active && actions.includes("toggle-light") ? ["USE"] : []), ...expeditionVerbs], view: { outcome: view.outcome, location: view.view?.location ?? null, targets: (view.aliases ?? []).map(({ alias }) => ({ alias })), observations: { environment: view.view?.environment ?? {}, landmark: view.view?.landmark ?? null, objects: view.view?.objects ?? [], route_character: view.view?.route_character ?? null }, public_reason: view.public_reason ?? null }, ...(run.expedition ? { expedition: safeSummary(run.expedition) } : {}), ...(run.procedural ? { discovered_topology: generatorFor(run.procedural).map(run.procedural, observer), generator_version: generatorFor(run.procedural).VERSION } : {}) };
 }
-function terminal(run, decision) { finalize(run.expedition, decision); run.lifecycle = "completed"; const ingestion = run._world && run.run_id ? history.ingestRun(run._world, run) : null; return { ok: true, outcome: "succeeded", result: { public_reason: null, expedition_result: clone(run.expedition.result), ...(ingestion ? { history: { run_id: ingestion.run_id, region_id: ingestion.region_id } } : {}) }, run }; }
+function terminal(run, decision) { finalize(run.expedition, decision); run.lifecycle = "completed"; if (run._world && run.run_id && run.expedition?.mission) history.updateQ4Mission(run._world, run.run_id, run.expedition.mission.id, { status: run.expedition.mission.status }); const ingestion = run._world && run.run_id ? history.ingestRun(run._world, run) : null; return { ok: true, outcome: "succeeded", result: { public_reason: null, expedition_result: clone(run.expedition.result), ...(ingestion ? { history: { run_id: ingestion.run_id, region_id: ingestion.region_id } } : {}) }, run }; }
 function expeditionAction(run, verb, target) {
   const expedition = run.expedition; const player = run.session.startup.player.observer_id;
   if (!expedition) return { ok: false, error: { code: "UNSUPPORTED_VERB" }, run };

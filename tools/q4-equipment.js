@@ -28,8 +28,8 @@ function ensureWorldItem(world, run_id, key, player, preferredId = null) {
   history.event(world, run_id, "q4.equipment.issued", { equipment_id: item.id, type: item.type, holder: item.holder, location: item.location });
   return item;
 }
-function prepare(world, run_id, { player, peer }) {
-  const required = Object.fromEntries(REQUIRED.map((key) => [key, clone(ensureWorldItem(world, run_id, key, player))]));
+function prepare(world, run_id, { player, peer, required_keys = REQUIRED }) {
+  const required = Object.fromEntries(required_keys.map((key) => [key, clone(ensureWorldItem(world, run_id, key, player))]));
   const optional = Object.fromEntries(OPTIONAL.map((key) => { const id = `q4-${key}-stores`; world.q4_equipment ??= {}; world.q4_equipment[id] ??= createItem(world, key, { owner: player, holder: "q4-stores", container: "optional stores", location: "staging locker", id }); return [key, clone(world.q4_equipment[id])]; }));
   for (const item of Object.values(required)) { item.assigned_to = player; item.holder = player; item.container = "field case"; item.location = "staging locker"; }
   return { required, optional, player, peer };

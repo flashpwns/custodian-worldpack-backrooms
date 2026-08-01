@@ -252,10 +252,12 @@ scripts.push("desktop/main.js", "desktop/preload.js", "desktop/service.js", "des
 scripts.push("tools/mode-attempt-resolution.js");
 scripts.push("tools/q4-interactions.js");
 scripts.push("tools/q4-equipment.js");
+scripts.push("tools/q4-missions.js");
 scripts.push("tools/q4-personnel.js");
 scripts.push("tests/y36-q4-channels.test.js");
 scripts.push("tests/y37-q4-personnel.test.js");
 scripts.push("tests/y38-q4-equipment.test.js");
+scripts.push("tests/y39-q4-missions.test.js");
 for (const relative of scripts) {
   const content = fs.readFileSync(path.join(root, relative), "utf8");
   assert.doesNotMatch(content, /custodian\/(runtime|state|tools)/, `${relative} uses only public Custodian imports`);
