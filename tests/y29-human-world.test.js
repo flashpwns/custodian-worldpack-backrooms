@@ -23,7 +23,7 @@ test("Q4 and Beck receive bounded human procedure context without provenance or 
   assert.match(q4View.human_context.background_presence, /Facility staff/);
   assert.match(beckView.human_context.institutional_context, /records/);
   assert.doesNotMatch(JSON.stringify({ q4View, beckView }), /claim_id|source_refs|authoritative|backrooms-/i);
-  assert.equal(q4View.team[0].name, "Field researcher");
+  assert.equal(q4View.team[0].display_name, "Nora Vale");
 });
 
 test("desk personnel are persistent procedural role occupants rather than an invented named cast", () => {

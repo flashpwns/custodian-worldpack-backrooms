@@ -54,6 +54,13 @@ institutional knowledge; it does not turn the report into objective world
 truth. Local conversation remains local unless existing world rules explicitly
 carry information onward.
 
+Clear-Q4 now staffs persistent procedural personnel records with stable first
+and last names, roles, clearance, condition, assignment history, and coarse
+observer-safe contact status. Canonical death remains irreversible; a later
+Q4 staffing pass may fill the role only with a different identity. The player
+view receives contact and condition categories, not hidden position or health
+telemetry.
+
 ## Future requirements (recorded, not implemented here)
 
 ### Interaction channels
@@ -66,7 +73,7 @@ The remaining work is to deepen these channels without forcing dialogue to
 consume physical locomotion/action opportunities merely because both are
 expressed through the same player input surface.
 
-### Personnel
+### Remaining personnel work
 
 Future Q4 personnel need persistent generated first-and-last identities,
 roles, applicable clearance/access, and basic condition/status. Dialogue uses

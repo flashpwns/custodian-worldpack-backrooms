@@ -3,12 +3,14 @@
 const clone = (value) => structuredClone(value);
 const FIELD_SCENARIO = "async-clear-q4-field-survey";
 
-function fieldExpedition(player) {
+function fieldExpedition(player, staffing = null) {
+  const playerPerson = staffing?.player ?? { identity: player, first_name: "Alex", last_name: "Morgan", display_name: "Alex Morgan", role: "field surveyor", clearance: "field", condition: "normal", status: "active" };
+  const peerPerson = staffing?.peer ?? { identity: "yb-field-peer-observer", first_name: "Nora", last_name: "Vale", display_name: "Nora Vale", role: "survey partner", clearance: "field", condition: "normal", status: "active" };
   return {
     version: "yellow-beast-expedition@v1",
     id: "clear-q4-field-survey-alpha",
     title: "Clear-Q4 Field Survey Alpha",
-    team: { id: "clear-q4-survey-team", members: [{ id: player, role: "field-surveyor", status: "active" }, { id: "yb-field-peer-observer", role: "survey-partner", status: "active" }] },
+    team: { id: "clear-q4-survey-team", members: [{ id: playerPerson.identity, personnel_id: playerPerson.identity, first_name: playerPerson.first_name, last_name: playerPerson.last_name, display_name: playerPerson.display_name, role: playerPerson.role, clearance: playerPerson.clearance, status: "active", contact_category: "NEARBY", observed_condition: "appears-normal", last_contact: "assigned" }, { id: peerPerson.identity, personnel_id: peerPerson.identity, first_name: peerPerson.first_name, last_name: peerPerson.last_name, display_name: peerPerson.display_name, role: peerPerson.role, clearance: peerPerson.clearance, status: "active", contact_category: "NEARBY", observed_condition: "appears-normal", last_contact: "assigned" }] },
     order: { issuer: "Standard", primary: "Survey the declared fixture cluster and return with a field record.", constraints: ["Use declared equipment only.", "Check in before the second waiting interval."], reporting: "Transmit a check-in and retain evidence.", authority: "institutional-instruction-not-objective-truth" },
     objectives: {
       survey: { required: true, state: "active" }, evidence: { required: true, state: "pending" }, check_in: { required: true, state: "pending" }, return_decision: { required: true, state: "pending" }, optional_peer_status: { required: false, state: "pending" }

@@ -7,6 +7,7 @@ const { FIELD_SCENARIO, fieldExpedition, event, useEquipment, safeSummary, final
 const procedural = require("./procedural-complex");
 const proceduralV2 = require("./procedural-complex-v2");
 const history = require("./world-history");
+const q4Personnel = require("./q4-personnel");
 const runIdentity = require("./run-identity");
 
 const root = path.resolve(__dirname, "..");
@@ -50,10 +51,10 @@ function configuredPack(profileId, playerId) {
   }
   return pack;
 }
-function newRun({ profile, seed, session, expedition, procedural_state, procedural_scenario = false, world_id = null, run_id = null, world = null }) {
+function newRun({ profile, seed, session, expedition, staffing = null, procedural_state, procedural_scenario = false, world_id = null, run_id = null, world = null }) {
   const profileRecord = profileFor(profile);
   const player = session.startup.player.observer_id;
-  const run = { version: "yellow-beast-run@v4", profile_id: profile, profile_title: profileRecord.title, scenario: procedural_scenario ? "async-clear-q4-procedural-survey" : session.scenario.id, seed, session, lifecycle: "active", checklist: { moved: false, inspected: false, used: false }, aliases: {}, expedition: expedition ?? (profile === FIELD_PROFILE ? fieldExpedition(player) : null), procedural: procedural_scenario ? (procedural_state ?? procedural.initialize({ seed, observer: player })) : null, world_id, run_id, _world: world };
+  const run = { version: "yellow-beast-run@v4", profile_id: profile, profile_title: profileRecord.title, scenario: procedural_scenario ? "async-clear-q4-procedural-survey" : session.scenario.id, seed, session, lifecycle: "active", checklist: { moved: false, inspected: false, used: false }, aliases: {}, expedition: expedition ?? (profile === FIELD_PROFILE ? fieldExpedition(player, staffing) : null), procedural: procedural_scenario ? (procedural_state ?? procedural.initialize({ seed, observer: player })) : null, world_id, run_id, _world: world };
   run.identity = runIdentity.describe(run);
   return run;
 }
@@ -65,11 +66,13 @@ function startRun({ profile, seed = "yellow-beast-bootstrap", scenario = null, w
   const restored = restoreSession(exportSession(result.session).envelope);
   const procedural_scenario = profile === FIELD_PROFILE && scenario === "procedural-survey";
   const run_id = world ? history.beginRun(world, { profile, scenario: procedural_scenario ? "async-clear-q4-procedural-survey" : result.session.scenario.id, seed }) : null;
+  const staffing = profile === FIELD_PROFILE && world ? q4Personnel.staffQ4(world, run_id, player) : null;
+  if (staffing && !staffing.ok) return { ok: false, error: { code: staffing.code } };
   const existing = region_id && world?.regions?.[region_id];
   let generator; try { generator = generatorFor(existing?.generator_version ?? generator_version ?? procedural.VERSION); } catch (error) { return { ok: false, error: { code: error.code ?? "GENERATOR_VERSION_UNSUPPORTED" } }; }
   const procedural_state = existing ? clone(history.restoreRegion(world, region_id).state) : (procedural_scenario && generator_version === proceduralV2.VERSION ? generator.initialize({ seed, observer: player, policy: "moderate" }) : undefined);
   if (procedural_state) { const known = procedural_state.discovery[player] ?? { spaces: [], edges: [], features: [] }; procedural_state.discovery = { [player]: { spaces: [], edges: [], features: [] } }; procedural_state.current = { [player]: Object.keys(procedural_state.nodes)[0] }; void known; }
-  const run = newRun({ profile, seed, session: result.session, procedural_scenario, procedural_state, world_id: world?.world_id ?? null, run_id, world });
+  const run = newRun({ profile, seed, session: result.session, staffing, procedural_scenario, procedural_state, world_id: world?.world_id ?? null, run_id, world });
   return { ok: restored.ok, session: result.session, run, restored_equivalent: restored.ok && stableSerialize(restored.session) === stableSerialize(result.session), summary: { session_id: result.session.id, profile, profile_title: profileRecord.title, scenario: result.session.scenario.id, seed, player: startup.player, knowledge: startup.knowledge, permissions: startup.permissions, resources: startup.resources } };
 }
 function normalizeRun(value) {

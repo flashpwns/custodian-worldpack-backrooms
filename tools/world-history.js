@@ -49,10 +49,10 @@ function recoverArtifact(world, { run_id, artifact_id, holder }) { const item = 
 function characterState(world) { assertWorld(world); world.characters ??= {}; return world.characters; }
 function character(world, identity) { return characterState(world)[identity] ?? null; }
 function canInstantiateCharacter(world, identity) { return !character(world, identity); }
-function instantiateCharacter(world, { run_id, identity, display_name, role = null, classification = "named-character", provenance = "pack-original-character-fixture", authority = "scenario-optional", source_claim_ids = [] }) {
+function instantiateCharacter(world, { run_id, identity, display_name, first_name = null, last_name = null, role = null, clearance = null, condition = "normal", current_assignment = null, assignment_history = [], classification = "named-character", provenance = "pack-original-character-fixture", authority = "scenario-optional", source_claim_ids = [] }) {
   if (!identity || !display_name || !canInstantiateCharacter(world, identity)) return { ok: false, code: "CHARACTER_IDENTITY_UNAVAILABLE" };
-  const record = { identity, display_name, role, classification, status: "active", provenance, authority, source_claim_ids: clone(source_claim_ids), instantiated_by: run_id, death: null };
-  characterState(world)[identity] = record; event(world, run_id, "character.instantiated", { identity, display_name, role, classification, provenance, authority, source_claim_ids: clone(source_claim_ids) }, authority);
+  const record = { identity, display_name, first_name, last_name, role, clearance, condition, current_assignment, assignment_history: clone(assignment_history), classification, status: "active", provenance, authority, source_claim_ids: clone(source_claim_ids), instantiated_by: run_id, death: null };
+  characterState(world)[identity] = record; event(world, run_id, "character.instantiated", { identity, display_name, first_name, last_name, role, clearance, condition, current_assignment, assignment_history: clone(assignment_history), classification, provenance, authority, source_claim_ids: clone(source_claim_ids) }, authority);
   return { ok: true, character: clone(record) };
 }
 function setCharacterStatus(world, { run_id, identity, status, reason = null }) {
@@ -68,9 +68,10 @@ function rebuildCharacters(world) {
   assertWorld(world); const rebuilt = {};
   for (const entry of world.events.filter((item) => item.type === "character.instantiated" || item.type === "character.died" || item.type === "character.status.changed").sort((a, b) => a.sequence - b.sequence)) {
     const payload = entry.payload ?? {};
-    if (entry.type === "character.instantiated" && !rebuilt[payload.identity]) rebuilt[payload.identity] = { identity: payload.identity, display_name: payload.display_name, role: payload.role ?? null, classification: payload.classification, status: "active", provenance: payload.provenance, authority: payload.authority, source_claim_ids: clone(payload.source_claim_ids ?? []), instantiated_by: entry.run_id, death: null };
+    if (entry.type === "character.instantiated" && !rebuilt[payload.identity]) rebuilt[payload.identity] = { identity: payload.identity, display_name: payload.display_name, first_name: payload.first_name ?? null, last_name: payload.last_name ?? null, role: payload.role ?? null, clearance: payload.clearance ?? null, condition: payload.condition ?? "normal", current_assignment: payload.current_assignment ?? null, assignment_history: clone(payload.assignment_history ?? []), classification: payload.classification, status: "active", provenance: payload.provenance, authority: payload.authority, source_claim_ids: clone(payload.source_claim_ids ?? []), instantiated_by: entry.run_id, death: null };
     if (entry.type === "character.died" && rebuilt[payload.identity]) { rebuilt[payload.identity].status = "dead"; rebuilt[payload.identity].death = { run_id: entry.run_id, reason: payload.reason ?? null }; }
     if (entry.type === "character.status.changed" && rebuilt[payload.identity] && rebuilt[payload.identity].status !== "dead") rebuilt[payload.identity].status = payload.status;
+    if (entry.type === "character.assignment.changed" && rebuilt[payload.identity] && rebuilt[payload.identity].status !== "dead") { rebuilt[payload.identity].current_assignment = payload.assignment ?? null; if (payload.assignment) rebuilt[payload.identity].assignment_history = [...(rebuilt[payload.identity].assignment_history ?? []), clone(payload.assignment)]; }
   }
   return rebuilt;
 }

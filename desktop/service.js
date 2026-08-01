@@ -19,6 +19,7 @@ const { buildSafeScene, fallbackNarration } = require("../tools/scene-presentati
 const phases = require("../tools/mode-phases");
 const q4 = require("../tools/q4-experience");
 const q4Interactions = require("../tools/q4-interactions");
+const q4Personnel = require("../tools/q4-personnel");
 const beckExperience = require("../tools/beck-experience");
 const nullzoneExperience = require("../tools/nullzone-experience");
 const lostExperience = require("../tools/lost-experience");
@@ -122,9 +123,9 @@ class DesktopService {
     } catch (error) { this.log(`session start failed: ${error.message}`); return publicError("SESSION_START_FAILED", "This session could not start safely."); }
   }
   resumeSession({ world_id, mode }) { try { const world = this.getWorld(world_id); const saved = readJson(this.sessionFile(world_id, mode), null); const entry = this.restoreSession(world, mode, saved); if (!entry) return publicError("SESSION_NOT_FOUND", "There is no compatible session to continue."); this.sessions.set(`${world_id}:${mode}`, entry); return { ok: true, session: { world_id, mode, resumable: true }, projection: this.projectionFor(world, mode, entry) }; } catch { return publicError("SESSION_RESUME_FAILED", "This session could not be resumed safely."); } }
-  briefingScene(entry, mode, phaseId = entry.phase?.phase_id) {
-    const view = q4.presentation(entry.run, entry.phase ?? phases.createPhase({ mode }));
-    const team = view.team.map((member) => member.name).join(" and ") || "the assigned field team";
+  briefingScene(entry, mode, phaseId = entry.phase?.phase_id, world = null) {
+    const view = q4.presentation(entry.run, entry.phase ?? phases.createPhase({ mode }), null, world);
+    const team = view.team.map((member) => member.display_name).join(" and ") || "the assigned field team";
     const equipment = view.equipment.map((item) => item.label).join(", ") || "the assigned field kit";
     const facts = [
       ["location", "location", phaseId === "BRIEFING" ? "an ASYNC operations briefing context" : phaseId === "STAGING" ? "an ASYNC staging context" : phaseId === "FACILITY_TRANSIT" ? "a controlled facility transit context" : "the approach to the Threshold"],
@@ -144,10 +145,10 @@ class DesktopService {
     scene.narration_source = "fallback";
     return scene;
   }
-  sceneFor(entry, mode, options = {}, world = null) { if (entry.kind === "bootstrap") { const phase = options.phase ?? entry.phase?.phase_id; if (phase !== "FIELD_OPERATION" && phase !== "RETURN" && phase !== "DEBRIEF") return this.briefingScene(entry, mode, phase); const scene = buildSafeScene({ run: entry.run, mode, ...options }); return { ...scene, narration: fallbackNarration(scene), narration_source: "fallback" }; } return this.modeScene(world, mode, entry, { consequence: { result: { accepted: options.accepted !== false, observer_safe_summary: options.public_reason ?? "The current situation remains unchanged." } } }); }
+  sceneFor(entry, mode, options = {}, world = null) { if (entry.kind === "bootstrap") { const phase = options.phase ?? entry.phase?.phase_id; if (phase !== "FIELD_OPERATION" && phase !== "RETURN" && phase !== "DEBRIEF") return this.briefingScene(entry, mode, phase, world); const scene = buildSafeScene({ run: entry.run, mode, ...options }); return { ...scene, narration: fallbackNarration(scene), narration_source: "fallback" }; } return this.modeScene(world, mode, entry, { consequence: { result: { accepted: options.accepted !== false, observer_safe_summary: options.public_reason ?? "The current situation remains unchanged." } } }); }
   projectionFor(world, mode, entry) { const descriptor = this.getMode(mode); const runId = entry.run_id ?? entry.run?.run_id ?? null; let surface;
     if (entry.kind === "bootstrap") surface = bootstrap.status(entry.run); else if (entry.kind === "lost") surface = lost.projection(entry.run); else if (entry.kind === "nullzone") surface = { ...nullzone.projection(world), local_observation: nullzone.observeRegion(world) }; else surface = desk.projection(world);
-    const phase = entry.phase ?? phases.createPhase({ mode, guided: this.settings().guided_introductions !== false }); const unfinished = consequenceEchoes.unfinishedBusiness(world, mode, { run_id: runId }); return { version: "yellow-beast-desktop-projection@v1", world: this.worldInfo(world, this.metadata().worlds[world.world_id] ?? {}), mode: clone(descriptor), gameplay: gameplay.projection(world, { mode: descriptor.gameplay_mode, run_id: runId }), institution: mode === "async-command" ? desk.projection(world) : null, consequence_echoes: consequenceEchoes.observerView(world, mode, { run_id: runId }), unfinished_business: unfinished, surface: clone(surface), phase: clone(phase), q4: entry.kind === "bootstrap" ? q4.presentation(entry.run, phase, unfinished) : null, beck: entry.kind === "beck" ? beckExperience.presentation(world, surface, phase, unfinished) : null, nullzone: entry.kind === "nullzone" ? nullzoneExperience.presentation(world, phase, surface, unfinished) : null, lost: entry.kind === "lost" ? lostExperience.presentation(surface, phase, unfinished) : null, scene: this.sceneFor(entry, mode, {}, world), available_actions: this.availableFor(world, mode, entry), settings: this.settings() };
+    const phase = entry.phase ?? phases.createPhase({ mode, guided: this.settings().guided_introductions !== false }); const unfinished = consequenceEchoes.unfinishedBusiness(world, mode, { run_id: runId }); return { version: "yellow-beast-desktop-projection@v1", world: this.worldInfo(world, this.metadata().worlds[world.world_id] ?? {}), mode: clone(descriptor), gameplay: gameplay.projection(world, { mode: descriptor.gameplay_mode, run_id: runId }), institution: mode === "async-command" ? desk.projection(world) : null, consequence_echoes: consequenceEchoes.observerView(world, mode, { run_id: runId }), unfinished_business: unfinished, surface: clone(surface), phase: clone(phase), q4: entry.kind === "bootstrap" ? q4.presentation(entry.run, phase, unfinished, world) : null, beck: entry.kind === "beck" ? beckExperience.presentation(world, surface, phase, unfinished) : null, nullzone: entry.kind === "nullzone" ? nullzoneExperience.presentation(world, phase, surface, unfinished) : null, lost: entry.kind === "lost" ? lostExperience.presentation(surface, phase, unfinished) : null, scene: this.sceneFor(entry, mode, {}, world), available_actions: this.availableFor(world, mode, entry), settings: this.settings() };
   }
   getGameplayProjection({ world_id, mode }) { try { const world = this.getWorld(world_id); const entry = this.session(world_id, mode) ?? this.restoreSession(world, mode, readJson(this.sessionFile(world_id, mode), null)); if (!entry) return publicError("SESSION_NOT_FOUND", "Start or continue a session first."); return { ok: true, projection: this.projectionFor(world, mode, entry) }; } catch { return publicError("PROJECTION_UNAVAILABLE", "Gameplay state is not available."); } }
   getInstitutionProjection({ world_id }) { try { return { ok: true, projection: desk.projection(this.getWorld(world_id)) }; } catch { return publicError("INSTITUTION_UNAVAILABLE", "Institution state is not available."); } }
@@ -173,17 +174,18 @@ class DesktopService {
       if (!q4Interactions.CHANNELS.includes(channel) || channel === "action") return publicError("CHANNEL_INVALID", "Choose a communication channel.");
       const message = typeof text === "string" ? text.trim().slice(0, 2000) : "";
       if (!message) return publicError("COMMUNICATION_EMPTY", "Say or transmit something before sending it.");
-      const expedition = entry.run.expedition; const peer = expedition.team.members.find((member) => member.id === "yb-field-peer-observer");
+      const expedition = entry.run.expedition; const peer = expedition.team.members.find((member) => member.personnel_id !== entry.run.session.startup.player.observer_id); const person = history.character(world, peer?.personnel_id ?? peer?.id); const observed = q4Personnel.observerStatus(peer, person, entry.phase?.phase_id);
       const field = entry.phase?.phase_id === "FIELD_OPERATION";
       if (channel === "local") {
-        const eligible = field && peer?.status === "active" && (!target || ["team", "teammate", "field researcher"].includes(String(target).toLowerCase()));
+        const acceptedTargets = ["team", "teammate", peer?.personnel_id, peer?.first_name, peer?.display_name].filter(Boolean).map((value) => String(value).toLowerCase());
+        const eligible = field && observed.local_eligible && (!target || acceptedTargets.includes(String(target).toLowerCase()));
         if (!eligible) {
-          q4Interactions.record(expedition, { channel, speaker: "You", targets: [peer?.status === "active" ? "Field researcher" : "no nearby teammate"], player_text: message, attempted_behavior: "speak with a nearby teammate", eligibility: "target-out-of-range", delivery: "not-delivered", presentation: { result: "The teammate is not available for a local conversation here." } });
+          q4Interactions.record(expedition, { channel, speaker: "You", targets: [peer?.display_name ?? "no nearby teammate"], player_text: message, attempted_behavior: "speak with a nearby teammate", eligibility: "target-out-of-range", delivery: "not-delivered", presentation: { result: "The teammate is not available for a local conversation here." } });
           this.persistSession(world, "field-researcher", entry);
           return publicError("LOCAL_TARGET_UNAVAILABLE", "No nearby teammate is available for local conversation here.");
         }
-        const response = "The field researcher responds from what the team has shared locally.";
-        const interaction = q4Interactions.record(expedition, { channel, speaker: "You", targets: ["Field researcher"], player_text: message, attempted_behavior: "speak with a nearby teammate", eligibility: "eligible", delivery: "heard", time_cost: 1, presentation: { result: "heard", response } });
+        const response = `${peer.first_name}: I can hear you. I can answer from what the team has shared locally.`;
+        const interaction = q4Interactions.record(expedition, { channel, speaker: "You", targets: [peer.display_name], player_text: message, attempted_behavior: "speak with a nearby teammate", eligibility: "eligible", delivery: "heard", time_cost: 1, presentation: { result: "heard", response } });
         this.persistSession(world, "field-researcher", entry);
         const scene = this.sceneFor(entry, "field-researcher", { scene_type: "delta", accepted: true, action: "LOCAL", public_reason: response }, world);
         return { ok: true, result: { outcome: "succeeded", public_reason: response, scene }, projection: this.projectionFor(world, "field-researcher", entry) };
