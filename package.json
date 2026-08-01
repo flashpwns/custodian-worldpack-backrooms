@@ -49,6 +49,7 @@
     "phase-report": "node tools/phase-report.js",
     "q4-report": "node tools/q4-report.js",
     "q4-replayability": "node tools/q4-replayability.js",
+    "q4-beta-gate": "node --test tests/y45-q4-beta-gate.test.js",
     "beck-report": "node tools/beck-report.js",
     "immersive-report": "node tools/immersive-report.js",
     "canon-runtime-report": "node tools/canon-runtime-report.js",

@@ -249,6 +249,7 @@ scripts.push("tests/y24-institution.test.js");
 scripts.push("tools/institution-report.js");
 scripts.push("tests/y25-gameplay.test.js", "tools/gameplay.js", "tools/gameplay-scenarios.js", "tools/gameplay-report.js");
 scripts.push("desktop/main.js", "desktop/preload.js", "desktop/service.js", "desktop/credentials.js", "desktop/package-smoke.js", "desktop/renderer/renderer.js", "desktop/renderer/surfaces.js", "tools/build-desktop.js", "tools/verify-desktop-artifact.js", "tests/y26-desktop.test.js");
+scripts.push("desktop/renderer/audio.js", "tools/q4-beta-report.js", "tests/y45-q4-beta-gate.test.js");
 scripts.push("tools/mode-attempt-resolution.js");
 scripts.push("tools/q4-interactions.js");
 scripts.push("tools/q4-equipment.js");
