@@ -2,6 +2,7 @@
 
 const crypto = require("node:crypto");
 const operationalTime = require("./operational-time");
+const logistics = require("./logistics-runtime");
 
 const VERSION = "yellow-beast-consequence-runtime@v1";
 const PERSONNEL_CONDITIONS = new Set(["uninjured", "minor injury", "serious injury", "incapacitated", "missing", "dead", "stabilized minor injury"]);
@@ -33,7 +34,7 @@ function validate(run, proposal) {
 function apply(run, proposal) {
   const valid = validate(run, proposal); if (!valid.ok) return valid;
   const startedAt = run.expedition.clock.interval;
-  const draft = { team: clone(run.expedition.team), equipment: clone(run.expedition.equipment), spatial: clone(run.spatial), evidence: clone(run.expedition.evidence ?? []) };
+  const draft = { team: clone(run.expedition.team), equipment: clone(run.expedition.equipment), logistics: clone(run.expedition.logistics ?? null), spatial: clone(run.spatial), evidence: clone(run.expedition.evidence ?? []) };
   let additionalDelay = 0;
   for (const effect of proposal.effects) {
     if (effect.kind === "personnel-condition") {
@@ -41,15 +42,15 @@ function apply(run, proposal) {
       if (effect.status) member.status = effect.status; if (effect.condition === "incapacitated") member.status = "incapacitated"; if (["missing", "dead"].includes(effect.condition)) member.status = effect.condition;
       member.condition_history ??= []; member.condition_history.push({ sequence: member.condition_history.length + 1, condition: effect.condition, status: member.status, at: run.expedition.clock.interval, reason: effect.reason ?? proposal.source });
     } else if (effect.kind === "equipment-dropped") {
-      const item = draft.equipment[effect.target]; item.state = "dropped"; item.location = effect.location_id ?? draft.spatial?.personnel_locations?.[item.holder] ?? "unknown"; const priorHolder = item.holder; item.holder = null; item.recoverable = true; item.history ??= []; item.history.push({ event: "dropped", from: priorHolder, location: item.location, at: run.expedition.clock.interval, reason: effect.reason ?? proposal.source });
+      const authoritative = draft.logistics?.items?.[effect.target]; const item = authoritative ?? draft.equipment[effect.target]; const priorHolder = authoritative ? item.current_holder : item.holder; const location = effect.location_id ?? draft.spatial?.personnel_locations?.[priorHolder] ?? "unknown"; if (authoritative) { item.condition = "dropped"; item.current_location = location; item.current_holder = null; item.current_container = null; item.recoverability = "recoverable"; item.equipped = false; item.history.push({ action: "DROP", actor: priorHolder, location, at: run.expedition.clock.interval, reason: effect.reason ?? proposal.source }); } else { item.state = "dropped"; item.location = location; item.holder = null; item.recoverable = true; item.history ??= []; item.history.push({ event: "dropped", from: priorHolder, location, at: run.expedition.clock.interval, reason: effect.reason ?? proposal.source }); }
     } else if (effect.kind === "equipment-state") {
-      const item = draft.equipment[effect.target]; item.state = effect.state; if (["lost", "destroyed"].includes(effect.state)) item.holder = null; item.history ??= []; item.history.push({ event: `state-${effect.state}`, at: run.expedition.clock.interval, reason: effect.reason ?? proposal.source });
+      const authoritative = draft.logistics?.items?.[effect.target]; const item = authoritative ?? draft.equipment[effect.target]; if (authoritative) { item.condition = effect.state; if (["lost", "destroyed"].includes(effect.state)) { item.current_holder = null; item.current_container = null; } item.history.push({ action: `STATE_${String(effect.state).toUpperCase()}`, at: run.expedition.clock.interval, reason: effect.reason ?? proposal.source }); } else { item.state = effect.state; if (["lost", "destroyed"].includes(effect.state)) item.holder = null; item.history ??= []; item.history.push({ event: `state-${effect.state}`, at: run.expedition.clock.interval, reason: effect.reason ?? proposal.source }); }
     } else if (effect.kind === "route-blocked") {
       draft.spatial.blocked_paths ??= {}; draft.spatial.blocked_paths[effect.connection_id] = { state: effect.state ?? "temporarily-blocked", at: run.expedition.clock.interval, reason: effect.reason ?? proposal.source, recoverable: effect.state !== "permanently-blocked" };
     } else if (effect.kind === "operational-delay") additionalDelay += effect.amount;
     else if (effect.kind === "evidence-state") { const evidence = draft.evidence.find((item) => item.id === effect.target); evidence.custody_state = effect.state; if (["lost", "destroyed"].includes(effect.state)) evidence.available_to_player = false; }
   }
-  run.expedition.team = draft.team; run.expedition.equipment = draft.equipment; run.spatial = draft.spatial; run.expedition.evidence = draft.evidence;
+  run.expedition.team = draft.team; run.expedition.logistics = draft.logistics; run.expedition.equipment = draft.equipment; if (draft.logistics) logistics.attach(run.expedition); run.spatial = draft.spatial; run.expedition.evidence = draft.evidence;
   const operational = ensure(run.expedition); const record = { id: proposal.id ?? `consequence-${crypto.createHash("sha256").update(JSON.stringify([proposal.source, proposal.effects, startedAt, operational.consequences.length])).digest("hex").slice(0, 18)}`, source: proposal.source, classification: proposal.classification ?? "temporary-complication", effects: clone(proposal.effects), at: startedAt, observable_to: [...(proposal.observable_to ?? [])], public_summary: proposal.public_summary ?? "An operational consequence changed persistent state.", recovery: null, operational_delay: additionalDelay };
   if (additionalDelay > 0) operationalTime.advance(run.expedition, additionalDelay, `consequence:${proposal.source ?? "unspecified"}`);
   record.resolved_at = run.expedition.clock.interval;
@@ -58,6 +59,7 @@ function apply(run, proposal) {
 }
 
 function recoverEquipment(run, key, actor) {
+  if (run.expedition?.logistics?.items?.[key]) { const item = run.expedition.logistics.items[key]; if (item.condition !== "dropped" || item.recoverability === "irrecoverable") return { ok: false, code: "EQUIPMENT_NOT_RECOVERABLE", reason: "That equipment is not presently recoverable." }; const actorLocation = run.spatial?.personnel_locations?.[actor]; if (!actorLocation || item.current_location !== actorLocation) return { ok: false, code: "EQUIPMENT_OUT_OF_RANGE", reason: "Reach the equipment's confirmed location before retrieving it." }; const before = item.condition; item.condition = "operational"; item.current_holder = actor; item.current_container = Object.values(run.expedition.logistics.containers).find((entry) => entry.current_holder === actor && entry.kind === "personal")?.id ?? null; item.current_location = actorLocation; item.recoverability = "recoverable"; item.history.push({ action: "RECOVER", actor, location: actorLocation, at: run.expedition.clock.interval }); logistics.attach(run.expedition); const operational = ensure(run.expedition); const source = [...operational.consequences].reverse().find((record) => record.effects.some((effect) => ["equipment-dropped", "equipment-state"].includes(effect.kind) && effect.target === key) && !record.recovery); if (source) source.recovery = { kind: "equipment-recovered", actor, at: run.expedition.clock.interval }; return { ok: true, public_reason: `${item.display_name} recovered and returned to operational custody.`, before, after: item.condition, item: clone(run.expedition.equipment[key]) }; }
   const item = run.expedition?.equipment?.[key]; if (!item) return { ok: false, code: "EQUIPMENT_UNKNOWN", reason: "That equipment is not part of the field record." };
   if (item.state !== "dropped" || item.recoverable !== true) return { ok: false, code: "EQUIPMENT_NOT_RECOVERABLE", reason: "That equipment is not presently recoverable." };
   const actorLocation = run.spatial?.personnel_locations?.[actor]; if (!actorLocation || item.location !== actorLocation) return { ok: false, code: "EQUIPMENT_OUT_OF_RANGE", reason: "Reach the equipment's confirmed location before retrieving it." };
@@ -67,11 +69,43 @@ function recoverEquipment(run, key, actor) {
   return { ok: true, public_reason: `${item.label} recovered and returned to operational custody.`, before, after: item.state, item: clone(item) };
 }
 
-function clearRoute(run, connectionId, actor) {
-  const block = run.spatial?.blocked_paths?.[connectionId]; if (!block) return { ok: false, code: "ROUTE_NOT_BLOCKED", reason: "No known route block requires clearing." };
-  if (!block.recoverable) return { ok: false, code: "ROUTE_BLOCK_IRREVERSIBLE", reason: "The recorded route block cannot be cleared with field resources." };
-  delete run.spatial.blocked_paths[connectionId]; const operational = ensure(run.expedition); operational.consequences.push({ id: `recovery-${operational.consequences.length + 1}`, source: "field-mitigation", classification: "recovered-complication", effects: [{ kind: "route-cleared", connection_id: connectionId }], at: run.expedition.clock.interval, observable_to: [actor], public_summary: "The temporary route obstruction was cleared.", recovery: { actor, at: run.expedition.clock.interval } });
-  return { ok: true, public_reason: "The temporary route obstruction is cleared." };
+function recover(run, proposal) {
+  if (!proposal || !Array.isArray(proposal.effects) || !proposal.effects.length) return { ok: false, code: "RECOVERY_EMPTY" };
+  for (const effect of proposal.effects) {
+    if (effect.kind === "route-cleared") {
+      const block = run.spatial?.blocked_paths?.[effect.connection_id];
+      if (!block) return { ok: false, code: "ROUTE_NOT_BLOCKED", reason: "No known route block requires clearing." };
+      if (!block.recoverable) return { ok: false, code: "ROUTE_BLOCK_IRREVERSIBLE", reason: "The recorded route block cannot be cleared with field resources." };
+    } else if (effect.kind === "equipment-restored") {
+      const item = run.expedition?.logistics?.items?.[effect.target] ?? run.expedition?.equipment?.[effect.target];
+      const condition = item?.condition ?? item?.state;
+      if (!item || ["destroyed", "lost"].includes(condition)) return { ok: false, code: "EQUIPMENT_RECOVERY_INVALID", reason: "That equipment cannot be restored from its recorded condition." };
+      if (!EQUIPMENT_STATES.has(effect.state ?? "operational")) return { ok: false, code: "EQUIPMENT_RECOVERY_STATE_INVALID" };
+    } else return { ok: false, code: "RECOVERY_EFFECT_INVALID" };
+  }
+  const draft = { spatial: clone(run.spatial), logistics: clone(run.expedition.logistics ?? null), equipment: clone(run.expedition.equipment ?? {}) };
+  for (const effect of proposal.effects) {
+    if (effect.kind === "route-cleared") delete draft.spatial.blocked_paths[effect.connection_id];
+    else {
+      const item = draft.logistics?.items?.[effect.target] ?? draft.equipment[effect.target];
+      if (draft.logistics?.items?.[effect.target]) { item.condition = effect.state ?? "operational"; item.history.push({ action: "RESTORE", actor: proposal.actor, at: run.expedition.clock.interval, reason: proposal.source }); }
+      else { item.state = effect.state ?? "operational"; item.history ??= []; item.history.push({ event: "restored", actor: proposal.actor, at: run.expedition.clock.interval, reason: proposal.source }); }
+    }
+  }
+  run.spatial = draft.spatial; run.expedition.logistics = draft.logistics; run.expedition.equipment = draft.equipment; if (draft.logistics) logistics.attach(run.expedition);
+  const operational = ensure(run.expedition); const at = run.expedition.clock.interval;
+  const record = { id: proposal.id ?? `recovery-${crypto.createHash("sha256").update(JSON.stringify([proposal.source, proposal.effects, at, operational.consequences.length])).digest("hex").slice(0, 18)}`, source: proposal.source ?? "field-mitigation", classification: "recovered-complication", effects: clone(proposal.effects), at, observable_to: [...(proposal.observable_to ?? [proposal.actor].filter(Boolean))], public_summary: proposal.public_summary ?? "A recoverable operational complication was resolved.", recovery: { actor: proposal.actor ?? null, at }, operational_delay: 0, resolved_at: at };
+  for (const existing of operational.consequences) {
+    if (existing.recovery) continue;
+    const related = existing.effects.some((prior) => proposal.effects.some((effect) => (effect.kind === "route-cleared" && prior.kind === "route-blocked" && prior.connection_id === effect.connection_id) || (effect.kind === "equipment-restored" && ["equipment-state", "equipment-dropped"].includes(prior.kind) && prior.target === effect.target)));
+    if (related) existing.recovery = { kind: "field-recovery", recovery_id: record.id, actor: proposal.actor ?? null, at };
+  }
+  operational.consequences.push(record); operational.consequence_revision += 1;
+  return { ok: true, recovery: clone(record), public_reason: record.public_summary };
 }
 
-module.exports = { VERSION, PERSONNEL_CONDITIONS, EQUIPMENT_STATES, ensure, validate, apply, recoverEquipment, clearRoute };
+function clearRoute(run, connectionId, actor) {
+  return recover(run, { source: "field-mitigation", actor, effects: [{ kind: "route-cleared", connection_id: connectionId }], public_summary: "The temporary route obstruction is cleared." });
+}
+
+module.exports = { VERSION, PERSONNEL_CONDITIONS, EQUIPMENT_STATES, ensure, validate, apply, recover, recoverEquipment, clearRoute };

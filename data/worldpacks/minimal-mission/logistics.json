@@ -1,0 +1,9 @@
+{
+  "version": "yellow-beast-logistics-worldpack@v1",
+  "worldpack_id": "minimal-mission",
+  "personal_capacity": 4,
+  "item_definitions": [{ "id": "inspection-tool", "display_name": "Inspection tool", "category": "instrument", "capabilities": ["inspection"], "capacity_contribution": 1, "maximum_charges": 2, "consumable": false }],
+  "containers": [{ "id": "field-pouch", "display_name": "Field pouch", "kind": "personal", "capacity": 4, "allowed_categories": ["instrument"], "initial_open": true, "initial_accessible": true, "holder": "player", "location": "origin" }],
+  "item_instances": [{ "id": "inspection-tool", "definition_id": "inspection-tool", "assignment": { "holder": "player" }, "initial_container": "field-pouch", "initial_location": "origin", "initial_charges": 2 }],
+  "loadout": { "required": ["inspection-tool"], "optional": [], "waiver_allowed": false, "public_recommendations": [] }
+}

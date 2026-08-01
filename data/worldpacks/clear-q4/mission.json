@@ -292,6 +292,15 @@
     },
     "outcome_rules": [
       {
+        "id": "personnel-loss",
+        "priority": 110,
+        "when": { "not": { "source": "personnel", "predicate": "alive", "role": "all_assigned" } },
+        "final_state": "failed",
+        "classification": "personnel-loss",
+        "public_summary": "The closure record confirms a permanent personnel loss; the operation cannot be classified as an ordinary completion or abort.",
+        "institutional_hooks": ["confirmed_casualty", "staffing_review", "critical_review"]
+      },
+      {
         "id": "controlled-abort",
         "priority": 100,
         "when": { "source": "mission", "predicate": "abort_requested" },
@@ -314,7 +323,7 @@
           ]
         },
         "final_state": "completed",
-        "classification": "clean-completion-with-optional",
+        "classification": "enhanced-completion",
         "public_summary": "The team returned with the required survey, reporting, route, and accountability record plus an additional documented condition.",
         "institutional_hooks": ["clean_completion", "optional_success", "evidence_quality"]
       },
@@ -335,16 +344,19 @@
       },
       {
         "id": "recovered-complication",
-        "priority": 70,
+        "priority": 95,
         "when": { "all": [
           { "source": "mission", "predicate": "required_group_complete", "objective_ids": ["establish-radio-contact", "enter-survey-area", "establish-utility-conditions", "capture-field-evidence", "report-field-evidence", "verify-return-route", "maintain-check-ins", "return-accountability"], "states": ["satisfied", "waived"] },
-          { "source": "communication", "predicate": "check_in_ever_missed" },
+          { "any": [
+            { "source": "communication", "predicate": "check_in_ever_missed" },
+            { "source": "mission", "predicate": "consequence_recovered" }
+          ] },
           { "source": "personnel", "predicate": "assigned_equipment_retained", "role": "all_assigned" },
           { "source": "evidence", "predicate": "retained" }
         ] },
         "final_state": "completed",
         "classification": "recovered-complication",
-        "public_summary": "The team returned with its required record after recovering a missed communication window; the late delivery remains part of the operational outcome.",
+        "public_summary": "The team returned with its required record after recovering an operational complication; the complication remains part of the outcome record.",
         "institutional_hooks": ["recovered_complication", "missed_check_in"]
       },
       {
@@ -374,7 +386,7 @@
       "return_heading": "Return readiness"
     },
     "migration": {
-      "from_versions": ["yellow-beast-save@v1", "yellow-beast-save@v2", "yellow-beast-save@v3", "yellow-beast-save@v4", "yellow-beast-save@v5", "yellow-beast-save@v6"],
+      "from_versions": ["yellow-beast-save@v1", "yellow-beast-save@v2", "yellow-beast-save@v3", "yellow-beast-save@v4", "yellow-beast-save@v5", "yellow-beast-save@v6", "yellow-beast-save@v7", "yellow-beast-save@v8"],
       "legacy_objective_map": {
         "survey": "establish-utility-conditions",
         "evidence": "capture-field-evidence",
@@ -385,7 +397,7 @@
     }
   },
   "known_limitations": [
-    "Clear-Q4 contains one compact authored mission slice; broader hazards and autonomous personnel policy remain deferred.",
-    "A single scheduled field check-in is evaluated in this milestone."
+    "Clear-Q4 uses bounded operational teammate autonomy rather than unrestricted psychology.",
+    "One primary scheduled field check-in is authored; institutional review may add later expectations."
   ]
 }

@@ -77,6 +77,9 @@ function validateNarration(scene, response) {
   if (opaque.test(prose) || /\byou (?:feel|are terrified|panic|realize)\b/i.test(prose) || /\b(?:creature|behind you|is afraid|turns (?:its|their) head|watches|speaks|attacks|follows|moves toward|breathes)\b/i.test(prose)) return { ok: false, reason: "unsupported-content" };
   const refs = response.referenced_safe_fact_ids ?? [];
   if (!Array.isArray(refs) || refs.some((id) => !scene.safe_facts.concat(scene.immediate_changes, scene.context).some((item) => item.id === id))) return { ok: false, reason: "unknown-fact-reference" };
+  const referenced = scene.safe_facts.concat(scene.immediate_changes, scene.context).filter((item) => refs.includes(item.id)); const support = referenced.map((item) => item.text).join(" ").toLowerCase(); const protectedTerms = [...prose.toLowerCase().matchAll(/\b(?:radio|message|report|evidence|camera|lamp|instrument|equipment|personnel|teammate|route|exit|hazard|injured|missing|dead|deceased|delivered|acknowledged|blocked|completed|failed|aborted|lost)\b/g)].map((match) => match[0]);
+  if (protectedTerms.some((term) => !support.includes(term))) return { ok: false, reason: "unsupported-operational-claim" };
+  const namedEntities = prose.match(/\b[A-Z][a-z]+(?:\s+[A-Z][a-z]+)+\b/g) ?? []; if (namedEntities.some((name) => !support.includes(name.toLowerCase()))) return { ok: false, reason: "unsupported-entity" };
   return { ok: true, prose, referenced_safe_fact_ids: refs };
 }
 async function narrateScene({ scene, provider = null } = {}) {

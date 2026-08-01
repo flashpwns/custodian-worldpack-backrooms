@@ -1,0 +1,7 @@
+{
+  "version": "yellow-beast-logistics-worldpack@v1", "worldpack_id": "authoring-fixture", "personal_capacity": 3,
+  "item_definitions": [{ "id": "fixture-meter", "display_name": "Fixture meter", "category": "instrument", "capabilities": ["measurement"], "capacity_contribution": 1, "maximum_charges": 3, "consumable": false }],
+  "containers": [{ "id": "fixture-case", "display_name": "Fixture case", "kind": "field-case", "capacity": 3, "allowed_categories": ["instrument"], "initial_open": true, "initial_accessible": true, "holder": "player", "location": "fixture-base" }],
+  "item_instances": [{ "id": "fixture-meter", "definition_id": "fixture-meter", "assignment": { "holder": "player" }, "initial_container": "fixture-case", "initial_location": "fixture-base", "initial_charges": 3 }],
+  "loadout": { "required": ["fixture-meter"], "optional": [], "waiver_allowed": false, "public_recommendations": ["Transfer the meter to the equipment operator before entry."] }
+}

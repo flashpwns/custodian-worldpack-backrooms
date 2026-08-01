@@ -1,0 +1,79 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "yellow-beast-complete-operation-schema@v1",
+  "title": "Yellow Beast complete operation metadata",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["version", "worldpack_id", "mission_arc", "meaningful_choices", "outcome_families", "presentation"],
+  "properties": {
+    "version": { "const": "yellow-beast-complete-operation@v1" },
+    "worldpack_id": { "$ref": "#/$defs/id" },
+    "mission_arc": {
+      "type": "array",
+      "minItems": 3,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "label", "location_ids"],
+        "properties": {
+          "id": { "$ref": "#/$defs/id" },
+          "label": { "type": "string", "minLength": 1 },
+          "location_ids": { "type": "array", "items": { "$ref": "#/$defs/id" }, "uniqueItems": true }
+        }
+      }
+    },
+    "meaningful_choices": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "prompt", "options"],
+        "properties": {
+          "id": { "$ref": "#/$defs/id" },
+          "prompt": { "type": "string", "minLength": 1 },
+          "options": {
+            "type": "array",
+            "minItems": 2,
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["id", "summary", "state_hooks"],
+              "properties": {
+                "id": { "$ref": "#/$defs/id" },
+                "summary": { "type": "string", "minLength": 1 },
+                "state_hooks": { "type": "array", "items": { "type": "string" } }
+              }
+            }
+          }
+        }
+      }
+    },
+    "outcome_families": {
+      "type": "array",
+      "minItems": 2,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "mission_classification", "public_summary"],
+        "properties": {
+          "id": { "$ref": "#/$defs/id" },
+          "mission_classification": { "type": "string", "minLength": 1 },
+          "public_summary": { "type": "string", "minLength": 1 }
+        }
+      }
+    },
+    "presentation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["observer_safe", "deterministic_fallback"],
+      "properties": {
+        "observer_safe": { "const": true },
+        "deterministic_fallback": { "type": "string", "minLength": 1 },
+        "ai_assistance": { "enum": ["disabled", "presentation-only"] }
+      }
+    }
+  },
+  "$defs": {
+    "id": { "type": "string", "pattern": "^[a-z0-9][a-z0-9-]*$" }
+  }
+}

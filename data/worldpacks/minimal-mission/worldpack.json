@@ -1,0 +1,7 @@
+{
+  "version": "yellow-beast-worldpack-manifest@v1",
+  "id": "minimal-mission",
+  "display_name": "Minimal Mission Boundary",
+  "records": { "spatial": "spatial.json", "interactions": "interactions.json", "mission": "mission.json", "dynamics": "dynamics.json", "logistics": "logistics.json", "institution": "institution.json", "operation": "operation.json" },
+  "authoring_version": 1
+}

@@ -1,0 +1,6 @@
+{
+  "version": "yellow-beast-institutional-worldpack@v1", "worldpack_id": "authoring-fixture",
+  "initial_state": { "support_posture": "routine", "scrutiny_level": "routine", "operational_confidence": "provisional", "information_confidence": "uncertain", "resource_posture": "standard", "staffing_posture": "standard", "equipment_restriction_level": "none", "communication_concern": "none", "mission_review_status": "none" },
+  "response_rules": [{ "id": "fixture-evidence-response", "when": { "input_type": "evidence-report" }, "decision": "request-additional-evidence", "delay": 1, "public_response": "Standard requests one corroborating fixture record.", "private_rationale": "The delivered report contains a single uncorroborated record.", "state_changes": { "information_confidence": "provisional" } }],
+  "follow_up_assignments": [{ "id": "fixture-follow-up", "when": { "input_type": "mission-closure" }, "display_name": "Fixture Follow-up", "public_summary": "Recheck the alternate route on a later assignment." }]
+}

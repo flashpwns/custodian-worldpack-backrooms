@@ -24,7 +24,7 @@ test("Q4 loadout matches the assignment and staging presents required and option
   const { service, world } = fixture();
   const briefing = service.getGameplayProjection({ world_id: world.id, mode: "field-researcher" }).projection;
   assert.deepEqual(briefing.q4.equipment.required.map((item) => item.label), ["Battery field lamp", "35mm field camera", "Portable survey instrument", "Handheld field radio"]);
-  assert.equal(briefing.q4.equipment.optional.length, 3);
+  assert.equal(briefing.q4.equipment.optional.length, 5);
   assert.equal(briefing.q4.equipment.readiness, true);
   assert.match(surfaces.render(briefing), /Required field kit|Optional stores|Operational/);
   assert.doesNotMatch(surfaces.render(briefing), /charges|durability|HP/);
@@ -46,7 +46,7 @@ test("equipment items have persistent identities, holder/location state, and per
   assert.equal(new Set(ids).size, 4);
   assert.ok(Object.values(service.getWorld(world.id).q4_equipment).every((item) => item.holder && item.location && item.period_authority.includes("1985-1995")));
   const camera = entry.run.expedition.equipment["recording-device"];
-  camera.known_condition = "Intermittent";
+  entry.run.expedition.logistics.items["recording-device"].known_condition = "Intermittent";
   service.persistSession(service.getWorld(world.id), "field-researcher", entry);
   const restarted = new DesktopService({ appDataPath });
   assert.equal(restarted.resumeSession({ world_id: world.id, mode: "field-researcher" }).ok, true);
@@ -62,7 +62,7 @@ test("LOCAL request does not transfer gear; physical handoff changes holder and 
   assert.equal(request.ok, true); assert.equal(camera.holder, peer.personnel_id); assert.match(request.result.public_reason, /remains with me/);
   assert.equal(lamp.holder, player);
   const handoff = service.submitQ4Handoff({ world_id: world.id, item_id: "field-light", target: peer.first_name });
-  assert.equal(handoff.ok, true); assert.equal(lamp.holder, peer.personnel_id); assert.equal(lamp.location, "with teammate");
+  assert.equal(handoff.ok, true); assert.equal(lamp.holder, peer.personnel_id); assert.equal(lamp.location, "utility-room");
   const after = service.getGameplayProjection({ world_id: world.id, mode: "field-researcher" }).projection;
   assert.equal(after.scene.location, before.scene.location); assert.equal(after.phase.phase_id, before.phase.phase_id); assert.equal(after.q4.operational_clock.interval, before.q4.operational_clock.interval + 1);
   const target = service.session(world.id, "field-researcher").run.aliases[Object.keys(service.session(world.id, "field-researcher").run.aliases)[0]];
@@ -96,5 +96,5 @@ test("equipment held by dead personnel remains there and player sees qualified c
 });
 
 test("default field equipment stays within the period boundary", () => {
-  assert.ok(Object.values(equipment.DEFINITIONS).every((item) => !/smartphone|led|touchscreen|bluetooth|wireless consumer|digital tablet/i.test(`${item.label} ${item.model}`)));
+  assert.ok(Object.values(equipment.DEFINITIONS).every((item) => !/smartphone|\bled\b|touchscreen|bluetooth|wireless consumer|digital tablet/i.test(`${item.label} ${item.model}`)));
 });

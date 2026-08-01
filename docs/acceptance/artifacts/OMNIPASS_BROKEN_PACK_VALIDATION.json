@@ -1,0 +1,57 @@
+{
+  "counts": {
+    "connections": 0,
+    "containers": 1,
+    "hazards": 1,
+    "institutional_rules": 1,
+    "items": 1,
+    "locations": 3,
+    "objectives": 1,
+    "objects": 1,
+    "outcomes": 2
+  },
+  "errors": [
+    {
+      "code": "DYNAMICS_INVALID",
+      "file": "C:\\Users\\jroch\\AppData\\Local\\Temp\\yellow-beast-omnipass-H86hVj\\broken-pack\\dynamics.json",
+      "message": "hazard connection does not resolve: fixture-worksite-bypass",
+      "path": "dynamics"
+    },
+    {
+      "code": "MISSION_INVALID",
+      "file": "C:\\Users\\jroch\\AppData\\Local\\Temp\\yellow-beast-omnipass-H86hVj\\broken-pack\\mission.json",
+      "message": "mission.route_available_when.any[0] connection reference does not resolve: fixture-primary",
+      "path": "mission"
+    },
+    {
+      "code": "UNREACHABLE_LOCATION",
+      "file": "C:\\Users\\jroch\\AppData\\Local\\Temp\\yellow-beast-omnipass-H86hVj\\broken-pack\\spatial.json",
+      "message": "Location fixture-worksite is unreachable from the initial location.",
+      "path": "locations.fixture-worksite"
+    },
+    {
+      "code": "UNREACHABLE_LOCATION",
+      "file": "C:\\Users\\jroch\\AppData\\Local\\Temp\\yellow-beast-omnipass-H86hVj\\broken-pack\\spatial.json",
+      "message": "Location fixture-bypass is unreachable from the initial location.",
+      "path": "locations.fixture-bypass"
+    },
+    {
+      "code": "IMPOSSIBLE_RETURN_ROUTE",
+      "file": "C:\\Users\\jroch\\AppData\\Local\\Temp\\yellow-beast-omnipass-H86hVj\\broken-pack\\spatial.json",
+      "message": "No authored route returns from field entry to the declared return location.",
+      "path": "connections"
+    }
+  ],
+  "files": {
+    "dynamics": "dynamics.json",
+    "institution": "institution.json",
+    "interactions": "interactions.json",
+    "logistics": "logistics.json",
+    "mission": "mission.json",
+    "operation": "operation.json",
+    "spatial": "spatial.json"
+  },
+  "valid": false,
+  "version": "yellow-beast-worldpack-authoring@v1",
+  "worldpack_id": "broken-pack"
+}

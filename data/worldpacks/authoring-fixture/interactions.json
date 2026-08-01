@@ -1,0 +1,13 @@
+{
+  "version": "yellow-beast-interaction-worldpack@v1",
+  "worldpack_id": "authoring-fixture",
+  "objects": [{
+    "id": "fixture-panel", "display_name": "test panel", "aliases": ["panel"], "location": "fixture-worksite", "object_type": "panel",
+    "initial_state": { "condition": "unchecked", "open": false, "active": null, "intact": true, "marked": false, "moved": false, "holder": null, "container": null, "custom": {} },
+    "visible_properties": [{ "id": "fixture-panel-present", "text": "The test panel is present.", "reveal_by": ["inspect"] }],
+    "hidden_properties": [{ "id": "fixture-panel-stable", "text": "The panel mounting is stable.", "reveal_by": ["inspect"] }],
+    "affordances": [{ "type": "inspect", "label": "Inspect the panel", "known_when": "visible", "time_cost": 0, "result": "The panel mounting is stable." }],
+    "rejections": {}, "observation_text_by_condition": [{ "default": true, "text": "A test panel is mounted at the worksite." }], "inspection_text_by_condition": [{ "default": true, "text": "The panel mounting is stable." }], "hazard_hooks": [], "persistence": "persistent"
+  }],
+  "known_limitations": ["This fixture proves generic authoring behavior."]
+}

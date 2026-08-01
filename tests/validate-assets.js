@@ -42,11 +42,19 @@ const minimalMissionInteractions = read("data/worldpacks/minimal-mission/interac
 const minimalMissionWorldpack = read("data/worldpacks/minimal-mission/mission.json");
 const dynamicsWorldpack = read("data/worldpacks/clear-q4/dynamics.json");
 const minimalDynamicsWorldpack = read("data/worldpacks/minimal-mission/dynamics.json");
+const logisticsWorldpack = read("data/worldpacks/clear-q4/logistics.json");
+const minimalLogisticsWorldpack = read("data/worldpacks/minimal-mission/logistics.json");
+const institutionalWorldpack = read("data/worldpacks/clear-q4/institution.json");
+const minimalInstitutionalWorldpack = read("data/worldpacks/minimal-mission/institution.json");
+const operationWorldpack = read("data/worldpacks/clear-q4/operation.json");
 const personnelNamePools = read("data/personnel-name-pools.json");
 const objectRuntime = require("../tools/object-runtime");
 const missionRuntime = require("../tools/mission-runtime");
 const dynamicsRuntime = require("../tools/operational-dynamics");
 const personnelGeneration = require("../tools/personnel-generation");
+const logisticsRuntime = require("../tools/logistics-runtime");
+const institutionalRuntime = require("../tools/institutional-runtime");
+const authoringRuntime = require("../tools/worldpack-authoring");
 const q4Equipment = require("../tools/q4-equipment");
 const sourceIds = new Set(registry.sources.map((source) => source.id));
 const claimIds = new Set(claims.map((claim) => claim.id));
@@ -70,10 +78,19 @@ assert.equal(missionRuntime.validateDefinition(missionWorldpack, { objects: inte
 assert.equal(missionRuntime.validateDefinition(minimalMissionWorldpack, { objects: minimalMissionInteractions.objects.map((item) => item.id), locations: minimalMissionSpatial.locations.map((item) => item.id), connections: minimalMissionSpatial.connections.map((item) => item.id), equipment: [], personnel_roles: [] }), true);
 assert.equal(dynamicsRuntime.validateDefinition(dynamicsWorldpack, { spatial: spatialWorldpack, equipment: Object.keys(q4Equipment.DEFINITIONS) }), true);
 assert.equal(dynamicsRuntime.validateDefinition(minimalDynamicsWorldpack, { spatial: minimalMissionSpatial, equipment: [] }), true);
+assert.equal(logisticsRuntime.validateDefinition(logisticsWorldpack), true);
+assert.equal(logisticsRuntime.validateDefinition(minimalLogisticsWorldpack), true);
+assert.equal(institutionalRuntime.validateDefinition(institutionalWorldpack), true);
+assert.equal(institutionalRuntime.validateDefinition(minimalInstitutionalWorldpack), true);
+assert.equal(authoringRuntime.validate("clear-q4").valid, true);
+assert.equal(operationWorldpack.version, "yellow-beast-complete-operation@v1");
 assert.equal(personnelGeneration.validatePools(personnelNamePools), true);
 assert.ok(fs.existsSync(path.join(root, "canon/operational-interaction-schema.json")));
 assert.ok(fs.existsSync(path.join(root, "canon/operational-mission-schema.json")));
 assert.ok(fs.existsSync(path.join(root, "canon/operational-dynamics-schema.json")));
+assert.ok(fs.existsSync(path.join(root, "canon/operational-logistics-schema.json")));
+assert.ok(fs.existsSync(path.join(root, "canon/institutional-response-schema.json")));
+assert.ok(fs.existsSync(path.join(root, "canon/complete-operation-schema.json")));
 for (const source of registry.sources) {
   assert.match(source.id, /^[a-z0-9][a-z0-9-]*$/);
   assert.ok(source.source_type && source.project_scope && source.source_locator);
@@ -301,6 +318,8 @@ scripts.push("tests/y46-q4-console-acceptance.test.js", "tests/y48-q4-prefield-f
 scripts.push("tests/y47-q4-player-identity.test.js");
 scripts.push("tools/spatial-runtime.js", "tools/object-runtime.js", "tools/mission-runtime.js", "tools/q4-radio.js", "tools/q4-time.js", "tools/playable-spine-acceptance.js", "tools/structured-interaction-acceptance.js", "tools/mission-state-acceptance.js", "tests/y49-playable-spine-map.test.js", "tests/y50-structured-interactions.test.js", "tests/y51-mission-state.test.js", "tests/y52-operational-dynamics.test.js");
 scripts.push("tools/operational-dynamics-acceptance.js");
+scripts.push("tools/institutional-runtime.js", "tools/logistics-runtime.js", "tools/worldpack-authoring.js");
+scripts.push("tools/omnipass-acceptance.js", "tests/y53-omnipass.test.js");
 for (const relative of scripts) {
   const content = fs.readFileSync(path.join(root, relative), "utf8");
   assert.doesNotMatch(content, /custodian\/(runtime|state|tools)/, `${relative} uses only public Custodian imports`);

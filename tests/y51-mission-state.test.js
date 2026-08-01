@@ -308,7 +308,7 @@ test("optional work changes the debrief but never blocks a clean required comple
   assert.equal(clean.projection.q4.review.assignment.objective_outcomes.find((item) => item.name === "Document an additional field condition").state, "abandoned");
 
   const withOptional = fixture("mission-clean-optional"); reachField(withOptional.service, withOptional.world); requiredFieldwork(withOptional.service, withOptional.world, { optional: true }); verifyRoute(withOptional.service, withOptional.world); const enhanced = closeMission(withOptional.service, withOptional.world);
-  assert.equal(enhanced.projection.q4.review.outcome, "clean-completion-with-optional");
+  assert.equal(enhanced.projection.q4.review.outcome, "enhanced-completion");
   assert.ok(enhanced.projection.q4.review.institutional_consequence_hooks.includes("optional_success"));
 });
 

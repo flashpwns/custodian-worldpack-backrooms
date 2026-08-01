@@ -1,17 +1,21 @@
 "use strict";
 
 const history = require("./world-history");
+const logisticsRuntime = require("./logistics-runtime");
+const LOGISTICS_DEFINITION = require("../data/worldpacks/clear-q4/logistics.json");
 const VERSION = "yellow-beast-q4-equipment@v2";
 const REQUIRED = Object.freeze(["field-light", "recording-device", "survey-instrument", "survey-radio"]);
-const OPTIONAL = Object.freeze(["field-notebook", "spare-film", "route-marker-kit"]);
+const OPTIONAL = Object.freeze(["field-notebook", "spare-film", "route-marker-kit", "evidence-sleeves", "spare-battery"]);
 const DEFINITIONS = Object.freeze({
   "field-light": { type: "battery-lamp", label: "Battery field lamp", model: "handheld battery lamp", capability: "illumination", consumable: { kind: "battery condition", remaining: "checked" } },
   "recording-device": { type: "35mm-camera", label: "35mm field camera", model: "manual 35mm documentation camera", capability: "photographic documentation", consumable: { kind: "film exposures", remaining: 12 } },
   "survey-instrument": { type: "portable-survey-instrument", label: "Portable survey instrument", model: "portable measurement instrument", capability: "qualitative measurement", consumable: { kind: "battery condition", remaining: "checked" } },
-  "survey-radio": { type: "field-radio", label: "Handheld field radio", model: "short-range field radio", capability: "radio communication", consumable: { kind: "battery condition", remaining: "checked" } },
+  "survey-radio": { type: "field-radio", label: "Handheld field radio", model: "short-range field radio", capability: "radio communication", consumable: { kind: "battery charge", remaining: 8 } },
   "field-notebook": { type: "field-notebook", label: "Field notebook", model: "bound paper field notebook", capability: "written notes", consumable: { kind: "pages", remaining: "available" } },
   "spare-film": { type: "35mm-film", label: "Spare film roll", model: "35mm documentation film", capability: "photographic documentation", consumable: { kind: "film exposures", remaining: 24 } },
-  "route-marker-kit": { type: "route-marker-kit", label: "Numbered route-marker kit", model: "adhesive numbered survey tabs", capability: "route marking", consumable: { kind: "numbered tabs", remaining: 4 } }
+  "route-marker-kit": { type: "route-marker-kit", label: "Numbered route-marker kit", model: "adhesive numbered survey tabs", capability: "route marking", consumable: { kind: "numbered tabs", remaining: 4 } },
+  "evidence-sleeves": { type: "evidence-sleeves", label: "Sealable evidence sleeves", model: "numbered archival sleeves", capability: "evidence containment", consumable: { kind: "sleeves", remaining: 4 } },
+  "spare-battery": { type: "spare-battery", label: "Spare instrument battery", model: "sealed field battery", capability: "equipment replenishment", consumable: { kind: "battery", remaining: 1 } }
 });
 const clone = (value) => structuredClone(value);
 // Display fallback for migrated v1 saves only; new holders are resolved from
@@ -20,7 +24,7 @@ const LEGACY_HOLDER_NAMES = Object.freeze({ "yb-field-peer-observer": "Nora Vale
 function makeId(world, key) { const entries = Object.keys(world?.q4_equipment ?? {}).filter((id) => id.startsWith(`q4-${key}-`)); return `q4-${key}-${String(entries.length + 1).padStart(2, "0")}`; }
 function createItem(world, key, { owner, holder, container = "field case", location = "staging locker", id = null } = {}) {
   const definition = DEFINITIONS[key]; if (!definition) throw new Error(`unknown Q4 equipment type: ${key}`);
-  return { id: id ?? makeId(world, key), type: definition.type, label: definition.label, model: definition.model, period_authority: "1985-1995-compatible operational equipment", assigned_to: owner, holder, container, location, state: "operational", known_condition: "Operational", capability: definition.capability, consumable: clone(definition.consumable), charges: key === "survey-radio" ? 2 : typeof definition.consumable.remaining === "number" ? definition.consumable.remaining : 1, used: 0, history: [{ event: "issued", holder, location }] };
+  return { id: id ?? makeId(world, key), type: definition.type, label: definition.label, model: definition.model, period_authority: "1985-1995-compatible operational equipment", assigned_to: owner, holder, container, location, state: "operational", known_condition: "Operational", capability: definition.capability, consumable: clone(definition.consumable), charges: typeof definition.consumable.remaining === "number" ? definition.consumable.remaining : 1, used: 0, history: [{ event: "issued", holder, location }] };
 }
 function characterAvailable(world, identity) { const person = history.character(world, identity); return !person || !["dead", "missing", "unavailable"].includes(person.status); }
 function ensureWorldItem(world, run_id, key, player, preferredId = null) {
@@ -47,6 +51,10 @@ function expeditionEquipment(loadout, player) {
   return Object.fromEntries(REQUIRED.map((key) => [key, createItem(null, key, { owner: player, holder: player })]));
 }
 function updatePhase(expedition, phase) {
+  if (expedition.logistics?.version === logisticsRuntime.STATE_VERSION) {
+    const staging = phase === "STAGING"; for (const container of Object.values(expedition.logistics.containers)) if (["personal", "field-case", "evidence"].includes(container.kind)) container.current_location = staging ? "equipment-staging" : expedition.logistics.last_field_location ?? container.current_location;
+    logisticsRuntime.attach(expedition); expedition.loadout ??= {}; expedition.loadout.phase = phase; return expedition;
+  }
   const staging = phase === "STAGING";
   for (const item of Object.values(expedition.equipment ?? {})) { item.location = staging ? "staging locker" : "with the field kit"; item.container = staging ? "field case" : "field kit"; }
   expedition.loadout ??= {};
@@ -55,6 +63,11 @@ function updatePhase(expedition, phase) {
 }
 function stateUsable(item) { return Boolean(item && ["operational", "serviceable", "usable"].includes(item.state) && !["missing", "abandoned", "depleted", "damaged", "jammed"].includes(item.state)); }
 function use(expedition, key, holder) {
+  if (expedition.logistics?.version === logisticsRuntime.STATE_VERSION) {
+    const facade = expedition.equipment?.[key]; if (!facade || facade.holder !== holder) return { ok: false, code: "EQUIPMENT_NOT_ACCESSIBLE" }; if (!stateUsable(facade) || facade.charges <= 0) return { ok: false, code: "EQUIPMENT_UNAVAILABLE" }; const authoritative = expedition.logistics.items?.[key]; if (!authoritative) return { ok: false, code: "EQUIPMENT_UNKNOWN" }; authoritative.current_holder = facade.holder; authoritative.condition = facade.state; authoritative.charges = facade.charges;
+    const result = logisticsRuntime.transact(expedition, LOGISTICS_DEFINITION, { action: "USE", item_id: key, actor: holder }, { actor: holder, at: expedition.clock?.interval ?? 0 });
+    return result.ok ? { ok: true, item: clone(expedition.equipment[key]) } : { ok: false, code: result.code };
+  }
   const item = expedition.equipment?.[key];
   if (!item || item.holder !== holder) return { ok: false, code: "EQUIPMENT_NOT_ACCESSIBLE" };
   if (!stateUsable(item) || item.charges <= 0) return { ok: false, code: "EQUIPMENT_UNAVAILABLE" };
@@ -76,6 +89,13 @@ function selectOptional(expedition, key, holder) {
   item.holder = holder; item.assigned_to = holder; item.container = "field case"; item.location = "staging locker"; item.history ??= []; item.history.push({ event: "selected-from-stores", holder, location: item.location }); expedition.equipment[key] = item; delete expedition.optional_stores[key]; return { ok: true, item: clone(item) };
 }
 function syncWorld(world, expedition) { if (!world || !expedition?.equipment) return; world.q4_equipment ??= {}; for (const item of Object.values(expedition.equipment)) world.q4_equipment[item.id] = clone(item); }
+function absorbCompatibility(expedition) {
+  if (expedition.logistics?.version !== logisticsRuntime.STATE_VERSION) return;
+  for (const [key, facade] of Object.entries(expedition.equipment ?? {})) {
+    const item = expedition.logistics.items?.[key]; if (!item || !facade) continue;
+    item.current_holder = facade.holder; item.current_container = facade.container_id ?? item.current_container; item.current_location = facade.location; item.condition = facade.state; item.charges = facade.charges; item.quantity = facade.quantity ?? item.quantity; item.equipped = facade.equipped === true; item.active = facade.active === true;
+  }
+}
 function publicItem(item, player, known = true, holderNames = {}, context = {}) {
   const own = item.holder === player; const actualState = stateUsable(item) ? (item.known_condition ?? "Operational") : String(item.state ?? "unavailable").replace(/(^|[-_])\w/g, (part) => part.replace(/[-_]/, " ").toUpperCase()); const state = known ? actualState : "Unknown condition";
   const stores = item.holder === "q4-stores";
@@ -91,4 +111,4 @@ function publicItem(item, player, known = true, holderNames = {}, context = {}) 
   return { id: item.id, category: item.type, label: item.label, model: item.model, holder: own ? "You" : stores ? "Team stores" : names[item.holder] ?? "Assigned teammate", location, state: observerState, verification, capability: item.capability, consumable: own || stores || sameLocation || radioConfirmed ? clone(item.consumable) : { kind: item.consumable?.kind ?? "operational measure", remaining: "Unknown" }, available: (own || stores || sameLocation) && stateUsable(item) };
 }
 function projection(expedition, player, holderNames = {}, context = {}) { const items = Object.entries(expedition.equipment ?? {}); return { required: items.map(([ref, item]) => ({ ...publicItem(item, player, true, holderNames, context), ref })), optional: Object.entries(expedition.optional_stores ?? {}).map(([ref, item]) => ({ ...publicItem(item, player, true, holderNames, context), ref })), readiness: items.every(([, item]) => stateUsable(item)), missing: items.filter(([, item]) => !stateUsable(item)).map(([, item]) => item.label) }; }
-module.exports = { VERSION, REQUIRED, OPTIONAL, DEFINITIONS, prepare, expeditionEquipment, updatePhase, stateUsable, use, transfer, selectOptional, syncWorld, publicItem, projection };
+module.exports = { VERSION, REQUIRED, OPTIONAL, DEFINITIONS, prepare, expeditionEquipment, updatePhase, stateUsable, use, transfer, selectOptional, absorbCompatibility, syncWorld, publicItem, projection };

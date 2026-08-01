@@ -132,6 +132,42 @@
       "landmarks": [],
       "hazards": [],
       "tags": ["field", "unresolved", "level-2"]
+    },
+    {
+      "id": "relay-alcove",
+      "name": "Relay Alcove",
+      "type": "service-alcove",
+      "short_description": "A narrow service recess containing an aging field relay and a sealed supply cache.",
+      "coordinates": { "x": 235, "y": 40, "level": 0 },
+      "entry_state": "unmapped",
+      "environment": { "lighting": "uneven fluorescent spill", "surface": "dry service concrete", "sound": "an intermittent relay chatter" },
+      "landmarks": [{ "id": "relay-bank", "name": "relay bank", "aliases": ["relay", "service relay"], "observation": "An aging relay bank occupies the rear wall.", "inspection": "The relay can be isolated or bridged with a compatible field battery." }],
+      "hazards": [{ "id": "relay-fault-signs", "label": "Electrical fault signs", "state": "detectable", "severity": "serious" }],
+      "tags": ["field", "equipment-cache", "hazard-zone"]
+    },
+    {
+      "id": "records-annex",
+      "name": "Records Annex",
+      "type": "secondary-evidence-site",
+      "short_description": "A low annex where damp paper records remain in shallow wall slots.",
+      "coordinates": { "x": 575, "y": 115, "level": 0 },
+      "entry_state": "unmapped",
+      "environment": { "lighting": "weak amber emergency spill", "surface": "level floor with dry paper fragments", "sound": "the radio carrier drops beneath a steady electrical buzz" },
+      "landmarks": [{ "id": "record-slots", "name": "wall record slots", "aliases": ["records", "slots", "annex records"], "observation": "Several shallow slots still hold water-marked paper fragments.", "inspection": "One fragment remains stable enough for contained recovery." }],
+      "hazards": [],
+      "tags": ["field", "secondary-evidence", "communications-shadow"]
+    },
+    {
+      "id": "service-bypass",
+      "name": "Service Bypass",
+      "type": "alternate-return-route",
+      "short_description": "A narrow maintenance line reconnecting the branch routes with the Threshold-side entry.",
+      "coordinates": { "x": 315, "y": 220, "level": 0 },
+      "entry_state": "unmapped",
+      "environment": { "lighting": "low fixed guide lamps", "surface": "ribbed service walkway", "sound": "the main fluorescent hum is muted" },
+      "landmarks": [{ "id": "bypass-guide-line", "name": "painted guide line", "aliases": ["guide line", "bypass marker"], "observation": "A faded painted line points back toward the Threshold side.", "inspection": "The line remains continuous to the return junction despite surface wear." }],
+      "hazards": [],
+      "tags": ["field", "alternate-return", "recovery-path"]
     }
   ],
   "connections": [
@@ -143,6 +179,11 @@
     { "id": "utility-to-corridor", "from": "utility-room", "to": "columned-corridor", "direction": "west", "reverse_direction": "east", "relationship": "open corridor", "transition": "You lead the team west into the columned corridor.", "reverse_transition": "You lead the team east, returning to the utility room.", "requirements": [], "lock_state": "open", "hazard_state": "clear", "visibility": "visible", "discovery": "on-traversal", "bidirectional": true, "aliases": ["corridor", "columned corridor", "westward continuation"] },
     { "id": "utility-to-passage", "from": "utility-room", "to": "open-passage", "direction": "southeast", "reverse_direction": "northwest", "relationship": "open passage", "transition": "The team enters the open passage as its floor begins to descend.", "reverse_transition": "The team follows the passage back into the utility room.", "requirements": [], "lock_state": "open", "hazard_state": "clear", "visibility": "visible", "discovery": "on-traversal", "bidirectional": true, "aliases": ["open passage", "passage"] },
     { "id": "passage-to-lower", "from": "open-passage", "to": "lower-level-transition", "direction": "down", "reverse_direction": "up", "relationship": "descending transition", "transition": "You take the team down to the lower-level transition.", "reverse_transition": "The team climbs back into the open passage.", "requirements": [], "lock_state": "open", "hazard_state": "caution", "visibility": "visible", "discovery": "on-traversal", "bidirectional": true, "aliases": ["lower level", "lower-level transition", "descent", "down"] },
-    { "id": "lower-to-level-2", "from": "lower-level-transition", "to": "level-2-boundary", "direction": "forward", "reverse_direction": "back", "relationship": "unresolved continuation", "transition": "The team crosses the recorded boundary into the unresolved lower area.", "requirements": ["route-surveyed"], "lock_state": "blocked", "hazard_state": "unknown", "visibility": "visible", "discovery": "on-traversal", "bidirectional": true, "aliases": ["level 2", "lower area", "unresolved area"] }
+    { "id": "lower-to-level-2", "from": "lower-level-transition", "to": "level-2-boundary", "direction": "forward", "reverse_direction": "back", "relationship": "unresolved continuation", "transition": "The team crosses the recorded boundary into the unresolved lower area.", "requirements": ["route-surveyed"], "lock_state": "blocked", "hazard_state": "unknown", "visibility": "visible", "discovery": "on-traversal", "bidirectional": true, "aliases": ["level 2", "lower area", "unresolved area"] },
+    { "id": "corridor-to-relay", "from": "columned-corridor", "to": "relay-alcove", "direction": "west", "reverse_direction": "east", "relationship": "service recess", "transition": "The team follows the column line into the relay alcove.", "reverse_transition": "The team leaves the relay alcove for the columned corridor.", "requirements": [], "lock_state": "open", "hazard_state": "caution", "visibility": "visible", "discovery": "on-traversal", "bidirectional": true, "aliases": ["relay alcove", "service alcove", "relay"] },
+    { "id": "relay-to-bypass", "from": "relay-alcove", "to": "service-bypass", "direction": "south", "reverse_direction": "north", "relationship": "maintenance connection", "transition": "The service line opens onto the bypass walkway.", "reverse_transition": "The team follows the service line back to the relay alcove.", "requirements": [], "lock_state": "open", "hazard_state": "caution", "visibility": "visible", "discovery": "on-traversal", "bidirectional": true, "aliases": ["service bypass", "bypass"] },
+    { "id": "passage-to-annex", "from": "open-passage", "to": "records-annex", "direction": "east", "reverse_direction": "west", "relationship": "records branch", "transition": "The team enters the low records annex.", "reverse_transition": "The team returns from the annex to the open passage.", "requirements": [], "lock_state": "open", "hazard_state": "communications-shadow", "visibility": "visible", "discovery": "on-traversal", "bidirectional": true, "aliases": ["records annex", "annex", "records"] },
+    { "id": "annex-to-bypass", "from": "records-annex", "to": "service-bypass", "direction": "southwest", "reverse_direction": "northeast", "relationship": "service connector", "transition": "The annex service door opens onto the bypass.", "reverse_transition": "The team leaves the bypass through the annex service door.", "requirements": [], "lock_state": "open", "hazard_state": "clear", "visibility": "visible", "discovery": "on-traversal", "bidirectional": true, "aliases": ["service connector", "bypass"] },
+    { "id": "bypass-to-entry", "from": "service-bypass", "to": "threshold-side-entry", "direction": "northwest", "reverse_direction": "southeast", "relationship": "alternate Threshold return", "transition": "The painted guide line returns the team to the Threshold-side entry.", "reverse_transition": "The team enters the marked service bypass from the Threshold side.", "requirements": [], "lock_state": "open", "hazard_state": "clear", "visibility": "visible", "discovery": "on-traversal", "bidirectional": true, "aliases": ["Threshold", "return", "alternate return"] }
   ]
 }

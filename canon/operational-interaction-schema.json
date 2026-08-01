@@ -182,7 +182,7 @@
         "visibility": { "$ref": "#/$defs/statePredicate" },
         "observation_text_by_condition": { "type": "array", "items": { "$ref": "#/$defs/textRule" }, "minItems": 1 },
         "inspection_text_by_condition": { "type": "array", "items": { "$ref": "#/$defs/textRule" }, "minItems": 1 },
-        "hazard_hooks": { "type": "array", "items": { "type": "object" } },
+        "hazard_hooks": { "type": "array", "items": { "type": "object", "additionalProperties": false, "required": ["when_action", "hazard_id", "transition"], "properties": { "when_action": { "enum": ["use", "activate", "deactivate", "open", "close", "move", "take", "place", "mark", "test", "repair", "secure", "release"] }, "hazard_id": { "type": "string" }, "transition": { "enum": ["mitigated", "resolved"] }, "recovery_effects": { "type": "array", "minItems": 1, "items": { "type": "object", "additionalProperties": false, "required": ["kind"], "properties": { "kind": { "enum": ["route-cleared", "equipment-restored"] }, "connection_id": { "type": "string" }, "target": { "type": "string" }, "state": { "enum": ["operational", "serviceable", "damaged", "disabled", "depleted", "dropped", "recoverable"] } } } } } } },
         "persistence": { "enum": ["persistent", "session", "reset-on-run"] }
       }
     }

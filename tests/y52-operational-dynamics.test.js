@@ -101,10 +101,10 @@ test("migration preserves identities already named Alex or Nora", () => {
 });
 
 test("Clear-Q4 and a second minimal pack validate without executable predicates", () => {
-  assert.equal(dynamics.validateDefinition(clearDynamics, { spatial: clearSpatial, equipment: ["survey-radio", "route-marker-kit", "survey-instrument", "recording-device", "field-light"] }), true);
+  assert.equal(dynamics.validateDefinition(clearDynamics, { spatial: clearSpatial, equipment: ["survey-radio", "route-marker-kit", "survey-instrument", "recording-device", "field-light", "spare-battery", "evidence-sleeves"] }), true);
   assert.equal(dynamics.validateDefinition(minimalDynamics, { spatial: minimalSpatial, equipment: [] }), true);
   const executable = structuredClone(clearDynamics); executable.hazards[0].activation.all[0].javascript = "return true";
-  assert.throws(() => dynamics.validateDefinition(executable, { spatial: clearSpatial, equipment: ["survey-radio", "route-marker-kit", "survey-instrument", "recording-device", "field-light"] }), /unsupported executable or data field/);
+  assert.throws(() => dynamics.validateDefinition(executable, { spatial: clearSpatial, equipment: ["survey-radio", "route-marker-kit", "survey-instrument", "recording-device", "field-light", "spare-battery", "evidence-sleeves"] }), /unsupported executable or data field/);
   const unresolved = structuredClone(clearDynamics); unresolved.hazards[0].scope.location_id = "missing-place";
   assert.throws(() => dynamics.validateDefinition(unresolved, { spatial: clearSpatial, equipment: [] }), /does not resolve/);
 });
@@ -237,7 +237,8 @@ test("interference delays a check-in past its deadline and a late delivery recov
   while (projection.q4.operational_clock.interval < checkIn.due_at + 2) projection = action(service, world, "WAIT").projection;
   assert.equal(projection.q4.communications.check_ins[0].state, "missed");
   assert.equal(service.session(world.id, "field-researcher").run.expedition.mission_state.objectives["maintain-check-ins"].state, "failed");
-  while (projection.q4.communications.messages.at(-1).state !== "delivered") projection = action(service, world, "WAIT").projection;
+  const checkInMessageId = sent.result.message.id;
+  while (projection.q4.communications.messages.find((message) => message.id === checkInMessageId).state !== "delivered") projection = action(service, world, "WAIT").projection;
   assert.equal(projection.q4.communications.check_ins[0].state, "completed");
   assert.equal(projection.q4.communications.messages.at(-1).state, "delivered");
   assert.equal(service.session(world.id, "field-researcher").run.expedition.mission_state.objectives["maintain-check-ins"].state, "satisfied");

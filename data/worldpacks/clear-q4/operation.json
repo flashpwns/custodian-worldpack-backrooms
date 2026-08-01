@@ -1,0 +1,30 @@
+{
+  "version": "yellow-beast-complete-operation@v1",
+  "worldpack_id": "clear-q4",
+  "mission_arc": [
+    { "id": "briefing", "label": "Institutional briefing", "location_ids": ["async-briefing-room"] },
+    { "id": "staging", "label": "Loadout and accountability", "location_ids": ["equipment-staging"] },
+    { "id": "transit", "label": "Facility transit and Threshold approach", "location_ids": ["threshold-approach", "threshold-room", "threshold-side-entry"] },
+    { "id": "survey", "label": "Initial survey and branching investigation", "location_ids": ["utility-room", "columned-corridor", "open-passage"] },
+    { "id": "escalation", "label": "Condition-driven escalation", "location_ids": ["relay-alcove", "records-annex", "lower-level-transition"] },
+    { "id": "decision", "label": "Operational decision and alternate return", "location_ids": ["service-bypass", "threshold-side-entry"] },
+    { "id": "accountability", "label": "Return reconciliation and debrief", "location_ids": ["threshold-room", "equipment-staging"] }
+  ],
+  "meaningful_choices": [
+    { "id": "evidence-or-check-in", "prompt": "Pursue the secondary record or protect the reporting window.", "options": [{ "id": "secondary-record", "summary": "Continue to the records annex.", "state_hooks": ["optional-evidence", "elapsed-time"] }, { "id": "report-now", "summary": "Return to reliable radio coverage and report.", "state_hooks": ["communication", "information-confidence"] }] },
+    { "id": "team-or-specialist", "prompt": "Retain cohesion or send a qualified specialist to the relay alcove.", "options": [{ "id": "cohesion", "summary": "Keep the team together.", "state_hooks": ["personnel-proximity"] }, { "id": "specialist", "summary": "Issue a bounded independent task.", "state_hooks": ["separation", "equipment-custody"] }] },
+    { "id": "recover-or-withdraw", "prompt": "Recover dropped equipment or withdraw through the alternate route.", "options": [{ "id": "recover", "summary": "Accept delay and recover the item.", "state_hooks": ["recovered-complication"] }, { "id": "withdraw", "summary": "Preserve personnel and abandon the item.", "state_hooks": ["equipment-loss", "degraded-completion"] }] },
+    { "id": "instrument-or-capacity", "prompt": "Carry additional instrumentation or preserve container capacity for returned evidence.", "options": [{ "id": "instrument", "summary": "Issue the optional instrument supply.", "state_hooks": ["loadout", "equipment-custody"] }, { "id": "capacity", "summary": "Reserve evidence-container capacity.", "state_hooks": ["container-capacity", "evidence-custody"] }] },
+    { "id": "request-or-disclose-later", "prompt": "Request authorization for the alternate branch or disclose the deviation during closure.", "options": [{ "id": "request", "summary": "Transmit the bounded deviation request before proceeding.", "state_hooks": ["deviation-request", "institutional-decision"] }, { "id": "disclose-later", "summary": "Proceed without authorization and preserve the deviation in the closure record.", "state_hooks": ["unapproved-deviation", "institutional-scrutiny"] }] }
+  ],
+  "outcome_families": [
+    { "id": "clean", "mission_classification": "clean-completion", "public_summary": "Required work, reporting, return, and accountability reconcile cleanly." },
+    { "id": "enhanced", "mission_classification": "enhanced-completion", "public_summary": "The complete record includes corroborating optional evidence." },
+    { "id": "recovered", "mission_classification": "recovered-complication", "public_summary": "A field complication was recovered before return." },
+    { "id": "degraded", "mission_classification": "degraded-completion", "public_summary": "The team returned with a documented unresolved loss or reporting defect." },
+    { "id": "abort", "mission_classification": "controlled-abort", "public_summary": "The operation ended through a controlled abort and accountable return." },
+    { "id": "failure", "mission_classification": "mission-failure", "public_summary": "Required operating or closure conditions were not retained." },
+    { "id": "personnel-loss", "mission_classification": "personnel-loss", "public_summary": "The closure record confirms a permanent personnel loss." }
+  ],
+  "presentation": { "observer_safe": true, "deterministic_fallback": "Present only resolved, observer-safe state in concise operational language.", "ai_assistance": "presentation-only" }
+}

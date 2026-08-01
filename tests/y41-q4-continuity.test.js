@@ -9,6 +9,7 @@ const { DesktopService } = require("../desktop/service");
 const continuity = require("../tools/q4-continuity");
 const history = require("../tools/world-history");
 const bootstrap = require("../tools/run-bootstrap");
+const logistics = require("../tools/logistics-runtime");
 
 function fixture(seed = "continuity") {
   const service = new DesktopService({ appDataPath: fs.mkdtempSync(path.join(os.tmpdir(), "yb-q4-continuity-")) });
@@ -61,9 +62,10 @@ test("return is a physical procedure and the canonical review derives from the c
   const closed = returnAndClose(service, world);
   assert.equal(closed.projection.phase.phase_id, "DEBRIEF");
   assert.equal(closed.projection.q4.current_location.name, "Threshold-Side Entry");
-  assert.match(closed.projection.q4.review.outcome, /^clean-completion/);
+  assert.ok(["clean-completion", "enhanced-completion"].includes(closed.projection.q4.review.outcome));
+  assert.equal(closed.projection.q4.review.outcome, entry.run.expedition.mission_state.final_result.classification);
   assert.ok(service.getWorld(world.id).q4_reviews[entry.run.expedition.mission.id]);
-  assert.match(entry.run.expedition.result.continuity.outcome, /^clean-completion/);
+  assert.equal(entry.run.expedition.result.continuity.outcome, entry.run.expedition.mission_state.final_result.classification);
 });
 
 test("an unavailable route rejects RETURN while a controlled abort remains distinct from death", () => {
@@ -90,9 +92,12 @@ test("an unavailable route rejects RETURN while a controlled abort remains disti
 test("equipment, evidence, scars, and institutional knowledge retain canonical origin", () => {
   const { service, world } = fixture("scars-knowledge");
   const entry = completeFieldwork(service, world);
-  const camera = entry.run.expedition.equipment["recording-device"];
-  camera.state = "abandoned";
-  camera.location = "survey boundary";
+  const camera = entry.run.expedition.logistics.items["recording-device"];
+  camera.condition = "abandoned";
+  camera.current_holder = null;
+  camera.current_container = null;
+  camera.current_location = "survey boundary";
+  logistics.attach(entry.run.expedition);
   const closed = returnAndClose(service, world);
   assert.equal(closed.projection.q4.review.outcome, "degraded-completion");
   const canonical = service.getWorld(world.id);

@@ -1,0 +1,41 @@
+{
+  "version": "yellow-beast-logistics-worldpack@v1",
+  "worldpack_id": "clear-q4",
+  "personal_capacity": 6,
+  "item_definitions": [
+    { "id": "battery-lamp", "display_name": "Battery field lamp", "category": "illumination", "model": "handheld battery lamp", "capabilities": ["illumination"], "capacity_contribution": 2, "maximum_charges": 6, "consumable": false },
+    { "id": "field-camera", "display_name": "35mm field camera", "category": "recording", "model": "manual 35mm documentation camera", "capabilities": ["photographic documentation"], "capacity_contribution": 2, "maximum_charges": 12, "consumable": false },
+    { "id": "survey-instrument", "display_name": "Portable survey instrument", "category": "instrument", "model": "portable measurement instrument", "capabilities": ["qualitative measurement"], "capacity_contribution": 3, "maximum_charges": 5, "consumable": false },
+    { "id": "field-radio", "display_name": "Handheld field radio", "category": "communications", "model": "short-range field radio", "capabilities": ["radio communication"], "capacity_contribution": 2, "maximum_charges": 8, "consumable": false },
+    { "id": "field-notebook", "display_name": "Field notebook", "category": "recording", "model": "bound paper field notebook", "capabilities": ["written notes"], "capacity_contribution": 1, "maximum_charges": 30, "consumable": true },
+    { "id": "spare-film", "display_name": "Spare film roll", "category": "consumable", "model": "35mm documentation film", "capabilities": ["photographic documentation supply"], "replenishes_definitions": ["field-camera"], "capacity_contribution": 1, "maximum_charges": 24, "consumable": true },
+    { "id": "route-marker-kit", "display_name": "Numbered route-marker kit", "category": "route", "model": "adhesive numbered survey tabs", "capabilities": ["route marking"], "capacity_contribution": 1, "maximum_charges": 8, "consumable": true },
+    { "id": "evidence-sleeves", "display_name": "Sealable evidence sleeves", "category": "evidence", "model": "numbered archival sleeves", "capabilities": ["evidence containment"], "capacity_contribution": 1, "maximum_charges": 4, "consumable": true },
+    { "id": "spare-battery", "display_name": "Spare instrument battery", "category": "consumable", "model": "sealed field battery", "capabilities": ["equipment replenishment"], "replenishes_definitions": ["battery-lamp", "survey-instrument", "field-radio"], "capacity_contribution": 1, "maximum_charges": 1, "consumable": true }
+  ],
+  "containers": [
+    { "id": "player-harness", "display_name": "Personal field harness", "kind": "personal", "capacity": 8, "allowed_categories": ["*"], "initial_open": true, "initial_accessible": true, "holder": "player", "location": "equipment-staging" },
+    { "id": "field-case", "display_name": "Field equipment case", "kind": "field-case", "capacity": 14, "allowed_categories": ["illumination", "recording", "instrument", "communications", "consumable", "route", "evidence"], "initial_open": true, "initial_accessible": true, "holder": "player", "location": "equipment-staging" },
+    { "id": "staging-locker", "display_name": "Issued-equipment locker", "kind": "staging", "capacity": 24, "allowed_categories": ["*"], "initial_open": true, "initial_accessible": true, "holder": "institution", "location": "equipment-staging" },
+    { "id": "evidence-case", "display_name": "Numbered evidence case", "kind": "evidence", "capacity": 8, "allowed_categories": ["evidence", "recording", "consumable"], "initial_open": true, "initial_accessible": true, "holder": "player", "location": "equipment-staging" },
+    { "id": "relay-cache", "display_name": "Relay service cache", "kind": "fixed-field", "capacity": 5, "allowed_categories": ["consumable", "instrument", "communications"], "initial_open": false, "initial_accessible": true, "location": "relay-alcove" },
+    { "id": "return-locker", "display_name": "Return reconciliation locker", "kind": "institutional", "capacity": 30, "allowed_categories": ["*"], "initial_open": true, "initial_accessible": true, "holder": "institution", "location": "equipment-staging" }
+  ],
+  "item_instances": [
+    { "id": "field-light", "definition_id": "battery-lamp", "assignment": { "holder": "player" }, "initial_container": "player-harness", "initial_location": "equipment-staging", "initial_charges": 6 },
+    { "id": "recording-device", "definition_id": "field-camera", "assignment": { "role": "documentation specialist" }, "initial_container": "field-case", "initial_location": "equipment-staging", "initial_charges": 12 },
+    { "id": "survey-instrument", "definition_id": "survey-instrument", "assignment": { "role": "survey technician" }, "initial_container": "field-case", "initial_location": "equipment-staging", "initial_charges": 5 },
+    { "id": "survey-radio", "definition_id": "field-radio", "assignment": { "holder": "player" }, "initial_container": "player-harness", "initial_location": "equipment-staging", "initial_charges": 8 },
+    { "id": "field-notebook", "definition_id": "field-notebook", "assignment": { "holder": "institution" }, "initial_container": "staging-locker", "initial_location": "equipment-staging", "initial_charges": 30 },
+    { "id": "spare-film", "definition_id": "spare-film", "assignment": { "holder": "institution" }, "initial_container": "staging-locker", "initial_location": "equipment-staging", "initial_quantity": 1 },
+    { "id": "route-marker-kit", "definition_id": "route-marker-kit", "assignment": { "holder": "institution" }, "initial_container": "staging-locker", "initial_location": "equipment-staging", "initial_charges": 8 },
+    { "id": "evidence-sleeves", "definition_id": "evidence-sleeves", "assignment": { "holder": "institution" }, "initial_container": "staging-locker", "initial_location": "equipment-staging", "initial_quantity": 4 },
+    { "id": "spare-battery", "definition_id": "spare-battery", "assignment": { "holder": "institution" }, "initial_container": "relay-cache", "initial_location": "relay-alcove", "initial_quantity": 1 }
+  ],
+  "loadout": {
+    "required": ["field-light", "recording-device", "survey-instrument", "survey-radio"],
+    "optional": ["field-notebook", "spare-film", "route-marker-kit", "evidence-sleeves", "spare-battery"],
+    "waiver_allowed": true,
+    "public_recommendations": ["Carry a route-marker kit for alternate-return verification.", "Evidence sleeves preserve returned physical records."]
+  }
+}

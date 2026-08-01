@@ -61,8 +61,9 @@
         "detection": { "$ref": "#/$defs/condition" }, "activation": { "$ref": "#/$defs/condition" }, "exposure": { "$ref": "#/$defs/condition" },
         "severity": { "enum": ["low", "moderate", "serious", "critical"] }, "affected_targets": { "enum": ["occupants", "one-coworker", "player", "equipment", "route"] },
         "avoidance_options": { "type": "array", "items": { "type": "string" } }, "mitigation_options": { "type": "array", "items": { "type": "string" } },
+        "mitigation_requirements": { "type": "object", "additionalProperties": false, "properties": { "equipment_id": { "type": "string" }, "capability": { "type": "string" }, "consume": { "type": "integer", "minimum": 0 } } },
         "recoverability": { "enum": ["recoverable", "partially-recoverable", "irrecoverable"] }, "consequence_set": { "type": "string" }, "persistence": { "enum": ["transient", "persistent"] },
-        "public": { "type": "object", "additionalProperties": false, "required": ["warning", "observed", "mitigated"], "properties": { "warning": { "type": "string" }, "observed": { "type": "string" }, "mitigated": { "type": "string" }, "unknown": { "type": "string" } } }
+        "public": { "type": "object", "additionalProperties": false, "required": ["warning", "observed", "mitigated"], "properties": { "warning": { "type": "string" }, "observed": { "type": "string" }, "mitigated": { "type": "string" }, "unknown": { "type": "string" }, "mitigation_unavailable": { "type": "string" } } }
       }
     },
     "effect": {

@@ -1,0 +1,7 @@
+{
+  "version": "yellow-beast-institutional-worldpack@v1",
+  "worldpack_id": "minimal-mission",
+  "initial_state": { "support_posture": "routine", "scrutiny_level": "routine", "operational_confidence": "provisional", "information_confidence": "uncertain", "resource_posture": "standard", "staffing_posture": "standard", "equipment_restriction_level": "none", "communication_concern": "none", "mission_review_status": "none" },
+  "response_rules": [{ "id": "minimal-acknowledgment", "when": { "input_type": "normal-report" }, "decision": "acknowledge-report", "delay": 1, "public_response": "Standard acknowledges the report.", "private_rationale": "The report was delivered.", "state_changes": { "information_confidence": "provisional" } }],
+  "follow_up_assignments": []
+}

@@ -82,6 +82,10 @@ function validateDefinition(definition, spatialDefinition = null) {
       for (const propertyId of affordance.reveals ?? []) if (!propertyIds.includes(propertyId)) throw new Error(`interaction reveal does not resolve: ${object.id}/${propertyId}`);
       if (affordance.evidence && !affordance.evidence.type) throw new Error(`interaction evidence type is missing: ${object.id}/${affordance.type}`);
     }
+    for (const hook of object.hazard_hooks ?? []) {
+      const validRecovery = (hook.recovery_effects ?? []).every((effect) => effect && ["route-cleared", "equipment-restored"].includes(effect.kind) && (effect.kind !== "route-cleared" || typeof effect.connection_id === "string") && (effect.kind !== "equipment-restored" || typeof effect.target === "string"));
+      if (!hook || !AFFORDANCE_SET.has(hook.when_action) || !/^[a-z0-9][a-z0-9-]*$/.test(hook.hazard_id ?? "") || !["mitigated", "resolved"].includes(hook.transition) || !validRecovery || Object.keys(hook).some((key) => !["when_action", "hazard_id", "transition", "recovery_effects"].includes(key))) throw new Error(`invalid interaction hazard hook: ${object.id}`);
+    }
     for (const action of Object.keys(object.rejections ?? {})) if (!AFFORDANCE_SET.has(action)) throw new Error(`invalid authored rejection affordance: ${action}`);
   }
   return true;
@@ -334,7 +338,7 @@ function interact(state, definition, { observer, location, location_name = null,
   committed.interaction_history.push(entry.sequence);
   state.revision += 1;
   if (affordance.time_cost) advanceTime?.(affordance.time_cost);
-  return { ok: true, action: type, target: object.display_name, narration: renderText ? renderText(affordance.result, tools.statuses) : affordance.result, time_cost: affordance.time_cost, state_changed: true, evidence: proposedEvidence ? clone(proposedEvidence) : null, interaction_sequence: entry.sequence };
+  return { ok: true, action: type, target: object.display_name, object_id: object.id, narration: renderText ? renderText(affordance.result, tools.statuses) : affordance.result, time_cost: affordance.time_cost, state_changed: true, evidence: proposedEvidence ? clone(proposedEvidence) : null, interaction_sequence: entry.sequence };
 }
 
 const VERB_PATTERNS = Object.freeze([

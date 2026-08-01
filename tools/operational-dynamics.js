@@ -84,6 +84,7 @@ function validateDefinition(definition, { spatial, equipment = [] } = {}) {
     if (hazard.scope?.connection_id && !connections.has(hazard.scope.connection_id)) throw new Error(`hazard connection does not resolve: ${hazard.scope.connection_id}`);
     if (!HAZARD_STATES.has(hazard.initial_state) || !HAZARD_VISIBILITY.has(hazard.visibility) || !HAZARD_SEVERITY.has(hazard.severity) || !AFFECTED_TARGETS.has(hazard.affected_targets) || !RECOVERABILITY.has(hazard.recoverability) || !PERSISTENCE.has(hazard.persistence)) throw new Error(`invalid hazard behavior: ${hazard.id}`);
     if (!Array.isArray(hazard.avoidance_options) || !Array.isArray(hazard.mitigation_options) || !hazard.public || ["warning", "observed", "mitigated"].some((key) => typeof hazard.public[key] !== "string" || !hazard.public[key].trim())) throw new Error(`invalid hazard public contract: ${hazard.id}`);
+    if (hazard.mitigation_requirements?.equipment_id && !equipmentIds.has(hazard.mitigation_requirements.equipment_id)) throw new Error(`hazard mitigation equipment does not resolve: ${hazard.mitigation_requirements.equipment_id}`);
     validateCondition(hazard.detection, catalogs, `hazard ${hazard.id}.detection`); validateCondition(hazard.activation, catalogs, `hazard ${hazard.id}.activation`); validateCondition(hazard.exposure, catalogs, `hazard ${hazard.id}.exposure`);
     if (!consequenceIds.includes(hazard.consequence_set)) throw new Error(`hazard consequence does not resolve: ${hazard.consequence_set}`);
   }

@@ -4,7 +4,8 @@
   "action_costs": {
     "LOOK": 0, "INSPECT": 0, "READY": 0, "PROCEED": 1, "APPROACH": 1, "CROSS": 1,
     "RADIO_CHECK": 1, "BEGIN_FIELD_OPERATION": 1, "MOVE": 1, "COMMUNICATE": 1, "LOCAL": 0,
-    "WAIT": 1, "ORDER": 1, "ASSIST": 1, "RECOVER": 1, "MITIGATE": 1, "RETURN": 0,
+    "WAIT": 1, "ORDER": 1, "ASSIST": 1, "RECOVER": 1, "MITIGATE": 1, "HAND_OVER": 1,
+    "EQUIP": 0, "UNEQUIP": 0, "USE": 1, "CONSUME": 1, "STORE": 0, "RETRIEVE": 0, "DROP": 0, "REPLENISH": 1, "VERIFY": 0, "RECONCILE": 0, "RETURN": 0,
     "ABORT": 0, "COMPLETE_RETURN": 1, "DEFAULT": 1
   },
   "staffing": {
@@ -19,8 +20,8 @@
     "check_ins": [{ "id": "field-status-check-in", "due_after": 8, "approaching_within": 2, "miss_after": 2, "public_label": "Scheduled field status report" }],
     "interference_zones": [{
       "id": "columned-corridor-radio-shadow",
-      "locations": ["columned-corridor", "open-passage", "lower-level-transition"],
-      "connections": ["utility-to-corridor", "utility-to-passage", "passage-to-lower"],
+      "locations": ["columned-corridor", "open-passage", "records-annex", "lower-level-transition"],
+      "connections": ["utility-to-corridor", "utility-to-passage", "passage-to-annex", "passage-to-lower"],
       "additional_delay": 9,
       "public_description": "The column line breaks the field-radio signal; delivery cannot yet be confirmed."
     }]
@@ -38,6 +39,7 @@
     "affected_targets": "one-coworker",
     "avoidance_options": ["wait outside the column line", "use another known route"],
     "mitigation_options": ["secure the loose bracket with the route-marker kit"],
+    "mitigation_requirements": { "equipment_id": "route-marker-kit", "capability": "route marking", "consume": 1 },
     "recoverability": "recoverable",
     "consequence_set": "bracket-strike-complication",
     "persistence": "persistent",
@@ -47,6 +49,30 @@
       "mitigated": "The bracket is secured clear of the working route.",
       "unknown": "Contact was lost beyond the last confirmed position."
     }
+  }, {
+    "id": "relay-isolation-fault",
+    "category": "electrical",
+    "scope": { "location_id": "relay-alcove", "connection_id": "corridor-to-relay" },
+    "initial_state": "dormant",
+    "visibility": "warning-signs",
+    "detection": { "source": "spatial", "predicate": "actor_at_location", "location_id": "relay-alcove" },
+    "activation": { "all": [{ "source": "time", "predicate": "interval_reached", "amount": 9 }, { "source": "spatial", "predicate": "connection_traversed", "connection_id": "corridor-to-relay" }, { "source": "hazard", "predicate": "unmitigated", "hazard_id": "relay-isolation-fault" }] },
+    "exposure": { "all": [{ "source": "spatial", "predicate": "actor_at_location", "location_id": "relay-alcove" }, { "source": "hazard", "predicate": "state_is", "hazard_id": "relay-isolation-fault", "state": "active" }] },
+    "severity": "serious",
+    "affected_targets": "equipment",
+    "avoidance_options": ["leave the relay alcove before the isolation cycle", "use the records-annex branch"],
+    "mitigation_options": ["isolate the relay with the spare field battery"],
+    "mitigation_requirements": { "equipment_id": "spare-battery", "capability": "equipment replenishment", "consume": 1 },
+    "recoverability": "partially-recoverable",
+    "consequence_set": "relay-fault-consequence",
+    "persistence": "persistent",
+    "public": {
+      "warning": "The relay chatter is irregular and an isolation lamp is fading between cycles.",
+      "observed": "The relay fault discharged through the service line, disabling survey equipment and obstructing the primary branch.",
+      "mitigated": "The spare battery holds the relay isolated from the field circuit.",
+      "mitigation_unavailable": "A carried spare field battery is required to isolate the relay safely.",
+      "unknown": "The relay condition is unconfirmed beyond the last contact point."
+    }
   }],
   "consequence_sets": [{
     "id": "bracket-strike-complication",
@@ -55,5 +81,13 @@
       { "kind": "equipment-dropped", "target": "held-operational-equipment", "location_id": "columned-corridor", "reason": "dropped during the bracket strike" }
     ],
     "public_summary": "A teammate was struck and dropped assigned equipment. The complication can be recovered in place."
+  }, {
+    "id": "relay-fault-consequence",
+    "effects": [
+      { "kind": "equipment-state", "target": "survey-instrument", "state": "disabled", "reason": "relay discharge through the survey lead" },
+      { "kind": "route-blocked", "connection_id": "corridor-to-relay", "state": "temporarily-blocked", "reason": "unsafe live service line" },
+      { "kind": "operational-delay", "amount": 2, "reason": "team withdrew from the relay discharge" }
+    ],
+    "public_summary": "Survey equipment is disabled and the direct relay branch is temporarily unsafe; the service bypass remains a possible return path."
   }]
 }
