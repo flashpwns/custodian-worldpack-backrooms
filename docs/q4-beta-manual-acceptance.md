@@ -15,6 +15,12 @@ mark the result from automated tests. Record one result only: `PASS`,
 - [ ] Crossing the threshold is an explicit, time-consuming player action.
 - [ ] First Standard radio check is available only when radio capability exists.
 
+At a 1536×1024-equivalent desktop viewport, capture these screenshots from the
+exact packaged build: untouched BRIEFING, guidance collapsed, LOCAL conversation
+with a nearby teammate, STAGING, and THRESHOLD ROOM. ACTION, LOCAL, STANDARD,
+team/loadout, mission summary, and compact layout must be visible without
+whole-window scrolling.
+
 ## Field interaction
 
 - [ ] ACTION remains the dominant input lane.

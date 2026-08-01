@@ -136,20 +136,20 @@ class DesktopService {
     const team = view.team.map((member) => member.display_name).join(" and ") || "the assigned field team";
     const equipment = (view.equipment?.required ?? []).map((item) => item.label).join(", ") || "the assigned field kit";
     const facts = [
-      ["location", "location", phaseId === "BRIEFING" ? "an ASYNC operations briefing context" : phaseId === "STAGING" ? "an ASYNC staging context" : phaseId === "FACILITY_TRANSIT" ? "a controlled facility transit context" : "the approach to the Threshold"],
+      ["location", "location", phaseId === "BRIEFING" ? "the ASYNC briefing room" : phaseId === "STAGING" ? "the equipment staging area" : phaseId === "FACILITY_TRANSIT" ? "the controlled facility transit route" : "the approach to the Threshold"],
       ["assignment", "assignment", view.display_mission ?? "the Clear-Q4 field assignment"],
       ["team", "personnel", `Assigned personnel: ${team}.`],
       ["equipment", "readiness", `Readiness: ${equipment}.`],
       ["reporting", "reporting", view.reporting ? `Reporting: ${view.reporting}.` : "Reporting expectations will be confirmed before departure."],
       ["next-step", "next-step", phaseId === "BRIEFING" ? "Before departure, review the assignment and confirm readiness to stage." : phaseId === "STAGING" ? "The next step is to proceed with the team and equipment." : phaseId === "FACILITY_TRANSIT" ? "The next step is to approach the Threshold with the team accounted for." : "Crossing the Threshold remains a player decision after the approach is complete."]
     ].map(([id, category, text]) => ({ id, category, text, required: true }));
-    const context = [
+    const context = phaseId === "BRIEFING" ? [] : [
       ...(view.restrictions ?? []).map((text, index) => ({ id: `constraint-${index + 1}`, category: "constraint", text, required: false })),
       ...(view.human_context?.procedures ?? []).map((text, index) => ({ id: `procedure-${index + 1}`, category: "procedure", text, required: false }))
     ];
-    const scene = { version: "yellow-beast-scene@v1", scene_id: `briefing-${entry.run.run_id ?? entry.run.session.id}`, world_ref: entry.run.world_id ?? null, session_ref: entry.run.session.id, turn_ref: "briefing", observer_ref: "yb-field-player", mode, profile: "clear-q4", scene_type: "briefing", significance: "MEANINGFUL", location: facts[0].text, safe_facts: facts, immediate_changes: [], visible_actors: [], communications: [], sensory_facts: [], inventory: [], object_state_changes: [], unresolved_facts: [], continuing_conditions: [], context, interaction_prompt: "Confirm when you are ready to stage.", provenance: { source: "observer-safe-q4-briefing", input: null } };
+    const scene = { version: "yellow-beast-scene@v1", scene_id: `briefing-${entry.run.run_id ?? entry.run.session.id}`, world_ref: entry.run.world_id ?? null, session_ref: entry.run.session.id, turn_ref: "briefing", observer_ref: "yb-field-player", mode, profile: "clear-q4", scene_type: "briefing", significance: "Operational notice", location: "ASYNC briefing room", safe_facts: facts, immediate_changes: [], visible_actors: [], communications: [], sensory_facts: [], inventory: [], object_state_changes: [], unresolved_facts: [], continuing_conditions: [], context, interaction_prompt: "Review the assignment and confirm when you are ready to stage.", provenance: { source: "observer-safe-q4-briefing", input: null } };
     const sentence = (text) => String(text).replace(/[.]+$/, "") + ".";
-    scene.narration = `You are in ${sentence(facts[0].text)} ${facts.slice(1).map((fact) => sentence(fact.text)).join(" ")}`;
+    scene.narration = `Assignment ${view.mission_record?.display_id ?? view.mission_record?.id ?? "Clear-Q4"}. ${sentence(view.display_mission)} Assigned team: ${team}. Required equipment: ${equipment}. ${view.reporting ? `Reporting: ${sentence(view.reporting)}` : "Reporting expectations are recorded in the assignment."} Before departure, review the assignment and confirm readiness to stage.`;
     scene.narration_source = "fallback";
     return scene;
   }

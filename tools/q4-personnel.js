@@ -66,7 +66,7 @@ function observerStatus(member, person, phase = "FIELD_OPERATION") {
   if (contactLost) return { contact_category: "CONTACT LOST", condition: "Unknown", local_eligible: false, last_contact: member.last_contact ?? "not currently confirmed" };
   if (member.status !== "active") return { contact_category: member.contact_category ?? "CONTACT LOST", condition: member.observed_condition === "appears-normal" ? "Appears normal" : (member.observed_condition ?? "Unknown"), local_eligible: false, last_contact: member.last_contact ?? "not currently confirmed" };
   const restricted = ["SEPARATED", "REMOTE", "CONTACT LOST", "UNKNOWN"].includes(member.contact_category);
-  const contact = phase === "FIELD_OPERATION" ? (restricted ? member.contact_category : "LOCAL") : (restricted ? member.contact_category : "NEARBY");
+  const contact = ["BRIEFING", "STAGING", "FACILITY_TRANSIT", "THRESHOLD", "FIELD_OPERATION"].includes(phase) ? (restricted ? member.contact_category : "LOCAL") : (restricted ? member.contact_category : "NEARBY");
   return { contact_category: contact, condition: member.observed_condition === "appears-normal" ? "Appears normal" : (member.observed_condition ?? "Appears normal"), local_eligible: contact === "LOCAL", last_contact: member.last_contact ?? "current" };
 }
 function publicTeam(run, phase = "FIELD_OPERATION", world = null) {
