@@ -31,7 +31,7 @@ rows to appear complete.
 | COMPLEX_TRAVERSAL | Procedural movement and observer-safe field scene | Exists | Keep traversal prose natural and acceptance-focused |
 | SITE_DISCOVERY | LOOK/INSPECT/RECORD and observer-safe generated site state | Partial | Define site discovery as mission progress without opaque labels |
 | ASSIGNMENT_WORK | Bounded, canon-authorized mission objective/procedures and equipment use | Partial | Add deeper assignment-work consequences without adding hidden X-factor behavior |
-| X_FACTOR | Existing admitted phenomena/evidence boundaries; no Q4 escalation loop | Missing | Add only through canonical world state, not narrator invention |
+| X_FACTOR | Hidden, authority-traceable Q4 trajectory state with gated symptoms and bounded consequences | Partial | Extend canonical consequences and later review without narrator-controlled drama |
 | PLAYER_DECISION | Existing return/abort and bounded consequence outcomes | Partial | Present meaningful obey, investigate, leave, or failure decisions |
 | RETURN_OR_FAILURE | Expedition `RETURN` / `ABORT`, including degraded outcomes | Exists | Improve continuity into review |
 | MISSION_REVIEW | Existing `DEBRIEF` metadata and expedition/report distinctions | Partial | Derive a complete review from recorded history |
@@ -98,6 +98,18 @@ terminal status. Mission selection remains institutional: the player chooses
 conduct, not the assignment. Phenomenon, civilian-response, and hazard catalog
 rows remain authoring extension points and are not selected without a real
 admitted or recorded trigger.
+
+### Hidden trajectory foundation
+
+Pass 6 adds a bounded hidden trajectory attached to each Q4 mission. The
+trajectory is generated from compatible mission/family combinations and
+weighted toward quiet and subtle intensity. Its objective state, observability
+gates, symptoms, escalation conditions, containment conditions, and awareness
+records remain canonical but are omitted from ordinary mission projections and
+provider context. Only gated field observations and delivered reports enter
+the player, teammate, or Standard views. Current effects remain conservative
+record, layout, timing, environmental, access, and contact inconsistencies; no
+entity, motive, pursuit, combat, or forced revelation is introduced.
 
 ### Mission generation and review
 
