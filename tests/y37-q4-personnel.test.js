@@ -17,7 +17,7 @@ function fixture(seed = "q4-personnel") {
   return { service, appDataPath, world };
 }
 function reachField(service, world) {
-  for (const action of ["READY", "PROCEED", "APPROACH", "CROSS"]) assert.equal(service.submitAction({ world_id: world.id, mode: "field-researcher", action }).ok, true);
+  for (const action of ["READY", "PROCEED", "APPROACH", "CROSS", "RADIO_CHECK", "BEGIN_FIELD_OPERATION"]) assert.equal(service.submitAction({ world_id: world.id, mode: "field-researcher", action }).ok, true);
 }
 
 test("Clear-Q4 assigns persistent player and teammate identities", () => {

@@ -16,7 +16,7 @@ function fixture(seed = "async-interface") {
   return { service, world, projection: started.projection };
 }
 
-test("boot and title/access surfaces identify the unofficial ASYNC field system", () => {
+test("boot and title/access surfaces identify the institutional ASYNC field system", () => {
   const renderer = fs.readFileSync(path.join(__dirname, "../desktop/renderer/renderer.js"), "utf8");
   const html = fs.readFileSync(path.join(__dirname, "../desktop/renderer/index.html"), "utf8");
   assert.match(renderer, /data-testid=.*async-boot/);
@@ -64,7 +64,7 @@ test("briefing, equipment, radio, personnel, and map surfaces remain observer-sa
 
 test("layout projection preserves observation distinctions without hidden state", () => {
   const { service, world } = fixture("interface-map");
-  for (const action of ["READY", "PROCEED", "APPROACH", "CROSS"]) assert.equal(service.submitAction({ world_id: world.id, mode: "field-researcher", action }).ok, true);
+  for (const action of ["READY", "PROCEED", "APPROACH", "CROSS", "RADIO_CHECK", "BEGIN_FIELD_OPERATION"]) assert.equal(service.submitAction({ world_id: world.id, mode: "field-researcher", action }).ok, true);
   const projection = service.getGameplayProjection({ world_id: world.id, mode: "field-researcher" }).projection;
   assert.ok(projection.q4.layout.observed_spaces.length);
   assert.ok(projection.q4.layout.unknown_continuations.length);

@@ -39,5 +39,10 @@ test("continuity missions reference only actual recorded history and do not turn
 
 test("mission conduct remains player-controlled and completion does not depend on a future X-factor", () => {
   const { service, world } = fixture("mission-conduct"); const entry = service.session(world.id, "field-researcher"); assert.equal(entry.run.expedition.mission.objective.completion_criteria.some((item) => /X-factor|anomaly escalation|discover/i.test(item)), false);
-  for (const action of ["READY", "PROCEED", "APPROACH", "CROSS"]) assert.equal(service.submitAction({ world_id: world.id, mode: "field-researcher", action }).ok, true); assert.equal(service.submitAction({ world_id: world.id, mode: "field-researcher", action: "ABORT" }).ok, true); assert.equal(service.getWorld(world.id).q4_missions[entry.run.expedition.mission.id].status, "aborted");
+  for (const action of ["READY", "PROCEED", "APPROACH", "CROSS"]) assert.equal(service.submitAction({ world_id: world.id, mode: "field-researcher", action }).ok, true);
+  assert.equal(service.submitAction({ world_id: world.id, mode: "field-researcher", action: "ABORT" }).ok, true);
+  assert.equal(entry.run.expedition.mission_state.return.abort_requested, true);
+  assert.equal(entry.run.expedition.mission_state.lifecycle, "returning");
+  assert.ok(Object.values(entry.run.expedition.mission_state.objectives).some((objective) => objective.state === "abandoned"));
+  assert.equal(service.getWorld(world.id).q4_missions[entry.run.expedition.mission.id].status, "assigned", "the immutable assignment record is not a second mission-state owner before closure");
 });

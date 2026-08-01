@@ -62,8 +62,11 @@ test("LOCAL is delivered to Nora before field entry while Standard remains proce
   assert.equal(threshold.phase.phase_id, "THRESHOLD"); assert.equal(threshold.q4.channels.standard.available, false);
   assert.match(service.submitQ4Communication({ world_id: world.id, channel: "standard", text: "Hello?" }).error.message, /approach|contact/i);
   const crossed = advanceTo(service, world, ["CROSS"]); assert.equal(crossed.projection.phase.phase_id, "STANDARD_RADIO_CHECK");
-  assert.equal(crossed.projection.q4.channels.standard.available, true);
-  const field = advanceTo(service, world, ["RADIO_CHECK"]); assert.equal(field.projection.phase.phase_id, "FIELD_OPERATION");
+  assert.equal(crossed.projection.q4.channels.standard.available, false);
+  assert.equal(crossed.projection.q4.channels.standard.state, "establishing");
+  const checked = advanceTo(service, world, ["RADIO_CHECK"]); assert.equal(checked.projection.phase.phase_id, "STANDARD_RADIO_CHECK");
+  assert.equal(checked.projection.q4.channels.standard.available, true);
+  const field = advanceTo(service, world, ["BEGIN_FIELD_OPERATION"]); assert.equal(field.projection.phase.phase_id, "FIELD_OPERATION");
 });
 
 test("phase copy and progression controls identify the destination", () => {

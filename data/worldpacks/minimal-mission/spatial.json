@@ -1,0 +1,14 @@
+{
+  "version": "yellow-beast-spatial-worldpack@v1",
+  "worldpack_id": "minimal-mission",
+  "initial_location": "origin",
+  "field_entry_location": "work-site",
+  "phase_locations": { "BRIEFING": "origin", "FIELD_OPERATION": "work-site" },
+  "locations": [
+    { "id": "origin", "name": "Origin", "type": "controlled", "short_description": "A declared origin.", "environment": {}, "landmarks": [], "coordinates": { "x": 0, "y": 0, "level": 0 } },
+    { "id": "work-site", "name": "Work Site", "type": "mission-area", "short_description": "A bounded work site.", "environment": {}, "landmarks": [], "coordinates": { "x": 1, "y": 0, "level": 0 } }
+  ],
+  "connections": [
+    { "id": "origin-to-site", "from": "origin", "to": "work-site", "direction": "east", "relationship": "adjacent", "transition": "You follow the declared route.", "requirements": [], "lock_state": "open", "hazard_state": "none-known", "visibility": "institutional", "discovery": "traversal", "bidirectional": true }
+  ]
+}

@@ -17,21 +17,22 @@ function fixture(seed = "q4-equipment") {
   return { service, world, appDataPath };
 }
 function reach(service, world) {
-  for (const action of ["READY", "PROCEED", "APPROACH", "CROSS"]) assert.equal(service.submitAction({ world_id: world.id, mode: "field-researcher", action }).ok, true);
+  for (const action of ["READY", "PROCEED", "APPROACH", "CROSS", "RADIO_CHECK", "BEGIN_FIELD_OPERATION"]) assert.equal(service.submitAction({ world_id: world.id, mode: "field-researcher", action }).ok, true);
 }
 
 test("Q4 loadout matches the assignment and staging presents required and optional gear", () => {
   const { service, world } = fixture();
   const briefing = service.getGameplayProjection({ world_id: world.id, mode: "field-researcher" }).projection;
   assert.deepEqual(briefing.q4.equipment.required.map((item) => item.label), ["Battery field lamp", "35mm field camera", "Portable survey instrument", "Handheld field radio"]);
-  assert.equal(briefing.q4.equipment.optional.length, 2);
+  assert.equal(briefing.q4.equipment.optional.length, 3);
   assert.equal(briefing.q4.equipment.readiness, true);
   assert.match(surfaces.render(briefing), /Required field kit|Optional stores|Operational/);
   assert.doesNotMatch(surfaces.render(briefing), /charges|durability|HP/);
   service.submitAction({ world_id: world.id, mode: "field-researcher", action: "READY" });
   const staging = service.getGameplayProjection({ world_id: world.id, mode: "field-researcher" }).projection;
   assert.equal(staging.phase.phase_id, "STAGING");
-  assert.ok(staging.q4.equipment.required.every((item) => item.location === "staging locker"));
+  assert.ok(staging.q4.equipment.required.every((item) => item.location === "carrying"));
+  assert.ok(staging.q4.equipment.required.every((item) => item.verification === "visually confirmed"));
   assert.equal(service.selectQ4OptionalStore({ world_id: world.id, item_id: "field-notebook" }).ok, true);
   const selected = service.getGameplayProjection({ world_id: world.id, mode: "field-researcher" }).projection;
   assert.ok(selected.q4.equipment.required.some((item) => item.label === "Field notebook"));
@@ -64,8 +65,8 @@ test("LOCAL request does not transfer gear; physical handoff changes holder and 
   const after = service.getGameplayProjection({ world_id: world.id, mode: "field-researcher" }).projection;
   assert.equal(after.scene.location, before.scene.location); assert.equal(after.phase.phase_id, before.phase.phase_id); assert.equal(after.surface.expedition.clock.communication_ticks, before.surface.expedition.clock.communication_ticks + 2);
   const target = service.session(world.id, "field-researcher").run.aliases[Object.keys(service.session(world.id, "field-researcher").run.aliases)[0]];
-  const blocked = service.submitAction({ world_id: world.id, mode: "field-researcher", action: "RECORD", target });
-  assert.equal(blocked.ok, false); assert.equal(blocked.error.code, "EQUIPMENT_NOT_ACCESSIBLE");
+  const teamUse = service.submitAction({ world_id: world.id, mode: "field-researcher", action: "RECORD", target });
+  assert.equal(teamUse.ok, true); assert.equal(camera.holder, peer.personnel_id, "declared nearby team use does not teleport custody");
 });
 
 test("missing, damaged, and depleted gear constrain ACTION without regenerating", () => {
@@ -88,7 +89,7 @@ test("equipment held by dead personnel remains there and player sees qualified c
   const canonical = service.getWorld(world.id); history.setCharacterStatus(canonical, { run_id: Object.keys(canonical.runs)[0], identity: peer.personnel_id, status: "dead", reason: "confirmed history" }); service.persistSession(canonical, "field-researcher", entry);
   const view = service.getGameplayProjection({ world_id: world.id, mode: "field-researcher" }).projection;
   const visible = view.q4.equipment.required.find((item) => item.label === "Battery field lamp");
-  assert.equal(visible.holder, "Assigned teammate"); assert.equal(visible.location, "Known only by last contact"); assert.equal(visible.state, "Last observed operational");
+  assert.equal(visible.holder, peer.display_name); assert.equal(visible.location, "last confirmed with holder"); assert.equal(visible.state, "Last observed operational"); assert.equal(visible.verification, "holder missing");
   const next = service.startSession({ world_id: world.id, mode: "field-researcher", seed: "q4-equipment-dead-reissue" });
   assert.equal(next.ok, true); const nextEntry = service.session(world.id, "field-researcher"); assert.notEqual(nextEntry.run.expedition.equipment["field-light"].id, lamp.id); assert.equal(service.getWorld(world.id).q4_equipment[lamp.id].holder, peer.personnel_id);
 });

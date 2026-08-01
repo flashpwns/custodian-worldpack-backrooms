@@ -24,9 +24,9 @@ test("Q4 session schema is versioned, backward-compatible, and report export is 
   const started = service.startSession({ world_id: world.id, mode: "field-researcher", seed: "beta-gate" });
   assert.equal(started.ok, true);
   const save = JSON.parse(fs.readFileSync(path.join(root, "saves", `${world.id}-field-researcher.json`), "utf8"));
-  assert.equal(save.version, 2);
-  assert.equal(save.schema, "yellow-beast-session@2");
-  assert.equal(service.getDiagnostics().diagnostics.save_schema_version, "yellow-beast-session@2");
+  assert.equal(save.version, 5);
+  assert.equal(save.schema, "yellow-beast-session@5");
+  assert.equal(service.getDiagnostics().diagnostics.save_schema_version, "yellow-beast-session@5");
   const report = service.exportTesterReport({ world_id: world.id, mode: "field-researcher", note: "offline gate" });
   assert.equal(report.ok, true);
   assert.equal(report.report.provider_status, "offline");
@@ -51,5 +51,5 @@ test("requested application icon source is explicit and never silently substitut
   assert.ok(fs.existsSync(source));
   assert.equal(icon.current_implementation_state.startsWith("resolved"), true);
   assert.equal(icon.beta_classification, "B. REQUIRED BETA POLISH");
-  assert.equal(betaReport.report({ world: { id: "w" } }).save_schema_version, "yellow-beast-session@2");
+  assert.equal(betaReport.report({ world: { id: "w" } }).save_schema_version, "yellow-beast-session@4");
 });

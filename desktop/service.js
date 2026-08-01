@@ -24,6 +24,10 @@ const q4Equipment = require("../tools/q4-equipment");
 const q4Trajectories = require("../tools/q4-trajectories");
 const q4Continuity = require("../tools/q4-continuity");
 const q4Cognition = require("../tools/q4-cognition");
+const q4Radio = require("../tools/q4-radio");
+const q4Time = require("../tools/q4-time");
+const spatialRuntime = require("../tools/spatial-runtime");
+const objectRuntime = require("../tools/object-runtime");
 const { event: expeditionEvent } = require("../tools/expedition");
 const beckExperience = require("../tools/beck-experience");
 const nullzoneExperience = require("../tools/nullzone-experience");
@@ -34,15 +38,11 @@ const { CredentialStore } = require("./credentials");
 const developerInspection = require("../tools/dev-inspection");
 const packageVersion = require("../package.json").version;
 const q4BetaReport = require("../tools/q4-beta-report");
-const SAVE_SCHEMA_VERSION = "yellow-beast-session@2";
+const worldpackRegistry = require("../data/worldpacks/registry.json");
+const SAVE_SCHEMA_VERSION = "yellow-beast-session@5";
 
 const clone = (value) => structuredClone(value);
-const MODES = Object.freeze([
-  { id: "async-command", gameplay_mode: "beck", label: "Async: Beck's Desk", role: "Institutional management", description: "Manage ASYNC operations, personnel, research, recovery, and infrastructure from inside the institution.", playable: false, roadmap_status: "Coming Soon", roadmap_position: 3 },
-  { id: "field-researcher", gameplay_mode: "clear-q4", label: "Async: Clear-Q4", role: "Field research", description: "Enter the Complex as a field researcher operating under ASYNC orders.", playable: true, roadmap_status: "Playable now", roadmap_position: 1 },
-  { id: "local-anomaly", gameplay_mode: "nullzone", label: "Nullzone Exposure", role: "Civilian investigation", description: "Investigate the Complex independently from a civilian base and personal archive.", playable: false, roadmap_status: "Coming Soon", roadmap_position: 4 },
-  { id: "lost", gameplay_mode: "lost", label: "Lost", role: "Survival", description: "Survive and navigate the Complex with limited knowledge and uncertain escape.", playable: false, roadmap_status: "Coming Soon", roadmap_position: 2 }
-]);
+const MODES = Object.freeze(worldpackRegistry.programs.map((program) => Object.freeze({ ...program, label: program.program_name, playable: program.availability === "available" })));
 const DEFAULT_SETTINGS = Object.freeze({ version: 5, input_mode: "structured", provider: "offline", theme: "system", text_scale:"default", reduced_motion: false, reduced_sensory: false, audio_muted: false, audio_master: 0.35, audio_interface: 0.35, audio_radio: 0.35, audio_ambient: 0.25, guided_introductions: true, reopen_last_world: true, mode_onboarding: {}, visual_rendering: true, visual_adapter: "fallback", visual_quality: "documentary", automatic_evidence_rendering: true, retry_failed_renders: true, media_effect_intensity: "restrained", comfyui_endpoint: "http://127.0.0.1:8188", comfyui_workflow: "observer-safe-q4-evidence" });
 // Non-Q4 language is deliberately a small phrase-to-existing-control adapter.
 // It cannot invent a target or capability: recognised phrases only select an
@@ -81,7 +81,7 @@ class DesktopService {
   getAppInfo() { const data = this.metadata(); return { ok: true, app: { name: "Yellow Beast", version: packageVersion, alpha: true, first_run_complete: Boolean(data.first_run_complete), data_path: this.paths.root, developer_mode:this.developerMode } }; }
   getDeveloperSnapshot({ world_id, mode = null } = {}) { if (!this.developerMode) return publicError("DEVELOPER_DISABLED", "Developer tooling is disabled."); try { const world = this.getWorld(world_id); const entry = mode ? (this.session(world_id, mode) ?? this.restoreSession(world, mode, readJson(this.sessionFile(world_id, mode), null))) : null; const provider = this.getProviderStatus().provider; return { ok:true, snapshot:developerInspection.snapshot(world), active:{ mode, phase:entry?.phase ?? null, session_kind:entry?.kind ?? null }, provider:{ selected:provider.selected, offline:provider.offline, configured:provider.openai.configured, status:provider.offline ? "offline" : provider.openai.status }, provider_safe_context:entry?.kind === "bootstrap" ? developerInspection.providerSafeContext(entry.run) : null, recent_history:developerInspection.recentHistory(world) }; } catch { return publicError("DEVELOPER_SNAPSHOT_UNAVAILABLE", "The selected world could not be inspected."); } }
   async traceDeveloperIntent({ world_id, mode, text }) { if (!this.developerMode) return publicError("DEVELOPER_DISABLED", "Developer tooling is disabled."); try { const world = this.getWorld(world_id); const entry = this.session(world_id, mode) ?? this.restoreSession(world, mode, readJson(this.sessionFile(world_id, mode), null)); if (!entry || entry.kind !== "bootstrap") return publicError("TRACE_UNAVAILABLE", "A Clear-Q4 session is required for this non-executing trace."); return { ok:true, trace:await developerInspection.intentTrace({ run:entry.run, provider:createMockProvider(), player_text:text }) }; } catch { return publicError("TRACE_UNAVAILABLE", "The selected session could not be traced."); } }
-  listModes() { return { ok: true, modes: clone([...MODES].sort((a, b) => a.roadmap_position - b.roadmap_position)) }; }
+  listModes() { return { ok: true, registry_version: worldpackRegistry.version, modes: clone([...MODES].sort((a, b) => a.display_order - b.display_order)) }; }
   listWorlds() { const data = this.metadata(); const records = Object.entries(data.worlds).map(([id, item]) => {
     try { return this.worldInfo(this.getWorld(id), item); } catch { return { id, name: item.name ?? id, version: null, created_at: item.created_at ?? null, last_played_at: item.last_played_at ?? null, last_mode: item.last_mode ?? null, status: "unavailable" }; }
   }).sort((a, b) => String(b.last_played_at ?? b.created_at ?? "").localeCompare(String(a.last_played_at ?? a.created_at ?? "")));
@@ -121,13 +121,13 @@ class DesktopService {
   exportBrokenWorld({ world_id, destination }) { try { const source = this.worldFile(world_id); if (!destination || !path.isAbsolute(destination) || !fs.existsSync(source)) return publicError("EXPORT_DESTINATION_INVALID", "Choose a destination for this world file."); fs.copyFileSync(source, destination); return { ok: true, file: destination }; } catch { return publicError("EXPORT_FAILED", "The world file could not be copied."); } }
   getDiagnostics() { const status = this.getProviderStatus().provider; return { ok: true, diagnostics: { app_version: packageVersion, platform: process.platform, provider: status.selected, provider_status: status.offline ? "offline" : status.openai.status, save_directory: "managed application data", credentials_configured: status.openai.configured, save_schema_version: SAVE_SCHEMA_VERSION, telemetry: "disabled", offline_gameplay: true } }; }
   exportTesterReport({ world_id, mode = "field-researcher", note = null } = {}) { try { const world = this.getWorld(world_id); const entry = this.session(world_id, mode) ?? this.restoreSession(world, mode, readJson(this.sessionFile(world_id, mode), null)); const projection = entry ? this.projectionFor(world, mode, entry) : null; const file = q4BetaReport.writeReport(this.paths.logs, { world: projection?.world, session: projection, provider: this.getProviderStatus().provider.selected, note }); return { ok: true, file, report: q4BetaReport.report({ world: projection?.world, session: projection, provider: this.getProviderStatus().provider.selected, note }) }; } catch { return publicError("TESTER_REPORT_FAILED", "The safe tester report could not be exported."); } }
-  serializeSession(world, mode, entry) { const phase = entry.phase ?? phases.createPhase({ mode, guided: this.settings().guided_introductions !== false }); if (entry.kind === "bootstrap") return { version: 2, schema: SAVE_SCHEMA_VERSION, mode, kind: entry.kind, phase, payload: bootstrap.saveRun(entry.run) }; if (entry.kind === "lost") return { version: 2, schema: SAVE_SCHEMA_VERSION, mode, kind: entry.kind, phase, payload: clone(entry.run) }; return { version: 2, schema: SAVE_SCHEMA_VERSION, mode, kind: entry.kind, phase, payload: clone(entry) }; }
-  restoreSession(world, mode, saved) { if (saved?.mode !== mode || ![1, 2].includes(saved?.version ?? 1)) return null; const phase = saved.phase ?? phases.createPhase({ mode, guided: this.settings().guided_introductions !== false }); if (saved.kind === "bootstrap") { const restored = bootstrap.resumeRun(saved.payload, { world }); return restored.ok ? { kind: "bootstrap", run: restored.run, phase } : null; } if (saved.kind === "lost") return { kind: "lost", run: saved.payload, phase }; if (saved.kind === "nullzone") return { kind: "nullzone", run_id: saved.payload.run_id, phase }; if (saved.kind === "beck") return { kind: "beck", run_id: saved.payload.run_id, phase }; return null; }
+  serializeSession(world, mode, entry) { const phase = entry.phase ?? phases.createPhase({ mode, guided: this.settings().guided_introductions !== false }); if (entry.kind === "bootstrap") return { version: 5, schema: SAVE_SCHEMA_VERSION, mode, kind: entry.kind, legacy_flow: entry.legacy_flow === true, phase, payload: bootstrap.saveRun(entry.run) }; if (entry.kind === "lost") return { version: 5, schema: SAVE_SCHEMA_VERSION, mode, kind: entry.kind, phase, payload: clone(entry.run) }; return { version: 5, schema: SAVE_SCHEMA_VERSION, mode, kind: entry.kind, phase, payload: clone(entry) }; }
+  restoreSession(world, mode, saved) { if (saved?.mode !== mode || ![1, 2, 3, 4, 5].includes(saved?.version ?? 1)) return null; const phase = saved.phase ?? phases.createPhase({ mode, guided: this.settings().guided_introductions !== false }); if (saved.kind === "bootstrap") { const hadSpatialState = Boolean(saved.payload?.spatial); const hadRadioState = Boolean(saved.payload?.expedition?.radio); const restored = bootstrap.resumeRun(saved.payload, { world, spatial_worldpack: mode === "field-researcher" ? "clear-q4" : null, phase: phase.phase_id }); if (!restored.ok) return null; bootstrap.ensureSpatial(restored.run, phase.phase_id); if (!hadSpatialState) { if (["FIELD_OPERATION", "RETURN", "DEBRIEF"].includes(phase.phase_id)) bootstrap.enterSpatialField(restored.run); else bootstrap.setSpatialPhase(restored.run, phase.phase_id); } if (!hadRadioState && ["FIELD_OPERATION", "RETURN", "DEBRIEF"].includes(phase.phase_id)) q4Radio.completeCheck(restored.run.expedition); if (restored.run.expedition?.clock?.check_in_due_at == null && ["FIELD_OPERATION", "RETURN"].includes(phase.phase_id)) q4Time.schedule(restored.run.expedition, 3); bootstrap.evaluateMissionState(restored.run, phase.phase_id); return { kind: "bootstrap", run: restored.run, legacy_flow: saved.legacy_flow === true || phase.legacy_flow === true, phase }; } if (saved.kind === "lost") return { kind: "lost", run: saved.payload, phase }; if (saved.kind === "nullzone") return { kind: "nullzone", run_id: saved.payload.run_id, phase }; if (saved.kind === "beck") return { kind: "beck", run_id: saved.payload.run_id, phase }; return null; }
   session(worldId, mode) { return this.sessions.get(`${worldId}:${mode}`) ?? null; }
   persistSession(world, mode, entry) { if (entry.kind === "bootstrap") { q4Equipment.syncWorld(world, entry.run.expedition); q4Trajectories.syncWorld(world, entry.run.expedition); } writeJson(this.sessionFile(world.world_id, mode), this.serializeSession(world, mode, entry)); this.sessions.set(`${world.world_id}:${mode}`, entry); this.saveCanonical(world); const data = this.metadata(); if (data.worlds[world.world_id]) { data.worlds[world.world_id].last_played_at = new Date().toISOString(); data.worlds[world.world_id].last_mode = mode; data.last_world_id = world.world_id; this.writeMetadata(data); } }
   startSession({ world_id, mode, seed = "desktop", require_personnel = false }) {
     try { const world = this.getWorld(world_id); const descriptor = this.getMode(mode); if (!descriptor) return publicError("MODE_INVALID", "Choose one of the available roles."); let entry;
-      if (mode === "field-researcher") { if (require_personnel && !world.q4_operations?.controlled_player) return publicError("PERSONNEL_CREATION_REQUIRED", "Create your ASYNC personnel record before receiving an assignment."); const started = bootstrap.startRun({ profile: mode, seed, scenario: "procedural-survey", world }); if (!started.ok) return publicError("SESSION_START_FAILED", "The field session could not start."); entry = { kind: "bootstrap", run: started.run, legacy_flow: !world.q4_operations?.player_created_at, phase: phases.createPhase({ mode, guided: this.settings().guided_introductions !== false }) }; }
+      if (mode === "field-researcher") { if (require_personnel && !world.q4_operations?.controlled_player) return publicError("PERSONNEL_CREATION_REQUIRED", "Create your ASYNC personnel record before receiving an assignment."); const started = bootstrap.startRun({ profile: mode, seed, scenario: "procedural-survey", world, spatial_worldpack: "clear-q4" }); if (!started.ok) return publicError("SESSION_START_FAILED", "The field session could not start."); entry = { kind: "bootstrap", run: started.run, legacy_flow: !world.q4_operations?.player_created_at, phase: phases.createPhase({ mode, guided: this.settings().guided_introductions !== false }) }; bootstrap.setSpatialPhase(entry.run, entry.phase.phase_id); }
       else if (mode === "lost") entry = { kind: "lost", run: lost.start(world, seed), phase: phases.createPhase({ mode, guided: this.settings().guided_introductions !== false }) };
       else { const run_id = history.beginRun(world, { profile: mode, scenario: mode === "async-command" ? "becks-desk-operations" : "nullzone-exposure", seed }); if (mode === "local-anomaly") { const prepared = nullzone.prepare(world, run_id, ["field-light", "recording-device", "evidence-container"]); if (!prepared.ok || !nullzone.enter(world, run_id).ok) return publicError("SESSION_START_FAILED", "The civilian excursion could not start."); entry = { kind: "nullzone", run_id }; } else entry = { kind: "beck", run_id }; }
       entry.phase ??= phases.createPhase({ mode, guided: this.settings().guided_introductions !== false }); if (entry.kind === "bootstrap") entry.phase.legacy_flow = entry.legacy_flow === true; this.persistSession(world, mode, entry); return { ok: true, session: { world_id, mode, resumable: true }, projection: this.projectionFor(world, mode, entry) };
@@ -158,7 +158,23 @@ class DesktopService {
     scene.narration_source = "fallback";
     return scene;
   }
-  sceneFor(entry, mode, options = {}, world = null) { if (entry.kind === "bootstrap") { const phase = options.phase ?? entry.phase?.phase_id; if (phase !== "FIELD_OPERATION" && phase !== "RETURN" && phase !== "DEBRIEF") return this.briefingScene(entry, mode, phase, world); const scene = buildSafeScene({ run: entry.run, mode, ...options }); return { ...scene, narration: fallbackNarration(scene), narration_source: "fallback" }; } return this.modeScene(world, mode, entry, { consequence: { result: { accepted: options.accepted !== false, observer_safe_summary: options.public_reason ?? "The current situation remains unchanged." } } }); }
+  sceneFor(entry, mode, options = {}, world = null) {
+    if (entry.kind === "bootstrap") {
+      const phase = options.phase ?? entry.phase?.phase_id;
+      if (phase !== "FIELD_OPERATION" && phase !== "RETURN" && phase !== "DEBRIEF") return this.briefingScene(entry, mode, phase, world);
+      const scene = buildSafeScene({ run: entry.run, mode, ...options });
+      if (entry.run.spatial && entry.run.spatial_pack_id) {
+        const definition = bootstrap.spatialDefinitionFor(entry.run.spatial_pack_id);
+        const player = entry.run.session.startup.player.observer_id;
+        const nearby = (entry.run.expedition?.team?.members ?? []).filter((member) => (member.personnel_id ?? member.id) !== player && spatialRuntime.proximity(entry.run.spatial, player, member.personnel_id ?? member.id).speaking_range).map((member) => member.first_name ?? member.display_name);
+        const objects = bootstrap.objectProjection(entry.run).map((object) => object.observation);
+        const narration = options.public_reason || spatialRuntime.locationObservation(entry.run.spatial, definition, { mode: options.action === "MOVE" ? "arrival" : options.action ? "orient" : "entry", nearby, objects });
+        return { ...scene, location: spatialRuntime.currentLocation(entry.run.spatial, definition)?.name ?? scene.location, narration, narration_source: "spatial-observation" };
+      }
+      return { ...scene, narration: fallbackNarration(scene), narration_source: "fallback" };
+    }
+    return this.modeScene(world, mode, entry, { consequence: { result: { accepted: options.accepted !== false, observer_safe_summary: options.public_reason ?? "The current situation remains unchanged." } } });
+  }
   projectionFor(world, mode, entry) { const descriptor = this.getMode(mode); const runId = entry.run_id ?? entry.run?.run_id ?? null; let surface;
     if (entry.kind === "bootstrap") surface = bootstrap.status(entry.run); else if (entry.kind === "lost") surface = lost.projection(entry.run); else if (entry.kind === "nullzone") surface = { ...nullzone.projection(world), local_observation: nullzone.observeRegion(world) }; else surface = desk.projection(world);
     const phase = entry.phase ?? phases.createPhase({ mode, guided: this.settings().guided_introductions !== false }); const unfinished = consequenceEchoes.unfinishedBusiness(world, mode, { run_id: runId }); return { version: "yellow-beast-desktop-projection@v1", world: this.worldInfo(world, this.metadata().worlds[world.world_id] ?? {}), mode: clone(descriptor), gameplay: gameplay.projection(world, { mode: descriptor.gameplay_mode, run_id: runId }), institution: mode === "async-command" ? desk.projection(world) : null, consequence_echoes: consequenceEchoes.observerView(world, mode, { run_id: runId }), unfinished_business: unfinished, surface: clone(surface), phase: clone(phase), q4: entry.kind === "bootstrap" ? q4.presentation(entry.run, phase, unfinished, world) : null, beck: entry.kind === "beck" ? beckExperience.presentation(world, surface, phase, unfinished) : null, nullzone: entry.kind === "nullzone" ? nullzoneExperience.presentation(world, phase, surface, unfinished) : null, lost: entry.kind === "lost" ? lostExperience.presentation(surface, phase, unfinished) : null, scene: this.sceneFor(entry, mode, {}, world), available_actions: this.availableFor(world, mode, entry), settings: this.settings() };
@@ -167,9 +183,24 @@ class DesktopService {
   getInstitutionProjection({ world_id }) { try { return { ok: true, projection: desk.projection(this.getWorld(world_id)) }; } catch { return publicError("INSTITUTION_UNAVAILABLE", "Institution state is not available."); } }
   availableFor(world, mode, entry) {
     if (entry.kind === "bootstrap") {
-      const phaseActions = { BRIEFING: "READY", STAGING: "PROCEED", FACILITY_TRANSIT: "APPROACH", THRESHOLD: "CROSS", STANDARD_RADIO_CHECK: "RADIO_CHECK" };
+      const phaseActions = { BRIEFING: "READY", STAGING: "PROCEED", FACILITY_TRANSIT: "APPROACH", THRESHOLD: "CROSS", STANDARD_RADIO_CHECK: q4Radio.ensure(entry.run.expedition).check_completed ? "BEGIN_FIELD_OPERATION" : "RADIO_CHECK" };
       const state = bootstrap.status(entry.run); const observed = bootstrap.look(entry.run); const targets = state.view.targets.map(({ alias }) => ({ ref: alias, label: alias })); const exits = (observed.view?.exits ?? []).map(({ alias }) => ({ ref: alias, label: alias }));
-      const actions = state.available_verbs.filter((type) => type !== "COMMUNICATE" || entry.phase?.phase_id !== "BRIEFING").map((type) => ({ type, target_required: ["MOVE", "INSPECT", "USE", "RECORD", "COMMUNICATE"].includes(type), targets: type === "COMMUNICATE" ? [{ ref: "standard", label: "Standard" }, { ref: "team", label: "Team" }] : type === "MOVE" ? exits : ["INSPECT", "RECORD"].includes(type) ? targets : type === "USE" ? [{ ref: "survey-instrument", label: "Survey instrument" }] : [] }));
+      const objectActions = new Map();
+      for (const object of observed.view?.objects ?? []) for (const affordance of object.actions ?? []) if (affordance.available) {
+        const list = objectActions.get(affordance.action) ?? [];
+        if (!list.some((item) => item.ref === object.name)) list.push({ ref: object.name, label: object.name });
+        objectActions.set(affordance.action, list);
+      }
+      const objectActionTypes = new Set([...objectActions.keys()]);
+      const actions = state.available_verbs.filter((type) => {
+        if (type === "COMMUNICATE" && entry.phase?.phase_id === "BRIEFING") return false;
+        if (entry.run.spatial && type === "RECORD" && !objectActionTypes.has("RECORD")) return false;
+        return ["LOOK", "MOVE", "COMMUNICATE", "WAIT", "RETURN", "ABORT", "USE", "INSPECT"].includes(type) || !objectRuntime.AFFORDANCES.map((item) => item.toUpperCase()).includes(type) || objectActionTypes.has(type);
+      }).map((type) => {
+        const actionTargets = objectActions.get(type) ?? [];
+        const availableTargets = type === "COMMUNICATE" ? [{ ref: "standard", label: "Standard" }, { ref: "team", label: "Team" }] : type === "MOVE" ? exits : type === "INSPECT" ? targets : type === "USE" && !actionTargets.length ? [{ ref: "survey-instrument", label: "Survey instrument" }] : actionTargets;
+        return { type, target_required: availableTargets.length > 0, targets: availableTargets };
+      });
       if (entry.run.lifecycle === "completed" && entry.phase?.phase_id === "DEBRIEF") return [{ type: "ADVANCE_OPERATIONS", target_required: false, targets: [] }];
       return phaseActions[entry.phase?.phase_id] ? [{ type: phaseActions[entry.phase.phase_id], target_required: false, targets: [] }, ...actions] : actions;
     }
@@ -183,14 +214,14 @@ class DesktopService {
       const world = this.getWorld(world_id); const entry = this.session(world_id, "field-researcher") ?? this.restoreSession(world, "field-researcher", readJson(this.sessionFile(world_id, "field-researcher"), null));
       if (!entry || entry.kind !== "bootstrap" || entry.run.lifecycle !== "completed" || entry.phase?.phase_id !== "DEBRIEF") return publicError("REVIEW_REQUIRED", "Complete the current review before advancing operations.");
       const seed = q4Continuity.nextSeed(world, entry.run.expedition?.mission?.id ?? entry.run.expedition?.id); q4Continuity.advanceOperations(world); const current = world.q4_operations?.controlled_player; const currentPerson = current ? history.character(world, current) : null; const succession = currentPerson?.status === "dead" ? q4Personnel.selectSuccessor(world, entry.run.run_id, seed) : null; if (succession && !succession.ok) return publicError("SUCCESSOR_UNAVAILABLE", "No living Q4-capable successor is available.");
-      const started = bootstrap.startRun({ profile: "field-researcher", seed, scenario: "procedural-survey", world, player_identity: succession?.successor?.identity ?? current }); if (!started.ok) return publicError("NEXT_EXPEDITION_UNAVAILABLE", "The next assignment could not be prepared safely.");
+      const started = bootstrap.startRun({ profile: "field-researcher", seed, scenario: "procedural-survey", world, player_identity: succession?.successor?.identity ?? current, spatial_worldpack: "clear-q4" }); if (!started.ok) return publicError("NEXT_EXPEDITION_UNAVAILABLE", "The next assignment could not be prepared safely.");
       const next = { kind: "bootstrap", run: started.run, phase: phases.createPhase({ mode: "field-researcher", guided: this.settings().guided_introductions !== false }) }; this.persistSession(world, "field-researcher", next); return { ok: true, result: { outcome: "operations-advanced", public_reason: succession ? `Personnel control transferred from ${succession.handover.former} (${succession.handover.final_status}) to ${succession.handover.new_controlled_person}.` : "Institutional time advances to the next Clear-Q4 assignment.", handover: succession?.handover ?? null }, projection: this.projectionFor(world, "field-researcher", next) };
     } catch { return publicError("NEXT_EXPEDITION_UNAVAILABLE", "The next assignment could not be prepared safely."); }
   }
   recordQ4Action(entry, text, result, world = null) {
     const verb = String(text).trim().split(/\s+/, 1)[0].toUpperCase();
     if (verb === "RETURN" && entry.run.expedition?.mission?.hidden_trajectory?.state?.status !== "dormant") q4Trajectories.contain({ world, expedition: entry.run.expedition, run_id: entry.run.run_id, reason: "early return or completed field work" });
-    const observation = q4Trajectories.resolveAction({ world, expedition: entry.run.expedition, run_id: entry.run.run_id, phase: entry.phase?.phase_id, verb, result, observation_kind: /record/i.test(text) ? "record" : /contact|radio|check.?in/i.test(text) ? "contact" : null, comparison: /compare|reconcile|prior|layout/i.test(text) });
+    const observation = q4Trajectories.resolveAction({ world, expedition: entry.run.expedition, run_id: entry.run.run_id, phase: entry.phase?.phase_id, verb: verb === "PHOTOGRAPH" ? "RECORD" : verb, result, observation_kind: /record|photograph/i.test(text) ? "record" : /contact|radio|check.?in/i.test(text) ? "contact" : null, comparison: /compare|reconcile|prior|layout/i.test(text) });
     if (observation.observed && result.result) result.result.public_reason = observation.summary;
     return q4Interactions.record(entry.run.expedition, { channel: "action", speaker: "You", targets: [], player_text: text, attempted_behavior: text, eligibility: result.ok ? "eligible" : "rejected", delivery: "not-applicable", time_cost: result.result?.time_advanced ?? (/^WAIT\b/.test(text) ? 1 : 0), canonical_effects: result.result?.canonical_event_ids ?? [], presentation: { result: observation.summary ?? (result.ok ? result.outcome ?? "succeeded" : result.error?.code ?? "rejected") } });
   }
@@ -201,10 +232,10 @@ class DesktopService {
       if (!q4Interactions.CHANNELS.includes(channel) || channel === "action") return publicError("CHANNEL_INVALID", "Choose a communication channel.");
       const message = typeof text === "string" ? text.trim().slice(0, 2000) : "";
       if (!message) return publicError("COMMUNICATION_EMPTY", "Say or transmit something before sending it.");
-      const expedition = entry.run.expedition; const peer = expedition.team.members.find((member) => member.personnel_id !== entry.run.session.startup.player.observer_id); const person = history.character(world, peer?.personnel_id ?? peer?.id); const observed = q4Personnel.observerStatus(peer, person, entry.phase?.phase_id);
+      const expedition = entry.run.expedition; const playerId = entry.run.session.startup.player.observer_id; const coworkers = expedition.team.members.filter((member) => member.personnel_id !== playerId); const requested = String(target ?? "").toLowerCase(); const peer = requested && !["team", "teammate", "standard"].includes(requested) ? coworkers.find((member) => [member.personnel_id, member.first_name, member.display_name].filter(Boolean).some((value) => String(value).toLowerCase() === requested)) : coworkers[0]; const person = history.character(world, peer?.personnel_id ?? peer?.id); const observed = channel === "local" ? q4Personnel.observerStatus(peer, person, entry.phase?.phase_id, entry.run.spatial, playerId) : null;
       if (channel === "local") {
         const acceptedTargets = ["team", "teammate", peer?.personnel_id, peer?.first_name, peer?.display_name].filter(Boolean).map((value) => String(value).toLowerCase());
-        const eligible = (entry.legacy_flow ? entry.phase?.phase_id === "FIELD_OPERATION" : observed.local_eligible) && peer?.status === "active" && (!target || acceptedTargets.includes(String(target).toLowerCase()));
+        const eligible = observed.local_eligible && peer?.status === "active" && (!target || acceptedTargets.includes(String(target).toLowerCase()));
         if (!eligible) {
           const reason = peer?.condition === "Unresponsive" ? "The teammate is unresponsive." : observed.contact_category === "LOCAL" ? "The local conversation could not be delivered." : `The teammate is ${String(observed.contact_category ?? "not present").toLowerCase()}.`;
           q4Interactions.record(expedition, { channel, speaker: "You", targets: [peer?.display_name ?? "no nearby teammate"], player_text: message, attempted_behavior: "speak with a nearby teammate", eligibility: "target-out-of-range", delivery: "not-delivered", presentation: { result: reason } });
@@ -221,28 +252,33 @@ class DesktopService {
         return { ok: true, result: { outcome: "succeeded", public_reason: response, scene }, projection: this.projectionFor(world, "field-researcher", entry) };
       }
       const radio = expedition.equipment?.["survey-radio"];
-      if (!["STANDARD_RADIO_CHECK", "FIELD_OPERATION"].includes(entry.phase?.phase_id) || !q4Equipment.stateUsable(radio) || radio.holder !== entry.run.session.startup.player.observer_id || radio.charges <= 0) {
+      if (!["STANDARD_RADIO_CHECK", "FIELD_OPERATION", "RETURN"].includes(entry.phase?.phase_id) || !q4Equipment.stateUsable(radio) || radio.holder !== playerId || radio.charges <= 0 || !q4Radio.available(expedition)) {
         q4Interactions.record(expedition, { channel, speaker: "You", targets: ["Standard"], player_text: message, attempted_behavior: "transmit over the survey radio", eligibility: "radio-unavailable", delivery: "not-delivered", presentation: { result: "The radio channel is not available from this operational context." } });
         this.persistSession(world, "field-researcher", entry);
         const reason = entry.phase?.phase_id === "BRIEFING" ? "The field radio channel is not active during briefing." : entry.phase?.phase_id === "STAGING" ? "Standard remains unavailable until the radio-check phase." : entry.phase?.phase_id === "THRESHOLD" ? "Complete the approach before establishing radio contact." : "The Standard radio channel is not available from here.";
         return publicError("STANDARD_UNAVAILABLE", reason);
       }
+      const transmitting = q4Radio.startTransmission(expedition);
+      if (!transmitting.ok) return publicError("STANDARD_UNAVAILABLE", "The Standard radio channel is not in a state that permits transmission.");
       const delivered = bootstrap.act(entry.run, "COMMUNICATE", "standard");
       if (!delivered.ok) return publicError("STANDARD_UNAVAILABLE", "The Standard radio channel could not receive the transmission.");
+      q4Radio.delivered(expedition);
+      if (/\b(evidence|record|photograph|photo|fixture|scuff|marker|survey result)\b/i.test(message)) for (const evidence of expedition.evidence ?? []) if (evidence.available_to_player !== false) { evidence.available_to_standard = true; evidence.reporting_state = "reported-to-standard"; }
       const interaction = q4Interactions.record(expedition, { channel, speaker: "You", targets: ["Standard"], player_text: message, attempted_behavior: "transmit over the survey radio", eligibility: "eligible", delivery: "delivered", time_cost: 1, canonical_effects: ["communication.sent"], observer_knowledge: [{ observer: "Standard", kind: "reported-communication", text: message }], presentation: { result: "delivered" } });
       q4Trajectories.noteCommunication({ world, expedition, run_id: entry.run.run_id, channel: "standard", delivered: true, text: message });
       history.event(world, entry.run.run_id, "q4.communication.reported", { interaction_id: interaction.id, endpoint: "Standard", report: message, status: "reported" });
       history.recordInstitutional(world, entry.run.run_id, `q4-reported-communication-${entry.run.run_id}-${interaction.id}`, { channel: "standard", report: message, status: "reported", source_interaction: interaction.id });
+      const missionUpdates = bootstrap.evaluateMissionState(entry.run, entry.phase?.phase_id);
       this.persistSession(world, "field-researcher", entry);
       const scene = this.sceneFor(entry, "field-researcher", { scene_type: "delta", accepted: true, action: "STANDARD", public_reason: "The transmission is delivered as a report." }, world);
-      return { ok: true, result: { outcome: "succeeded", public_reason: "The transmission is delivered as a report.", scene }, projection: this.projectionFor(world, "field-researcher", entry) };
+      return { ok: true, result: { outcome: "succeeded", public_reason: "The transmission is delivered as a report.", mission_updates: missionUpdates, scene }, projection: this.projectionFor(world, "field-researcher", entry) };
     } catch (error) { this.log(`Q4 communication failed: ${error.message}`); return publicError("COMMUNICATION_RUNTIME_ERROR", "The communication could not be resolved safely."); }
   }
   submitQ4Handoff({ world_id, item_id, target = null }) {
     try {
       const world = this.getWorld(world_id); const entry = this.session(world_id, "field-researcher") ?? this.restoreSession(world, "field-researcher", readJson(this.sessionFile(world_id, "field-researcher"), null));
       if (!entry || entry.kind !== "bootstrap") return publicError("SESSION_NOT_FOUND", "Start or continue Clear-Q4 before handing over equipment.");
-      const player = entry.run.session.startup.player.observer_id; const peer = entry.run.expedition.team.members.find((member) => member.personnel_id !== player); const peerPerson = history.character(world, peer?.personnel_id ?? peer?.id); const observed = q4Personnel.observerStatus(peer, peerPerson, entry.phase?.phase_id);
+      const player = entry.run.session.startup.player.observer_id; const peer = entry.run.expedition.team.members.find((member) => member.personnel_id !== player); const peerPerson = history.character(world, peer?.personnel_id ?? peer?.id); const observed = q4Personnel.observerStatus(peer, peerPerson, entry.phase?.phase_id, entry.run.spatial, player);
       const targetText = String(target ?? peer?.first_name ?? "").toLowerCase(); const validTarget = observed.local_eligible && [peer?.personnel_id, peer?.first_name, peer?.display_name, "team", "teammate"].filter(Boolean).map((value) => String(value).toLowerCase()).includes(targetText);
       if (!validTarget) return publicError("HANDOFF_TARGET_UNAVAILABLE", "That person is not available for a physical handoff here.");
       const key = entry.run.expedition.equipment[item_id] ? item_id : Object.entries(entry.run.expedition.equipment).find(([, item]) => item.id === item_id)?.[0];
@@ -250,6 +286,8 @@ class DesktopService {
       if (!transferred.ok) return publicError(transferred.code, "The equipment cannot be handed over in its current condition.");
       q4Interactions.record(entry.run.expedition, { channel: "action", speaker: "You", targets: [peer.display_name], player_text: `hand over ${transferred.item.label}`, attempted_behavior: "physically hand equipment to a nearby teammate", eligibility: "eligible", delivery: "transferred", time_cost: 1, canonical_effects: ["equipment.handoff"], presentation: { result: "transferred" } });
       history.event(world, entry.run.run_id, "q4.equipment.handed_over", { equipment_id: transferred.item.id, from: player, to: peer.personnel_id });
+      if (entry.run.spatial) spatialRuntime.syncEquipment(entry.run.spatial, entry.run.expedition);
+      bootstrap.evaluateMissionState(entry.run, entry.phase?.phase_id);
       this.persistSession(world, "field-researcher", entry);
       return { ok: true, result: { outcome: "succeeded", public_reason: `${peer.first_name} takes the ${transferred.item.label}.` }, projection: this.projectionFor(world, "field-researcher", entry) };
     } catch (error) { this.log(`Q4 handoff failed: ${error.message}`); return publicError("HANDOFF_RUNTIME_ERROR", "The physical handoff could not be resolved safely."); }
@@ -262,35 +300,69 @@ class DesktopService {
       const selected = q4Equipment.selectOptional(entry.run.expedition, item_id, entry.run.session.startup.player.observer_id);
       if (!selected.ok) return publicError(selected.code, "That optional store is not available from staging.");
       expeditionEvent(entry.run.expedition, "q4.loadout.optional_selected", { equipment_id: selected.item.id, type: selected.item.type });
+      bootstrap.evaluateMissionState(entry.run, entry.phase?.phase_id);
       this.persistSession(world, "field-researcher", entry);
       return { ok: true, result: { outcome: "succeeded", public_reason: `${selected.item.label} added to the field case.` }, projection: this.projectionFor(world, "field-researcher", entry) };
     } catch (error) { this.log(`Q4 store selection failed: ${error.message}`); return publicError("STAGING_RUNTIME_ERROR", "The optional store could not be selected safely."); }
   }
   submitAction({ world_id, mode, action, target = null }) {
-    try { const world = this.getWorld(world_id); const entry = this.session(world_id, mode) ?? this.restoreSession(world, mode, readJson(this.sessionFile(world_id, mode), null)); if (!entry) return publicError("SESSION_NOT_FOUND", "Start or continue a session first."); const verb = String(action ?? "").toUpperCase(); let result;
+    try { const world = this.getWorld(world_id); const entry = this.session(world_id, mode) ?? this.restoreSession(world, mode, readJson(this.sessionFile(world_id, mode), null)); if (!entry) return publicError("SESSION_NOT_FOUND", "Start or continue a session first."); const verb = String(action ?? "").toUpperCase(); let result; if (entry.kind === "bootstrap") entry.run._last_mission_updates = [];
       if (entry.kind === "bootstrap" && verb === "ADVANCE_OPERATIONS") return this.advanceQ4Operations({ world_id });
       if (entry.kind === "bootstrap" && verb === "COMMUNICATE") return this.submitQ4Communication({ world_id, channel: String(target).toLowerCase() === "standard" ? "standard" : "local", text: String(target).toLowerCase() === "standard" ? "Check-in to Standard." : "Check in with the team.", target });
-      if (entry.kind === "bootstrap" && ["READY", "PROCEED", "APPROACH", "CROSS", "RADIO_CHECK"].includes(verb)) {
+      if (entry.kind === "bootstrap" && ["READY", "PROCEED", "APPROACH", "CROSS", "RADIO_CHECK", "BEGIN_FIELD_OPERATION"].includes(verb)) {
         const phase = entry.phase?.phase_id;
-        const expected = { BRIEFING: "READY", STAGING: "PROCEED", FACILITY_TRANSIT: "APPROACH", THRESHOLD: "CROSS", STANDARD_RADIO_CHECK: "RADIO_CHECK" }[phase];
+        const radioChecked = q4Radio.ensure(entry.run.expedition).check_completed;
+        const expected = { BRIEFING: "READY", STAGING: "PROCEED", FACILITY_TRANSIT: "APPROACH", THRESHOLD: "CROSS", STANDARD_RADIO_CHECK: radioChecked ? "BEGIN_FIELD_OPERATION" : "RADIO_CHECK" }[phase];
         if (verb !== expected) return publicError("PHASE_GUARD_REJECTED", "That transition is not available from the current expedition phase.");
         if (verb === "RADIO_CHECK") {
-          result = bootstrap.act(entry.run, "COMMUNICATE", "standard");
-          if (result.ok) { const advanced = q4.nextPhase(entry.phase, { action: verb }); if (!advanced.ok) return publicError(advanced.code, "The radio check cannot begin from the current state."); entry.phase = advanced.phase; q4Equipment.updatePhase(entry.run.expedition, entry.phase.phase_id); }
+          const expedition = entry.run.expedition; const player = entry.run.session.startup.player.observer_id; const radio = expedition.equipment?.["survey-radio"];
+          if (!q4Equipment.stateUsable(radio) || radio.holder !== player || radio.charges <= 0) return publicError("STANDARD_UNAVAILABLE", "The assigned field radio is not available for the required check.");
+          q4Radio.transition(expedition, "establishing", "radio-check-requested");
+          const accounted = expedition.team.members.filter((member) => member.status === "active").length;
+          const outbound = `Standard, Clear-Q4 team Complex-side. ${accounted} personnel accounted for.`;
+          const acknowledgment = "Clear-Q4, contact established. Proceed with assigned survey.";
+          q4Interactions.record(expedition, { channel: "standard", speaker: "YOU", targets: ["Standard"], player_text: outbound, attempted_behavior: "required radio check", eligibility: "eligible", delivery: "delivered", canonical_effects: ["q4.radio.check.transmitted"], presentation: { result: "delivered" } });
+          q4Interactions.record(expedition, { channel: "standard", speaker: "STANDARD", targets: ["Clear-Q4 team"], player_text: acknowledgment, attempted_behavior: "radio-check acknowledgment", eligibility: "eligible", delivery: "received", canonical_effects: ["q4.radio.check.acknowledged"], presentation: { result: "received" } });
+          q4Radio.completeCheck(expedition); q4Time.schedule(expedition, 3); const missionUpdates = bootstrap.evaluateMissionState(entry.run, entry.phase.phase_id);
+          expeditionEvent(expedition, "q4.radio_check.completed", { personnel_accounted_for: accounted, endpoint: "Standard" });
+          history.event(world, entry.run.run_id, "q4.radio_check.completed", { personnel_accounted_for: accounted, endpoint: "Standard", status: "acknowledged" });
+          result = { ok: true, outcome: "radio-check-completed", result: { public_reason: acknowledgment, mission_updates: missionUpdates, canonical_event_ids: ["q4.radio_check.completed"] } };
+        } else if (verb === "BEGIN_FIELD_OPERATION") {
+          const advanced = q4.nextPhase(entry.phase, { action: verb, radio_check_completed: q4Radio.ensure(entry.run.expedition).check_completed });
+          if (!advanced.ok) return publicError(advanced.code, "Standard has not authorized field departure.");
+          entry.phase = advanced.phase; bootstrap.enterSpatialField(entry.run); q4Equipment.updatePhase(entry.run.expedition, entry.phase.phase_id);
+          result = { ok: true, outcome: "field-operation-entered", result: { public_reason: null } };
         } else if (verb === "CROSS") {
-          const exit = bootstrap.look(entry.run).view?.exits?.[0]?.alias;
-          result = exit ? bootstrap.act(entry.run, "MOVE", exit) : { ok: false, code: "PHASE_GUARD_REJECTED" };
-          if (result.ok) { const advanced = q4.nextPhase(entry.phase, { action: verb, canonical_crossed: true, legacy_flow: entry.legacy_flow === true }); if (!advanced.ok) return publicError(advanced.code, "The expedition cannot cross from its current state."); entry.phase = advanced.phase; q4Equipment.updatePhase(entry.run.expedition, entry.phase.phase_id); }
+          result = bootstrap.crossThreshold(entry.run);
+          if (result.ok) { const advanced = q4.nextPhase(entry.phase, { action: verb, canonical_crossed: true, legacy_flow: false }); if (!advanced.ok) return publicError(advanced.code, "The expedition cannot cross from its current state."); entry.phase = advanced.phase; q4Radio.authorize(entry.run.expedition); bootstrap.setSpatialPhase(entry.run, entry.phase.phase_id); q4Equipment.updatePhase(entry.run.expedition, entry.phase.phase_id); }
         } else {
           result = { ok: true, outcome: "phase-advanced" };
           if (verb === "PROCEED") { const readiness = q4Equipment.projection(entry.run.expedition, entry.run.session.startup.player.observer_id); if (!readiness.readiness) { entry.run.expedition.deviations.push("proceeded-with-required-equipment-unavailable"); expeditionEvent(entry.run.expedition, "q4.loadout.proceeded_without_required", { missing: readiness.missing }); } }
-          const advanced = q4.nextPhase(entry.phase, { action: verb }); if (!advanced.ok) return publicError(advanced.code, "The expedition cannot advance from its current state."); entry.phase = advanced.phase; q4Equipment.updatePhase(entry.run.expedition, entry.phase.phase_id);
+          const advanced = q4.nextPhase(entry.phase, { action: verb }); if (!advanced.ok) return publicError(advanced.code, "The expedition cannot advance from its current state."); entry.phase = advanced.phase; bootstrap.setSpatialPhase(entry.run, entry.phase.phase_id); q4Equipment.updatePhase(entry.run.expedition, entry.phase.phase_id);
         }
-      } else if (entry.kind === "bootstrap") { if ((verb === "RETURN" || verb === "ABORT") && verb === "RETURN" && !q4Continuity.canReturn(entry.run)) return publicError("RETURN_ROUTE_UNCONFIRMED", "The return route and threshold access are not confirmed from the current field state."); result = bootstrap.act(entry.run, verb, target); }
+      } else if (entry.kind === "bootstrap") { result = bootstrap.act(entry.run, verb, target); }
       else if (entry.kind === "lost") { if (verb === "MOVE") result = lost.move(world, entry.run, target); else if (verb === "DROP") result = lost.drop(world, entry.run, target); else if (verb === "RETURN") result = lost.escape(world, entry.run); else if (verb === "STRAND") result = lost.strand(world, entry.run); else result = { ok: false, code: "ACTION_UNAVAILABLE" }; }
       else if (entry.kind === "nullzone") { if (verb === "EXPAND") result = nullzone.expand(world, entry.run_id); else if (verb === "DISCOVER") result = nullzone.discoverArtifact(world, entry.run_id); else if (verb === "RETURN") result = nullzone.returnBase(world, entry.run_id); else result = { ok: false, code: "ACTION_UNAVAILABLE" }; }
       else result = verb === "REVIEW_REPORT" ? { ok: true, result: desk.projection(world) } : verb === "ADVANCE" ? desk.advance(world, entry.run_id) : { ok: false, code: "ACTION_UNAVAILABLE" };
-      if (!result.ok) return publicError(result.error?.code ?? result.code ?? "ACTION_REJECTED", result.error?.public_reason ?? result.public_reason ?? "That action is not available right now."); if (entry.kind === "bootstrap") { this.recordQ4Action(entry, `${verb}${target ? ` ${target}` : ""}`, result, world); if (entry.run.lifecycle === "completed" && entry.run.expedition?.mission) { q4Continuity.commitOutcome(world, entry.run, verb); history.updateQ4Mission(world, entry.run.run_id, entry.run.expedition.mission.id, { status: entry.run.expedition.mission.status }); const returned = phases.transition(entry.phase, "RETURN", { reason: verb.toLowerCase(), guard: true }); entry.phase = returned.ok ? phases.transition(returned.phase, "DEBRIEF", { reason: "mission-review", guard: true }).phase : entry.phase; } } this.persistSession(world, mode, entry); const scene = this.sceneFor(entry, mode, { action: verb, scene_type: verb === "LOOK" ? "observation" : "delta", accepted: true, public_reason: result.result?.public_reason ?? result.public_reason }, world); return { ok: true, result: { outcome: result.outcome ?? "succeeded", public_reason: result.result?.public_reason ?? result.public_reason ?? null, scene }, projection: this.projectionFor(world, mode, entry) };
+      if (!result.ok) return publicError(result.error?.code ?? result.code ?? "ACTION_REJECTED", result.error?.public_reason ?? result.result?.public_reason ?? result.public_reason ?? "That action is not available right now.");
+      if (entry.kind === "bootstrap") {
+        this.recordQ4Action(entry, `${verb}${target ? ` ${target}` : ""}`, result, world);
+        if (["RETURN", "ABORT"].includes(verb) && entry.run.expedition?.mission_state?.return?.requested && entry.phase?.phase_id !== "RETURN") {
+          const returning = phases.transition(entry.phase, "RETURN", { reason: verb.toLowerCase(), guard: true });
+          if (returning.ok) { entry.phase = returning.phase; bootstrap.evaluateMissionState(entry.run, "RETURN"); }
+        }
+        if (entry.run.lifecycle === "completed" && entry.run.expedition?.mission) {
+          q4Continuity.commitOutcome(world, entry.run, entry.run.expedition.mission_state?.return?.abort_requested ? "ABORT" : "RETURN");
+          history.updateQ4Mission(world, entry.run.run_id, entry.run.expedition.mission.id, { status: entry.run.expedition.mission_state.final_result.final_mission_state, result: entry.run.expedition.mission_state.final_result });
+          const returned = entry.phase?.phase_id === "RETURN" ? { ok: true, phase: entry.phase } : phases.transition(entry.phase, "RETURN", { reason: verb.toLowerCase(), guard: true });
+          entry.phase = returned.ok ? phases.transition(returned.phase, "DEBRIEF", { reason: "mission-review", guard: true }).phase : entry.phase;
+          bootstrap.evaluateMissionState(entry.run, "DEBRIEF");
+        }
+      }
+      const missionUpdates = result.result?.mission_updates ?? entry.run?._last_mission_updates ?? [];
+      this.persistSession(world, mode, entry);
+      const scene = this.sceneFor(entry, mode, { action: verb, scene_type: verb === "LOOK" ? "observation" : "delta", accepted: true, public_reason: result.result?.public_reason ?? result.public_reason }, world);
+      return { ok: true, result: { outcome: result.outcome ?? "succeeded", public_reason: result.result?.public_reason ?? result.public_reason ?? null, mission_updates: missionUpdates, scene }, projection: this.projectionFor(world, mode, entry) };
     } catch (error) { this.log(`action failed: ${error.message}`); return publicError("ACTION_RUNTIME_ERROR", "Yellow Beast could not complete that action safely."); }
   }
   naturalContext(world, mode, entry) {
@@ -318,6 +390,26 @@ class DesktopService {
       const world = this.getWorld(world_id);
       const entry = this.session(world_id, mode) ?? this.restoreSession(world, mode, readJson(this.sessionFile(world_id, mode), null));
       if (!entry) return publicError("SESSION_NOT_FOUND", "Start or continue this session first.");
+      if (entry.kind === "bootstrap" && ["FIELD_OPERATION", "RETURN"].includes(entry.phase?.phase_id) && entry.run.spatial) {
+        const members = entry.run.expedition.team.members.filter((member) => member.personnel_id !== entry.run.session.startup.player.observer_id);
+        const objectAttempt = objectRuntime.interpret(entry.run.object_state, bootstrap.interactionDefinitionFor(entry.run.spatial_pack_id), text, { location: entry.run.spatial.player_location });
+        if (objectAttempt.kind === "interaction") return this.submitAction({ world_id, mode, action: objectAttempt.action.toUpperCase(), target: objectAttempt.target });
+        if (objectAttempt.kind === "ambiguous") return publicError("INTERACTION_TARGET_AMBIGUOUS", objectAttempt.reason);
+        const parsed = spatialRuntime.interpret(entry.run.spatial, bootstrap.spatialDefinitionFor(entry.run.spatial_pack_id), text, { personnel: members.map((member) => ({ id: member.personnel_id, name: member.display_name, first_name: member.first_name })) });
+        if (parsed.kind === "move") return this.submitAction({ world_id, mode, action: "MOVE", target: parsed.target });
+        if (parsed.kind === "inspect") return this.submitAction({ world_id, mode, action: /\b(orient|look around|take stock|inspect the room)\b/i.test(text) ? "LOOK" : "INSPECT", target: parsed.target });
+        if (parsed.kind === "person" || parsed.kind === "follow") {
+          const member = members.find((item) => item.personnel_id === parsed.person.id);
+          const relationship = spatialRuntime.proximity(entry.run.spatial, entry.run.session.startup.player.observer_id, member?.personnel_id);
+          const person = member ? history.character(world, member.personnel_id) : null;
+          const reason = !member ? "That person is not part of the current assignment." : parsed.kind === "follow" && relationship.speaking_range ? `${member.first_name} is beside you and has not started down a route. The team remains together.` : relationship.speaking_range ? `${member.first_name} is beside you, appears ${String(member.observed_condition ?? person?.condition ?? "normal").replace(/-/g, " ")}, and remains within speaking range.` : `${member.first_name}'s last confirmed position is ${entry.run.spatial.last_confirmed_personnel_positions[member.personnel_id]?.location ?? "not currently visible"}.`;
+          q4Interactions.record(entry.run.expedition, { channel: "action", speaker: "YOU", targets: member ? [member.display_name] : [], player_text: text, attempted_behavior: parsed.kind === "follow" ? "follow assigned coworker" : "check assigned coworker", eligibility: member ? "eligible" : "rejected", delivery: "not-applicable", presentation: { result: reason } });
+          this.persistSession(world, mode, entry);
+          const scene = this.sceneFor(entry, mode, { action: "LOOK", scene_type: "observation", accepted: Boolean(member), public_reason: reason }, world);
+          return { ok: true, result: { outcome: member ? "succeeded" : "rejected", executed: Boolean(member), public_reason: reason, scene }, projection: this.projectionFor(world, mode, entry) };
+        }
+        return publicError("ACTION_UNCLEAR", parsed.reason);
+      }
       const configured = this.settings().provider === "openai"; const key = configured ? this.credentials.get("openai") : null;
       if (configured && !key) return publicError("PROVIDER_CONFIGURATION_REQUIRED", "Language assistance needs an access key. Your world is safe; you can continue offline.");
       const provider = configured ? createOpenAIProvider({ apiKey: key, model: this.settings().openai_model || undefined, timeout: 15000 }) : createMockProvider();

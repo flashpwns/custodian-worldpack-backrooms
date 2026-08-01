@@ -3,6 +3,7 @@ const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const path = require("node:path");
 const root = path.resolve(__dirname, "..");
+const portablePath = (entry) => String(entry).split(path.sep).join("/");
 const packageJson = JSON.parse(fs.readFileSync(path.join(root, "package.json"), "utf8"));
 const read = (relative) => JSON.parse(fs.readFileSync(path.join(root, relative), "utf8"));
 const registry = read("canon/source-registry.json");
@@ -33,6 +34,15 @@ const playableStubs = read("scenarios/playable/stubs.json").scenarios;
 const manifest = read("manifest.json");
 const scenario = read("scenario.json");
 const scenarioCopy = read("scenarios/threshold-baseline.json");
+const spatialWorldpack = read("data/worldpacks/clear-q4/spatial.json");
+const interactionWorldpack = read("data/worldpacks/clear-q4/interactions.json");
+const missionWorldpack = read("data/worldpacks/clear-q4/mission.json");
+const minimalMissionSpatial = read("data/worldpacks/minimal-mission/spatial.json");
+const minimalMissionInteractions = read("data/worldpacks/minimal-mission/interactions.json");
+const minimalMissionWorldpack = read("data/worldpacks/minimal-mission/mission.json");
+const objectRuntime = require("../tools/object-runtime");
+const missionRuntime = require("../tools/mission-runtime");
+const q4Equipment = require("../tools/q4-equipment");
 const sourceIds = new Set(registry.sources.map((source) => source.id));
 const claimIds = new Set(claims.map((claim) => claim.id));
 const reviewStates = new Set(["unreviewed", "triaged", "source-verified", "claim-extracted", "canon-reviewed", "admitted", "rejected", "superseded", "needs-context"]);
@@ -50,6 +60,11 @@ assert.equal(manifest.id, "yellow-beast");
 assert.equal(manifest.version, "0.1.0-alpha");
 assert.equal(manifest.kernel_compatibility, "canonical-kernel@v1");
 assert.deepEqual(scenario, scenarioCopy);
+assert.equal(objectRuntime.validateDefinition(interactionWorldpack, spatialWorldpack), true);
+assert.equal(missionRuntime.validateDefinition(missionWorldpack, { objects: interactionWorldpack.objects.map((item) => item.id), locations: spatialWorldpack.locations.map((item) => item.id), connections: spatialWorldpack.connections.map((item) => item.id), equipment: Object.keys(q4Equipment.DEFINITIONS), personnel_roles: [] }), true);
+assert.equal(missionRuntime.validateDefinition(minimalMissionWorldpack, { objects: minimalMissionInteractions.objects.map((item) => item.id), locations: minimalMissionSpatial.locations.map((item) => item.id), connections: minimalMissionSpatial.connections.map((item) => item.id), equipment: [], personnel_roles: [] }), true);
+assert.ok(fs.existsSync(path.join(root, "canon/operational-interaction-schema.json")));
+assert.ok(fs.existsSync(path.join(root, "canon/operational-mission-schema.json")));
 for (const source of registry.sources) {
   assert.match(source.id, /^[a-z0-9][a-z0-9-]*$/);
   assert.ok(source.source_type && source.project_scope && source.source_locator);
@@ -274,6 +289,7 @@ scripts.push("tests/y43-q4-visual-assets.test.js");
 scripts.push("tests/y44-q4-replayability.test.js");
 scripts.push("tests/y46-q4-console-acceptance.test.js", "tests/y48-q4-prefield-flow.test.js");
 scripts.push("tests/y47-q4-player-identity.test.js");
+scripts.push("tools/spatial-runtime.js", "tools/object-runtime.js", "tools/mission-runtime.js", "tools/q4-radio.js", "tools/q4-time.js", "tools/playable-spine-acceptance.js", "tools/structured-interaction-acceptance.js", "tools/mission-state-acceptance.js", "tests/y49-playable-spine-map.test.js", "tests/y50-structured-interactions.test.js", "tests/y51-mission-state.test.js");
 for (const relative of scripts) {
   const content = fs.readFileSync(path.join(root, relative), "utf8");
   assert.doesNotMatch(content, /custodian\/(runtime|state|tools)/, `${relative} uses only public Custodian imports`);
@@ -281,7 +297,7 @@ for (const relative of scripts) {
 assert.ok(fs.existsSync(path.join(root, "data/phenomenon-definitions.json")), "phenomenon definitions are tracked data");
 // Build output is intentionally ignored here: it is a disposable runtime artifact
 // audited by tools/verify-alpha-artifact.js, not executable world-pack source.
-const packFiles = fs.readdirSync(root, { recursive: true }).filter((entry) => entry.endsWith(".js") && !entry.startsWith("node_modules/") && !entry.startsWith("dist/"));
+const packFiles = fs.readdirSync(root, { recursive: true }).map(portablePath).filter((entry) => entry.endsWith(".js") && !entry.startsWith("node_modules/") && !entry.startsWith("dist/") && !entry.startsWith("build/"));
 assert.deepEqual(packFiles.sort(), scripts.sort(), "Yellow Beast contains no executable world-pack logic");
 const iconSource = "desktop/assets/icon-source/ASYNC_Logo.png";
 const iconMaster = "desktop/assets/async-icon-master.png";
@@ -290,6 +306,6 @@ const iconSet = ["icon_16x16.png", "icon_16x16@2x.png", "icon_32x32.png", "icon_
 for (const asset of [iconSource, iconMaster, iconIcns, ...iconSet]) assert.ok(fs.existsSync(path.join(root, asset)), `required application icon asset is missing: ${asset}`);
 assert.equal(packageJson.build?.mac?.icon, iconIcns, "electron-builder must use the verified macOS icon");
 const permittedIconMedia = new Set([iconSource, iconMaster, iconIcns, ...iconSet]);
-const prohibitedRawMedia = fs.readdirSync(root, { recursive: true }).filter((entry) => /\.(mp4|mov|webm|mkv|jpg|jpeg|png|gif|webp|mp3|wav|pdf)$/i.test(entry) && !entry.startsWith("dist/") && !entry.startsWith("node_modules/") && !permittedIconMedia.has(entry));
+const prohibitedRawMedia = fs.readdirSync(root, { recursive: true }).map(portablePath).filter((entry) => /\.(mp4|mov|webm|mkv|jpg|jpeg|png|gif|webp|mp3|wav|pdf)$/i.test(entry) && !entry.startsWith("dist/") && !entry.startsWith("node_modules/") && !entry.startsWith("build/") && !permittedIconMedia.has(entry));
 assert.deepEqual(prohibitedRawMedia, [], "Yellow Beast contains no copied raw source media or archives");
 console.log("validated Yellow Beast canon intake assets and baseline manifest");

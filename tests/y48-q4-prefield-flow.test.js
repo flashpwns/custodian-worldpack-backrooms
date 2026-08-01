@@ -38,7 +38,7 @@ test("dedicated pre-field surfaces contain no field action composer or generic s
   assert.match(html, /q4-prefield-briefing/);
   assert.match(html, /Continue to Staging/);
   assert.match(html, /LOCAL COMMS/);
-  assert.match(html, /FIELD RADIO CHANNEL NOT ACTIVE DURING BRIEFING/);
+  assert.match(html, /data-radio-state="unavailable">LINK UNAVAILABLE/);
   assert.doesNotMatch(html, /What do you do\?|Nothing notable changes|natural-form|Structured controls/);
   html = surfaces.render(advance(service, world, "READY").projection);
   assert.match(html, /q4-prefield-staging/);
@@ -57,7 +57,11 @@ test("pre-field controls advance deterministically through threshold and radio c
   const radio = advance(service, world, "CROSS");
   assert.equal(radio.projection.phase.phase_id, "STANDARD_RADIO_CHECK");
   assert.match(surfaces.render(radio.projection), /Establish Radio Contact/);
-  const field = advance(service, world, "RADIO_CHECK");
+  const checked = advance(service, world, "RADIO_CHECK");
+  assert.equal(checked.projection.phase.phase_id, "STANDARD_RADIO_CHECK");
+  assert.match(surfaces.render(checked.projection), /YOU[\s\S]*Standard, Clear-Q4 team Complex-side[\s\S]*STANDARD[\s\S]*contact established/i);
+  assert.match(surfaces.render(checked.projection), /Proceed into the Complex/);
+  const field = advance(service, world, "BEGIN_FIELD_OPERATION");
   assert.equal(field.projection.phase.phase_id, "FIELD_OPERATION");
   assert.doesNotMatch(surfaces.render(field.projection), /Nothing notable changes/);
 });

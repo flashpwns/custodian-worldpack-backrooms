@@ -14,7 +14,7 @@ function fixture() {
   return { service, world };
 }
 function reachField(service, world) {
-  for (const action of ["READY", "PROCEED", "APPROACH", "CROSS"]) assert.equal(service.submitAction({ world_id: world.id, mode: "field-researcher", action }).ok, true);
+  for (const action of ["READY", "PROCEED", "APPROACH", "CROSS", "RADIO_CHECK", "BEGIN_FIELD_OPERATION"]) assert.equal(service.submitAction({ world_id: world.id, mode: "field-researcher", action }).ok, true);
   return service.getGameplayProjection({ world_id: world.id, mode: "field-researcher" }).projection;
 }
 
@@ -47,10 +47,10 @@ test("Q4 channels write distinguishable records and preserve physical continuity
   assert.equal(after.surface.expedition.clock.communication_ticks, 2);
 });
 
-test("LOCAL requires a nearby teammate and does not grant Standard knowledge", () => {
+test("LOCAL follows same-location personnel and does not grant Standard knowledge", () => {
   const { service, world } = fixture();
   const unavailable = service.submitQ4Communication({ world_id: world.id, channel: "local", text: "Can you hear me?" });
-  assert.equal(unavailable.ok, false); assert.equal(unavailable.error.code, "LOCAL_TARGET_UNAVAILABLE");
+  assert.equal(unavailable.ok, true);
   reachField(service, world);
   const entry = service.session(world.id, "field-researcher"); entry.run.expedition.team.members[1].status = "unavailable";
   const outOfRange = service.submitQ4Communication({ world_id: world.id, channel: "local", text: "Can you hear me?" });

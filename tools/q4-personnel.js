@@ -2,6 +2,7 @@
 
 const history = require("./world-history");
 const crypto = require("node:crypto");
+const spatialRuntime = require("./spatial-runtime");
 const VERSION = "yellow-beast-q4-personnel@v1";
 
 // Conservative operational identities for the bounded Q4 experience. These
@@ -92,12 +93,17 @@ function selectSuccessor(world, run_id, seed = "succession") {
 function teamMember(person, role, expedition_id) {
   return { id: person.identity, personnel_id: person.identity, first_name: person.first_name, last_name: person.last_name, display_name: displayName(person), role, status: "active", contact_category: "NEARBY", observed_condition: "appears-normal", last_contact: "assigned", assignment: { id: expedition_id, role } };
 }
-function observerStatus(member, person, phase = "FIELD_OPERATION") {
+function observerStatus(member, person, phase = "FIELD_OPERATION", spatial = null, observer = null) {
+  if (!member) return { contact_category: "CONTACT LOST", condition: "Unknown", local_eligible: false, last_contact: "not currently confirmed" };
   const contactLost = ["dead", "missing", "unavailable", "unknown"].includes(person?.status);
   if (contactLost) return { contact_category: "CONTACT LOST", condition: "Unknown", local_eligible: false, last_contact: member.last_contact ?? "not currently confirmed" };
   if (member.status !== "active") return { contact_category: member.contact_category ?? "CONTACT LOST", condition: member.observed_condition === "appears-normal" ? "Appears normal" : (member.observed_condition ?? "Unknown"), local_eligible: false, last_contact: member.last_contact ?? "not currently confirmed" };
+  if (spatial && observer) {
+    const relationship = spatialRuntime.proximity(spatial, observer, member.personnel_id ?? member.id);
+    return { contact_category: relationship.category, condition: member.observed_condition === "appears-normal" ? "Appears normal" : (member.observed_condition ?? "Appears normal"), local_eligible: relationship.speaking_range, last_contact: relationship.speaking_range ? "visually confirmed now" : member.last_contact ?? "last confirmed position", location: relationship.subject_location, proximity: relationship };
+  }
   const restricted = ["SEPARATED", "REMOTE", "CONTACT LOST", "UNKNOWN"].includes(member.contact_category);
-  const contact = ["BRIEFING", "STAGING", "FACILITY_TRANSIT", "THRESHOLD", "FIELD_OPERATION"].includes(phase) ? (restricted ? member.contact_category : "LOCAL") : (restricted ? member.contact_category : "NEARBY");
+  const contact = ["BRIEFING", "STAGING", "FACILITY_TRANSIT", "THRESHOLD", "STANDARD_RADIO_CHECK", "FIELD_OPERATION"].includes(phase) ? (restricted ? member.contact_category : "LOCAL") : (restricted ? member.contact_category : "NEARBY");
   return { contact_category: contact, condition: member.observed_condition === "appears-normal" ? "Appears normal" : (member.observed_condition ?? "Appears normal"), local_eligible: contact === "LOCAL", last_contact: member.last_contact ?? "current" };
 }
 function publicTeam(run, phase = "FIELD_OPERATION", world = null) {
@@ -105,9 +111,9 @@ function publicTeam(run, phase = "FIELD_OPERATION", world = null) {
   return (run.expedition?.team?.members ?? []).map((member) => {
     const fallback = member.id === DEFAULTS.peer.identity ? DEFAULTS.peer : member.id === DEFAULTS.alex.identity ? DEFAULTS.alex : member.id === DEFAULTS.legacyPlayer.identity ? DEFAULTS.legacyPlayer : member;
     const person = world ? (history.character(world, member.personnel_id ?? member.id) ?? fallback) : (member.personnel ?? fallback);
-    const observed = observerStatus(member, person, phase);
-    const isUser = Boolean(world?.q4_operations?.player_created_at && member.personnel_id === controlled);
-    return { display_name: `${member.display_name ?? displayName(person)}${isUser ? " · YOU" : ""}`, first_name: member.first_name ?? person.first_name, last_name: member.last_name ?? person.last_name, role: `${member.role}${isUser ? " · YOU" : ""}`, clearance: person.clearance ?? null, assignment: person.current_assignment ?? member.assignment ?? null, contact_category: observed.contact_category, condition: observed.condition, last_contact: observed.last_contact, local_eligible: observed.local_eligible, controlled: isUser };
+    const observed = observerStatus(member, person, phase, run.spatial, controlled);
+    const isUser = Boolean(member.personnel_id === controlled);
+    return { id: member.personnel_id ?? member.id, personnel_id: member.personnel_id ?? member.id, display_name: `${member.display_name ?? displayName(person)}${isUser ? " · YOU" : ""}`, first_name: member.first_name ?? person.first_name, last_name: member.last_name ?? person.last_name, role: `${member.role}${isUser ? " · YOU" : ""}`, clearance: person.clearance ?? null, assignment: person.current_assignment ?? member.assignment ?? null, contact_category: observed.contact_category, condition: observed.condition, last_contact: observed.last_contact, location: observed.location ?? run.spatial?.personnel_locations?.[member.personnel_id ?? member.id] ?? null, local_eligible: observed.local_eligible, controlled: isUser };
   });
 }
 

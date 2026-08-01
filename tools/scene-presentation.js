@@ -67,7 +67,7 @@ function fallbackNarration(scene) {
   if (environment.length) parts.push(sentence(environment.join(". ")));
   if (visible.length && scene.scene_type !== "delta") parts.push(`Nearby: ${visible.join(", ")}.`);
   if (changes.length) parts.push(changes.map(sentence).join(" "));
-  if (!parts.length) parts.push("Nothing notable changes.");
+  if (!parts.length) parts.push("From the observer's present position, the attempt produces no confirmed change.");
   if (scene.context.length && scene.scene_type !== "delta") parts.push(scene.context.map((item) => sentence(item.text)).join(" "));
   return parts.join(" ");
 }

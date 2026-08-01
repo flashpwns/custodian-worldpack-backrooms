@@ -1,0 +1,48 @@
+{
+  "version": "yellow-beast-worldpack-registry@v1",
+  "programs": [
+    {
+      "id": "field-researcher",
+      "worldpack_id": "clear-q4",
+      "gameplay_mode": "clear-q4",
+      "program_name": "CLEAR-Q4",
+      "role": "Field Operations",
+      "description": "Enter the Complex as assigned field personnel operating under Standard oversight.",
+      "availability": "available",
+      "display_order": 1,
+      "spatial_record": "data/worldpacks/clear-q4/spatial.json",
+      "interaction_record": "data/worldpacks/clear-q4/interactions.json",
+      "mission_record": "data/worldpacks/clear-q4/mission.json"
+    },
+    {
+      "id": "lost",
+      "worldpack_id": "lost",
+      "gameplay_mode": "lost",
+      "program_name": "LOST",
+      "role": "Survival",
+      "description": "Restricted operational program.",
+      "availability": "unavailable",
+      "display_order": 2
+    },
+    {
+      "id": "async-command",
+      "worldpack_id": "becks-desk",
+      "gameplay_mode": "beck",
+      "program_name": "BECK'S DESK",
+      "role": "Institutional Operations",
+      "description": "Restricted operational program.",
+      "availability": "unavailable",
+      "display_order": 3
+    },
+    {
+      "id": "local-anomaly",
+      "worldpack_id": "nullzone-exposure",
+      "gameplay_mode": "nullzone",
+      "program_name": "NULLZONE EXPOSURE",
+      "role": "Civilian Investigation",
+      "description": "Restricted operational program.",
+      "availability": "unavailable",
+      "display_order": 4
+    }
+  ]
+}

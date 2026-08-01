@@ -16,7 +16,7 @@ function projection(mode) {
 test("reactive surfaces keep their presentation identities without crossing private contexts", () => {
   void report;
   const field = surfaces.render(projection("field-researcher"));
-  assert.match(field, /FIELD BRIEF/); assert.match(field, /Radio/); assert.match(field, /Equipment/);
+  assert.match(field, /ASSIGNMENT BRIEFING/); assert.match(field, /RADIO/i); assert.match(field, /equipment/i);
   const beck = surfaces.render(projection("async-command"));
   assert.match(beck, /Reports and calls/); assert.match(beck, /On the desk/); assert.doesNotMatch(beck, /desk-grid/);
   const nullzone = surfaces.render(projection("local-anomaly"));
@@ -31,5 +31,5 @@ test("renderer remains projection-only and keeps natural language ahead of struc
   assert.match(renderer, /data-testid="natural-primary"/);
   assert.ok(renderer.indexOf('data-testid="natural-primary"') < renderer.indexOf("Structured controls"));
   assert.doesNotMatch(ui, /world_history|canonical_effect|observer_projection|story_thread/i);
-  assert.deepEqual(Object.keys(surfaces.CAPABILITIES), MODES.map(({ id }) => id));
+  assert.deepEqual(Object.keys(surfaces.CAPABILITIES).sort(), MODES.map(({ id }) => id).sort());
 });

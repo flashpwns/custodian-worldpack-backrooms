@@ -1,0 +1,373 @@
+{
+  "version": "yellow-beast-mission-worldpack@v1",
+  "worldpack_id": "clear-q4",
+  "mission": {
+    "id": "clear-q4-field-assignment",
+    "version": 1,
+    "display_name": "Clear-Q4 Field Survey",
+    "briefing": "Establish contact, document the declared Utility Room conditions, maintain the field record, and return through the confirmed Threshold route.",
+    "operational_intent": "Produce a grounded survey record while retaining personnel, equipment, evidence, route, and communication accountability.",
+    "objectives": [
+      {
+        "id": "establish-radio-contact",
+        "name": "Establish radio contact",
+        "kind": "required",
+        "behavior": "sticky",
+        "initial_state": "inactive",
+        "activation": { "source": "mission", "predicate": "phase_in", "values": ["STANDARD_RADIO_CHECK", "FIELD_OPERATION", "RETURN", "DEBRIEF"] },
+        "satisfaction": { "source": "communication", "predicate": "radio_check_completed" },
+        "failure": { "source": "equipment", "predicate": "lost", "equipment_id": "survey-radio" },
+        "waiver": { "all": [{ "source": "mission", "predicate": "abort_requested" }, { "source": "communication", "predicate": "unavailable", "equipment_id": "survey-radio" }] },
+        "public": {
+          "inactive": "The Standard radio-check phase has not begun.",
+          "active": "Standard has not yet acknowledged the field radio check.",
+          "blocked": "The assigned field radio is not available for contact.",
+          "satisfied": "Standard acknowledged the field team and authorized departure.",
+          "failed": "The assigned field radio was lost before contact was established.",
+          "waived": "The controlled abort record notes that Standard could not be reached.",
+          "abandoned": "Radio contact was not established before mission closure.",
+          "next_requirement": "Complete the visible radio check and receive Standard acknowledgment."
+        }
+      },
+      {
+        "id": "enter-survey-area",
+        "name": "Enter the declared survey area",
+        "kind": "required",
+        "behavior": "sticky",
+        "initial_state": "inactive",
+        "dependencies": ["establish-radio-contact"],
+        "activation": { "source": "mission", "predicate": "phase_in", "values": ["FIELD_OPERATION", "RETURN", "DEBRIEF"] },
+        "satisfaction": { "source": "spatial", "predicate": "location_visited", "location_id": "utility-room" },
+        "public": {
+          "inactive": "Field departure has not begun.",
+          "blocked": "Field entry remains dependent on acknowledged radio contact.",
+          "active": "The team has not yet entered the assigned survey area.",
+          "satisfied": "The team physically entered the declared Utility Room survey area.",
+          "failed": "The survey area became unavailable before entry.",
+          "waived": "Survey-area entry was explicitly waived.",
+          "abandoned": "The team closed the mission without entering the survey area.",
+          "next_requirement": "Traverse the authorized field route into the Utility Room."
+        }
+      },
+      {
+        "id": "establish-utility-conditions",
+        "name": "Establish Utility Room conditions",
+        "kind": "required",
+        "behavior": "sticky",
+        "initial_state": "inactive",
+        "dependencies": ["enter-survey-area"],
+        "activation": { "source": "mission", "predicate": "phase_in", "values": ["FIELD_OPERATION", "RETURN", "DEBRIEF"] },
+        "satisfaction": {
+          "all": [
+            { "source": "object", "predicate": "property_known", "object_id": "utility-fluorescent-fixture", "property": "output-stability" },
+            { "source": "object", "predicate": "property_known", "object_id": "utility-route-surface", "property": "surface-pattern" },
+            { "source": "object", "predicate": "property_known", "object_id": "utility-service-panel", "property": "dry-latch" },
+            { "any": [
+              { "source": "object", "predicate": "interaction_completed", "object_id": "utility-fluorescent-fixture", "action": "test" },
+              { "source": "object", "predicate": "interaction_completed", "object_id": "utility-service-panel", "action": "open" },
+              { "source": "object", "predicate": "interaction_completed", "object_id": "utility-route-surface", "action": "mark" }
+            ] }
+          ]
+        },
+        "public": {
+          "inactive": "The declared Utility Room is not yet part of the current field record.",
+          "blocked": "The Utility Room survey cannot proceed until the team enters the assigned area.",
+          "active": "The fixture, floor scuffs, and service panel are not yet all established, and one feature still needs validation.",
+          "satisfied": "The declared fixture, floor, and panel conditions are known and at least one feature was validated.",
+          "failed": "A required Utility Room condition can no longer be established.",
+          "waived": "The missing Utility Room condition was explicitly waived.",
+          "abandoned": "The Utility Room survey remained incomplete at mission closure.",
+          "next_requirement": "Inspect the fixture, floor scuffs, and service panel, then test, open, or mark one declared feature."
+        }
+      },
+      {
+        "id": "capture-field-evidence",
+        "name": "Capture mission evidence",
+        "kind": "required",
+        "behavior": "sticky",
+        "initial_state": "inactive",
+        "dependencies": ["enter-survey-area"],
+        "activation": { "source": "mission", "predicate": "phase_in", "values": ["FIELD_OPERATION", "RETURN", "DEBRIEF"] },
+        "satisfaction": { "any": [
+          { "source": "evidence", "predicate": "exists", "source_object": "utility-fluorescent-fixture" },
+          { "source": "evidence", "predicate": "exists", "source_object": "utility-route-surface" },
+          { "source": "evidence", "predicate": "exists", "source_object": "threshold-return-marker" }
+        ] },
+        "failure": { "all": [{ "source": "equipment", "predicate": "lost", "equipment_id": "recording-device" }, { "not": { "any": [
+          { "source": "evidence", "predicate": "exists", "source_object": "utility-fluorescent-fixture" },
+          { "source": "evidence", "predicate": "exists", "source_object": "utility-route-surface" },
+          { "source": "evidence", "predicate": "exists", "source_object": "threshold-return-marker" }
+        ] } }] },
+        "public": {
+          "inactive": "Evidence collection has not begun in the field.",
+          "blocked": "Evidence collection depends on entering the assigned area.",
+          "active": "No valid object-specific field record has been captured.",
+          "satisfied": "At least one valid condition-specific field record is retained.",
+          "failed": "The recording device was lost before a valid record was captured.",
+          "waived": "Evidence capture was explicitly waived.",
+          "abandoned": "No valid field evidence was retained at mission closure.",
+          "next_requirement": "Use an authored recording or measurement procedure on a visible object."
+        }
+      },
+      {
+        "id": "report-field-evidence",
+        "name": "Report field evidence",
+        "kind": "required",
+        "behavior": "recoverable",
+        "initial_state": "inactive",
+        "dependencies": ["capture-field-evidence"],
+        "activation": { "source": "mission", "predicate": "phase_in", "values": ["FIELD_OPERATION", "RETURN", "DEBRIEF"] },
+        "satisfaction": { "source": "evidence", "predicate": "reported" },
+        "blocking": { "source": "communication", "predicate": "unavailable", "equipment_id": "survey-radio" },
+        "waiver": { "all": [{ "source": "mission", "predicate": "return_requested" }, { "source": "communication", "predicate": "unavailable", "equipment_id": "survey-radio" }] },
+        "public": {
+          "inactive": "No captured field evidence is ready for reporting.",
+          "blocked": "The evidence report cannot proceed under the current known conditions.",
+          "dependency_blocked": "A valid object-specific field record is required before a report can be sent.",
+          "condition_blocked": "A field record exists, but the Standard radio channel is unavailable.",
+          "active": "A valid field record is retained. Standard has not yet received it.",
+          "satisfied": "Standard received a report tied to the retained field evidence.",
+          "failed": "The reporting opportunity closed before Standard received the record.",
+          "waived": "The closure record notes that communication was unavailable.",
+          "abandoned": "Retained evidence was not reported before mission closure.",
+          "next_requirement": "Transmit a report that identifies the retained evidence or its observed subject."
+        }
+      },
+      {
+        "id": "verify-return-route",
+        "name": "Verify the return route",
+        "kind": "required",
+        "behavior": "recoverable",
+        "initial_state": "inactive",
+        "dependencies": ["enter-survey-area"],
+        "activation": { "source": "mission", "predicate": "phase_in", "values": ["FIELD_OPERATION", "RETURN", "DEBRIEF"] },
+        "satisfaction": {
+          "all": [
+            { "source": "spatial", "predicate": "route_traversed", "connection_id": "entry-to-utility" },
+            { "source": "object", "predicate": "state", "object_id": "threshold-return-marker", "path": "custom.route_verified", "equals": true }
+          ]
+        },
+        "failure": { "not": { "source": "spatial", "predicate": "route_available", "connection_id": "entry-to-utility" } },
+        "public": {
+          "inactive": "The field return route has not yet been entered.",
+          "blocked": "The declared return route cannot currently be verified.",
+          "active": "The Threshold-side marker has not yet been verified and secured.",
+          "satisfied": "The Threshold-side marker is secured on the traversed return route.",
+          "failed": "The known return connection is no longer available.",
+          "waived": "Return-route verification was explicitly waived.",
+          "abandoned": "The return marker remained unsecured at mission closure.",
+          "next_requirement": "Return to the Threshold-side entry, inspect the marker, and secure it with marker supplies."
+        }
+      },
+      {
+        "id": "maintain-check-ins",
+        "name": "Maintain the scheduled check-in",
+        "kind": "required",
+        "behavior": "irrecoverable",
+        "initial_state": "inactive",
+        "activation": { "any": [{ "source": "time", "predicate": "deadline_pending", "deadline": "check_in" }, { "source": "time", "predicate": "deadline_due", "deadline": "check_in" }, { "source": "time", "predicate": "deadline_exceeded", "deadline": "check_in" }] },
+        "satisfaction": { "source": "communication", "predicate": "check_in_completed" },
+        "failure": { "source": "communication", "predicate": "check_in_missed" },
+        "blocking": { "source": "communication", "predicate": "unavailable", "equipment_id": "survey-radio" },
+        "waiver": { "all": [{ "source": "communication", "predicate": "unavailable", "equipment_id": "survey-radio" }, { "source": "time", "predicate": "deadline_exceeded", "deadline": "check_in" }] },
+        "public": {
+          "inactive": "No field check-in is currently scheduled.",
+          "blocked": "The scheduled report cannot be transmitted while communication is unavailable.",
+          "active": "The scheduled check-in remains pending within its declared window.",
+          "satisfied": "Standard received the scheduled field check-in.",
+          "failed": "The declared check-in window passed without a delivered report.",
+          "waived": "The missed window was waived because the field radio was unavailable.",
+          "abandoned": "The scheduled check-in remained unresolved at mission closure.",
+          "next_requirement": "Transmit a field-status check-in to Standard before the scheduled window closes."
+        }
+      },
+      {
+        "id": "return-accountability",
+        "name": "Return with accountability",
+        "kind": "required",
+        "behavior": "recoverable",
+        "initial_state": "inactive",
+        "activation": { "source": "mission", "predicate": "return_requested" },
+        "blocking": {
+          "all": [
+            { "not": { "source": "mission", "predicate": "abort_requested" } },
+            { "source": "personnel", "predicate": "separated", "role": "team" }
+          ]
+        },
+        "failure": { "all": [
+          { "source": "mission", "predicate": "return_requested" },
+          { "not": { "source": "mission", "predicate": "abort_requested" } },
+          { "source": "spatial", "predicate": "returned", "location_id": "threshold-side-entry" },
+          { "source": "personnel", "predicate": "missing", "role": "team" }
+        ] },
+        "satisfaction": {
+          "all": [
+            { "source": "mission", "predicate": "return_requested" },
+            { "source": "spatial", "predicate": "returned", "location_id": "threshold-side-entry" },
+            { "any": [
+              { "all": [
+                { "source": "personnel", "predicate": "returned", "role": "all_assigned", "location_id": "threshold-side-entry" },
+                { "source": "personnel", "predicate": "accounted", "role": "all_assigned" }
+              ] },
+              { "source": "mission", "predicate": "abort_requested" }
+            ] }
+          ]
+        },
+        "public": {
+          "inactive": "No return or controlled abort has been requested.",
+          "blocked": "Assigned personnel are not currently accounted for on the return route.",
+          "active": "The return procedure is underway; reach the Threshold-side entry and reconcile the team, equipment, and field record.",
+          "satisfied": "The team reached the Threshold-side entry and equipment and field-record outcomes were reconciled.",
+          "failed": "Return accountability can no longer be established.",
+          "waived": "Return accountability was explicitly waived.",
+          "abandoned": "The mission closed without verified return accountability.",
+          "next_requirement": "Follow the known route to the Threshold-side entry with personnel, equipment, and evidence accounted for."
+        }
+      },
+      {
+        "id": "additional-condition-record",
+        "name": "Document an additional field condition",
+        "kind": "optional",
+        "behavior": "irrecoverable",
+        "initial_state": "inactive",
+        "dependencies": ["capture-field-evidence"],
+        "activation": { "source": "mission", "predicate": "phase_in", "values": ["FIELD_OPERATION", "RETURN", "DEBRIEF"] },
+        "satisfaction": { "source": "evidence", "predicate": "distinct_count", "distinct_by": "source_object", "minimum": 2 },
+        "failure": { "all": [{ "source": "equipment", "predicate": "lost", "equipment_id": "recording-device" }, { "not": { "source": "evidence", "predicate": "distinct_count", "distinct_by": "source_object", "minimum": 2 } }] },
+        "public": {
+          "inactive": "The optional second record becomes available after the first valid evidence item.",
+          "blocked": "A first valid field record is required before expanding the evidence set.",
+          "active": "One field condition is documented; a second distinct object record remains optional.",
+          "satisfied": "Distinct conditions from at least two field objects were documented.",
+          "failed": "The recording device was lost before a second distinct condition could be documented.",
+          "waived": "The optional record was waived.",
+          "abandoned": "The team returned without a second distinct object record.",
+          "next_requirement": "Capture valid evidence from a second authored field object."
+        }
+      }
+    ],
+    "return_policy": {
+      "return_location": "threshold-side-entry",
+      "route_available_when": { "all": [
+        { "source": "spatial", "predicate": "route_traversed", "connection_id": "entry-to-utility" },
+        { "source": "spatial", "predicate": "route_available", "connection_id": "entry-to-utility" }
+      ] },
+      "ready_when": {
+        "all": [
+          { "source": "mission", "predicate": "required_group_complete", "objective_ids": ["establish-radio-contact", "enter-survey-area", "establish-utility-conditions", "capture-field-evidence", "report-field-evidence", "verify-return-route"], "states": ["satisfied", "waived"] },
+          { "source": "mission", "predicate": "objective_state", "objective_id": "maintain-check-ins", "states": ["satisfied", "failed", "waived"] },
+          { "source": "personnel", "predicate": "within_speaking_range", "role": "all_assigned" },
+          { "source": "personnel", "predicate": "assigned_equipment_retained", "role": "all_assigned" }
+        ]
+      },
+      "closure_available_when": {
+        "all": [
+          { "source": "spatial", "predicate": "returned", "location_id": "threshold-side-entry" },
+          { "source": "mission", "predicate": "objective_state", "objective_id": "return-accountability", "states": ["satisfied", "failed"] }
+        ]
+      },
+      "completion_when": {
+        "all": [
+          { "source": "mission", "predicate": "objective_state", "objective_id": "return-accountability", "states": ["satisfied", "failed"] },
+          { "source": "mission", "predicate": "closure_requested" },
+          { "any": [{ "source": "communication", "predicate": "closure_delivered" }, { "source": "communication", "predicate": "unavailable", "equipment_id": "survey-radio" }] }
+        ]
+      },
+      "public": {
+        "unavailable": "No confirmed field-to-Threshold route is available from the current record.",
+        "available": "A known route returns to the Threshold, but required field work remains unresolved.",
+        "ready": "The route is known and required field work is resolved; the team may begin return.",
+        "requested": "Return procedure begun. Reach the Threshold-side entry before closing the mission.",
+        "closure_requested": "Return accountability is being reconciled with Standard.",
+        "closure_unavailable": "Reach the declared return point with personnel, equipment, and retained records accounted for before closing the mission."
+      }
+    },
+    "completion_policy": { "required": "all_terminal", "waived_counts": true, "optional_blocks": false },
+    "abort_policy": {
+      "available_when": { "not": { "source": "mission", "predicate": "lifecycle", "states": ["completed", "failed", "aborted"] } },
+      "unresolved_state": "abandoned",
+      "keep_objectives": ["return-accountability"],
+      "public_reason": "Controlled abort declared. Unresolved field objectives are abandoned while return accountability remains active.",
+      "public_unavailable": "This mission record is already closed."
+    },
+    "outcome_rules": [
+      {
+        "id": "controlled-abort",
+        "priority": 100,
+        "when": { "source": "mission", "predicate": "abort_requested" },
+        "final_state": "aborted",
+        "classification": "controlled-abort",
+        "public_summary": "The team completed a controlled abort and returned with the accountability that remained available.",
+        "institutional_hooks": ["controlled_abort", "incomplete_survey"]
+      },
+      {
+        "id": "clean-with-optional",
+        "priority": 90,
+        "when": {
+          "all": [
+            { "source": "mission", "predicate": "required_group_complete", "objective_ids": ["establish-radio-contact", "enter-survey-area", "establish-utility-conditions", "capture-field-evidence", "report-field-evidence", "verify-return-route", "maintain-check-ins", "return-accountability"], "states": ["satisfied", "waived"] },
+            { "source": "mission", "predicate": "objective_state", "objective_id": "additional-condition-record", "states": ["satisfied"] },
+            { "source": "personnel", "predicate": "assigned_equipment_retained", "role": "all_assigned" },
+            { "source": "evidence", "predicate": "retained" }
+          ]
+        },
+        "final_state": "completed",
+        "classification": "clean-completion-with-optional",
+        "public_summary": "The team returned with the required survey, reporting, route, and accountability record plus an additional documented condition.",
+        "institutional_hooks": ["clean_completion", "optional_success", "evidence_quality"]
+      },
+      {
+        "id": "clean-completion",
+        "priority": 80,
+        "when": { "all": [
+          { "source": "mission", "predicate": "required_group_complete", "objective_ids": ["establish-radio-contact", "enter-survey-area", "establish-utility-conditions", "capture-field-evidence", "report-field-evidence", "verify-return-route", "maintain-check-ins", "return-accountability"], "states": ["satisfied", "waived"] },
+          { "source": "personnel", "predicate": "assigned_equipment_retained", "role": "all_assigned" },
+          { "source": "evidence", "predicate": "retained" }
+        ] },
+        "final_state": "completed",
+        "classification": "clean-completion",
+        "public_summary": "The team returned with the required survey, evidence, reporting, route, and accountability conditions resolved.",
+        "institutional_hooks": ["clean_completion"]
+      },
+      {
+        "id": "degraded-completion",
+        "priority": 50,
+        "when": { "source": "mission", "predicate": "objective_state", "objective_id": "return-accountability", "states": ["satisfied"] },
+        "final_state": "completed",
+        "classification": "degraded-completion",
+        "public_summary": "The team returned and closed the mission, but one or more required survey, evidence, route, equipment, or communication conditions remained incomplete.",
+        "institutional_hooks": ["incomplete_survey", "missed_check_in", "unreported_evidence", "route_compromise", "equipment_consequence"]
+      },
+      {
+        "id": "mission-failure",
+        "priority": 0,
+        "when": { "constant": true },
+        "final_state": "failed",
+        "classification": "mission-failure",
+        "public_summary": "The mission closed without establishing return accountability.",
+        "institutional_hooks": ["mission_failure", "missing_personnel", "route_compromise"]
+      }
+    ],
+    "public_progress": {
+      "required_heading": "Required objectives",
+      "optional_heading": "Optional objectives",
+      "blockers_heading": "Current blockers",
+      "updates_heading": "Recent mission updates",
+      "return_heading": "Return readiness"
+    },
+    "migration": {
+      "from_versions": ["yellow-beast-save@v1", "yellow-beast-save@v2", "yellow-beast-save@v3", "yellow-beast-save@v4", "yellow-beast-save@v5", "yellow-beast-save@v6"],
+      "legacy_objective_map": {
+        "survey": "establish-utility-conditions",
+        "evidence": "capture-field-evidence",
+        "check_in": "maintain-check-ins",
+        "return_decision": "return-accountability",
+        "route_verification": "verify-return-route"
+      }
+    }
+  },
+  "known_limitations": [
+    "Clear-Q4 contains one compact authored mission slice; broader hazards and autonomous personnel policy remain deferred.",
+    "A single scheduled field check-in is evaluated in this milestone."
+  ]
+}

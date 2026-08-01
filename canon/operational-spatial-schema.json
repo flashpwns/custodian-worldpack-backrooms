@@ -1,0 +1,41 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "yellow-beast-operational-spatial-schema@v1",
+  "title": "Yellow Beast operational spatial worldpack",
+  "type": "object",
+  "required": ["version", "worldpack_id", "initial_location", "field_entry_location", "locations", "connections"],
+  "properties": {
+    "version": { "const": "yellow-beast-spatial-worldpack@v1" },
+    "worldpack_id": { "type": "string", "pattern": "^[a-z0-9][a-z0-9-]*$" },
+    "initial_location": { "type": "string" },
+    "field_entry_location": { "type": "string" },
+    "phase_locations": { "type": "object", "additionalProperties": { "type": "string" } },
+    "locations": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "name", "type", "short_description", "environment", "landmarks", "coordinates"],
+        "properties": {
+          "id": { "type": "string" }, "name": { "type": "string" }, "type": { "type": "string" },
+          "short_description": { "type": "string" }, "environment": { "type": "object" },
+          "landmarks": { "type": "array" }, "coordinates": { "type": "object" },
+          "hazards": { "type": "array" }, "tags": { "type": "array" }
+        }
+      }
+    },
+    "connections": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "from", "to", "direction", "transition", "lock_state", "visibility", "bidirectional"],
+        "properties": {
+          "id": { "type": "string" }, "from": { "type": "string" }, "to": { "type": "string" },
+          "direction": { "type": "string" }, "transition": { "type": "string" },
+          "requirements": { "type": "array" }, "lock_state": { "type": "string" },
+          "hazard_state": { "type": "string" }, "visibility": { "type": "string" },
+          "discovery": { "type": "string" }, "bidirectional": { "type": "boolean" }
+        }
+      }
+    }
+  }
+}
