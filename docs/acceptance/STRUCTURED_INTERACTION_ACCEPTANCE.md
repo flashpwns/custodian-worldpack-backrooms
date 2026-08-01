@@ -12,7 +12,7 @@ The acceptance runner creates a new Clear-Q4 operator, selects a route-marker ki
 
 1. observe at least three authored objects;
 2. inspect the fluorescent fixture and reveal condition-specific information;
-3. use Nora's nearby survey instrument through an explicitly authored team-use rule;
+3. use the assigned survey technician's nearby instrument through an explicitly authored team-use rule;
 4. consume one instrument use, tag the fixture, create evidence, and satisfy condition-derived survey/evidence objectives;
 5. inspect and mark the scuffed floor;
 6. inspect and open the service panel;
@@ -55,7 +55,7 @@ The slice proves that inspection can reveal information while evidence and route
 
 Tool requirements resolve against the existing custody, condition, charge, and spatial proximity state. Player-held gear is usable. Teammate-held gear is usable only when the affordance explicitly declares team use and that teammate is active in the same location; the holder never changes implicitly. Missing, separated, damaged, and depleted items block before mutation. Declared consumable use decrements the actual item's charges and appends equipment use history.
 
-The test action deliberately uses Nora's survey instrument while it remains in Nora's custody. The route-marker action uses the player's selected optional kit. Both states persist across restart.
+The test action deliberately uses the generated survey technician's instrument while it remains in that coworker's custody. The route-marker action uses the player's selected optional kit. Both states persist across restart.
 
 ## Evidence lifecycle
 
@@ -65,7 +65,7 @@ An identical capture is rejected as redundant. Capturing the same object after a
 
 ## Persistence and migration
 
-The current run envelope is `yellow-beast-save@v7`; the desktop session envelope is `yellow-beast-session@5`. Loading earlier supported runs/sessions preserves field position, discovery, route history, team, equipment, radio, timer, mission, and map state, then deterministically initializes missing registered state. Existing object-state records are normalized by the versioned object migration.
+The current run envelope is `yellow-beast-save@v8`; the desktop session envelope is `yellow-beast-session@6`. Loading earlier supported runs/sessions preserves field position, discovery, route history, team, equipment, radio, timer, mission, and map state, then deterministically initializes missing registered state. Existing object-state records are normalized by the versioned object migration.
 
 The integration test and acceptance runner compare object condition, interaction history, evidence, objective state, equipment, current location, map discovery/history, team, radio, and operational clock before shutdown and after full reconstruction.
 

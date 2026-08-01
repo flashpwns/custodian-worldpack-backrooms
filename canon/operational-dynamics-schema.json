@@ -1,0 +1,79 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "yellow-beast-operational-dynamics-schema@v1",
+  "title": "Yellow Beast operational dynamics worldpack",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["version", "worldpack_id", "action_costs", "staffing", "communications", "hazards", "consequence_sets"],
+  "properties": {
+    "version": { "const": "yellow-beast-operational-dynamics-worldpack@v1" },
+    "worldpack_id": { "type": "string", "pattern": "^[a-z0-9][a-z0-9-]*$" },
+    "action_costs": { "type": "object", "additionalProperties": { "type": "integer", "minimum": 0, "maximum": 12 } },
+    "staffing": {
+      "type": "object", "additionalProperties": false,
+      "required": ["minimum_total", "maximum_total", "coworker_roles"],
+      "properties": {
+        "minimum_total": { "type": "integer", "minimum": 3, "maximum": 5 },
+        "maximum_total": { "type": "integer", "minimum": 3, "maximum": 5 },
+        "total": { "type": "integer", "minimum": 3, "maximum": 5 },
+        "clearance": { "type": "string" },
+        "coworker_roles": { "type": "array", "minItems": 2, "items": { "type": "string", "minLength": 1 }, "uniqueItems": true }
+      }
+    },
+    "communications": {
+      "type": "object", "additionalProperties": false,
+      "required": ["standard_delivery_delay", "standard_acknowledgment_delay", "check_ins", "interference_zones"],
+      "properties": {
+        "standard_delivery_delay": { "type": "integer", "minimum": 0 },
+        "standard_acknowledgment_delay": { "type": "integer", "minimum": 0 },
+        "check_ins": { "type": "array", "items": { "$ref": "#/$defs/checkIn" } },
+        "interference_zones": { "type": "array", "items": { "$ref": "#/$defs/interference" } }
+      }
+    },
+    "hazards": { "type": "array", "items": { "$ref": "#/$defs/hazard" } },
+    "consequence_sets": { "type": "array", "items": { "$ref": "#/$defs/consequenceSet" } }
+  },
+  "$defs": {
+    "checkIn": {
+      "type": "object", "additionalProperties": false,
+      "required": ["id", "due_after", "approaching_within", "miss_after", "public_label"],
+      "properties": { "id": { "type": "string" }, "due_after": { "type": "integer", "minimum": 1 }, "approaching_within": { "type": "integer", "minimum": 0 }, "miss_after": { "type": "integer", "minimum": 1 }, "public_label": { "type": "string" } }
+    },
+    "interference": {
+      "type": "object", "additionalProperties": false,
+      "required": ["id", "locations", "additional_delay", "public_description"],
+      "properties": { "id": { "type": "string" }, "locations": { "type": "array", "minItems": 1, "items": { "type": "string" }, "uniqueItems": true }, "connections": { "type": "array", "items": { "type": "string" }, "uniqueItems": true }, "additional_delay": { "type": "integer", "minimum": 1 }, "public_description": { "type": "string" } }
+    },
+    "condition": {
+      "oneOf": [
+        { "type": "object", "additionalProperties": false, "required": ["all"], "properties": { "all": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/condition" } } } },
+        { "type": "object", "additionalProperties": false, "required": ["any"], "properties": { "any": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/condition" } } } },
+        { "type": "object", "additionalProperties": false, "required": ["not"], "properties": { "not": { "$ref": "#/$defs/condition" } } },
+        { "type": "object", "additionalProperties": false, "required": ["source", "predicate"], "properties": { "source": { "enum": ["time", "spatial", "hazard", "personnel", "equipment", "communication"] }, "predicate": { "enum": ["interval_reached", "actor_at_location", "connection_traversed", "state_is", "unmitigated", "personnel_present", "equipment_present", "message_state"] }, "amount": { "type": "integer" }, "location_id": { "type": "string" }, "connection_id": { "type": "string" }, "state": { "type": "string" }, "hazard_id": { "type": "string" }, "equipment_id": { "type": "string" }, "message_state": { "type": "string" } } }
+      ]
+    },
+    "hazard": {
+      "type": "object", "additionalProperties": false,
+      "required": ["id", "category", "scope", "initial_state", "visibility", "detection", "activation", "exposure", "severity", "affected_targets", "avoidance_options", "mitigation_options", "recoverability", "consequence_set", "persistence", "public"],
+      "properties": {
+        "id": { "type": "string" }, "category": { "enum": ["structural", "electrical", "environmental", "spatial", "communications", "equipment", "visibility", "navigation"] },
+        "scope": { "type": "object", "additionalProperties": false, "minProperties": 1, "properties": { "location_id": { "type": "string" }, "connection_id": { "type": "string" } } }, "initial_state": { "enum": ["dormant", "active", "mitigated", "resolved"] }, "visibility": { "enum": ["hidden", "warning-signs", "known"] },
+        "detection": { "$ref": "#/$defs/condition" }, "activation": { "$ref": "#/$defs/condition" }, "exposure": { "$ref": "#/$defs/condition" },
+        "severity": { "enum": ["low", "moderate", "serious", "critical"] }, "affected_targets": { "enum": ["occupants", "one-coworker", "player", "equipment", "route"] },
+        "avoidance_options": { "type": "array", "items": { "type": "string" } }, "mitigation_options": { "type": "array", "items": { "type": "string" } },
+        "recoverability": { "enum": ["recoverable", "partially-recoverable", "irrecoverable"] }, "consequence_set": { "type": "string" }, "persistence": { "enum": ["transient", "persistent"] },
+        "public": { "type": "object", "additionalProperties": false, "required": ["warning", "observed", "mitigated"], "properties": { "warning": { "type": "string" }, "observed": { "type": "string" }, "mitigated": { "type": "string" }, "unknown": { "type": "string" } } }
+      }
+    },
+    "effect": {
+      "type": "object", "additionalProperties": false,
+      "required": ["kind"],
+      "properties": { "kind": { "enum": ["personnel-condition", "equipment-dropped", "equipment-state", "route-blocked", "operational-delay", "evidence-state"] }, "target": { "type": "string" }, "state": { "type": "string" }, "condition": { "type": "string" }, "status": { "type": "string" }, "location_id": { "type": "string" }, "connection_id": { "type": "string" }, "amount": { "type": "integer", "minimum": 1 }, "reason": { "type": "string" } }
+    },
+    "consequenceSet": {
+      "type": "object", "additionalProperties": false,
+      "required": ["id", "effects", "public_summary"],
+      "properties": { "id": { "type": "string" }, "effects": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/effect" } }, "public_summary": { "type": "string" } }
+    }
+  }
+}

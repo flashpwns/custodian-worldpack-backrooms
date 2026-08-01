@@ -138,10 +138,11 @@ test("nearby team-held equipment permits declared team use and consumes the actu
   const entry = service.session(world.id, "field-researcher");
   const instrument = entry.run.expedition.equipment["survey-instrument"];
   const holder = instrument.holder; const before = instrument.charges;
+  const holderName = entry.run.expedition.team.members.find((member) => member.personnel_id === holder).first_name;
   assert.notEqual(holder, entry.run.session.startup.player.observer_id);
   action(service, world, "INSPECT", "fluorescent fixture");
   const tested = action(service, world, "TEST", "fluorescent fixture");
-  assert.match(tested.result.public_reason, /Nora holds the survey instrument/i);
+  assert.match(tested.result.public_reason, new RegExp(`${holderName} holds the survey instrument`, "i"));
   assert.equal(instrument.holder, holder);
   assert.equal(instrument.charges, before - 1);
   assert.equal(instrument.state, "depleted");
@@ -185,7 +186,8 @@ test("evidence is object-, location-, observer-, device-, condition-, and time-s
   const repeated = service.submitAction({ world_id: world.id, mode: "field-researcher", action: "PHOTOGRAPH", target: "scuffed floor" });
   assert.equal(repeated.ok, false); assert.equal(repeated.error.code, "EVIDENCE_REDUNDANT");
   assert.equal(entry.run.expedition.evidence.length, 1); assert.equal(camera.charges, before - 1);
-  assert.equal(service.getGameplayProjection({ world_id: world.id, mode: "field-researcher" }).projection.q4.evidence[0].observer, "Alex Morgan");
+  const cameraHolder = entry.run.expedition.team.members.find((member) => member.personnel_id === camera.holder).display_name;
+  assert.equal(service.getGameplayProjection({ world_id: world.id, mode: "field-researcher" }).projection.q4.evidence[0].observer, cameraHolder);
   const reported = service.submitQ4Communication({ world_id: world.id, channel: "standard", text: "Reporting the scuffed-floor photograph and its evidence condition." });
   assert.equal(reported.ok, true);
   assert.equal(evidence.available_to_standard, true);

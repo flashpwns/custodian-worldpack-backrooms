@@ -62,7 +62,7 @@
           ],
           "reveals": ["output-stability"],
           "time_cost": 1,
-          "result": "Nora holds the survey instrument beneath the light while you call the reading. The output remains steady, and the fixture is tagged in the survey record.",
+          "result": "{tool_holder_first_name} holds the survey instrument beneath the light while you call the reading. The output remains steady, and the fixture is tagged in the survey record.",
           "evidence": {
             "type": "fixture-test",
             "method": "instrument test",
@@ -94,7 +94,7 @@
             { "path": "custom.survey_tagged", "value": true }
           ],
           "time_cost": 1,
-          "result": "Alex frames the ceiling fixture while you call the identifying details. The exposure is added to the field record, and the fixture is tagged as surveyed.",
+          "result": "{tool_holder_first_name} frames the ceiling fixture while you call the identifying details. The exposure is added to the field record, and the fixture is tagged as surveyed.",
           "evidence": {
             "type": "fixture-photograph",
             "method": "35mm photograph",
@@ -177,7 +177,7 @@
           "mutations": [],
           "reveals": ["surface-pattern"],
           "time_cost": 1,
-          "result": "Alex photographs the crossing scuffs from directly above while you keep the survey scale in frame. The exposure is added to the field record.",
+          "result": "{tool_holder_first_name} photographs the crossing scuffs from directly above while you keep the survey scale in frame. The exposure is added to the field record.",
           "evidence": {
             "type": "surface-photograph",
             "method": "35mm photograph",
@@ -416,7 +416,7 @@
           },
           "mutations": [],
           "time_cost": 1,
-          "result": "Alex photographs the marker against the Threshold return line while you call its visible condition for the field record.",
+          "result": "{tool_holder_first_name} photographs the marker against the Threshold return line while you call its visible condition for the field record.",
           "evidence": {
             "type": "return-marker-record",
             "method": "35mm photograph and field notation",

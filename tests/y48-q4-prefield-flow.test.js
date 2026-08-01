@@ -68,11 +68,12 @@ test("pre-field controls advance deterministically through threshold and radio c
 
 test("LOCAL greeting records visible player text and deterministic coworker response", () => {
   const { service, world } = fixture(); const started = start(service, world);
-  const result = service.submitQ4Communication({ world_id: world.id, channel: "local", target: "Nora", text: "Good morning, Nora." });
+  const peer = started.projection.q4.team.find((member) => !member.controlled);
+  const result = service.submitQ4Communication({ world_id: world.id, channel: "local", target: peer.first_name, text: `Good morning, ${peer.first_name}.` });
   assert.equal(result.ok, true);
   const html = surfaces.render(result.projection);
-  assert.match(html, /Good morning, Nora\./);
-  assert.match(html, /Nora:/);
+  assert.match(html, new RegExp(`Good morning, ${peer.first_name}\\.`));
+  assert.match(html, new RegExp(`${peer.first_name}:`));
   assert.match(html, /DELIVERED|HEARD/i);
 });
 

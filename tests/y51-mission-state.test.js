@@ -312,13 +312,13 @@ test("optional work changes the debrief but never blocks a clean required comple
   assert.ok(enhanced.projection.q4.review.institutional_consequence_hooks.includes("optional_success"));
 });
 
-test("missed check-ins degrade rather than automatically fail the mission", () => {
+test("missed check-ins can recover without erasing the operational consequence", () => {
   const { service, world } = fixture("mission-missed-check-in"); reachField(service, world);
-  for (let index = 0; index < 4; index += 1) action(service, world, "WAIT");
+  while (service.session(world.id, "field-researcher").run.expedition.communications.check_ins[0].state !== "missed") action(service, world, "WAIT");
   const entry = service.session(world.id, "field-researcher");
   assert.equal(entry.run.expedition.objectives["maintain-check-ins"].state, "failed");
   requiredFieldwork(service, world, { optional: true }); verifyRoute(service, world); const closed = closeMission(service, world);
-  assert.equal(closed.projection.q4.review.outcome, "degraded-completion");
+  assert.equal(closed.projection.q4.review.outcome, "recovered-complication");
   assert.equal(closed.projection.q4.review.communications.outcome.check_in_missed, true);
   assert.ok(closed.projection.q4.review.institutional_consequence_hooks.includes("missed_check_in"));
 });
@@ -326,7 +326,7 @@ test("missed check-ins degrade rather than automatically fail the mission", () =
 test("communication loss can waive a declared check-in only under the authored rule", () => {
   const { service, world } = fixture("mission-check-in-waiver"); const entry = reachField(service, world);
   entry.run.expedition.equipment["survey-radio"].state = "damaged";
-  for (let index = 0; index < 4; index += 1) action(service, world, "WAIT");
+  while (entry.run.expedition.objectives["maintain-check-ins"].state !== "waived") action(service, world, "WAIT");
   assert.equal(entry.run.expedition.objectives["maintain-check-ins"].state, "waived");
   assert.equal(entry.run.expedition.objectives["establish-radio-contact"].state, "satisfied", "the earlier acknowledged radio check is sticky");
 });

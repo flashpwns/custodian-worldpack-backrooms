@@ -275,8 +275,9 @@ function project(state, definition, { personnel = [], mission_markers = [] } = {
   const { locations, connections } = index(definition);
   const nodes = Object.entries(state.discovered_locations).map(([id, knowledge]) => {
     const location = locations[id];
-    const present = personnel.filter((person) => state.personnel_locations[person.id] === id).map((person) => ({ id: person.id, name: person.name, status: "present" }));
-    const lastKnown = personnel.filter((person) => state.personnel_locations[person.id] !== id && state.last_confirmed_personnel_positions[person.id]?.location === id).map((person) => ({ id: person.id, name: person.name, status: "last-known" }));
+    const knownLocation = (person) => person.known_location ?? state.last_confirmed_personnel_positions[person.id]?.location ?? state.personnel_locations[person.id];
+    const present = personnel.filter((person) => (person.confirmed_current ?? state.personnel_locations[person.id] === state.player_location) && knownLocation(person) === id).map((person) => ({ id: person.id, name: person.name, status: "present" }));
+    const lastKnown = personnel.filter((person) => !(person.confirmed_current ?? state.personnel_locations[person.id] === state.player_location) && knownLocation(person) === id).map((person) => ({ id: person.id, name: person.name, status: "last-known" }));
     return { id, name: location.name, type: location.type, status: knowledge.status, current: id === state.player_location, coordinates: clone(location.coordinates), personnel: [...present, ...lastKnown], hazards: clone(location.hazards ?? []), mission_markers: mission_markers.filter((marker) => marker.location === id).map(clone) };
   });
   const nodeIds = new Set(nodes.map((item) => item.id));

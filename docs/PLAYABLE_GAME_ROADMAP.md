@@ -8,7 +8,7 @@ This roadmap turns the readiness audit into ordered deliverables. Work lanes are
 - **Interface:** player-facing hierarchy, controls, feedback, and accessibility.
 - **Authoring tools:** validation, preview, diagnostics, and content-scale support.
 
-Milestones 1 through 3 are delivered. Milestone 4 is the highest-priority next milestone.
+Milestones 1 through 3 are delivered. The bounded operational slices of Milestones 5 through 7 were delivered together by Operational Dynamics. Milestone 4 remains the highest-priority next milestone because its general inventory/container work is intentionally broader than the custody, damage, drop, and recovery behavior required by Operational Dynamics.
 
 ## 1. Persistent spatial foundation — delivered
 
@@ -58,7 +58,7 @@ Milestones 1 through 3 are delivered. Milestone 4 is the highest-priority next m
 - **Dependencies:** Milestone 2 affordances.
 - **Risks:** Duplicating equipment between run/world/spatial state; world history must remain canonical and projections must remain derived.
 
-## 5. Operational time and communications
+## 5. Operational time and communications — operational slice delivered
 
 - **Player-facing capability:** Plan around due times, channel quality, scheduled Standard contact, delayed/intermittent delivery, acknowledgements, and consequences for missed procedure.
 - **Engine capability:** Scheduled event queue, radio transitions/delivery semantics, Standard procedure policy, overdue escalation, queued/intermittent messages, and time costs shared across actions.
@@ -69,18 +69,18 @@ Milestones 1 through 3 are delivered. Milestone 4 is the highest-priority next m
 - **Dependencies:** Milestone 3 mission criteria and Milestone 4 radio custody.
 - **Risks:** Simulated time and wall-clock time must not mix; all operational scheduling remains based on persisted mission intervals.
 
-## 6. Team simulation and relationships
+## 6. Team simulation and relationships — operational slice delivered
 
 - **Player-facing capability:** Give bounded instructions, negotiate equipment/tasks, split or regroup, wait for delayed personnel, and manage radio-only or lost contact.
 - **Engine capability:** Event-driven coworker policies for follow/remain/refuse/delay/report; relationship state; independent positions; last-known updates; no omniscient knowledge.
-- **Worldpack capability:** Nora and Alex receive authored competencies, concerns, procedural constraints, relationship beats, and bounded responses.
+- **Worldpack capability:** Seeded generated coworkers receive roles, competencies, equipment assignments, procedural constraints, and bounded operational policies; established legacy identities remain unchanged during migration.
 - **Lanes:** Simulation, Clear-Q4 content, Interface.
 - **Required tests:** Split/rejoin; refusal; delayed arrival; missing/lost contact; radio report; follow behavior; LOCAL/map/equipment consistency; persistence and succession.
 - **Completion criteria:** At least one mission decision can change team configuration and materially affect access, risk, or outcome while all proximity-dependent UI remains coherent.
 - **Dependencies:** Milestones 2–5.
 - **Risks:** General NPC AI would create unverifiable behavior; use small authored policies and deterministic state machines before controlled variation.
 
-## 7. Hazards, injury, and consequences
+## 7. Hazards, injury, and consequences — operational slice delivered
 
 - **Player-facing capability:** Identify or miss hazards, choose precautions, spend equipment/time, suffer recoverable setbacks, assist coworkers, abort, or become stranded.
 - **Engine capability:** Hazard exposure/resolution, condition/injury states, equipment damage/loss, separation, route changes, consequence propagation, and failure classification.
@@ -137,4 +137,4 @@ Milestones 1 through 3 are delivered. Milestone 4 is the highest-priority next m
 
 ## Immediate next slice
 
-Start Milestone 4 over the existing object and mission runtimes: add generic take, stow, place, drop, handoff, recover, and container behavior with one canonical holder/container/location model. Exercise it with a bounded Clear-Q4 loose-object or equipment-case sequence so custody, loss, depletion, evidence, mission degradation, and restart behavior remain causally aligned before adding hazards.
+Start Milestone 4 over the existing object, mission, and operational runtimes: generalize take, stow, place, drop, handoff, recover, and container behavior around one canonical holder/container/location model. Exercise it with a bounded Clear-Q4 loose-object or equipment-case sequence so custody, depletion, recovery, evidence, mission degradation, and restart behavior remain causally aligned with the already-delivered hazard and team-consequence slice.

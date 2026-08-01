@@ -1,0 +1,27 @@
+{
+  "version": "yellow-beast-operational-dynamics-worldpack@v1",
+  "worldpack_id": "minimal-mission",
+  "action_costs": {
+    "LOOK": 0,
+    "MOVE": 1,
+    "WAIT": 1,
+    "COMMUNICATE": 1,
+    "ORDER": 1,
+    "DEFAULT": 1
+  },
+  "staffing": {
+    "minimum_total": 3,
+    "maximum_total": 3,
+    "total": 3,
+    "clearance": "field",
+    "coworker_roles": ["observer", "equipment operator"]
+  },
+  "communications": {
+    "standard_delivery_delay": 1,
+    "standard_acknowledgment_delay": 1,
+    "check_ins": [],
+    "interference_zones": []
+  },
+  "hazards": [],
+  "consequence_sets": []
+}

@@ -53,7 +53,9 @@ async function main() {
   const field = action(service, world, "BEGIN_FIELD_OPERATION").projection;
   const oriented = await service.submitNatural({ world_id: world.id, mode: "field-researcher", text: "Orient myself." });
   assert.equal(oriented.ok, true);
-  const local = service.submitQ4Communication({ world_id: world.id, channel: "local", target: "Alex", text: "Stay with the route record, Alex." });
+  const peer = field.q4.team.find((member) => !member.controlled);
+  const assignedCoworkers = field.q4.team.filter((member) => !member.controlled).map((member) => member.display_name);
+  const local = service.submitQ4Communication({ world_id: world.id, channel: "local", target: peer.first_name, text: `Stay with the route record, ${peer.first_name}.` });
   assert.equal(local.ok, true);
   const moved = await service.submitNatural({ world_id: world.id, mode: "field-researcher", text: "Move into the corridor." });
   assert.equal(moved.ok, true);
@@ -67,7 +69,7 @@ async function main() {
   assert.equal(afterRestart.phase, "FIELD_OPERATION");
   assert.equal(afterRestart.player, "Jack Rocha");
   assert.equal(afterRestart.controlled_personnel, "Jack Rocha · YOU");
-  assert.deepEqual(afterRestart.coworkers, ["Nora Vale", "Alex Morgan"]);
+  assert.deepEqual(afterRestart.coworkers, assignedCoworkers);
   assert.equal(afterRestart.location, "Columned Corridor");
   assert.equal(afterRestart.radio_state, "available");
   assert.equal(afterRestart.radio_check_completed, true);

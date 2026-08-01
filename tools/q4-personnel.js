@@ -3,20 +3,19 @@
 const history = require("./world-history");
 const crypto = require("node:crypto");
 const spatialRuntime = require("./spatial-runtime");
-const VERSION = "yellow-beast-q4-personnel@v1";
+const personnelGeneration = require("./personnel-generation");
+const VERSION = "yellow-beast-q4-personnel@v2";
 
 // Conservative operational identities for the bounded Q4 experience. These
 // are procedural personnel records, not canon-character claims or biographies.
-const DEFAULTS = Object.freeze({
+// These records exist only to identify and preserve already-established v1
+// saves. New staffing never selects them by name or identity.
+const LEGACY_PERSONNEL = Object.freeze({
   legacyPlayer: { identity: "yb-field-player", first_name: "Alex", last_name: "Morgan", role: "field surveyor", clearance: "field", condition: "normal" },
-  player: { identity: "yb-field-player", first_name: "Alex", last_name: "Morgan", role: "field surveyor", clearance: "field", condition: "normal" },
   alex: { identity: "yb-field-alex-morgan", first_name: "Alex", last_name: "Morgan", role: "field surveyor", clearance: "field", condition: "normal" },
-  peer: { identity: "yb-field-peer-observer", first_name: "Nora", last_name: "Vale", role: "survey technician", clearance: "field", condition: "normal" },
-  relief: [
-    { identity: "yb-field-relief-01", first_name: "Mara", last_name: "Ellis", role: "survey partner", clearance: "field", condition: "normal" },
-    { identity: "yb-field-relief-02", first_name: "Jonah", last_name: "Price", role: "survey partner", clearance: "field", condition: "normal" }
-  ]
+  peer: { identity: "yb-field-peer-observer", first_name: "Nora", last_name: "Vale", role: "survey technician", clearance: "field", condition: "normal" }
 });
+const DEFAULTS = LEGACY_PERSONNEL;
 
 function displayName(person) { return person?.display_name ?? [person?.first_name, person?.last_name].filter(Boolean).join(" "); }
 function identityFor(first_name, last_name) { return `q4-player-${crypto.createHash("sha256").update(`${first_name.trim().toLowerCase()}|${last_name.trim().toLowerCase()}`).digest("hex").slice(0, 16)}`; }
@@ -52,38 +51,46 @@ function assign(world, run_id, person, assignment) {
   history.event(world, run_id, "character.assignment.changed", { identity: person.identity, assignment: next }, person.authority);
   return { ok: true, person };
 }
-function staffQ4(world, run_id, player_identity = null, seed = "q4") {
+function staffQ4(world, run_id, player_identity = null, seed = "q4", staffing_rules = {}) {
   player_identity ??= world.q4_operations?.controlled_player;
-  if (!world.q4_operations?.controlled_player && (!player_identity || player_identity === DEFAULTS.legacyPlayer.identity)) {
-    const legacy = ensure(world, run_id, DEFAULTS.legacyPlayer);
+  if (!world.q4_operations?.controlled_player) {
+    const assigned = ensure(world, run_id, { identity: player_identity ?? "yb-field-player", first_name: "Field", last_name: "Researcher", display_name: "Field Researcher", role: "field researcher", clearance: "Q4", condition: "normal", generated: false, provenance: "unconfigured-controlled-personnel" });
     world.q4_operations ??= { institutional_time: 0, last_review: null };
-    world.q4_operations.controlled_player = legacy.identity;
-    player_identity = legacy.identity;
+    world.q4_operations.controlled_player = assigned.identity;
+    player_identity = assigned.identity;
   }
   if (!player_identity) return { ok: false, code: "PLAYER_PERSONNEL_REQUIRED" };
   const playerSpec = world.q4_operations?.controlled_player === player_identity ? history.character(world, player_identity) : null;
   if (!playerSpec) return { ok: false, code: "PLAYER_PERSONNEL_REQUIRED" };
   const player = ensure(world, run_id, playerSpec);
   if (player.status === "dead") return { ok: false, code: "PLAYER_PERSONNEL_DECEASED" };
-  const candidates = [DEFAULTS.peer, DEFAULTS.alex, ...DEFAULTS.relief].map((spec) => history.character(world, spec.identity) ?? ensure(world, run_id, spec)).filter((person) => person.status === "active" && person.identity !== player.identity);
-  const recentTeams = Object.values(world.q4_missions ?? {}).slice(-3).map((mission) => new Set(mission.assigned_personnel ?? []));
-  const ranked = candidates.map((person) => ({ person, score: cryptoScore([seed, person.identity, world.next_run]) + (recentTeams.some((team) => team.has(person.identity)) ? 1000 : 0) })).sort((a, b) => a.score - b.score || a.person.identity.localeCompare(b.person.identity));
-  const peer = candidates.find((person) => person.identity === DEFAULTS.peer.identity) ?? (ranked[0] ?? {}).person;
-  const legacy = !world.q4_operations?.player_created_at;
-  const assistant = legacy ? null : (candidates.find((person) => person.identity === DEFAULTS.alex.identity) ?? ranked.find(({ person }) => person.identity !== peer?.identity)?.person);
-  if (!peer || (!legacy && !assistant)) return { ok: false, code: "Q4_TEAM_UNAVAILABLE" };
-  assign(world, run_id, player, { id: "clear-q4-field-survey-alpha", expedition_id: "clear-q4-field-survey-alpha", role: player.role });
-  assign(world, run_id, peer, { id: "clear-q4-field-survey-alpha", expedition_id: "clear-q4-field-survey-alpha", role: peer.role });
-  if (assistant) assign(world, run_id, assistant, { id: "clear-q4-field-survey-alpha", expedition_id: "clear-q4-field-survey-alpha", role: assistant.role });
   world.q4_operations ??= { institutional_time: 0, last_review: null };
+  world.q4_operations.generated_rosters ??= {};
+  let coworkerIds = world.q4_operations.generated_rosters[seed];
+  const rosterUnavailable = (ids) => !Array.isArray(ids) || ids.length < 2 || ids.length > 4 || ids.some((id) => history.character(world, id)?.status !== "active");
+  if (rosterUnavailable(coworkerIds)) {
+    for (let attempt = 0; attempt < 32; attempt += 1) {
+      const generationSeed = attempt === 0 && !Array.isArray(coworkerIds) ? seed : `${seed}:restaff:${attempt + 1}`;
+      const generated = personnelGeneration.generate({ seed: generationSeed, world_id: world.world_id, player: safePerson(player), staffing: staffing_rules });
+      const candidateIds = generated.coworkers.map((spec) => ensure(world, run_id, { ...spec, classification: "q4-generated-personnel", provenance: "seeded-operational-staffing", authority: "institutional-personnel-record" }).identity);
+      if (!rosterUnavailable(candidateIds)) { coworkerIds = candidateIds; break; }
+    }
+    if (rosterUnavailable(coworkerIds)) return { ok: false, code: "Q4_TEAM_UNAVAILABLE" };
+    world.q4_operations.generated_rosters[seed] = [...coworkerIds];
+  }
+  const coworkers = coworkerIds.map((id) => history.character(world, id)).filter((person) => person?.status === "active" && person.identity !== player.identity);
+  if (coworkers.length < 2 || coworkers.length > 4) return { ok: false, code: "Q4_TEAM_UNAVAILABLE" };
+  assign(world, run_id, player, { id: "clear-q4-field-survey-alpha", expedition_id: "clear-q4-field-survey-alpha", role: player.role });
+  for (const coworker of coworkers) assign(world, run_id, coworker, { id: "clear-q4-field-survey-alpha", expedition_id: "clear-q4-field-survey-alpha", role: coworker.role });
   world.q4_operations.controlled_player = player.identity;
-  return { ok: true, player: safePerson(player), peer: safePerson(peer), assistant: safePerson(assistant), team: [safePerson(player), safePerson(peer), safePerson(assistant)].filter(Boolean) };
+  const safeCoworkers = coworkers.map(safePerson);
+  return { ok: true, player: safePerson(player), peer: safeCoworkers[0], assistant: safeCoworkers[1], coworkers: safeCoworkers, team: [safePerson(player), ...safeCoworkers], generation: { version: personnelGeneration.VERSION, seed, total: coworkers.length + 1 } };
 }
 function cryptoScore(value) { let total = 0; for (const char of JSON.stringify(value)) total = (total * 33 + char.charCodeAt(0)) % 1000003; return total; }
 function selectSuccessor(world, run_id, seed = "succession") {
   world.q4_operations ??= { institutional_time: 0, last_review: null };
-  const former = world.q4_operations.controlled_player ?? DEFAULTS.legacyPlayer.identity;
-  const candidates = [DEFAULTS.peer, ...DEFAULTS.relief].map((spec) => history.character(world, spec.identity) ?? ensure(world, run_id, spec)).filter((person) => person.identity !== former && person.status === "active" && person.role && person.clearance);
+  const former = world.q4_operations.controlled_player ?? LEGACY_PERSONNEL.legacyPlayer.identity;
+  const candidates = [...new Set(Object.values(world.q4_operations.generated_rosters ?? {}).flat())].map((id) => history.character(world, id)).filter((person) => person && person.identity !== former && person.status === "active" && person.role && person.clearance);
   const next = candidates.sort((a, b) => cryptoScore([seed, a.identity]) - cryptoScore([seed, b.identity]) || a.identity.localeCompare(b.identity))[0];
   if (!next) return { ok: false, code: "SUCCESSOR_UNAVAILABLE" };
   world.q4_operations.controlled_player = next.identity;
@@ -109,12 +116,13 @@ function observerStatus(member, person, phase = "FIELD_OPERATION", spatial = nul
 function publicTeam(run, phase = "FIELD_OPERATION", world = null) {
   const controlled = run.session?.startup?.player?.observer_id ?? null;
   return (run.expedition?.team?.members ?? []).map((member) => {
-    const fallback = member.id === DEFAULTS.peer.identity ? DEFAULTS.peer : member.id === DEFAULTS.alex.identity ? DEFAULTS.alex : member.id === DEFAULTS.legacyPlayer.identity ? DEFAULTS.legacyPlayer : member;
+    const fallback = member.id === LEGACY_PERSONNEL.peer.identity ? LEGACY_PERSONNEL.peer : member.id === LEGACY_PERSONNEL.alex.identity ? LEGACY_PERSONNEL.alex : member.id === LEGACY_PERSONNEL.legacyPlayer.identity ? LEGACY_PERSONNEL.legacyPlayer : member;
     const person = world ? (history.character(world, member.personnel_id ?? member.id) ?? fallback) : (member.personnel ?? fallback);
     const observed = observerStatus(member, person, phase, run.spatial, controlled);
     const isUser = Boolean(member.personnel_id === controlled);
-    return { id: member.personnel_id ?? member.id, personnel_id: member.personnel_id ?? member.id, display_name: `${member.display_name ?? displayName(person)}${isUser ? " · YOU" : ""}`, first_name: member.first_name ?? person.first_name, last_name: member.last_name ?? person.last_name, role: `${member.role}${isUser ? " · YOU" : ""}`, clearance: person.clearance ?? null, assignment: person.current_assignment ?? member.assignment ?? null, contact_category: observed.contact_category, condition: observed.condition, last_contact: observed.last_contact, location: observed.location ?? run.spatial?.personnel_locations?.[member.personnel_id ?? member.id] ?? null, local_eligible: observed.local_eligible, controlled: isUser };
+    const known = member.last_known_status ?? {};
+    return { id: member.personnel_id ?? member.id, personnel_id: member.personnel_id ?? member.id, display_name: `${member.display_name ?? displayName(person)}${isUser ? " · YOU" : ""}`, first_name: member.first_name ?? person.first_name, last_name: member.last_name ?? person.last_name, role: `${member.role}${isUser ? " · YOU" : ""}`, clearance: person.clearance ?? null, assignment: person.current_assignment ?? member.assignment ?? null, contact_category: observed.contact_category, condition: observed.local_eligible || isUser ? observed.condition : known.condition ?? "Unknown", last_contact: observed.last_contact, location: observed.local_eligible || isUser ? observed.location ?? run.spatial?.personnel_locations?.[member.personnel_id ?? member.id] ?? null : known.location ?? null, local_eligible: observed.local_eligible, controlled: isUser };
   });
 }
 
-module.exports = { VERSION, DEFAULTS, displayName, safePerson, createPlayer, identityFor, staffQ4, selectSuccessor, assign, teamMember, observerStatus, publicTeam };
+module.exports = { VERSION, DEFAULTS, LEGACY_PERSONNEL, displayName, safePerson, createPlayer, identityFor, staffQ4, selectSuccessor, assign, teamMember, observerStatus, publicTeam };

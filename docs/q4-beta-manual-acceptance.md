@@ -19,7 +19,7 @@ mark the result from automated tests. Record one result only: `PASS`,
 
 At a 1536×1024-equivalent desktop viewport, capture these screenshots from the
 exact packaged build: personnel creation, personnel confirmation, briefing with
-the controlled person marked YOU and Alex/Nora as NPCs, LOCAL greeting with a
+the controlled person marked YOU and generated coworkers as NPCs, LOCAL greeting with a
 visible response, Standard unavailable during briefing, staging with named
 equipment holders, visible Proceed to Threshold Room, THRESHOLD ROOM, Standard
 radio check, and the first field-operation screen. ACTION, LOCAL, STANDARD,

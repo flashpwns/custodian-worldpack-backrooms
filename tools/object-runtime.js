@@ -76,6 +76,7 @@ function validateDefinition(definition, spatialDefinition = null) {
       if (affordances.has(affordance.type)) throw new Error(`duplicate interaction affordance: ${object.id}/${affordance.type}`);
       affordances.add(affordance.type);
       if (!affordance.label || !affordance.result || !Number.isInteger(affordance.time_cost) || affordance.time_cost < 0) throw new Error(`interaction affordance is incomplete: ${object.id}/${affordance.type}`);
+      for (const match of affordance.result.matchAll(/\{([^}]+)\}/g)) if (!["tool_holder_first_name", "actor_display_name", "team_lead_first_name"].includes(match[1])) throw new Error(`interaction result uses an unsupported actor template: ${object.id}/${match[1]}`);
       for (const requirement of affordance.requirements?.state ?? []) if (!validStatePath(requirement.path)) throw new Error(`invalid interaction requirement path: ${object.id}/${affordance.type}`);
       for (const mutation of affordance.mutations ?? []) if (!validStatePath(mutation.path)) throw new Error(`invalid interaction mutation path: ${object.id}/${affordance.type}`);
       for (const propertyId of affordance.reveals ?? []) if (!propertyIds.includes(propertyId)) throw new Error(`interaction reveal does not resolve: ${object.id}/${propertyId}`);
@@ -290,7 +291,7 @@ function inspection(state, definition, { observer, location, target, time = 0, t
   return { ok: true, action: "inspect", target: object.display_name, narration: textFor(object.inspection_text_by_condition, objectState), known_properties: knownProperties(object, objectState, observer), actions: affordanceProjection(object, objectState, observer, toolContext), time_cost: 0, state_changed: true };
 }
 
-function interact(state, definition, { observer, location, location_name = null, target, action, time = 0, run_ref = null, evidence = [], resolveTool = null, consumeTool = null, advanceTime = null, onEvidence = null } = {}) {
+function interact(state, definition, { observer, location, location_name = null, target, action, time = 0, run_ref = null, evidence = [], resolveTool = null, consumeTool = null, advanceTime = null, onEvidence = null, renderText = null } = {}) {
   const type = normalize(action);
   if (type === "inspect") return inspection(state, definition, { observer, location, target, time, toolContext: { resolveTool } });
   if (!AFFORDANCE_SET.has(type)) return { ok: false, code: "INTERACTION_UNSUPPORTED", reason: "That action does not describe a supported physical interaction here." };
@@ -333,7 +334,7 @@ function interact(state, definition, { observer, location, location_name = null,
   committed.interaction_history.push(entry.sequence);
   state.revision += 1;
   if (affordance.time_cost) advanceTime?.(affordance.time_cost);
-  return { ok: true, action: type, target: object.display_name, narration: affordance.result, time_cost: affordance.time_cost, state_changed: true, evidence: proposedEvidence ? clone(proposedEvidence) : null, interaction_sequence: entry.sequence };
+  return { ok: true, action: type, target: object.display_name, narration: renderText ? renderText(affordance.result, tools.statuses) : affordance.result, time_cost: affordance.time_cost, state_changed: true, evidence: proposedEvidence ? clone(proposedEvidence) : null, interaction_sequence: entry.sequence };
 }
 
 const VERB_PATTERNS = Object.freeze([

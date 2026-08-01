@@ -51,7 +51,7 @@ test("profile separation and opaque references do not expose another observer's 
   const run = startRun({ profile: "field-researcher", seed: "isolation" }).run;
   act(run, "MOVE"); const ref = look(run).aliases[0].ref;
   const foreign = inspectSessionObserver({ session: run.session, observer: "yb-field-peer-observer", request: { kind: "inspect", target: ref } });
-  assert.equal(foreign.public_reason, "target unavailable");
+  assert.equal(foreign.public_reason, "observation unavailable");
   for (const profile of ["lost", "local-anomaly"]) {
     const safe = JSON.stringify(status(startRun({ profile, seed: "separation" }).run)).toLowerCase();
     assert.equal(safe.includes("async"), false, `${profile} must not gain ASYNC information without a basis`);

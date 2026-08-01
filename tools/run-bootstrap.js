@@ -19,6 +19,13 @@ const objectRuntime = require("./object-runtime");
 const missionRuntime = require("./mission-runtime");
 const q4Time = require("./q4-time");
 const q4Radio = require("./q4-radio");
+const dynamicsRuntime = require("./operational-dynamics");
+const operationalCycle = require("./operational-cycle");
+const operationalTime = require("./operational-time");
+const communications = require("./communication-runtime");
+const teamRuntime = require("./team-runtime");
+const hazardRuntime = require("./hazard-runtime");
+const consequenceRuntime = require("./consequence-runtime");
 
 const root = path.resolve(__dirname, "..");
 const read = (relative) => JSON.parse(fs.readFileSync(path.join(root, relative), "utf8"));
@@ -37,6 +44,9 @@ function interactionDefinitionFor(packId) {
   objectRuntime.validateDefinition(definition, spatialDefinitionFor(packId));
   return definition;
 }
+function dynamicsDefinitionFor(packId) {
+  return dynamicsRuntime.load(packId, { spatial: spatialDefinitionFor(packId), equipment: Object.keys(q4Equipment.DEFINITIONS) });
+}
 function missionDefinitionFor(packId) {
   if (typeof packId !== "string" || !/^[a-z0-9][a-z0-9-]*$/.test(packId)) throw new Error("invalid mission worldpack id");
   const definition = read(`data/worldpacks/${packId}/mission.json`);
@@ -47,7 +57,7 @@ function missionDefinitionFor(packId) {
     locations: spatial.locations.map((item) => item.id),
     connections: spatial.connections.map((item) => item.id),
     equipment: Object.keys(q4Equipment.DEFINITIONS),
-    personnel_roles: ["field surveyor", "survey technician"]
+    personnel_roles: dynamicsDefinitionFor(packId).staffing.coworker_roles.concat(["field surveyor", "field researcher"])
   });
   return definition;
 }
@@ -77,11 +87,6 @@ function configuredScenario(profileId, playerId) {
   const initialPosition = profileId === FIELD_PROFILE ? "threshold-transition" : profileId === "local-anomaly" ? "complex-side-adjacent-survey-space" : (read("profiles/startups.json").startups.find((entry) => entry.profile === profileId)?.metadata.starting_location);
   scenario.actors = [{ id: actorId, position: initialPosition }];
   scenario.observers.push({ id: playerId, goals: [], plans: [], actor_id: actorId, origin: "embodied", capabilities: ["visual"], access: profileId === FIELD_PROFILE ? ["field-survey"] : [] });
-  if (profileId === FIELD_PROFILE) {
-    const peerActor = "yb-field-peer-actor";
-    scenario.actors.push({ id: peerActor, position: "complex-side-controlled-area" });
-    scenario.observers.push({ id: "yb-field-peer-observer", goals: [], plans: [], actor_id: peerActor, origin: "embodied", capabilities: ["visual"], access: ["field-survey"] });
-  }
   return scenario;
 }
 function configuredPack(profileId, playerId) {
@@ -97,7 +102,8 @@ function configuredPack(profileId, playerId) {
 function newRun({ profile, seed, session, expedition, staffing = null, loadout = null, mission = null, procedural_state, procedural_scenario = false, spatial_state = null, object_state = null, spatial_pack_id = null, world_id = null, run_id = null, world = null, phase = "BRIEFING" }) {
   const profileRecord = profileFor(profile);
   const player = session.startup.player.observer_id;
-  const run = { version: "yellow-beast-run@v7", profile_id: profile, profile_title: profileRecord.title, scenario: procedural_scenario ? "async-clear-q4-procedural-survey" : session.scenario.id, seed, session, lifecycle: "active", checklist: { moved: false, inspected: false, used: false }, aliases: {}, expedition: expedition ?? (profile === FIELD_PROFILE ? fieldExpedition(player, staffing, loadout, mission) : null), procedural: procedural_scenario ? (procedural_state ?? procedural.initialize({ seed, observer: player })) : null, spatial_pack_id: profile === FIELD_PROFILE ? spatial_pack_id : null, spatial: spatial_state, object_state, world_id, run_id, _world: world };
+  const staffingRules = spatial_pack_id ? dynamicsDefinitionFor(spatial_pack_id).staffing : {};
+  const run = { version: "yellow-beast-run@v8", profile_id: profile, profile_title: profileRecord.title, scenario: procedural_scenario ? "async-clear-q4-procedural-survey" : session.scenario.id, seed, session, lifecycle: "active", checklist: { moved: false, inspected: false, used: false }, aliases: {}, expedition: expedition ?? (profile === FIELD_PROFILE ? fieldExpedition(player, staffing, loadout, mission, seed, staffingRules) : null), procedural: procedural_scenario ? (procedural_state ?? procedural.initialize({ seed, observer: player })) : null, spatial_pack_id: profile === FIELD_PROFILE ? spatial_pack_id : null, spatial: spatial_state, object_state, world_id, run_id, _world: world };
   if (run.spatial_pack_id) {
     const definition = spatialDefinitionFor(run.spatial_pack_id);
     const context = spatialContext(run);
@@ -109,6 +115,7 @@ function newRun({ profile, seed, session, expedition, staffing = null, loadout =
     const legacyObjectives = run.expedition?.objectives ? clone(run.expedition.objectives) : null;
     run.expedition.mission_state = missionRuntime.migrate(run.expedition.mission_state, missionDefinition, { instance_id: run.expedition.mission?.id ?? missionDefinition.mission.id, phase, legacy_objectives: legacyObjectives, at: run.expedition.clock?.interval ?? 0 });
     missionRuntime.attachCompatibilityView(run.expedition);
+    operationalCycle.ensure(run, dynamicsDefinitionFor(run.spatial_pack_id));
   }
   run.identity = runIdentity.describe(run);
   return run;
@@ -122,11 +129,12 @@ function startRun({ profile, seed = "yellow-beast-bootstrap", scenario = null, w
   const restored = restoreSession(exportSession(result.session).envelope);
   const procedural_scenario = profile === FIELD_PROFILE && scenario === "procedural-survey";
   const run_id = world ? history.beginRun(world, { profile, scenario: procedural_scenario ? "async-clear-q4-procedural-survey" : result.session.scenario.id, seed }) : null;
-  const staffing = profile === FIELD_PROFILE && world ? q4Personnel.staffQ4(world, run_id, player, seed) : null;
+  const dynamics = profile === FIELD_PROFILE && spatial_worldpack ? dynamicsDefinitionFor(spatial_worldpack) : null;
+  const staffing = profile === FIELD_PROFILE && world ? q4Personnel.staffQ4(world, run_id, player, seed, dynamics?.staffing ?? {}) : null;
   if (staffing && !staffing.ok) return { ok: false, error: { code: staffing.code } };
   const mission = profile === FIELD_PROFILE ? q4Missions.generate({ world, run_id, seed, staffing }) : null;
   if (mission && world) history.recordQ4Mission(world, run_id, mission);
-  const loadout = profile === FIELD_PROFILE && world ? q4Equipment.prepare(world, run_id, { player: staffing.player.identity, peer: staffing.assistant ? staffing.peer.identity : null, assistant: staffing.assistant?.identity, required_keys: mission.required_equipment }) : null;
+  const loadout = profile === FIELD_PROFILE && world ? q4Equipment.prepare(world, run_id, { player: staffing.player.identity, coworkers: staffing.coworkers, required_keys: mission.required_equipment }) : null;
   const existing = region_id && world?.regions?.[region_id];
   let generator; try { generator = generatorFor(existing?.generator_version ?? generator_version ?? procedural.VERSION); } catch (error) { return { ok: false, error: { code: error.code ?? "GENERATOR_VERSION_UNSUPPORTED" } }; }
   const procedural_state = existing ? clone(history.restoreRegion(world, region_id).state) : (procedural_scenario && generator_version === proceduralV2.VERSION ? generator.initialize({ seed, observer: player, policy: "moderate" }) : undefined);
@@ -135,8 +143,8 @@ function startRun({ profile, seed = "yellow-beast-bootstrap", scenario = null, w
   return { ok: restored.ok, session: result.session, run, restored_equivalent: restored.ok && stableSerialize(restored.session) === stableSerialize(result.session), summary: { session_id: result.session.id, profile, profile_title: profileRecord.title, scenario: result.session.scenario.id, seed, player: startup.player, knowledge: startup.knowledge, permissions: startup.permissions, resources: startup.resources } };
 }
 function normalizeRun(value) {
-  if (value?.version === "yellow-beast-run@v7") { missionRuntime.attachCompatibilityView(value.expedition); return value; }
-  if (["yellow-beast-run@v6", "yellow-beast-run@v5", "yellow-beast-run@v4", "yellow-beast-run@v3", "yellow-beast-run@v2", "yellow-beast-run@v1"].includes(value?.version)) return newRun({ profile: value.profile_id, seed: value.seed, session: value.session, expedition: value.expedition, procedural_state: value.procedural, procedural_scenario: Boolean(value.procedural), spatial_state: value.spatial, object_state: value.object_state, spatial_pack_id: value.spatial_pack_id ?? null, world_id: value.world_id, run_id: value.run_id });
+  if (value?.version === "yellow-beast-run@v8") { missionRuntime.attachCompatibilityView(value.expedition); if (value.spatial_pack_id) operationalCycle.ensure(value, dynamicsDefinitionFor(value.spatial_pack_id)); return value; }
+  if (["yellow-beast-run@v7", "yellow-beast-run@v6", "yellow-beast-run@v5", "yellow-beast-run@v4", "yellow-beast-run@v3", "yellow-beast-run@v2", "yellow-beast-run@v1"].includes(value?.version)) return newRun({ profile: value.profile_id, seed: value.seed, session: value.session, expedition: value.expedition, procedural_state: value.procedural, procedural_scenario: Boolean(value.procedural), spatial_state: value.spatial, object_state: value.object_state, spatial_pack_id: value.spatial_pack_id ?? null, world_id: value.world_id, run_id: value.run_id });
   if (value?.session) return newRun({ profile: value.session.startup.profile.id, seed: value.session.seed_material?.seed ?? "restored", session: value.session });
   return newRun({ profile: value.startup.profile.id, seed: value.seed_material?.seed ?? "restored", session: value });
 }
@@ -153,6 +161,7 @@ function ensureSpatial(runValue, phase = "BRIEFING") {
   const legacyObjectives = run.expedition?.objectives ? clone(run.expedition.objectives) : null;
   run.expedition.mission_state = missionRuntime.migrate(run.expedition.mission_state, missionDefinition, { instance_id: run.expedition.mission?.id ?? missionDefinition.mission.id, phase, legacy_objectives: legacyObjectives, at: run.expedition.clock?.interval ?? 0 });
   missionRuntime.attachCompatibilityView(run.expedition);
+  operationalCycle.ensure(run, dynamicsDefinitionFor(run.spatial_pack_id));
   if (["FIELD_OPERATION", "RETURN", "DEBRIEF"].includes(phase)) objectRuntime.observeLocation(run.object_state, interactions, { observer: run.session.startup.player.observer_id, location: run.spatial.player_location, time: run.expedition?.clock?.interval ?? 0 });
   return run;
 }
@@ -182,6 +191,15 @@ function evaluateMissionState(run, phase = null) {
   for (const transition of result.transitions) event(run.expedition, "mission.objective.transitioned", { ...transition, interval: run.expedition.clock?.interval ?? 0 });
   synchronizeMissionOutcome(run);
   return result.transitions;
+}
+function resolveOperationalCycle(run, action, cost, source = "player-action") {
+  if (!run.spatial_pack_id || !run.expedition) { const missionUpdates = evaluateMissionState(run); return { clock: { from: run.expedition?.clock?.interval ?? 0, to: run.expedition?.clock?.interval ?? 0, cost: 0 }, mission_updates: missionUpdates, public_updates: [] }; }
+  return operationalCycle.resolve(run, dynamicsDefinitionFor(run.spatial_pack_id), spatialDefinitionFor(run.spatial_pack_id), { action, cost, source, evaluateMission: () => evaluateMissionState(run), syncEquipment: spatialRuntime.syncEquipment });
+}
+function renderInteractionText(run, text, toolStatuses = []) {
+  const observer = run.session.startup.player.observer_id; const used = toolStatuses.find((entry) => entry.status?.holder)?.status; const holder = run.expedition.team.members.find((member) => (member.personnel_id ?? member.id) === used?.holder); const player = run.expedition.team.members.find((member) => (member.personnel_id ?? member.id) === observer);
+  const values = { tool_holder_first_name: used?.holder === observer ? "You" : holder?.first_name ?? "The assigned teammate", actor_display_name: used?.holder === observer ? "You" : holder?.display_name ?? "The assigned teammate", team_lead_first_name: player?.first_name ?? "You" };
+  return String(text).replace(/\{(tool_holder_first_name|actor_display_name|team_lead_first_name)\}/g, (_, key) => values[key]);
 }
 function observeCurrentObjects(run) {
   if (!run.object_state || !run.spatial) return [];
@@ -292,7 +310,8 @@ function status(runValue) {
   const actions = getAvailableSessionActions({ session: run.session, actor: observer }).actions;
   const active = run.lifecycle === "active";
   const closing = run.expedition?.mission_state?.return?.requested === true;
-  const expeditionVerbs = active && run.expedition ? ["COMMUNICATE", "RECORD", "WAIT", "RETURN", "ABORT", ...(closing ? ["COMPLETE_RETURN"] : [])] : [];
+  const operationalVerbs = run.spatial_pack_id ? ["ORDER_HOLD", "ORDER_INVESTIGATE", "ORDER_FOLLOW", "ASSIST", "RECOVER", "MITIGATE"] : [];
+  const expeditionVerbs = active && run.expedition ? ["COMMUNICATE", "RECORD", "WAIT", "RETURN", "ABORT", ...operationalVerbs, ...(closing ? ["COMPLETE_RETURN"] : [])] : [];
   const objectVerbs = active ? [...new Set((view.view?.objects ?? []).flatMap((object) => object.actions ?? []).map((item) => item.action))] : [];
   const discovered = run.spatial ? spatialRuntime.project(run.spatial, spatialDefinitionFor(run.spatial_pack_id), { personnel: (run.expedition?.team?.members ?? []).map((member) => ({ id: member.personnel_id ?? member.id, name: member.display_name })) }) : run.procedural ? generatorFor(run.procedural).map(run.procedural, observer) : null;
   return { profile_id: run.profile_id, profile_title: run.profile_title, scenario: run.scenario, lifecycle: run.lifecycle, player: observer, run_identity: runIdentity.describe(run), known_resources: (run.session.startup.resources ?? []).filter((entry) => entry.custodian === observer).map((entry) => entry.id), available_verbs: [...new Set(["LOOK", ...(active && view.targets?.length ? ["INSPECT"] : []), ...(active && ((run.spatial || run.procedural) ? view.view?.exits?.length : actions.includes("traverse-controlled-route")) ? ["MOVE"] : []), ...(active && actions.includes("toggle-light") ? ["USE"] : []), ...objectVerbs, ...expeditionVerbs])], view: { outcome: view.outcome, location: view.view?.location ?? null, targets: (view.aliases ?? []).map(({ alias }) => ({ alias })), observations: { environment: view.view?.environment ?? {}, landmark: view.view?.landmark ?? null, objects: view.view?.objects ?? [], route_character: view.view?.route_character ?? null }, public_reason: view.public_reason ?? null }, ...(run.expedition ? { expedition: safeSummary(run.expedition) } : {}), ...(discovered ? { discovered_topology: discovered } : {}), ...(run.procedural ? { generator_version: generatorFor(run.procedural).VERSION } : {}), ...(run.spatial ? { spatial_version: spatialRuntime.VERSION, object_state_version: run.object_state?.version ?? null } : {}) };
@@ -301,25 +320,34 @@ function terminal(run, decision) { finalize(run.expedition, decision, { checklis
 function expeditionAction(run, verb, target) {
   const expedition = run.expedition; const player = run.session.startup.player.observer_id;
   if (!expedition) return { ok: false, error: { code: "UNSUPPORTED_VERB" }, run };
-  if (verb === "WAIT") { const checkIn = q4Time.advance(expedition, 1); event(expedition, "expedition.waited", { interval: expedition.clock.interval }); const missionUpdates = evaluateMissionState(run); return { ok: true, outcome: "succeeded", result: { public_reason: checkIn.state === "overdue" ? "The scheduled check-in is overdue." : "The team waits and the operational clock advances.", time_advanced: 1, mission_updates: missionUpdates }, run }; }
-  if (verb === "COMMUNICATE") { if (!["standard", "teammate", "team"].includes(target)) return { ok: false, error: { code: "RECIPIENT_UNAVAILABLE" }, run }; const radio = useEquipment(expedition, "survey-radio", player); if (!radio.ok) return { ok: false, error: { code: radio.code }, run }; const recipient = target === "standard" ? "Standard" : "yb-field-peer-observer"; const delivered = target === "standard" || expedition.team.members[1].status === "active"; const message = { id: `message-${expedition.messages.length + 1}`, sender: player, intended_recipient: recipient, delivery_status: delivered ? "delivered" : "unavailable", channel: "survey-radio", provenance: "pack-original-expedition", interval: expedition.clock.interval, purpose: target === "standard" ? "scheduled-check-in" : "team-contact" }; expedition.messages.push(message); if (target === "standard" && delivered) q4Time.complete(expedition); event(expedition, "communication.sent", message); const missionUpdates = evaluateMissionState(run); return { ok: true, outcome: "succeeded", result: { public_reason: delivered ? "message delivered" : "message unavailable", message: { recipient: target, delivery_status: message.delivery_status }, mission_updates: missionUpdates }, run }; }
-  if (verb === "RECORD") { const view = look(run); const alias = target ?? view.aliases[0]?.alias; if (!alias || !view.aliases.some((entry) => entry.alias === alias)) return { ok: false, error: { code: "TARGET_UNAVAILABLE" }, run }; const device = useEquipment(expedition, "recording-device", player); if (!device.ok) return { ok: false, error: { code: device.code }, run }; const evidence = { id: `field-note-${expedition.evidence.length + 1}`, type: "field-note", creator: player, custodian: player, target_alias: alias, location: view.view?.location ?? null, capture_event: "evidence.recorded", device: "recording-device", storage: "with field record", captured_at: { interval: expedition.clock.interval }, target_observation: "observer-visible target", visible_objects: [alias], provenance: "observer-safe-record", valid: true, available_to_player: true, available_to_standard: false, reporting_state: "unreported", interval: expedition.clock.interval }; const spec = q4Visuals.renderSpec(evidence); const queued = q4RenderAdapters.queue(spec); evidence.render = queued.job; evidence.visual = queued.job.result; expedition.evidence.push(evidence); expedition.render_jobs ??= []; expedition.render_jobs.push(queued.job); event(expedition, "evidence.recorded", evidence); const missionUpdates = evaluateMissionState(run); return { ok: true, outcome: "succeeded", result: { public_reason: null, evidence: { id: evidence.id, type: evidence.type, render_status: evidence.render.status }, mission_updates: missionUpdates }, run }; }
-  if (verb === "RETURN") { if (!expedition.mission_state) return terminal(run, verb); const requested = missionRuntime.requestReturn(expedition.mission_state, missionDefinitionFor(run.spatial_pack_id), { run, player }, { at: expedition.clock?.interval ?? 0 }); if (!requested.ok) return { ok: false, error: { code: requested.code }, result: { public_reason: requested.reason }, run }; const missionUpdates = evaluateMissionState(run, "RETURN"); return { ok: true, outcome: "return-begun", result: { public_reason: requested.reason, mission_updates: missionUpdates }, run }; }
-  if (verb === "ABORT") { if (!expedition.mission_state) return terminal(run, verb); const requested = missionRuntime.requestAbort(expedition.mission_state, missionDefinitionFor(run.spatial_pack_id), { run, player }, { at: expedition.clock?.interval ?? 0 }); if (!requested.ok) return { ok: false, error: { code: requested.code }, result: { public_reason: requested.reason }, run }; const missionUpdates = [...(requested.transitions ?? []), ...evaluateMissionState(run, "RETURN")]; expedition.mission_state.recent_updates = missionUpdates.slice(-5).map((transition) => ({ headline: transition.headline, summary: transition.reason, state: transition.to, at: expedition.clock?.interval ?? 0 })); return { ok: true, outcome: "controlled-abort-begun", result: { public_reason: requested.reason, mission_updates: missionUpdates }, run }; }
+  const dynamics = run.spatial_pack_id ? dynamicsDefinitionFor(run.spatial_pack_id) : null;
+  const costFor = (action, authored = null) => dynamics ? dynamicsRuntime.actionCost(dynamics, action, authored) : Number.isInteger(authored) ? authored : 1;
+  if (verb === "WAIT") { event(expedition, "expedition.waited", { interval: expedition.clock.interval }); const cycle = resolveOperationalCycle(run, verb, costFor(verb)); const checkIn = communications.project(expedition).check_ins[0]; return { ok: true, outcome: "succeeded", result: { public_reason: checkIn?.state === "overdue" || checkIn?.state === "missed" ? checkIn.summary : "The team waits and the operational clock advances.", time_advanced: cycle.clock.cost, mission_updates: cycle.mission_updates, operational_updates: cycle.public_updates }, run }; }
+  if (verb === "COMMUNICATE") {
+    if (!["standard", "teammate", "team"].includes(target)) return { ok: false, error: { code: "RECIPIENT_UNAVAILABLE" }, run };
+    const radio = useEquipment(expedition, "survey-radio", player); if (!radio.ok) return { ok: false, error: { code: radio.code }, run };
+    if (!dynamics) { const message = communications.createMessage(expedition, { sender: player, recipient: target === "standard" ? "Standard" : expedition.team.members.find((member) => (member.personnel_id ?? member.id) !== player)?.personnel_id, channel: "FIELD_RADIO", purpose: target === "standard" ? "scheduled-check-in" : "team-contact", text: "Field transmission." }); communications.transition(expedition, message, "delivered", "legacy procedural transmission delivered"); operationalTime.advance(expedition, 1, "legacy-communication"); return { ok: true, outcome: "succeeded", result: { public_reason: "Message delivered.", time_advanced: 1, message }, run }; }
+    const queued = communications.queueRadio(run, dynamics, { sender: player, recipient: target === "standard" ? "Standard" : expedition.team.members.find((member) => (member.personnel_id ?? member.id) !== player)?.personnel_id, text: "Field transmission.", purpose: target === "standard" ? "scheduled-check-in" : "team-contact" });
+    const cycle = resolveOperationalCycle(run, verb, costFor(verb)); const message = expedition.messages.find((entry) => entry.id === queued.message.id);
+    event(expedition, "communication.sent", { message_id: message.id, state: message.state, interval: expedition.clock.interval });
+    return { ok: true, outcome: "succeeded", result: { public_reason: message.state === "delayed" ? message.interference.public_description : message.state === "delivered" || message.state === "acknowledged" ? "Message delivered; acknowledgment is recorded separately." : "Transmission queued; delivery is not yet confirmed.", time_advanced: cycle.clock.cost, message: { recipient: target, delivery_status: message.delivery_status, state: message.state }, mission_updates: cycle.mission_updates, operational_updates: cycle.public_updates }, run };
+  }
+  if (verb === "RECORD") { const view = look(run); const alias = target ?? view.aliases[0]?.alias; if (!alias || !view.aliases.some((entry) => entry.alias === alias)) return { ok: false, error: { code: "TARGET_UNAVAILABLE" }, run }; const operator = run.spatial ? player : expedition.equipment?.["recording-device"]?.holder ?? player; const device = useEquipment(expedition, "recording-device", operator); if (!device.ok) return { ok: false, error: { code: device.code }, run }; const cost = costFor(verb); const evidence = { id: `field-note-${expedition.evidence.length + 1}`, type: "field-note", creator: player, operator, custodian: player, target_alias: alias, location: view.view?.location ?? null, capture_event: "evidence.recorded", device: "recording-device", storage: "with field record", captured_at: { interval: expedition.clock.interval + cost }, target_observation: "observer-visible target", visible_objects: [alias], provenance: "observer-safe-record", valid: true, available_to_player: true, available_to_standard: false, reporting_state: "unreported", interval: expedition.clock.interval + cost }; const spec = q4Visuals.renderSpec(evidence); const queued = q4RenderAdapters.queue(spec); evidence.render = queued.job; evidence.visual = queued.job.result; expedition.evidence.push(evidence); expedition.render_jobs ??= []; expedition.render_jobs.push(queued.job); event(expedition, "evidence.recorded", evidence); const cycle = resolveOperationalCycle(run, verb, cost); return { ok: true, outcome: "succeeded", result: { public_reason: null, time_advanced: cycle.clock.cost, evidence: { id: evidence.id, type: evidence.type, render_status: evidence.render.status }, mission_updates: cycle.mission_updates, operational_updates: cycle.public_updates }, run }; }
+  if (verb === "RETURN") { if (!expedition.mission_state) return terminal(run, verb); const requested = missionRuntime.requestReturn(expedition.mission_state, missionDefinitionFor(run.spatial_pack_id), { run, player }, { at: expedition.clock?.interval ?? 0 }); if (!requested.ok) return { ok: false, error: { code: requested.code }, result: { public_reason: requested.reason }, run }; expedition.mission_state.phase = "RETURN"; const cycle = resolveOperationalCycle(run, verb, costFor(verb)); return { ok: true, outcome: "return-begun", result: { public_reason: requested.reason, time_advanced: cycle.clock.cost, mission_updates: cycle.mission_updates, operational_updates: cycle.public_updates }, run }; }
+  if (verb === "ABORT") { if (!expedition.mission_state) return terminal(run, verb); const requested = missionRuntime.requestAbort(expedition.mission_state, missionDefinitionFor(run.spatial_pack_id), { run, player }, { at: expedition.clock?.interval ?? 0 }); if (!requested.ok) return { ok: false, error: { code: requested.code }, result: { public_reason: requested.reason }, run }; expedition.mission_state.phase = "RETURN"; const cycle = resolveOperationalCycle(run, verb, costFor(verb)); const missionUpdates = [...(requested.transitions ?? []), ...cycle.mission_updates]; expedition.mission_state.recent_updates = missionUpdates.slice(-5).map((transition) => ({ headline: transition.headline, summary: transition.reason, state: transition.to, at: expedition.clock?.interval ?? 0 })); return { ok: true, outcome: "controlled-abort-begun", result: { public_reason: requested.reason, time_advanced: cycle.clock.cost, mission_updates: missionUpdates, operational_updates: cycle.public_updates }, run }; }
   if (verb === "COMPLETE_RETURN") {
     const definition = missionDefinitionFor(run.spatial_pack_id); const state = expedition.mission_state;
     if (!state?.return?.requested) return { ok: false, error: { code: "RETURN_NOT_REQUESTED" }, result: { public_reason: "Begin the return procedure before mission closure." }, run };
-    evaluateMissionState(run, "RETURN");
+    expedition.mission_state.phase = "RETURN"; evaluateMissionState(run, "RETURN");
     const closure = missionRuntime.requestClosure(state, definition, { run, player }, { at: expedition.clock?.interval ?? 0 });
     if (!closure.ok) return { ok: false, error: { code: closure.code }, result: { public_reason: closure.reason }, run };
     const closureRadio = expedition.equipment?.["survey-radio"];
     if (q4Radio.available(expedition) && q4Equipment.stateUsable(closureRadio) && closureRadio.charges > 0 && !(expedition.messages ?? []).some((message) => message.purpose === "mission-closure" && message.delivery_status === "delivered")) {
       useEquipment(expedition, "survey-radio", player);
-      const message = { id: `message-${expedition.messages.length + 1}`, sender: player, intended_recipient: "Standard", delivery_status: "delivered", channel: "survey-radio", purpose: "mission-closure", provenance: "condition-driven-return-procedure", interval: expedition.clock.interval };
-      expedition.messages.push(message); event(expedition, "communication.sent", message);
+      communications.queueRadio(run, dynamics, { sender: player, recipient: "Standard", text: "Return accountability and mission closure report.", purpose: "mission-closure", acknowledgment: false });
     }
-    const missionUpdates = evaluateMissionState(run, "RETURN");
-    return { ok: true, outcome: run.lifecycle === "completed" ? "mission-closed" : "return-reconciliation-pending", result: { public_reason: expedition.result?.public_debrief_summary ?? closure.reason, mission_updates: missionUpdates, expedition_result: clone(expedition.result) }, run };
+    const cycle = resolveOperationalCycle(run, verb, costFor(verb));
+    return { ok: true, outcome: run.lifecycle === "completed" ? "mission-closed" : "return-reconciliation-pending", result: { public_reason: expedition.result?.public_debrief_summary ?? closure.reason, time_advanced: cycle.clock.cost, mission_updates: cycle.mission_updates, operational_updates: cycle.public_updates, expedition_result: clone(expedition.result) }, run };
   }
   return { ok: false, error: { code: "UNSUPPORTED_VERB" }, run };
 }
@@ -351,34 +379,46 @@ function objectInteraction(run, verb, target) {
     evidence: run.expedition.evidence,
     resolveTool: tools.resolveTool,
     consumeTool: tools.consumeTool,
-    advanceTime: (cost) => { q4Time.advance(run.expedition, cost); run.spatial.time = (run.spatial.time ?? 0) + cost; },
-    onEvidence
+    advanceTime: null,
+    onEvidence,
+    renderText: (text, statuses) => renderInteractionText(run, text, statuses)
   });
   if (!result.ok) return { ok: false, error: { code: result.code }, result: { public_reason: result.reason }, public_reason: result.reason, run };
   run.checklist.used = action !== "inspect" ? true : run.checklist.used;
-  const objectives = evaluateMissionState(run);
   const eventId = `object.interaction.${result.interaction_sequence ?? run.object_state.interaction_history.length}`;
   event(run.expedition, "object.interacted", { action: result.action, target: result.target, location: run.spatial.player_location, interaction_sequence: result.interaction_sequence, evidence_id: result.evidence?.id ?? null, time_cost: result.time_cost });
-  return { ok: true, outcome: "succeeded", result: { public_reason: result.narration, time_advanced: result.time_cost, state_changed: result.state_changed, evidence: result.evidence ? { id: result.evidence.id, type: result.evidence.type, render_status: result.evidence.render?.status ?? "fallback-ready" } : null, mission_updates: objectives, canonical_event_ids: [eventId] }, run };
+  const cycle = resolveOperationalCycle(run, String(verb).toUpperCase(), result.time_cost, "object-interaction");
+  return { ok: true, outcome: "succeeded", result: { public_reason: result.narration, time_advanced: cycle.clock.cost, state_changed: result.state_changed, evidence: result.evidence ? { id: result.evidence.id, type: result.evidence.type, render_status: result.evidence.render?.status ?? "fallback-ready" } : null, mission_updates: cycle.mission_updates, operational_updates: cycle.public_updates, canonical_event_ids: [eventId] }, run };
 }
 function act(runValue, verb, target) {
   const run = normalizeRun(runValue);
   if (verb === "LOOK") return { ok: true, outcome: "succeeded", result: look(run), run };
   if (verb === "INSPECT") { const result = inspect(run, target); return result.outcome === "succeeded" ? { ok: true, outcome: "succeeded", result, run } : { ok: false, outcome: "rejected", error: { code: "INTERACTION_TARGET_UNAVAILABLE" }, result, public_reason: result.public_reason, run }; }
   if (run.lifecycle === "completed") return { ok: false, error: { code: "RUN_COMPLETE" }, run };
+  if (String(verb).startsWith("ORDER_") && run.spatial) {
+    const parts = String(target ?? "").split("|"); const type = String(verb).slice(6).toLowerCase().replace(/_/g, "-"); const recipient = parts[0]; const destination = parts[1] ?? null;
+    const ordered = teamRuntime.issueOrder(run, spatialDefinitionFor(run.spatial_pack_id), { recipient, type, target: destination, channel: "LOCAL" });
+    if (!ordered.ok) return { ok: false, error: { code: ordered.code }, result: { public_reason: ordered.reason }, run };
+    const cycle = resolveOperationalCycle(run, "ORDER", dynamicsRuntime.actionCost(dynamicsDefinitionFor(run.spatial_pack_id), "ORDER"), "team-order");
+    return { ok: true, outcome: ordered.order.state, result: { public_reason: ordered.public_reason, order: ordered.order, time_advanced: cycle.clock.cost, mission_updates: cycle.mission_updates, operational_updates: cycle.public_updates }, run };
+  }
+  if (verb === "ASSIST" && run.spatial) { const assisted = teamRuntime.assist(run, target); if (!assisted.ok) return { ok: false, error: { code: assisted.code }, result: { public_reason: assisted.reason }, run }; const cycle = resolveOperationalCycle(run, verb, dynamicsRuntime.actionCost(dynamicsDefinitionFor(run.spatial_pack_id), verb), "personnel-recovery"); return { ok: true, outcome: "recovered-complication", result: { public_reason: assisted.public_reason, time_advanced: cycle.clock.cost, mission_updates: cycle.mission_updates, operational_updates: cycle.public_updates }, run }; }
+  if (verb === "RECOVER" && run.spatial) { const recovered = consequenceRuntime.recoverEquipment(run, target, run.session.startup.player.observer_id); if (!recovered.ok) return { ok: false, error: { code: recovered.code }, result: { public_reason: recovered.reason }, run }; const cycle = resolveOperationalCycle(run, verb, dynamicsRuntime.actionCost(dynamicsDefinitionFor(run.spatial_pack_id), verb), "equipment-recovery"); return { ok: true, outcome: "recovered-complication", result: { public_reason: recovered.public_reason, time_advanced: cycle.clock.cost, mission_updates: cycle.mission_updates, operational_updates: cycle.public_updates }, run }; }
+  if (verb === "MITIGATE" && run.spatial) { const mitigated = hazardRuntime.mitigate(run, dynamicsDefinitionFor(run.spatial_pack_id), target, run.session.startup.player.observer_id); if (!mitigated.ok) return { ok: false, error: { code: mitigated.code }, result: { public_reason: mitigated.reason }, run }; const cycle = resolveOperationalCycle(run, verb, dynamicsRuntime.actionCost(dynamicsDefinitionFor(run.spatial_pack_id), verb), "hazard-mitigation"); return { ok: true, outcome: "mitigated", result: { public_reason: mitigated.public_reason, time_advanced: cycle.clock.cost, mission_updates: cycle.mission_updates, operational_updates: cycle.public_updates }, run }; }
   const authored = objectInteraction(run, verb, target);
   if (authored) return authored;
   if (verb === "RECORD" && run.spatial && !target) return { ok: false, error: { code: "INTERACTION_TARGET_REQUIRED" }, result: { public_reason: "Name the visible object or route you intend to record." }, public_reason: "Name the visible object or route you intend to record.", run };
   if (["COMMUNICATE", "RECORD", "WAIT", "RETURN", "ABORT", "COMPLETE_RETURN"].includes(verb)) return expeditionAction(run, verb, target);
-  if (verb === "MOVE" && run.spatial) { const context = { ...spatialContext(run), observe_objects: () => objectProjection(run).map((object) => object.observation) }; const moved = spatialRuntime.move(run.spatial, spatialDefinitionFor(run.spatial_pack_id), target, context); if (!moved.ok) return { ok: false, error: { code: moved.code }, result: { public_reason: moved.reason }, public_reason: moved.reason, run }; run.checklist.moved = true; q4Time.advance(run.expedition, moved.time_cost); spatialRuntime.syncEquipment(run.spatial, run.expedition); observeCurrentObjects(run); event(run.expedition, "spatial.location.entered", { location: moved.to, connection: moved.connection_id, time_cost: moved.time_cost }); const missionUpdates = evaluateMissionState(run); return { ok: true, outcome: "succeeded", result: { public_reason: moved.narration, time_advanced: moved.time_cost, spatial: { from: moved.from, to: moved.to, connection: moved.connection_id }, mission_updates: missionUpdates }, run }; }
+  if (verb === "MOVE" && run.spatial) { const context = { ...spatialContext(run), observe_objects: () => objectProjection(run).map((object) => object.observation) }; const moved = spatialRuntime.move(run.spatial, spatialDefinitionFor(run.spatial_pack_id), target, context); if (!moved.ok) return { ok: false, error: { code: moved.code }, result: { public_reason: moved.reason }, public_reason: moved.reason, run }; run.checklist.moved = true; observeCurrentObjects(run); event(run.expedition, "spatial.location.entered", { location: moved.to, connection: moved.connection_id, time_cost: moved.time_cost }); const cycle = resolveOperationalCycle(run, verb, moved.time_cost, "spatial-traversal"); return { ok: true, outcome: "succeeded", result: { public_reason: moved.narration, time_advanced: cycle.clock.cost, spatial: { from: moved.from, to: moved.to, connection: moved.connection_id }, mission_updates: cycle.mission_updates, operational_updates: cycle.public_updates }, run }; }
   if (verb === "MOVE" && run.procedural) { const moved = generatorFor(run.procedural).move(run.procedural, run.session.startup.player.observer_id, target); if (!moved.ok) return { ok: false, error: { code: "TARGET_UNAVAILABLE" }, result: { public_reason: moved.public_reason }, run }; run.checklist.moved = true; event(run.expedition, "procedural.space.discovered", { location: moved.view.location.alias }); return { ok: true, outcome: "succeeded", result: { public_reason: null, view: moved.view }, run }; }
   if (verb === "USE" && target && target !== "field-light") {
     if (target !== "survey-instrument") return { ok: false, error: { code: "EQUIPMENT_UNAVAILABLE" }, run };
-    const used = useEquipment(run.expedition, target, run.session.startup.player.observer_id); if (!used.ok) return { ok: false, error: { code: used.code }, run };
+    const operator = run.spatial ? run.session.startup.player.observer_id : run.expedition.equipment?.[target]?.holder ?? run.session.startup.player.observer_id;
+    const used = useEquipment(run.expedition, target, operator); if (!used.ok) return { ok: false, error: { code: used.code }, run };
     run.checklist.used = true;
     event(run.expedition, "measurement.recorded", { equipment: target, interval: run.expedition.clock.interval, type: "qualitative-survey" });
-    const missionUpdates = evaluateMissionState(run);
-    return { ok: true, outcome: "succeeded", result: { public_reason: null, measurement: "qualitative-survey", mission_updates: missionUpdates }, run };
+    const cycle = run.spatial_pack_id ? resolveOperationalCycle(run, verb, dynamicsRuntime.actionCost(dynamicsDefinitionFor(run.spatial_pack_id), verb), "equipment-use") : (operationalTime.advance(run.expedition, 1, "equipment-use"), { clock: { cost: 1 }, mission_updates: [] });
+    return { ok: true, outcome: "succeeded", result: { public_reason: null, time_advanced: cycle.clock.cost, measurement: "qualitative-survey", mission_updates: cycle.mission_updates, operational_updates: cycle.public_updates ?? [] }, run };
   }
   const action = { MOVE: "traverse-controlled-route", USE: "toggle-light" }[verb];
   if (!action) return { ok: false, error: { code: "UNSUPPORTED_VERB" }, run };
@@ -389,8 +429,8 @@ function act(runValue, verb, target) {
   return { ...result, run };
 }
 function crossThreshold(runValue) { const run = normalizeRun(runValue); const result = submitSessionAction({ session: run.session, actor: run.session.startup.player.observer_id, action: "traverse-controlled-route" }); if (result.session) run.session = result.session; return { ...result, run }; }
-function saveRun(runValue) { const run = normalizeRun(runValue); return { version: "yellow-beast-save@v7", profile_id: run.profile_id, profile_title: run.profile_title, scenario: run.scenario, seed: run.seed, lifecycle: run.lifecycle, checklist: clone(run.checklist), aliases: clone(run.aliases), expedition: clone(run.expedition), procedural: clone(run.procedural), spatial_pack_id: run.spatial_pack_id, spatial: clone(run.spatial), object_state: clone(run.object_state), world_id: run.world_id, run_id: run.run_id, envelope: exportSession(run.session).envelope }; }
+function saveRun(runValue) { const run = normalizeRun(runValue); return { version: "yellow-beast-save@v8", profile_id: run.profile_id, profile_title: run.profile_title, scenario: run.scenario, seed: run.seed, lifecycle: run.lifecycle, checklist: clone(run.checklist), aliases: clone(run.aliases), expedition: clone(run.expedition), procedural: clone(run.procedural), spatial_pack_id: run.spatial_pack_id, spatial: clone(run.spatial), object_state: clone(run.object_state), world_id: run.world_id, run_id: run.run_id, envelope: exportSession(run.session).envelope }; }
 function resumeRun(save, { world = null, spatial_worldpack = null, phase = "BRIEFING" } = {}) { const restored = restoreSession(save.envelope); if (!restored.ok) return restored; const packId = save.spatial_pack_id ?? spatial_worldpack; try { if (save.procedural) generatorFor(save.procedural); if (packId) { spatialDefinitionFor(packId); interactionDefinitionFor(packId); missionDefinitionFor(packId); } } catch (error) { return { ok: false, error: { code: error.code ?? "GENERATOR_VERSION_UNSUPPORTED" } }; } if (world && save.world_id && world.world_id !== save.world_id) return { ok: false, error: { code: "WORLD_ID_MISMATCH" } }; const run = newRun({ profile: save.profile_id, seed: save.seed, session: restored.session, expedition: clone(save.expedition), procedural_state: clone(save.procedural), procedural_scenario: Boolean(save.procedural), spatial_pack_id: packId, spatial_state: clone(save.spatial), object_state: clone(save.object_state), world_id: save.world_id, run_id: save.run_id, world, phase }); run.lifecycle = save.lifecycle ?? "active"; run.checklist = clone(save.checklist ?? run.checklist); run.aliases = clone(save.aliases ?? {}); evaluateMissionState(run, phase); return { ok: true, run }; }
 
 if (require.main === module) { const args = process.argv.slice(2); const value = (name) => args[args.indexOf(name) + 1]; const result = startRun({ profile: value("--profile") || "lost", seed: value("--seed") || "yellow-beast-bootstrap" }); console.log(JSON.stringify(result.ok ? result.summary : result, null, 2)); process.exitCode = result.ok ? 0 : 1; }
-module.exports = { startRun, status, look, inspect, act, saveRun, resumeRun, generatorFor, spatialDefinitionFor, interactionDefinitionFor, missionDefinitionFor, ensureSpatial, setSpatialPhase, enterSpatialField, crossThreshold, objectProjection, evaluateMissionState, synchronizeMissionOutcome };
+module.exports = { startRun, status, look, inspect, act, saveRun, resumeRun, generatorFor, spatialDefinitionFor, interactionDefinitionFor, missionDefinitionFor, dynamicsDefinitionFor, ensureSpatial, setSpatialPhase, enterSpatialField, crossThreshold, objectProjection, evaluateMissionState, resolveOperationalCycle, synchronizeMissionOutcome };

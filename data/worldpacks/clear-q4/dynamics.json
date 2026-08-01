@@ -1,0 +1,59 @@
+{
+  "version": "yellow-beast-operational-dynamics-worldpack@v1",
+  "worldpack_id": "clear-q4",
+  "action_costs": {
+    "LOOK": 0, "INSPECT": 0, "READY": 0, "PROCEED": 1, "APPROACH": 1, "CROSS": 1,
+    "RADIO_CHECK": 1, "BEGIN_FIELD_OPERATION": 1, "MOVE": 1, "COMMUNICATE": 1, "LOCAL": 0,
+    "WAIT": 1, "ORDER": 1, "ASSIST": 1, "RECOVER": 1, "MITIGATE": 1, "RETURN": 0,
+    "ABORT": 0, "COMPLETE_RETURN": 1, "DEFAULT": 1
+  },
+  "staffing": {
+    "minimum_total": 3,
+    "maximum_total": 5,
+    "clearance": "field",
+    "coworker_roles": ["survey technician", "documentation specialist", "field safety specialist", "route specialist"]
+  },
+  "communications": {
+    "standard_delivery_delay": 1,
+    "standard_acknowledgment_delay": 1,
+    "check_ins": [{ "id": "field-status-check-in", "due_after": 8, "approaching_within": 2, "miss_after": 2, "public_label": "Scheduled field status report" }],
+    "interference_zones": [{
+      "id": "columned-corridor-radio-shadow",
+      "locations": ["columned-corridor", "open-passage", "lower-level-transition"],
+      "connections": ["utility-to-corridor", "utility-to-passage", "passage-to-lower"],
+      "additional_delay": 9,
+      "public_description": "The column line breaks the field-radio signal; delivery cannot yet be confirmed."
+    }]
+  },
+  "hazards": [{
+    "id": "overhead-service-bracket",
+    "category": "structural",
+    "scope": { "location_id": "columned-corridor", "connection_id": "utility-to-corridor" },
+    "initial_state": "dormant",
+    "visibility": "warning-signs",
+    "detection": { "source": "spatial", "predicate": "actor_at_location", "location_id": "columned-corridor" },
+    "activation": { "all": [{ "source": "time", "predicate": "interval_reached", "amount": 5 }, { "source": "hazard", "predicate": "unmitigated", "hazard_id": "overhead-service-bracket" }] },
+    "exposure": { "all": [{ "source": "spatial", "predicate": "actor_at_location", "location_id": "columned-corridor" }, { "source": "hazard", "predicate": "state_is", "hazard_id": "overhead-service-bracket", "state": "active" }] },
+    "severity": "moderate",
+    "affected_targets": "one-coworker",
+    "avoidance_options": ["wait outside the column line", "use another known route"],
+    "mitigation_options": ["secure the loose bracket with the route-marker kit"],
+    "recoverability": "recoverable",
+    "consequence_set": "bracket-strike-complication",
+    "persistence": "persistent",
+    "public": {
+      "warning": "A service bracket above the column line is sitting out of square.",
+      "observed": "The loose service bracket shifted and struck the team position.",
+      "mitigated": "The bracket is secured clear of the working route.",
+      "unknown": "Contact was lost beyond the last confirmed position."
+    }
+  }],
+  "consequence_sets": [{
+    "id": "bracket-strike-complication",
+    "effects": [
+      { "kind": "personnel-condition", "target": "exposed-coworker", "condition": "minor injury", "status": "active", "reason": "struck by a loose service bracket" },
+      { "kind": "equipment-dropped", "target": "held-operational-equipment", "location_id": "columned-corridor", "reason": "dropped during the bracket strike" }
+    ],
+    "public_summary": "A teammate was struck and dropped assigned equipment. The complication can be recovered in place."
+  }]
+}

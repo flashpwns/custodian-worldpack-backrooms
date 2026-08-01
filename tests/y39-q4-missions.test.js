@@ -20,7 +20,7 @@ test("Q4 assignments are stable, bounded, terminology-safe, and actionable", () 
 
 test("Clear-Q4 stores the assigned mission and the first screen is an actual briefing", () => {
   const { service, world } = fixture(); const entry = service.session(world.id, "field-researcher"); const mission = entry.run.expedition.mission; const stored = service.getWorld(world.id).q4_missions[mission.id];
-  assert.equal(stored.family, mission.family); assert.equal(mission.status, "assigned"); assert.deepEqual(mission.required_equipment, entry.run.expedition.loadout.required); assert.equal(entry.run.expedition.team.members.length, 2);
+  assert.equal(stored.family, mission.family); assert.equal(mission.status, "assigned"); assert.deepEqual(mission.required_equipment, entry.run.expedition.loadout.required); assert.ok(entry.run.expedition.team.members.length >= 3 && entry.run.expedition.team.members.length <= 5);
   const projection = service.getGameplayProjection({ world_id: world.id, mode: "field-researcher" }).projection; const html = surfaces.render(projection);
   assert.equal(projection.phase.phase_id, "BRIEFING"); assert.equal(projection.q4.mission_record.id, mission.id); assert.match(html, /Site objective|Expected procedures|Recorded prior history|Radio and reporting/); assert.doesNotMatch(html, /Declared survey remains|field-suroperation|Column Corridor|Ceiling Fixture/);
   assert.ok(!projection.available_actions.some((action) => /mission|assignment/i.test(action.type ?? action.label ?? "")));

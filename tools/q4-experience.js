@@ -13,8 +13,13 @@ const radioModel = require("./q4-radio");
 const timeModel = require("./q4-time");
 const spatialRuntime = require("./spatial-runtime");
 const missionRuntime = require("./mission-runtime");
+const teamRuntime = require("./team-runtime");
+const communicationRuntime = require("./communication-runtime");
+const operationalTime = require("./operational-time");
+const hazardRuntime = require("./hazard-runtime");
+const cloneUpdates = (value) => structuredClone(value ?? []);
 
-const VERSION = "yellow-beast-clear-q4-experience@v2";
+const VERSION = "yellow-beast-clear-q4-experience@v3";
 const copy = {
   BRIEFING: "Review the Clear-Q4 survey assignment and continue to staging.",
   STAGING: "Review issued equipment and proceed to the Threshold room.",
@@ -59,7 +64,7 @@ function presentation(run, phase, unfinished = null, world = null) {
   const localHistory = interactions.history(expedition, "local").map(interactions.publicEntry);
   const standardHistory = interactions.history(expedition, "standard").map(interactions.publicEntry);
   const actionHistory = interactions.history(expedition, "action").map(interactions.publicEntry);
-  const team = personnel.publicTeam(run, phase.phase_id, world);
+  const team = run.spatial_pack_id ? teamRuntime.project(run) : personnel.publicTeam(run, phase.phase_id, world);
   const safeTeam = team.map(({ id, personnel_id, ...member }) => member);
   const player = team.find((member) => member.controlled) ?? team[0] ?? null;
   const safePlayer = safeTeam.find((member) => member.controlled) ?? safeTeam[0] ?? null;
@@ -70,7 +75,7 @@ function presentation(run, phase, unfinished = null, world = null) {
   const playerId = run.session?.startup?.player?.observer_id ?? expedition?.team?.members?.[0]?.personnel_id;
   const safeStatus = run.session ? bootstrap.status(run) : {};
   const operationalMap = run.spatial ? spatialRuntime.project(run.spatial, bootstrap.spatialDefinitionFor(run.spatial_pack_id), {
-    personnel: team.map((member) => ({ id: member.personnel_id, name: String(member.display_name).replace(/ · YOU$/, "") })),
+    personnel: team.map((member) => ({ id: member.personnel_id, name: String(member.display_name).replace(/ · YOU$/, ""), known_location: member.current_or_last_known_location ?? member.location, confirmed_current: ["LOCAL", "SELF"].includes(member.contact_state ?? member.contact_category) })),
     mission_markers: [{ id: "assigned-survey-area", label: "Assigned survey area", location: bootstrap.spatialDefinitionFor(run.spatial_pack_id).field_entry_location }]
   }) : null;
   const publicMap = operationalMap ? { ...operationalMap, nodes: operationalMap.nodes.map((node) => ({ ...node, personnel: (node.personnel ?? []).map(({ name, status }) => ({ name, status })) })) } : null;
@@ -98,6 +103,9 @@ function presentation(run, phase, unfinished = null, world = null) {
     standard: { available: standardAvailable, state: radioState.state, state_label: radioModel.label(expedition), endpoint: "Standard", unavailable_reason: standardAvailable ? null : standardReason, history: standardHistory }
   };
   const checkIn = timeModel.status(expedition);
+  const communication = communicationRuntime.project(expedition);
+  const operationalClock = operationalTime.project(expedition);
+  const hazardView = run.spatial_pack_id ? hazardRuntime.project(run, bootstrap.dynamicsDefinitionFor(run.spatial_pack_id)) : [];
   const location = run.spatial ? spatialRuntime.currentLocation(run.spatial, bootstrap.spatialDefinitionFor(run.spatial_pack_id)) : null;
   const interactables = liveLayout ? (safeStatus.view?.observations?.objects ?? []) : [];
   const fieldObservation = location && liveLayout ? spatialRuntime.locationObservation(run.spatial, bootstrap.spatialDefinitionFor(run.spatial_pack_id), { mode: "orient", nearby: localCoworkers.map((member) => member.first_name), objects: interactables.map((object) => object.observation) }) : null;
@@ -111,7 +119,8 @@ function presentation(run, phase, unfinished = null, world = null) {
     display_mission: mission?.objective?.primary ?? "Review the assigned field work and return with a field record.",
     restrictions: mission?.objective?.procedures ?? expedition?.order?.constraints ?? [],
     reporting: diegeticText(mission?.reporting?.summary ?? expedition?.order?.reporting),
-    operational_time: `T+${expedition?.clock?.interval ?? 0} intervals`,
+    operational_time: `T+${operationalClock.interval} intervals`,
+    operational_clock: operationalClock,
     check_in: checkIn,
     radio_check: { completed: radioState.check_completed, authorized: radioState.authorized, state: radioState.state },
     objectives: canonicalObjectives(run),
@@ -119,7 +128,8 @@ function presentation(run, phase, unfinished = null, world = null) {
     player: player ? { name: String(player.display_name).replace(/ · YOU$/, ""), first_name: player.first_name, role: String(player.role ?? "").replace(/ · YOU$/, ""), clearance: player.clearance, condition: player.condition, assignment: player.assignment, visual: q4Visuals.personnelVisual(safePlayer) } : null,
     team: safeTeam,
     equipment: equip,
-    radio: expedition?.messages?.slice(-1).map(({ intended_recipient, delivery_status }) => ({ recipient: intended_recipient === "Standard" ? "Operations" : "team", delivery_status })) ?? [],
+    radio: communication.messages.slice(-5),
+    communications: communication,
     channels,
     layout,
     map: publicMap,
@@ -127,6 +137,8 @@ function presentation(run, phase, unfinished = null, world = null) {
     field_observation: fieldObservation,
     interactables,
     evidence,
+    hazards: hazardView,
+    operational_updates: cloneUpdates(run._last_operational_updates),
     visuals: q4Visuals.projection({ team: safeTeam, equipment: equip, evidence, channels, layout, review: phase.phase_id === "DEBRIEF" }),
     field_conditions: phase.phase_id === "FIELD_OPERATION" ? trajectories.publicState(expedition) : null,
     review: phase.phase_id === "DEBRIEF" ? continuity.review(world, mission?.id) : null,

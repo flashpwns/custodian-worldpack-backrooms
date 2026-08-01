@@ -43,12 +43,13 @@ test("bounded cognition uses personal context, varies by identity, and cannot in
 test("dead controlled personnel receive explicit succession without inheriting private knowledge", () => {
   const world = history.createWorld({ seed: "succession" });
   const run = history.beginRun(world, { profile: "field-researcher", scenario: "q4", seed: "succession" });
-  personnel.staffQ4(world, run, personnel.DEFAULTS.player.identity, "succession");
-  world.q4_operations.controlled_player = personnel.DEFAULTS.player.identity;
-  assert.equal(history.setCharacterStatus(world, { run_id: run, identity: personnel.DEFAULTS.player.identity, status: "dead", reason: "confirmed field loss" }).ok, true);
+  const created = personnel.createPlayer(world, { first_name: "Taylor", last_name: "Morgan" }); assert.equal(created.ok, true); const playerId = created.player.identity;
+  personnel.staffQ4(world, run, playerId, "succession");
+  world.q4_operations.controlled_player = playerId;
+  assert.equal(history.setCharacterStatus(world, { run_id: run, identity: playerId, status: "dead", reason: "confirmed field loss" }).ok, true);
   const handover = personnel.selectSuccessor(world, run, "succession");
   assert.equal(handover.ok, true);
-  assert.notEqual(handover.successor.identity, personnel.DEFAULTS.player.identity);
+  assert.notEqual(handover.successor.identity, playerId);
   assert.equal(handover.handover.former_status, "dead");
   assert.equal(world.q4_operations.controlled_player, handover.successor.identity);
   assert.doesNotMatch(JSON.stringify(handover), /private LOCAL|hidden trajectory|unreported observation/i);

@@ -1,6 +1,6 @@
 {
   "version": "yellow-beast-mission-state-acceptance@v1",
-  "generated_at": "2026-08-01T08:06:23.534Z",
+  "generated_at": "2026-08-01T10:00:03.791Z",
   "evidence_kind": "deterministic renderer-backed and persisted authoritative-state capture",
   "actions": [
     "review briefing",
@@ -154,14 +154,14 @@
         },
         {
           "label": "35mm field camera",
-          "holder": "Alex Morgan",
+          "holder": "Carmen Hardin",
           "state": "Operational",
           "verification": "visually confirmed",
           "remaining": 12
         },
         {
           "label": "Portable survey instrument",
-          "holder": "Nora Vale",
+          "holder": "Sylvia Foley",
           "state": "Operational",
           "verification": "visually confirmed",
           "remaining": "checked"
@@ -177,20 +177,26 @@
       "personnel": [
         {
           "display_name": "Jack Rocha · YOU",
-          "contact_category": "LOCAL",
-          "condition": "Appears normal",
+          "contact_category": "SELF",
+          "condition": "normal",
           "location": "async-briefing-room"
         },
         {
-          "display_name": "Nora Vale",
+          "display_name": "Sylvia Foley",
           "contact_category": "LOCAL",
-          "condition": "Appears normal",
+          "condition": "normal",
           "location": "async-briefing-room"
         },
         {
-          "display_name": "Alex Morgan",
+          "display_name": "Carmen Hardin",
           "contact_category": "LOCAL",
-          "condition": "Appears normal",
+          "condition": "normal",
+          "location": "async-briefing-room"
+        },
+        {
+          "display_name": "Orlando Simmons",
+          "contact_category": "LOCAL",
+          "condition": "normal",
           "location": "async-briefing-room"
         }
       ],
@@ -295,13 +301,13 @@
           "headline": "Establish radio contact complete",
           "summary": "Standard acknowledged the field team and authorized departure.",
           "state": "satisfied",
-          "at": 0
+          "at": 4
         },
         {
           "headline": "Maintain the scheduled check-in active",
           "summary": "The scheduled check-in remains pending within its declared window.",
           "state": "active",
-          "at": 0
+          "at": 4
         }
       ],
       "return_readiness": {
@@ -366,14 +372,14 @@
         },
         {
           "label": "35mm field camera",
-          "holder": "Alex Morgan",
+          "holder": "Carmen Hardin",
           "state": "Operational",
           "verification": "visually confirmed",
           "remaining": 12
         },
         {
           "label": "Portable survey instrument",
-          "holder": "Nora Vale",
+          "holder": "Sylvia Foley",
           "state": "Operational",
           "verification": "visually confirmed",
           "remaining": "checked"
@@ -396,20 +402,26 @@
       "personnel": [
         {
           "display_name": "Jack Rocha · YOU",
-          "contact_category": "LOCAL",
-          "condition": "Appears normal",
+          "contact_category": "SELF",
+          "condition": "normal",
           "location": "threshold-side-entry"
         },
         {
-          "display_name": "Nora Vale",
+          "display_name": "Sylvia Foley",
           "contact_category": "LOCAL",
-          "condition": "Appears normal",
+          "condition": "normal",
           "location": "threshold-side-entry"
         },
         {
-          "display_name": "Alex Morgan",
+          "display_name": "Carmen Hardin",
           "contact_category": "LOCAL",
-          "condition": "Appears normal",
+          "condition": "normal",
+          "location": "threshold-side-entry"
+        },
+        {
+          "display_name": "Orlando Simmons",
+          "contact_category": "LOCAL",
+          "condition": "normal",
           "location": "threshold-side-entry"
         }
       ],
@@ -420,11 +432,13 @@
       },
       "check_in": {
         "state": "scheduled",
-        "label": "DUE IN 3 INTERVALS",
-        "due_at": 3,
-        "remaining": 3
+        "label": "SCHEDULED",
+        "due_at": 12,
+        "remaining": 8,
+        "completed_at": null,
+        "summary": "Due at operational interval 12."
       },
-      "time": "T+0 intervals",
+      "time": "T+4 intervals",
       "map": {
         "current_location": "threshold-side-entry",
         "nodes": [
@@ -460,7 +474,7 @@
             "from": "threshold-room",
             "to": "threshold-side-entry",
             "connection_id": "threshold-crossing",
-            "at": 0
+            "at": 2
           }
         ],
         "unresolved_exits": [
@@ -551,31 +565,31 @@
           "headline": "Establish Utility Room conditions active",
           "summary": "The fixture, floor scuffs, and service panel are not yet all established, and one feature still needs validation.",
           "state": "active",
-          "at": 0
+          "at": 4
         },
         {
           "headline": "Capture mission evidence active",
           "summary": "No valid object-specific field record has been captured.",
           "state": "active",
-          "at": 0
+          "at": 4
         },
         {
           "headline": "Report field evidence blocked",
           "summary": "A valid object-specific field record is required before a report can be sent.",
           "state": "blocked",
-          "at": 0
+          "at": 4
         },
         {
           "headline": "Verify the return route active",
           "summary": "The Threshold-side marker has not yet been verified and secured.",
           "state": "active",
-          "at": 0
+          "at": 4
         },
         {
           "headline": "Document an additional field condition blocked",
           "summary": "A first valid field record is required before expanding the evidence set.",
           "state": "blocked",
-          "at": 0
+          "at": 4
         }
       ],
       "return_readiness": {
@@ -635,14 +649,14 @@
         },
         {
           "label": "35mm field camera",
-          "holder": "Alex Morgan",
+          "holder": "Carmen Hardin",
           "state": "Operational",
           "verification": "visually confirmed",
           "remaining": 12
         },
         {
           "label": "Portable survey instrument",
-          "holder": "Nora Vale",
+          "holder": "Sylvia Foley",
           "state": "Operational",
           "verification": "visually confirmed",
           "remaining": "checked"
@@ -665,20 +679,26 @@
       "personnel": [
         {
           "display_name": "Jack Rocha · YOU",
-          "contact_category": "LOCAL",
-          "condition": "Appears normal",
+          "contact_category": "SELF",
+          "condition": "normal",
           "location": "utility-room"
         },
         {
-          "display_name": "Nora Vale",
+          "display_name": "Sylvia Foley",
           "contact_category": "LOCAL",
-          "condition": "Appears normal",
+          "condition": "normal",
           "location": "utility-room"
         },
         {
-          "display_name": "Alex Morgan",
+          "display_name": "Carmen Hardin",
           "contact_category": "LOCAL",
-          "condition": "Appears normal",
+          "condition": "normal",
+          "location": "utility-room"
+        },
+        {
+          "display_name": "Orlando Simmons",
+          "contact_category": "LOCAL",
+          "condition": "normal",
           "location": "utility-room"
         }
       ],
@@ -689,11 +709,13 @@
       },
       "check_in": {
         "state": "scheduled",
-        "label": "DUE IN 3 INTERVALS",
-        "due_at": 3,
-        "remaining": 3
+        "label": "SCHEDULED",
+        "due_at": 12,
+        "remaining": 7,
+        "completed_at": null,
+        "summary": "Due at operational interval 12."
       },
-      "time": "T+0 intervals",
+      "time": "T+5 intervals",
       "map": {
         "current_location": "utility-room",
         "nodes": [
@@ -734,14 +756,14 @@
             "from": "threshold-room",
             "to": "threshold-side-entry",
             "connection_id": "threshold-crossing",
-            "at": 0
+            "at": 2
           },
           {
             "sequence": 2,
             "from": "threshold-side-entry",
             "to": "utility-room",
             "connection_id": "entry-to-utility",
-            "at": 0
+            "at": 4
           }
         ],
         "unresolved_exits": [
@@ -830,19 +852,19 @@
           "headline": "Capture mission evidence complete",
           "summary": "At least one valid condition-specific field record is retained.",
           "state": "satisfied",
-          "at": 1
+          "at": 6
         },
         {
           "headline": "Report field evidence active",
           "summary": "A valid field record is retained. Standard has not yet received it.",
           "state": "active",
-          "at": 1
+          "at": 6
         },
         {
           "headline": "Document an additional field condition active",
           "summary": "One field condition is documented; a second distinct object record remains optional.",
           "state": "active",
-          "at": 1
+          "at": 6
         }
       ],
       "return_readiness": {
@@ -905,14 +927,14 @@
         },
         {
           "label": "35mm field camera",
-          "holder": "Alex Morgan",
+          "holder": "Carmen Hardin",
           "state": "Operational",
           "verification": "visually confirmed",
           "remaining": 12
         },
         {
           "label": "Portable survey instrument",
-          "holder": "Nora Vale",
+          "holder": "Sylvia Foley",
           "state": "Depleted",
           "verification": "visually confirmed",
           "remaining": "checked"
@@ -935,20 +957,26 @@
       "personnel": [
         {
           "display_name": "Jack Rocha · YOU",
-          "contact_category": "LOCAL",
-          "condition": "Appears normal",
+          "contact_category": "SELF",
+          "condition": "normal",
           "location": "utility-room"
         },
         {
-          "display_name": "Nora Vale",
+          "display_name": "Sylvia Foley",
           "contact_category": "LOCAL",
-          "condition": "Appears normal",
+          "condition": "normal",
           "location": "utility-room"
         },
         {
-          "display_name": "Alex Morgan",
+          "display_name": "Carmen Hardin",
           "contact_category": "LOCAL",
-          "condition": "Appears normal",
+          "condition": "normal",
+          "location": "utility-room"
+        },
+        {
+          "display_name": "Orlando Simmons",
+          "contact_category": "LOCAL",
+          "condition": "normal",
           "location": "utility-room"
         }
       ],
@@ -959,11 +987,13 @@
       },
       "check_in": {
         "state": "scheduled",
-        "label": "DUE IN 2 INTERVALS",
-        "due_at": 3,
-        "remaining": 2
+        "label": "SCHEDULED",
+        "due_at": 12,
+        "remaining": 6,
+        "completed_at": null,
+        "summary": "Due at operational interval 12."
       },
-      "time": "T+1 intervals",
+      "time": "T+6 intervals",
       "map": {
         "current_location": "utility-room",
         "nodes": [
@@ -1004,14 +1034,14 @@
             "from": "threshold-room",
             "to": "threshold-side-entry",
             "connection_id": "threshold-crossing",
-            "at": 0
+            "at": 2
           },
           {
             "sequence": 2,
             "from": "threshold-side-entry",
             "to": "utility-room",
             "connection_id": "entry-to-utility",
-            "at": 0
+            "at": 4
           }
         ],
         "unresolved_exits": [
@@ -1100,7 +1130,7 @@
           "headline": "Document an additional field condition complete",
           "summary": "Distinct conditions from at least two field objects were documented.",
           "state": "satisfied",
-          "at": 2
+          "at": 7
         }
       ],
       "return_readiness": {
@@ -1165,14 +1195,14 @@
         },
         {
           "label": "35mm field camera",
-          "holder": "Alex Morgan",
+          "holder": "Carmen Hardin",
           "state": "Operational",
           "verification": "visually confirmed",
           "remaining": 11
         },
         {
           "label": "Portable survey instrument",
-          "holder": "Nora Vale",
+          "holder": "Sylvia Foley",
           "state": "Depleted",
           "verification": "visually confirmed",
           "remaining": "checked"
@@ -1195,20 +1225,26 @@
       "personnel": [
         {
           "display_name": "Jack Rocha · YOU",
-          "contact_category": "LOCAL",
-          "condition": "Appears normal",
+          "contact_category": "SELF",
+          "condition": "normal",
           "location": "utility-room"
         },
         {
-          "display_name": "Nora Vale",
+          "display_name": "Sylvia Foley",
           "contact_category": "LOCAL",
-          "condition": "Appears normal",
+          "condition": "normal",
           "location": "utility-room"
         },
         {
-          "display_name": "Alex Morgan",
+          "display_name": "Carmen Hardin",
           "contact_category": "LOCAL",
-          "condition": "Appears normal",
+          "condition": "normal",
+          "location": "utility-room"
+        },
+        {
+          "display_name": "Orlando Simmons",
+          "contact_category": "LOCAL",
+          "condition": "normal",
           "location": "utility-room"
         }
       ],
@@ -1219,11 +1255,13 @@
       },
       "check_in": {
         "state": "scheduled",
-        "label": "DUE IN 1 INTERVAL",
-        "due_at": 3,
-        "remaining": 1
+        "label": "SCHEDULED",
+        "due_at": 12,
+        "remaining": 5,
+        "completed_at": null,
+        "summary": "Due at operational interval 12."
       },
-      "time": "T+2 intervals",
+      "time": "T+7 intervals",
       "map": {
         "current_location": "utility-room",
         "nodes": [
@@ -1264,14 +1302,14 @@
             "from": "threshold-room",
             "to": "threshold-side-entry",
             "connection_id": "threshold-crossing",
-            "at": 0
+            "at": 2
           },
           {
             "sequence": 2,
             "from": "threshold-side-entry",
             "to": "utility-room",
             "connection_id": "entry-to-utility",
-            "at": 0
+            "at": 4
           }
         ],
         "unresolved_exits": [
@@ -1360,7 +1398,7 @@
           "headline": "Establish Utility Room conditions complete",
           "summary": "The declared fixture, floor, and panel conditions are known and at least one feature was validated.",
           "state": "satisfied",
-          "at": 3
+          "at": 8
         }
       ],
       "return_readiness": {
@@ -1420,14 +1458,14 @@
         },
         {
           "label": "35mm field camera",
-          "holder": "Alex Morgan",
+          "holder": "Carmen Hardin",
           "state": "Operational",
           "verification": "visually confirmed",
           "remaining": 11
         },
         {
           "label": "Portable survey instrument",
-          "holder": "Nora Vale",
+          "holder": "Sylvia Foley",
           "state": "Depleted",
           "verification": "visually confirmed",
           "remaining": "checked"
@@ -1450,20 +1488,26 @@
       "personnel": [
         {
           "display_name": "Jack Rocha · YOU",
-          "contact_category": "LOCAL",
-          "condition": "Appears normal",
+          "contact_category": "SELF",
+          "condition": "normal",
           "location": "utility-room"
         },
         {
-          "display_name": "Nora Vale",
+          "display_name": "Sylvia Foley",
           "contact_category": "LOCAL",
-          "condition": "Appears normal",
+          "condition": "normal",
           "location": "utility-room"
         },
         {
-          "display_name": "Alex Morgan",
+          "display_name": "Carmen Hardin",
           "contact_category": "LOCAL",
-          "condition": "Appears normal",
+          "condition": "normal",
+          "location": "utility-room"
+        },
+        {
+          "display_name": "Orlando Simmons",
+          "contact_category": "LOCAL",
+          "condition": "normal",
           "location": "utility-room"
         }
       ],
@@ -1473,12 +1517,14 @@
         "history_count": 2
       },
       "check_in": {
-        "state": "due",
-        "label": "CHECK-IN DUE",
-        "due_at": 3,
-        "remaining": 0
+        "state": "scheduled",
+        "label": "SCHEDULED",
+        "due_at": 12,
+        "remaining": 4,
+        "completed_at": null,
+        "summary": "Due at operational interval 12."
       },
-      "time": "T+3 intervals",
+      "time": "T+8 intervals",
       "map": {
         "current_location": "utility-room",
         "nodes": [
@@ -1519,14 +1565,14 @@
             "from": "threshold-room",
             "to": "threshold-side-entry",
             "connection_id": "threshold-crossing",
-            "at": 0
+            "at": 2
           },
           {
             "sequence": 2,
             "from": "threshold-side-entry",
             "to": "utility-room",
             "connection_id": "entry-to-utility",
-            "at": 0
+            "at": 4
           }
         ],
         "unresolved_exits": [
@@ -1615,7 +1661,13 @@
           "headline": "Report field evidence complete",
           "summary": "Standard received a report tied to the retained field evidence.",
           "state": "satisfied",
-          "at": 3
+          "at": 9
+        },
+        {
+          "headline": "Maintain the scheduled check-in complete",
+          "summary": "Standard received the scheduled field check-in.",
+          "state": "satisfied",
+          "at": 9
         }
       ],
       "return_readiness": {
@@ -1665,14 +1717,14 @@
         },
         {
           "label": "35mm field camera",
-          "holder": "Alex Morgan",
+          "holder": "Carmen Hardin",
           "state": "Operational",
           "verification": "visually confirmed",
           "remaining": 11
         },
         {
           "label": "Portable survey instrument",
-          "holder": "Nora Vale",
+          "holder": "Sylvia Foley",
           "state": "Depleted",
           "verification": "visually confirmed",
           "remaining": "checked"
@@ -1680,7 +1732,7 @@
         {
           "label": "Handheld field radio",
           "holder": "You",
-          "state": "Operational",
+          "state": "Depleted",
           "verification": "visually confirmed",
           "remaining": "checked"
         },
@@ -1695,36 +1747,43 @@
       "personnel": [
         {
           "display_name": "Jack Rocha · YOU",
-          "contact_category": "LOCAL",
-          "condition": "Appears normal",
+          "contact_category": "SELF",
+          "condition": "normal",
           "location": "utility-room"
         },
         {
-          "display_name": "Nora Vale",
+          "display_name": "Sylvia Foley",
           "contact_category": "LOCAL",
-          "condition": "Appears normal",
+          "condition": "normal",
           "location": "utility-room"
         },
         {
-          "display_name": "Alex Morgan",
+          "display_name": "Carmen Hardin",
           "contact_category": "LOCAL",
-          "condition": "Appears normal",
+          "condition": "normal",
+          "location": "utility-room"
+        },
+        {
+          "display_name": "Orlando Simmons",
+          "contact_category": "LOCAL",
+          "condition": "normal",
           "location": "utility-room"
         }
       ],
       "radio": {
-        "state": "available",
+        "state": "awaiting-response",
         "check_completed": true,
         "history_count": 3
       },
       "check_in": {
         "state": "completed",
-        "label": "CHECK-IN COMPLETE",
-        "due_at": 3,
-        "remaining": 0,
-        "completed_at": 3
+        "label": "COMPLETED",
+        "due_at": 12,
+        "remaining": 3,
+        "completed_at": 9,
+        "summary": "Standard received the field report."
       },
-      "time": "T+3 intervals",
+      "time": "T+9 intervals",
       "map": {
         "current_location": "utility-room",
         "nodes": [
@@ -1765,14 +1824,14 @@
             "from": "threshold-room",
             "to": "threshold-side-entry",
             "connection_id": "threshold-crossing",
-            "at": 0
+            "at": 2
           },
           {
             "sequence": 2,
             "from": "threshold-side-entry",
             "to": "utility-room",
             "connection_id": "entry-to-utility",
-            "at": 0
+            "at": 4
           }
         ],
         "unresolved_exits": [
@@ -1861,7 +1920,7 @@
           "headline": "Verify the return route complete",
           "summary": "The Threshold-side marker is secured on the traversed return route.",
           "state": "satisfied",
-          "at": 7
+          "at": 13
         }
       ],
       "return_readiness": {
@@ -1906,14 +1965,14 @@
         },
         {
           "label": "35mm field camera",
-          "holder": "Alex Morgan",
+          "holder": "Carmen Hardin",
           "state": "Operational",
           "verification": "visually confirmed",
           "remaining": 11
         },
         {
           "label": "Portable survey instrument",
-          "holder": "Nora Vale",
+          "holder": "Sylvia Foley",
           "state": "Depleted",
           "verification": "visually confirmed",
           "remaining": "checked"
@@ -1921,7 +1980,7 @@
         {
           "label": "Handheld field radio",
           "holder": "You",
-          "state": "Operational",
+          "state": "Depleted",
           "verification": "visually confirmed",
           "remaining": "checked"
         },
@@ -1936,20 +1995,26 @@
       "personnel": [
         {
           "display_name": "Jack Rocha · YOU",
-          "contact_category": "LOCAL",
-          "condition": "Appears normal",
+          "contact_category": "SELF",
+          "condition": "normal",
           "location": "threshold-side-entry"
         },
         {
-          "display_name": "Nora Vale",
+          "display_name": "Sylvia Foley",
           "contact_category": "LOCAL",
-          "condition": "Appears normal",
+          "condition": "normal",
           "location": "threshold-side-entry"
         },
         {
-          "display_name": "Alex Morgan",
+          "display_name": "Carmen Hardin",
           "contact_category": "LOCAL",
-          "condition": "Appears normal",
+          "condition": "normal",
+          "location": "threshold-side-entry"
+        },
+        {
+          "display_name": "Orlando Simmons",
+          "contact_category": "LOCAL",
+          "condition": "normal",
           "location": "threshold-side-entry"
         }
       ],
@@ -1960,12 +2025,13 @@
       },
       "check_in": {
         "state": "completed",
-        "label": "CHECK-IN COMPLETE",
-        "due_at": 3,
-        "remaining": -4,
-        "completed_at": 3
+        "label": "COMPLETED",
+        "due_at": 12,
+        "remaining": -1,
+        "completed_at": 9,
+        "summary": "Standard received the field report."
       },
-      "time": "T+7 intervals",
+      "time": "T+13 intervals",
       "map": {
         "current_location": "threshold-side-entry",
         "nodes": [
@@ -2000,7 +2066,7 @@
             "status": "confirmed"
           },
           {
-            "name": "Columned Corridor",
+            "name": "Open Passage",
             "current": false,
             "status": "confirmed"
           }
@@ -2011,35 +2077,35 @@
             "from": "threshold-room",
             "to": "threshold-side-entry",
             "connection_id": "threshold-crossing",
-            "at": 0
+            "at": 2
           },
           {
             "sequence": 2,
             "from": "threshold-side-entry",
             "to": "utility-room",
             "connection_id": "entry-to-utility",
-            "at": 0
+            "at": 4
           },
           {
             "sequence": 3,
             "from": "utility-room",
-            "to": "columned-corridor",
-            "connection_id": "utility-to-corridor",
-            "at": 4
+            "to": "open-passage",
+            "connection_id": "utility-to-passage",
+            "at": 10
           },
           {
             "sequence": 4,
-            "from": "columned-corridor",
+            "from": "open-passage",
             "to": "utility-room",
-            "connection_id": "utility-to-corridor",
-            "at": 5
+            "connection_id": "utility-to-passage",
+            "at": 11
           },
           {
             "sequence": 5,
             "from": "utility-room",
             "to": "threshold-side-entry",
             "connection_id": "entry-to-utility",
-            "at": 6
+            "at": 12
           }
         ],
         "unresolved_exits": []
@@ -2113,7 +2179,7 @@
           "headline": "Return with accountability complete",
           "summary": "The team reached the Threshold-side entry and equipment and field-record outcomes were reconciled.",
           "state": "satisfied",
-          "at": 7
+          "at": 13
         }
       ],
       "return_readiness": {
@@ -2152,14 +2218,14 @@
         },
         {
           "label": "35mm field camera",
-          "holder": "Alex Morgan",
+          "holder": "Carmen Hardin",
           "state": "Operational",
           "verification": "visually confirmed",
           "remaining": 11
         },
         {
           "label": "Portable survey instrument",
-          "holder": "Nora Vale",
+          "holder": "Sylvia Foley",
           "state": "Depleted",
           "verification": "visually confirmed",
           "remaining": "checked"
@@ -2167,7 +2233,7 @@
         {
           "label": "Handheld field radio",
           "holder": "You",
-          "state": "Operational",
+          "state": "Depleted",
           "verification": "visually confirmed",
           "remaining": "checked"
         },
@@ -2182,20 +2248,26 @@
       "personnel": [
         {
           "display_name": "Jack Rocha · YOU",
-          "contact_category": "LOCAL",
-          "condition": "Appears normal",
+          "contact_category": "SELF",
+          "condition": "normal",
           "location": "threshold-side-entry"
         },
         {
-          "display_name": "Nora Vale",
+          "display_name": "Sylvia Foley",
           "contact_category": "LOCAL",
-          "condition": "Appears normal",
+          "condition": "normal",
           "location": "threshold-side-entry"
         },
         {
-          "display_name": "Alex Morgan",
+          "display_name": "Carmen Hardin",
           "contact_category": "LOCAL",
-          "condition": "Appears normal",
+          "condition": "normal",
+          "location": "threshold-side-entry"
+        },
+        {
+          "display_name": "Orlando Simmons",
+          "contact_category": "LOCAL",
+          "condition": "normal",
           "location": "threshold-side-entry"
         }
       ],
@@ -2206,12 +2278,13 @@
       },
       "check_in": {
         "state": "completed",
-        "label": "CHECK-IN COMPLETE",
-        "due_at": 3,
-        "remaining": -4,
-        "completed_at": 3
+        "label": "COMPLETED",
+        "due_at": 12,
+        "remaining": -1,
+        "completed_at": 9,
+        "summary": "Standard received the field report."
       },
-      "time": "T+7 intervals",
+      "time": "T+13 intervals",
       "map": {
         "current_location": "threshold-side-entry",
         "nodes": [
@@ -2246,7 +2319,7 @@
             "status": "confirmed"
           },
           {
-            "name": "Columned Corridor",
+            "name": "Open Passage",
             "current": false,
             "status": "confirmed"
           }
@@ -2257,35 +2330,35 @@
             "from": "threshold-room",
             "to": "threshold-side-entry",
             "connection_id": "threshold-crossing",
-            "at": 0
+            "at": 2
           },
           {
             "sequence": 2,
             "from": "threshold-side-entry",
             "to": "utility-room",
             "connection_id": "entry-to-utility",
-            "at": 0
+            "at": 4
           },
           {
             "sequence": 3,
             "from": "utility-room",
-            "to": "columned-corridor",
-            "connection_id": "utility-to-corridor",
-            "at": 4
+            "to": "open-passage",
+            "connection_id": "utility-to-passage",
+            "at": 10
           },
           {
             "sequence": 4,
-            "from": "columned-corridor",
+            "from": "open-passage",
             "to": "utility-room",
-            "connection_id": "utility-to-corridor",
-            "at": 5
+            "connection_id": "utility-to-passage",
+            "at": 11
           },
           {
             "sequence": 5,
             "from": "utility-room",
             "to": "threshold-side-entry",
             "connection_id": "entry-to-utility",
-            "at": 6
+            "at": 12
           }
         ],
         "unresolved_exits": []
@@ -2437,21 +2510,28 @@
             "name": "Jack Rocha",
             "role": "field researcher",
             "status": "active",
-            "condition": "appears-normal",
+            "condition": "normal",
             "returned": true
           },
           {
-            "name": "Nora Vale",
+            "name": "Sylvia Foley",
             "role": "survey technician",
             "status": "active",
-            "condition": "appears-normal",
+            "condition": "normal",
             "returned": true
           },
           {
-            "name": "Alex Morgan",
-            "role": "field surveyor",
+            "name": "Carmen Hardin",
+            "role": "documentation specialist",
             "status": "active",
-            "condition": "appears-normal",
+            "condition": "normal",
+            "returned": true
+          },
+          {
+            "name": "Orlando Simmons",
+            "role": "field safety specialist",
+            "status": "active",
+            "condition": "normal",
             "returned": true
           }
         ],
@@ -2497,7 +2577,31 @@
           "radio_check_completed": true,
           "check_in_completed": true,
           "check_in_missed": false,
-          "closure_delivered": true
+          "check_ins": [
+            {
+              "id": "field-status-check-in",
+              "state": "completed",
+              "due_at": 12,
+              "completed_at": 9
+            }
+          ],
+          "messages": [
+            {
+              "purpose": "radio-check",
+              "state": "acknowledged",
+              "sent_at": 3,
+              "delivered_at": 4,
+              "acknowledged_at": 4
+            },
+            {
+              "purpose": "evidence-report",
+              "state": "acknowledged",
+              "sent_at": 8,
+              "delivered_at": 9,
+              "acknowledged_at": 10
+            }
+          ],
+          "closure_delivered": false
         },
         "return_outcome": {
           "requested": true,
@@ -2506,14 +2610,22 @@
           "return_ready": true,
           "completed": true
         },
-        "operational_time": 7,
+        "operational_time": 14,
+        "operational_outcome": {
+          "consequence_count": 0,
+          "consequences": [],
+          "hazard_states": {
+            "overhead-service-bracket": "active"
+          },
+          "team_decisions": 42
+        },
         "public_debrief_summary": "The team returned with the required survey, reporting, route, and accountability record plus an additional documented condition.",
         "institutional_consequence_hooks": [
           "clean_completion",
           "optional_success",
           "evidence_quality"
         ],
-        "evaluation_revision": 12
+        "evaluation_revision": 11
       },
       "location": "Threshold-Side Entry",
       "evidence": [
@@ -2542,14 +2654,14 @@
         },
         {
           "label": "35mm field camera",
-          "holder": "Alex Morgan",
+          "holder": "Carmen Hardin",
           "state": "Operational",
           "verification": "visually confirmed",
           "remaining": 11
         },
         {
           "label": "Portable survey instrument",
-          "holder": "Nora Vale",
+          "holder": "Sylvia Foley",
           "state": "Depleted",
           "verification": "visually confirmed",
           "remaining": "checked"
@@ -2572,20 +2684,26 @@
       "personnel": [
         {
           "display_name": "Jack Rocha · YOU",
-          "contact_category": "LOCAL",
-          "condition": "Appears normal",
+          "contact_category": "SELF",
+          "condition": "normal",
           "location": "threshold-side-entry"
         },
         {
-          "display_name": "Nora Vale",
+          "display_name": "Sylvia Foley",
           "contact_category": "LOCAL",
-          "condition": "Appears normal",
+          "condition": "normal",
           "location": "threshold-side-entry"
         },
         {
-          "display_name": "Alex Morgan",
+          "display_name": "Carmen Hardin",
           "contact_category": "LOCAL",
-          "condition": "Appears normal",
+          "condition": "normal",
+          "location": "threshold-side-entry"
+        },
+        {
+          "display_name": "Orlando Simmons",
+          "contact_category": "LOCAL",
+          "condition": "normal",
           "location": "threshold-side-entry"
         }
       ],
@@ -2596,12 +2714,13 @@
       },
       "check_in": {
         "state": "completed",
-        "label": "CHECK-IN COMPLETE",
-        "due_at": 3,
-        "remaining": -4,
-        "completed_at": 3
+        "label": "COMPLETED",
+        "due_at": 12,
+        "remaining": -2,
+        "completed_at": 9,
+        "summary": "Standard received the field report."
       },
-      "time": "T+7 intervals",
+      "time": "T+14 intervals",
       "map": {
         "current_location": "threshold-side-entry",
         "nodes": [
@@ -2636,7 +2755,7 @@
             "status": "confirmed"
           },
           {
-            "name": "Columned Corridor",
+            "name": "Open Passage",
             "current": false,
             "status": "confirmed"
           }
@@ -2647,35 +2766,35 @@
             "from": "threshold-room",
             "to": "threshold-side-entry",
             "connection_id": "threshold-crossing",
-            "at": 0
+            "at": 2
           },
           {
             "sequence": 2,
             "from": "threshold-side-entry",
             "to": "utility-room",
             "connection_id": "entry-to-utility",
-            "at": 0
+            "at": 4
           },
           {
             "sequence": 3,
             "from": "utility-room",
-            "to": "columned-corridor",
-            "connection_id": "utility-to-corridor",
-            "at": 4
+            "to": "open-passage",
+            "connection_id": "utility-to-passage",
+            "at": 10
           },
           {
             "sequence": 4,
-            "from": "columned-corridor",
+            "from": "open-passage",
             "to": "utility-room",
-            "connection_id": "utility-to-corridor",
-            "at": 5
+            "connection_id": "utility-to-passage",
+            "at": 11
           },
           {
             "sequence": 5,
             "from": "utility-room",
             "to": "threshold-side-entry",
             "connection_id": "entry-to-utility",
-            "at": 6
+            "at": 12
           }
         ],
         "unresolved_exits": []
@@ -2744,23 +2863,31 @@
             "display_name": "Jack Rocha",
             "role": "field researcher",
             "status": "returned",
-            "last_contact": "assigned",
+            "last_contact": "visually confirmed now",
             "provenance": "Q4 team status and canonical run history"
           },
           {
-            "identity": "yb-field-peer-observer",
-            "display_name": "Nora Vale",
+            "identity": "yb-personnel-aa70f2e2d7b005f52d53",
+            "display_name": "Sylvia Foley",
             "role": "survey technician",
             "status": "returned",
-            "last_contact": "assigned",
+            "last_contact": "visually confirmed now",
             "provenance": "Q4 team status and canonical run history"
           },
           {
-            "identity": "yb-field-alex-morgan",
-            "display_name": "Alex Morgan",
-            "role": "field surveyor",
+            "identity": "yb-personnel-bd3b023db6e8e39f5611",
+            "display_name": "Carmen Hardin",
+            "role": "documentation specialist",
             "status": "returned",
-            "last_contact": "assigned",
+            "last_contact": "visually confirmed now",
+            "provenance": "Q4 team status and canonical run history"
+          },
+          {
+            "identity": "yb-personnel-831418ce6863e606a973",
+            "display_name": "Orlando Simmons",
+            "role": "field safety specialist",
+            "status": "returned",
+            "last_contact": "visually confirmed now",
             "provenance": "Q4 team status and canonical run history"
           }
         ],
@@ -2778,7 +2905,7 @@
             "id": "q4-recording-device-01",
             "label": "35mm field camera",
             "status": "returned",
-            "holder": "yb-field-alex-morgan",
+            "holder": "yb-personnel-bd3b023db6e8e39f5611",
             "location": "with the field kit",
             "origin_run": "run-71eaa1f35ec2d372",
             "provenance": "persistent Q4 equipment record"
@@ -2787,7 +2914,7 @@
             "id": "q4-survey-instrument-01",
             "label": "Portable survey instrument",
             "status": "depleted",
-            "holder": "yb-field-peer-observer",
+            "holder": "yb-personnel-aa70f2e2d7b005f52d53",
             "location": "with the field kit",
             "origin_run": "run-71eaa1f35ec2d372",
             "provenance": "persistent Q4 equipment record"
@@ -2819,24 +2946,132 @@
           ],
           "delivered": [
             {
-              "id": "message-1",
+              "id": "message-8e8177ee02ebd68d7b",
               "sender": "q4-player-35a5e8690a027e84",
               "intended_recipient": "Standard",
+              "intended_recipients": [
+                "Standard"
+              ],
+              "actual_recipients": [
+                "Standard"
+              ],
+              "channel": "FIELD_RADIO",
+              "purpose": "radio-check",
+              "text": "Standard, Clear-Q4 team Complex-side. 4 personnel accounted for.",
+              "state": "acknowledged",
               "delivery_status": "delivered",
-              "channel": "survey-radio",
-              "provenance": "pack-original-expedition",
+              "sent_at": 3,
               "interval": 3,
-              "purpose": "scheduled-check-in"
+              "delivered_at": 4,
+              "acknowledged_at": 4,
+              "interference": null,
+              "failure_reason": null,
+              "evidence_ids": [],
+              "provenance": "authoritative-communication-runtime",
+              "history": [
+                {
+                  "sequence": 1,
+                  "from": null,
+                  "to": "composed",
+                  "at": 3,
+                  "reason": "message composed"
+                },
+                {
+                  "sequence": 2,
+                  "from": "composed",
+                  "to": "queued",
+                  "at": 3,
+                  "reason": "accepted into the field-radio transmission queue"
+                },
+                {
+                  "sequence": 3,
+                  "from": "queued",
+                  "to": "transmitting",
+                  "at": 4,
+                  "reason": "field-radio transmission begun"
+                },
+                {
+                  "sequence": 4,
+                  "from": "transmitting",
+                  "to": "delivered",
+                  "at": 4,
+                  "reason": "the intended recipient received the radio message"
+                },
+                {
+                  "sequence": 5,
+                  "from": "delivered",
+                  "to": "acknowledged",
+                  "at": 4,
+                  "reason": "Standard acknowledged the delivered message"
+                }
+              ],
+              "institutional_recorded": "q4-delivered-communication-message-8e8177ee02ebd68d7b"
             },
             {
-              "id": "message-2",
+              "id": "message-c223fa787081eeca95",
               "sender": "q4-player-35a5e8690a027e84",
               "intended_recipient": "Standard",
+              "intended_recipients": [
+                "Standard"
+              ],
+              "actual_recipients": [
+                "Standard"
+              ],
+              "channel": "FIELD_RADIO",
+              "purpose": "evidence-report",
+              "text": "Scheduled check-in: reporting the fixture and scuff evidence records.",
+              "state": "acknowledged",
               "delivery_status": "delivered",
-              "channel": "survey-radio",
-              "purpose": "mission-closure",
-              "provenance": "condition-driven-return-procedure",
-              "interval": 7
+              "sent_at": 8,
+              "interval": 8,
+              "delivered_at": 9,
+              "acknowledged_at": 10,
+              "interference": null,
+              "failure_reason": null,
+              "evidence_ids": [
+                "object-evidence-367dca4953b1618dd273",
+                "object-evidence-d5840ed45d4a3a84ac37"
+              ],
+              "provenance": "authoritative-communication-runtime",
+              "history": [
+                {
+                  "sequence": 1,
+                  "from": null,
+                  "to": "composed",
+                  "at": 8,
+                  "reason": "message composed"
+                },
+                {
+                  "sequence": 2,
+                  "from": "composed",
+                  "to": "queued",
+                  "at": 8,
+                  "reason": "accepted into the field-radio transmission queue"
+                },
+                {
+                  "sequence": 3,
+                  "from": "queued",
+                  "to": "transmitting",
+                  "at": 9,
+                  "reason": "field-radio transmission begun"
+                },
+                {
+                  "sequence": 4,
+                  "from": "transmitting",
+                  "to": "delivered",
+                  "at": 9,
+                  "reason": "the intended recipient received the radio message"
+                },
+                {
+                  "sequence": 5,
+                  "from": "delivered",
+                  "to": "acknowledged",
+                  "at": 10,
+                  "reason": "Standard acknowledged the delivered message"
+                }
+              ],
+              "check_in_id": "field-status-check-in",
+              "institutional_recorded": "q4-delivered-communication-message-c223fa787081eeca95"
             }
           ],
           "missed": [],
@@ -2844,7 +3079,31 @@
             "radio_check_completed": true,
             "check_in_completed": true,
             "check_in_missed": false,
-            "closure_delivered": true
+            "check_ins": [
+              {
+                "id": "field-status-check-in",
+                "state": "completed",
+                "due_at": 12,
+                "completed_at": 9
+              }
+            ],
+            "messages": [
+              {
+                "purpose": "radio-check",
+                "state": "acknowledged",
+                "sent_at": 3,
+                "delivered_at": 4,
+                "acknowledged_at": 4
+              },
+              {
+                "purpose": "evidence-report",
+                "state": "acknowledged",
+                "sent_at": 8,
+                "delivered_at": 9,
+                "acknowledged_at": 10
+              }
+            ],
+            "closure_delivered": false
           }
         },
         "evidence": [
@@ -2857,9 +3116,9 @@
             "source_location": "utility-room",
             "source_location_name": "Utility Room",
             "location": "utility-room",
-            "creator": "yb-field-peer-observer",
-            "capturing_observer": "yb-field-peer-observer",
-            "custodian": "yb-field-peer-observer",
+            "creator": "yb-personnel-aa70f2e2d7b005f52d53",
+            "capturing_observer": "yb-personnel-aa70f2e2d7b005f52d53",
+            "custodian": "yb-personnel-aa70f2e2d7b005f52d53",
             "capture_event": "object.evidence.captured",
             "method": "instrument test",
             "device_id": "q4-survey-instrument-01",
@@ -2873,9 +3132,9 @@
             "condition_fingerprint": "50f43d126fa4dcde757c",
             "condition_summary": "The active fixture held a steady output during the instrument test.",
             "captured_at": {
-              "interval": 1
+              "interval": 6
             },
-            "interval": 1,
+            "interval": 6,
             "available_to_player": true,
             "available_to_standard": true,
             "reporting_state": "reported-to-standard",
@@ -2925,9 +3184,9 @@
             "source_location": "utility-room",
             "source_location_name": "Utility Room",
             "location": "utility-room",
-            "creator": "yb-field-alex-morgan",
-            "capturing_observer": "yb-field-alex-morgan",
-            "custodian": "yb-field-alex-morgan",
+            "creator": "yb-personnel-bd3b023db6e8e39f5611",
+            "capturing_observer": "yb-personnel-bd3b023db6e8e39f5611",
+            "custodian": "yb-personnel-bd3b023db6e8e39f5611",
             "capture_event": "object.evidence.captured",
             "method": "35mm photograph",
             "device_id": "q4-recording-device-01",
@@ -2941,9 +3200,9 @@
             "condition_fingerprint": "d42db40337aaaf3e0251",
             "condition_summary": "The photograph records the floor pattern and whether a survey marker is present.",
             "captured_at": {
-              "interval": 2
+              "interval": 7
             },
-            "interval": 2,
+            "interval": 7,
             "available_to_player": true,
             "available_to_standard": true,
             "reporting_state": "reported-to-standard",
@@ -2999,6 +3258,14 @@
           "completed": true,
           "location": "threshold-side-entry"
         },
+        "operational_outcome": {
+          "consequence_count": 0,
+          "consequences": [],
+          "hazard_states": {
+            "overhead-service-bracket": "active"
+          },
+          "team_decisions": 42
+        },
         "institutional_consequence_hooks": [
           "clean_completion",
           "optional_success",
@@ -3007,7 +3274,7 @@
         "institutional_findings": {
           "reported": [
             {
-              "text": "Standard, Clear-Q4 team Complex-side. 3 personnel accounted for.",
+              "text": "Standard, Clear-Q4 team Complex-side. 4 personnel accounted for.",
               "status": "reported",
               "provenance": "q4-interaction-5"
             },
@@ -3175,21 +3442,28 @@
             "name": "Jack Rocha",
             "role": "field researcher",
             "status": "active",
-            "condition": "appears-normal",
+            "condition": "normal",
             "returned": true
           },
           {
-            "name": "Nora Vale",
+            "name": "Sylvia Foley",
             "role": "survey technician",
             "status": "active",
-            "condition": "appears-normal",
+            "condition": "normal",
             "returned": true
           },
           {
-            "name": "Alex Morgan",
-            "role": "field surveyor",
+            "name": "Carmen Hardin",
+            "role": "documentation specialist",
             "status": "active",
-            "condition": "appears-normal",
+            "condition": "normal",
+            "returned": true
+          },
+          {
+            "name": "Orlando Simmons",
+            "role": "field safety specialist",
+            "status": "active",
+            "condition": "normal",
             "returned": true
           }
         ],
@@ -3235,7 +3509,31 @@
           "radio_check_completed": true,
           "check_in_completed": true,
           "check_in_missed": false,
-          "closure_delivered": true
+          "check_ins": [
+            {
+              "id": "field-status-check-in",
+              "state": "completed",
+              "due_at": 12,
+              "completed_at": 9
+            }
+          ],
+          "messages": [
+            {
+              "purpose": "radio-check",
+              "state": "acknowledged",
+              "sent_at": 3,
+              "delivered_at": 4,
+              "acknowledged_at": 4
+            },
+            {
+              "purpose": "evidence-report",
+              "state": "acknowledged",
+              "sent_at": 8,
+              "delivered_at": 9,
+              "acknowledged_at": 10
+            }
+          ],
+          "closure_delivered": false
         },
         "return_outcome": {
           "requested": true,
@@ -3244,14 +3542,22 @@
           "return_ready": true,
           "completed": true
         },
-        "operational_time": 7,
+        "operational_time": 14,
+        "operational_outcome": {
+          "consequence_count": 0,
+          "consequences": [],
+          "hazard_states": {
+            "overhead-service-bracket": "active"
+          },
+          "team_decisions": 42
+        },
         "public_debrief_summary": "The team returned with the required survey, reporting, route, and accountability record plus an additional documented condition.",
         "institutional_consequence_hooks": [
           "clean_completion",
           "optional_success",
           "evidence_quality"
         ],
-        "evaluation_revision": 12
+        "evaluation_revision": 11
       },
       "location": "Threshold-Side Entry",
       "evidence": [
@@ -3280,14 +3586,14 @@
         },
         {
           "label": "35mm field camera",
-          "holder": "Alex Morgan",
+          "holder": "Carmen Hardin",
           "state": "Operational",
           "verification": "visually confirmed",
           "remaining": 11
         },
         {
           "label": "Portable survey instrument",
-          "holder": "Nora Vale",
+          "holder": "Sylvia Foley",
           "state": "Depleted",
           "verification": "visually confirmed",
           "remaining": "checked"
@@ -3310,20 +3616,26 @@
       "personnel": [
         {
           "display_name": "Jack Rocha · YOU",
-          "contact_category": "LOCAL",
-          "condition": "Appears normal",
+          "contact_category": "SELF",
+          "condition": "normal",
           "location": "threshold-side-entry"
         },
         {
-          "display_name": "Nora Vale",
+          "display_name": "Sylvia Foley",
           "contact_category": "LOCAL",
-          "condition": "Appears normal",
+          "condition": "normal",
           "location": "threshold-side-entry"
         },
         {
-          "display_name": "Alex Morgan",
+          "display_name": "Carmen Hardin",
           "contact_category": "LOCAL",
-          "condition": "Appears normal",
+          "condition": "normal",
+          "location": "threshold-side-entry"
+        },
+        {
+          "display_name": "Orlando Simmons",
+          "contact_category": "LOCAL",
+          "condition": "normal",
           "location": "threshold-side-entry"
         }
       ],
@@ -3334,12 +3646,13 @@
       },
       "check_in": {
         "state": "completed",
-        "label": "CHECK-IN COMPLETE",
-        "due_at": 3,
-        "remaining": -4,
-        "completed_at": 3
+        "label": "COMPLETED",
+        "due_at": 12,
+        "remaining": -2,
+        "completed_at": 9,
+        "summary": "Standard received the field report."
       },
-      "time": "T+7 intervals",
+      "time": "T+14 intervals",
       "map": {
         "current_location": "threshold-side-entry",
         "nodes": [
@@ -3374,7 +3687,7 @@
             "status": "confirmed"
           },
           {
-            "name": "Columned Corridor",
+            "name": "Open Passage",
             "current": false,
             "status": "confirmed"
           }
@@ -3385,35 +3698,35 @@
             "from": "threshold-room",
             "to": "threshold-side-entry",
             "connection_id": "threshold-crossing",
-            "at": 0
+            "at": 2
           },
           {
             "sequence": 2,
             "from": "threshold-side-entry",
             "to": "utility-room",
             "connection_id": "entry-to-utility",
-            "at": 0
+            "at": 4
           },
           {
             "sequence": 3,
             "from": "utility-room",
-            "to": "columned-corridor",
-            "connection_id": "utility-to-corridor",
-            "at": 4
+            "to": "open-passage",
+            "connection_id": "utility-to-passage",
+            "at": 10
           },
           {
             "sequence": 4,
-            "from": "columned-corridor",
+            "from": "open-passage",
             "to": "utility-room",
-            "connection_id": "utility-to-corridor",
-            "at": 5
+            "connection_id": "utility-to-passage",
+            "at": 11
           },
           {
             "sequence": 5,
             "from": "utility-room",
             "to": "threshold-side-entry",
             "connection_id": "entry-to-utility",
-            "at": 6
+            "at": 12
           }
         ],
         "unresolved_exits": []
@@ -3482,23 +3795,31 @@
             "display_name": "Jack Rocha",
             "role": "field researcher",
             "status": "returned",
-            "last_contact": "assigned",
+            "last_contact": "visually confirmed now",
             "provenance": "Q4 team status and canonical run history"
           },
           {
-            "identity": "yb-field-peer-observer",
-            "display_name": "Nora Vale",
+            "identity": "yb-personnel-aa70f2e2d7b005f52d53",
+            "display_name": "Sylvia Foley",
             "role": "survey technician",
             "status": "returned",
-            "last_contact": "assigned",
+            "last_contact": "visually confirmed now",
             "provenance": "Q4 team status and canonical run history"
           },
           {
-            "identity": "yb-field-alex-morgan",
-            "display_name": "Alex Morgan",
-            "role": "field surveyor",
+            "identity": "yb-personnel-bd3b023db6e8e39f5611",
+            "display_name": "Carmen Hardin",
+            "role": "documentation specialist",
             "status": "returned",
-            "last_contact": "assigned",
+            "last_contact": "visually confirmed now",
+            "provenance": "Q4 team status and canonical run history"
+          },
+          {
+            "identity": "yb-personnel-831418ce6863e606a973",
+            "display_name": "Orlando Simmons",
+            "role": "field safety specialist",
+            "status": "returned",
+            "last_contact": "visually confirmed now",
             "provenance": "Q4 team status and canonical run history"
           }
         ],
@@ -3516,7 +3837,7 @@
             "id": "q4-recording-device-01",
             "label": "35mm field camera",
             "status": "returned",
-            "holder": "yb-field-alex-morgan",
+            "holder": "yb-personnel-bd3b023db6e8e39f5611",
             "location": "with the field kit",
             "origin_run": "run-71eaa1f35ec2d372",
             "provenance": "persistent Q4 equipment record"
@@ -3525,7 +3846,7 @@
             "id": "q4-survey-instrument-01",
             "label": "Portable survey instrument",
             "status": "depleted",
-            "holder": "yb-field-peer-observer",
+            "holder": "yb-personnel-aa70f2e2d7b005f52d53",
             "location": "with the field kit",
             "origin_run": "run-71eaa1f35ec2d372",
             "provenance": "persistent Q4 equipment record"
@@ -3557,24 +3878,132 @@
           ],
           "delivered": [
             {
-              "id": "message-1",
+              "id": "message-8e8177ee02ebd68d7b",
               "sender": "q4-player-35a5e8690a027e84",
               "intended_recipient": "Standard",
+              "intended_recipients": [
+                "Standard"
+              ],
+              "actual_recipients": [
+                "Standard"
+              ],
+              "channel": "FIELD_RADIO",
+              "purpose": "radio-check",
+              "text": "Standard, Clear-Q4 team Complex-side. 4 personnel accounted for.",
+              "state": "acknowledged",
               "delivery_status": "delivered",
-              "channel": "survey-radio",
-              "provenance": "pack-original-expedition",
+              "sent_at": 3,
               "interval": 3,
-              "purpose": "scheduled-check-in"
+              "delivered_at": 4,
+              "acknowledged_at": 4,
+              "interference": null,
+              "failure_reason": null,
+              "evidence_ids": [],
+              "provenance": "authoritative-communication-runtime",
+              "history": [
+                {
+                  "sequence": 1,
+                  "from": null,
+                  "to": "composed",
+                  "at": 3,
+                  "reason": "message composed"
+                },
+                {
+                  "sequence": 2,
+                  "from": "composed",
+                  "to": "queued",
+                  "at": 3,
+                  "reason": "accepted into the field-radio transmission queue"
+                },
+                {
+                  "sequence": 3,
+                  "from": "queued",
+                  "to": "transmitting",
+                  "at": 4,
+                  "reason": "field-radio transmission begun"
+                },
+                {
+                  "sequence": 4,
+                  "from": "transmitting",
+                  "to": "delivered",
+                  "at": 4,
+                  "reason": "the intended recipient received the radio message"
+                },
+                {
+                  "sequence": 5,
+                  "from": "delivered",
+                  "to": "acknowledged",
+                  "at": 4,
+                  "reason": "Standard acknowledged the delivered message"
+                }
+              ],
+              "institutional_recorded": "q4-delivered-communication-message-8e8177ee02ebd68d7b"
             },
             {
-              "id": "message-2",
+              "id": "message-c223fa787081eeca95",
               "sender": "q4-player-35a5e8690a027e84",
               "intended_recipient": "Standard",
+              "intended_recipients": [
+                "Standard"
+              ],
+              "actual_recipients": [
+                "Standard"
+              ],
+              "channel": "FIELD_RADIO",
+              "purpose": "evidence-report",
+              "text": "Scheduled check-in: reporting the fixture and scuff evidence records.",
+              "state": "acknowledged",
               "delivery_status": "delivered",
-              "channel": "survey-radio",
-              "purpose": "mission-closure",
-              "provenance": "condition-driven-return-procedure",
-              "interval": 7
+              "sent_at": 8,
+              "interval": 8,
+              "delivered_at": 9,
+              "acknowledged_at": 10,
+              "interference": null,
+              "failure_reason": null,
+              "evidence_ids": [
+                "object-evidence-367dca4953b1618dd273",
+                "object-evidence-d5840ed45d4a3a84ac37"
+              ],
+              "provenance": "authoritative-communication-runtime",
+              "history": [
+                {
+                  "sequence": 1,
+                  "from": null,
+                  "to": "composed",
+                  "at": 8,
+                  "reason": "message composed"
+                },
+                {
+                  "sequence": 2,
+                  "from": "composed",
+                  "to": "queued",
+                  "at": 8,
+                  "reason": "accepted into the field-radio transmission queue"
+                },
+                {
+                  "sequence": 3,
+                  "from": "queued",
+                  "to": "transmitting",
+                  "at": 9,
+                  "reason": "field-radio transmission begun"
+                },
+                {
+                  "sequence": 4,
+                  "from": "transmitting",
+                  "to": "delivered",
+                  "at": 9,
+                  "reason": "the intended recipient received the radio message"
+                },
+                {
+                  "sequence": 5,
+                  "from": "delivered",
+                  "to": "acknowledged",
+                  "at": 10,
+                  "reason": "Standard acknowledged the delivered message"
+                }
+              ],
+              "check_in_id": "field-status-check-in",
+              "institutional_recorded": "q4-delivered-communication-message-c223fa787081eeca95"
             }
           ],
           "missed": [],
@@ -3582,7 +4011,31 @@
             "radio_check_completed": true,
             "check_in_completed": true,
             "check_in_missed": false,
-            "closure_delivered": true
+            "check_ins": [
+              {
+                "id": "field-status-check-in",
+                "state": "completed",
+                "due_at": 12,
+                "completed_at": 9
+              }
+            ],
+            "messages": [
+              {
+                "purpose": "radio-check",
+                "state": "acknowledged",
+                "sent_at": 3,
+                "delivered_at": 4,
+                "acknowledged_at": 4
+              },
+              {
+                "purpose": "evidence-report",
+                "state": "acknowledged",
+                "sent_at": 8,
+                "delivered_at": 9,
+                "acknowledged_at": 10
+              }
+            ],
+            "closure_delivered": false
           }
         },
         "evidence": [
@@ -3595,9 +4048,9 @@
             "source_location": "utility-room",
             "source_location_name": "Utility Room",
             "location": "utility-room",
-            "creator": "yb-field-peer-observer",
-            "capturing_observer": "yb-field-peer-observer",
-            "custodian": "yb-field-peer-observer",
+            "creator": "yb-personnel-aa70f2e2d7b005f52d53",
+            "capturing_observer": "yb-personnel-aa70f2e2d7b005f52d53",
+            "custodian": "yb-personnel-aa70f2e2d7b005f52d53",
             "capture_event": "object.evidence.captured",
             "method": "instrument test",
             "device_id": "q4-survey-instrument-01",
@@ -3611,9 +4064,9 @@
             "condition_fingerprint": "50f43d126fa4dcde757c",
             "condition_summary": "The active fixture held a steady output during the instrument test.",
             "captured_at": {
-              "interval": 1
+              "interval": 6
             },
-            "interval": 1,
+            "interval": 6,
             "available_to_player": true,
             "available_to_standard": true,
             "reporting_state": "reported-to-standard",
@@ -3663,9 +4116,9 @@
             "source_location": "utility-room",
             "source_location_name": "Utility Room",
             "location": "utility-room",
-            "creator": "yb-field-alex-morgan",
-            "capturing_observer": "yb-field-alex-morgan",
-            "custodian": "yb-field-alex-morgan",
+            "creator": "yb-personnel-bd3b023db6e8e39f5611",
+            "capturing_observer": "yb-personnel-bd3b023db6e8e39f5611",
+            "custodian": "yb-personnel-bd3b023db6e8e39f5611",
             "capture_event": "object.evidence.captured",
             "method": "35mm photograph",
             "device_id": "q4-recording-device-01",
@@ -3679,9 +4132,9 @@
             "condition_fingerprint": "d42db40337aaaf3e0251",
             "condition_summary": "The photograph records the floor pattern and whether a survey marker is present.",
             "captured_at": {
-              "interval": 2
+              "interval": 7
             },
-            "interval": 2,
+            "interval": 7,
             "available_to_player": true,
             "available_to_standard": true,
             "reporting_state": "reported-to-standard",
@@ -3737,6 +4190,14 @@
           "completed": true,
           "location": "threshold-side-entry"
         },
+        "operational_outcome": {
+          "consequence_count": 0,
+          "consequences": [],
+          "hazard_states": {
+            "overhead-service-bracket": "active"
+          },
+          "team_decisions": 42
+        },
         "institutional_consequence_hooks": [
           "clean_completion",
           "optional_success",
@@ -3745,7 +4206,7 @@
         "institutional_findings": {
           "reported": [
             {
-              "text": "Standard, Clear-Q4 team Complex-side. 3 personnel accounted for.",
+              "text": "Standard, Clear-Q4 team Complex-side. 4 personnel accounted for.",
               "status": "reported",
               "provenance": "q4-interaction-5"
             },

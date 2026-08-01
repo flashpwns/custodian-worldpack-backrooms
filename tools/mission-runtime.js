@@ -23,7 +23,7 @@ const SOURCE_PREDICATES = Object.freeze({
   spatial: new Set(["location_discovered", "location_visited", "current_location", "route_traversed", "connection_verified", "returned", "unresolved_exit_remains", "route_available"]),
   equipment: new Set(["assigned", "carried", "accessible", "operational", "damaged", "depleted", "lost", "stored", "transferred", "consumable_remaining"]),
   personnel: new Set(["alive", "active", "injured", "missing", "separated", "within_speaking_range", "returned", "accounted", "assigned_equipment_retained", "assigned_equipment_lost"]),
-  communication: new Set(["radio_check_completed", "message_delivered", "report_sent", "evidence_reported", "check_in_completed", "check_in_missed", "acknowledgment_received", "unavailable", "closure_delivered"]),
+  communication: new Set(["radio_check_completed", "message_delivered", "report_sent", "evidence_reported", "check_in_completed", "check_in_missed", "check_in_ever_missed", "acknowledgment_received", "unavailable", "closure_delivered"]),
   time: new Set(["interval_reached", "deadline_pending", "deadline_due", "deadline_exceeded", "action_before", "action_after"]),
   mission: new Set(["objective_state", "minimum_objective_count", "required_group_complete", "return_authorized", "abort_condition", "phase_in", "lifecycle", "return_requested", "abort_requested", "closure_requested"])
 });
@@ -309,23 +309,25 @@ function evaluateLeaf(condition, context, objectiveSnapshot) {
       if (predicate === "within_speaking_range") return Boolean(location && location === spatial.personnel_locations?.[player]);
       if (predicate === "returned") return location === returnLocation;
       if (predicate === "accounted") return Boolean(location) && !["missing", "unknown"].includes(status);
-      if (predicate === "assigned_equipment_retained") return Object.values(expedition.equipment ?? {}).filter((item) => item.assigned_to === id).every((item) => !["missing", "lost", "abandoned", "destroyed"].includes(String(item.state).toLowerCase()));
+      if (predicate === "assigned_equipment_retained") return Object.values(expedition.equipment ?? {}).filter((item) => item.assigned_to === id).every((item) => Boolean(item.holder) && !["missing", "lost", "abandoned", "destroyed", "dropped"].includes(String(item.state).toLowerCase()));
       if (predicate === "assigned_equipment_lost") return Object.values(expedition.equipment ?? {}).filter((item) => item.assigned_to === id).some((item) => ["missing", "lost", "abandoned", "destroyed"].includes(String(item.state).toLowerCase()));
       return false;
     });
     return condition.role === "all_assigned" ? tests.length > 0 && tests.every(Boolean) : tests.some(Boolean);
   }
   if (condition.source === "communication") {
-    const radio = expedition.radio ?? {}; const clock = expedition.clock ?? {}; const messages = expedition.messages ?? []; const interactions = expedition.interaction_history ?? [];
+    const radio = expedition.radio ?? {}; const clock = expedition.clock ?? {}; const messages = expedition.messages ?? []; const interactions = expedition.interaction_history ?? []; const checkIns = expedition.communications?.check_ins ?? [];
     if (predicate === "radio_check_completed" || predicate === "acknowledgment_received") return radio.check_completed === true;
     if (predicate === "message_delivered") return messages.some((item) => item.delivery_status === "delivered" && (!condition.target || String(item.intended_recipient).toLowerCase() === String(condition.target).toLowerCase()) && (!condition.purpose || item.purpose === condition.purpose));
     if (predicate === "report_sent") return interactions.some((item) => item.channel === "standard" && item.delivery === "delivered" && (!condition.purpose || item.purpose === condition.purpose));
     if (predicate === "evidence_reported") return (expedition.evidence ?? []).some((item) => item.available_to_standard === true || /^reported/.test(item.reporting_state ?? ""));
-    if (predicate === "check_in_completed") return Number.isFinite(clock.check_in_completed_at);
-    if (predicate === "check_in_missed") return clock.check_in_missed === true || clock.check_in_overdue === true;
+    if (predicate === "check_in_completed") return checkIns.length ? checkIns.some((item) => item.state === "completed") : Number.isFinite(clock.check_in_completed_at);
+    if (predicate === "check_in_missed") return checkIns.length ? checkIns.some((item) => item.state === "missed") : clock.check_in_missed === true || clock.check_in_overdue === true;
+    if (predicate === "check_in_ever_missed") return checkIns.length ? checkIns.some((item) => item.history?.some((entry) => entry.to === "missed")) : clock.check_in_missed === true;
     if (predicate === "unavailable") {
       const item = condition.equipment_id ? equipmentRecord(context, condition) : null;
       const itemUnavailable = condition.equipment_id && (!item || !["operational", "serviceable", "usable"].includes(String(item.state ?? "missing").toLowerCase()) || Number(item.charges ?? 1) <= 0);
+      if (messages.some((message) => (message.check_in_id || message.purpose === "scheduled-check-in") && ["queued", "transmitting", "delayed"].includes(message.state))) return false;
       return ["unavailable", "lost", "intentionally-silent"].includes(radio.state) || radio.authorized === false || itemUnavailable;
     }
     if (predicate === "closure_delivered") return messages.some((item) => item.delivery_status === "delivered" && item.purpose === "mission-closure");
@@ -408,7 +410,23 @@ function buildResult(state, definition, context, objectiveSnapshot, rule) {
   const listBy = (items, target) => items.filter((item) => objectiveSnapshot[item.id] === target).map((item) => item.name);
   const personnel = (expedition.team?.members ?? []).map((member) => { const id = member.personnel_id ?? member.id; return { name: member.display_name ?? member.first_name ?? "Assigned personnel", role: member.role ?? "assigned personnel", status: memberStatus(member), condition: memberCondition(member), returned: context.run?.spatial?.personnel_locations?.[id] === definition.mission.return_policy.return_location }; });
   const equipment = Object.values(expedition.equipment ?? {}).map((item) => ({ label: item.label ?? item.type, state: item.state, retained: !["missing", "lost", "abandoned", "destroyed"].includes(String(item.state).toLowerCase()), holder: item.holder === player ? "player" : item.holder ? "assigned personnel" : null }));
-  const evidence = expedition.evidence ?? []; const clock = expedition.clock ?? {};
+  const evidence = expedition.evidence ?? []; const clock = expedition.clock ?? {}; const checkIns = expedition.communications?.check_ins ?? [];
+  const consequences = expedition.operational?.consequences ?? []; const hazards = expedition.hazards ?? {};
+  const derivedHooks = [
+    ...(personnel.some((item) => /injur|incapac/i.test(item.condition)) ? ["personnel_injury"] : []),
+    ...(personnel.some((item) => ["missing", "dead"].includes(item.status)) ? ["missing_personnel"] : []),
+    ...(equipment.some((item) => ["damaged", "disabled", "lost", "destroyed"].includes(String(item.state).toLowerCase())) ? ["equipment_consequence"] : []),
+    ...(checkIns.some((item) => item.history?.some((entry) => entry.to === "missed")) ? ["missed_check_in"] : []),
+    ...(Object.keys(context.run?.spatial?.blocked_paths ?? {}).length ? ["route_compromise"] : []),
+    ...(consequences.some((item) => item.recovery) ? ["recovered_complication"] : [])
+  ];
+  const debriefDetails = [
+    ...(personnel.some((item) => /injur|incapac/i.test(item.condition)) ? ["A teammate returned with a recorded injury."] : []),
+    ...(consequences.some((item) => item.recovery) ? ["A field complication was recovered before closure."] : []),
+    ...(equipment.some((item) => ["damaged", "disabled", "lost", "destroyed"].includes(String(item.state).toLowerCase())) ? ["The equipment record includes damage or loss."] : []),
+    ...(checkIns.some((item) => item.history?.some((entry) => entry.to === "missed")) ? ["The scheduled communication record includes a missed reporting window."] : []),
+    ...(evidence.length && !evidence.some((item) => item.available_to_standard === true) ? ["Retained field evidence was not delivered to Standard."] : [])
+  ];
   return {
     version: RESULT_VERSION, mission_id: state.instance_id, final_mission_state: rule.final_state, classification: rule.classification,
     required_objectives_satisfied: listBy(required, "satisfied"), required_objectives_failed: listBy(required, "failed"), required_objectives_waived: listBy(required, "waived"), required_objectives_abandoned: listBy(required, "abandoned"),
@@ -416,9 +434,9 @@ function buildResult(state, definition, context, objectiveSnapshot, rule) {
     objective_outcomes: definition.mission.objectives.map((item) => ({ name: item.name, kind: item.kind, state: objectiveSnapshot[item.id] })),
     personnel_outcome: personnel, equipment_outcome: equipment,
     evidence_outcome: { captured: evidence.filter((item) => item.valid !== false).length, retained: evidence.filter((item) => item.available_to_player !== false).length, reported: evidence.filter((item) => item.available_to_standard === true).length, quality: evidence.some((item) => item.condition_fingerprint) ? "condition-specific" : evidence.length ? "field-record" : "none" },
-    communication_outcome: { radio_check_completed: expedition.radio?.check_completed === true, check_in_completed: Number.isFinite(clock.check_in_completed_at), check_in_missed: clock.check_in_missed === true || clock.check_in_overdue === true, closure_delivered: (expedition.messages ?? []).some((item) => item.purpose === "mission-closure" && item.delivery_status === "delivered") },
+    communication_outcome: { radio_check_completed: expedition.radio?.check_completed === true, check_in_completed: checkIns.length ? checkIns.some((item) => item.state === "completed") : Number.isFinite(clock.check_in_completed_at), check_in_missed: checkIns.length ? checkIns.some((item) => item.history?.some((entry) => entry.to === "missed")) : clock.check_in_missed === true || clock.check_in_overdue === true, check_ins: checkIns.map((item) => ({ id: item.id, state: item.state, due_at: item.due_at, completed_at: item.completed_at })), messages: (expedition.messages ?? []).map((item) => ({ purpose: item.purpose, state: item.state ?? item.delivery_status, sent_at: item.sent_at ?? item.interval, delivered_at: item.delivered_at ?? null, acknowledged_at: item.acknowledged_at ?? null })), closure_delivered: (expedition.messages ?? []).some((item) => item.purpose === "mission-closure" && item.delivery_status === "delivered") },
     return_outcome: { requested: state.return.requested, controlled_abort: state.return.abort_requested, route_available: state.return.route_available, return_ready: state.return.ready, completed: true, location: context.run?.spatial?.player_location ?? null },
-    operational_time: Number(clock.interval ?? 0), public_debrief_summary: rule.public_summary, institutional_consequence_hooks: clone(rule.institutional_hooks), evaluation_revision: state.evaluation_revision + 1
+    operational_time: Number(clock.interval ?? 0), operational_outcome: { consequence_count: consequences.length, consequences: consequences.map((item) => ({ classification: item.classification, public_summary: item.public_summary, recovered: Boolean(item.recovery) })), hazard_states: Object.fromEntries(Object.entries(hazards.states ?? {}).map(([id, value]) => [id, value.state])), team_decisions: expedition.team_runtime?.decision_history?.length ?? 0 }, public_debrief_summary: [rule.public_summary, ...debriefDetails].join(" "), institutional_consequence_hooks: [...new Set([...rule.institutional_hooks, ...derivedHooks])], evaluation_revision: state.evaluation_revision + 1
   };
 }
 
