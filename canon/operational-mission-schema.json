@@ -1,0 +1,99 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "yellow-beast-operational-mission-schema@v1",
+  "title": "Yellow Beast condition-driven mission worldpack",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["version", "worldpack_id", "mission"],
+  "properties": {
+    "version": { "const": "yellow-beast-mission-worldpack@v1" },
+    "worldpack_id": { "type": "string", "pattern": "^[a-z0-9][a-z0-9-]*$" },
+    "known_limitations": { "type": "array", "items": { "type": "string" } },
+    "mission": { "$ref": "#/$defs/mission" }
+  },
+  "$defs": {
+    "condition": {
+      "oneOf": [
+        { "type": "object", "additionalProperties": false, "required": ["all"], "properties": { "all": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/condition" } } } },
+        { "type": "object", "additionalProperties": false, "required": ["any"], "properties": { "any": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/condition" } } } },
+        { "type": "object", "additionalProperties": false, "required": ["not"], "properties": { "not": { "$ref": "#/$defs/condition" } } },
+        { "type": "object", "additionalProperties": false, "required": ["constant"], "properties": { "constant": { "type": "boolean" } } },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["source", "predicate"],
+          "properties": {
+            "source": { "enum": ["object", "evidence", "spatial", "equipment", "personnel", "communication", "time", "mission"] },
+            "predicate": { "type": "string" },
+            "object_id": { "type": "string" }, "property": { "type": "string" }, "path": { "type": "string" },
+            "equals": {}, "in": { "type": "array" }, "exists": { "type": "boolean" }, "action": { "type": "string" },
+            "type": { "type": "string" }, "source_object": { "type": "string" }, "condition_fingerprint": { "type": "string" },
+            "minimum": { "type": "number" }, "distinct_by": { "type": "string" }, "after": { "type": "number" },
+            "location_id": { "type": "string" }, "connection_id": { "type": "string" }, "equipment_id": { "type": "string" },
+            "capability": { "type": "string" }, "state": { "type": "string" }, "amount": { "type": "number" },
+            "personnel_id": { "type": "string" }, "role": { "type": "string" }, "target": { "type": "string" }, "purpose": { "type": "string" },
+            "deadline": { "oneOf": [{ "type": "number" }, { "type": "string" }] }, "objective_id": { "type": "string" },
+            "objective_ids": { "type": "array", "items": { "type": "string" } }, "states": { "type": "array", "items": { "type": "string" } },
+            "count": { "type": "number" }, "values": { "type": "array" }, "visibility": { "enum": ["public", "known", "hidden"] }
+          }
+        }
+      ]
+    },
+    "publicObjective": {
+      "type": "object",
+      "required": ["active", "satisfied"],
+      "properties": {
+        "inactive": { "type": "string" }, "blocked": { "type": "string" }, "active": { "type": "string" },
+        "satisfied": { "type": "string" }, "failed": { "type": "string" }, "waived": { "type": "string" },
+        "abandoned": { "type": "string" }, "dependency_blocked": { "type": "string" }, "condition_blocked": { "type": "string" }, "next_requirement": { "type": "string" }
+      }
+    },
+    "objective": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "name", "kind", "behavior", "initial_state", "satisfaction", "public"],
+      "properties": {
+        "id": { "type": "string", "pattern": "^[a-z0-9][a-z0-9-]*$" }, "name": { "type": "string", "minLength": 1 },
+        "kind": { "enum": ["required", "optional", "conditional"] }, "behavior": { "enum": ["sticky", "live", "recoverable", "irrecoverable"] },
+        "reversible": { "type": "boolean" }, "initial_state": { "enum": ["inactive", "blocked", "active"] },
+        "dependencies": { "type": "array", "items": { "type": "string" }, "uniqueItems": true },
+        "activation": { "$ref": "#/$defs/condition" }, "satisfaction": { "$ref": "#/$defs/condition" },
+        "failure": { "$ref": "#/$defs/condition" }, "blocking": { "$ref": "#/$defs/condition" }, "waiver": { "$ref": "#/$defs/condition" },
+        "legal_transitions": { "type": "object", "additionalProperties": { "type": "array", "items": { "type": "string" } } },
+        "public": { "$ref": "#/$defs/publicObjective" }
+      }
+    },
+    "outcome": {
+      "type": "object",
+      "required": ["id", "when", "final_state", "classification", "public_summary", "institutional_hooks"],
+      "properties": {
+        "id": { "type": "string" }, "priority": { "type": "number" }, "when": { "$ref": "#/$defs/condition" },
+        "final_state": { "enum": ["completed", "failed", "aborted"] }, "classification": { "type": "string" },
+        "public_summary": { "type": "string" }, "institutional_hooks": { "type": "array", "items": { "type": "string" } }
+      }
+    },
+    "mission": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "version", "display_name", "briefing", "operational_intent", "objectives", "return_policy", "completion_policy", "abort_policy", "outcome_rules", "public_progress", "migration"],
+      "properties": {
+        "id": { "type": "string" }, "version": { "type": "integer", "minimum": 1 }, "display_name": { "type": "string" },
+        "briefing": { "type": "string" }, "operational_intent": { "type": "string" },
+        "objectives": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/objective" } },
+        "return_policy": {
+          "type": "object", "additionalProperties": false,
+          "required": ["return_location", "route_available_when", "ready_when", "closure_available_when", "completion_when", "public"],
+          "properties": {
+            "return_location": { "type": "string" }, "route_available_when": { "$ref": "#/$defs/condition" },
+            "ready_when": { "$ref": "#/$defs/condition" }, "closure_available_when": { "$ref": "#/$defs/condition" },
+            "completion_when": { "$ref": "#/$defs/condition" }, "public": { "type": "object" }
+          }
+        },
+        "completion_policy": { "type": "object", "additionalProperties": false, "required": ["required", "optional_blocks"], "properties": { "required": { "const": "all_terminal" }, "waived_counts": { "type": "boolean" }, "optional_blocks": { "type": "boolean" } } },
+        "abort_policy": { "type": "object", "additionalProperties": false, "required": ["available_when", "unresolved_state", "public_reason"], "properties": { "available_when": { "$ref": "#/$defs/condition" }, "unresolved_state": { "enum": ["abandoned", "failed"] }, "keep_objectives": { "type": "array", "items": { "type": "string" }, "uniqueItems": true }, "public_reason": { "type": "string" }, "public_unavailable": { "type": "string" } } },
+        "outcome_rules": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/outcome" } },
+        "public_progress": { "type": "object" }, "migration": { "type": "object" }
+      }
+    }
+  }
+}

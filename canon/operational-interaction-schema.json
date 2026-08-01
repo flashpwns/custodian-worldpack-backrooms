@@ -1,0 +1,190 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "yellow-beast-operational-interaction-schema@v1",
+  "title": "Yellow Beast operational interaction worldpack",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["version", "worldpack_id", "objects"],
+  "properties": {
+    "version": { "const": "yellow-beast-interaction-worldpack@v1" },
+    "worldpack_id": { "type": "string", "pattern": "^[a-z0-9][a-z0-9-]*$" },
+    "objects": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/object" }
+    },
+    "known_limitations": {
+      "type": "array",
+      "items": { "type": "string" }
+    }
+  },
+  "$defs": {
+    "statePredicate": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path"],
+      "properties": {
+        "path": { "type": "string" },
+        "equals": {},
+        "in": { "type": "array" },
+        "exists": { "type": "boolean" },
+        "failure": { "type": "string" }
+      }
+    },
+    "textRule": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["text"],
+      "properties": {
+        "default": { "type": "boolean" },
+        "when": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/statePredicate" }
+        },
+        "text": { "type": "string", "minLength": 1 }
+      }
+    },
+    "property": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "text"],
+      "properties": {
+        "id": { "type": "string", "pattern": "^[a-z0-9][a-z0-9-]*$" },
+        "text": { "type": "string", "minLength": 1 },
+        "reveal_by": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/affordanceName" },
+          "uniqueItems": true
+        }
+      }
+    },
+    "affordanceName": {
+      "enum": ["inspect", "use", "activate", "deactivate", "open", "close", "move", "take", "place", "mark", "photograph", "record", "test", "repair", "damage", "secure", "release"]
+    },
+    "equipmentRequirement": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "key": { "type": "string" },
+        "capability": { "type": "string" },
+        "consume": { "type": "integer", "minimum": 0 },
+        "allow_team_use": { "type": "boolean" },
+        "unavailable": { "type": "string" },
+        "separated": { "type": "string" }
+      },
+      "anyOf": [
+        { "required": ["key"] },
+        { "required": ["capability"] }
+      ]
+    },
+    "mutation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "value"],
+      "properties": {
+        "path": { "type": "string" },
+        "value": {}
+      }
+    },
+    "evidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type", "method", "condition_summary"],
+      "properties": {
+        "type": { "type": "string" },
+        "method": { "type": "string" },
+        "device_key": { "type": "string" },
+        "device_capability": { "type": "string" },
+        "condition_fields": {
+          "type": "array",
+          "items": { "type": "string" },
+          "minItems": 1,
+          "uniqueItems": true
+        },
+        "condition_summary": { "type": "string" },
+        "storage": { "type": "string" },
+        "repeat_failure": { "type": "string" }
+      }
+    },
+    "requirements": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "inspected": { "type": "boolean" },
+        "inspection_failure": { "type": "string" },
+        "state": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/statePredicate" }
+        },
+        "equipment": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/equipmentRequirement" }
+        }
+      }
+    },
+    "affordance": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type", "label", "time_cost", "result"],
+      "properties": {
+        "type": { "$ref": "#/$defs/affordanceName" },
+        "label": { "type": "string", "minLength": 1 },
+        "aliases": { "type": "array", "items": { "type": "string" } },
+        "known_when": { "enum": ["visible", "inspected"] },
+        "requirements": { "$ref": "#/$defs/requirements" },
+        "mutations": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/mutation" }
+        },
+        "reveals": {
+          "type": "array",
+          "items": { "type": "string" },
+          "uniqueItems": true
+        },
+        "time_cost": { "type": "integer", "minimum": 0 },
+        "result": { "type": "string", "minLength": 1 },
+        "failure": { "type": "string" },
+        "evidence": { "$ref": "#/$defs/evidence" }
+      }
+    },
+    "object": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "display_name", "aliases", "location", "object_type", "initial_state", "visible_properties", "hidden_properties", "affordances", "observation_text_by_condition", "inspection_text_by_condition", "persistence"],
+      "properties": {
+        "id": { "type": "string", "pattern": "^[a-z0-9][a-z0-9-]*$" },
+        "display_name": { "type": "string", "minLength": 1 },
+        "aliases": { "type": "array", "items": { "type": "string" }, "minItems": 1 },
+        "location": { "type": "string" },
+        "object_type": { "type": "string" },
+        "initial_state": {
+          "type": "object",
+          "required": ["condition"],
+          "properties": {
+            "location": { "type": "string" },
+            "condition": { "type": "string" },
+            "open": { "type": ["boolean", "null"] },
+            "active": { "type": ["boolean", "null"] },
+            "intact": { "type": ["boolean", "null"] },
+            "marked": { "type": "boolean" },
+            "moved": { "type": "boolean" },
+            "holder": { "type": ["string", "null"] },
+            "container": { "type": ["string", "null"] },
+            "custom": { "type": "object" }
+          }
+        },
+        "visible_properties": { "type": "array", "items": { "$ref": "#/$defs/property" } },
+        "hidden_properties": { "type": "array", "items": { "$ref": "#/$defs/property" } },
+        "affordances": { "type": "array", "items": { "$ref": "#/$defs/affordance" } },
+        "rejections": {
+          "type": "object",
+          "additionalProperties": { "type": "string" }
+        },
+        "visibility": { "$ref": "#/$defs/statePredicate" },
+        "observation_text_by_condition": { "type": "array", "items": { "$ref": "#/$defs/textRule" }, "minItems": 1 },
+        "inspection_text_by_condition": { "type": "array", "items": { "$ref": "#/$defs/textRule" }, "minItems": 1 },
+        "hazard_hooks": { "type": "array", "items": { "type": "object" } },
+        "persistence": { "enum": ["persistent", "session", "reset-on-run"] }
+      }
+    }
+  }
+}

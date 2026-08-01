@@ -4,7 +4,7 @@ console.log(JSON.stringify({
   first_time_flow:"library → create world → guided mode entry → scene/input → safe context → save → resume",
   returning_flow:"existing sessions resume without advancing a world or restoring an in-flight presentation request",
   modes:{"Clear-Q4":"operational field scene, radio, equipment, and phase context","Beck":"situation-first desk, reports, and matters","Nullzone":"personal notebook, evidence, and archive","Lost":"sparse sensory scene, carrying, and memory"},
-  natural_language:"primary form in every mode; Clear-Q4 has full interpretation and other modes map a small known phrase set to existing safe actions",
+  natural_language:"primary form in every mode; all modes interpret freeform attempts through observer-safe grounding and capability planning before canonical resolution",
   reactive_ui:"renderer-local request gate and metadata only; no canonical or observer truth store",
   qol:"bounded safe recap/history, local filters, presentation drafts and pins, autosave and resume",
   accessibility:"reduced motion, bounded scale, appearance, keyboard/focus, semantic status, and guidance preference",

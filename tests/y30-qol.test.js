@@ -46,6 +46,6 @@ test("presentation refresh and recap derivation do not advance a world or replay
 test("renderer QoL controls preserve natural input priority and keyboard safety", () => {
   const renderer = fs.readFileSync(path.join(__dirname, "../desktop/renderer/renderer.js"), "utf8");
   assert.match(renderer, /What do I know\?/); assert.match(renderer, /refresh-view/); assert.match(renderer, /event.target.matches\("input, textarea, select, button"\)/);
-  assert.match(renderer, /\$\{natural\}\$\{recapMarkup\(projection\)\}/);
+  assert.match(renderer, /\$\{scene\}\$\{natural\}\$\{YBSurfaces\.render\(projection\)\}/);
   assert.doesNotMatch(renderer, /STORY THREAD|\bQUEST\b|MYSTERY ID/);
 });

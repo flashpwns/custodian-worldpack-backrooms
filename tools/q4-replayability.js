@@ -1,0 +1,12 @@
+"use strict";
+
+const history = require("./world-history");
+const missions = require("./q4-missions");
+const trajectories = require("./q4-trajectories");
+const crypto = require("node:crypto");
+const digest = (value) => crypto.createHash("sha256").update(JSON.stringify(value)).digest("hex");
+function fingerprint(mission) { return digest({ family: mission.family, site: mission.site?.boundary, staff: mission.assigned_personnel, equipment: mission.required_equipment, procedures: mission.objective?.procedures, trajectory: mission.hidden_trajectory?.family, intensity: mission.hidden_trajectory?.intensity }); }
+function run({ seed = "q4-replay", sample = 100 } = {}) { const world = history.createWorld({ seed }); const records = []; const family = {}; const sites = {}; const trajectoriesSeen = {}; const fingerprints = new Map(); let repeated = 0; for (let index = 0; index < sample; index += 1) { const mission = missions.generate({ world, seed: `${seed}-${index}` }); missions.validate(mission); records.push(mission); family[mission.family] = (family[mission.family] ?? 0) + 1; sites[mission.site?.boundary] = (sites[mission.site?.boundary] ?? 0) + 1; trajectoriesSeen[mission.hidden_trajectory.family] = (trajectoriesSeen[mission.hidden_trajectory.family] ?? 0) + 1; const key = fingerprint(mission); if (fingerprints.has(key)) repeated += 1; fingerprints.set(key, index); history.recordQ4Mission(world, `replay-${index}`, mission); } return { sample, mission_family_distribution: family, site_distribution: sites, trajectory_distribution: trajectoriesSeen, fingerprint_repetitions: repeated, unique_fingerprints: fingerprints.size, quiet_or_subtle: records.filter((mission) => ["QUIET", "SUBTLE"].includes(mission.hidden_trajectory.intensity)).length, severe: records.filter((mission) => mission.hidden_trajectory.intensity === "SEVERE").length, unsupported: records.filter((mission) => !mission.authority?.source_claim_ids && mission.authority?.classification !== "recorded-world-history-only").length, records }; }
+function report(options = {}) { const result = run(options); return { ...result, records: undefined, replayability: result.unique_fingerprints / Math.max(1, result.sample), trajectory_catalog: trajectories.catalog().map((item) => item.id), catalog_count: missions.catalog().length }; }
+module.exports = { fingerprint, run, report };
+if (require.main === module) process.stdout.write(`${JSON.stringify(report({ sample: Number(process.argv[2]) || 100 }), null, 2)}\n`);

@@ -1,0 +1,23 @@
+{
+  "version": "yellow-beast-interaction-worldpack@v1",
+  "worldpack_id": "minimal-mission",
+  "objects": [
+    {
+      "id": "sample-record",
+      "display_name": "sample record",
+      "aliases": ["record"],
+      "location": "work-site",
+      "object_type": "record",
+      "initial_state": { "condition": "unread", "open": false, "active": null, "intact": true, "marked": false, "moved": false, "holder": null, "container": null, "custom": {} },
+      "visible_properties": [{ "id": "record-present", "text": "The sample record is present.", "reveal_by": ["inspect"] }],
+      "hidden_properties": [{ "id": "record-legible", "text": "The sample record is legible.", "reveal_by": ["inspect"] }],
+      "affordances": [{ "type": "inspect", "label": "Inspect the record", "known_when": "visible", "time_cost": 0, "result": "The sample record is legible." }],
+      "rejections": {},
+      "observation_text_by_condition": [{ "default": true, "text": "A sample record rests at the work site." }],
+      "inspection_text_by_condition": [{ "default": true, "text": "The sample record is legible." }],
+      "hazard_hooks": [],
+      "persistence": "persistent"
+    }
+  ],
+  "known_limitations": ["This pack is a conformance fixture, not a playable program."]
+}

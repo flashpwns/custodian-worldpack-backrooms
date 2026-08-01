@@ -1,0 +1,457 @@
+{
+  "version": "yellow-beast-interaction-worldpack@v1",
+  "worldpack_id": "clear-q4",
+  "objects": [
+    {
+      "id": "utility-fluorescent-fixture",
+      "display_name": "fluorescent fixture",
+      "aliases": ["fixture", "ceiling fixture", "light", "fluorescent light"],
+      "location": "utility-room",
+      "object_type": "fixture",
+      "initial_state": {
+        "condition": "steady",
+        "open": null,
+        "active": true,
+        "intact": true,
+        "marked": false,
+        "moved": false,
+        "holder": null,
+        "container": null,
+        "custom": { "tested": false, "survey_tagged": false, "photographed": false }
+      },
+      "visible_properties": [
+        { "id": "ceiling-mounted", "text": "The fixture is fixed to the ceiling.", "reveal_by": ["inspect"] }
+      ],
+      "hidden_properties": [
+        { "id": "output-stability", "text": "Its output remains stable under direct observation.", "reveal_by": ["inspect", "test"] }
+      ],
+      "affordances": [
+        {
+          "type": "inspect",
+          "label": "Inspect the fixture",
+          "known_when": "visible",
+          "time_cost": 0,
+          "result": "The fixture can be examined from below."
+        },
+        {
+          "type": "test",
+          "label": "Test the light",
+          "known_when": "inspected",
+          "requirements": {
+            "inspected": true,
+            "inspection_failure": "Inspect the fixture before setting up a test.",
+            "state": [
+              { "path": "custom.tested", "equals": false, "failure": "The fixture has already been tested in its present condition." },
+              { "path": "active", "equals": true, "failure": "The fixture is not producing an output that can be tested." }
+            ],
+            "equipment": [
+              {
+                "key": "survey-instrument",
+                "capability": "qualitative measurement",
+                "consume": 1,
+                "allow_team_use": true,
+                "unavailable": "The portable survey instrument is not operational.",
+                "separated": "The survey instrument is with a teammate who is not within working range."
+              }
+            ]
+          },
+          "mutations": [
+            { "path": "condition", "value": "steady-surveyed" },
+            { "path": "custom.tested", "value": true },
+            { "path": "custom.survey_tagged", "value": true }
+          ],
+          "reveals": ["output-stability"],
+          "time_cost": 1,
+          "result": "Nora holds the survey instrument beneath the light while you call the reading. The output remains steady, and the fixture is tagged in the survey record.",
+          "evidence": {
+            "type": "fixture-test",
+            "method": "instrument test",
+            "device_key": "survey-instrument",
+            "condition_fields": ["condition", "active", "intact", "custom.tested"],
+            "condition_summary": "The active fixture held a steady output during the instrument test.",
+            "storage": "with the field survey record",
+            "repeat_failure": "The existing instrument record already covers the fixture in this condition."
+          }
+        },
+        {
+          "type": "photograph",
+          "label": "Photograph the fixture",
+          "known_when": "visible",
+          "requirements": {
+            "equipment": [
+              {
+                "key": "recording-device",
+                "capability": "photographic documentation",
+                "consume": 1,
+                "allow_team_use": true,
+                "unavailable": "The field camera cannot make an exposure in its current condition.",
+                "separated": "The field camera is with a teammate who is not within working range."
+              }
+            ]
+          },
+          "mutations": [
+            { "path": "custom.photographed", "value": true },
+            { "path": "custom.survey_tagged", "value": true }
+          ],
+          "time_cost": 1,
+          "result": "Alex frames the ceiling fixture while you call the identifying details. The exposure is added to the field record, and the fixture is tagged as surveyed.",
+          "evidence": {
+            "type": "fixture-photograph",
+            "method": "35mm photograph",
+            "device_key": "recording-device",
+            "condition_fields": ["condition", "active", "intact"],
+            "condition_summary": "The photograph shows the active, intact fluorescent fixture.",
+            "storage": "with the camera record",
+            "repeat_failure": "A photograph already records the fixture in this condition."
+          }
+        }
+      ],
+      "rejections": {
+        "move": "The fixture is fixed to the ceiling and cannot be moved by hand.",
+        "open": "No service cover is reachable from the floor."
+      },
+      "observation_text_by_condition": [
+        {
+          "when": [{ "path": "custom.survey_tagged", "equals": true }],
+          "text": "The fluorescent fixture remains steady overhead and is now tagged in the survey record."
+        },
+        { "default": true, "text": "A fluorescent fixture hums steadily overhead." }
+      ],
+      "inspection_text_by_condition": [
+        {
+          "when": [{ "path": "custom.tested", "equals": true }],
+          "text": "The fluorescent fixture remains intact and steady. The instrument test and survey tag are already recorded."
+        },
+        { "default": true, "text": "The housing is intact and fixed to the ceiling. Its visible output is steady, with no flutter or darkened tube ends." }
+      ],
+      "hazard_hooks": [],
+      "persistence": "persistent"
+    },
+    {
+      "id": "utility-route-surface",
+      "display_name": "scuffed floor",
+      "aliases": ["floor", "surface", "scuffs", "scuff pattern", "route surface", "this route"],
+      "location": "utility-room",
+      "object_type": "structural-feature",
+      "initial_state": {
+        "condition": "ordinary-wear",
+        "open": null,
+        "active": null,
+        "intact": true,
+        "marked": false,
+        "moved": false,
+        "holder": null,
+        "container": null,
+        "custom": { "marker_kind": null }
+      },
+      "visible_properties": [
+        { "id": "visible-scuffs", "text": "Several shallow scuff lines cross the bare floor.", "reveal_by": ["inspect", "photograph"] }
+      ],
+      "hidden_properties": [
+        { "id": "surface-pattern", "text": "The scuffs overlap as ordinary traffic wear rather than an authored route mark.", "reveal_by": ["inspect", "photograph"] }
+      ],
+      "affordances": [
+        {
+          "type": "inspect",
+          "label": "Inspect the scuffs",
+          "known_when": "visible",
+          "time_cost": 0,
+          "result": "The floor pattern can be examined at close range."
+        },
+        {
+          "type": "photograph",
+          "label": "Photograph the scuffs",
+          "known_when": "visible",
+          "requirements": {
+            "equipment": [
+              {
+                "key": "recording-device",
+                "capability": "photographic documentation",
+                "consume": 1,
+                "allow_team_use": true,
+                "unavailable": "The field camera cannot make an exposure in its current condition.",
+                "separated": "The field camera is with a teammate who is not within working range."
+              }
+            ]
+          },
+          "mutations": [],
+          "reveals": ["surface-pattern"],
+          "time_cost": 1,
+          "result": "Alex photographs the crossing scuffs from directly above while you keep the survey scale in frame. The exposure is added to the field record.",
+          "evidence": {
+            "type": "surface-photograph",
+            "method": "35mm photograph",
+            "device_key": "recording-device",
+            "condition_fields": ["condition", "intact", "marked", "custom.marker_kind"],
+            "condition_summary": "The photograph records the floor pattern and whether a survey marker is present.",
+            "storage": "with the camera record",
+            "repeat_failure": "A photograph already records the floor in this condition."
+          }
+        },
+        {
+          "type": "mark",
+          "label": "Place a route marker",
+          "known_when": "inspected",
+          "requirements": {
+            "inspected": true,
+            "inspection_failure": "Inspect the scuffs before placing a route marker over them.",
+            "state": [
+              { "path": "marked", "equals": false, "failure": "The route marker is already in place on the floor." }
+            ],
+            "equipment": [
+              {
+                "key": "route-marker-kit",
+                "capability": "route marking",
+                "consume": 1,
+                "allow_team_use": false,
+                "unavailable": "No usable route marker remains in the selected field kit."
+              }
+            ]
+          },
+          "mutations": [
+            { "path": "condition", "value": "route-marked" },
+            { "path": "marked", "value": true },
+            { "path": "custom.marker_kind", "value": "numbered survey tab" }
+          ],
+          "time_cost": 1,
+          "result": "You place a numbered survey tab beside the west-wall scuffs, clear of the ordinary wear. The new return-oriented marker is plainly distinguishable from the older lines."
+        }
+      ],
+      "rejections": {
+        "move": "The floor is part of the room and cannot be moved aside.",
+        "open": "There is no hatch or seam in the scuffed section of floor."
+      },
+      "observation_text_by_condition": [
+        {
+          "when": [{ "path": "marked", "equals": true }],
+          "text": "The numbered route marker you placed remains visible beside the west-wall scuffs."
+        },
+        { "default": true, "text": "Shallow scuffs cross the bare floor without forming a confirmed route marker." }
+      ],
+      "inspection_text_by_condition": [
+        {
+          "when": [{ "path": "marked", "equals": true }],
+          "text": "The older scuffs still read as ordinary traffic wear. Your numbered survey tab remains adhered beside them and is clearly distinct."
+        },
+        { "default": true, "text": "The lines overlap at different angles and depths. They read as ordinary traffic wear, not a deliberate route mark." }
+      ],
+      "hazard_hooks": [],
+      "persistence": "persistent"
+    },
+    {
+      "id": "utility-service-panel",
+      "display_name": "service panel",
+      "aliases": ["panel", "wall panel", "electrical panel", "service cover"],
+      "location": "utility-room",
+      "object_type": "panel",
+      "initial_state": {
+        "condition": "closed-intact",
+        "open": false,
+        "active": null,
+        "intact": true,
+        "marked": false,
+        "moved": false,
+        "holder": null,
+        "container": null,
+        "custom": { "latch_checked": false }
+      },
+      "visible_properties": [
+        { "id": "flush-mounted", "text": "The shallow metal panel is mounted flush with the east wall.", "reveal_by": ["inspect"] }
+      ],
+      "hidden_properties": [
+        { "id": "dry-latch", "text": "The latch and visible interior are dry and free of fresh scorching.", "reveal_by": ["inspect", "open"] }
+      ],
+      "affordances": [
+        {
+          "type": "inspect",
+          "label": "Inspect the panel",
+          "known_when": "visible",
+          "time_cost": 0,
+          "result": "The panel can be checked without disturbing the latch."
+        },
+        {
+          "type": "open",
+          "label": "Open the panel",
+          "known_when": "inspected",
+          "requirements": {
+            "inspected": true,
+            "inspection_failure": "Inspect the panel and latch before opening it.",
+            "state": [
+              { "path": "open", "equals": false, "failure": "The service panel is already open." },
+              { "path": "intact", "equals": true, "failure": "The damaged panel cannot be opened safely by hand." }
+            ]
+          },
+          "mutations": [
+            { "path": "condition", "value": "open-intact" },
+            { "path": "open", "value": true },
+            { "path": "custom.latch_checked", "value": true }
+          ],
+          "reveals": ["dry-latch"],
+          "time_cost": 1,
+          "result": "You release the dry latch and swing the service panel open. The shallow interior is intact, with no fresh scorching or loose component."
+        },
+        {
+          "type": "close",
+          "label": "Close the panel",
+          "known_when": "visible",
+          "requirements": {
+            "state": [
+              { "path": "open", "equals": true, "failure": "The service panel is already closed." }
+            ]
+          },
+          "mutations": [
+            { "path": "condition", "value": "closed-inspected" },
+            { "path": "open", "value": false }
+          ],
+          "time_cost": 1,
+          "result": "You swing the service panel shut and seat the latch. The cover remains flush against the wall."
+        }
+      ],
+      "rejections": {
+        "move": "The service panel is fixed into the wall and will not move by hand.",
+        "take": "The service panel is part of the room and cannot be carried."
+      },
+      "observation_text_by_condition": [
+        {
+          "when": [{ "path": "open", "equals": true }],
+          "text": "The service panel stands open on the east wall, its shallow intact interior visible."
+        },
+        {
+          "when": [{ "path": "condition", "equals": "closed-inspected" }],
+          "text": "The service panel is closed again, with its latch seated flush."
+        },
+        { "default": true, "text": "A shallow metal service panel sits flush with the east wall." }
+      ],
+      "inspection_text_by_condition": [
+        {
+          "when": [{ "path": "open", "equals": true }],
+          "text": "The open panel contains a shallow intact service recess. No loose part, fresh scorching, or moisture is visible."
+        },
+        {
+          "when": [{ "path": "custom.latch_checked", "equals": true }],
+          "text": "The cover is closed and flush. The dry latch remains seated after the earlier inspection."
+        },
+        { "default": true, "text": "The cover is intact and flush. The latch is dry, reachable, and shows no fresh damage." }
+      ],
+      "hazard_hooks": [],
+      "persistence": "persistent"
+    },
+    {
+      "id": "threshold-return-marker",
+      "display_name": "return marker",
+      "aliases": ["marker", "threshold marker", "return route marker", "return route"],
+      "location": "threshold-side-entry",
+      "object_type": "marker",
+      "initial_state": {
+        "condition": "intact-shifted",
+        "open": null,
+        "active": null,
+        "intact": true,
+        "marked": true,
+        "moved": false,
+        "holder": null,
+        "container": null,
+        "custom": { "bracket_alignment": "lower-bracket-shifted", "secured": false, "route_verified": false }
+      },
+      "visible_properties": [
+        { "id": "threshold-alignment", "text": "The marker still aligns with the confirmed Threshold return route.", "reveal_by": ["inspect", "record"] }
+      ],
+      "hidden_properties": [
+        { "id": "bracket-shift", "text": "The lower bracket has shifted slightly without breaking the marker's alignment.", "reveal_by": ["inspect", "secure", "record"] }
+      ],
+      "affordances": [
+        {
+          "type": "inspect",
+          "label": "Inspect the return marker",
+          "known_when": "visible",
+          "time_cost": 0,
+          "result": "The marker can be checked against the Threshold return line."
+        },
+        {
+          "type": "secure",
+          "label": "Secure the return marker",
+          "known_when": "inspected",
+          "requirements": {
+            "inspected": true,
+            "inspection_failure": "Inspect the marker alignment before securing it.",
+            "state": [
+              { "path": "intact", "equals": true, "failure": "The return marker is too damaged to secure with field material." },
+              { "path": "custom.secured", "equals": false, "failure": "The return marker is already secured." }
+            ],
+            "equipment": [
+              {
+                "key": "route-marker-kit",
+                "capability": "route marking",
+                "consume": 1,
+                "allow_team_use": false,
+                "unavailable": "No usable securing tab remains in the selected route-marker kit."
+              }
+            ]
+          },
+          "mutations": [
+            { "path": "condition", "value": "intact-secured" },
+            { "path": "custom.bracket_alignment", "value": "aligned-and-secured" },
+            { "path": "custom.secured", "value": true },
+            { "path": "custom.route_verified", "value": true }
+          ],
+          "reveals": ["bracket-shift"],
+          "time_cost": 1,
+          "result": "You seat the lower bracket and add a numbered securing tab. The intact marker now holds its alignment with the confirmed Threshold return route."
+        },
+        {
+          "type": "record",
+          "label": "Record the return marker",
+          "known_when": "visible",
+          "requirements": {
+            "equipment": [
+              {
+                "key": "recording-device",
+                "capability": "photographic documentation",
+                "consume": 1,
+                "allow_team_use": true,
+                "unavailable": "The field camera cannot make an exposure in its current condition.",
+                "separated": "The field camera is with a teammate who is not within working range."
+              }
+            ]
+          },
+          "mutations": [],
+          "time_cost": 1,
+          "result": "Alex photographs the marker against the Threshold return line while you call its visible condition for the field record.",
+          "evidence": {
+            "type": "return-marker-record",
+            "method": "35mm photograph and field notation",
+            "device_key": "recording-device",
+            "condition_fields": ["condition", "intact", "marked", "custom.bracket_alignment", "custom.secured"],
+            "condition_summary": "The record shows the return marker's condition and alignment with the Threshold route.",
+            "storage": "with the return-route record",
+            "repeat_failure": "The existing field record already captures the return marker in this condition."
+          }
+        }
+      ],
+      "rejections": {
+        "move": "Moving the return marker would break the confirmed route reference; inspect or secure it instead.",
+        "take": "The return marker must remain at the Threshold-side entry."
+      },
+      "observation_text_by_condition": [
+        {
+          "when": [{ "path": "custom.secured", "equals": true }],
+          "text": "The return marker remains intact and secured beside the confirmed Threshold route."
+        },
+        { "default": true, "text": "The return marker remains intact, though its lower bracket sits slightly out of line." }
+      ],
+      "inspection_text_by_condition": [
+        {
+          "when": [{ "path": "custom.secured", "equals": true }],
+          "text": "The numbered securing tab remains tight. The marker is intact and aligned with the confirmed Threshold return route."
+        },
+        { "default": true, "text": "The marker still identifies the confirmed Threshold route. Its lower bracket has shifted slightly, but the body remains intact and aligned." }
+      ],
+      "hazard_hooks": [],
+      "persistence": "persistent"
+    }
+  ],
+  "known_limitations": [
+    "Object interactions are deterministic and local to authored affordances.",
+    "General containers, loose-object inventory, and hazard consequences remain deferred."
+  ]
+}

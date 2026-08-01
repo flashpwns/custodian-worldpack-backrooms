@@ -9,6 +9,39 @@ official canon. Source metadata, claims, and simulation authority are separate:
 no source summary, theory, production image, Discord message, or in-fiction
 statement silently becomes objective world state.
 
+## Windows development handoff
+
+Prerequisites: a current Node.js LTS release with npm, Git, and (for desktop
+development) a Windows environment that can run Electron. The repository is
+portable source; application data is stored in the platform application-data
+directory.
+
+```powershell
+cd $HOME
+git clone --branch q4-prefield-explicit-flow --single-branch https://github.com/flashpwns/custodian-worldpack-backrooms.git
+cd custodian-worldpack-backrooms
+npm ci
+npm run validate-assets
+npm test
+```
+
+Launch the development desktop application with:
+
+```powershell
+npm run desktop:dev
+```
+
+The available Windows packaging command is `npm run desktop:package -- --win
+zip`. Native packaging may require the platform build tools used by Electron
+Builder; signing is not provided. `npm run desktop:verify` validates a staged
+desktop artifact when one has been built.
+
+Current status: `Q4 BETA NOT AUTHORIZED`; human acceptance is still pending.
+
+Architecture: Custodian owns canonical reality; Yellow Beast owns player-facing
+experience construction. Clear-Q4 is the active mode. Lost, Beck's Desk, and
+Nullzone Exposure remain parked roadmap modes.
+
 ## Quick start
 
 ```sh

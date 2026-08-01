@@ -1,0 +1,148 @@
+{
+  "version": "yellow-beast-spatial-worldpack@v1",
+  "worldpack_id": "clear-q4",
+  "display_name": "CLEAR-Q4 Operational Survey Record",
+  "initial_location": "async-briefing-room",
+  "field_entry_location": "utility-room",
+  "phase_locations": {
+    "BRIEFING": "async-briefing-room",
+    "STAGING": "equipment-staging",
+    "FACILITY_TRANSIT": "threshold-approach",
+    "THRESHOLD": "threshold-room",
+    "STANDARD_RADIO_CHECK": "threshold-side-entry",
+    "FIELD_OPERATION": "utility-room"
+  },
+  "locations": [
+    {
+      "id": "async-briefing-room",
+      "name": "ASYNC Briefing Room",
+      "type": "controlled-facility",
+      "short_description": "A controlled room for assignment review.",
+      "coordinates": { "x": 40, "y": 130, "level": 0 },
+      "entry_state": "institutional-record",
+      "environment": { "lighting": "controlled overhead lighting", "surface": "sealed facility floor" },
+      "landmarks": [],
+      "hazards": [],
+      "tags": ["prefield", "controlled"]
+    },
+    {
+      "id": "equipment-staging",
+      "name": "Equipment Staging",
+      "type": "controlled-facility",
+      "short_description": "The team's issued stores are laid out for inspection.",
+      "coordinates": { "x": 120, "y": 130, "level": 0 },
+      "entry_state": "institutional-record",
+      "environment": { "lighting": "controlled overhead lighting", "surface": "sealed facility floor" },
+      "landmarks": [{ "id": "staging-lockers", "name": "staging lockers", "aliases": ["lockers", "stores"], "observation": "Issued stores remain in the marked staging lockers.", "inspection": "The lockers contain only the equipment assigned to this operation." }],
+      "hazards": [],
+      "tags": ["prefield", "controlled"]
+    },
+    {
+      "id": "threshold-approach",
+      "name": "Threshold Approach",
+      "type": "controlled-transit",
+      "short_description": "A controlled access route leading to the Threshold room.",
+      "coordinates": { "x": 200, "y": 130, "level": 0 },
+      "entry_state": "institutional-record",
+      "environment": { "lighting": "controlled facility lighting", "surface": "sealed access floor" },
+      "landmarks": [],
+      "hazards": [],
+      "tags": ["prefield", "controlled"]
+    },
+    {
+      "id": "threshold-room",
+      "name": "Threshold Room",
+      "type": "controlled-transition",
+      "short_description": "The staffed boundary between the facility and the Complex-side entry.",
+      "coordinates": { "x": 280, "y": 130, "level": 0 },
+      "entry_state": "institutional-record",
+      "environment": { "lighting": "controlled facility lighting", "surface": "reinforced transition floor" },
+      "landmarks": [{ "id": "threshold-apparatus", "name": "Threshold apparatus", "aliases": ["threshold", "apparatus"], "observation": "The controlled Threshold apparatus occupies the far wall.", "inspection": "Status lamps show the recorded crossing route ready for use." }],
+      "hazards": [],
+      "tags": ["prefield", "controlled", "return-route"]
+    },
+    {
+      "id": "threshold-side-entry",
+      "name": "Threshold-Side Entry",
+      "type": "complex-entry",
+      "short_description": "The first controlled position on the Complex side of the Threshold.",
+      "coordinates": { "x": 360, "y": 130, "level": 0 },
+      "entry_state": "confirmed-on-crossing",
+      "environment": { "lighting": "mixed Threshold spill and fluorescent light", "surface": "worn bare floor" },
+      "landmarks": [],
+      "hazards": [],
+      "tags": ["field", "entry", "return-route"]
+    },
+    {
+      "id": "utility-room",
+      "name": "Utility Room",
+      "type": "service-room",
+      "short_description": "A bare utility room under steady fluorescent light.",
+      "coordinates": { "x": 450, "y": 130, "level": 0 },
+      "entry_state": "field-entry",
+      "environment": { "lighting": "steady fluorescent light", "surface": "bare, scuffed floor", "sound": "a low fluorescent hum" },
+      "landmarks": [],
+      "hazards": [],
+      "tags": ["field", "mission-area"]
+    },
+    {
+      "id": "columned-corridor",
+      "name": "Columned Corridor",
+      "type": "corridor",
+      "short_description": "A west-running corridor divided by square columns.",
+      "coordinates": { "x": 350, "y": 55, "level": 0 },
+      "entry_state": "unmapped",
+      "environment": { "lighting": "widely spaced fluorescent fixtures", "surface": "worn level floor", "sound": "the fixture hum carries between the columns" },
+      "landmarks": [{ "id": "corridor-columns", "name": "square columns", "aliases": ["columns", "column"], "observation": "Square columns break the westward sightline into regular intervals.", "inspection": "The columns are plain, evenly spaced, and show ordinary surface wear." }],
+      "hazards": [],
+      "tags": ["field", "west-route"]
+    },
+    {
+      "id": "open-passage",
+      "name": "Open Passage",
+      "type": "passage",
+      "short_description": "An open passage slopes away from the utility room.",
+      "coordinates": { "x": 540, "y": 205, "level": 0 },
+      "entry_state": "unmapped",
+      "environment": { "lighting": "fluorescent spill fading with distance", "surface": "sloping worn floor" },
+      "landmarks": [{ "id": "passage-grade", "name": "descending grade", "aliases": ["slope", "descent"], "observation": "The floor begins a shallow descent beyond the opening.", "inspection": "The descent continues far enough that its lower end cannot be confirmed from the utility room." }],
+      "hazards": [],
+      "tags": ["field", "lower-route"]
+    },
+    {
+      "id": "lower-level-transition",
+      "name": "Lower-Level Transition",
+      "type": "vertical-transition",
+      "short_description": "A descending transition whose lower boundary remains only partly visible.",
+      "coordinates": { "x": 620, "y": 265, "level": -1 },
+      "entry_state": "unmapped",
+      "environment": { "lighting": "dim fluorescent spill", "surface": "stepped concrete transition" },
+      "landmarks": [{ "id": "lower-landing", "name": "lower landing", "aliases": ["landing", "stairs"], "observation": "A lower landing is visible beyond the final step.", "inspection": "The landing is clear, but the space beyond it cannot yet be resolved." }],
+      "hazards": [{ "id": "reduced-light", "label": "Reduced light", "state": "known", "severity": "low" }],
+      "tags": ["field", "transition", "lower-route"]
+    },
+    {
+      "id": "level-2-boundary",
+      "name": "Level 2 Survey Boundary",
+      "type": "unresolved-zone",
+      "short_description": "An unresolved lower area beyond the recorded transition.",
+      "coordinates": { "x": 700, "y": 265, "level": -1 },
+      "entry_state": "unmapped",
+      "environment": { "lighting": "unconfirmed", "surface": "unconfirmed" },
+      "landmarks": [],
+      "hazards": [],
+      "tags": ["field", "unresolved", "level-2"]
+    }
+  ],
+  "connections": [
+    { "id": "briefing-to-staging", "from": "async-briefing-room", "to": "equipment-staging", "direction": "forward", "relationship": "controlled transit", "transition": "The team proceeds to equipment staging.", "requirements": [], "lock_state": "open", "hazard_state": "clear", "visibility": "institutional", "discovery": "institutional", "bidirectional": true },
+    { "id": "staging-to-approach", "from": "equipment-staging", "to": "threshold-approach", "direction": "forward", "relationship": "controlled transit", "transition": "The team leaves staging along the controlled Threshold route.", "requirements": [], "lock_state": "open", "hazard_state": "clear", "visibility": "institutional", "discovery": "institutional", "bidirectional": true },
+    { "id": "approach-to-threshold", "from": "threshold-approach", "to": "threshold-room", "direction": "forward", "relationship": "controlled transit", "transition": "The team enters the Threshold room together.", "requirements": [], "lock_state": "open", "hazard_state": "clear", "visibility": "institutional", "discovery": "institutional", "bidirectional": true },
+    { "id": "threshold-crossing", "from": "threshold-room", "to": "threshold-side-entry", "direction": "through", "relationship": "Threshold crossing", "transition": "The accounted team crosses to the Complex-side entry.", "requirements": ["threshold-authorized"], "lock_state": "open", "hazard_state": "controlled", "visibility": "institutional", "discovery": "on-traversal", "bidirectional": true },
+    { "id": "entry-to-utility", "from": "threshold-side-entry", "to": "utility-room", "direction": "forward", "relationship": "entry route", "transition": "The team advances from the Threshold-side entry into the utility room.", "requirements": ["radio-check-complete"], "lock_state": "open", "hazard_state": "clear", "visibility": "visible", "discovery": "on-traversal", "bidirectional": true, "aliases": ["utility room", "forward"] },
+    { "id": "utility-to-corridor", "from": "utility-room", "to": "columned-corridor", "direction": "west", "reverse_direction": "east", "relationship": "open corridor", "transition": "You lead the team west into the columned corridor.", "reverse_transition": "You lead the team east, returning to the utility room.", "requirements": [], "lock_state": "open", "hazard_state": "clear", "visibility": "visible", "discovery": "on-traversal", "bidirectional": true, "aliases": ["corridor", "columned corridor", "westward continuation"] },
+    { "id": "utility-to-passage", "from": "utility-room", "to": "open-passage", "direction": "southeast", "reverse_direction": "northwest", "relationship": "open passage", "transition": "The team enters the open passage as its floor begins to descend.", "reverse_transition": "The team follows the passage back into the utility room.", "requirements": [], "lock_state": "open", "hazard_state": "clear", "visibility": "visible", "discovery": "on-traversal", "bidirectional": true, "aliases": ["open passage", "passage"] },
+    { "id": "passage-to-lower", "from": "open-passage", "to": "lower-level-transition", "direction": "down", "reverse_direction": "up", "relationship": "descending transition", "transition": "You take the team down to the lower-level transition.", "reverse_transition": "The team climbs back into the open passage.", "requirements": [], "lock_state": "open", "hazard_state": "caution", "visibility": "visible", "discovery": "on-traversal", "bidirectional": true, "aliases": ["lower level", "lower-level transition", "descent", "down"] },
+    { "id": "lower-to-level-2", "from": "lower-level-transition", "to": "level-2-boundary", "direction": "forward", "reverse_direction": "back", "relationship": "unresolved continuation", "transition": "The team crosses the recorded boundary into the unresolved lower area.", "requirements": ["route-surveyed"], "lock_state": "blocked", "hazard_state": "unknown", "visibility": "visible", "discovery": "on-traversal", "bidirectional": true, "aliases": ["level 2", "lower area", "unresolved area"] }
+  ]
+}

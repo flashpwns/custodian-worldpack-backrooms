@@ -1,0 +1,671 @@
+{
+  "version": "yellow-beast-playable-spine-acceptance@v1",
+  "generated_at": "2026-08-01T08:06:21.695Z",
+  "evidence_kind": "deterministic rendered-surface and persisted-state capture",
+  "world_name": "ClearQ4est",
+  "opening_controls": [
+    "READY",
+    "PROCEED",
+    "APPROACH",
+    "CROSS",
+    "RADIO_CHECK",
+    "BEGIN_FIELD_OPERATION"
+  ],
+  "natural_actions": [
+    "Orient myself.",
+    "Move into the corridor."
+  ],
+  "stages": {
+    "briefing": {
+      "phase": "BRIEFING",
+      "player": "Jack Rocha",
+      "controlled_personnel": "Jack Rocha · YOU",
+      "coworkers": [
+        "Nora Vale",
+        "Alex Morgan"
+      ],
+      "mission": "CQ4-LAYOUT-EXTENSION-002-1673",
+      "equipment": [
+        {
+          "id": "q4-field-light-01",
+          "holder": "You",
+          "state": "Operational",
+          "verification": "visually confirmed"
+        },
+        {
+          "id": "q4-recording-device-01",
+          "holder": "Alex Morgan",
+          "state": "Operational",
+          "verification": "visually confirmed"
+        },
+        {
+          "id": "q4-survey-instrument-01",
+          "holder": "Nora Vale",
+          "state": "Operational",
+          "verification": "visually confirmed"
+        },
+        {
+          "id": "q4-survey-radio-01",
+          "holder": "You",
+          "state": "Operational",
+          "verification": "visually confirmed"
+        }
+      ],
+      "local_available": true,
+      "local_history_count": 0,
+      "radio_state": "unavailable",
+      "radio_check_completed": false,
+      "standard_history": [],
+      "check_in": {
+        "state": "not-scheduled",
+        "label": "NOT SCHEDULED",
+        "due_at": null,
+        "remaining": null
+      },
+      "location": "ASYNC Briefing Room",
+      "observation": null,
+      "map": {
+        "nodes": [
+          {
+            "id": "async-briefing-room",
+            "name": "ASYNC Briefing Room",
+            "current": true,
+            "personnel": [
+              {
+                "name": "Jack Rocha",
+                "status": "present"
+              },
+              {
+                "name": "Nora Vale",
+                "status": "present"
+              },
+              {
+                "name": "Alex Morgan",
+                "status": "present"
+              }
+            ]
+          }
+        ],
+        "unresolved_exits": [
+          {
+            "ref": "briefing-to-staging",
+            "label": "FORWARD — Equipment Staging",
+            "direction": "forward",
+            "status": "unresolved",
+            "hazard": "clear"
+          }
+        ],
+        "route_history": []
+      }
+    },
+    "radio_check": {
+      "phase": "STANDARD_RADIO_CHECK",
+      "player": "Jack Rocha",
+      "controlled_personnel": "Jack Rocha · YOU",
+      "coworkers": [
+        "Nora Vale",
+        "Alex Morgan"
+      ],
+      "mission": "CQ4-LAYOUT-EXTENSION-002-1673",
+      "equipment": [
+        {
+          "id": "q4-field-light-01",
+          "holder": "You",
+          "state": "Operational",
+          "verification": "visually confirmed"
+        },
+        {
+          "id": "q4-recording-device-01",
+          "holder": "Alex Morgan",
+          "state": "Operational",
+          "verification": "visually confirmed"
+        },
+        {
+          "id": "q4-survey-instrument-01",
+          "holder": "Nora Vale",
+          "state": "Operational",
+          "verification": "visually confirmed"
+        },
+        {
+          "id": "q4-survey-radio-01",
+          "holder": "You",
+          "state": "Operational",
+          "verification": "visually confirmed"
+        }
+      ],
+      "local_available": true,
+      "local_history_count": 0,
+      "radio_state": "available",
+      "radio_check_completed": true,
+      "standard_history": [
+        {
+          "speaker": "YOU",
+          "text": "Standard, Clear-Q4 team Complex-side. 3 personnel accounted for.",
+          "delivery": "delivered"
+        },
+        {
+          "speaker": "STANDARD",
+          "text": "Clear-Q4, contact established. Proceed with assigned survey.",
+          "delivery": "received"
+        }
+      ],
+      "check_in": {
+        "state": "scheduled",
+        "label": "DUE IN 3 INTERVALS",
+        "due_at": 3,
+        "remaining": 3
+      },
+      "location": "Threshold-Side Entry",
+      "observation": null,
+      "map": {
+        "nodes": [
+          {
+            "id": "async-briefing-room",
+            "name": "ASYNC Briefing Room",
+            "current": false,
+            "personnel": []
+          },
+          {
+            "id": "equipment-staging",
+            "name": "Equipment Staging",
+            "current": false,
+            "personnel": []
+          },
+          {
+            "id": "threshold-approach",
+            "name": "Threshold Approach",
+            "current": false,
+            "personnel": []
+          },
+          {
+            "id": "threshold-room",
+            "name": "Threshold Room",
+            "current": false,
+            "personnel": []
+          },
+          {
+            "id": "threshold-side-entry",
+            "name": "Threshold-Side Entry",
+            "current": true,
+            "personnel": [
+              {
+                "name": "Jack Rocha",
+                "status": "present"
+              },
+              {
+                "name": "Nora Vale",
+                "status": "present"
+              },
+              {
+                "name": "Alex Morgan",
+                "status": "present"
+              }
+            ]
+          }
+        ],
+        "unresolved_exits": [
+          {
+            "ref": "entry-to-utility",
+            "label": "FORWARD — Utility Room",
+            "direction": "forward",
+            "status": "unresolved",
+            "hazard": "clear"
+          }
+        ],
+        "route_history": [
+          {
+            "sequence": 1,
+            "from": "threshold-room",
+            "to": "threshold-side-entry",
+            "connection_id": "threshold-crossing",
+            "at": 0
+          }
+        ]
+      }
+    },
+    "field_entry": {
+      "phase": "FIELD_OPERATION",
+      "player": "Jack Rocha",
+      "controlled_personnel": "Jack Rocha · YOU",
+      "coworkers": [
+        "Nora Vale",
+        "Alex Morgan"
+      ],
+      "mission": "CQ4-LAYOUT-EXTENSION-002-1673",
+      "equipment": [
+        {
+          "id": "q4-field-light-01",
+          "holder": "You",
+          "state": "Operational",
+          "verification": "visually confirmed"
+        },
+        {
+          "id": "q4-recording-device-01",
+          "holder": "Alex Morgan",
+          "state": "Operational",
+          "verification": "visually confirmed"
+        },
+        {
+          "id": "q4-survey-instrument-01",
+          "holder": "Nora Vale",
+          "state": "Operational",
+          "verification": "visually confirmed"
+        },
+        {
+          "id": "q4-survey-radio-01",
+          "holder": "You",
+          "state": "Operational",
+          "verification": "visually confirmed"
+        }
+      ],
+      "local_available": true,
+      "local_history_count": 0,
+      "radio_state": "available",
+      "radio_check_completed": true,
+      "standard_history": [
+        {
+          "speaker": "YOU",
+          "text": "Standard, Clear-Q4 team Complex-side. 3 personnel accounted for.",
+          "delivery": "delivered"
+        },
+        {
+          "speaker": "STANDARD",
+          "text": "Clear-Q4, contact established. Proceed with assigned survey.",
+          "delivery": "received"
+        }
+      ],
+      "check_in": {
+        "state": "scheduled",
+        "label": "DUE IN 3 INTERVALS",
+        "due_at": 3,
+        "remaining": 3
+      },
+      "location": "Utility Room",
+      "observation": "You take stock of the utility room. A fluorescent fixture hums steadily overhead. Shallow scuffs cross the bare floor without forming a confirmed route marker. A shallow metal service panel sits flush with the east wall. A threshold-side entry leads back. A columned corridor continues west. An open passage leads southeast. Nora and Alex remain within speaking range.",
+      "map": {
+        "nodes": [
+          {
+            "id": "async-briefing-room",
+            "name": "ASYNC Briefing Room",
+            "current": false,
+            "personnel": []
+          },
+          {
+            "id": "equipment-staging",
+            "name": "Equipment Staging",
+            "current": false,
+            "personnel": []
+          },
+          {
+            "id": "threshold-approach",
+            "name": "Threshold Approach",
+            "current": false,
+            "personnel": []
+          },
+          {
+            "id": "threshold-room",
+            "name": "Threshold Room",
+            "current": false,
+            "personnel": []
+          },
+          {
+            "id": "threshold-side-entry",
+            "name": "Threshold-Side Entry",
+            "current": false,
+            "personnel": []
+          },
+          {
+            "id": "utility-room",
+            "name": "Utility Room",
+            "current": true,
+            "personnel": [
+              {
+                "name": "Jack Rocha",
+                "status": "present"
+              },
+              {
+                "name": "Nora Vale",
+                "status": "present"
+              },
+              {
+                "name": "Alex Morgan",
+                "status": "present"
+              }
+            ]
+          }
+        ],
+        "unresolved_exits": [
+          {
+            "ref": "utility-to-corridor",
+            "label": "WEST — Columned Corridor",
+            "direction": "west",
+            "status": "unresolved",
+            "hazard": "clear"
+          },
+          {
+            "ref": "utility-to-passage",
+            "label": "SOUTHEAST — Open Passage",
+            "direction": "southeast",
+            "status": "unresolved",
+            "hazard": "clear"
+          }
+        ],
+        "route_history": [
+          {
+            "sequence": 1,
+            "from": "threshold-room",
+            "to": "threshold-side-entry",
+            "connection_id": "threshold-crossing",
+            "at": 0
+          },
+          {
+            "sequence": 2,
+            "from": "threshold-side-entry",
+            "to": "utility-room",
+            "connection_id": "entry-to-utility",
+            "at": 0
+          }
+        ]
+      }
+    },
+    "orientation": {
+      "narration": "You take stock of the utility room. A fluorescent fixture hums steadily overhead. Shallow scuffs cross the bare floor without forming a confirmed route marker. A shallow metal service panel sits flush with the east wall. A threshold-side entry leads back. A columned corridor continues west. An open passage leads southeast. Nora and Alex remain within speaking range."
+    },
+    "moved": {
+      "phase": "FIELD_OPERATION",
+      "player": "Jack Rocha",
+      "controlled_personnel": "Jack Rocha · YOU",
+      "coworkers": [
+        "Nora Vale",
+        "Alex Morgan"
+      ],
+      "mission": "CQ4-LAYOUT-EXTENSION-002-1673",
+      "equipment": [
+        {
+          "id": "q4-field-light-01",
+          "holder": "You",
+          "state": "Operational",
+          "verification": "visually confirmed"
+        },
+        {
+          "id": "q4-recording-device-01",
+          "holder": "Alex Morgan",
+          "state": "Operational",
+          "verification": "visually confirmed"
+        },
+        {
+          "id": "q4-survey-instrument-01",
+          "holder": "Nora Vale",
+          "state": "Operational",
+          "verification": "visually confirmed"
+        },
+        {
+          "id": "q4-survey-radio-01",
+          "holder": "You",
+          "state": "Operational",
+          "verification": "visually confirmed"
+        }
+      ],
+      "local_available": true,
+      "local_history_count": 1,
+      "radio_state": "available",
+      "radio_check_completed": true,
+      "standard_history": [
+        {
+          "speaker": "YOU",
+          "text": "Standard, Clear-Q4 team Complex-side. 3 personnel accounted for.",
+          "delivery": "delivered"
+        },
+        {
+          "speaker": "STANDARD",
+          "text": "Clear-Q4, contact established. Proceed with assigned survey.",
+          "delivery": "received"
+        }
+      ],
+      "check_in": {
+        "state": "scheduled",
+        "label": "DUE IN 2 INTERVALS",
+        "due_at": 3,
+        "remaining": 2
+      },
+      "location": "Columned Corridor",
+      "observation": "You take stock of the columned corridor. Square columns break the westward sightline into regular intervals. A utility room lies east. Nora and Alex remain within speaking range.",
+      "map": {
+        "nodes": [
+          {
+            "id": "async-briefing-room",
+            "name": "ASYNC Briefing Room",
+            "current": false,
+            "personnel": []
+          },
+          {
+            "id": "equipment-staging",
+            "name": "Equipment Staging",
+            "current": false,
+            "personnel": []
+          },
+          {
+            "id": "threshold-approach",
+            "name": "Threshold Approach",
+            "current": false,
+            "personnel": []
+          },
+          {
+            "id": "threshold-room",
+            "name": "Threshold Room",
+            "current": false,
+            "personnel": []
+          },
+          {
+            "id": "threshold-side-entry",
+            "name": "Threshold-Side Entry",
+            "current": false,
+            "personnel": []
+          },
+          {
+            "id": "utility-room",
+            "name": "Utility Room",
+            "current": false,
+            "personnel": []
+          },
+          {
+            "id": "columned-corridor",
+            "name": "Columned Corridor",
+            "current": true,
+            "personnel": [
+              {
+                "name": "Jack Rocha",
+                "status": "present"
+              },
+              {
+                "name": "Nora Vale",
+                "status": "present"
+              },
+              {
+                "name": "Alex Morgan",
+                "status": "present"
+              }
+            ]
+          }
+        ],
+        "unresolved_exits": [],
+        "route_history": [
+          {
+            "sequence": 1,
+            "from": "threshold-room",
+            "to": "threshold-side-entry",
+            "connection_id": "threshold-crossing",
+            "at": 0
+          },
+          {
+            "sequence": 2,
+            "from": "threshold-side-entry",
+            "to": "utility-room",
+            "connection_id": "entry-to-utility",
+            "at": 0
+          },
+          {
+            "sequence": 3,
+            "from": "utility-room",
+            "to": "columned-corridor",
+            "connection_id": "utility-to-corridor",
+            "at": 1
+          }
+        ]
+      }
+    },
+    "resumed": {
+      "phase": "FIELD_OPERATION",
+      "player": "Jack Rocha",
+      "controlled_personnel": "Jack Rocha · YOU",
+      "coworkers": [
+        "Nora Vale",
+        "Alex Morgan"
+      ],
+      "mission": "CQ4-LAYOUT-EXTENSION-002-1673",
+      "equipment": [
+        {
+          "id": "q4-field-light-01",
+          "holder": "You",
+          "state": "Operational",
+          "verification": "visually confirmed"
+        },
+        {
+          "id": "q4-recording-device-01",
+          "holder": "Alex Morgan",
+          "state": "Operational",
+          "verification": "visually confirmed"
+        },
+        {
+          "id": "q4-survey-instrument-01",
+          "holder": "Nora Vale",
+          "state": "Operational",
+          "verification": "visually confirmed"
+        },
+        {
+          "id": "q4-survey-radio-01",
+          "holder": "You",
+          "state": "Operational",
+          "verification": "visually confirmed"
+        }
+      ],
+      "local_available": true,
+      "local_history_count": 1,
+      "radio_state": "available",
+      "radio_check_completed": true,
+      "standard_history": [
+        {
+          "speaker": "YOU",
+          "text": "Standard, Clear-Q4 team Complex-side. 3 personnel accounted for.",
+          "delivery": "delivered"
+        },
+        {
+          "speaker": "STANDARD",
+          "text": "Clear-Q4, contact established. Proceed with assigned survey.",
+          "delivery": "received"
+        }
+      ],
+      "check_in": {
+        "state": "scheduled",
+        "label": "DUE IN 2 INTERVALS",
+        "due_at": 3,
+        "remaining": 2
+      },
+      "location": "Columned Corridor",
+      "observation": "You take stock of the columned corridor. Square columns break the westward sightline into regular intervals. A utility room lies east. Nora and Alex remain within speaking range.",
+      "map": {
+        "nodes": [
+          {
+            "id": "async-briefing-room",
+            "name": "ASYNC Briefing Room",
+            "current": false,
+            "personnel": []
+          },
+          {
+            "id": "equipment-staging",
+            "name": "Equipment Staging",
+            "current": false,
+            "personnel": []
+          },
+          {
+            "id": "threshold-approach",
+            "name": "Threshold Approach",
+            "current": false,
+            "personnel": []
+          },
+          {
+            "id": "threshold-room",
+            "name": "Threshold Room",
+            "current": false,
+            "personnel": []
+          },
+          {
+            "id": "threshold-side-entry",
+            "name": "Threshold-Side Entry",
+            "current": false,
+            "personnel": []
+          },
+          {
+            "id": "utility-room",
+            "name": "Utility Room",
+            "current": false,
+            "personnel": []
+          },
+          {
+            "id": "columned-corridor",
+            "name": "Columned Corridor",
+            "current": true,
+            "personnel": [
+              {
+                "name": "Jack Rocha",
+                "status": "present"
+              },
+              {
+                "name": "Nora Vale",
+                "status": "present"
+              },
+              {
+                "name": "Alex Morgan",
+                "status": "present"
+              }
+            ]
+          }
+        ],
+        "unresolved_exits": [],
+        "route_history": [
+          {
+            "sequence": 1,
+            "from": "threshold-room",
+            "to": "threshold-side-entry",
+            "connection_id": "threshold-crossing",
+            "at": 0
+          },
+          {
+            "sequence": 2,
+            "from": "threshold-side-entry",
+            "to": "utility-room",
+            "connection_id": "entry-to-utility",
+            "at": 0
+          },
+          {
+            "sequence": 3,
+            "from": "utility-room",
+            "to": "columned-corridor",
+            "connection_id": "utility-to-corridor",
+            "at": 1
+          }
+        ]
+      }
+    }
+  },
+  "acceptance": {
+    "institutional_launch_copy": true,
+    "registry_driven_world_selection": true,
+    "briefing_hierarchy_rendered": true,
+    "visible_radio_exchange": true,
+    "concrete_initial_observation": true,
+    "truthful_operational_map": true,
+    "valid_movement_mutated_state": true,
+    "field_resume_exact": true
+  }
+}

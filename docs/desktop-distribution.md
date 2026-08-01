@@ -12,9 +12,9 @@ The app stores worlds in platform application data, not its install directory.
 Offline / Structured play is the default. Exported worlds contain only portable
 world data and never provider credentials, settings, logs, or machine paths.
 
-The alpha currently uses Electron's generic application icon while a reviewed
-Yellow Beast mark is prepared; it has no effect on the bundled runtime or
-world-save format.
+The packaged application uses the project-authorized ASYNC application icon;
+this does not grant permission for unrelated canon assets and has no effect on
+the bundled runtime or world-save format.
 
 For this alpha, package verification runs Yellow Beast from the bundled Electron
 runtime in non-GUI smoke mode; normal graphical Finder/Windows launch is the

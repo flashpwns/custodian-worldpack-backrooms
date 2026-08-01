@@ -1,0 +1,2024 @@
+{
+  "version": "yellow-beast-structured-interaction-acceptance@v1",
+  "generated_at": "2026-08-01T08:06:22.559Z",
+  "evidence_kind": "deterministic rendered-surface and persisted-state capture",
+  "actions": [
+    "INSPECT fluorescent fixture",
+    "TEST fluorescent fixture",
+    "INSPECT scuffed floor",
+    "MARK scuffed floor",
+    "INSPECT service panel",
+    "OPEN service panel",
+    "MOVE west",
+    "MOVE east",
+    "shutdown",
+    "resume"
+  ],
+  "stages": {
+    "initial_object_observation": {
+      "phase": "FIELD_OPERATION",
+      "location": "Utility Room",
+      "observation": "You take stock of the utility room. A fluorescent fixture hums steadily overhead. Shallow scuffs cross the bare floor without forming a confirmed route marker. A shallow metal service panel sits flush with the east wall. A threshold-side entry leads back. A columned corridor continues west. An open passage leads southeast. Nora and Alex remain within speaking range.",
+      "interactables": [
+        {
+          "name": "fluorescent fixture",
+          "condition": "A fluorescent fixture hums steadily overhead.",
+          "known_properties": [
+            "The fixture is fixed to the ceiling."
+          ],
+          "actions": [
+            {
+              "action": "PHOTOGRAPH",
+              "label": "Photograph the fixture",
+              "available": true
+            }
+          ]
+        },
+        {
+          "name": "scuffed floor",
+          "condition": "Shallow scuffs cross the bare floor without forming a confirmed route marker.",
+          "known_properties": [
+            "Several shallow scuff lines cross the bare floor."
+          ],
+          "actions": [
+            {
+              "action": "PHOTOGRAPH",
+              "label": "Photograph the scuffs",
+              "available": true
+            }
+          ]
+        },
+        {
+          "name": "service panel",
+          "condition": "A shallow metal service panel sits flush with the east wall.",
+          "known_properties": [
+            "The shallow metal panel is mounted flush with the east wall."
+          ],
+          "actions": [
+            {
+              "action": "CLOSE",
+              "label": "Close the panel",
+              "available": false
+            }
+          ]
+        }
+      ],
+      "objectives": [
+        {
+          "label": "Establish radio contact",
+          "state": "satisfied",
+          "required": true
+        },
+        {
+          "label": "Enter the declared survey area",
+          "state": "satisfied",
+          "required": true
+        },
+        {
+          "label": "Establish Utility Room conditions",
+          "state": "active",
+          "required": true
+        },
+        {
+          "label": "Capture mission evidence",
+          "state": "active",
+          "required": true
+        },
+        {
+          "label": "Report field evidence",
+          "state": "blocked",
+          "required": true
+        },
+        {
+          "label": "Verify the return route",
+          "state": "active",
+          "required": true
+        },
+        {
+          "label": "Maintain the scheduled check-in",
+          "state": "active",
+          "required": true
+        },
+        {
+          "label": "Return with accountability",
+          "state": "inactive",
+          "required": true
+        },
+        {
+          "label": "Document an additional field condition",
+          "state": "blocked",
+          "required": false
+        }
+      ],
+      "evidence": [],
+      "equipment": [
+        {
+          "label": "Battery field lamp",
+          "holder": "You",
+          "state": "Operational",
+          "verification": "visually confirmed",
+          "remaining": "checked"
+        },
+        {
+          "label": "35mm field camera",
+          "holder": "Alex Morgan",
+          "state": "Operational",
+          "verification": "visually confirmed",
+          "remaining": 12
+        },
+        {
+          "label": "Portable survey instrument",
+          "holder": "Nora Vale",
+          "state": "Operational",
+          "verification": "visually confirmed",
+          "remaining": "checked"
+        },
+        {
+          "label": "Handheld field radio",
+          "holder": "You",
+          "state": "Operational",
+          "verification": "visually confirmed",
+          "remaining": "checked"
+        },
+        {
+          "label": "Numbered route-marker kit",
+          "holder": "You",
+          "state": "Operational",
+          "verification": "visually confirmed",
+          "remaining": 4
+        }
+      ],
+      "operational_time": "T+0 intervals",
+      "check_in": {
+        "state": "scheduled",
+        "label": "DUE IN 3 INTERVALS",
+        "due_at": 3,
+        "remaining": 3
+      },
+      "team": [
+        {
+          "name": "Jack Rocha · YOU",
+          "location": "utility-room",
+          "contact": "LOCAL"
+        },
+        {
+          "name": "Nora Vale",
+          "location": "utility-room",
+          "contact": "LOCAL"
+        },
+        {
+          "name": "Alex Morgan",
+          "location": "utility-room",
+          "contact": "LOCAL"
+        }
+      ],
+      "local_available": true,
+      "radio": {
+        "state": "available",
+        "check_completed": true,
+        "history_count": 2
+      },
+      "map": {
+        "current_location": "utility-room",
+        "nodes": [
+          {
+            "name": "ASYNC Briefing Room",
+            "current": false,
+            "personnel": []
+          },
+          {
+            "name": "Equipment Staging",
+            "current": false,
+            "personnel": []
+          },
+          {
+            "name": "Threshold Approach",
+            "current": false,
+            "personnel": []
+          },
+          {
+            "name": "Threshold Room",
+            "current": false,
+            "personnel": []
+          },
+          {
+            "name": "Threshold-Side Entry",
+            "current": false,
+            "personnel": []
+          },
+          {
+            "name": "Utility Room",
+            "current": true,
+            "personnel": [
+              {
+                "name": "Jack Rocha",
+                "status": "present"
+              },
+              {
+                "name": "Nora Vale",
+                "status": "present"
+              },
+              {
+                "name": "Alex Morgan",
+                "status": "present"
+              }
+            ]
+          }
+        ],
+        "route_history": [
+          {
+            "sequence": 1,
+            "from": "threshold-room",
+            "to": "threshold-side-entry",
+            "connection_id": "threshold-crossing",
+            "at": 0
+          },
+          {
+            "sequence": 2,
+            "from": "threshold-side-entry",
+            "to": "utility-room",
+            "connection_id": "entry-to-utility",
+            "at": 0
+          }
+        ]
+      }
+    },
+    "inspection_result": {
+      "phase": "FIELD_OPERATION",
+      "location": "Utility Room",
+      "observation": "You take stock of the utility room. A fluorescent fixture hums steadily overhead. Shallow scuffs cross the bare floor without forming a confirmed route marker. A shallow metal service panel sits flush with the east wall. A threshold-side entry leads back. A columned corridor continues west. An open passage leads southeast. Nora and Alex remain within speaking range.",
+      "interactables": [
+        {
+          "name": "fluorescent fixture",
+          "condition": "A fluorescent fixture hums steadily overhead.",
+          "known_properties": [
+            "The fixture is fixed to the ceiling.",
+            "Its output remains stable under direct observation."
+          ],
+          "actions": [
+            {
+              "action": "TEST",
+              "label": "Test the light",
+              "available": true
+            },
+            {
+              "action": "PHOTOGRAPH",
+              "label": "Photograph the fixture",
+              "available": true
+            }
+          ]
+        },
+        {
+          "name": "scuffed floor",
+          "condition": "Shallow scuffs cross the bare floor without forming a confirmed route marker.",
+          "known_properties": [
+            "Several shallow scuff lines cross the bare floor."
+          ],
+          "actions": [
+            {
+              "action": "PHOTOGRAPH",
+              "label": "Photograph the scuffs",
+              "available": true
+            }
+          ]
+        },
+        {
+          "name": "service panel",
+          "condition": "A shallow metal service panel sits flush with the east wall.",
+          "known_properties": [
+            "The shallow metal panel is mounted flush with the east wall."
+          ],
+          "actions": [
+            {
+              "action": "CLOSE",
+              "label": "Close the panel",
+              "available": false
+            }
+          ]
+        }
+      ],
+      "objectives": [
+        {
+          "label": "Establish radio contact",
+          "state": "satisfied",
+          "required": true
+        },
+        {
+          "label": "Enter the declared survey area",
+          "state": "satisfied",
+          "required": true
+        },
+        {
+          "label": "Establish Utility Room conditions",
+          "state": "active",
+          "required": true
+        },
+        {
+          "label": "Capture mission evidence",
+          "state": "active",
+          "required": true
+        },
+        {
+          "label": "Report field evidence",
+          "state": "blocked",
+          "required": true
+        },
+        {
+          "label": "Verify the return route",
+          "state": "active",
+          "required": true
+        },
+        {
+          "label": "Maintain the scheduled check-in",
+          "state": "active",
+          "required": true
+        },
+        {
+          "label": "Return with accountability",
+          "state": "inactive",
+          "required": true
+        },
+        {
+          "label": "Document an additional field condition",
+          "state": "blocked",
+          "required": false
+        }
+      ],
+      "evidence": [],
+      "equipment": [
+        {
+          "label": "Battery field lamp",
+          "holder": "You",
+          "state": "Operational",
+          "verification": "visually confirmed",
+          "remaining": "checked"
+        },
+        {
+          "label": "35mm field camera",
+          "holder": "Alex Morgan",
+          "state": "Operational",
+          "verification": "visually confirmed",
+          "remaining": 12
+        },
+        {
+          "label": "Portable survey instrument",
+          "holder": "Nora Vale",
+          "state": "Operational",
+          "verification": "visually confirmed",
+          "remaining": "checked"
+        },
+        {
+          "label": "Handheld field radio",
+          "holder": "You",
+          "state": "Operational",
+          "verification": "visually confirmed",
+          "remaining": "checked"
+        },
+        {
+          "label": "Numbered route-marker kit",
+          "holder": "You",
+          "state": "Operational",
+          "verification": "visually confirmed",
+          "remaining": 4
+        }
+      ],
+      "operational_time": "T+0 intervals",
+      "check_in": {
+        "state": "scheduled",
+        "label": "DUE IN 3 INTERVALS",
+        "due_at": 3,
+        "remaining": 3
+      },
+      "team": [
+        {
+          "name": "Jack Rocha · YOU",
+          "location": "utility-room",
+          "contact": "LOCAL"
+        },
+        {
+          "name": "Nora Vale",
+          "location": "utility-room",
+          "contact": "LOCAL"
+        },
+        {
+          "name": "Alex Morgan",
+          "location": "utility-room",
+          "contact": "LOCAL"
+        }
+      ],
+      "local_available": true,
+      "radio": {
+        "state": "available",
+        "check_completed": true,
+        "history_count": 2
+      },
+      "map": {
+        "current_location": "utility-room",
+        "nodes": [
+          {
+            "name": "ASYNC Briefing Room",
+            "current": false,
+            "personnel": []
+          },
+          {
+            "name": "Equipment Staging",
+            "current": false,
+            "personnel": []
+          },
+          {
+            "name": "Threshold Approach",
+            "current": false,
+            "personnel": []
+          },
+          {
+            "name": "Threshold Room",
+            "current": false,
+            "personnel": []
+          },
+          {
+            "name": "Threshold-Side Entry",
+            "current": false,
+            "personnel": []
+          },
+          {
+            "name": "Utility Room",
+            "current": true,
+            "personnel": [
+              {
+                "name": "Jack Rocha",
+                "status": "present"
+              },
+              {
+                "name": "Nora Vale",
+                "status": "present"
+              },
+              {
+                "name": "Alex Morgan",
+                "status": "present"
+              }
+            ]
+          }
+        ],
+        "route_history": [
+          {
+            "sequence": 1,
+            "from": "threshold-room",
+            "to": "threshold-side-entry",
+            "connection_id": "threshold-crossing",
+            "at": 0
+          },
+          {
+            "sequence": 2,
+            "from": "threshold-side-entry",
+            "to": "utility-room",
+            "connection_id": "entry-to-utility",
+            "at": 0
+          }
+        ]
+      }
+    },
+    "successful_state_mutation": {
+      "phase": "FIELD_OPERATION",
+      "location": "Utility Room",
+      "observation": "You take stock of the utility room. The fluorescent fixture remains steady overhead and is now tagged in the survey record. Shallow scuffs cross the bare floor without forming a confirmed route marker. A shallow metal service panel sits flush with the east wall. A threshold-side entry leads back. A columned corridor continues west. An open passage leads southeast. Nora and Alex remain within speaking range.",
+      "interactables": [
+        {
+          "name": "fluorescent fixture",
+          "condition": "The fluorescent fixture remains steady overhead and is now tagged in the survey record.",
+          "known_properties": [
+            "The fixture is fixed to the ceiling.",
+            "Its output remains stable under direct observation."
+          ],
+          "actions": [
+            {
+              "action": "TEST",
+              "label": "Test the light",
+              "available": false
+            },
+            {
+              "action": "PHOTOGRAPH",
+              "label": "Photograph the fixture",
+              "available": true
+            }
+          ]
+        },
+        {
+          "name": "scuffed floor",
+          "condition": "Shallow scuffs cross the bare floor without forming a confirmed route marker.",
+          "known_properties": [
+            "Several shallow scuff lines cross the bare floor."
+          ],
+          "actions": [
+            {
+              "action": "PHOTOGRAPH",
+              "label": "Photograph the scuffs",
+              "available": true
+            }
+          ]
+        },
+        {
+          "name": "service panel",
+          "condition": "A shallow metal service panel sits flush with the east wall.",
+          "known_properties": [
+            "The shallow metal panel is mounted flush with the east wall."
+          ],
+          "actions": [
+            {
+              "action": "CLOSE",
+              "label": "Close the panel",
+              "available": false
+            }
+          ]
+        }
+      ],
+      "objectives": [
+        {
+          "label": "Establish radio contact",
+          "state": "satisfied",
+          "required": true
+        },
+        {
+          "label": "Enter the declared survey area",
+          "state": "satisfied",
+          "required": true
+        },
+        {
+          "label": "Establish Utility Room conditions",
+          "state": "active",
+          "required": true
+        },
+        {
+          "label": "Capture mission evidence",
+          "state": "satisfied",
+          "required": true
+        },
+        {
+          "label": "Report field evidence",
+          "state": "active",
+          "required": true
+        },
+        {
+          "label": "Verify the return route",
+          "state": "active",
+          "required": true
+        },
+        {
+          "label": "Maintain the scheduled check-in",
+          "state": "active",
+          "required": true
+        },
+        {
+          "label": "Return with accountability",
+          "state": "inactive",
+          "required": true
+        },
+        {
+          "label": "Document an additional field condition",
+          "state": "active",
+          "required": false
+        }
+      ],
+      "evidence": [
+        {
+          "id": "object-evidence-a56a2cc64dc0aacd0c4a",
+          "type": "fixture-test",
+          "source": "fluorescent fixture",
+          "condition": "The active fixture held a steady output during the instrument test.",
+          "observer": "Nora Vale",
+          "device": "Portable survey instrument",
+          "location": "Utility Room",
+          "time": {
+            "interval": 1
+          },
+          "reporting_state": "unreported"
+        }
+      ],
+      "equipment": [
+        {
+          "label": "Battery field lamp",
+          "holder": "You",
+          "state": "Operational",
+          "verification": "visually confirmed",
+          "remaining": "checked"
+        },
+        {
+          "label": "35mm field camera",
+          "holder": "Alex Morgan",
+          "state": "Operational",
+          "verification": "visually confirmed",
+          "remaining": 12
+        },
+        {
+          "label": "Portable survey instrument",
+          "holder": "Nora Vale",
+          "state": "Depleted",
+          "verification": "visually confirmed",
+          "remaining": "checked"
+        },
+        {
+          "label": "Handheld field radio",
+          "holder": "You",
+          "state": "Operational",
+          "verification": "visually confirmed",
+          "remaining": "checked"
+        },
+        {
+          "label": "Numbered route-marker kit",
+          "holder": "You",
+          "state": "Operational",
+          "verification": "visually confirmed",
+          "remaining": 4
+        }
+      ],
+      "operational_time": "T+1 intervals",
+      "check_in": {
+        "state": "scheduled",
+        "label": "DUE IN 2 INTERVALS",
+        "due_at": 3,
+        "remaining": 2
+      },
+      "team": [
+        {
+          "name": "Jack Rocha · YOU",
+          "location": "utility-room",
+          "contact": "LOCAL"
+        },
+        {
+          "name": "Nora Vale",
+          "location": "utility-room",
+          "contact": "LOCAL"
+        },
+        {
+          "name": "Alex Morgan",
+          "location": "utility-room",
+          "contact": "LOCAL"
+        }
+      ],
+      "local_available": true,
+      "radio": {
+        "state": "available",
+        "check_completed": true,
+        "history_count": 2
+      },
+      "map": {
+        "current_location": "utility-room",
+        "nodes": [
+          {
+            "name": "ASYNC Briefing Room",
+            "current": false,
+            "personnel": []
+          },
+          {
+            "name": "Equipment Staging",
+            "current": false,
+            "personnel": []
+          },
+          {
+            "name": "Threshold Approach",
+            "current": false,
+            "personnel": []
+          },
+          {
+            "name": "Threshold Room",
+            "current": false,
+            "personnel": []
+          },
+          {
+            "name": "Threshold-Side Entry",
+            "current": false,
+            "personnel": []
+          },
+          {
+            "name": "Utility Room",
+            "current": true,
+            "personnel": [
+              {
+                "name": "Jack Rocha",
+                "status": "present"
+              },
+              {
+                "name": "Nora Vale",
+                "status": "present"
+              },
+              {
+                "name": "Alex Morgan",
+                "status": "present"
+              }
+            ]
+          }
+        ],
+        "route_history": [
+          {
+            "sequence": 1,
+            "from": "threshold-room",
+            "to": "threshold-side-entry",
+            "connection_id": "threshold-crossing",
+            "at": 0
+          },
+          {
+            "sequence": 2,
+            "from": "threshold-side-entry",
+            "to": "utility-room",
+            "connection_id": "entry-to-utility",
+            "at": 0
+          }
+        ]
+      }
+    },
+    "route_marker_placed": {
+      "phase": "FIELD_OPERATION",
+      "location": "Utility Room",
+      "observation": "You take stock of the utility room. The fluorescent fixture remains steady overhead and is now tagged in the survey record. The numbered route marker you placed remains visible beside the west-wall scuffs. A shallow metal service panel sits flush with the east wall. A threshold-side entry leads back. A columned corridor continues west. An open passage leads southeast. Nora and Alex remain within speaking range.",
+      "interactables": [
+        {
+          "name": "fluorescent fixture",
+          "condition": "The fluorescent fixture remains steady overhead and is now tagged in the survey record.",
+          "known_properties": [
+            "The fixture is fixed to the ceiling.",
+            "Its output remains stable under direct observation."
+          ],
+          "actions": [
+            {
+              "action": "TEST",
+              "label": "Test the light",
+              "available": false
+            },
+            {
+              "action": "PHOTOGRAPH",
+              "label": "Photograph the fixture",
+              "available": true
+            }
+          ]
+        },
+        {
+          "name": "scuffed floor",
+          "condition": "The numbered route marker you placed remains visible beside the west-wall scuffs.",
+          "known_properties": [
+            "Several shallow scuff lines cross the bare floor.",
+            "The scuffs overlap as ordinary traffic wear rather than an authored route mark."
+          ],
+          "actions": [
+            {
+              "action": "PHOTOGRAPH",
+              "label": "Photograph the scuffs",
+              "available": true
+            },
+            {
+              "action": "MARK",
+              "label": "Place a route marker",
+              "available": false
+            }
+          ]
+        },
+        {
+          "name": "service panel",
+          "condition": "A shallow metal service panel sits flush with the east wall.",
+          "known_properties": [
+            "The shallow metal panel is mounted flush with the east wall."
+          ],
+          "actions": [
+            {
+              "action": "CLOSE",
+              "label": "Close the panel",
+              "available": false
+            }
+          ]
+        }
+      ],
+      "objectives": [
+        {
+          "label": "Establish radio contact",
+          "state": "satisfied",
+          "required": true
+        },
+        {
+          "label": "Enter the declared survey area",
+          "state": "satisfied",
+          "required": true
+        },
+        {
+          "label": "Establish Utility Room conditions",
+          "state": "active",
+          "required": true
+        },
+        {
+          "label": "Capture mission evidence",
+          "state": "satisfied",
+          "required": true
+        },
+        {
+          "label": "Report field evidence",
+          "state": "active",
+          "required": true
+        },
+        {
+          "label": "Verify the return route",
+          "state": "active",
+          "required": true
+        },
+        {
+          "label": "Maintain the scheduled check-in",
+          "state": "active",
+          "required": true
+        },
+        {
+          "label": "Return with accountability",
+          "state": "inactive",
+          "required": true
+        },
+        {
+          "label": "Document an additional field condition",
+          "state": "active",
+          "required": false
+        }
+      ],
+      "evidence": [
+        {
+          "id": "object-evidence-a56a2cc64dc0aacd0c4a",
+          "type": "fixture-test",
+          "source": "fluorescent fixture",
+          "condition": "The active fixture held a steady output during the instrument test.",
+          "observer": "Nora Vale",
+          "device": "Portable survey instrument",
+          "location": "Utility Room",
+          "time": {
+            "interval": 1
+          },
+          "reporting_state": "unreported"
+        }
+      ],
+      "equipment": [
+        {
+          "label": "Battery field lamp",
+          "holder": "You",
+          "state": "Operational",
+          "verification": "visually confirmed",
+          "remaining": "checked"
+        },
+        {
+          "label": "35mm field camera",
+          "holder": "Alex Morgan",
+          "state": "Operational",
+          "verification": "visually confirmed",
+          "remaining": 12
+        },
+        {
+          "label": "Portable survey instrument",
+          "holder": "Nora Vale",
+          "state": "Depleted",
+          "verification": "visually confirmed",
+          "remaining": "checked"
+        },
+        {
+          "label": "Handheld field radio",
+          "holder": "You",
+          "state": "Operational",
+          "verification": "visually confirmed",
+          "remaining": "checked"
+        },
+        {
+          "label": "Numbered route-marker kit",
+          "holder": "You",
+          "state": "Operational",
+          "verification": "visually confirmed",
+          "remaining": 3
+        }
+      ],
+      "operational_time": "T+2 intervals",
+      "check_in": {
+        "state": "scheduled",
+        "label": "DUE IN 1 INTERVAL",
+        "due_at": 3,
+        "remaining": 1
+      },
+      "team": [
+        {
+          "name": "Jack Rocha · YOU",
+          "location": "utility-room",
+          "contact": "LOCAL"
+        },
+        {
+          "name": "Nora Vale",
+          "location": "utility-room",
+          "contact": "LOCAL"
+        },
+        {
+          "name": "Alex Morgan",
+          "location": "utility-room",
+          "contact": "LOCAL"
+        }
+      ],
+      "local_available": true,
+      "radio": {
+        "state": "available",
+        "check_completed": true,
+        "history_count": 2
+      },
+      "map": {
+        "current_location": "utility-room",
+        "nodes": [
+          {
+            "name": "ASYNC Briefing Room",
+            "current": false,
+            "personnel": []
+          },
+          {
+            "name": "Equipment Staging",
+            "current": false,
+            "personnel": []
+          },
+          {
+            "name": "Threshold Approach",
+            "current": false,
+            "personnel": []
+          },
+          {
+            "name": "Threshold Room",
+            "current": false,
+            "personnel": []
+          },
+          {
+            "name": "Threshold-Side Entry",
+            "current": false,
+            "personnel": []
+          },
+          {
+            "name": "Utility Room",
+            "current": true,
+            "personnel": [
+              {
+                "name": "Jack Rocha",
+                "status": "present"
+              },
+              {
+                "name": "Nora Vale",
+                "status": "present"
+              },
+              {
+                "name": "Alex Morgan",
+                "status": "present"
+              }
+            ]
+          }
+        ],
+        "route_history": [
+          {
+            "sequence": 1,
+            "from": "threshold-room",
+            "to": "threshold-side-entry",
+            "connection_id": "threshold-crossing",
+            "at": 0
+          },
+          {
+            "sequence": 2,
+            "from": "threshold-side-entry",
+            "to": "utility-room",
+            "connection_id": "entry-to-utility",
+            "at": 0
+          }
+        ]
+      }
+    },
+    "panel_opened": {
+      "phase": "FIELD_OPERATION",
+      "location": "Utility Room",
+      "observation": "You take stock of the utility room. The fluorescent fixture remains steady overhead and is now tagged in the survey record. The numbered route marker you placed remains visible beside the west-wall scuffs. The service panel stands open on the east wall, its shallow intact interior visible. A threshold-side entry leads back. A columned corridor continues west. An open passage leads southeast. Nora and Alex remain within speaking range.",
+      "interactables": [
+        {
+          "name": "fluorescent fixture",
+          "condition": "The fluorescent fixture remains steady overhead and is now tagged in the survey record.",
+          "known_properties": [
+            "The fixture is fixed to the ceiling.",
+            "Its output remains stable under direct observation."
+          ],
+          "actions": [
+            {
+              "action": "TEST",
+              "label": "Test the light",
+              "available": false
+            },
+            {
+              "action": "PHOTOGRAPH",
+              "label": "Photograph the fixture",
+              "available": true
+            }
+          ]
+        },
+        {
+          "name": "scuffed floor",
+          "condition": "The numbered route marker you placed remains visible beside the west-wall scuffs.",
+          "known_properties": [
+            "Several shallow scuff lines cross the bare floor.",
+            "The scuffs overlap as ordinary traffic wear rather than an authored route mark."
+          ],
+          "actions": [
+            {
+              "action": "PHOTOGRAPH",
+              "label": "Photograph the scuffs",
+              "available": true
+            },
+            {
+              "action": "MARK",
+              "label": "Place a route marker",
+              "available": false
+            }
+          ]
+        },
+        {
+          "name": "service panel",
+          "condition": "The service panel stands open on the east wall, its shallow intact interior visible.",
+          "known_properties": [
+            "The shallow metal panel is mounted flush with the east wall.",
+            "The latch and visible interior are dry and free of fresh scorching."
+          ],
+          "actions": [
+            {
+              "action": "OPEN",
+              "label": "Open the panel",
+              "available": false
+            },
+            {
+              "action": "CLOSE",
+              "label": "Close the panel",
+              "available": true
+            }
+          ]
+        }
+      ],
+      "objectives": [
+        {
+          "label": "Establish radio contact",
+          "state": "satisfied",
+          "required": true
+        },
+        {
+          "label": "Enter the declared survey area",
+          "state": "satisfied",
+          "required": true
+        },
+        {
+          "label": "Establish Utility Room conditions",
+          "state": "satisfied",
+          "required": true
+        },
+        {
+          "label": "Capture mission evidence",
+          "state": "satisfied",
+          "required": true
+        },
+        {
+          "label": "Report field evidence",
+          "state": "active",
+          "required": true
+        },
+        {
+          "label": "Verify the return route",
+          "state": "active",
+          "required": true
+        },
+        {
+          "label": "Maintain the scheduled check-in",
+          "state": "active",
+          "required": true
+        },
+        {
+          "label": "Return with accountability",
+          "state": "inactive",
+          "required": true
+        },
+        {
+          "label": "Document an additional field condition",
+          "state": "active",
+          "required": false
+        }
+      ],
+      "evidence": [
+        {
+          "id": "object-evidence-a56a2cc64dc0aacd0c4a",
+          "type": "fixture-test",
+          "source": "fluorescent fixture",
+          "condition": "The active fixture held a steady output during the instrument test.",
+          "observer": "Nora Vale",
+          "device": "Portable survey instrument",
+          "location": "Utility Room",
+          "time": {
+            "interval": 1
+          },
+          "reporting_state": "unreported"
+        }
+      ],
+      "equipment": [
+        {
+          "label": "Battery field lamp",
+          "holder": "You",
+          "state": "Operational",
+          "verification": "visually confirmed",
+          "remaining": "checked"
+        },
+        {
+          "label": "35mm field camera",
+          "holder": "Alex Morgan",
+          "state": "Operational",
+          "verification": "visually confirmed",
+          "remaining": 12
+        },
+        {
+          "label": "Portable survey instrument",
+          "holder": "Nora Vale",
+          "state": "Depleted",
+          "verification": "visually confirmed",
+          "remaining": "checked"
+        },
+        {
+          "label": "Handheld field radio",
+          "holder": "You",
+          "state": "Operational",
+          "verification": "visually confirmed",
+          "remaining": "checked"
+        },
+        {
+          "label": "Numbered route-marker kit",
+          "holder": "You",
+          "state": "Operational",
+          "verification": "visually confirmed",
+          "remaining": 3
+        }
+      ],
+      "operational_time": "T+3 intervals",
+      "check_in": {
+        "state": "due",
+        "label": "CHECK-IN DUE",
+        "due_at": 3,
+        "remaining": 0
+      },
+      "team": [
+        {
+          "name": "Jack Rocha · YOU",
+          "location": "utility-room",
+          "contact": "LOCAL"
+        },
+        {
+          "name": "Nora Vale",
+          "location": "utility-room",
+          "contact": "LOCAL"
+        },
+        {
+          "name": "Alex Morgan",
+          "location": "utility-room",
+          "contact": "LOCAL"
+        }
+      ],
+      "local_available": true,
+      "radio": {
+        "state": "available",
+        "check_completed": true,
+        "history_count": 2
+      },
+      "map": {
+        "current_location": "utility-room",
+        "nodes": [
+          {
+            "name": "ASYNC Briefing Room",
+            "current": false,
+            "personnel": []
+          },
+          {
+            "name": "Equipment Staging",
+            "current": false,
+            "personnel": []
+          },
+          {
+            "name": "Threshold Approach",
+            "current": false,
+            "personnel": []
+          },
+          {
+            "name": "Threshold Room",
+            "current": false,
+            "personnel": []
+          },
+          {
+            "name": "Threshold-Side Entry",
+            "current": false,
+            "personnel": []
+          },
+          {
+            "name": "Utility Room",
+            "current": true,
+            "personnel": [
+              {
+                "name": "Jack Rocha",
+                "status": "present"
+              },
+              {
+                "name": "Nora Vale",
+                "status": "present"
+              },
+              {
+                "name": "Alex Morgan",
+                "status": "present"
+              }
+            ]
+          }
+        ],
+        "route_history": [
+          {
+            "sequence": 1,
+            "from": "threshold-room",
+            "to": "threshold-side-entry",
+            "connection_id": "threshold-crossing",
+            "at": 0
+          },
+          {
+            "sequence": 2,
+            "from": "threshold-side-entry",
+            "to": "utility-room",
+            "connection_id": "entry-to-utility",
+            "at": 0
+          }
+        ]
+      }
+    },
+    "moved_away": {
+      "phase": "FIELD_OPERATION",
+      "location": "Columned Corridor",
+      "observation": "You take stock of the columned corridor. Square columns break the westward sightline into regular intervals. A utility room lies east. Nora and Alex remain within speaking range.",
+      "interactables": [],
+      "objectives": [
+        {
+          "label": "Establish radio contact",
+          "state": "satisfied",
+          "required": true
+        },
+        {
+          "label": "Enter the declared survey area",
+          "state": "satisfied",
+          "required": true
+        },
+        {
+          "label": "Establish Utility Room conditions",
+          "state": "satisfied",
+          "required": true
+        },
+        {
+          "label": "Capture mission evidence",
+          "state": "satisfied",
+          "required": true
+        },
+        {
+          "label": "Report field evidence",
+          "state": "active",
+          "required": true
+        },
+        {
+          "label": "Verify the return route",
+          "state": "active",
+          "required": true
+        },
+        {
+          "label": "Maintain the scheduled check-in",
+          "state": "failed",
+          "required": true
+        },
+        {
+          "label": "Return with accountability",
+          "state": "inactive",
+          "required": true
+        },
+        {
+          "label": "Document an additional field condition",
+          "state": "active",
+          "required": false
+        }
+      ],
+      "evidence": [
+        {
+          "id": "object-evidence-a56a2cc64dc0aacd0c4a",
+          "type": "fixture-test",
+          "source": "fluorescent fixture",
+          "condition": "The active fixture held a steady output during the instrument test.",
+          "observer": "Nora Vale",
+          "device": "Portable survey instrument",
+          "location": "Utility Room",
+          "time": {
+            "interval": 1
+          },
+          "reporting_state": "unreported"
+        }
+      ],
+      "equipment": [
+        {
+          "label": "Battery field lamp",
+          "holder": "You",
+          "state": "Operational",
+          "verification": "visually confirmed",
+          "remaining": "checked"
+        },
+        {
+          "label": "35mm field camera",
+          "holder": "Alex Morgan",
+          "state": "Operational",
+          "verification": "visually confirmed",
+          "remaining": 12
+        },
+        {
+          "label": "Portable survey instrument",
+          "holder": "Nora Vale",
+          "state": "Depleted",
+          "verification": "visually confirmed",
+          "remaining": "checked"
+        },
+        {
+          "label": "Handheld field radio",
+          "holder": "You",
+          "state": "Operational",
+          "verification": "visually confirmed",
+          "remaining": "checked"
+        },
+        {
+          "label": "Numbered route-marker kit",
+          "holder": "You",
+          "state": "Operational",
+          "verification": "visually confirmed",
+          "remaining": 3
+        }
+      ],
+      "operational_time": "T+4 intervals",
+      "check_in": {
+        "state": "overdue",
+        "label": "OVERDUE BY 1 INTERVAL",
+        "due_at": 3,
+        "remaining": -1
+      },
+      "team": [
+        {
+          "name": "Jack Rocha · YOU",
+          "location": "columned-corridor",
+          "contact": "LOCAL"
+        },
+        {
+          "name": "Nora Vale",
+          "location": "columned-corridor",
+          "contact": "LOCAL"
+        },
+        {
+          "name": "Alex Morgan",
+          "location": "columned-corridor",
+          "contact": "LOCAL"
+        }
+      ],
+      "local_available": true,
+      "radio": {
+        "state": "available",
+        "check_completed": true,
+        "history_count": 2
+      },
+      "map": {
+        "current_location": "columned-corridor",
+        "nodes": [
+          {
+            "name": "ASYNC Briefing Room",
+            "current": false,
+            "personnel": []
+          },
+          {
+            "name": "Equipment Staging",
+            "current": false,
+            "personnel": []
+          },
+          {
+            "name": "Threshold Approach",
+            "current": false,
+            "personnel": []
+          },
+          {
+            "name": "Threshold Room",
+            "current": false,
+            "personnel": []
+          },
+          {
+            "name": "Threshold-Side Entry",
+            "current": false,
+            "personnel": []
+          },
+          {
+            "name": "Utility Room",
+            "current": false,
+            "personnel": []
+          },
+          {
+            "name": "Columned Corridor",
+            "current": true,
+            "personnel": [
+              {
+                "name": "Jack Rocha",
+                "status": "present"
+              },
+              {
+                "name": "Nora Vale",
+                "status": "present"
+              },
+              {
+                "name": "Alex Morgan",
+                "status": "present"
+              }
+            ]
+          }
+        ],
+        "route_history": [
+          {
+            "sequence": 1,
+            "from": "threshold-room",
+            "to": "threshold-side-entry",
+            "connection_id": "threshold-crossing",
+            "at": 0
+          },
+          {
+            "sequence": 2,
+            "from": "threshold-side-entry",
+            "to": "utility-room",
+            "connection_id": "entry-to-utility",
+            "at": 0
+          },
+          {
+            "sequence": 3,
+            "from": "utility-room",
+            "to": "columned-corridor",
+            "connection_id": "utility-to-corridor",
+            "at": 4
+          }
+        ]
+      }
+    },
+    "returned_to_changed_room": {
+      "phase": "FIELD_OPERATION",
+      "location": "Utility Room",
+      "observation": "You take stock of the utility room. The fluorescent fixture remains steady overhead and is now tagged in the survey record. The numbered route marker you placed remains visible beside the west-wall scuffs. The service panel stands open on the east wall, its shallow intact interior visible. A threshold-side entry leads back. A columned corridor continues west. An open passage leads southeast. Nora and Alex remain within speaking range.",
+      "interactables": [
+        {
+          "name": "fluorescent fixture",
+          "condition": "The fluorescent fixture remains steady overhead and is now tagged in the survey record.",
+          "known_properties": [
+            "The fixture is fixed to the ceiling.",
+            "Its output remains stable under direct observation."
+          ],
+          "actions": [
+            {
+              "action": "TEST",
+              "label": "Test the light",
+              "available": false
+            },
+            {
+              "action": "PHOTOGRAPH",
+              "label": "Photograph the fixture",
+              "available": true
+            }
+          ]
+        },
+        {
+          "name": "scuffed floor",
+          "condition": "The numbered route marker you placed remains visible beside the west-wall scuffs.",
+          "known_properties": [
+            "Several shallow scuff lines cross the bare floor.",
+            "The scuffs overlap as ordinary traffic wear rather than an authored route mark."
+          ],
+          "actions": [
+            {
+              "action": "PHOTOGRAPH",
+              "label": "Photograph the scuffs",
+              "available": true
+            },
+            {
+              "action": "MARK",
+              "label": "Place a route marker",
+              "available": false
+            }
+          ]
+        },
+        {
+          "name": "service panel",
+          "condition": "The service panel stands open on the east wall, its shallow intact interior visible.",
+          "known_properties": [
+            "The shallow metal panel is mounted flush with the east wall.",
+            "The latch and visible interior are dry and free of fresh scorching."
+          ],
+          "actions": [
+            {
+              "action": "OPEN",
+              "label": "Open the panel",
+              "available": false
+            },
+            {
+              "action": "CLOSE",
+              "label": "Close the panel",
+              "available": true
+            }
+          ]
+        }
+      ],
+      "objectives": [
+        {
+          "label": "Establish radio contact",
+          "state": "satisfied",
+          "required": true
+        },
+        {
+          "label": "Enter the declared survey area",
+          "state": "satisfied",
+          "required": true
+        },
+        {
+          "label": "Establish Utility Room conditions",
+          "state": "satisfied",
+          "required": true
+        },
+        {
+          "label": "Capture mission evidence",
+          "state": "satisfied",
+          "required": true
+        },
+        {
+          "label": "Report field evidence",
+          "state": "active",
+          "required": true
+        },
+        {
+          "label": "Verify the return route",
+          "state": "active",
+          "required": true
+        },
+        {
+          "label": "Maintain the scheduled check-in",
+          "state": "failed",
+          "required": true
+        },
+        {
+          "label": "Return with accountability",
+          "state": "inactive",
+          "required": true
+        },
+        {
+          "label": "Document an additional field condition",
+          "state": "active",
+          "required": false
+        }
+      ],
+      "evidence": [
+        {
+          "id": "object-evidence-a56a2cc64dc0aacd0c4a",
+          "type": "fixture-test",
+          "source": "fluorescent fixture",
+          "condition": "The active fixture held a steady output during the instrument test.",
+          "observer": "Nora Vale",
+          "device": "Portable survey instrument",
+          "location": "Utility Room",
+          "time": {
+            "interval": 1
+          },
+          "reporting_state": "unreported"
+        }
+      ],
+      "equipment": [
+        {
+          "label": "Battery field lamp",
+          "holder": "You",
+          "state": "Operational",
+          "verification": "visually confirmed",
+          "remaining": "checked"
+        },
+        {
+          "label": "35mm field camera",
+          "holder": "Alex Morgan",
+          "state": "Operational",
+          "verification": "visually confirmed",
+          "remaining": 12
+        },
+        {
+          "label": "Portable survey instrument",
+          "holder": "Nora Vale",
+          "state": "Depleted",
+          "verification": "visually confirmed",
+          "remaining": "checked"
+        },
+        {
+          "label": "Handheld field radio",
+          "holder": "You",
+          "state": "Operational",
+          "verification": "visually confirmed",
+          "remaining": "checked"
+        },
+        {
+          "label": "Numbered route-marker kit",
+          "holder": "You",
+          "state": "Operational",
+          "verification": "visually confirmed",
+          "remaining": 3
+        }
+      ],
+      "operational_time": "T+5 intervals",
+      "check_in": {
+        "state": "overdue",
+        "label": "OVERDUE BY 2 INTERVALS",
+        "due_at": 3,
+        "remaining": -2
+      },
+      "team": [
+        {
+          "name": "Jack Rocha · YOU",
+          "location": "utility-room",
+          "contact": "LOCAL"
+        },
+        {
+          "name": "Nora Vale",
+          "location": "utility-room",
+          "contact": "LOCAL"
+        },
+        {
+          "name": "Alex Morgan",
+          "location": "utility-room",
+          "contact": "LOCAL"
+        }
+      ],
+      "local_available": true,
+      "radio": {
+        "state": "available",
+        "check_completed": true,
+        "history_count": 2
+      },
+      "map": {
+        "current_location": "utility-room",
+        "nodes": [
+          {
+            "name": "ASYNC Briefing Room",
+            "current": false,
+            "personnel": []
+          },
+          {
+            "name": "Equipment Staging",
+            "current": false,
+            "personnel": []
+          },
+          {
+            "name": "Threshold Approach",
+            "current": false,
+            "personnel": []
+          },
+          {
+            "name": "Threshold Room",
+            "current": false,
+            "personnel": []
+          },
+          {
+            "name": "Threshold-Side Entry",
+            "current": false,
+            "personnel": []
+          },
+          {
+            "name": "Utility Room",
+            "current": true,
+            "personnel": [
+              {
+                "name": "Jack Rocha",
+                "status": "present"
+              },
+              {
+                "name": "Nora Vale",
+                "status": "present"
+              },
+              {
+                "name": "Alex Morgan",
+                "status": "present"
+              }
+            ]
+          },
+          {
+            "name": "Columned Corridor",
+            "current": false,
+            "personnel": []
+          }
+        ],
+        "route_history": [
+          {
+            "sequence": 1,
+            "from": "threshold-room",
+            "to": "threshold-side-entry",
+            "connection_id": "threshold-crossing",
+            "at": 0
+          },
+          {
+            "sequence": 2,
+            "from": "threshold-side-entry",
+            "to": "utility-room",
+            "connection_id": "entry-to-utility",
+            "at": 0
+          },
+          {
+            "sequence": 3,
+            "from": "utility-room",
+            "to": "columned-corridor",
+            "connection_id": "utility-to-corridor",
+            "at": 4
+          },
+          {
+            "sequence": 4,
+            "from": "columned-corridor",
+            "to": "utility-room",
+            "connection_id": "utility-to-corridor",
+            "at": 5
+          }
+        ]
+      }
+    },
+    "post_restart_resume": {
+      "phase": "FIELD_OPERATION",
+      "location": "Utility Room",
+      "observation": "You take stock of the utility room. The fluorescent fixture remains steady overhead and is now tagged in the survey record. The numbered route marker you placed remains visible beside the west-wall scuffs. The service panel stands open on the east wall, its shallow intact interior visible. A threshold-side entry leads back. A columned corridor continues west. An open passage leads southeast. Nora and Alex remain within speaking range.",
+      "interactables": [
+        {
+          "name": "fluorescent fixture",
+          "condition": "The fluorescent fixture remains steady overhead and is now tagged in the survey record.",
+          "known_properties": [
+            "The fixture is fixed to the ceiling.",
+            "Its output remains stable under direct observation."
+          ],
+          "actions": [
+            {
+              "action": "TEST",
+              "label": "Test the light",
+              "available": false
+            },
+            {
+              "action": "PHOTOGRAPH",
+              "label": "Photograph the fixture",
+              "available": true
+            }
+          ]
+        },
+        {
+          "name": "scuffed floor",
+          "condition": "The numbered route marker you placed remains visible beside the west-wall scuffs.",
+          "known_properties": [
+            "Several shallow scuff lines cross the bare floor.",
+            "The scuffs overlap as ordinary traffic wear rather than an authored route mark."
+          ],
+          "actions": [
+            {
+              "action": "PHOTOGRAPH",
+              "label": "Photograph the scuffs",
+              "available": true
+            },
+            {
+              "action": "MARK",
+              "label": "Place a route marker",
+              "available": false
+            }
+          ]
+        },
+        {
+          "name": "service panel",
+          "condition": "The service panel stands open on the east wall, its shallow intact interior visible.",
+          "known_properties": [
+            "The shallow metal panel is mounted flush with the east wall.",
+            "The latch and visible interior are dry and free of fresh scorching."
+          ],
+          "actions": [
+            {
+              "action": "OPEN",
+              "label": "Open the panel",
+              "available": false
+            },
+            {
+              "action": "CLOSE",
+              "label": "Close the panel",
+              "available": true
+            }
+          ]
+        }
+      ],
+      "objectives": [
+        {
+          "label": "Establish radio contact",
+          "state": "satisfied",
+          "required": true
+        },
+        {
+          "label": "Enter the declared survey area",
+          "state": "satisfied",
+          "required": true
+        },
+        {
+          "label": "Establish Utility Room conditions",
+          "state": "satisfied",
+          "required": true
+        },
+        {
+          "label": "Capture mission evidence",
+          "state": "satisfied",
+          "required": true
+        },
+        {
+          "label": "Report field evidence",
+          "state": "active",
+          "required": true
+        },
+        {
+          "label": "Verify the return route",
+          "state": "active",
+          "required": true
+        },
+        {
+          "label": "Maintain the scheduled check-in",
+          "state": "failed",
+          "required": true
+        },
+        {
+          "label": "Return with accountability",
+          "state": "inactive",
+          "required": true
+        },
+        {
+          "label": "Document an additional field condition",
+          "state": "active",
+          "required": false
+        }
+      ],
+      "evidence": [
+        {
+          "id": "object-evidence-a56a2cc64dc0aacd0c4a",
+          "type": "fixture-test",
+          "source": "fluorescent fixture",
+          "condition": "The active fixture held a steady output during the instrument test.",
+          "observer": "Nora Vale",
+          "device": "Portable survey instrument",
+          "location": "Utility Room",
+          "time": {
+            "interval": 1
+          },
+          "reporting_state": "unreported"
+        }
+      ],
+      "equipment": [
+        {
+          "label": "Battery field lamp",
+          "holder": "You",
+          "state": "Operational",
+          "verification": "visually confirmed",
+          "remaining": "checked"
+        },
+        {
+          "label": "35mm field camera",
+          "holder": "Alex Morgan",
+          "state": "Operational",
+          "verification": "visually confirmed",
+          "remaining": 12
+        },
+        {
+          "label": "Portable survey instrument",
+          "holder": "Nora Vale",
+          "state": "Depleted",
+          "verification": "visually confirmed",
+          "remaining": "checked"
+        },
+        {
+          "label": "Handheld field radio",
+          "holder": "You",
+          "state": "Operational",
+          "verification": "visually confirmed",
+          "remaining": "checked"
+        },
+        {
+          "label": "Numbered route-marker kit",
+          "holder": "You",
+          "state": "Operational",
+          "verification": "visually confirmed",
+          "remaining": 3
+        }
+      ],
+      "operational_time": "T+5 intervals",
+      "check_in": {
+        "state": "overdue",
+        "label": "OVERDUE BY 2 INTERVALS",
+        "due_at": 3,
+        "remaining": -2
+      },
+      "team": [
+        {
+          "name": "Jack Rocha · YOU",
+          "location": "utility-room",
+          "contact": "LOCAL"
+        },
+        {
+          "name": "Nora Vale",
+          "location": "utility-room",
+          "contact": "LOCAL"
+        },
+        {
+          "name": "Alex Morgan",
+          "location": "utility-room",
+          "contact": "LOCAL"
+        }
+      ],
+      "local_available": true,
+      "radio": {
+        "state": "available",
+        "check_completed": true,
+        "history_count": 2
+      },
+      "map": {
+        "current_location": "utility-room",
+        "nodes": [
+          {
+            "name": "ASYNC Briefing Room",
+            "current": false,
+            "personnel": []
+          },
+          {
+            "name": "Equipment Staging",
+            "current": false,
+            "personnel": []
+          },
+          {
+            "name": "Threshold Approach",
+            "current": false,
+            "personnel": []
+          },
+          {
+            "name": "Threshold Room",
+            "current": false,
+            "personnel": []
+          },
+          {
+            "name": "Threshold-Side Entry",
+            "current": false,
+            "personnel": []
+          },
+          {
+            "name": "Utility Room",
+            "current": true,
+            "personnel": [
+              {
+                "name": "Jack Rocha",
+                "status": "present"
+              },
+              {
+                "name": "Nora Vale",
+                "status": "present"
+              },
+              {
+                "name": "Alex Morgan",
+                "status": "present"
+              }
+            ]
+          },
+          {
+            "name": "Columned Corridor",
+            "current": false,
+            "personnel": []
+          }
+        ],
+        "route_history": [
+          {
+            "sequence": 1,
+            "from": "threshold-room",
+            "to": "threshold-side-entry",
+            "connection_id": "threshold-crossing",
+            "at": 0
+          },
+          {
+            "sequence": 2,
+            "from": "threshold-side-entry",
+            "to": "utility-room",
+            "connection_id": "entry-to-utility",
+            "at": 0
+          },
+          {
+            "sequence": 3,
+            "from": "utility-room",
+            "to": "columned-corridor",
+            "connection_id": "utility-to-corridor",
+            "at": 4
+          },
+          {
+            "sequence": 4,
+            "from": "columned-corridor",
+            "to": "utility-room",
+            "connection_id": "utility-to-corridor",
+            "at": 5
+          }
+        ]
+      }
+    }
+  },
+  "acceptance": {
+    "three_utility_interactables_visible": true,
+    "inspection_reveals_condition_specific_information": true,
+    "contextual_tool_action_available": true,
+    "equipment_dependent_mutation": true,
+    "valid_evidence_created": true,
+    "objective_from_world_condition": true,
+    "three_distinct_mutations": true,
+    "return_observation_reflects_changes": true,
+    "full_restart_exact": true,
+    "observer_safe_restart_projection": true
+  }
+}

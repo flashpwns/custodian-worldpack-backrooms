@@ -28,7 +28,7 @@ test("desktop world metadata, settings, export/import, and deletion stay isolate
 });
 test("desktop service exposes only allowlisted modes and canonical action results", () => {
   const { service } = fixture(); const world = service.createWorld({ name: "Actions", seed: "actions" }).world;
-  assert.deepEqual(MODES.map(({ id }) => id), ["async-command", "field-researcher", "local-anomaly", "lost"]);
+  assert.deepEqual(MODES.map(({ id }) => id), ["field-researcher", "lost", "async-command", "local-anomaly"]);
   const started = service.startSession({ world_id: world.id, mode: "lost", seed: "lost" }); assert.equal(started.ok, true);
   const unavailable = service.submitAction({ world_id: world.id, mode: "lost", action: "ARBITRARY_FILESYSTEM" }); assert.equal(unavailable.ok, false); assert.equal(unavailable.error.code, "ACTION_UNAVAILABLE");
   assert.equal(service.getInstitutionProjection({ world_id: world.id }).ok, true);
@@ -44,7 +44,7 @@ test("mode-specific surfaces render only their safe desktop projections", () => 
   const lostHtml = surfaces.render(lostProjection); assert.doesNotMatch(lostHtml, /Task tray|Institutional timeline|research|personnel/i, "Lost receives no institutional workstation data");
   const nullzoneProjection = service.getGameplayProjection({ world_id: world.id, mode: "local-anomaly" }).projection;
   assert.doesNotMatch(surfaces.render(nullzoneProjection), /Task tray|Institutional timeline|personnel/i, "Nullzone receives no Beck data");
-  assert.deepEqual(Object.keys(surfaces.CAPABILITIES), MODES.map(({ id }) => id));
+  assert.deepEqual(Object.keys(surfaces.CAPABILITIES).sort(), MODES.map(({ id }) => id).sort());
 });
 test("safe action targets travel from projection to canonical runtime without command parsing", () => {
   const { service } = fixture(); const world = service.createWorld({ name: "Action targets", seed: "targets" }).world;

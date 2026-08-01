@@ -1,0 +1,40 @@
+{
+  "version": "yellow-beast-mission-worldpack@v1",
+  "worldpack_id": "minimal-mission",
+  "mission": {
+    "id": "minimal-inspection",
+    "version": 1,
+    "display_name": "Minimal Inspection",
+    "briefing": "Visit the work site and inspect the declared record.",
+    "operational_intent": "Prove that a second worldpack can author a mission without scenario-specific runtime logic.",
+    "objectives": [
+      {
+        "id": "inspect-record",
+        "name": "Inspect the declared record",
+        "kind": "required",
+        "behavior": "sticky",
+        "initial_state": "active",
+        "satisfaction": { "source": "object", "predicate": "property_known", "object_id": "sample-record", "property": "record-legible" },
+        "public": { "active": "The declared record has not been inspected.", "satisfied": "The declared record is legible and documented.", "abandoned": "The record was not inspected before closure.", "next_requirement": "Inspect the visible sample record." }
+      }
+    ],
+    "return_policy": {
+      "return_location": "origin",
+      "route_available_when": { "source": "spatial", "predicate": "route_traversed", "connection_id": "origin-to-site" },
+      "ready_when": { "source": "mission", "predicate": "objective_state", "objective_id": "inspect-record", "states": ["satisfied"] },
+      "closure_available_when": { "source": "spatial", "predicate": "returned", "location_id": "origin" },
+      "completion_when": { "all": [{ "source": "mission", "predicate": "closure_requested" }, { "source": "spatial", "predicate": "returned", "location_id": "origin" }] },
+      "public": { "unavailable": "The return route is not yet known.", "available": "The known route returns to origin.", "ready": "The record is complete and the route returns to origin.", "requested": "Return begun.", "closure_requested": "Closure requested.", "closure_unavailable": "Return to origin before closure." }
+    },
+    "completion_policy": { "required": "all_terminal", "waived_counts": true, "optional_blocks": false },
+    "abort_policy": { "available_when": { "constant": true }, "unresolved_state": "abandoned", "keep_objectives": [], "public_reason": "Controlled abort declared.", "public_unavailable": "Abort unavailable." },
+    "outcome_rules": [
+      { "id": "abort", "priority": 10, "when": { "source": "mission", "predicate": "abort_requested" }, "final_state": "aborted", "classification": "controlled-abort", "public_summary": "The minimal mission was aborted.", "institutional_hooks": ["controlled_abort"] },
+      { "id": "complete", "priority": 5, "when": { "source": "mission", "predicate": "objective_state", "objective_id": "inspect-record", "states": ["satisfied"] }, "final_state": "completed", "classification": "clean-completion", "public_summary": "The minimal inspection is complete.", "institutional_hooks": ["clean_completion"] },
+      { "id": "failed", "priority": 0, "when": { "constant": true }, "final_state": "failed", "classification": "mission-failure", "public_summary": "The minimal inspection was not completed.", "institutional_hooks": ["mission_failure"] }
+    ],
+    "public_progress": { "required_heading": "Required objectives", "optional_heading": "Optional objectives", "blockers_heading": "Current blockers", "updates_heading": "Recent mission updates", "return_heading": "Return readiness" },
+    "migration": { "from_versions": [], "legacy_objective_map": {} }
+  },
+  "known_limitations": ["This pack exists only to prove the generic mission boundary."]
+}
