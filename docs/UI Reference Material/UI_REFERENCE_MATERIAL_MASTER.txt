@@ -1,0 +1,979 @@
+YELLOW BEAST / CUSTODIAN
+UI REFERENCE MATERIAL — MASTER INDEX & INTERPRETATION GUIDE
+Version 1.0
+Status: Normative Reference Context
+Location: docs/UI Reference Material/
+
+PURPOSE
+
+This folder is the canonical visual-reference corpus for player-facing UI/UX, institutional presentation, technical graphics, physical-interface flavor, typography, and presentation rules used by Yellow Beast.
+
+The files in this folder are NOT a grab bag of images and are NOT an instruction to reproduce any single reference literally.
+
+They exist to answer five questions:
+
+1. What kinds of visual language does ASYNC use?
+2. How does institutional information differ from technical information?
+3. How should machine interfaces differ from archive/presentation material?
+4. What visual choices should Yellow Beast deliberately avoid?
+5. Which recurring patterns should be translated into reusable UI rules?
+
+Codex or any future implementation agent modifying player-facing presentation should read this file before interpreting the image corpus.
+
+The intended workflow is:
+
+REFERENCE MATERIAL
+    ->
+VISUAL SYSTEM SPECIFICATION
+    ->
+COMPONENT SPECIFICATION
+    ->
+INTERACTION & DIEGESIS SPECIFICATION
+    ->
+IMPLEMENTATION
+
+The reference corpus is evidence.
+The specifications are doctrine.
+The implementation should obey doctrine rather than blindly imitating screenshots.
+
+
+============================================================
+I. CORE INTERPRETATION PRINCIPLE
+============================================================
+
+The desired result is NOT:
+
+"make the game look retro"
+
+or
+
+"make it look like a Backrooms game"
+
+or
+
+"make everything look like a green CRT."
+
+The target is a coherent institutional visual language derived from the source material.
+
+ASYNC interfaces and documents should feel as though they were created by an organization solving operational problems with period-appropriate tools, equipment, documentation practices, and presentation technology.
+
+The interface should feel USED, FUNCTIONAL, RESTRICTED, INSTITUTIONAL, and INTERNALLY CONSISTENT.
+
+It should not feel designed primarily for entertainment.
+
+The player should frequently feel as though they are using systems that existed before they arrived.
+
+
+============================================================
+II. EVIDENCE VS INTERPRETATION
+============================================================
+
+Treat the reference material in two layers.
+
+A. EVIDENCE-BACKED OBSERVATIONS
+
+These are recurring traits clearly visible across multiple references.
+
+Examples include:
+
+- restrained, utilitarian layouts
+- strong use of negative space
+- blue/white institutional presentation material
+- monochrome or near-monochrome technical screens
+- paper/cream technical diagrams and maps
+- thin borders and simple rectangular geometry
+- sparse use of warning colors
+- typography used for clarity rather than decoration
+- physical labels, stickers, forms, printouts, diagrams, and slides
+- presentation systems that feel administrative or technical rather than cinematic
+- artifacts that appear produced by real office, lab, archive, engineering, or industrial workflows
+
+B. INTERPRETIVE DESIGN RULES
+
+These are implementation conclusions derived from the evidence.
+
+Examples include:
+
+- archive/presentation blue should be contextual, not the global UI accent
+- phosphor green should be reserved for appropriate technical/terminal states
+- red should indicate actual failure, restriction, or critical status
+- worn texture should be selective rather than applied uniformly
+- player-facing controls should remain readable even when diegetically styled
+
+If there is a conflict between a literal screenshot and the broader design system, prioritize the broader design system.
+
+
+============================================================
+III. REFERENCE FOLDER MAP
+============================================================
+
+The current reference corpus is organized into the following categories:
+
+1. Color References
+2. Institutional Graphics References
+3. Negative Examples
+4. Physical Objects References
+5. Typography References
+
+Each folder exists for a different reason.
+
+Do not treat them as interchangeable.
+
+
+============================================================
+IV. COLOR REFERENCES
+============================================================
+
+PURPOSE
+
+This folder establishes recurring color families, color relationships, and contextual uses of color.
+
+It is NOT meant to generate one universal palette applied to all screens.
+
+KEY LESSON
+
+Yellow Beast should support multiple related visual modes rather than a single "theme."
+
+The strongest emerging color families are:
+
+A. OPERATIONAL / MACHINE
+- near-black
+- industrial charcoal
+- stark white
+- neutral gray
+- occasional phosphor or diagnostic green
+
+B. INSTITUTIONAL / ARCHIVE / PRESENTATION
+- deep blue
+- white
+- neutral gray
+- restrained yellow or red accents where appropriate
+
+C. TECHNICAL / ENGINEERING / MAPPING
+- paper cream
+- pale yellow
+- black ink
+- gray annotation
+- restrained red markings
+
+D. ALERT / FAILURE
+- red
+- caution yellow
+- white on dark backgrounds
+
+PROVISIONAL TOKEN DIRECTION
+
+These values are implementation starting points, not a mandate to color-match every source image.
+
+Operational Background:
+#0A0A0A
+
+Industrial Panel:
+#1F1F1F
+
+Raised / Secondary Panel:
+#232323
+
+Divider / Inactive Structure:
+#333333
+
+Primary Text:
+#FFFFFF
+
+Secondary Text:
+#BDBDBD
+
+Disabled / De-emphasized:
+#666666
+
+Diagnostic / Phosphor Green:
+#00FF33
+
+Caution Yellow:
+#FFCC00
+
+Critical Red:
+#FF3333
+
+Archive / Institutional Blue:
+approximately #0A2EA8, subject to later visual calibration
+
+Technical Paper / Mapping Cream:
+approximately #F1E0A5, subject to later visual calibration
+
+RULES
+
+- Do not use all accent colors simultaneously.
+- Do not make green the universal brand identity.
+- Do not use red decoratively.
+- Do not use warning yellow as background noise.
+- Most information should be carried by white, gray, black, spacing, and hierarchy.
+- Color should communicate state, medium, or institutional context.
+
+
+============================================================
+V. INSTITUTIONAL GRAPHICS REFERENCES
+============================================================
+
+PURPOSE
+
+This folder demonstrates how ASYNC explains information to itself.
+
+This is among the most important reference categories because it reveals institutional behavior rather than simply visual taste.
+
+Look here for guidance on:
+
+- internal presentations
+- research graphics
+- technical diagrams
+- blueprint slides
+- organizational identity
+- facility diagrams
+- explanatory graphics
+- charts
+- scientific or engineering communication
+- institutional branding
+
+DESIGN LESSONS
+
+1. INFORMATION FIRST
+
+Graphics should appear to have a practical informational purpose.
+
+2. RESTRAINT
+
+Avoid decorative overlays, excessive HUD framing, glowing elements, ornamental lines, and pseudo-futuristic noise.
+
+3. NEGATIVE SPACE
+
+Many strong references allow substantial empty space.
+
+Do not fill empty areas merely because screen space exists.
+
+4. SIMPLE GEOMETRY
+
+Rectangles, lines, labels, arrows, grids, charts, diagrams, and page-like compositions are preferred over sculpted interface chrome.
+
+5. PERIOD-APPROPRIATE PRESENTATION
+
+Slides, diagrams, technical illustrations, and office-computer interfaces should feel authored by tools appropriate to the depicted period and institution.
+
+6. VISUAL AUTHORITY WITHOUT SPECTACLE
+
+Institutional graphics may appear stark, flat, dull, or bureaucratic.
+
+That is desirable.
+
+The horror should not come from the graphic design trying to be scary.
+
+
+============================================================
+VI. PHYSICAL OBJECTS REFERENCES
+============================================================
+
+PURPOSE
+
+This folder establishes the physical world that produced the interface.
+
+It should inform:
+
+- panels
+- labels
+- folders
+- cassettes
+- screens
+- monitors
+- diagrams
+- technical equipment
+- research materials
+- lab environments
+- field equipment
+- inspection documents
+- archival artifacts
+- signage
+- forms
+- physical wear
+
+KEY PRINCIPLE
+
+Digital UI should inherit cues from the institution's physical tools.
+
+The software should not feel detached from the building, paperwork, machines, and equipment surrounding it.
+
+PHYSICAL-WORLD TRAITS TO TRANSLATE
+
+- matte rather than glossy surfaces
+- simple labels
+- functional typography
+- replacement stickers
+- tape residue
+- inspection markings
+- technical paper
+- equipment IDs
+- handwritten notes where appropriate
+- printer irregularity
+- CRT or analog display behavior
+- restrained physical wear
+
+WEAR RULE
+
+Nothing needs to be pristine.
+
+Nothing needs to be filthy either.
+
+Use selective wear.
+
+One replaced label is more convincing than coating the entire UI in fake grime.
+
+Avoid the "distressed texture overlay on everything" approach.
+
+
+============================================================
+VII. TYPOGRAPHY REFERENCES
+============================================================
+
+PURPOSE
+
+This folder demonstrates how typography changes by institutional function.
+
+Do NOT infer that Yellow Beast needs a single font everywhere.
+
+Treat typography as a hierarchy of voices.
+
+PROVISIONAL TYPOGRAPHIC ROLES
+
+A. ADMINISTRATIVE / DOCUMENT
+Use for:
+- forms
+- personnel records
+- contracts
+- notices
+- archival text
+
+Desired character:
+- neutral
+- bureaucratic
+- printable
+- dense when necessary
+- highly legible
+
+B. TECHNICAL / MACHINE
+Use for:
+- diagnostics
+- code screens
+- equipment status
+- terminals
+- failure output
+
+Desired character:
+- monospaced
+- compact
+- machine-readable
+- structured
+
+C. PRESENTATION / INSTITUTIONAL
+Use for:
+- slides
+- headings
+- research presentations
+- internal briefing cards
+
+Desired character:
+- plain
+- authoritative
+- restrained
+- period-appropriate
+
+D. SPECIALIZED / DEVICE-SPECIFIC
+Use only when justified by a particular machine, system, source medium, or imported equipment.
+
+INITIAL FONT CANDIDATES
+
+- Courier New
+- MS Gothic
+- VT323
+- IBM/VGA-style bitmap or monospace alternatives where legally and technically appropriate
+
+RULES
+
+- Do not exceed three active font families in one interface system without strong justification.
+- Do not use "retro computer" fonts merely to signal age.
+- VT323 should be reserved for places that genuinely behave like terminals or low-resolution displays.
+- Administrative documents should not look like command prompts.
+- Machine screens should not look like PowerPoint slides.
+- Typography should communicate medium and function.
+
+
+============================================================
+VIII. NEGATIVE EXAMPLES
+============================================================
+
+PURPOSE
+
+This folder defines what Yellow Beast must deliberately avoid.
+
+This is not optional inspiration material.
+
+It is a boundary condition.
+
+Common undesirable directions include:
+
+- cyberpunk UI
+- neon sci-fi HUDs
+- generic hacker terminals
+- excessive scanlines
+- glowing borders
+- holographic effects
+- glassmorphism
+- modern mobile-app cards
+- rounded-everything design
+- excessive gamification
+- decorative progress rings
+- unnecessary motion
+- dense tactical overlays
+- generic SCP-fan-interface aesthetics
+- "retro" styling with no institutional justification
+- fake VHS damage applied universally
+- horror UI that announces its own horror
+
+IMPLEMENTATION RULE
+
+When a proposed screen resembles a negative example more strongly than the positive corpus, redesign it.
+
+
+============================================================
+IX. EMERGING VISUAL MODES
+============================================================
+
+The references strongly suggest at least three distinct but related presentation modes.
+
+These are not separate games or themes.
+
+They are different institutional media.
+
+------------------------------------------------------------
+MODE A — OPERATIONAL INTERFACE
+------------------------------------------------------------
+
+Use for:
+- personnel systems
+- mission preparation
+- equipment
+- inventory
+- team status
+- radio
+- field systems
+- diagnostics
+- save/load systems if represented as institutional software
+
+Character:
+- dark
+- utilitarian
+- structured
+- grid-aligned
+- readable
+- restrained
+
+Primary colors:
+- black
+- charcoal
+- white
+- gray
+
+Contextual accents:
+- green
+- yellow
+- red
+
+Avoid:
+- glow
+- gradients
+- ornamental animation
+- rounded modern UI
+
+
+------------------------------------------------------------
+MODE B — ARCHIVE / PRESENTATION INTERFACE
+------------------------------------------------------------
+
+Use for:
+- archived material
+- research presentations
+- tape playback
+- slide decks
+- institutional briefing material
+- projector-like sequences
+- historical records
+
+Character:
+- blue/white where supported
+- high negative space
+- centered or deliberately sparse layouts
+- slide-like composition
+- analog media cues where justified
+
+Avoid:
+- making the entire game blue
+- overusing VHS damage
+- turning archives into a modern media player
+
+
+------------------------------------------------------------
+MODE C — TECHNICAL / MAPPING INTERFACE
+------------------------------------------------------------
+
+Use for:
+- maps
+- site diagrams
+- engineering drawings
+- threshold plans
+- facility plans
+- measurement overlays
+- technical schematics
+
+Character:
+- paper-like
+- diagrammatic
+- black ink
+- annotation
+- grid logic
+- photocopy/engineering-document flavor
+
+Avoid:
+- modern GPS aesthetics
+- glowing map markers
+- tactical military map conventions unless specifically justified
+
+
+============================================================
+X. SHARED VISUAL RULES
+============================================================
+
+These principles should remain consistent across modes.
+
+GEOMETRY
+
+- rectangular geometry
+- zero or near-zero corner radius
+- thin borders
+- simple dividers
+- limited depth effects
+- no ornamental cards unless institutionally justified
+
+SHADOWS
+
+Use sparingly.
+
+Hierarchy should come primarily from:
+- spacing
+- alignment
+- scale
+- contrast
+- typography
+- grouping
+
+LAYOUT
+
+Prefer:
+- grids
+- consistent margins
+- strong alignment
+- deliberate empty space
+
+Avoid:
+- floating decorative panels
+- arbitrary asymmetry
+- modern dashboard clutter
+
+BUTTONS
+
+Preferred behavior:
+- rectangular
+- simple border
+- clear label
+- slight hover emphasis
+- small pressed-state displacement if appropriate
+
+Avoid:
+- bounce
+- spring animation
+- glow
+- gradient fills
+- pill buttons
+- oversized call-to-action styling
+
+ICONS
+
+Prefer:
+- engineering symbols
+- file/folder metaphors
+- tape
+- radio
+- monitor
+- printer
+- hazard pictograms
+- technical diagrams
+
+Avoid:
+- contemporary icon-library look unless visually neutralized
+- decorative glyph spam
+
+
+============================================================
+XI. MOTION PRINCIPLES
+============================================================
+
+Animation should communicate hardware, process, or state.
+
+GOOD MOTION
+
+- cursor blink
+- CRT sync
+- screen warm-up
+- tape seeking
+- progress bars
+- printer feed
+- monitor reconnect
+- signal acquisition
+- mechanical loading
+- hard cuts between institutional media
+- short fades where physically or cinematically justified
+
+BAD MOTION
+
+- spring physics
+- elastic easing
+- floating cards
+- overshoot
+- decorative parallax
+- excessive blur transitions
+- particle effects
+- constant glitching
+- animated noise used without a diegetic cause
+
+RULE
+
+If an animation does not communicate process, hardware, status, or medium, question whether it belongs.
+
+
+============================================================
+XII. TEXTURE & ANALOG EFFECTS
+============================================================
+
+Analog effects are contextual.
+
+Do not globally overlay:
+- scanlines
+- VHS noise
+- chromatic aberration
+- tracking errors
+- CRT curvature
+- film grain
+
+Instead:
+
+CRT artifacts belong to CRT-like displays.
+
+Tape artifacts belong to tape-derived content.
+
+Projection artifacts belong to projection-like sequences.
+
+Print artifacts belong to printed or scanned material.
+
+The medium should create the degradation.
+
+The game should not apply one horror filter to everything.
+
+
+============================================================
+XIII. INFORMATION HIERARCHY
+============================================================
+
+For operational interfaces, prioritize:
+
+1. Current objective or immediate task
+2. Team / personnel state
+3. Equipment state
+4. Time
+5. Location
+6. Secondary records and context
+
+The player should never lose critical information because authenticity was prioritized over usability.
+
+Institutional flavor should reinforce comprehension.
+
+It should not obstruct it.
+
+
+============================================================
+XIV. DESIGN TONE
+============================================================
+
+The interface should make the player feel:
+
+- competent
+- monitored
+- small within a larger institution
+- trusted with dangerous systems
+- surrounded by procedures
+- slightly uncomfortable
+
+The interface should NOT primarily make the player feel:
+
+- powerful
+- futuristic
+- stylish
+- heroic
+- "hacker cool"
+- constantly frightened by presentation alone
+
+The visual system should remain calm even when the situation is not.
+
+
+============================================================
+XV. DIEGETIC PRINCIPLE
+============================================================
+
+A foundational rule:
+
+The player should often feel that the interface was not designed for them.
+
+It should feel like an existing institutional tool they have been granted access to.
+
+This principle should guide:
+- wording
+- layout
+- terminology
+- information density
+- error handling
+- navigation
+- warning behavior
+- archive access
+- equipment interfaces
+
+
+============================================================
+XVI. REFERENCE SELECTION GUIDANCE
+============================================================
+
+When adding future references, prefer material that answers a specific design question.
+
+High-value additions include:
+
+- strongest normal operational text example
+- strongest warning or failure text example
+- strongest archive/presentation text example
+- strongest map example
+- strongest technical diagram
+- strongest personnel or administrative document
+- strongest machine screen
+- strongest example of institutional negative space
+- strongest example of physical wear
+- strongest anti-reference
+
+Do not add references simply because they are visually interesting.
+
+Every image should help answer:
+"What implementation decision can this teach us?"
+
+
+============================================================
+XVII. OPTIONAL FUTURE REFERENCE INDEX FORMAT
+============================================================
+
+When the corpus becomes large, add a separate REFERENCE_INDEX.md or equivalent.
+
+Recommended format:
+
+FILE:
+Autopsy_Report_Screen.webp
+
+CATEGORY:
+Typography / Machine / Technical
+
+USE FOR:
+Dense technical text, restrained hierarchy, diagnostic presentation
+
+KEY TRAITS:
+Left alignment
+Monochrome text
+Sparse warning emphasis
+Functional spacing
+Minimal ornament
+
+DO NOT COPY:
+Exact content
+Exact fictional identifiers
+Any composition that harms gameplay readability
+
+IMPLEMENTATION TAKEAWAY:
+Technical screens should feel procedural and diagnostic rather than cinematic.
+
+
+============================================================
+XVIII. RELATIONSHIP TO THE THREE UI BIBLE DOCUMENTS
+============================================================
+
+This master reference file is upstream of three future normative specifications.
+
+------------------------------------------------------------
+1/3 — VISUAL SYSTEM SPECIFICATION
+------------------------------------------------------------
+
+Answers:
+"What does ASYNC look like?"
+
+Defines:
+- color system
+- typography
+- spacing
+- borders
+- shape language
+- iconography
+- visual modes
+- texture
+- motion style
+- presentation hierarchy
+- positive and negative visual rules
+
+This reference folder is the evidence base for 1/3.
+
+
+------------------------------------------------------------
+2/3 — COMPONENT SPECIFICATION
+------------------------------------------------------------
+
+Answers:
+"What reusable interface pieces exist, and how should each behave visually?"
+
+Defines components such as:
+- buttons
+- personnel cards
+- roster views
+- inventory slots
+- equipment panels
+- radio transcript windows
+- mission briefing layouts
+- save/load interfaces
+- archive viewers
+- tape controls
+- map panels
+- status indicators
+- modals
+- error screens
+- loading states
+- no-signal states
+- inaccessible/disabled states
+- keyboard focus states
+
+This document converts the visual system into reusable UI engineering rules.
+
+
+------------------------------------------------------------
+3/3 — INTERACTION & DIEGESIS SPECIFICATION
+------------------------------------------------------------
+
+Answers:
+"How does the interface behave, transition, respond, and exist inside the world?"
+
+Defines:
+- player UI vs in-world UI boundaries
+- navigation behavior
+- transitions
+- hardware delays
+- radio interruptions
+- signal failure
+- corruption behavior
+- equipment startup/shutdown
+- archive playback
+- loading behavior
+- pause behavior
+- diegetic save/load framing
+- accessibility behavior
+- error behavior
+- anomalous interference
+- when UI should remain calm
+- when UI may visibly fail
+
+This document turns visual language into experience.
+
+
+============================================================
+XIX. AUDIO RELATIONSHIP
+============================================================
+
+The visual reference system should eventually be paired with an Audio Doctrine.
+
+Audio should not function as generic "UI SFX."
+
+Sounds should ideally belong to:
+- machines
+- rooms
+- equipment
+- radios
+- tape systems
+- projectors
+- relays
+- doors
+- terminals
+- printers
+- ventilation
+- electrical systems
+
+The same principle applies:
+
+Sound should feel like the institution's hardware producing consequences.
+
+Not like a video game playing confirmation noises.
+
+
+============================================================
+XX. CODEX IMPLEMENTATION WARNING
+============================================================
+
+DO NOT ask an implementation agent to simply:
+
+"make the UI more Kane Pixels"
+
+or
+
+"make it more Backrooms."
+
+Those prompts are too vague and will encourage trope substitution.
+
+Instead, instruct the agent to:
+
+1. read this master file
+2. read the relevant reference folders
+3. read the finalized UI Bible specifications
+4. preserve usability
+5. implement the defined visual system
+6. avoid negative-reference traits
+7. treat source images as evidence rather than assets to copy blindly
+
+Preferred instruction language:
+
+"Implement the defined Yellow Beast UI doctrine using the reference corpus as visual evidence. Do not freestyle a generic retro-horror, hacker, cyberpunk, SCP, VHS, or Backrooms aesthetic. Preserve the institutional, period-appropriate, functional, medium-specific presentation rules defined in the UI documentation."
+
+
+============================================================
+XXI. FINAL DESIGN TEST
+============================================================
+
+Before approving a player-facing screen, ask:
+
+1. Does this look like a real institutional tool?
+2. Does every major element have a functional reason to exist?
+3. Is information immediately understandable?
+4. Is the use of color communicating something?
+5. Is the typography appropriate to the medium?
+6. Is any aging/degradation caused by the represented medium?
+7. Is the interface quieter than a typical game UI?
+8. Does it avoid the negative-reference aesthetics?
+9. Would the screen still feel plausible if nothing frightening were happening?
+10. Does it feel like ASYNC made this for employees rather than a developer made this for players?
+
+If the answer to most of these is yes, the design is probably moving in the correct direction.
+
+
+END OF MASTER REFERENCE GUIDE
