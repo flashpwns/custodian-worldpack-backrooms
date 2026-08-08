@@ -5,6 +5,7 @@
 const crypto = require("node:crypto");
 const history = require("./world-history");
 const institutional = require("./institutional-runtime");
+const outcomes = require("./q4-outcome-authority");
 
 const VERSION = "yellow-beast-q4-career@v1";
 const clone = (value) => structuredClone(value);
@@ -60,6 +61,7 @@ function assertAgencyBoundary(world) {
 }
 
 function process(world, definition, run, review) {
+  outcomes.assertMutable(world, "between-operation processing");
   const state = ensure(world); if (!run?.run_id || !review?.mission_id) throw new Error("between-operation processing requires a closed canonical operation");
   const id = cycleId(world, run, review); if (state.cycles[id]?.status === "completed") return { ok: true, idempotent: true, cycle: clone(state.cycles[id]) };
   const cycle = state.cycles[id] ?? { id, run_id: run.run_id, mission_id: review.mission_id, status: "processing", order: ["reconcile-closure", "institutional-review", "equipment-service", "personnel-availability", "assignment-conditions"], updates: [] };

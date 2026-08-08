@@ -385,7 +385,7 @@ function expeditionAction(run, verb, target) {
     const operator = run.spatial ? player : expedition.equipment?.["recording-device"]?.holder ?? player; const device = useEquipment(expedition, "recording-device", operator);
     if (!device.ok) return { ok: false, error: { code: device.code }, run };
     const cost = costFor(verb); const evidence = { id: `field-note-${expedition.evidence.length + 1}`, type: "field-note", creator: player, operator, custodian: player, target_alias: alias, location: view.view?.location ?? null, capture_event: "evidence.recorded", device: "recording-device", storage: "with field record", captured_at: { interval: expedition.clock.interval + cost }, target_observation: safeObservation?.description ?? "observer-visible target", visible_objects: safeObservation?.observed_properties ?? [alias], phenomenon_observation_ref:safeObservation?.observation_ref ?? null, provenance: "observer-safe-record", valid: true, available_to_player: true, available_to_standard: false, reporting_state: "unreported", interval: expedition.clock.interval + cost, environmental_conditions:run.spatial ? environment.captureContext(run.spatial.environment, run.spatial.player_location, { has_field_light:q4Equipment.stateUsable(run.expedition.equipment?.["field-light"]) }) : null };
-    evidenceAuthority.capture(run._world, run, evidence); if (observedPhenomenon) phenomenonEcology.linkEvidence(run._world, observedPhenomenon.id, { observer:player, evidence_id:evidence.id }); evidence.render = { status: "not-rendered" }; expedition.evidence.push(evidence); event(expedition, "evidence.recorded", evidence); const cycle = resolveOperationalCycle(run, verb, cost);
+    if (run._world) { evidenceAuthority.capture(run._world, run, evidence); if (observedPhenomenon) phenomenonEcology.linkEvidence(run._world, observedPhenomenon.id, { observer:player, evidence_id:evidence.id }); } evidence.render = { status: "fallback-ready" }; expedition.evidence.push(evidence); event(expedition, "evidence.recorded", evidence); const cycle = resolveOperationalCycle(run, verb, cost);
     return { ok: true, outcome: "succeeded", result: { public_reason: null, time_advanced: cycle.clock.cost, evidence: { id: evidence.id, type: evidence.type, render_status: evidence.render.status }, mission_updates: cycle.mission_updates, operational_updates: cycle.public_updates }, run };
   }
   if (verb === "RETURN") { if (!expedition.mission_state) return terminal(run, verb); const requested = missionRuntime.requestReturn(expedition.mission_state, missionDefinitionFor(run.spatial_pack_id), { run, player }, { at: expedition.clock?.interval ?? 0 }); if (!requested.ok) return { ok: false, error: { code: requested.code }, result: { public_reason: requested.reason }, run }; expedition.mission_state.phase = "RETURN"; const cycle = resolveOperationalCycle(run, verb, costFor(verb)); return { ok: true, outcome: "return-begun", result: { public_reason: requested.reason, time_advanced: cycle.clock.cost, mission_updates: cycle.mission_updates, operational_updates: cycle.public_updates }, run }; }
@@ -418,8 +418,8 @@ function objectInteraction(run, verb, target) {
   const onEvidence = (evidence) => {
     evidence.mission_id = run.expedition.mission?.id ?? null;
     evidence.environmental_conditions = environment.captureContext(run.spatial.environment, run.spatial.player_location, { has_field_light:q4Equipment.stateUsable(run.expedition.equipment?.["field-light"]) });
-    evidenceAuthority.capture(run._world, run, evidence);
-    evidence.render = { status: "not-rendered" };
+    if (run._world) evidenceAuthority.capture(run._world, run, evidence);
+    evidence.render = { status: "fallback-ready" };
   };
   const result = objectRuntime.interact(run.object_state, definition, {
     observer: run.session.startup.player.observer_id,

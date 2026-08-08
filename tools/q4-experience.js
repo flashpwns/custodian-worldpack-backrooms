@@ -24,6 +24,7 @@ const career = require("./q4-career-loop");
 const personnelContinuity = require("./q4-personnel-continuity");
 const standardOperator = require("./q4-standard-operator");
 const environmentModel = require("./q4-environment");
+const outcomes = require("./q4-outcome-authority");
 const cloneUpdates = (value) => structuredClone(value ?? []);
 
 const VERSION = "yellow-beast-clear-q4-experience@v3";
@@ -164,6 +165,7 @@ const evidence = (expedition?.evidence ?? []).map((item) => ({ id: item.id, miss
     inventory,
     institution: institutional,
     career: world ? career.projection(world) : null,
+    world_lifecycle: world ? outcomes.archive(world) : null,
     radio: communication.messages.slice(-5),
     communications: communication,
     channels,
