@@ -374,9 +374,8 @@ class DesktopService {
       const expedition = entry.run.expedition; const playerId = entry.run.session.startup.player.observer_id; const coworkers = expedition.team.members.filter((member) => member.personnel_id !== playerId); const requested = String(target ?? "").toLowerCase(); const peer = requested && !["team", "teammate", "standard"].includes(requested) ? coworkers.find((member) => [member.personnel_id, member.first_name, member.display_name].filter(Boolean).some((value) => String(value).toLowerCase() === requested)) : null; const person = peer ? history.character(world, peer.personnel_id ?? peer.id) : null; const observed = peer && channel === "local" ? q4Personnel.observerStatus(peer, person, entry.phase?.phase_id, entry.run.spatial, playerId) : null;
       if (channel === "local") {
         const localPeers = coworkers.filter((member) => { const record = history.character(world, member.personnel_id ?? member.id); return member.status === "active" && q4Personnel.observerStatus(member, record, entry.phase?.phase_id, entry.run.spatial, playerId).local_eligible; });
-        const recipients = !target || ["team", "teammate"].includes(requested) ? localPeers : peer && observed?.local_eligible ? [peer] : [];
-        const acceptedTargets = ["team", "teammate", peer?.personnel_id, peer?.first_name, peer?.display_name].filter(Boolean).map((value) => String(value).toLowerCase());
-        const eligible = recipients.length > 0 && (!target || acceptedTargets.includes(String(target).toLowerCase()));
+        const recipients = localPeers;
+        const eligible = recipients.length > 0;
         if (!eligible) {
           const reason = peer?.condition === "Unresponsive" ? "The teammate is unresponsive." : observed?.contact_category === "LOCAL" ? "The local conversation could not be delivered." : `No nearby participating personnel can hear this transmission.`;
           communicationRuntime.local(expedition, { sender: playerId, recipients: [peer?.personnel_id ?? peer?.id ?? "unconfirmed teammate"], text: message, eligible: false, failure_reason: reason });
@@ -422,7 +421,13 @@ class DesktopService {
       phenomenonEcology.recordSpeech(world, entry.run, { speaker:playerId, text:message, location_id:entry.run.spatial.player_location });
       if (pendingCheckIn && (purpose === "scheduled-check-in" || checkInReport)) queued.message.check_in_id = pendingCheckIn.id;
       const cycle = bootstrap.resolveOperationalCycle(entry.run, "COMMUNICATE", 1, "standard-radio");
-      const resolvedMessage = expedition.messages.find((item) => item.id === queued.message.id); const actuallyDelivered = ["delivered", "acknowledged"].includes(resolvedMessage.state);
+      let acknowledgmentCycle = null;
+      let resolvedMessage = expedition.messages.find((item) => item.id === queued.message.id);
+      if (radioCheckPhase && resolvedMessage.state === "delivered") {
+        acknowledgmentCycle = bootstrap.resolveOperationalCycle(entry.run, "RADIO_ACK", 1, "radio-check-acknowledgment");
+        resolvedMessage = expedition.messages.find((item) => item.id === queued.message.id);
+      }
+      const actuallyDelivered = ["delivered", "acknowledged"].includes(resolvedMessage.state);
       if (radioCheckPhase && resolvedMessage.state === "acknowledged") {
         q4Radio.completeCheck(expedition);
         expeditionEvent(expedition, "q4.radio_check.completed", { endpoint: "Standard", source_message_id: resolvedMessage.id });
@@ -434,8 +439,9 @@ class DesktopService {
       }
       const delivery = actuallyDelivered ? "delivered" : resolvedMessage.state === "delayed" ? "delayed" : "queued";
       const interaction = q4Interactions.record(expedition, { channel, speaker: "You", targets: ["Standard"], player_text: message, attempted_behavior: "transmit over the survey radio", eligibility: "eligible", delivery, time_cost: 1, canonical_effects: ["communication.sent"], observer_knowledge: actuallyDelivered ? [{ observer: "Standard", kind: "reported-communication", text: message }] : [], presentation: { result: delivery } });
-      q4Trajectories.noteCommunication({ world, expedition, run_id: entry.run.run_id, channel: "standard", delivered: actuallyDelivered, text: message });
-      const missionUpdates = cycle.mission_updates;
+      if (radioCheckPhase && resolvedMessage.state === "acknowledged") q4Interactions.record(expedition, { channel: "standard", speaker: "STANDARD", targets: ["Clear-Q4 team"], player_text: "Standard acknowledgment received.", attempted_behavior: "scheduled radio-check acknowledgment", eligibility: "eligible", delivery: "received", canonical_effects: ["q4.radio.check.acknowledged"], presentation: { result: "received" } });
+      if (!radioCheckPhase) q4Trajectories.noteCommunication({ world, expedition, run_id: entry.run.run_id, channel: "standard", delivered: actuallyDelivered, text: message });
+      const missionUpdates = [...cycle.mission_updates, ...(acknowledgmentCycle?.mission_updates ?? [])];
       this.persistSession(world, "field-researcher", entry);
       const publicReason = resolvedMessage.state === "delayed" ? resolvedMessage.interference?.public_description ?? "The transmission is delayed; no delivery confirmation has been received." : actuallyDelivered ? "The transmission was delivered. Standard acknowledgment remains separately recorded." : "The transmission is queued; delivery has not been confirmed.";
       const scene = this.sceneFor(entry, "field-researcher", { scene_type: "delta", accepted: true, action: "STANDARD", public_reason: publicReason }, world);

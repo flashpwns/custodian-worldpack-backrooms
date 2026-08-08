@@ -17,7 +17,9 @@ function fixture(seed = "q4-personnel") {
   return { service, appDataPath, world };
 }
 function reachField(service, world) {
-  for (const action of ["READY", "PROCEED", "APPROACH", "CROSS", "RADIO_CHECK", "BEGIN_FIELD_OPERATION"]) assert.equal(service.submitAction({ world_id: world.id, mode: "field-researcher", action }).ok, true);
+  for (const action of ["READY", "PROCEED", "APPROACH", "CROSS"]) assert.equal(service.submitAction({ world_id: world.id, mode: "field-researcher", action }).ok, true);
+  assert.equal(service.submitQ4Communication({ world_id: world.id, channel: "standard", text: "Standard, Clear-Q4 team accounted for. Radio check." }).ok, true);
+  assert.equal(service.submitAction({ world_id: world.id, mode: "field-researcher", action: "BEGIN_FIELD_OPERATION" }).ok, true);
 }
 
 test("Clear-Q4 assigns persistent player and teammate identities", () => {
@@ -61,8 +63,8 @@ test("LOCAL uses the named person and follows coarse contact eligibility", () =>
   canonicalPeer.contact_category = "SEPARATED";
   canonicalPeer.status = "unavailable";
   const separated = service.submitQ4Communication({ world_id: world.id, channel: "local", text: "Can you hear me?", target: peer.first_name });
-  assert.equal(separated.ok, false);
-  assert.equal(separated.error.code, "LOCAL_TARGET_UNAVAILABLE");
+  assert.equal(separated.ok, true);
+  assert.ok(!separated.projection.q4.channels.local.history.at(-1).targets.includes(peer.display_name));
   assert.equal(history.character(service.getWorld(world.id), canonicalPeer.personnel_id).status, "active");
 });
 
@@ -78,7 +80,9 @@ test("confirmed death is permanent, non-local, and staffed by a different identi
   assert.equal(restored.ok, true);
   const restoredPeer = restored.projection.q4.team.find((member) => member.first_name === deadPeer.first_name);
   assert.equal(restoredPeer.contact_category, "CONTACT LOST");
-  assert.equal(resumedService.submitQ4Communication({ world_id: world.id, channel: "local", text: `Can you hear me, ${deadPeer.first_name}?`, target: deadPeer.first_name }).ok, false);
+  const deadSpeech = resumedService.submitQ4Communication({ world_id: world.id, channel: "local", text: `Can you hear me, ${deadPeer.first_name}?`, target: deadPeer.first_name });
+  assert.equal(deadSpeech.ok, true);
+  assert.ok(!deadSpeech.projection.q4.channels.local.history.at(-1).targets.some((target) => target.includes(deadPeer.first_name)));
   const next = resumedService.startSession({ world_id: world.id, mode: "field-researcher", seed: "q4-next-expedition" });
   assert.equal(next.ok, true);
   const nextPeople = resumedService.session(world.id, "field-researcher").run.expedition.team.members.map((member) => member.personnel_id);

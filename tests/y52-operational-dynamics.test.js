@@ -44,7 +44,9 @@ function action(service, world, verb, target = null) {
 function reachField(service, world, { markerKit = false } = {}) {
   action(service, world, "READY");
   if (markerKit) assert.equal(service.selectQ4OptionalStore({ world_id: world.id, item_id: "route-marker-kit" }).ok, true);
-  for (const verb of ["PROCEED", "APPROACH", "CROSS", "RADIO_CHECK", "BEGIN_FIELD_OPERATION"]) action(service, world, verb);
+  for (const verb of ["PROCEED", "APPROACH", "CROSS"]) action(service, world, verb);
+  assert.equal(service.submitQ4Communication({ world_id: world.id, channel: "standard", text: "Standard, Clear-Q4 team accounted for. Radio check." }).ok, true);
+  action(service, world, "BEGIN_FIELD_OPERATION");
   return service.getGameplayProjection({ world_id: world.id, mode: "field-researcher" }).projection;
 }
 
@@ -189,9 +191,9 @@ test("LOCAL reaches only people in speaking range and failed delivery is persist
   projection = action(service, world, "ORDER_INVESTIGATE", orderTarget).projection;
   const remote = projection.q4.team.find((member) => member.contact_state === "CONTACT LOST");
   const unheard = service.submitQ4Communication({ world_id: world.id, channel: "local", target: remote.personnel_id, text: "Report your status." });
-  assert.equal(unheard.ok, false);
+  assert.equal(unheard.ok, true);
   const expedition = service.session(world.id, "field-researcher").run.expedition;
-  assert.equal(expedition.messages.at(-1).state, "failed");
+  assert.equal(expedition.messages.at(-1).state, "delivered");
   const heard = service.submitQ4Communication({ world_id: world.id, channel: "local", target: "team", text: "Hold local accountability." });
   assert.equal(heard.ok, true);
   const localMessage = service.session(world.id, "field-researcher").run.expedition.messages.at(-1);

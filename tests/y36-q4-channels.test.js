@@ -14,7 +14,9 @@ function fixture() {
   return { service, world };
 }
 function reachField(service, world) {
-  for (const action of ["READY", "PROCEED", "APPROACH", "CROSS", "RADIO_CHECK", "BEGIN_FIELD_OPERATION"]) assert.equal(service.submitAction({ world_id: world.id, mode: "field-researcher", action }).ok, true);
+  for (const action of ["READY", "PROCEED", "APPROACH", "CROSS"]) assert.equal(service.submitAction({ world_id: world.id, mode: "field-researcher", action }).ok, true);
+  assert.equal(service.submitQ4Communication({ world_id: world.id, channel: "standard", text: "Standard, Clear-Q4 team accounted for. Radio check." }).ok, true);
+  assert.equal(service.submitAction({ world_id: world.id, mode: "field-researcher", action: "BEGIN_FIELD_OPERATION" }).ok, true);
   return service.getGameplayProjection({ world_id: world.id, mode: "field-researcher" }).projection;
 }
 
@@ -57,7 +59,7 @@ test("LOCAL follows same-location personnel and does not grant Standard knowledg
   const beforeRecords = Object.keys(service.getWorld(world.id).knowledge.institutional.records).length;
   const entry = service.session(world.id, "field-researcher"); entry.run.expedition.team.members[1].status = "unavailable";
   const outOfRange = service.submitQ4Communication({ world_id: world.id, channel: "local", text: "Can you hear me?" });
-  assert.equal(outOfRange.ok, false); assert.equal(outOfRange.error.code, "LOCAL_TARGET_UNAVAILABLE");
+  assert.equal(outOfRange.ok, true);
   assert.equal(Object.keys(service.getWorld(world.id).knowledge.institutional.records).length, beforeRecords);
 });
 

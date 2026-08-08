@@ -20,7 +20,12 @@ function createAndStart(service, world, first_name = "Jack", last_name = "Rocha"
 }
 function advanceTo(service, world, actions = ["READY", "PROCEED", "APPROACH", "CROSS"]) {
   let result;
-  for (const action of actions) result = service.submitAction({ world_id: world.id, mode: "field-researcher", action });
+  for (const action of actions) {
+    if (action === "RADIO_CHECK") {
+      result = service.submitQ4Communication({ world_id: world.id, channel: "standard", text: "Standard, Clear-Q4 team accounted for. Radio check." });
+      assert.equal(result.ok, true);
+    } else result = service.submitAction({ world_id: world.id, mode: "field-researcher", action });
+  }
   return result;
 }
 
@@ -64,7 +69,7 @@ test("LOCAL is delivered to a generated coworker before field entry while Standa
   assert.equal(threshold.phase.phase_id, "THRESHOLD"); assert.equal(threshold.q4.channels.standard.available, false);
   assert.match(service.submitQ4Communication({ world_id: world.id, channel: "standard", text: "Hello?" }).error.message, /approach|contact/i);
   const crossed = advanceTo(service, world, ["CROSS"]); assert.equal(crossed.projection.phase.phase_id, "STANDARD_RADIO_CHECK");
-  assert.equal(crossed.projection.q4.channels.standard.available, false);
+  assert.equal(crossed.projection.q4.channels.standard.available, true);
   assert.equal(crossed.projection.q4.channels.standard.state, "establishing");
   const checked = advanceTo(service, world, ["RADIO_CHECK"]); assert.equal(checked.projection.phase.phase_id, "STANDARD_RADIO_CHECK");
   assert.equal(checked.projection.q4.channels.standard.available, true);

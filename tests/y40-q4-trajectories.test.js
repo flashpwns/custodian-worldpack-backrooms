@@ -11,7 +11,7 @@ const trajectories = require("../tools/q4-trajectories");
 const personnel = require("../tools/q4-personnel");
 
 function fixture(seed = "trajectory-seed") { const service = new DesktopService({ appDataPath: fs.mkdtempSync(path.join(os.tmpdir(), "yb-q4-trajectories-")) }); const world = service.createWorld({ name: "Trajectory continuity", seed }).world; assert.equal(service.startSession({ world_id: world.id, mode: "field-researcher", seed }).ok, true); return { service, world }; }
-function field(service, world) { for (const action of ["READY", "PROCEED", "APPROACH", "CROSS", "RADIO_CHECK", "BEGIN_FIELD_OPERATION"]) assert.equal(service.submitAction({ world_id: world.id, mode: "field-researcher", action }).ok, true); return service.session(world.id, "field-researcher"); }
+function field(service, world) { for (const action of ["READY", "PROCEED", "APPROACH", "CROSS"]) assert.equal(service.submitAction({ world_id: world.id, mode: "field-researcher", action }).ok, true); assert.equal(service.submitQ4Communication({ world_id: world.id, channel: "standard", text: "Standard, Clear-Q4 team accounted for. Radio check." }).ok, true); assert.equal(service.submitAction({ world_id: world.id, mode: "field-researcher", action: "BEGIN_FIELD_OPERATION" }).ok, true); return service.session(world.id, "field-researcher"); }
 
 test("trajectory generation is deterministic, bounded, compatible, and authority-traceable", () => {
   const world = history.createWorld({ seed: "trajectory-catalog" }); const a = missions.generate({ world, seed: "same" }); const b = missions.generate({ world: history.createWorld({ seed: "trajectory-catalog" }), seed: "same" });

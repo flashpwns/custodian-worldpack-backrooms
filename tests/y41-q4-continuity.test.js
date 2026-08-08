@@ -19,6 +19,11 @@ function fixture(seed = "continuity") {
 }
 
 function action(service, world, verb, target = null) {
+  if (verb === "RADIO_CHECK") {
+    const transmission = service.submitQ4Communication({ world_id: world.id, channel: "standard", text: "Standard, Clear-Q4 team accounted for. Radio check." });
+    assert.equal(transmission.ok, true, "player-authored radio check should succeed");
+    return transmission;
+  }
   const result = service.submitAction({ world_id: world.id, mode: "field-researcher", action: verb, target });
   assert.equal(result.ok, true, `${verb} ${target ?? ""} should succeed: ${result.error?.message ?? "unknown"}`);
   return result;
