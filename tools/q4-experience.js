@@ -123,7 +123,7 @@ const evidence = (expedition?.evidence ?? []).map((item) => ({ id: item.id, miss
   };
   const radioState = radioModel.ensure(expedition);
   const radioEquipmentReady = equipmentModel.stateUsable(radio) && radio?.charges > 0 && radio?.holder === playerId;
-  const standardAvailable = radioEquipmentReady && radioModel.available(expedition) && ["STANDARD_RADIO_CHECK", "FIELD_OPERATION", "RETURN"].includes(phase.phase_id);
+  const standardAvailable = radioEquipmentReady && ((phase.phase_id === "STANDARD_RADIO_CHECK" && !radioState.check_completed) || radioModel.available(expedition)) && ["STANDARD_RADIO_CHECK", "FIELD_OPERATION", "RETURN"].includes(phase.phase_id);
   const standardReason = !radioEquipmentReady ? "FIELD RADIO NOT OPERATIONAL" : phase.phase_id === "BRIEFING" ? "FIELD RADIO CHANNEL NOT ACTIVE DURING BRIEFING" : phase.phase_id === "STAGING" || phase.phase_id === "FACILITY_TRANSIT" ? "STANDARD UNAVAILABLE UNTIL THE RADIO-CHECK PHASE" : phase.phase_id === "THRESHOLD" ? "STANDARD UNAVAILABLE UNTIL RADIO CHECK" : radioModel.label(expedition);
   const channels = {
     action: { history: actionHistory },

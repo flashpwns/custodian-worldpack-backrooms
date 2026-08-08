@@ -333,6 +333,7 @@ scripts.push("tools/q4-evidence-media.js", "tests/y63-evidence-media.test.js");
 scripts.push("tools/q4-environment.js", "tests/y64-environment-simulation.test.js");
 scripts.push("tools/q4-phenomenon-ecology.js", "tests/y65-phenomenon-ecology.test.js");
 scripts.push("tools/q4-outcome-authority.js", "tests/y66-outcomes-retirement.test.js");
+scripts.push("tools/doctrine-runtime.js", "tests/y62-pass17-human-gate.test.js");
 for (const relative of scripts) {
   const content = fs.readFileSync(path.join(root, relative), "utf8");
   assert.doesNotMatch(content, /custodian\/(runtime|state|tools)/, `${relative} uses only public Custodian imports`);

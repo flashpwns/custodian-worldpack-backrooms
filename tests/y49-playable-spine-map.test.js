@@ -33,8 +33,12 @@ function reachRadio(service, world) {
 
 function reachField(service, world) {
   reachRadio(service, world);
-  const checked = phaseAction(service, world, "RADIO_CHECK");
+  const rejected = service.submitAction({ world_id: world.id, mode: "field-researcher", action: "RADIO_CHECK" });
+  assert.equal(rejected.ok, false);
+  const checked = service.submitQ4Communication({ world_id: world.id, channel: "standard", text: "Standard, Clear-Q4 team accounted for. Radio check." });
+  assert.equal(checked.ok, true);
   assert.equal(checked.projection.phase.phase_id, "STANDARD_RADIO_CHECK");
+  phaseAction(service, world, "WAIT");
   return phaseAction(service, world, "BEGIN_FIELD_OPERATION");
 }
 
@@ -84,19 +88,20 @@ test("radio check is a visible, persisted procedure before field departure", () 
   const { root, service, world } = fixture("radio-procedure");
   reachRadio(service, world);
   let projection = service.getGameplayProjection({ world_id: world.id, mode: "field-researcher" }).projection;
-  assert.equal(projection.q4.channels.standard.available, false);
+  assert.equal(projection.q4.channels.standard.available, true);
   assert.equal(projection.q4.channels.standard.state, "establishing");
-  assert.equal(service.submitQ4Communication({ world_id: world.id, channel: "standard", text: "Premature report." }).ok, false);
-  const checked = phaseAction(service, world, "RADIO_CHECK");
-  projection = checked.projection;
+  const checked = service.submitQ4Communication({ world_id: world.id, channel: "standard", text: "Standard, Clear-Q4 team accounted for. Radio check." });
+  assert.equal(checked.ok, true);
+  assert.equal(service.submitAction({ world_id: world.id, mode: "field-researcher", action: "WAIT" }).ok, true);
+  projection = service.getGameplayProjection({ world_id: world.id, mode: "field-researcher" }).projection;
   assert.equal(projection.phase.phase_id, "STANDARD_RADIO_CHECK");
   assert.equal(projection.q4.radio_check.completed, true);
   assert.equal(projection.q4.channels.standard.state, "available");
   assert.equal(projection.q4.channels.standard.available, true);
-  assert.deepEqual(projection.q4.channels.standard.history.slice(-2).map((item) => item.speaker), ["YOU", "STANDARD"]);
-  assert.match(projection.q4.channels.standard.history.at(-2).text, new RegExp(`${projection.q4.team.length} personnel accounted for`));
-  assert.match(projection.q4.channels.standard.history.at(-1).text, /contact established/);
-  assert.match(surfaces.render(projection), /visible-radio-exchange[\s\S]*YOU[\s\S]*STANDARD/);
+  assert.deepEqual(projection.q4.channels.standard.history.slice(-2).map((item) => item.speaker), ["You", "STANDARD"]);
+  assert.match(projection.q4.channels.standard.history.at(-2).text, /Clear-Q4 team accounted for/);
+  assert.match(projection.q4.channels.standard.history.at(-1).text, /acknowledgment received/);
+  assert.match(surfaces.render(projection), /visible-radio-exchange[\s\S]*You[\s\S]*STANDARD/);
   service.shutdown();
   const resumed = new DesktopService({ appDataPath: root }).resumeSession({ world_id: world.id, mode: "field-researcher" });
   assert.equal(resumed.projection.phase.phase_id, "STANDARD_RADIO_CHECK");

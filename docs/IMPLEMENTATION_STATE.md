@@ -89,6 +89,7 @@
 - Human gate: `PENDING HUMAN VALIDATION`. Demonstrate a clean routine work order, a known abandoned-item recovery order, and a delivered-but-unconfirmed route verification order. Verify each cites a real institutional record and that unreported player knowledge produces no Standard order.
 - Pass 13B should consume `world.q4_assignment_state`, `tools/q4-assignment-engine.js` (`deriveConditions`, `issue`, `resolve`, `projection`), and persisted institutional closure records for between-operation processing. Do not add renderer-owned career-loop state.
 
+
 ## Pass 14A handoff — Prompt 10 / 21
 
 - Completed pass: `14A`; checkpoint: `NO`; next checkpoint: `Prompt 16 / Pass 16C — CHECKPOINT 3`. Branch: `agent/pass-10-release-candidate`; resulting commit: this local Pass 14A commit, subject `feat: add persistent personnel continuity and FAILRP guards`. Version remains `0.14.0-beta.1`; active envelopes remain `yellow-beast-session@7`, `yellow-beast-save@v9`, and `yellow-beast-run@v9`.
@@ -184,3 +185,24 @@
 - Ontology/designation: Pass 16B `q4-phenomenon-ecology` remains the canonical identity and designation authority. Exact `STILL_LIFE`/`BACTERIA` family identity controls simulation only; outcomes/final incidents use no canonical names. World-local aliases retain provenance/scope and do not institutionalize automatically or transfer to new worlds.
 - Focused acceptance: PASS — `node --test tests/y66-outcomes-retirement.test.js tests/y65-phenomenon-ecology.test.js tests/y59-career-loop.test.js tests/y37-q4-personnel.test.js tests/y51-mission-state.test.js`; includes injury/missing/death persistence, retirement immutability, crash-after-world-commit safety, legacy isolation, and terminology/alias boundary. Full suite: PASS — `npm test`. Desktop build/verify: PASS — `npm run desktop:build`, `npm run desktop:verify`; offline executable smoke PASS. Human gate: `PENDING HUMAN VALIDATION`.
 - Checkpoint status: `CHECKPOINT 3 AUTOMATED EXIT: ACCEPTED`. Pass 17 consumes `q4-outcome-authority` (`archive`, `lifecycle`, `isRetired`) and the read-only `DesktopService#getRetiredWorldArchive`; presentation/provider/AV work must not mutate lifecycle, outcomes, entity identity, or observer designations.
+
+## Pass 17 opening intervention — Prompt 17 / 21 — CHECKPOINT 3 HUMAN-GATE FAILURE REPAIR
+
+- Completed scope: opening interaction, player authorship, unified communications, doctrine/provider provenance, settings reachability, and focused Electron-facing acceptance repair. Checkpoint remains `NO`; next checkpoint is `Prompt 18 / Pass 18 — CHECKPOINT 4`.
+- Branch: `agent/pass-10-release-candidate`; HEAD remains local-only. Version remains `0.14.0-beta.1`; active session schema remains `yellow-beast-session@7`.
+- Player authorship: `submitAction(RADIO_CHECK)` is now rejected with `PLAYER_TRANSMISSION_REQUIRED`; only `submitQ4Communication` with the player's submitted text creates the radio-check message. Standard acknowledgment remains a canonical scheduled response and requires a deliberate interval-resolving action before field entry.
+- Unified communications: `desktop/renderer/surfaces.js` renders one chronological communications surface with one composer and LOCAL/STANDARD mode identity. LOCAL defaults to all nearby eligible participating personnel; direct addressing is optional. LOCAL has zero operational interval cost and cannot silently execute a physical action.
+- Runtime interpreter audit: `desktop/service.js#submitNatural` selects `deterministic-mock` in offline mode and `openai` only when explicitly configured. The tested Q4 observation/action fast paths are deterministic and do not invoke a provider. `tools/doctrine-runtime.js` loads the live `SIMULATION_DOCTRINE.md`, hashes the complete source, and supplies bounded priority sections plus the source hash to every applicable natural interpretation context. Context order is canonical world/simulation/institution/observation/presentation, with candidate-only provider output and canonical resolution after response. Developer-only `getInterpretationProvenance` and `getDeveloperSnapshot` report request ID, provider/model, doctrine hash, context hash/sections, projection, and canonical resolver; ordinary UI receives none of this hidden context.
+- Fallback: no provider or provider failure leaves canonical state safe and returns a visible recoverable error; offline deterministic behavior remains complete.
+- Settings: `.settings-surface` now owns its own keyboard/wheel/scrollbar viewport with sticky controls and scroll-padding for focused controls. Existing save/apply, close/reopen, persistence, and Electron service coverage remain active.
+- Human gate: `PENDING HUMAN VALIDATION`. Required manual route: type the radio check in STANDARD, verify no generated YOU speech; send two LOCAL messages without interval resolution; perform a deliberate physical ACTION; inspect developer provenance; disable/fail provider; keyboard-tab through Settings at the required sizes/scaling.
+- Resulting commit: `29d5143` (`feat: repair Pass 17 opening interaction gate`). Desktop build/verify: PASS — `npm run desktop:build`, `npm run desktop:verify`; offline executable smoke PASS. Packaged doctrine assets verified in `resources/app.asar`.
+
+### KNOWN CANONICAL BEHAVIOR CORRECTIONS
+
+- Still Life: no new renderer behavior was invented. Presentation must continue consuming observer-safe instance state and remain compatible with inert, breathing/passive, vocal/fear, fleeing, aggressive, light-interaction, hazardous self-directed movement, and low-reactivity outcomes. The existing canonical phenomenon authority remains the owner; broad variability requires human fixture validation.
+- Bacteria: no new renderer behavior was invented. Presentation must continue consuming observer-safe mimicry, pursuit, capture, and slamming consequence state without combat UI or canonical-name leakage. The existing canonical phenomenon authority remains the owner; human fixture validation remains pending.
+
+### Pass 18 starting files
+
+- `desktop/service.js`, `tools/doctrine-runtime.js`, `tools/q4-experience.js`, `tools/communication-runtime.js`, `tools/q4-radio.js`, `desktop/renderer/surfaces.js`, `desktop/renderer/renderer.js`, `desktop/renderer/styles.css`, `tests/y61-local-standard.test.js`, and `tests/y62-pass17-human-gate.test.js`.

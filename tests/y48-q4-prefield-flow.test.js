@@ -60,10 +60,14 @@ test("pre-field controls advance deterministically through threshold and radio c
   const radio = advance(service, world, "CROSS");
   assert.equal(radio.projection.phase.phase_id, "STANDARD_RADIO_CHECK");
   assert.match(surfaces.render(radio.projection), /Run radio check/);
-  const checked = advance(service, world, "RADIO_CHECK");
+  const rejected = service.submitAction({ world_id: world.id, mode: "field-researcher", action: "RADIO_CHECK" });
+  assert.equal(rejected.ok, false);
+  const checked = service.submitQ4Communication({ world_id: world.id, channel: "standard", text: "Standard, Clear-Q4 team accounted for. Radio check." });
+  assert.equal(checked.ok, true);
   assert.equal(checked.projection.phase.phase_id, "STANDARD_RADIO_CHECK");
-  assert.match(surfaces.render(checked.projection), /YOU[\s\S]*Standard, Clear-Q4 team Complex-side[\s\S]*STANDARD[\s\S]*contact established/i);
-  assert.match(surfaces.render(checked.projection), /Begin field operation/);
+  assert.match(surfaces.render(checked.projection), /Radio check/);
+  assert.equal(service.submitAction({ world_id: world.id, mode: "field-researcher", action: "WAIT" }).ok, true);
+  assert.match(surfaces.render(service.getGameplayProjection({ world_id: world.id, mode: "field-researcher" }).projection), /Begin field operation/);
   const field = advance(service, world, "BEGIN_FIELD_OPERATION");
   assert.equal(field.projection.phase.phase_id, "FIELD_OPERATION");
   assert.doesNotMatch(surfaces.render(field.projection), /Nothing notable changes/);
