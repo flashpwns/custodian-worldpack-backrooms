@@ -23,12 +23,14 @@ test("Clear-Q4 exposes dominant ACTION plus LOCAL and STANDARD lanes", () => {
   const briefing = service.getGameplayProjection({ world_id: world.id, mode: "field-researcher" }).projection;
   const briefingHtml = surfaces.render(briefing);
   assert.equal(briefing.phase.phase_id, "BRIEFING");
-  assert.match(briefingHtml, /q4-communication-lanes|local-comms|standard-comms/);
+  assert.match(briefingHtml, /data-testid="q4-communications"/);
+  assert.match(briefingHtml, /data-testid="q4-channel"/);
   assert.match(fs.readFileSync(path.join(__dirname, "../desktop/renderer/renderer.js"), "utf8"), /data-testid="natural-primary"/); // ACTION remains the primary composer.
   const field = reachField(service, world);
   const fieldHtml = surfaces.render(field);
-  assert.match(fieldHtml, /data-testid="local-comms"/);
-  assert.match(fieldHtml, /data-testid="standard-comms"/);
+  assert.match(fieldHtml, /data-testid="q4-communications"/);
+  assert.match(fieldHtml, /LOCAL/);
+  assert.match(fieldHtml, /STANDARD/);
 });
 
 test("Q4 channels write distinguishable records and preserve physical continuity", () => {

@@ -35,9 +35,9 @@ test("Clear-Q4 retains the fixed operational information order", () => {
   assert.match(renderer, /async-system-header/);
   assert.match(renderer, /async-operations-layout/);
   assert.match(renderer, /compactLayout/);
-  assert.match(html, /local-comms/);
-  assert.match(html, /standard-comms/);
-  assert.match(css, /grid-template-columns:220px minmax\(0,1fr\) 230px/);
+  assert.match(html, /data-testid="q4-communications"/);
+  assert.match(html, /data-testid="q4-channel"/);
+  assert.match(css, /grid-template-columns:minmax\(0,1fr\) 310px/);
   assert.match(css, /operations-shell[^}]*overflow:hidden/);
   assert.ok(projection.q4.mission_record.id);
   assert.match(projection.q4.operational_time, /^T\+/);
@@ -49,17 +49,17 @@ test("Clear-Q4 retains the fixed operational information order", () => {
 test("briefing, equipment, radio, personnel, and map surfaces remain observer-safe", () => {
   const { service, world, projection } = fixture("interface-surfaces");
   const html = surfaces.render(projection);
-  assert.match(html, /Assignment/);
-  assert.match(html, /Required field kit/);
-  assert.match(html, /TEAM STATUS|Assigned team/);
-  assert.match(html, /LOCAL COMMS/);
+  assert.match(html, /WORK ORDER/);
+  assert.match(html, /Authorized field kit/);
+  assert.match(html, /Immediate team condition/);
+  assert.match(html, /COMMUNICATIONS/);
   assert.match(html, /STANDARD/);
   assert.doesNotMatch(html, /charges|durability|rarity|HP/);
   assert.doesNotMatch(JSON.stringify(projection), /hidden_trajectory|latent_condition|X_FACTOR|ESCALATION LEVEL/i);
   assert.equal(service.submitAction({ world_id: world.id, mode: "field-researcher", action: "READY" }).ok, true);
   const staging = service.getGameplayProjection({ world_id: world.id, mode: "field-researcher" }).projection;
   assert.equal(staging.phase.phase_id, "STAGING");
-  assert.match(surfaces.render(staging), /FIELD KIT|Required field kit/);
+  assert.match(surfaces.render(staging), /Authorized field kit/);
 });
 
 test("layout projection preserves observation distinctions without hidden state", () => {

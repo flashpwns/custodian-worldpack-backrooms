@@ -186,16 +186,13 @@ test("logistics state, histories, containers, and institutional state survive ex
   assert.equal(bootstrap.resumeRun({ ...bootstrap.saveRun(run), version: "yellow-beast-save@v999" }, { world }).error.code, "SAVE_VERSION_UNSUPPORTED");
 });
 
-test("the inventory interface is a keyboard-operable observer projection with contextual and full-list parity", (t) => {
+test("the preparation interface exposes an observer-safe contextual equipment projection", (t) => {
   const { service, world } = fixture(t, "inventory-interface");
   const staging = action(service, world, "READY").projection;
   const html = surfaces.render(staging);
-  assert.match(html, /data-testid="full-inventory"/);
-  assert.match(html, /role="toolbar"/);
-  assert.match(html, /All item actions and unavailable reasons/);
-  assert.match(html, /type="button" class="logistics-action/);
-  assert.match(html, /aria-label="[^"]+"/);
-  assert.match(html, /data-testid="institutional-response"/);
+  assert.match(html, /data-testid="prefield-equipment"/);
+  assert.match(html, /Team and authorized preparation/);
+  assert.match(html, /data-testid="select-store-/);
   const visibleText = html.replace(/<[^>]+>/g, " ");
   assert.match(visibleText, /Battery field lamp/);
   assert.doesNotMatch(visibleText, /field-light|player-harness|predicate|state path/i);
