@@ -32,3 +32,14 @@
 
 - Deferred: Pass 11 Facility spatial presentation and all later campaign systems.
 - Begin Pass 11 with `desktop/renderer/renderer.js`, `desktop/renderer/surfaces.js`, `desktop/renderer/styles.css`, Clear-Q4 phase projections, and Facility/worldpack authority boundaries. Preserve Custodian truth and `yellow-beast-session@7`.
+
+## Pass 11 handoff — Prompt 05 / 21
+
+- Completed pass: `11`; checkpoint: `NO`; next checkpoint: `Prompt 07 / Pass 12B  CHECKPOINT 2`.
+- Resulting commit: pending local commit; branch remains `agent/pass-10-release-candidate`; version remains `0.14.0-beta.1`.
+- Facility contexts derived from canonical Clear-Q4 phase state: Lower Offices, Hazmat / Equipment, Maintenance Wing, KV31 Control / Observation, Threshold Chamber, Complex, and Biomedical / Evidence when returned material exists.
+- Canonical authorities consumed: `tools/q4-experience.js` phase, personnel, equipment, logistics, evidence, radio, and institutional projections. No renderer-owned mission or inventory truth; no save-schema or migration impact.
+- Settings regression repaired in `desktop/renderer/renderer.js` with explicit named-control lookup and guarded settings/provider responses. Focused Settings regression: PASS (`tests/y54-settings-regression.test.js`). Desktop service suite: PASS.
+- Desktop build: PASS (`npm run desktop:build`); launch: `npm run desktop:dev`. Human gate: `PENDING HUMAN VALIDATION`.
+- Known defect: richer room-specific operational panels remain deferred; Survey Frontier, geography/knowledge layers, and procedural Complex work were not started.
+- Pass 12A should begin with `desktop/renderer/surfaces.js`, `desktop/renderer/renderer.js`, `tools/q4-experience.js`, and authoritative spatial/worldpack projections.

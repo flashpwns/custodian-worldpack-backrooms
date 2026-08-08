@@ -54,6 +54,20 @@ function missionProjection(run) {
   return missionRuntime.project(run.expedition.mission_state, bootstrap.missionDefinitionFor(run.spatial_pack_id));
 }
 
+function facilityContext(phaseId, hasReturnedMaterial = false) {
+  const contexts = {
+    BRIEFING: { id: "lower-offices", label: "Lower Offices", purpose: "assignment records and administrative briefing" },
+    STAGING: { id: "hazmat-equipment", label: "Hazmat / Equipment", purpose: "personnel, issued equipment, and custody" },
+    FACILITY_TRANSIT: { id: "maintenance-wing", label: "Maintenance Wing", purpose: "the accounted route toward Project KV31" },
+    STANDARD_RADIO_CHECK: { id: "control-observation", label: "KV31 Control / Observation", purpose: "radio, readiness, and Threshold monitoring" },
+    THRESHOLD: { id: "threshold-chamber", label: "Threshold Chamber", purpose: "final accountability and crossing" },
+    FIELD_OPERATION: { id: "complex", label: "Complex", purpose: "field operation and observation" },
+    RETURN: { id: "threshold-chamber", label: "Threshold Chamber", purpose: "return accountability and reconciliation" },
+    DEBRIEF: { id: hasReturnedMaterial ? "biomedical-evidence" : "lower-offices", label: hasReturnedMaterial ? "Biomedical / Evidence" : "Lower Offices", purpose: hasReturnedMaterial ? "returned material and records" : "debrief and next work" }
+  };
+  return contexts[phaseId] ?? contexts.BRIEFING;
+}
+
 function canonicalObjectives(runOrExpedition) {
   const progress = runOrExpedition?.spatial_pack_id ? missionProjection(runOrExpedition) : null;
   if (!progress) return [];
@@ -87,6 +101,7 @@ function presentation(run, phase, unfinished = null, world = null) {
   const institutional = world && run.spatial_pack_id ? institutionalRuntime.project(world, bootstrap.institutionalDefinitionFor(run.spatial_pack_id)) : null;
   const inventory = run.spatial_pack_id ? logisticsRuntime.project(expedition, bootstrap.logisticsDefinitionFor(run.spatial_pack_id), playerId, { player: playerId, actor: playerId, team: expedition.team?.members ?? [], names: context.names, spatial: run.spatial, location: run.spatial?.player_location, at: expedition.clock?.interval ?? 0, phase: phase.phase_id, restrictions: institutional?.restrictions?.equipment ?? [] }) : null;
   const evidence = (expedition?.evidence ?? []).map((item) => ({ id: item.id, mission_id: mission?.id ?? null, type: item.type, capture_event: item.capture_event ?? "evidence.recorded", method: item.method ?? "field record", device: item.device ?? "field recording device", observer: (item.capturing_observer ?? item.creator) === playerId ? "YOU" : context.names[item.capturing_observer ?? item.creator] ?? "assigned personnel", source: item.source_name ?? item.target_alias ?? "observed field feature", condition: item.condition_summary ?? item.target_observation ?? "Condition recorded at capture", location: item.source_location_name ?? item.location?.alias ?? item.location ?? null, time: item.captured_at ?? { interval: item.interval ?? 0 }, provenance: item.provenance, storage: item.storage ?? "with field record", reporting_state: item.reporting_state ?? (item.available_to_standard ? "reported" : "unreported"), render: item.render ?? { status: "fallback-ready" }, visual: q4Visuals.mediaVisual(item), available_to_player: item.available_to_player !== false, available_to_standard: item.available_to_standard === true }));
+  const facility = facilityContext(phase.phase_id, evidence.length > 0 && ["RETURN", "DEBRIEF"].includes(phase.phase_id));
   const mapNames = Object.fromEntries((operationalMap?.nodes ?? []).map((node) => [node.id, node.name]));
   const layout = {
     current: liveLayout ? (safeStatus.view?.location?.alias ?? "Current location") : "Prior survey boundary",
@@ -117,6 +132,7 @@ function presentation(run, phase, unfinished = null, world = null) {
   return {
     version: VERSION,
     phase: phase.phase_id,
+    facility,
     briefing: copy[phase.phase_id],
     mission: mission?.objective?.primary ?? expedition?.order?.primary ?? null,
     mission_record: mission ? { id: mission.id, display_id: mission.id.replace(/^CQ4-[A-Z-]+-/, "CQ4-").replace(/-[A-Z0-9]{4,}$/, ""), family: mission.family_label, rationale: diegeticText(mission.rationale), site: mission.site, objective: mission.objective, reporting: { ...mission.reporting, summary: diegeticText(mission.reporting?.summary) }, expected_duration: mission.expected_duration, risks: mission.risks, prior_history: mission.prior_history, status: missionProgress?.lifecycle ?? mission.status } : null,
