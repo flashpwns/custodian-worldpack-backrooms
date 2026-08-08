@@ -37,6 +37,7 @@ function validateSpec(record) {
   if (spec.version !== "yellow-beast-q4-evidence-render-spec@v1" || spec.source !== "canonical-evidence-record" || !spec.facts || typeof spec.facts !== "object") throw Object.assign(new Error("evidence render specification is invalid"), { code: "RENDER_SPEC_INVALID" });
   const facts = spec.facts;
   const visible_subjects = Array.isArray(facts.visible_subjects) ? facts.visible_subjects.map((item) => safeText(String(item), "visible subject")) : [];
+  const environmental = facts.environment && typeof facts.environment === "object" ? Object.fromEntries(Object.entries(facts.environment).filter(([key, value]) => ["lighting", "communications", "structural", "moisture", "acoustic", "visibility"].includes(key) && typeof value === "string").map(([key, value]) => [key, safeText(value, `environment ${key}`)])) : null;
   const validated = {
     evidence_id: record.id,
     evidence_type: safeText(String(facts.evidence_type ?? record.type), "evidence type"),
@@ -45,7 +46,7 @@ function validateSpec(record) {
     captured_at: facts.captured_at && typeof facts.captured_at === "object" ? clone(facts.captured_at) : null,
     visible_subjects,
     observation: safeText(facts.observation, "observation"),
-    lighting: safeText(facts.lighting, "lighting"),
+    lighting: safeText(facts.lighting, "lighting"), environment:environmental,
     framing: safeText(facts.framing, "framing")
   };
   if (FORBIDDEN.test(JSON.stringify(validated))) throw Object.assign(new Error("render specification contains prohibited hidden state"), { code: "RENDER_SPEC_UNSAFE" });
@@ -57,6 +58,8 @@ function requestFromSpec(spec, { request_id, seed, quality = "documentary" } = {
     spec.location && `Location: ${spec.location}.`,
     spec.device && `Camera/equipment: ${spec.device}.`,
     spec.lighting && `Lighting: ${spec.lighting}.`,
+    spec.environment?.moisture && `Surface moisture: ${spec.environment.moisture}.`,
+    spec.environment?.acoustic && `Acoustic context: ${spec.environment.acoustic}.`,
     spec.framing && `Framing: ${spec.framing}.`,
     spec.visible_subjects.length && `Visible subjects: ${spec.visible_subjects.join(", ")}.`,
     spec.observation && `Recorded observation: ${spec.observation}.`

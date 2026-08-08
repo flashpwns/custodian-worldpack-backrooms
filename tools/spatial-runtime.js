@@ -6,6 +6,7 @@ const VERSION = "yellow-beast-spatial-state@v1";
 const DEFINITION_VERSION = "yellow-beast-spatial-worldpack@v1";
 const CANONICAL_VERSION = "yellow-beast-spatial-canonical@v1";
 const geography = require("./procedural-geography");
+const environment = require("./q4-environment");
 const clone = (value) => structuredClone(value);
 
 function canonicalDefinition(state, definition) {
@@ -118,6 +119,7 @@ function migrate(state, definition, { player, personnel = [], equipment = [], ph
     next.route_markers = clone(state.route_markers ?? []);
     next.environment_changes = clone(state.environment_changes ?? {});
     next.blocked_paths = clone(state.blocked_paths ?? {});
+    next.environment = clone(state.environment ?? null);
     const errors = validateState(next, definition);
     if (errors.length) throw Object.assign(new Error(`invalid canonical geography snapshot: ${errors.join(",")}`), { code: "CANONICAL_GEOGRAPHY_INVALID" });
     return next;
@@ -290,7 +292,7 @@ function locationObservation(state, definition, { mode = "orient", nearby = [], 
   const location = currentLocation(state, definition);
   if (!location) return "The team's present location is not confirmed.";
   const lower = location.name.toLowerCase();
-  const lighting = location.environment?.lighting;
+  const lighting = environment.current(state.environment, location.id)?.lighting ?? location.environment?.lighting;
   const lead = mode === "entry" ? `The team enters the ${lower}${lighting ? ` under ${lighting}` : ""}.` : mode === "arrival" ? `You arrive in the ${lower}. ${location.short_description}` : `You take stock of the ${lower}.`;
   const landmarks = (location.landmarks ?? []).map((item) => item.observation).filter(Boolean);
   const exits = visibleExits(state, definition).map(exitSentence);
@@ -402,7 +404,7 @@ function placeMarker(state, label = "Survey marker") {
 }
 
 function canonicalSnapshot(state) {
-  return { version: CANONICAL_VERSION, worldpack_id: state.worldpack_id, generated_locations: clone(state.generated_locations ?? []), generated_connections: clone(state.generated_connections ?? []), generation: clone(state.generation), route_markers: clone(state.route_markers ?? []), environment_changes: clone(state.environment_changes ?? {}), blocked_paths: clone(state.blocked_paths ?? {}) };
+  return { version: CANONICAL_VERSION, worldpack_id: state.worldpack_id, generated_locations: clone(state.generated_locations ?? []), generated_connections: clone(state.generated_connections ?? []), generation: clone(state.generation), route_markers: clone(state.route_markers ?? []), environment_changes: clone(state.environment_changes ?? {}), blocked_paths: clone(state.blocked_paths ?? {}), environment: clone(state.environment ?? null) };
 }
 
 function diagnostics(state) { return { generation_version: state.generation?.version ?? null, seed_strategy: state.generation?.seed_strategy ?? null, generated_location_count: state.generated_locations?.length ?? 0, generated_connection_count: state.generated_connections?.length ?? 0, expansion_count: state.generation?.expansion_count ?? 0, unresolved_frontier_count: (state.generation?.frontiers ?? []).filter((item) => item.state === "unresolved").length, last_request_id: state.generation?.last_request_id ?? null, recent_errors: clone(state.generation?.recent_errors ?? []) }; }

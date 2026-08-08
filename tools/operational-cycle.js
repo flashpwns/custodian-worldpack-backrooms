@@ -5,6 +5,7 @@ const communications = require("./communication-runtime");
 const team = require("./team-runtime");
 const hazards = require("./hazard-runtime");
 const institutional = require("./institutional-runtime");
+const environment = require("./q4-environment");
 
 const VERSION = "yellow-beast-operational-cycle@v1";
 const clone = (value) => structuredClone(value);
@@ -40,6 +41,7 @@ function resolve(run, dynamics, spatialDefinition, { action, cost = 0, source = 
 
   const decisions = cost > 0 ? team.decide(run, spatialDefinition, dynamics) : [];
   const hazardResolution = cost > 0 ? hazards.resolve(run, dynamics) : { updates: [], consequences: [] };
+  const environmentUpdates = run.spatial ? environment.reconcile(run.spatial, { hazards:run.expedition.hazards, at:run.expedition.clock.interval }) : [];
   // Consequences may advance the same clock. Drain anything newly due before mission evaluation.
   scheduled.push(...resolveEnvironment(), ...resolveCommunications());
   if (institutionalDefinition) institutional.ingestDeliveredCommunications(run, institutionalDefinition);
@@ -51,14 +53,15 @@ function resolve(run, dynamics, spatialDefinition, { action, cost = 0, source = 
   operational.evaluation_revision += 1;
   const updates = [
     ...scheduled.map((entry) => ({ kind: "scheduled-event", summary: entry.status === "completed" ? `${entry.event_type.replace(/[.-]/g, " ")} resolved.` : `${entry.event_type.replace(/[.-]/g, " ")} ${entry.status}.`, at: entry.at })),
-    ...hazardResolution.updates
+    ...hazardResolution.updates,
+    ...environmentUpdates.map((item) => ({ kind:"environment", summary:`${item.kind.replace(/-/g, " ")} changed.`, at:item.at }))
   ];
   clock.to = operational.clock.interval; clock.action_cost = cost; clock.consequence_delay = operational.clock.interval - clock.from - cost; clock.cost = operational.clock.interval - clock.from;
   const record = { sequence: operational.cycle_history.length + 1, kind: "operational-cycle", action: action ?? null, source, from: before, to: operational.clock.interval, cost: clock.cost, action_cost: cost, consequence_delay: clock.consequence_delay, scheduled_event_ids: scheduled.map((entry) => entry.event_id), decision_count: decisions.length, consequence_ids: hazardResolution.consequences.map((entry) => entry.id), mission_transition_count: missionUpdates.length };
   operational.cycle_history.push(record);
   operational.recent_public_updates = clone(updates);
   run._last_operational_updates = updates; run._last_mission_updates = missionUpdates;
-  return { version: VERSION, clock, scheduled_events: scheduled, team_decisions: clone(decisions), hazard_updates: clone(hazardResolution.updates), consequences: clone(hazardResolution.consequences), mission_updates: clone(missionUpdates), public_updates: clone(updates) };
+  return { version: VERSION, clock, scheduled_events: scheduled, team_decisions: clone(decisions), hazard_updates: clone(hazardResolution.updates), environment_updates:clone(environmentUpdates), consequences: clone(hazardResolution.consequences), mission_updates: clone(missionUpdates), public_updates: clone(updates) };
 }
 
 module.exports = { VERSION, ensure, resolve };

@@ -23,6 +23,7 @@ const surveyFrontier = require("./survey-frontier");
 const career = require("./q4-career-loop");
 const personnelContinuity = require("./q4-personnel-continuity");
 const standardOperator = require("./q4-standard-operator");
+const environmentModel = require("./q4-environment");
 const cloneUpdates = (value) => structuredClone(value ?? []);
 
 const VERSION = "yellow-beast-clear-q4-experience@v3";
@@ -134,8 +135,10 @@ const evidence = (expedition?.evidence ?? []).map((item) => ({ id: item.id, miss
   const operationalClock = operationalTime.project(expedition);
   const hazardView = run.spatial_pack_id ? hazardRuntime.project(run, bootstrap.dynamicsDefinitionFor(run.spatial_pack_id)) : [];
   const location = run.spatial ? spatialRuntime.currentLocation(run.spatial, bootstrap.spatialDefinitionFor(run.spatial_pack_id)) : null;
+  const observedEnvironment = location ? environmentModel.observation(run.spatial?.environment, location.id, { has_field_light:equipmentModel.stateUsable(expedition?.equipment?.["field-light"]) }) : null;
   const interactables = liveLayout ? (safeStatus.view?.observations?.objects ?? []) : [];
-  const fieldObservation = location && liveLayout ? spatialRuntime.locationObservation(run.spatial, bootstrap.spatialDefinitionFor(run.spatial_pack_id), { mode: "orient", nearby: localCoworkers.map((member) => member.first_name), objects: interactables.map((object) => object.observation) }) : null;
+  const fieldObservationBase = location && liveLayout ? spatialRuntime.locationObservation(run.spatial, bootstrap.spatialDefinitionFor(run.spatial_pack_id), { mode: "orient", nearby: localCoworkers.map((member) => member.first_name), objects: interactables.map((object) => object.observation) }) : null;
+  const fieldObservation = fieldObservationBase && observedEnvironment ? `${fieldObservationBase} ${observedEnvironment.summary}` : fieldObservationBase;
   const missionProgress = missionProjection(run);
   return {
     version: VERSION,
@@ -167,7 +170,8 @@ const evidence = (expedition?.evidence ?? []).map((item) => ({ id: item.id, miss
     standard_spatial_record: standardMap,
     survey_frontier: run.spatial && run.survey_frontier ? surveyFrontier.frontier(run.survey_frontier, topologyDefinition, run.session.startup.player.observer_id) : [],
     procedural_geography: run.spatial ? spatialRuntime.diagnostics(run.spatial) : null,
-    current_location: location ? { id: location.id, name: location.name, type: location.type, description: location.short_description, environment: location.environment } : null,
+    current_location: location ? { id: location.id, name: location.name, type: location.type, description: location.short_description, environment: observedEnvironment ?? location.environment } : null,
+    environment: observedEnvironment ? { location_id:location.id, ...observedEnvironment } : null,
     field_observation: fieldObservation,
     interactables,
     evidence,

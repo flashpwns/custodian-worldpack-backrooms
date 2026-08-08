@@ -3,6 +3,7 @@
 const crypto = require("node:crypto");
 const operationalTime = require("./operational-time");
 const dynamicsRuntime = require("./operational-dynamics");
+const environment = require("./q4-environment");
 
 const VERSION = "yellow-beast-communications@v1";
 const MESSAGE_STATES = Object.freeze(["composed", "queued", "transmitting", "delayed", "delivered", "acknowledged", "failed", "expired"]);
@@ -84,13 +85,16 @@ function failRadio(expedition, { sender, recipient = "Standard", text, purpose =
   return { ok: false, message, reason: message.failure_reason };
 }
 
-function queueRadio(run, definition, { sender, recipient = "Standard", text, purpose = "routine-report", evidence_ids = [], geography_report = false, acknowledgment = true, acknowledgment_delay = null }) {
+function queueRadio(run, definition, { sender, recipient = "Standard", text, purpose = "routine-report", evidence_ids = [], geography_report = false, environment_condition_ids = [], acknowledgment = true, acknowledgment_delay = null }) {
   const expedition = run.expedition; ensure(expedition); const at = expedition.clock.interval;
   const senderLocation = run.spatial?.personnel_locations?.[sender] ?? run.spatial?.player_location;
   const senderMember = expedition.team?.members?.find((member) => (member.personnel_id ?? member.id) === sender);
   const senderConnection = senderMember?.movement_history?.at(-1)?.connection_id ?? (senderLocation === run.spatial?.player_location ? run.spatial?.route_history?.at(-1)?.connection_id : null);
   const zone = dynamicsRuntime.interference(definition, senderLocation, senderConnection);
-  const message = createMessage(expedition, { sender, recipient, channel: "FIELD_RADIO", purpose, text, evidence_ids, geography_report, interference: zone ? { id: zone.id, public_description: zone.public_description, additional_delay: zone.additional_delay } : null });
+  const coverage = environment.coverage(run.spatial?.environment, senderLocation);
+  const coverageEffect = coverage === "unavailable" ? { public_description:"Local communications coverage is unavailable.", additional_delay:0, unavailable:true } : coverage === "intermittent" ? { public_description:"Local communications coverage is intermittent.", additional_delay:2 } : coverage === "weak" ? { public_description:"Local communications coverage is weak.", additional_delay:1 } : null;
+  const effects = [zone ? { id: zone.id, public_description: zone.public_description, additional_delay: zone.additional_delay } : null, coverageEffect].filter(Boolean);
+  const message = createMessage(expedition, { sender, recipient, channel: "FIELD_RADIO", purpose, text, evidence_ids, geography_report, environment_condition_ids, coverage, interference: effects.length ? { id:effects.map((item) => item.id ?? "environment").join("+"), public_description:effects.map((item) => item.public_description).join(" "), additional_delay:effects.reduce((sum, item) => sum + Number(item.additional_delay ?? 0), 0), unavailable:effects.some((item) => item.unavailable) } : null });
   transition(expedition, message, "queued", "accepted into the field-radio transmission queue", at);
   if (expedition.radio) { expedition.radio.state = "transmitting"; expedition.radio.last_transition = "message-queued"; }
   operationalTime.schedule(expedition, { id: `transmit-${message.id}`, event_type: "communication.transmit", scheduled_interval: at, source: sender, target: recipient, payload: { message_id: message.id, acknowledgment, acknowledgment_delay }, visibility_policy: "known" });
@@ -155,6 +159,7 @@ function handleEvent(run, definition, event) {
   if (event.event_type === "communication.transmit") {
     if (!message || !["queued", "composed"].includes(message.state)) return { status: "cancelled", reason: "message no longer queued" };
     const zone = message.interference;
+    if (zone?.unavailable) { transition(expedition, message, "failed", zone.public_description); message.failure_reason = zone.public_description; if (expedition.radio) { expedition.radio.state = "unavailable"; expedition.radio.last_transition = "transmission-blocked-by-coverage"; } return { status:"completed", reason:"transmission blocked by environmental coverage", result:{ message_id:message.id, state:message.state } }; }
     transition(expedition, message, zone ? "delayed" : "transmitting", zone ? zone.public_description : "field-radio transmission begun");
     if (expedition.radio) { expedition.radio.state = zone ? "intermittent" : "transmitting"; expedition.radio.last_transition = zone ? "transmission-delayed-by-interference" : "outbound-transmission"; }
     const baseDelay = Number(definition.communications?.standard_delivery_delay ?? 1); const delay = baseDelay + Number(zone?.additional_delay ?? 0);
@@ -167,6 +172,7 @@ function handleEvent(run, definition, event) {
     if (expedition.radio) { expedition.radio.state = event.payload.acknowledgment === false ? "available" : "awaiting-response"; expedition.radio.last_transition = "transmission-delivered"; expedition.radio.last_delivery = { status: "delivered", interval: expedition.clock.interval }; }
     expedition.communications.last_successful_contact = { channel: "FIELD_RADIO", recipient: message.intended_recipient, at: expedition.clock.interval };
     for (const id of message.evidence_ids) { const evidence = expedition.evidence?.find((item) => item.id === id); if (evidence) { evidence.available_to_standard = true; evidence.reporting_state = "reported-to-standard"; } }
+    environment.report(run.spatial?.environment, message.environment_condition_ids ?? [], { message_id:message.id, at:expedition.clock.interval });
     if (message.check_in_id || message.purpose === "scheduled-check-in") completeCheckIn(expedition, message);
     if (event.payload.acknowledgment !== false) {
       const delay = event.payload.acknowledgment_delay ?? definition.communications?.standard_acknowledgment_delay ?? 1;

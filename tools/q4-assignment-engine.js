@@ -6,6 +6,7 @@ const crypto = require("node:crypto");
 const spatialRuntime = require("./spatial-runtime");
 const surveyFrontier = require("./survey-frontier");
 const trajectories = require("./q4-trajectories");
+const environment = require("./q4-environment");
 const spatialDefinition = require("../data/worldpacks/clear-q4/spatial.json");
 const definition = require("../data/worldpacks/clear-q4/assignments.json");
 
@@ -63,6 +64,12 @@ function deriveConditions(world) {
     const source = { id: `prior-record-discrepancy:${input.id}`, type: "prior-record-discrepancy", status: sourceStatus(world, `prior-record-discrepancy:${input.id}`), institutional_fact: { input_id: input.id } };
     if (source.status === "unassigned" && !activeFor(world, source.id)) candidates.push(candidate(layout, source, { kind: "known-area", location_id: target, location_label: locations[target].name }, "Standard has a recorded discrepancy that requires a bounded comparison against the next accessible field record.", { required_objective_type: "compare-institutional-record" }));
   }
+  for (const condition of environment.assignmentConditions(world?.q4_geography?.environment)) {
+    const locationId = condition.connection_id ? connections[condition.connection_id]?.from : (condition.infrastructure_id === "relay-circuit" ? "relay-alcove" : null);
+    if (!locationId || !locations[locationId]) continue;
+    const source = { id:`environment-condition:${condition.id}`, type:"environment-condition", status:sourceStatus(world, `environment-condition:${condition.id}`), institutional_fact:{ condition_id:condition.id, type:condition.type, target:condition.connection_id ?? condition.infrastructure_id ?? locationId } };
+    if (source.status === "unassigned" && !activeFor(world, source.id)) candidates.push(candidate(route, source, { kind:"environment", location_id:locationId, location_label:locations[locationId].name, connection_id:condition.connection_id ?? null, condition_id:condition.id }, "A delivered field report identifies an unresolved environmental condition requiring bounded verification or service.", { required_objective_type:"verify-reported-environment-condition" }));
+  }
   const routine = archetypeById["routine-survey"]; const target = definition.routine_targets.find((id) => locations[id]);
   const period = world?.q4_operations?.institutional_time ?? Object.values(world?.q4_missions ?? {}).filter((mission) => mission.status === "completed").length;
   if (target) {
@@ -78,6 +85,7 @@ function validateCandidate(world, item) {
   if (source.type === "lost-equipment") { const equipment = world?.q4_equipment?.[item.target?.equipment_id]; return Boolean(equipment && ["missing", "abandoned"].includes(equipment.state) && equipment.location === item.target.location_id && locations[equipment.location] && knownEquipmentLoss(world, equipment)); }
   if (source.type === "unconfirmed-route") return Boolean(connections[item.target?.connection_id] && !world?.q4_geography?.blocked_paths?.[item.target.connection_id] && standardRecord(world).edges.some((edge) => edge.id === item.target.connection_id && edge.status === "REPORTED"));
   if (source.type === "prior-record-discrepancy") return institutionalInputs(world, "contradictory-report").some((input) => input.id === source.institutional_fact.input_id) && Boolean(locations[item.target?.location_id]);
+  if (source.type === "environment-condition") return environment.assignmentConditions(world?.q4_geography?.environment).some((condition) => condition.id === source.institutional_fact.condition_id) && Boolean(locations[item.target?.location_id]);
   return source.type === "routine-frontier" && Boolean(locations[item.target?.location_id]);
 }
 
@@ -125,6 +133,7 @@ function resolve(world, workOrderId, outcome = {}) {
   if (work.source_condition.type === "unconfirmed-route") resolved ||= standardRecord(world).edges.some((edge) => edge.id === work.target.connection_id && edge.status === "CONFIRMED");
   if (work.source_condition.type === "routine-frontier") resolved ||= outcome.completed === true;
   if (work.source_condition.type === "prior-record-discrepancy") resolved ||= outcome.completed === true;
+  if (work.source_condition.type === "environment-condition") resolved ||= !environment.assignmentConditions(world?.q4_geography?.environment).some((condition) => condition.id === work.source_condition.institutional_fact.condition_id);
   work.status = resolved ? "completed" : (outcome.aborted ? "aborted" : "unresolved"); source.status = resolved ? "resolved" : "unassigned"; source.resolved_by = resolved ? work.id : null; state.history.push({ type: work.status, id: work.id, source_condition: source.id }); return { ok: true, resolved, work_order: clone(work) };
 }
 function projection(world, workOrderId) { const work = world?.q4_assignment_state?.work_orders?.[workOrderId]; return work ? { id: work.display_id, archetype: work.family_label, target: clone(work.target), justification: work.institutional_justification, status: work.status } : null; }
