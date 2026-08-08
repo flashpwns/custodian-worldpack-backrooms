@@ -84,5 +84,5 @@ test("phase copy and progression controls identify the destination", () => {
 
 test("renderer exposes creation, confirmation, phase guidance, and direct progression wiring", () => {
   const renderer = fs.readFileSync(path.join(__dirname, "../desktop/renderer/renderer.js"), "utf8");
-  assert.match(renderer, /Create your ASYNC personnel record/); assert.match(renderer, /Continue to Assignment Briefing/); assert.match(renderer, /createQ4Personnel/); assert.match(renderer, /phaseAction/); assert.match(renderer, /Hide guidance/); assert.doesNotMatch(renderer, /You are entering Clear-Q4/);
+  assert.match(renderer, /Create your ASYNC personnel record/); assert.match(renderer, /Continue to Assignment Briefing/); assert.match(renderer, /createQ4Personnel/); assert.match(renderer, /selectedAction/); assert.match(renderer, /Hide guidance/); assert.doesNotMatch(renderer, /You are entering Clear-Q4/);
 });

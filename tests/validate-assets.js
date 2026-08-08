@@ -336,6 +336,12 @@ const iconSet = ["icon_16x16.png", "icon_16x16@2x.png", "icon_32x32.png", "icon_
 for (const asset of [iconSource, iconMaster, iconIcns, ...iconSet]) assert.ok(fs.existsSync(path.join(root, asset)), `required application icon asset is missing: ${asset}`);
 assert.equal(packageJson.build?.mac?.icon, iconIcns, "electron-builder must use the verified macOS icon");
 const permittedIconMedia = new Set([iconSource, iconMaster, iconIcns, ...iconSet]);
-const prohibitedRawMedia = fs.readdirSync(root, { recursive: true }).map(portablePath).filter((entry) => /\.(mp4|mov|webm|mkv|jpg|jpeg|png|gif|webp|mp3|wav|pdf)$/i.test(entry) && !entry.startsWith("dist/") && !entry.startsWith("node_modules/") && !entry.startsWith("build/") && !permittedIconMedia.has(entry));
+const documentationReferenceRoots = Object.freeze(["docs/UI Reference Material/", "docs/Audio Sources/"]);
+const isDocumentationReferenceMedia = (entry) => documentationReferenceRoots.some((referenceRoot) => entry.startsWith(referenceRoot));
+assert.ok(isDocumentationReferenceMedia("docs/UI Reference Material/example.png"), "UI reference media is documentation-only");
+assert.ok(isDocumentationReferenceMedia("docs/Audio Sources/example.mp3"), "audio reference media is documentation-only");
+assert.equal(isDocumentationReferenceMedia("desktop/assets/example.png"), false, "runtime media remains in validation scope");
+assert.equal(isDocumentationReferenceMedia("docs/other/example.png"), false, "only the two approved documentation trees are excluded");
+const prohibitedRawMedia = fs.readdirSync(root, { recursive: true }).map(portablePath).filter((entry) => /\.(mp4|mov|webm|mkv|jpg|jpeg|png|gif|webp|mp3|wav|pdf)$/i.test(entry) && !entry.startsWith("dist/") && !entry.startsWith("node_modules/") && !entry.startsWith("build/") && !isDocumentationReferenceMedia(entry) && !permittedIconMedia.has(entry));
 assert.deepEqual(prohibitedRawMedia, [], "Yellow Beast contains no copied raw source media or archives");
 console.log("validated Yellow Beast canon intake assets and baseline manifest");

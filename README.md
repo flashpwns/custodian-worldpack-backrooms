@@ -2,7 +2,7 @@
 
 Yellow Beast is an unofficial, independently maintained declarative world pack
 for [Custodian](https://github.com/flashpwns/custodian).
-It targets `canonical-kernel@v1` and is currently `0.13.0-alpha`.
+It targets `canonical-kernel@v1` and is currently `0.14.0-beta.1` (playable beta).
 
 It is a simulation-pack foundation, not a transcript archive or a statement of
 official canon. Source metadata, claims, and simulation authority are separate:
