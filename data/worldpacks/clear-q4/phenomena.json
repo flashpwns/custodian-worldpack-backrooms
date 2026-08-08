@@ -1,0 +1,32 @@
+{
+  "version": "yellow-beast-q4-phenomenon-config@v1",
+  "worldpack_id": "clear-q4",
+  "production": {
+    "roll_denominator": 1000000,
+    "world_cap": 2,
+    "region_cap": 1,
+    "entity_world_cap": 1,
+    "cooldown_location_evaluations": 4,
+    "minimum_generated_depth": 5,
+    "families": [
+      { "id": "SPATIAL_INCONSISTENCY", "weight": 24, "minimum_depth": 6, "world_cap": 1 },
+      { "id": "OBJECT_DISPLACEMENT", "weight": 18, "minimum_depth": 5, "world_cap": 1 },
+      { "id": "ACOUSTIC_ANOMALY", "weight": 30, "minimum_depth": 5, "world_cap": 1 },
+      { "id": "TRANSIENT_ARCHITECTURE", "weight": 10, "minimum_depth": 7, "world_cap": 1 },
+      { "id": "ENVIRONMENTAL_DISCONTINUITY", "weight": 16, "minimum_depth": 6, "world_cap": 1 },
+      { "id": "EVIDENCE_INCONSISTENCY", "weight": 8, "minimum_depth": 7, "world_cap": 1 },
+      { "id": "STILL_LIFE", "weight": 3, "minimum_depth": 8, "world_cap": 1, "entity": true },
+      { "id": "BACTERIA", "weight": 1, "minimum_depth": 11, "world_cap": 1, "entity": true }
+    ]
+  },
+  "observer_designations": {
+    "SPATIAL_INCONSISTENCY": "UNCONFIRMED SPATIAL DISCREPANCY",
+    "OBJECT_DISPLACEMENT": "UNEXPLAINED OBJECT DISPLACEMENT",
+    "ACOUSTIC_ANOMALY": "UNIDENTIFIED ACOUSTIC EVENT",
+    "TRANSIENT_ARCHITECTURE": "UNCONFIRMED STRUCTURAL DISCREPANCY",
+    "ENVIRONMENTAL_DISCONTINUITY": "UNEXPLAINED LOCAL CONDITION",
+    "EVIDENCE_INCONSISTENCY": "CONFLICTING RECORD",
+    "STILL_LIFE": "HUMANOID FORM",
+    "BACTERIA": "UNIDENTIFIED MOBILE ENTITY"
+  }
+}

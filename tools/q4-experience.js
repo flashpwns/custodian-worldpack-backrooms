@@ -137,8 +137,10 @@ const evidence = (expedition?.evidence ?? []).map((item) => ({ id: item.id, miss
   const location = run.spatial ? spatialRuntime.currentLocation(run.spatial, bootstrap.spatialDefinitionFor(run.spatial_pack_id)) : null;
   const observedEnvironment = location ? environmentModel.observation(run.spatial?.environment, location.id, { has_field_light:equipmentModel.stateUsable(expedition?.equipment?.["field-light"]) }) : null;
   const interactables = liveLayout ? (safeStatus.view?.observations?.objects ?? []) : [];
+  const phenomena = liveLayout ? (safeStatus.view?.observations?.phenomena ?? []) : [];
   const fieldObservationBase = location && liveLayout ? spatialRuntime.locationObservation(run.spatial, bootstrap.spatialDefinitionFor(run.spatial_pack_id), { mode: "orient", nearby: localCoworkers.map((member) => member.first_name), objects: interactables.map((object) => object.observation) }) : null;
-  const fieldObservation = fieldObservationBase && observedEnvironment ? `${fieldObservationBase} ${observedEnvironment.summary}` : fieldObservationBase;
+  const phenomenonText = phenomena.map((item) => `${item.designation}: ${item.observed_properties.join(", ")}.`).join(" ");
+  const fieldObservation = [fieldObservationBase, observedEnvironment?.summary, phenomenonText].filter(Boolean).join(" ") || null;
   const missionProgress = missionProjection(run);
   return {
     version: VERSION,
@@ -174,6 +176,7 @@ const evidence = (expedition?.evidence ?? []).map((item) => ({ id: item.id, miss
     environment: observedEnvironment ? { location_id:location.id, ...observedEnvironment } : null,
     field_observation: fieldObservation,
     interactables,
+    phenomena,
     evidence,
     archive,
     hazards: hazardView,

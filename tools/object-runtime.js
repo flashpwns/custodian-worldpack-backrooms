@@ -341,6 +341,19 @@ function interact(state, definition, { observer, location, location_name = null,
   return { ok: true, action: type, target: object.display_name, object_id: object.id, narration: renderText ? renderText(affordance.result, tools.statuses) : affordance.result, time_cost: affordance.time_cost, state_changed: true, evidence: proposedEvidence ? clone(proposedEvidence) : null, interaction_sequence: entry.sequence };
 }
 
+function relocate(state, definition, { object_id, to_location, allowed_locations = null, cause, at = 0 } = {}) {
+  validateDefinition(definition);
+  const object = definition.objects.find((item) => item.id === object_id); const current = state?.objects?.[object_id];
+  if (!object || !current) return { ok:false, code:"OBJECT_RELOCATION_UNKNOWN" };
+  if (!to_location || (allowed_locations && !allowed_locations.includes(to_location))) return { ok:false, code:"OBJECT_RELOCATION_LOCATION_INVALID" };
+  if (!cause) return { ok:false, code:"OBJECT_RELOCATION_CAUSE_REQUIRED" };
+  if (current.location === to_location) return { ok:true, idempotent:true, object_id, from_location:current.location, to_location };
+  const from = current.location; current.location = to_location; current.moved = true; current.holder = null; current.container = null;
+  state.interaction_history ??= []; state.interaction_history.push({ sequence:state.interaction_history.length + 1, object_id, action:"relocate", from_location:from, to_location, cause, at });
+  current.interaction_history ??= []; current.interaction_history.push(state.interaction_history.length); state.revision = (state.revision ?? 0) + 1;
+  return { ok:true, idempotent:false, object_id, from_location:from, to_location, state:clone(current) };
+}
+
 const VERB_PATTERNS = Object.freeze([
   ["photograph", /\b(photograph|photo|picture|camera|snapshot)\b/],
   ["deactivate", /\b(deactivate|switch off|turn off)\b/],
@@ -383,6 +396,6 @@ function validateState(state, definition) {
 module.exports = {
   VERSION, DEFINITION_VERSION, EVIDENCE_VERSION, AFFORDANCES,
   validateDefinition, createState, migrate, observeLocation, projectLocation,
-  resolveTarget, inspection, interact,
+  resolveTarget, inspection, interact, relocate,
   interpret, validateState, conditionSnapshot
 };

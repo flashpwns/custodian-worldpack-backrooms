@@ -7,6 +7,7 @@ const spatialRuntime = require("./spatial-runtime");
 const surveyFrontier = require("./survey-frontier");
 const trajectories = require("./q4-trajectories");
 const environment = require("./q4-environment");
+const phenomenonEcology = require("./q4-phenomenon-ecology");
 const spatialDefinition = require("../data/worldpacks/clear-q4/spatial.json");
 const definition = require("../data/worldpacks/clear-q4/assignments.json");
 
@@ -70,6 +71,11 @@ function deriveConditions(world) {
     const source = { id:`environment-condition:${condition.id}`, type:"environment-condition", status:sourceStatus(world, `environment-condition:${condition.id}`), institutional_fact:{ condition_id:condition.id, type:condition.type, target:condition.connection_id ?? condition.infrastructure_id ?? locationId } };
     if (source.status === "unassigned" && !activeFor(world, source.id)) candidates.push(candidate(route, source, { kind:"environment", location_id:locationId, location_label:locations[locationId].name, connection_id:condition.connection_id ?? null, condition_id:condition.id }, "A delivered field report identifies an unresolved environmental condition requiring bounded verification or service.", { required_objective_type:"verify-reported-environment-condition" }));
   }
+  for (const condition of phenomenonEcology.assignmentConditions(world)) {
+    if (!locations[condition.location_id]) continue;
+    const source = { id:condition.id, type:"reported-phenomenon", status:sourceStatus(world,condition.id), institutional_fact:{ condition_id:condition.id, designation:condition.designation, message_id:condition.message_id } };
+    if (source.status === "unassigned" && !activeFor(world,source.id)) candidates.push(candidate(layout,source,{kind:"reported-condition",location_id:condition.location_id,location_label:locations[condition.location_id].name,designation:condition.designation},`A delivered field report describes an unresolved ${String(condition.designation).toLowerCase()} requiring bounded verification.`,{required_objective_type:"verify-reported-unidentified-condition"}));
+  }
   const routine = archetypeById["routine-survey"]; const target = definition.routine_targets.find((id) => locations[id]);
   const period = world?.q4_operations?.institutional_time ?? Object.values(world?.q4_missions ?? {}).filter((mission) => mission.status === "completed").length;
   if (target) {
@@ -86,6 +92,7 @@ function validateCandidate(world, item) {
   if (source.type === "unconfirmed-route") return Boolean(connections[item.target?.connection_id] && !world?.q4_geography?.blocked_paths?.[item.target.connection_id] && standardRecord(world).edges.some((edge) => edge.id === item.target.connection_id && edge.status === "REPORTED"));
   if (source.type === "prior-record-discrepancy") return institutionalInputs(world, "contradictory-report").some((input) => input.id === source.institutional_fact.input_id) && Boolean(locations[item.target?.location_id]);
   if (source.type === "environment-condition") return environment.assignmentConditions(world?.q4_geography?.environment).some((condition) => condition.id === source.institutional_fact.condition_id) && Boolean(locations[item.target?.location_id]);
+  if (source.type === "reported-phenomenon") return phenomenonEcology.assignmentConditions(world).some((condition) => condition.id === source.institutional_fact.condition_id) && Boolean(locations[item.target?.location_id]);
   return source.type === "routine-frontier" && Boolean(locations[item.target?.location_id]);
 }
 
@@ -134,6 +141,8 @@ function resolve(world, workOrderId, outcome = {}) {
   if (work.source_condition.type === "routine-frontier") resolved ||= outcome.completed === true;
   if (work.source_condition.type === "prior-record-discrepancy") resolved ||= outcome.completed === true;
   if (work.source_condition.type === "environment-condition") resolved ||= !environment.assignmentConditions(world?.q4_geography?.environment).some((condition) => condition.id === work.source_condition.institutional_fact.condition_id);
+  if (work.source_condition.type === "reported-phenomenon") resolved ||= outcome.completed === true;
+  if (resolved && work.source_condition.type === "reported-phenomenon") phenomenonEcology.resolveCondition(world, work.source_condition.institutional_fact.condition_id, { work_order_id:work.id });
   work.status = resolved ? "completed" : (outcome.aborted ? "aborted" : "unresolved"); source.status = resolved ? "resolved" : "unassigned"; source.resolved_by = resolved ? work.id : null; state.history.push({ type: work.status, id: work.id, source_condition: source.id }); return { ok: true, resolved, work_order: clone(work) };
 }
 function projection(world, workOrderId) { const work = world?.q4_assignment_state?.work_orders?.[workOrderId]; return work ? { id: work.display_id, archetype: work.family_label, target: clone(work.target), justification: work.institutional_justification, status: work.status } : null; }

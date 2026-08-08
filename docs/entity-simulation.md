@@ -18,15 +18,23 @@ exists solely to prove generic perception, state transition, edge traversal,
 and trace behavior. It is not a Kane canon entity, is not a normal scenario
 entry, and its capabilities cannot transfer to other definitions.
 
-## Still Life boundary
+## Legacy YB-23 Still Life boundary
 
-`data/still-life-behavior-authority.json` is the controlling ledger. Current
-admitted scope is an explicit scenario-local physical-presence fixture with
+`data/still-life-behavior-authority.json` is the controlling ledger for the
+legacy source-local YB-23 fixture only. Its admitted scope is an explicit scenario-local physical-presence fixture with
 stationary persistence. Appearance, locomotion, perception, pursuit,
 hostility, harm, environmental interaction, assimilation, communication,
 motive, reproduction, and generic spawn rules remain prohibited or not
-admitted. This sparseness is intentional canon fidelity, not an unfinished
-horror-monster implementation.
+admitted for that fixture. It must not be generalized into the Pass 16B
+Clear-Q4 family.
+
+The Simulation Doctrine and Yellow Beast 1.0 charter require a broader
+heterogeneous Still Life family for Clear-Q4. That current authority is
+`tools/q4-phenomenon-ecology.js`, with persistent instance profiles, bounded
+stimulus response, legal movement/environment interfaces, observer-safe
+designation, and no combat. The two records are scoped authorities, not
+competing definitions: old YB-23 acceptance retains its exact stationary
+fixture while Q4 Pass 16B consumes the newer family authority.
 
 ## Perception, encounters, and movement
 

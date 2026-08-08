@@ -325,6 +325,13 @@ scripts.push("tests/y54-settings-regression.test.js", "tests/y55-survey-frontier
 scripts.push("tests/y56-persistent-procedural-complex.test.js", "tools/procedural-geography.js");
 scripts.push("desktop/build-info.js", "desktop/renderer-smoke.js", "tools/write-build-info.js", "tests/y57-desktop-prerequisite-repair.test.js");
 scripts.push("tests/y58-assignment-engine.test.js");
+scripts.push("tools/q4-career-loop.js", "tests/y59-career-loop.test.js");
+scripts.push("tools/q4-personnel-continuity.js", "tests/y60-personnel-continuity.test.js");
+scripts.push("tools/q4-local-intent.js", "tools/q4-standard-operator.js", "tests/y61-local-standard.test.js");
+scripts.push("tools/q4-evidence-authority.js", "tests/y62-evidence-archive.test.js");
+scripts.push("tools/q4-evidence-media.js", "tests/y63-evidence-media.test.js");
+scripts.push("tools/q4-environment.js", "tests/y64-environment-simulation.test.js");
+scripts.push("tools/q4-phenomenon-ecology.js", "tests/y65-phenomenon-ecology.test.js");
 for (const relative of scripts) {
   const content = fs.readFileSync(path.join(root, relative), "utf8");
   assert.doesNotMatch(content, /custodian\/(runtime|state|tools)/, `${relative} uses only public Custodian imports`);

@@ -11,7 +11,9 @@ const clone = (value) => structuredClone(value);
 
 function canonicalDefinition(state, definition) {
   if (definition?._canonical_generation_view) return definition;
-  return { ...definition, _canonical_generation_view: true, locations: [...definition.locations, ...(state?.generated_locations ?? [])], connections: [...definition.connections, ...(state?.generated_connections ?? [])] };
+  const suppressed = state?.phenomenon_suppressed_connections ?? {};
+  const transient = Object.values(state?.phenomenon_connections ?? {}).filter((item) => item.active !== false).map(({ active, deactivated_at, ...connection }) => connection);
+  return { ...definition, _canonical_generation_view: true, locations: [...definition.locations, ...(state?.generated_locations ?? [])], connections: [...definition.connections, ...(state?.generated_connections ?? []), ...transient].filter((connection) => suppressed[connection.id]?.active !== true) };
 }
 
 function index(definition) {
@@ -78,6 +80,8 @@ function createState(definition, { player, personnel = [], equipment = [], phase
     environment_changes: {},
     generated_locations: [],
     generated_connections: [],
+    phenomenon_connections: {},
+    phenomenon_suppressed_connections: {},
     generation: geography.initialState(definition, world_seed),
     route_markers: [],
     last_confirmed_personnel_positions: {},
@@ -120,6 +124,8 @@ function migrate(state, definition, { player, personnel = [], equipment = [], ph
     next.environment_changes = clone(state.environment_changes ?? {});
     next.blocked_paths = clone(state.blocked_paths ?? {});
     next.environment = clone(state.environment ?? null);
+    next.phenomenon_connections = clone(state.phenomenon_connections ?? {});
+    next.phenomenon_suppressed_connections = clone(state.phenomenon_suppressed_connections ?? {});
     const errors = validateState(next, definition);
     if (errors.length) throw Object.assign(new Error(`invalid canonical geography snapshot: ${errors.join(",")}`), { code: "CANONICAL_GEOGRAPHY_INVALID" });
     return next;
@@ -135,6 +141,8 @@ function migrate(state, definition, { player, personnel = [], equipment = [], ph
     state.environment_changes ??= {};
     state.generated_locations ??= [];
     state.generated_connections ??= [];
+    state.phenomenon_connections ??= {};
+    state.phenomenon_suppressed_connections ??= {};
     state.generation ??= geography.initialState(definition, world_seed);
     state.route_markers ??= [];
     state.last_confirmed_personnel_positions ??= {};
@@ -366,9 +374,10 @@ function validateState(state, definition) {
   if (state.version !== VERSION || state.worldpack_id !== definition.worldpack_id) errors.push("SPATIAL_VERSION_UNSUPPORTED");
   if (!locations[state.player_location]) errors.push("PLAYER_LOCATION_UNKNOWN");
   for (const id of Object.keys(state.discovered_locations ?? {})) if (!locations[id]) errors.push(`DISCOVERED_LOCATION_UNKNOWN:${id}`);
-  for (const id of Object.keys(state.discovered_connections ?? {})) if (!connections[id]) errors.push(`DISCOVERED_CONNECTION_UNKNOWN:${id}`);
-  const authoredLocations = new Set(definition.locations.slice(0, definition.locations.length - (state.generated_locations?.length ?? 0)).map((item) => item.id));
-  const authoredConnections = new Set(definition.connections.slice(0, definition.connections.length - (state.generated_connections?.length ?? 0)).map((item) => item.id));
+  for (const id of Object.keys(state.discovered_connections ?? {})) if (!connections[id] && !state.phenomenon_suppressed_connections?.[id]?.prior_connection) errors.push(`DISCOVERED_CONNECTION_UNKNOWN:${id}`);
+  const generatedLocationIds = new Set((state.generated_locations ?? []).map((item)=>item.id)); const generatedConnectionIds = new Set((state.generated_connections ?? []).map((item)=>item.id)); const transientConnectionIds = new Set(Object.keys(state.phenomenon_connections ?? {}));
+  const authoredLocations = new Set(definition.locations.filter((item)=>!generatedLocationIds.has(item.id)).map((item) => item.id));
+  const authoredConnections = new Set(definition.connections.filter((item)=>!generatedConnectionIds.has(item.id)&&!transientConnectionIds.has(item.id)).map((item) => item.id));
   for (const item of state.generated_locations ?? []) if (authoredLocations.has(item.id)) errors.push(`GENERATED_LOCATION_COLLISION:${item.id}`);
   for (const item of state.generated_connections ?? []) if (authoredConnections.has(item.id)) errors.push(`GENERATED_CONNECTION_COLLISION:${item.id}`);
   return errors;
@@ -403,10 +412,46 @@ function placeMarker(state, label = "Survey marker") {
   return clone(state.route_markers.find((item) => item.id === id));
 }
 
+function applyPhenomenonState(state, definition, effect = {}) {
+  state.phenomenon_connections ??= {};
+  state.phenomenon_suppressed_connections ??= {};
+  const base = canonicalDefinition({ ...state, phenomenon_connections:{}, phenomenon_suppressed_connections:{} }, definition);
+  const locations = new Set(base.locations.map((item) => item.id));
+  const connections = new Map(base.connections.map((item) => [item.id, item]));
+  const protectedLocations = new Set([definition.initial_location, definition.field_entry_location, "threshold-room", "threshold-side-entry"]);
+  const protectedConnection = (connection) => !connection || [connection.from, connection.to].some((id) => protectedLocations.has(id)) || ["threshold-crossing", "entry-to-utility"].includes(connection.id);
+  if (!effect.phenomenon_id || !effect.family) return { ok:false, code:"PHENOMENON_SPATIAL_PROVENANCE_REQUIRED" };
+  if (effect.action === "suppress-connection") {
+    const connection = connections.get(effect.connection_id);
+    if (!connection) return { ok:false, code:"PHENOMENON_CONNECTION_UNKNOWN" };
+    if (protectedConnection(connection)) return { ok:false, code:"PHENOMENON_THRESHOLD_PROTECTED" };
+    const record = { phenomenon_id:effect.phenomenon_id, family:effect.family, active:true, activated_at:effect.at ?? 0, prior_connection:clone(connection) };
+    state.phenomenon_suppressed_connections[effect.connection_id] = record;
+    return { ok:true, effect:{ action:effect.action, connection_id:effect.connection_id, ...record } };
+  }
+  if (effect.action === "add-transient-connection") {
+    if (!locations.has(effect.from) || !locations.has(effect.to) || effect.from === effect.to) return { ok:false, code:"PHENOMENON_TRANSIENT_ROUTE_INVALID" };
+    if ([effect.from,effect.to].some((id) => protectedLocations.has(id))) return { ok:false, code:"PHENOMENON_THRESHOLD_PROTECTED" };
+    const id = effect.connection_id ?? `phenomenon-route-${String(effect.phenomenon_id).replace(/[^a-z0-9-]/gi, "").slice(-18)}`;
+    if (connections.has(id) && !state.phenomenon_connections[id]) return { ok:false, code:"PHENOMENON_CONNECTION_COLLISION" };
+    const connection = { id, from:effect.from, to:effect.to, direction:effect.direction ?? "through the observed opening", reverse_direction:effect.reverse_direction ?? "back through the observed opening", relationship:"transient observed connection", visibility:"visible", bidirectional:effect.bidirectional !== false, transition:effect.transition ?? "The team passes through the observed temporary opening.", reverse_transition:effect.reverse_transition ?? "The team returns through the observed temporary opening.", lock_state:"open", hazard_state:"unconfirmed", requirements:[], phenomenon_id:effect.phenomenon_id, family:effect.family, active:true, activated_at:effect.at ?? 0 };
+    state.phenomenon_connections[id] = connection;
+    return { ok:true, effect:{ action:effect.action, connection_id:id, from:effect.from, to:effect.to, activated_at:connection.activated_at } };
+  }
+  if (effect.action === "deactivate") {
+    const transient = state.phenomenon_connections[effect.connection_id];
+    const suppression = state.phenomenon_suppressed_connections[effect.connection_id];
+    if (transient?.phenomenon_id === effect.phenomenon_id) { transient.active=false; transient.deactivated_at=effect.at ?? 0; return {ok:true,effect:{action:effect.action,connection_id:effect.connection_id,deactivated_at:transient.deactivated_at}}; }
+    if (suppression?.phenomenon_id === effect.phenomenon_id) { suppression.active=false; suppression.deactivated_at=effect.at ?? 0; return {ok:true,effect:{action:effect.action,connection_id:effect.connection_id,deactivated_at:suppression.deactivated_at}}; }
+    return { ok:false, code:"PHENOMENON_SPATIAL_EFFECT_UNKNOWN" };
+  }
+  return { ok:false, code:"PHENOMENON_SPATIAL_ACTION_INVALID" };
+}
+
 function canonicalSnapshot(state) {
-  return { version: CANONICAL_VERSION, worldpack_id: state.worldpack_id, generated_locations: clone(state.generated_locations ?? []), generated_connections: clone(state.generated_connections ?? []), generation: clone(state.generation), route_markers: clone(state.route_markers ?? []), environment_changes: clone(state.environment_changes ?? {}), blocked_paths: clone(state.blocked_paths ?? {}), environment: clone(state.environment ?? null) };
+  return { version: CANONICAL_VERSION, worldpack_id: state.worldpack_id, generated_locations: clone(state.generated_locations ?? []), generated_connections: clone(state.generated_connections ?? []), generation: clone(state.generation), route_markers: clone(state.route_markers ?? []), environment_changes: clone(state.environment_changes ?? {}), blocked_paths: clone(state.blocked_paths ?? {}), phenomenon_connections:clone(state.phenomenon_connections ?? {}), phenomenon_suppressed_connections:clone(state.phenomenon_suppressed_connections ?? {}), environment: clone(state.environment ?? null) };
 }
 
 function diagnostics(state) { return { generation_version: state.generation?.version ?? null, seed_strategy: state.generation?.seed_strategy ?? null, generated_location_count: state.generated_locations?.length ?? 0, generated_connection_count: state.generated_connections?.length ?? 0, expansion_count: state.generation?.expansion_count ?? 0, unresolved_frontier_count: (state.generation?.frontiers ?? []).filter((item) => item.state === "unresolved").length, last_request_id: state.generation?.last_request_id ?? null, recent_errors: clone(state.generation?.recent_errors ?? []) }; }
 
-module.exports = { VERSION, DEFINITION_VERSION, CANONICAL_VERSION, validateDefinition, canonicalDefinition, createState, migrate, setPhase, enterField, currentLocation, proximity, syncEquipment, visibleExits, resolveMovement, move, locationObservation, inspect, project, interpret, validateState, availableFrontiers, expand, placeMarker, canonicalSnapshot, diagnostics };
+module.exports = { VERSION, DEFINITION_VERSION, CANONICAL_VERSION, validateDefinition, canonicalDefinition, createState, migrate, setPhase, enterField, currentLocation, proximity, syncEquipment, visibleExits, resolveMovement, move, locationObservation, inspect, project, interpret, validateState, availableFrontiers, expand, placeMarker, applyPhenomenonState, canonicalSnapshot, diagnostics };
