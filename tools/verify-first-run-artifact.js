@@ -1,0 +1,13 @@
+"use strict";
+const assert = require("node:assert/strict");
+const fs = require("node:fs");
+const os = require("node:os");
+const path = require("node:path");
+const { spawnSync } = require("node:child_process");
+const root = path.resolve(__dirname, "..");
+const executable = path.join(root, "dist", "desktop", "win-unpacked", "Yellow Beast.exe");
+assert.ok(fs.existsSync(executable), "build the packaged executable first");
+const profile = fs.mkdtempSync(path.join(os.tmpdir(), "yellow-beast-first-run-"));
+const result = spawnSync(executable, ["--first-run-smoke", "--test-profile", profile], { encoding:"utf8", timeout:90000, env:{ ...process.env, ELECTRON_ENABLE_LOGGING:"0" } });
+assert.equal(result.status, 0, result.stderr || result.stdout); assert.match(result.stdout, /first_run_packaged_smoke/); assert.ok(fs.existsSync(path.join(profile, "yellow-beast-test-profile.json")));
+console.log(JSON.stringify({ first_run_packaged_regression:"passed", profile, executable }, null, 2));
