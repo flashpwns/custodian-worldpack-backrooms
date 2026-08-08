@@ -14,6 +14,38 @@
 .q4-prefield-surface{margin-top:0}.prefield-heading{display:block;border-bottom:1px solid var(--async-line);padding:4px 0 10px}.prefield-heading h1{font-size:1.5rem;margin:.15rem 0 .4rem}.prefield-heading p{margin:.25rem 0;font-size:.78rem}.prefield-grid{display:grid;grid-template-columns:minmax(0,1fr) 250px;gap:10px;margin-top:10px}.prefield-document{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}.prefield-document .panel{margin:0;padding:9px}.prefield-document .panel:first-child,.prefield-document .panel:nth-child(2){grid-column:span 2}.prefield-document .panel p,.prefield-document .panel li,.prefield-side .panel p{font-size:.72rem}.prefield-side{display:grid;align-content:start;gap:8px}.prefield-side .panel{margin:0;padding:9px}.prefield-primary{border:1px solid var(--async-amber);padding:10px;background:#18231c}.prefield-primary p{font-size:.72rem;margin:0 0 6px}.prefield-primary button{width:100%;margin:0}.q4-prefield-surface+.communication-lanes{display:none}@media(max-width:900px){.prefield-grid{grid-template-columns:1fr}.prefield-document{grid-template-columns:1fr}.prefield-document .panel:first-child,.prefield-document .panel:nth-child(2){grid-column:auto}}
 .operations-main>.q4-prefield-surface>.communication-lanes{display:grid!important}.q4-prefield-surface+.communication-lanes{display:grid!important}
 
+/* Sol High operational hierarchy: situation and action stay primary; support
+   records are persistent but subordinate. Communication and resolution retain
+   separate semantic lanes. */
+@media(min-width:721px){
+  .operations-shell{grid-template-rows:auto auto auto minmax(0,1fr) auto auto;gap:4px;padding:10px 14px}
+  .operations-shell>.interaction-feedback:empty{display:none}
+  .operations-shell>.guided-introduction{max-height:58px;padding:.45rem .7rem;margin:0}
+  .operations-shell>.guided-introduction h2,.operations-shell>.guided-introduction p{display:inline;margin-right:.7rem}
+  .operations-layout{grid-template-columns:minmax(0,1fr) 310px;grid-template-rows:auto minmax(0,1fr);gap:8px 12px;padding-top:0}
+  .operations-main{grid-column:1;grid-row:1 / span 2;display:grid;grid-template-rows:auto minmax(0,1fr) auto;overflow:hidden;padding:0;border-left:1px solid var(--async-line)}
+  .operations-left{grid-column:2;grid-row:2;display:block;overflow:auto}
+  .operations-right{grid-column:2;grid-row:1;display:block;overflow:auto;max-height:310px}
+  .operations-main>.mode-surface{grid-row:2;margin:0;overflow:auto;min-height:0;padding:0 12px 14px}
+  .operations-main>.resolution-band{grid-row:1;margin:0 12px 8px;padding:8px 12px;border-left-color:var(--async-amber);font-size:.78rem}
+  .resolution-band h2{margin:0;color:var(--async-amber);font-size:.62rem;letter-spacing:.12em}.resolution-band p{margin:.25rem 0;line-height:1.45}
+  .operations-main>.natural-action{grid-row:3;position:static;margin:0;padding:9px 12px;display:grid;grid-template-columns:150px minmax(0,1fr) 280px;align-items:center;gap:10px;border-width:1px 0 0}
+  .natural-action .eyebrow,.natural-action h2,.natural-action p{margin:0}.natural-action h2{font-size:.88rem}.natural-action p{font-size:.62rem;line-height:1.35}
+  .natural-action form{grid-template-columns:minmax(0,1fr) auto;margin:0;gap:7px}.natural-action input{min-width:0;width:100%;padding:.55rem}.natural-action button{margin:0;padding:.55rem .9rem}
+  .operations-left .operations-rail{display:flex;flex-direction:column}.operations-left .mission-block{order:-1;border-left:3px solid var(--async-amber)}
+  .operations-left .personnel-block li,.operations-left .equipment-block li{padding:4px 0}.operations-left .portrait-slot{width:22px;height:25px}
+  .operational-field>.field-observation{margin:0;padding:12px 16px;border-left:4px solid var(--async-phosphor);background:#17201a}
+  .operational-field>.field-observation h1{font-size:1.65rem;margin:.15rem 0 .35rem}.operational-field>.field-observation p{margin:.25rem 0;line-height:1.45}
+  .operational-field>[data-testid="field-interactables"]{margin:8px 0;border-color:var(--async-amber)}
+  .operational-field>.field-priority-grid{display:grid;grid-template-columns:minmax(0,1.4fr) minmax(260px,.8fr);gap:8px}
+  .operational-field>.layout-map{display:none}.operational-field>.field-support,.operational-field>.field-notes{margin-top:8px}
+  .q4-communications-dock{border-top:3px double var(--async-line);padding-top:5px}
+  .q4-communications-dock .communication-panel{min-height:78px;max-height:132px;padding:8px 10px}
+  .q4-communications-dock .communication-panel header h2{font-size:.82rem}.q4-communications-dock .communication-panel form{grid-template-columns:minmax(0,1fr) auto;margin:.25rem 0}.q4-communications-dock .communication-panel input{padding:.45rem}.q4-communications-dock .communication-panel button{padding:.45rem .7rem}
+  .operations-shell>.structured-action{margin:0;padding:5px 8px}.operations-shell>.structured-action summary{font-size:.68rem}.operations-shell>.structured-action form{margin:.45rem 0;gap:.5rem}
+}
+@media(min-width:2200px){.operations-layout{grid-template-columns:minmax(0,1fr) 360px}.operations-main>.natural-action{grid-template-columns:180px minmax(0,1fr) 330px}}
+
 /* Playable-spine operational records */
 .program-entry{display:grid;grid-template-columns:auto 1fr;align-items:center;gap:.75rem;padding:.8rem;border:1px solid var(--async-line);margin:.5rem 0;background:var(--async-panel)}
 .program-entry input{margin:0}.program-entry span{display:grid;gap:.2rem}.program-entry strong{color:var(--ink)}.program-entry small{color:var(--muted)}

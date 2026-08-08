@@ -4,7 +4,14 @@
 // topology or names: callers supply a validated declarative spatial record.
 const VERSION = "yellow-beast-spatial-state@v1";
 const DEFINITION_VERSION = "yellow-beast-spatial-worldpack@v1";
+const CANONICAL_VERSION = "yellow-beast-spatial-canonical@v1";
+const geography = require("./procedural-geography");
 const clone = (value) => structuredClone(value);
+
+function canonicalDefinition(state, definition) {
+  if (definition?._canonical_generation_view) return definition;
+  return { ...definition, _canonical_generation_view: true, locations: [...definition.locations, ...(state?.generated_locations ?? [])], connections: [...definition.connections, ...(state?.generated_connections ?? [])] };
+}
 
 function index(definition) {
   validateDefinition(definition);
@@ -53,7 +60,7 @@ function observeConnections(state, definition, current) {
   }
 }
 
-function createState(definition, { player, personnel = [], equipment = [], phase = "BRIEFING" } = {}) {
+function createState(definition, { player, personnel = [], equipment = [], phase = "BRIEFING", world_seed = null } = {}) {
   validateDefinition(definition);
   const location = definition.phase_locations?.[phase] ?? definition.initial_location;
   const state = {
@@ -68,6 +75,10 @@ function createState(definition, { player, personnel = [], equipment = [], phase
     route_history: [],
     blocked_paths: {},
     environment_changes: {},
+    generated_locations: [],
+    generated_connections: [],
+    generation: geography.initialState(definition, world_seed),
+    route_markers: [],
     last_confirmed_personnel_positions: {},
     team_behavior: {},
     authorizations: { "threshold-authorized": false, "radio-check-complete": false, "route-surveyed": false },
@@ -98,7 +109,19 @@ function legacyLocation(definition, legacyAlias, phase) {
   return definition.locations.find((item) => item.type === family?.[1])?.id ?? definition.phase_locations?.[phase] ?? (phase === "FIELD_OPERATION" ? definition.field_entry_location : definition.initial_location);
 }
 
-function migrate(state, definition, { player, personnel = [], equipment = [], phase = "BRIEFING", legacy_location = null } = {}) {
+function migrate(state, definition, { player, personnel = [], equipment = [], phase = "BRIEFING", legacy_location = null, world_seed = null } = {}) {
+  if (state?.version === CANONICAL_VERSION) {
+    const next = createState(definition, { player, personnel, equipment, phase, world_seed: state.generation?.world_seed });
+    next.generated_locations = clone(state.generated_locations ?? []);
+    next.generated_connections = clone(state.generated_connections ?? []);
+    next.generation = clone(state.generation ?? next.generation);
+    next.route_markers = clone(state.route_markers ?? []);
+    next.environment_changes = clone(state.environment_changes ?? {});
+    next.blocked_paths = clone(state.blocked_paths ?? {});
+    const errors = validateState(next, definition);
+    if (errors.length) throw Object.assign(new Error(`invalid canonical geography snapshot: ${errors.join(",")}`), { code: "CANONICAL_GEOGRAPHY_INVALID" });
+    return next;
+  }
   if (state?.version === VERSION && state.worldpack_id === definition.worldpack_id) {
     state.personnel_locations ??= {};
     state.equipment_locations ??= {};
@@ -108,6 +131,10 @@ function migrate(state, definition, { player, personnel = [], equipment = [], ph
     state.route_history ??= [];
     state.blocked_paths ??= {};
     state.environment_changes ??= {};
+    state.generated_locations ??= [];
+    state.generated_connections ??= [];
+    state.generation ??= geography.initialState(definition, world_seed);
+    state.route_markers ??= [];
     state.last_confirmed_personnel_positions ??= {};
     state.team_behavior ??= {};
     state.authorizations ??= {};
@@ -122,6 +149,7 @@ function migrate(state, definition, { player, personnel = [], equipment = [], ph
 }
 
 function moveTeamTo(state, definition, location, { player, personnel = [], source = "phase", recordRoute = false, connection_id = null } = {}) {
+  definition = canonicalDefinition(state, definition);
   const locations = index(definition).locations;
   if (!locations[location]) throw new Error(`unknown spatial location: ${location}`);
   const prior = state.player_location;
@@ -148,7 +176,7 @@ function enterField(state, definition, context = {}) {
   return moveTeamTo(state, definition, definition.field_entry_location, { ...context, source: "field-entry", recordRoute: true, connection_id: "entry-to-utility" });
 }
 
-function currentLocation(state, definition) { return index(definition).locations[state.player_location] ?? null; }
+function currentLocation(state, definition) { return index(canonicalDefinition(state, definition)).locations[state.player_location] ?? null; }
 
 function proximity(state, observer, subject) {
   const observerLocation = state?.personnel_locations?.[observer] ?? (observer ? null : state?.player_location);
@@ -179,8 +207,9 @@ function aliasesFor(oriented, locations) {
 }
 
 function visibleExits(state, definition) {
+  definition = canonicalDefinition(state, definition);
   const { locations } = index(definition);
-  return connectionsFrom(definition, state.player_location)
+  const exits = connectionsFrom(definition, state.player_location)
     .filter((oriented) => ["visible", "institutional"].includes(oriented.connection.visibility) || state.discovered_connections[oriented.connection.id])
     .map((oriented) => {
       const destination = locations[oriented.to];
@@ -188,7 +217,7 @@ function visibleExits(state, definition) {
       const blocked = oriented.connection.lock_state === "blocked" || Boolean(state.blocked_paths[oriented.connection.id]);
       return {
         ref: oriented.connection.id,
-        alias: `${oriented.direction} toward ${destination.name}`,
+        alias: !destinationKnown && destination.generation ? `${oriented.direction} toward an unresolved continuation` : `${oriented.direction} toward ${destination.name}`,
         label: `${oriented.direction.toUpperCase()} — ${destination.name}`,
         direction: oriented.direction,
         relationship: oriented.connection.relationship,
@@ -200,6 +229,12 @@ function visibleExits(state, definition) {
         aliases: aliasesFor(oriented, locations)
       };
     });
+  for (const exit of exits) {
+    const connection = index(definition).connections[exit.ref]; const destination = connection ? (connection.from === state.player_location ? connection.to : connection.from) : null;
+    if (!exit.destination_known && index(definition).locations[destination]?.generation) exit.label = `${exit.direction.toUpperCase()} — unresolved continuation`;
+  }
+  for (const frontier of availableFrontiers(state)) exits.push({ ref: frontier.id, alias: frontier.label, label: `${frontier.direction.toUpperCase()} — ${frontier.label}`, direction: frontier.direction, relationship: "unresolved continuation", destination: null, destination_id: null, destination_known: false, status: "unresolved", hazard: "unknown", aliases: [frontier.label.toLowerCase(), "unresolved continuation", frontier.direction] });
+  return exits;
 }
 
 function requirementFailure(oriented, state) {
@@ -209,11 +244,14 @@ function requirementFailure(oriented, state) {
 }
 
 function resolveMovement(state, definition, target) {
+  definition = canonicalDefinition(state, definition);
   const query = String(target ?? "").trim().toLowerCase().replace(/[.!?]+$/, "");
-  const candidates = connectionsFrom(definition, state.player_location).filter((oriented) => {
+  const available = connectionsFrom(definition, state.player_location).filter((oriented) => ["visible", "institutional"].includes(oriented.connection.visibility) || state.discovered_connections[oriented.connection.id]);
+  const exact = available.filter((oriented) => oriented.connection.id.toLowerCase() === query || aliasesFor(oriented, index(definition).locations).some((alias) => query === alias));
+  const candidates = exact.length ? exact : available.filter((oriented) => {
     const known = ["visible", "institutional"].includes(oriented.connection.visibility) || state.discovered_connections[oriented.connection.id];
     if (!known) return false;
-    return oriented.connection.id.toLowerCase() === query || aliasesFor(oriented, index(definition).locations).some((alias) => query === alias || query.includes(alias));
+    return aliasesFor(oriented, index(definition).locations).some((alias) => query.includes(alias));
   });
   if (candidates.length === 1) return { ok: true, oriented: candidates[0] };
   if (candidates.length > 1) return { ok: false, code: "MOVEMENT_AMBIGUOUS", reason: "More than one confirmed route matches that direction. Name the passage or destination." };
@@ -223,6 +261,7 @@ function resolveMovement(state, definition, target) {
 }
 
 function move(state, definition, target, context = {}) {
+  definition = canonicalDefinition(state, definition);
   const resolved = resolveMovement(state, definition, target);
   if (!resolved.ok) return resolved;
   const failure = requirementFailure(resolved.oriented, state);
@@ -247,6 +286,7 @@ function exitSentence(exit) {
 }
 
 function locationObservation(state, definition, { mode = "orient", nearby = [], objects = [] } = {}) {
+  definition = canonicalDefinition(state, definition);
   const location = currentLocation(state, definition);
   if (!location) return "The team's present location is not confirmed.";
   const lower = location.name.toLowerCase();
@@ -260,6 +300,7 @@ function locationObservation(state, definition, { mode = "orient", nearby = [], 
 }
 
 function inspect(state, definition, target) {
+  definition = canonicalDefinition(state, definition);
   const location = currentLocation(state, definition);
   const query = String(target ?? "").toLowerCase();
   if (!location) return { ok: false, reason: "The current location cannot be inspected." };
@@ -272,13 +313,14 @@ function inspect(state, definition, target) {
 }
 
 function project(state, definition, { personnel = [], mission_markers = [] } = {}) {
+  definition = canonicalDefinition(state, definition);
   const { locations, connections } = index(definition);
   const nodes = Object.entries(state.discovered_locations).map(([id, knowledge]) => {
     const location = locations[id];
     const knownLocation = (person) => person.known_location ?? state.last_confirmed_personnel_positions[person.id]?.location ?? state.personnel_locations[person.id];
     const present = personnel.filter((person) => (person.confirmed_current ?? state.personnel_locations[person.id] === state.player_location) && knownLocation(person) === id).map((person) => ({ id: person.id, name: person.name, status: "present" }));
     const lastKnown = personnel.filter((person) => !(person.confirmed_current ?? state.personnel_locations[person.id] === state.player_location) && knownLocation(person) === id).map((person) => ({ id: person.id, name: person.name, status: "last-known" }));
-    return { id, name: location.name, type: location.type, status: knowledge.status, current: id === state.player_location, coordinates: clone(location.coordinates), personnel: [...present, ...lastKnown], hazards: clone(location.hazards ?? []), mission_markers: mission_markers.filter((marker) => marker.location === id).map(clone) };
+    return { id, name: location.name, type: location.type, status: knowledge.status, current: id === state.player_location, coordinates: clone(location.coordinates), personnel: [...present, ...lastKnown], hazards: clone(location.hazards ?? []), mission_markers: [...mission_markers, ...(state.route_markers ?? [])].filter((marker) => marker.location === id).map(clone) };
   });
   const nodeIds = new Set(nodes.map((item) => item.id));
   const edges = Object.entries(state.discovered_connections).map(([id, knowledge]) => {
@@ -317,12 +359,52 @@ function interpret(state, definition, text, { personnel = [] } = {}) {
 
 function validateState(state, definition) {
   const errors = [];
+  definition = canonicalDefinition(state, definition);
   const { locations, connections } = index(definition);
   if (state.version !== VERSION || state.worldpack_id !== definition.worldpack_id) errors.push("SPATIAL_VERSION_UNSUPPORTED");
   if (!locations[state.player_location]) errors.push("PLAYER_LOCATION_UNKNOWN");
   for (const id of Object.keys(state.discovered_locations ?? {})) if (!locations[id]) errors.push(`DISCOVERED_LOCATION_UNKNOWN:${id}`);
   for (const id of Object.keys(state.discovered_connections ?? {})) if (!connections[id]) errors.push(`DISCOVERED_CONNECTION_UNKNOWN:${id}`);
+  const authoredLocations = new Set(definition.locations.slice(0, definition.locations.length - (state.generated_locations?.length ?? 0)).map((item) => item.id));
+  const authoredConnections = new Set(definition.connections.slice(0, definition.connections.length - (state.generated_connections?.length ?? 0)).map((item) => item.id));
+  for (const item of state.generated_locations ?? []) if (authoredLocations.has(item.id)) errors.push(`GENERATED_LOCATION_COLLISION:${item.id}`);
+  for (const item of state.generated_connections ?? []) if (authoredConnections.has(item.id)) errors.push(`GENERATED_CONNECTION_COLLISION:${item.id}`);
   return errors;
 }
 
-module.exports = { VERSION, DEFINITION_VERSION, validateDefinition, createState, migrate, setPhase, enterField, currentLocation, proximity, syncEquipment, visibleExits, resolveMovement, move, locationObservation, inspect, project, interpret, validateState };
+function availableFrontiers(state) { return (state.generation?.frontiers ?? []).filter((item) => item.state === "unresolved" && item.anchor === state.player_location).map(clone); }
+
+function expand(state, definition, frontierId = null) {
+  const frontier = frontierId ?? availableFrontiers(state)[0]?.id;
+  const candidate = geography.prepare(state, definition, frontier);
+  if (!candidate.ok) { state.generation.recent_errors = [...(state.generation.recent_errors ?? []), { code: candidate.code, request: frontier }].slice(-5); return candidate; }
+  const staged = clone(state);
+  staged.generated_locations.push(candidate.location);
+  staged.generated_connections.push(candidate.connection);
+  const consumed = staged.generation.frontiers.find((item) => item.id === candidate.consumed_frontier);
+  consumed.state = "materialized"; consumed.connection_id = candidate.connection.id; consumed.location_id = candidate.location.id;
+  staged.generation.frontiers.push(candidate.next_frontier);
+  staged.generation.expansion_count += 1;
+  staged.generation.generated_location_count = staged.generated_locations.length;
+  staged.generation.generated_connection_count = staged.generated_connections.length;
+  staged.generation.last_request_id = candidate.request_id;
+  const errors = validateState(staged, definition);
+  if (errors.length) { state.generation.recent_errors = [...(state.generation.recent_errors ?? []), { code: "GENERATION_CANDIDATE_INVALID", errors }].slice(-5); return { ok: false, code: "GENERATION_CANDIDATE_INVALID", reason: "The new geography failed canonical validation." }; }
+  state.generated_locations = staged.generated_locations; state.generated_connections = staged.generated_connections; state.generation = staged.generation;
+  return { ok: true, request_id: candidate.request_id, location: clone(candidate.location), connection: clone(candidate.connection), next_frontier: clone(candidate.next_frontier) };
+}
+
+function placeMarker(state, label = "Survey marker") {
+  const id = `marker-${state.player_location}-${(state.route_markers?.length ?? 0) + 1}`;
+  state.route_markers ??= [];
+  if (!state.route_markers.some((item) => item.id === id)) state.route_markers.push({ id, location: state.player_location, label, placed_at: state.time ?? 0, state: "placed" });
+  return clone(state.route_markers.find((item) => item.id === id));
+}
+
+function canonicalSnapshot(state) {
+  return { version: CANONICAL_VERSION, worldpack_id: state.worldpack_id, generated_locations: clone(state.generated_locations ?? []), generated_connections: clone(state.generated_connections ?? []), generation: clone(state.generation), route_markers: clone(state.route_markers ?? []), environment_changes: clone(state.environment_changes ?? {}), blocked_paths: clone(state.blocked_paths ?? {}) };
+}
+
+function diagnostics(state) { return { generation_version: state.generation?.version ?? null, seed_strategy: state.generation?.seed_strategy ?? null, generated_location_count: state.generated_locations?.length ?? 0, generated_connection_count: state.generated_connections?.length ?? 0, expansion_count: state.generation?.expansion_count ?? 0, unresolved_frontier_count: (state.generation?.frontiers ?? []).filter((item) => item.state === "unresolved").length, last_request_id: state.generation?.last_request_id ?? null, recent_errors: clone(state.generation?.recent_errors ?? []) }; }
+
+module.exports = { VERSION, DEFINITION_VERSION, CANONICAL_VERSION, validateDefinition, canonicalDefinition, createState, migrate, setPhase, enterField, currentLocation, proximity, syncEquipment, visibleExits, resolveMovement, move, locationObservation, inspect, project, interpret, validateState, availableFrontiers, expand, placeMarker, canonicalSnapshot, diagnostics };

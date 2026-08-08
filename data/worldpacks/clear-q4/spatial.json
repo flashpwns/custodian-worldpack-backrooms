@@ -173,6 +173,26 @@
       "tags": ["field", "alternate-return", "recovery-path"]
     }
   ],
+  "procedural_expansion": {
+    "version": "yellow-beast-complex-geography@v1",
+    "fixed_threshold_anchor": "threshold-side-entry",
+    "bounds": { "max_expansions": 12, "max_locations": 12, "max_depth": 12, "max_branching": 1 },
+    "initial_frontiers": [
+      { "id": "frontier-records-annex-east", "anchor": "records-annex", "direction": "east", "label": "Unsurveyed service continuation" }
+    ],
+    "archetypes": [
+      { "type": "corridor", "label": "Service Corridor", "weight": 34, "description": "A plain painted corridor continues beyond the surveyed annex.", "relationship": "service corridor", "transition": "The team advances into a previously unresolved service corridor.", "environment": { "lighting": "steady fluorescent light", "surface": "worn composition tile", "sound": "a constant electrical hum" } },
+      { "type": "service-room", "label": "Utility Room", "weight": 26, "description": "A small utility room interrupts the corridor line.", "relationship": "utility access", "transition": "The continuation opens into an ordinary utility room.", "environment": { "lighting": "cool fluorescent light", "surface": "sealed concrete", "sound": "ventilation moving behind the wall" } },
+      { "type": "junction", "label": "Maintenance Junction", "weight": 22, "description": "A shallow maintenance junction divides otherwise repetitive wall sections.", "relationship": "maintenance junction", "transition": "The team reaches a newly surveyed maintenance junction.", "environment": { "lighting": "uneven fluorescent light", "surface": "scuffed vinyl tile", "sound": "distant ventilation" } },
+      { "type": "service-passage", "label": "Service Passage", "weight": 18, "description": "A narrow service passage carries the route onward.", "relationship": "service passage", "transition": "The team follows the unresolved line into a service passage.", "environment": { "lighting": "widely spaced fluorescent light", "surface": "painted concrete", "sound": "a low mechanical resonance" } }
+    ],
+    "mundane_features": [
+      { "label": "painted access panel", "aliases": ["panel", "access panel"], "weight": 30, "description": "A painted access panel sits flush with one wall.", "observation": "A painted access panel is set into the wall.", "inspection": "The panel is closed, numbered, and shows ordinary handling wear." },
+      { "label": "floor drain", "aliases": ["drain", "floor drain"], "weight": 24, "description": "A dry floor drain breaks the otherwise uniform surface.", "observation": "A dry floor drain sits near the wall.", "inspection": "The drain contains dust and no visible obstruction." },
+      { "label": "conduit run", "aliases": ["conduit", "pipes"], "weight": 26, "description": "A labeled conduit run follows the ceiling line.", "observation": "A labeled conduit run follows the ceiling.", "inspection": "The conduit labels repeat an ordinary maintenance numbering sequence." },
+      { "label": "stacked ceiling tile", "aliases": ["tile", "ceiling tile"], "weight": 20, "description": "Two replacement ceiling tiles lean against the wall.", "observation": "Two replacement ceiling tiles lean against the wall.", "inspection": "The tiles are dusty but otherwise unremarkable." }
+    ]
+  },
   "connections": [
     { "id": "briefing-to-staging", "from": "async-briefing-room", "to": "equipment-staging", "direction": "forward", "relationship": "controlled transit", "transition": "The team proceeds to equipment staging.", "requirements": [], "lock_state": "open", "hazard_state": "clear", "visibility": "institutional", "discovery": "institutional", "bidirectional": true },
     { "id": "staging-to-approach", "from": "equipment-staging", "to": "threshold-approach", "direction": "forward", "relationship": "controlled transit", "transition": "The team leaves staging along the controlled Threshold route.", "requirements": [], "lock_state": "open", "hazard_state": "clear", "visibility": "institutional", "discovery": "institutional", "bidirectional": true },

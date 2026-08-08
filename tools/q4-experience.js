@@ -91,27 +91,29 @@ function presentation(run, phase, unfinished = null, world = null) {
   const liveLayout = ["FIELD_OPERATION", "RETURN", "DEBRIEF"].includes(phase.phase_id);
   const playerId = run.session?.startup?.player?.observer_id ?? expedition?.team?.members?.[0]?.personnel_id;
   const safeStatus = run.session ? bootstrap.status(run) : {};
-  const operationalMap = run.spatial ? spatialRuntime.project(run.spatial, bootstrap.spatialDefinitionFor(run.spatial_pack_id), {
+  const topologyDefinition = run.spatial ? bootstrap.topologyFor(run) : null;
+  const operationalMap = run.spatial ? spatialRuntime.project(run.spatial, topologyDefinition, {
     personnel: team.map((member) => ({ id: member.personnel_id, name: String(member.display_name).replace(/ · YOU$/, ""), known_location: member.current_or_last_known_location ?? member.location, confirmed_current: ["LOCAL", "SELF"].includes(member.contact_state ?? member.contact_category) })),
     mission_markers: [{ id: "assigned-survey-area", label: "Assigned survey area", location: bootstrap.spatialDefinitionFor(run.spatial_pack_id).field_entry_location }]
   }) : null;
-  const publicMap = run.spatial && run.survey_frontier ? { ...surveyFrontier.map(run.survey_frontier, bootstrap.spatialDefinitionFor(run.spatial_pack_id), run.session.startup.player.observer_id, { current_location: run.spatial.player_location }), route_history: cloneUpdates(run.spatial.route_history), unresolved_exits: spatialRuntime.visibleExits(run.spatial, bootstrap.spatialDefinitionFor(run.spatial_pack_id)).filter((exit) => !surveyFrontier.known(run.survey_frontier, run.session.startup.player.observer_id, exit.destination_id)).map((exit) => ({ ref: exit.ref, label: exit.label, status: exit.status })) } : operationalMap ? { ...operationalMap, nodes: operationalMap.nodes.map((node) => ({ ...node, personnel: (node.personnel ?? []).map(({ name, status }) => ({ name, status })) })) } : null;
-  const standardMap = run.spatial && run.survey_frontier ? surveyFrontier.standardMap(run.survey_frontier, bootstrap.spatialDefinitionFor(run.spatial_pack_id)) : null;
-  const topology = operationalMap ?? safeStatus.discovered_topology ?? { spaces: [], connections: [], unknown_exits: [] };
+  const publicMap = run.spatial && run.survey_frontier ? { ...surveyFrontier.map(run.survey_frontier, topologyDefinition, run.session.startup.player.observer_id, { current_location: run.spatial.player_location }), route_history: cloneUpdates(run.spatial.route_history), unresolved_exits: spatialRuntime.visibleExits(run.spatial, topologyDefinition).filter((exit) => !exit.destination_id || !surveyFrontier.known(run.survey_frontier, run.session.startup.player.observer_id, exit.destination_id)).map((exit) => ({ ref: exit.ref, label: exit.label, status: exit.status })) } : operationalMap ? { ...operationalMap, nodes: operationalMap.nodes.map((node) => ({ ...node, personnel: (node.personnel ?? []).map(({ name, status }) => ({ name, status })) })) } : null;
+  if (publicMap && run.spatial) for (const node of publicMap.nodes) node.mission_markers = (run.spatial.route_markers ?? []).filter((marker) => marker.location === node.id).map((marker) => ({ label: marker.label, state: marker.state }));
+  const standardMap = run.spatial && run.survey_frontier ? surveyFrontier.standardMap(run.survey_frontier, topologyDefinition) : null;
+  const topology = publicMap ?? safeStatus.discovered_topology ?? { spaces: [], connections: [], unknown_exits: [] };
   const context = personnelContext(world, team);
   const equip = equipmentModel.projection(expedition, playerId, context.names, { spatial: run.spatial, observer: playerId, personnel_status: context.status, radio_confirmed_holders: [] });
   const institutional = world && run.spatial_pack_id ? institutionalRuntime.project(world, bootstrap.institutionalDefinitionFor(run.spatial_pack_id)) : null;
   const inventory = run.spatial_pack_id ? logisticsRuntime.project(expedition, bootstrap.logisticsDefinitionFor(run.spatial_pack_id), playerId, { player: playerId, actor: playerId, team: expedition.team?.members ?? [], names: context.names, spatial: run.spatial, location: run.spatial?.player_location, at: expedition.clock?.interval ?? 0, phase: phase.phase_id, restrictions: institutional?.restrictions?.equipment ?? [] }) : null;
   const evidence = (expedition?.evidence ?? []).map((item) => ({ id: item.id, mission_id: mission?.id ?? null, type: item.type, capture_event: item.capture_event ?? "evidence.recorded", method: item.method ?? "field record", device: item.device ?? "field recording device", observer: (item.capturing_observer ?? item.creator) === playerId ? "YOU" : context.names[item.capturing_observer ?? item.creator] ?? "assigned personnel", source: item.source_name ?? item.target_alias ?? "observed field feature", condition: item.condition_summary ?? item.target_observation ?? "Condition recorded at capture", location: item.source_location_name ?? item.location?.alias ?? item.location ?? null, time: item.captured_at ?? { interval: item.interval ?? 0 }, provenance: item.provenance, storage: item.storage ?? "with field record", reporting_state: item.reporting_state ?? (item.available_to_standard ? "reported" : "unreported"), render: item.render ?? { status: "fallback-ready" }, visual: q4Visuals.mediaVisual(item), available_to_player: item.available_to_player !== false, available_to_standard: item.available_to_standard === true }));
   const facility = facilityContext(phase.phase_id, evidence.length > 0 && ["RETURN", "DEBRIEF"].includes(phase.phase_id));
-  const mapNames = Object.fromEntries((operationalMap?.nodes ?? []).map((node) => [node.id, node.name]));
+  const mapNames = Object.fromEntries((publicMap?.nodes ?? []).map((node) => [node.id, node.name]));
   const layout = {
-    current: liveLayout ? (safeStatus.view?.location?.alias ?? "Current location") : "Prior survey boundary",
-    observed_spaces: liveLayout ? (operationalMap ? operationalMap.nodes.map((node) => ({ id: node.id, alias: node.name, family: node.type, status: node.status, current: node.current })) : topology.spaces ?? []) : [],
-    observed_connections: liveLayout ? (operationalMap ? operationalMap.edges.filter((edge) => edge.to).map((edge) => ({ id: edge.id, from: mapNames[edge.from], to: mapNames[edge.to], status: edge.status })) : topology.connections ?? []) : [],
-    unknown_continuations: liveLayout ? (operationalMap ? operationalMap.unresolved_exits.map((exit) => exit.label) : topology.unknown_exits ?? []) : [],
+    current: liveLayout ? `${safeStatus.view?.location?.alias ?? "Current location"}${(run.spatial?.route_markers ?? []).some((marker) => marker.location === run.spatial.player_location) ? ` · MARKER: ${(run.spatial.route_markers ?? []).filter((marker) => marker.location === run.spatial.player_location).map((marker) => marker.label).join(", ")}` : ""}` : "Prior survey boundary",
+    observed_spaces: liveLayout ? (publicMap ? publicMap.nodes.map((node) => ({ id: node.id, alias: node.name, family: node.type, status: node.status, current: node.current })) : topology.spaces ?? []) : [],
+    observed_connections: liveLayout ? (publicMap ? publicMap.edges.filter((edge) => edge.to).map((edge) => ({ id: edge.id, from: mapNames[edge.from], to: mapNames[edge.to], status: edge.status })) : topology.connections ?? []) : [],
+    unknown_continuations: liveLayout ? (publicMap ? publicMap.unresolved_exits.map((exit) => exit.label) : topology.unknown_exits ?? []) : [],
     prior_records: (mission?.prior_history ?? []).filter((item) => item.kind === "prior-layout-record").map((item) => ({ text: item.text, status: "PRIOR SURVEY RECORD" })),
-    confidence: liveLayout ? ((operationalMap?.unresolved_exits?.length ?? topology.unknown_exits?.length) ? "unresolved continuation" : "confirmed current observation") : "PRIOR SURVEY RECORD"
+    confidence: liveLayout ? ((publicMap?.unresolved_exits?.length ?? topology.unknown_exits?.length) ? "unresolved continuation" : "confirmed current observation") : "PRIOR SURVEY RECORD"
   };
   const radioState = radioModel.ensure(expedition);
   const radioEquipmentReady = equipmentModel.stateUsable(radio) && radio?.charges > 0 && radio?.holder === playerId;
@@ -158,7 +160,8 @@ function presentation(run, phase, unfinished = null, world = null) {
     layout,
     map: publicMap,
     standard_spatial_record: standardMap,
-    survey_frontier: run.spatial && run.survey_frontier ? surveyFrontier.frontier(run.survey_frontier, bootstrap.spatialDefinitionFor(run.spatial_pack_id), run.session.startup.player.observer_id) : [],
+    survey_frontier: run.spatial && run.survey_frontier ? surveyFrontier.frontier(run.survey_frontier, topologyDefinition, run.session.startup.player.observer_id) : [],
+    procedural_geography: run.spatial ? spatialRuntime.diagnostics(run.spatial) : null,
     current_location: location ? { id: location.id, name: location.name, type: location.type, description: location.short_description, environment: location.environment } : null,
     field_observation: fieldObservation,
     interactables,

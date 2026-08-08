@@ -59,6 +59,8 @@
     "operational-dynamics-test": "node --test tests/y52-operational-dynamics.test.js",
     "acceptance:operational-dynamics": "node tools/operational-dynamics-acceptance.js",
     "omnipass-test": "node --test tests/y53-omnipass.test.js",
+    "persistent-complex-test": "node --test tests/y56-persistent-procedural-complex.test.js",
+    "checkpoint-2": "npm run persistent-complex-test && npm test && npm run desktop:build",
     "acceptance:omnipass": "node tools/omnipass-acceptance.js",
     "worldpack:create": "node tools/worldpack-authoring.js create",
     "worldpack:validate": "node tools/worldpack-authoring.js validate",

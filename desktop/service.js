@@ -153,8 +153,11 @@ class DesktopService {
       if (sessionInstitution && (!canonicalInstitution || (sessionInstitution.revision ?? 0) > (canonicalInstitution.revision ?? 0))) world.institutional_response = clone(sessionInstitution);
       entry.run._world = world;
       const expedition = entry.run.expedition; q4Equipment.syncWorld(world, expedition); q4Trajectories.syncWorld(world, expedition);
+      if (entry.run.spatial) world.q4_geography = spatialRuntime.canonicalSnapshot(entry.run.spatial);
+      if (entry.run.object_state) world.q4_object_state = clone(entry.run.object_state);
       for (const member of expedition.team?.members ?? []) { const person = history.character(world, member.personnel_id ?? member.id); if (!person) continue; const changed = person.status !== member.status || person.condition !== member.condition; person.status = member.status; person.condition = member.condition; if (changed) history.event(world, entry.run.run_id, "q4.personnel.condition.changed", { identity: person.identity, status: person.status, condition: person.condition, interval: expedition.clock.interval }, "authoritative-operational-consequence"); }
       for (const message of expedition.messages ?? []) { if (message.intended_recipient !== "Standard" || !["delivered", "acknowledged"].includes(message.state) || message.institutional_recorded) continue; const recordId = `q4-delivered-communication-${message.id}`; history.event(world, entry.run.run_id, "q4.communication.reported", { message_id: message.id, endpoint: "Standard", purpose: message.purpose, status: message.state, interval: message.delivered_at }); history.recordInstitutional(world, entry.run.run_id, recordId, { channel: "standard", purpose: message.purpose, report: message.text, status: message.state, source_message: message.id, delivered_at: message.delivered_at }); if (message.geography_report === true && entry.run.survey_frontier) surveyFrontier.report(entry.run.survey_frontier, message.sender, { at: message.delivered_at ?? expedition.clock?.interval ?? 0, message_id: message.id }); for (const evidenceId of message.evidence_ids ?? []) history.recordInstitutional(world, entry.run.run_id, `institutional-evidence-${evidenceId}`, { evidence_id: evidenceId, source_message: message.id, status: "reported" }); message.institutional_recorded = recordId; }
+      if (entry.run.survey_frontier) world.q4_survey_frontier = clone(entry.run.survey_frontier);
     } this.saveSession(world.world_id, mode, this.serializeSession(world, mode, entry)); this.sessions.set(`${world.world_id}:${mode}`, entry); this.saveCanonical(world); const data = this.metadata(); if (data.worlds[world.world_id]) { data.worlds[world.world_id].last_played_at = new Date().toISOString(); data.worlds[world.world_id].last_mode = mode; data.last_world_id = world.world_id; this.writeMetadata(data); } }
   startSession({ world_id, mode, seed = "desktop", require_personnel = false }) {
     try { const world = this.getWorld(world_id); const descriptor = this.getMode(mode); if (!descriptor) return publicError("MODE_INVALID", "Choose one of the available roles."); let entry;
@@ -220,7 +223,7 @@ class DesktopService {
   availableFor(world, mode, entry) {
     if (entry.kind === "bootstrap") {
       const phaseActions = { BRIEFING: "READY", STAGING: "PROCEED", FACILITY_TRANSIT: "APPROACH", THRESHOLD: "CROSS", STANDARD_RADIO_CHECK: q4Radio.ensure(entry.run.expedition).check_completed ? "BEGIN_FIELD_OPERATION" : "RADIO_CHECK" };
-      const state = bootstrap.status(entry.run); const observed = bootstrap.look(entry.run); const targets = state.view.targets.map(({ alias }) => ({ ref: alias, label: alias })); const exits = (observed.view?.exits ?? []).map(({ alias }) => ({ ref: alias, label: alias }));
+      const state = bootstrap.status(entry.run); const observed = bootstrap.look(entry.run, { record: false }); const targets = state.view.targets.map(({ alias }) => ({ ref: alias, label: alias })); const exits = (observed.view?.exits ?? []).map(({ alias }) => ({ ref: alias, label: alias }));
       const objectActions = new Map();
       for (const object of observed.view?.objects ?? []) for (const affordance of object.actions ?? []) if (affordance.available) {
         const list = objectActions.get(affordance.action) ?? [];
@@ -243,6 +246,11 @@ class DesktopService {
         const availableTargets = type === "COMMUNICATE" ? [{ ref: "standard", label: "Standard" }, { ref: "team", label: "Team" }] : type === "MOVE" ? exits : type === "INSPECT" ? targets : type.startsWith("ORDER_") ? orderTargets(type) : type === "ASSIST" ? assistanceTargets : type === "RECOVER" ? recoveryTargets : type === "MITIGATE" ? mitigationTargets : type === "USE" && !actionTargets.length ? [{ ref: "survey-instrument", label: "Survey instrument" }] : actionTargets;
         return { type, target_required: availableTargets.length > 0, targets: availableTargets };
       }).filter((action) => !["ORDER_HOLD", "ORDER_INVESTIGATE", "ORDER_FOLLOW", "ASSIST", "RECOVER", "MITIGATE"].includes(action.type) || action.targets.length > 0);
+      if (["FIELD_OPERATION", "RETURN"].includes(entry.phase?.phase_id)) {
+        const frontiers = spatialRuntime.availableFrontiers(entry.run.spatial).map((item) => ({ ref: item.id, label: item.label }));
+        if (frontiers.length) actions.unshift({ type: "EXPAND", target_required: true, targets: frontiers });
+        actions.push({ type: "MARK", target_required: false, targets: [] });
+      }
       if (entry.run.lifecycle === "completed" && entry.phase?.phase_id === "DEBRIEF") return [{ type: "ADVANCE_OPERATIONS", target_required: false, targets: [] }];
       return phaseActions[entry.phase?.phase_id] ? [{ type: phaseActions[entry.phase.phase_id], target_required: false, targets: [] }, ...actions] : actions;
     }
@@ -433,14 +441,48 @@ class DesktopService {
     const surface = projection.surface ?? {}; const location = surface.view?.location?.alias ?? surface.surroundings?.location?.alias ?? surface.base?.known_access_point ?? "the current setting";
     return { version: "yellow-beast-interpretation-context@v1", profile_title: projection.mode.label, scenario: projection.mode.description, lifecycle: "active", observer_location: location, visible_reference_labels: labels, known_resource_labels: surface.status?.carried ?? [], public_reason: null, grounding: { version: "yellow-beast-observer-grounding-context@v1", candidates: labels.map((label) => ({ ref: label, label, category: "entity", source: "visible", aliases: [label], attributes: [] })) } };
   }
+  q4InterpretationContext(world, entry) {
+    const projection = this.projectionFor(world, "field-researcher", entry); const view = projection.q4; const actions = projection.available_actions;
+    const targets = [...new Map(actions.flatMap((action) => action.targets ?? []).filter((item) => item.label).map((item) => [item.label, item])).values()];
+    const local = (view.team ?? []).filter((person) => !person.controlled && person.local_eligible).map((person) => ({ name: person.display_name, role: person.role, observed_condition: person.condition, contact: "speaking-range" }));
+    const lastKnown = (view.team ?? []).filter((person) => !person.controlled && !person.local_eligible).map((person) => ({ name: person.display_name, role: person.role, observed_condition: person.condition, contact: person.contact_state ?? "last-known" }));
+    const recentActions = (view.channels?.action?.history ?? []).slice(-5).map((item) => ({ attempt: item.player_text ?? item.attempted_behavior, result: item.presentation?.result ?? item.result, at: item.at ?? null }));
+    return {
+      version: "yellow-beast-interpretation-context@v2",
+      authority_contract: { doctrine: "Simulation Doctrine", order: ["canonical-world", "simulation", "institution", "observation", "presentation"], generation_role: "candidate-only", prohibitions: ["no hidden-state inference", "no canonical invention", "no internal identity disclosure"] },
+      worldpack_authority: { id: entry.run.spatial_pack_id, operation: "Clear-Q4", threshold_anchor: "fixed", geography: "persistent-canonical-results" },
+      phase: entry.phase?.phase_id, lifecycle: entry.run.lifecycle,
+      assignment: { display_id: view.mission_record?.display_id, objective: view.display_mission, required_objectives: (view.objectives ?? []).filter((item) => item.required).map((item) => ({ label: item.label, state: item.state, next: item.next_requirement })), restrictions: view.restrictions, reporting: view.reporting },
+      observer: { name: view.player?.name, role: view.player?.role, condition: view.player?.condition, location: view.current_location?.name },
+      observation: { description: view.field_observation, visible_objects: (view.interactables ?? []).map((item) => item.name ?? item.label), visible_routes: (view.map?.unresolved_exits ?? []).map((item) => item.label), local_witnesses: local },
+      personnel_boundaries: { co_present: local, separated_last_known: lastKnown },
+      institution: { standard_contact: view.channels?.standard?.state_label, standard_known_locations: (view.standard_spatial_record?.nodes ?? []).map((item) => item.name), unreported_player_locations: (view.map?.nodes ?? []).filter((node) => !(view.standard_spatial_record?.nodes ?? []).some((known) => known.id === node.id)).map((item) => item.name) },
+      recent_observer_events: recentActions,
+      unresolved_player_intent: entry.run.interpretation_state?.unresolved_intent ?? null,
+      visible_reference_labels: targets.map((item) => item.label), known_resource_labels: (view.equipment?.required ?? []).map((item) => item.label), public_reason: recentActions.at(-1)?.result ?? null,
+      grounding: { version: "yellow-beast-observer-grounding-context@v1", candidates: [
+        ...targets.map((item) => ({ ref: item.ref, label: item.label, category: "entity", source: "visible", aliases: [item.label], attributes: [] })),
+        ...local.map((person) => ({ ref: person.name, label: person.name, category: "person", source: "visible", aliases: [person.name], attributes: [person.role] }))
+      ] }
+    };
+  }
   resolveQ4Attempt({ world_id, mode, entry, plan }) {
     const phase = entry.phase?.phase_id;
     const language = [plan.intent?.goals ?? [], plan.steps.map((step) => step.attempted_behavior), plan.intent?.methods ?? []].flat().join(" ").toLowerCase();
     const affordance = { BRIEFING: ["ready", "stage", "confirm"], STAGING: ["proceed", "depart", "prepare"], FACILITY_TRANSIT: ["approach", "continue", "reach"], THRESHOLD: ["cross", "enter"] }[phase];
-    if (!affordance?.some((term) => language.includes(term))) return null;
-    const action = { BRIEFING: "READY", STAGING: "PROCEED", FACILITY_TRANSIT: "APPROACH", THRESHOLD: "CROSS" }[phase];
-    const result = this.submitAction({ world_id, mode, action });
-    return { result: { accepted: result.ok, duplicate: false, canonical_event_ids: [], attempted_steps: plan.steps.map((step) => step.id), completed_steps: result.ok ? plan.steps.map((step) => step.id) : [], failed_steps: result.ok ? [] : plan.steps.map((step) => step.id), interrupted_steps: [], partial_steps: [], time_advanced: 0, observer_safe_summary: result.ok ? "The expedition advances to its next operational context." : "The expedition remains in its current operational context." } };
+    let result = null;
+    if (affordance?.some((term) => language.includes(term))) result = this.submitAction({ world_id, mode, action: { BRIEFING: "READY", STAGING: "PROCEED", FACILITY_TRANSIT: "APPROACH", THRESHOLD: "CROSS" }[phase] });
+    if (!result && ["FIELD_OPERATION", "RETURN"].includes(phase)) {
+      const attempted = plan.steps.map((step) => step.attempted_behavior).join(" then ");
+      const objectAttempt = objectRuntime.interpret(entry.run.object_state, bootstrap.interactionDefinitionFor(entry.run.spatial_pack_id), attempted, { location: entry.run.spatial.player_location });
+      if (objectAttempt.kind === "interaction") result = this.submitAction({ world_id, mode, action: objectAttempt.action.toUpperCase(), target: objectAttempt.target });
+      if (!result) { const members = entry.run.expedition.team.members.filter((member) => member.personnel_id !== entry.run.session.startup.player.observer_id); const parsed = spatialRuntime.interpret(entry.run.spatial, bootstrap.spatialDefinitionFor(entry.run.spatial_pack_id), attempted, { personnel: members.map((member) => ({ id: member.personnel_id, name: member.display_name, first_name: member.first_name })) }); if (parsed.kind === "move") result = this.submitAction({ world_id, mode, action: "MOVE", target: parsed.target }); else if (parsed.kind === "inspect") result = this.submitAction({ world_id, mode, action: "INSPECT", target: parsed.target }); }
+    }
+    const accepted = Boolean(result?.ok); const location = entry.run.spatial ? spatialRuntime.currentLocation(entry.run.spatial, bootstrap.spatialDefinitionFor(entry.run.spatial_pack_id))?.name : null;
+    const summary = result?.result?.public_reason ?? (accepted ? "The attempted behavior produces the recorded operational result." : `Nothing in the current ${location ?? "operational context"} supports that attempted change. No physical or institutional consequence is recorded.`);
+    if (!accepted) entry.run.interpretation_state = { unresolved_intent: language, reason: summary };
+    else entry.run.interpretation_state = { unresolved_intent: null, reason: summary };
+    return { result: { accepted, duplicate: false, canonical_event_ids: result?.result?.canonical_event_ids ?? [], attempted_steps: plan.steps.map((step) => step.id), completed_steps: accepted ? plan.steps.map((step) => step.id) : [], failed_steps: accepted ? [] : plan.steps.map((step) => step.id), interrupted_steps: [], partial_steps: [], time_advanced: result?.result?.time_advanced ?? 0, observer_safe_summary: summary } };
   }
   modeScene(world, mode, entry, natural) {
     const surface = entry.kind === "lost" ? lost.projection(entry.run) : entry.kind === "nullzone" ? { ...nullzone.projection(world), local_observation: nullzone.observeRegion(world) } : entry.kind === "beck" ? desk.projection(world) : {}; const location = surface.view?.location?.alias ?? surface.surroundings?.location?.alias ?? surface.base?.known_access_point ?? "the current setting";
@@ -470,13 +512,15 @@ class DesktopService {
           const scene = this.sceneFor(entry, mode, { action: "LOOK", scene_type: "observation", accepted: Boolean(member), public_reason: reason }, world);
           return { ok: true, result: { outcome: member ? "succeeded" : "rejected", executed: Boolean(member), public_reason: reason, scene }, projection: this.projectionFor(world, mode, entry) };
         }
-        return publicError("ACTION_UNCLEAR", parsed.reason);
+        // The bounded interpreter receives only the observer-safe operational
+        // context below. Its candidate still has to resolve through the same
+        // object/spatial authorities; unsupported intent cannot mutate reality.
       }
       const configured = this.settings().provider === "openai"; const key = configured ? this.credentials.get("openai") : null;
       if (configured && !key) return publicError("PROVIDER_CONFIGURATION_REQUIRED", "Language assistance needs an access key. Your world is safe; you can continue offline.");
       const provider = configured ? createOpenAIProvider({ apiKey: key, model: this.settings().openai_model || undefined, timeout: 15000 }) : createMockProvider();
       const nonBootstrap = entry.kind !== "bootstrap"; const adapterRun = nonBootstrap ? { session: { startup: { player: { observer_id: mode } } }, profile_id: mode } : entry.run; const available = this.availableFor(world, mode, entry);
-      const phaseBefore = entry.phase?.phase_id; const turn = await executePlayerTurn({ run: adapterRun, mode, provider, player_text: text, request_id: `desktop-natural-${world_id}-${Date.now()}`, context: nonBootstrap ? this.naturalContext(world, mode, entry) : null, consequenceResolver: entry.kind === "bootstrap" ? ({ plan }) => this.resolveQ4Attempt({ world_id, mode, entry, plan }) : ({ plan }) => resolveModeAttempt({ service: this, world_id, mode, plan, available }), sceneBuilder: entry.kind === "bootstrap" ? () => this.sceneFor(entry, mode, {}, world) : ({ natural: resolved }) => this.modeScene(world, mode, entry, resolved) });
+      const phaseBefore = entry.phase?.phase_id; const interpretationContext = nonBootstrap ? this.naturalContext(world, mode, entry) : this.q4InterpretationContext(world, entry); const turn = await executePlayerTurn({ run: adapterRun, mode, provider, player_text: text, request_id: `desktop-natural-${world_id}-${Date.now()}`, context: interpretationContext, consequenceResolver: entry.kind === "bootstrap" ? ({ plan }) => this.resolveQ4Attempt({ world_id, mode, entry, plan }) : ({ plan }) => resolveModeAttempt({ service: this, world_id, mode, plan, available }), sceneBuilder: entry.kind === "bootstrap" ? ({ natural: resolved }) => this.sceneFor(entry, mode, { scene_type: resolved.consequence?.result?.accepted ? "delta" : "observation", accepted: resolved.consequence?.result?.accepted, public_reason: resolved.consequence?.result?.observer_safe_summary }, world) : ({ natural: resolved }) => this.modeScene(world, mode, entry, resolved) });
       if (entry.kind === "bootstrap" && turn.save_required && phaseBefore === entry.phase?.phase_id) this.recordQ4Action(entry, text, { ok: true, result: { time_advanced: turn.consequence?.result?.time_advanced ?? 0, canonical_event_ids: turn.consequence?.result?.canonical_event_ids ?? [] } }, world);
       if (turn.save_required) this.persistSession(world, mode, entry);
       const scene = { ...turn.scene, narration: turn.narration.prose, narration_source: turn.narration.source };
