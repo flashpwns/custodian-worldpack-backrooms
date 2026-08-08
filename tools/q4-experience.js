@@ -22,6 +22,7 @@ const institutionalRuntime = require("./institutional-runtime");
 const surveyFrontier = require("./survey-frontier");
 const career = require("./q4-career-loop");
 const personnelContinuity = require("./q4-personnel-continuity");
+const standardOperator = require("./q4-standard-operator");
 const cloneUpdates = (value) => structuredClone(value ?? []);
 
 const VERSION = "yellow-beast-clear-q4-experience@v3";
@@ -125,7 +126,7 @@ function presentation(run, phase, unfinished = null, world = null) {
     action: { history: actionHistory },
     team_status: safeTeam,
     local: { available: localCoworkers.length > 0, targets: localCoworkers.map((member) => member.first_name), target: localCoworkers[0]?.first_name ?? null, unavailable_reason: localCoworkers.length ? null : "No assigned personnel share the current speaking-range zone.", history: localHistory },
-    standard: { available: standardAvailable, state: radioState.state, state_label: radioModel.label(expedition), endpoint: "Standard", unavailable_reason: standardAvailable ? null : standardReason, history: standardHistory }
+    standard: { available: standardAvailable, state: radioState.state, state_label: radioModel.label(expedition), endpoint: "Standard", operator: world ? standardOperator.projection(world) : null, unavailable_reason: standardAvailable ? null : standardReason, history: standardHistory }
   };
   const checkIn = timeModel.status(expedition);
   const communication = communicationRuntime.project(expedition);

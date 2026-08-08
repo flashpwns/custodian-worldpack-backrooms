@@ -64,13 +64,14 @@ function knownDestination(run, definition, from, target) {
 }
 
 function orderId(run, recipient, type, target) { return `order-${crypto.createHash("sha256").update(JSON.stringify([run.expedition.id, run.expedition.team_runtime.orders.length + 1, recipient, type, target, run.expedition.clock.interval])).digest("hex").slice(0, 18)}`; }
-function issueOrder(run, spatialDefinition, { recipient, type, target = null, channel = "LOCAL" }) {
+function issueOrder(run, spatialDefinition, { recipient, type, target = null, channel = "LOCAL", decision = null }) {
   const runtime = ensure(run); const player = playerId(run); const member = run.expedition.team.members.find((entry) => memberId(entry) === recipient && recipient !== player);
   const order = { id: orderId(run, recipient, type, target), issuer: player, recipient, type, target, channel, issued_at: run.expedition.clock.interval, state: null, reason: null, history: [] };
   function resolve(state, reason) { order.state = state; order.reason = reason; order.history.push({ sequence: 1, from: null, to: state, at: run.expedition.clock.interval, reason }); runtime.orders.push(order); if (member) member.orders_received.push(order.id); return { ok: true, order: clone(order), public_reason: `${member ? display(member) : "The intended teammate"}: ${reason}` }; }
   if (!member) return resolve("unheard", "The order has no available recipient.");
   if (channel === "LOCAL" && location(run, player) !== location(run, recipient)) return resolve("unheard", "No local contact is confirmed; the order was not heard.");
   if (!TASKS.has(type)) return resolve("clarification-requested", "The requested task is not clear enough to act on.");
+  if (decision && decision.state !== "accepted") return resolve(decision.state === "cannot-comply" ? "refused" : decision.state, decision.reason.replace(/_/g, " ").toLowerCase());
   if (["dead", "missing", "incapacitated"].includes(String(member.status).toLowerCase()) || member.health === "incapacitated") return resolve("refused", "I cannot accept that task in my current condition.");
   if (["investigate", "move-to", "return"].includes(type) && /injur|wound/i.test(String(member.condition))) return resolve("delayed", "I need field assistance before I can safely take another movement task.");
   if (member.current_task?.state === "active" && !["follow", "wait"].includes(member.current_task.type) && type !== "assist") return resolve("delayed", `I am still completing ${member.current_task.type}; I will not leave it unfinished.`);
