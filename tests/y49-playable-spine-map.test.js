@@ -122,6 +122,20 @@ test("field entry gives a concrete observation, truthful map, and canonical obje
   assert.doesNotMatch(html, /Next check-in:\s*0|Keep The Team Accounted For|Nothing notable/);
 });
 
+test("return processing exposes its authoritative controls and direct controls submit without a hidden selector", () => {
+  const { service, world } = fixture("return-controls");
+  reachField(service, world);
+  const returning = phaseAction(service, world, "ABORT").projection;
+  const html = surfaces.render(returning);
+  assert.match(html, /<details class="field-notes" open>/);
+  assert.match(html, /Return processing and available controls/);
+  assert.match(html, /Complete Return Procedure/);
+  const renderer = fs.readFileSync(path.join(__dirname, "../desktop/renderer/renderer.js"), "utf8");
+  assert.match(renderer, /const selectedAction = projection\.available_actions\.find/);
+  assert.match(renderer, /if \(!selectedAction\.target_required\) \{ submitTurn\("structured"/);
+  assert.match(renderer, /form\.closest\("details"\)\.open = true/);
+});
+
 test("natural observation and movement alter spatial state, team state, time, and discovery", async () => {
   const { service, world } = fixture("movement");
   reachField(service, world);
