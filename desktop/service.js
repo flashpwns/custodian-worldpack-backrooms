@@ -23,6 +23,7 @@ const q4Personnel = require("../tools/q4-personnel");
 const q4Equipment = require("../tools/q4-equipment");
 const q4Trajectories = require("../tools/q4-trajectories");
 const q4Continuity = require("../tools/q4-continuity");
+const assignmentEngine = require("../tools/q4-assignment-engine");
 const q4Cognition = require("../tools/q4-cognition");
 const q4Radio = require("../tools/q4-radio");
 const q4Time = require("../tools/q4-time");
@@ -425,6 +426,7 @@ class DesktopService {
            institutionalRuntime.ingestClosure(world, bootstrap.institutionalDefinitionFor(entry.run.spatial_pack_id), entry.run, continuity.review); institutionalRuntime.advance(world, bootstrap.institutionalDefinitionFor(entry.run.spatial_pack_id), 1);
            entry.run.expedition.institutional_closure_ingested = true;
           history.updateQ4Mission(world, entry.run.run_id, entry.run.expedition.mission.id, { status: entry.run.expedition.mission_state.final_result.final_mission_state, result: entry.run.expedition.mission_state.final_result });
+          assignmentEngine.resolve(world, entry.run.expedition.mission.work_order_id ?? entry.run.expedition.mission.id, { completed: entry.run.expedition.mission_state.final_result.final_mission_state === "completed", aborted: entry.run.expedition.mission_state.return?.abort_requested === true });
           const returned = entry.phase?.phase_id === "RETURN" ? { ok: true, phase: entry.phase } : phases.transition(entry.phase, "RETURN", { reason: verb.toLowerCase(), guard: true });
           entry.phase = returned.ok ? phases.transition(returned.phase, "DEBRIEF", { reason: "mission-review", guard: true }).phase : entry.phase;
           bootstrap.evaluateMissionState(entry.run, "DEBRIEF");

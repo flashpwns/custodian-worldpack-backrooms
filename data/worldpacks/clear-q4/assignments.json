@@ -1,0 +1,11 @@
+{
+  "version": "yellow-beast-assignment-worldpack@v1",
+  "worldpack_id": "clear-q4",
+  "routine_targets": ["utility-room"],
+  "archetypes": [
+    { "id": "routine-survey", "label": "Routine Survey", "condition": "routine-frontier", "priority": 20, "required_equipment": ["field-light", "recording-device", "survey-instrument", "survey-radio"] },
+    { "id": "route-verification", "label": "Route Verification", "condition": "unconfirmed-route", "priority": 80, "required_equipment": ["field-light", "recording-device", "survey-instrument", "survey-radio"] },
+    { "id": "equipment-recovery", "label": "Equipment Recovery", "condition": "lost-equipment", "priority": 90, "required_equipment": ["field-light", "recording-device", "survey-instrument", "survey-radio"] },
+    { "id": "layout-verification", "label": "Layout Verification", "condition": "prior-record-discrepancy", "priority": 70, "required_equipment": ["field-light", "recording-device", "survey-instrument", "survey-radio"] }
+  ]
+}

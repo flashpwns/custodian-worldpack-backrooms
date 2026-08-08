@@ -139,7 +139,7 @@ function presentation(run, phase, unfinished = null, world = null) {
     facility,
     briefing: copy[phase.phase_id],
     mission: mission?.objective?.primary ?? expedition?.order?.primary ?? null,
-    mission_record: mission ? { id: mission.id, display_id: mission.id.replace(/^CQ4-[A-Z-]+-/, "CQ4-").replace(/-[A-Z0-9]{4,}$/, ""), family: mission.family_label, rationale: diegeticText(mission.rationale), site: mission.site, objective: mission.objective, reporting: { ...mission.reporting, summary: diegeticText(mission.reporting?.summary) }, expected_duration: mission.expected_duration, risks: mission.risks, prior_history: mission.prior_history, status: missionProgress?.lifecycle ?? mission.status } : null,
+    mission_record: mission ? { id: mission.id, display_id: mission.display_id ?? mission.id.replace(/^CQ4-[A-Z-]+-/, "CQ4-").replace(/-[A-Z0-9]{4,}$/, ""), family: mission.family_label, rationale: diegeticText(mission.rationale), site: mission.site, objective: mission.objective, reporting: { ...mission.reporting, summary: diegeticText(mission.reporting?.summary) }, expected_duration: mission.expected_duration, risks: mission.risks, prior_history: mission.prior_history, status: missionProgress?.lifecycle ?? mission.status } : null,
     display_mission: mission?.objective?.primary ?? "Review the assigned field work and return with a field record.",
     restrictions: mission?.objective?.procedures ?? expedition?.order?.constraints ?? [],
     reporting: diegeticText(mission?.reporting?.summary ?? expedition?.order?.reporting),

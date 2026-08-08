@@ -10,6 +10,7 @@ const history = require("./world-history");
 const q4Personnel = require("./q4-personnel");
 const q4Equipment = require("./q4-equipment");
 const q4Missions = require("./q4-missions");
+const assignmentEngine = require("./q4-assignment-engine");
 const q4Continuity = require("./q4-continuity");
 const q4Visuals = require("./q4-visuals");
 const q4RenderAdapters = require("./q4-render-adapters");
@@ -161,7 +162,9 @@ function startRun({ profile, seed = "yellow-beast-bootstrap", scenario = null, w
   const institutionalStaffing = dynamics ? { ...dynamics.staffing, minimum_total: Math.min(dynamics.staffing.maximum_total, Math.max(dynamics.staffing.minimum_total, followUpMinimum, institution?.dimensions?.staffing_posture === "reinforced" ? 4 : 0)) } : null;
   const staffing = profile === FIELD_PROFILE && world ? q4Personnel.staffQ4(world, run_id, player, seed, institutionalStaffing ?? {}) : null;
   if (staffing && !staffing.ok) return { ok: false, error: { code: staffing.code } };
-  const mission = profile === FIELD_PROFILE ? q4Missions.generate({ world, run_id, seed, staffing }) : null;
+  const assignment = profile === FIELD_PROFILE && world ? assignmentEngine.issue(world, { run_id, seed, selection_context: `${world.world_id}:${world.q4_operations?.institutional_time ?? 0}`, staffing }) : null;
+  if (assignment && !assignment.ok) return { ok: false, error: { code: assignment.code } };
+  const mission = profile === FIELD_PROFILE ? (assignment?.mission ?? q4Missions.generate({ world, run_id, seed, staffing })) : null;
   if (mission && world) history.recordQ4Mission(world, run_id, mission);
   const loadout = profile === FIELD_PROFILE && world ? q4Equipment.prepare(world, run_id, { player: staffing.player.identity, coworkers: staffing.coworkers, required_keys: mission.required_equipment }) : null;
   const existing = region_id && world?.regions?.[region_id];

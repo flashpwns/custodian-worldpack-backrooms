@@ -301,6 +301,7 @@ scripts.push("tools/q4-render-adapters.js");
 scripts.push("tools/q4-cognition.js");
 scripts.push("tools/q4-replayability.js");
 scripts.push("tools/q4-missions.js");
+scripts.push("tools/q4-assignment-engine.js");
 scripts.push("tools/q4-trajectories.js");
 scripts.push("tools/q4-continuity.js");
 scripts.push("tools/q4-personnel.js");
@@ -323,6 +324,7 @@ scripts.push("tools/omnipass-acceptance.js", "tests/y53-omnipass.test.js");
 scripts.push("tests/y54-settings-regression.test.js", "tests/y55-survey-frontier.test.js", "tools/survey-frontier.js");
 scripts.push("tests/y56-persistent-procedural-complex.test.js", "tools/procedural-geography.js");
 scripts.push("desktop/build-info.js", "desktop/renderer-smoke.js", "tools/write-build-info.js", "tests/y57-desktop-prerequisite-repair.test.js");
+scripts.push("tests/y58-assignment-engine.test.js");
 for (const relative of scripts) {
   const content = fs.readFileSync(path.join(root, relative), "utf8");
   assert.doesNotMatch(content, /custodian\/(runtime|state|tools)/, `${relative} uses only public Custodian imports`);
