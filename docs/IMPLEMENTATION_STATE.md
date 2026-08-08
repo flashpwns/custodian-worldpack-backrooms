@@ -1,41 +1,46 @@
 # Yellow Beast Implementation State
 
-## Pass 10B — Full Human Clear-Q4 Spine
+## Pass 10C — Persistence, Recovery, and Diagnostics
 
-- Completed pass: `10B`.
+- Completed pass: `10C`.
 - Branch: `agent/pass-10-release-candidate`.
-- Resulting commit: this Pass 10B commit, subject `feat: complete Pass 10B human Clear-Q4 spine`.
+- Resulting commit: this Pass 10C commit, subject `feat: harden persistence recovery and diagnostics`.
 - Application version: `0.13.0-alpha` (unchanged).
-- Active save schema: `yellow-beast-session@7` (unchanged); Custodian world JSON remains canonical persistence.
-- No migrations introduced.
+- Active save schema: `yellow-beast-session@7`; Custodian world JSON remains canonical persistence.
+- Supported session migrations: versions `1` through `7`; `yellow-beast-save@v1` through `@v9` remain handled by the established run migration authority.
+- No schema migration introduced.
 
-## Authorities and renderer surfaces
+## Persistence and recovery
 
-- Existing Clear-Q4 phase, mission, spatial, communications, equipment/logistics, institutional response, outcome, and follow-up authorities remain canonical.
-- `desktop/renderer/renderer.js` now submits any visible no-target structured action directly through the existing bridge; target-required actions open the valid-target selector. This makes return, controlled abort, reconciliation, and follow-up controls perform the action their labels describe.
-- `desktop/renderer/surfaces.js` opens and labels return processing when the authoritative phase is `RETURN`, exposing reconciliation controls and state without inventing renderer truth.
-- `tests/y49-playable-spine-map.test.js` covers the return-control projection and direct-action routing; existing focused operation tests cover success, degraded, controlled-abort, communications, hazards, persistence, debrief, and follow-up.
+- World and session writes serialize to a validated temporary candidate and promote only after validation.
+- Both world and session records retain one verified `.previous-good` predecessor; a damaged primary recovers from it without overwriting the damaged material.
+- Future/unsupported world or session versions fail safely and remain unchanged. A damaged session with no verified predecessor fails instead of being treated as a new operation.
+- Existing Clear-Q4 state authorities remain canonical; no renderer-owned save state was introduced.
+
+## Diagnostics
+
+- `EXPORT DIAGNOSTIC RECORD` is available from each record in the world library.
+- It writes a sanitized JSON record under managed application logs (`q4-tester-*.json`) with build/platform, world/run seed, phase, schema, bounded public events, safe renderer projection, provider status, recovery status, and bounded sanitized logs.
+- Credentials, secret-bearing fields, and recognizable provider keys are redacted or omitted.
 
 ## Automated acceptance and build
 
-- Focused Clear-Q4 unit/integration/acceptance tests: PASS.
-- Commands: `node --test tests/y48-q4-prefield-flow.test.js tests/y49-playable-spine-map.test.js tests/y50-structured-interactions.test.js tests/y51-mission-state.test.js tests/y52-operational-dynamics.test.js tests/y53-omnipass.test.js`; `npm run desktop:test`; `npm run acceptance:omnipass`; `npm run desktop:dev -- --desktop-smoke`.
+- Focused desktop persistence/recovery/diagnostic plus mission and operational persistence tests: PASS (46 tests).
+- Commands: `node --test tests/y26-desktop.test.js tests/y51-mission-state.test.js tests/y52-operational-dynamics.test.js`; `npm run acceptance:mission-state`; `npm run acceptance:operational-dynamics`; `npm run acceptance:omnipass`; `npm run desktop:dev -- --desktop-smoke --user-data-dir=<fresh-temp-directory>`.
 - Desktop build: `npm run desktop:build` PASS.
 - Full repository suite: intentionally not run; Pass 10D is the planned full-suite checkpoint.
 
-## Human gates
+## Human persistence gate
 
-- Success: `PENDING HUMAN VALIDATION`.
-- Degraded: `PENDING HUMAN VALIDATION`.
-- Controlled abort: `PENDING HUMAN VALIDATION`.
+- Status: `PENDING HUMAN VALIDATION`.
 - Launch: `npm run desktop:dev`.
-- Verify normal keyboard focus and text entry in the current desktop build during the gates. The earlier report was not reproduced by current renderer inspection: enabled inputs are not intercepted by shortcut handling, and recoverable action results restore focus to the natural input.
+- Validate staging equipment, Threshold readiness, field location/time/team, Standard communication, equipment custody, and return/debrief/follow-up across terminate → relaunch → resume. For recovery, use a controlled copy, damage its current JSON record, then verify the preserved damaged primary and previous-good recovery notice.
 
 ## Known defects and deferred work
 
-- `npm run validate-assets` rejects recovered UI/audio reference media as copied source media; this predates Pass 10A/10B and no asset-policy change was made.
-- Deferred: Pass 10C persistence interruption/recovery matrix and diagnostics; Pass 10D accessibility certification; all Pass 11+ Facility, geography, assignment, career, personnel, evidence, environment, phenomena, provider, packaging, and polish work.
+- `npm run validate-assets` rejects recovered UI/audio reference media as copied source media; this predates Pass 10A–10C and no asset-policy change was made.
+- Deferred: Pass 10D accessibility certification and UX audit; all Pass 11+ Facility, geography, assignment, career, personnel, evidence, environment, phenomena, provider, packaging, and polish work.
 
-## Pass 10C starting points
+## Pass 10D starting points
 
-Begin with `desktop/service.js` session persistence/restore paths, `tools/q4-experience.js`, `tools/mode-phases.js`, `tools/mission-runtime.js`, `tools/logistics-runtime.js`, `tools/institutional-runtime.js`, `desktop/main.js`/`desktop/preload.js` bridge lifecycle, and `tests/y51-mission-state.test.js` plus existing desktop persistence tests. Preserve `yellow-beast-session@7` and Custodian world JSON authority.
+Begin with `desktop/renderer/renderer.js`, `desktop/renderer/surfaces.js`, `desktop/renderer/styles.css`, `desktop/renderer/accessibility.js`, `desktop/preload.js`, `desktop/main.js`, and first-run/Clear-Q4 keyboard tests. Re-run the full suite at the planned checkpoint while preserving Custodian world JSON and `yellow-beast-session@7`.

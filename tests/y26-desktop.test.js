@@ -65,7 +65,7 @@ test("autosave retains one accepted action and previous-good recovery restores a
   const { root, service } = fixture(); const world = service.createWorld({ name: "Recovery", seed: "recovery" }).world;
   service.startSession({ world_id: world.id, mode: "field-researcher", seed: "recovery" }); assert.equal(service.submitAction({ world_id: world.id, mode: "field-researcher", action: "LOOK" }).ok, true);
   const file = path.join(root, "worlds", `${world.id}.json`); const saved = fs.readFileSync(file, "utf8"); assert.ok(fs.existsSync(`${file}.previous-good`));
-  fs.writeFileSync(file, "{ damaged"); assert.equal(service.loadWorld({ world_id: world.id }).ok, false); assert.equal(service.restoreBackup({ world_id: world.id, confirmed: true }).ok, true);
+  fs.writeFileSync(file, "{ damaged"); const recovered = service.loadWorld({ world_id: world.id }); assert.equal(recovered.ok, true); assert.equal(recovered.recovery.recovered, true); assert.equal(fs.readFileSync(file, "utf8"), "{ damaged"); assert.equal(service.restoreBackup({ world_id: world.id, confirmed: true }).ok, true);
   assert.equal(service.loadWorld({ world_id: world.id }).ok, true); assert.notEqual(fs.readFileSync(file, "utf8"), "{ damaged"); assert.ok(saved.includes(world.id));
 });
 test("future saves and malformed imports fail safely without overwriting a world", () => {
@@ -102,4 +102,31 @@ test("first-run canonical path creates personnel, confirms it, and reaches the C
 test("first-run renderer keeps Clear-Q4 selected and exposes recoverable keyboard forms", () => {
   const renderer = fs.readFileSync(path.join(__dirname, "../desktop/renderer/renderer.js"), "utf8");
   assert.match(renderer, /mode\.id === "field-researcher"/); assert.match(renderer, /placeholder="Optional/); assert.doesNotMatch(renderer, /name=\\"name\\" required/); assert.match(renderer, /nameInput\?\.focus\(\)/); assert.match(renderer, /personnel record could not be saved/);
+});
+
+test("damaged sessions resume a verified previous-good record without overwriting the damaged primary", () => {
+  const { root, service } = fixture(); const world = service.createWorld({ name: "Session recovery", seed: "session-recovery" }).world;
+  assert.equal(service.startSession({ world_id: world.id, mode: "field-researcher", seed: "session-recovery" }).ok, true);
+  assert.equal(service.submitAction({ world_id: world.id, mode: "field-researcher", action: "READY" }).ok, true);
+  const file = path.join(root, "saves", `${world.id}-field-researcher.json`); assert.ok(fs.existsSync(`${file}.previous-good`)); fs.writeFileSync(file, "{ interrupted");
+  const restarted = new DesktopService({ appDataPath: root }); const resumed = restarted.resumeSession({ world_id: world.id, mode: "field-researcher" });
+  assert.equal(resumed.ok, true); assert.equal(resumed.recovery.session.recovered, true); assert.equal(resumed.projection.phase.phase_id, "BRIEFING"); assert.equal(fs.readFileSync(file, "utf8"), "{ interrupted");
+  assert.equal(restarted.submitAction({ world_id: world.id, mode: "field-researcher", action: "READY" }).ok, true);
+});
+
+test("unsupported or unrecoverable session records fail safely and remain intact", () => {
+  const { root, service } = fixture(); const world = service.createWorld({ name: "Session safety", seed: "session-safety" }).world;
+  assert.equal(service.startSession({ world_id: world.id, mode: "field-researcher", seed: "session-safety" }).ok, true);
+  const file = path.join(root, "saves", `${world.id}-field-researcher.json`); fs.writeFileSync(file, "{ truncated");
+  const damaged = new DesktopService({ appDataPath: root }).resumeSession({ world_id: world.id, mode: "field-researcher" }); assert.equal(damaged.ok, false); assert.equal(damaged.error.code, "SESSION_SAVE_DAMAGED"); assert.equal(fs.readFileSync(file, "utf8"), "{ truncated");
+  const future = JSON.stringify({ version: 99, schema: "yellow-beast-session@future", mode: "field-researcher", kind: "bootstrap", payload: {} }); fs.writeFileSync(file, future);
+  const unsupported = new DesktopService({ appDataPath: root }).resumeSession({ world_id: world.id, mode: "field-researcher" }); assert.equal(unsupported.ok, false); assert.equal(unsupported.error.code, "SESSION_VERSION_UNSUPPORTED"); assert.equal(fs.readFileSync(file, "utf8"), future);
+});
+
+test("diagnostic export is JSON, records safe recovery context, and redacts credentials", () => {
+  const { root, service } = fixture({ secure: true }); const secret = "sk-diagnostic-secret"; const world = service.createWorld({ name: "Diagnostic record", seed: "diagnostic" }).world;
+  assert.equal(service.configureOpenAI({ api_key: secret, model: "test-model" }).ok, true); assert.equal(service.startSession({ world_id: world.id, mode: "field-researcher", seed: "diagnostic" }).ok, true);
+  const exported = service.exportTesterReport({ world_id: world.id, note: "relaunch reproduction" }); assert.equal(exported.ok, true); const report = JSON.parse(fs.readFileSync(exported.file, "utf8"));
+  assert.equal(report.version, "yellow-beast-diagnostic-record@1"); assert.equal(report.world_seed, "diagnostic"); assert.equal(report.save_schema_version, "yellow-beast-session@7"); assert.equal(report.provider_status.configured, true); assert.doesNotMatch(JSON.stringify(report), new RegExp(secret));
+  const renderer = fs.readFileSync(path.join(__dirname, "../desktop/renderer/renderer.js"), "utf8"); assert.match(renderer, /Export diagnostic record/); assert.match(renderer, /exportTesterReport/);
 });
