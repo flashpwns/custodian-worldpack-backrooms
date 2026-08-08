@@ -4,12 +4,13 @@ const VERSION = "yellow-beast-q4-interaction-envelope@v1";
 const CHANNELS = Object.freeze(["action", "local", "standard"]);
 const clone = (value) => structuredClone(value);
 
-function record(expedition, { channel, speaker = "You", targets = [], player_text = null, attempted_behavior = null, eligibility = "eligible", delivery = "not-applicable", time_cost = 0, canonical_effects = [], observer_knowledge = [], presentation = {} }) {
+function record(expedition, { channel, speaker = "You", targets = [], player_text = null, attempted_behavior = null, eligibility = "eligible", delivery = "not-applicable", time_cost = 0, canonical_effects = [], observer_knowledge = [], presentation = {}, submission_id = null }) {
   if (!expedition || !CHANNELS.includes(channel)) throw new Error("Q4 interaction requires a supported channel");
   expedition.interaction_history ??= [];
   const interaction = {
     version: VERSION,
     id: `q4-interaction-${expedition.interaction_history.length + 1}`,
+    submission_id,
     channel,
     speaker,
     targets: [...targets],

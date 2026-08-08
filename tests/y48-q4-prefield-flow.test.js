@@ -37,37 +37,30 @@ test("one preparation surface preserves canonical pre-field transitions without 
   let html = surfaces.render(started.projection);
   assert.match(html, /q4-preparation-surface/);
   assert.match(html, /OPERATIONAL PREPARATION/);
-  assert.match(html, /Confirm briefing/);
+  assert.match(html, /Deploy to radio readiness/);
   assert.match(html, /data-testid="q4-communications"/);
   assert.match(html, /data-testid="q4-comms-form"/);
   assert.doesNotMatch(html, /local-comms|standard-comms|Continue to Staging/);
   assert.match(html, /data-radio-state="unavailable">LINK UNAVAILABLE/);
   assert.doesNotMatch(html, /What do you do\?|Nothing notable changes|natural-form|Structured controls/);
-  html = surfaces.render(advance(service, world, "READY").projection);
+  html = surfaces.render(advance(service, world, "DEPLOY").projection);
   assert.match(html, /q4-preparation-surface/);
-  assert.match(html, /Leave staging/);
+  assert.match(html, /RADIO READINESS/);
   assert.doesNotMatch(html, /What do you do\?|Nothing notable changes/);
 });
 
-test("pre-field controls advance deterministically through threshold and radio check", () => {
+test("pre-field has one deliberate deployment before the radio check", () => {
   const { service, world } = fixture(); start(service, world);
-  assert.equal(advance(service, world, "READY").projection.phase.phase_id, "STAGING");
-  assert.equal(advance(service, world, "PROCEED").projection.phase.phase_id, "FACILITY_TRANSIT");
-  assert.equal(advance(service, world, "APPROACH").projection.phase.phase_id, "THRESHOLD");
-  let threshold = service.getGameplayProjection({ world_id: world.id, mode: "field-researcher" }).projection;
-  assert.equal(threshold.q4.channels.standard.available, false);
-  assert.match(surfaces.render(threshold), /Cross Threshold/);
-  const radio = advance(service, world, "CROSS");
+  const radio = advance(service, world, "DEPLOY");
   assert.equal(radio.projection.phase.phase_id, "STANDARD_RADIO_CHECK");
-  assert.match(surfaces.render(radio.projection), /Run radio check/);
+  assert.match(surfaces.render(radio.projection), /Select STANDARD|RADIO READINESS/);
   const rejected = service.submitAction({ world_id: world.id, mode: "field-researcher", action: "RADIO_CHECK" });
   assert.equal(rejected.ok, false);
   const checked = service.submitQ4Communication({ world_id: world.id, channel: "standard", text: "Standard, Clear-Q4 team accounted for. Radio check." });
   assert.equal(checked.ok, true);
   assert.equal(checked.projection.phase.phase_id, "STANDARD_RADIO_CHECK");
   assert.match(surfaces.render(checked.projection), /Radio check/);
-  assert.equal(service.submitAction({ world_id: world.id, mode: "field-researcher", action: "WAIT" }).ok, true);
-  assert.match(surfaces.render(service.getGameplayProjection({ world_id: world.id, mode: "field-researcher" }).projection), /Begin field operation/);
+  assert.match(surfaces.render(checked.projection), /Begin field operation|Select STANDARD/);
   const field = advance(service, world, "BEGIN_FIELD_OPERATION");
   assert.equal(field.projection.phase.phase_id, "FIELD_OPERATION");
   assert.doesNotMatch(surfaces.render(field.projection), /Nothing notable changes/);
@@ -89,12 +82,12 @@ test("unified communications records LOCAL exchange without resolving a physical
 
 test("pre-field resume preserves confirmation and current dedicated phase", () => {
   const { service, world } = fixture(); start(service, world);
-  advance(service, world, "READY");
+  advance(service, world, "DEPLOY");
   const restarted = new DesktopService({ appDataPath: service.paths.root });
   const resumed = restarted.resumeSession({ world_id: world.id, mode: "field-researcher" });
   assert.equal(resumed.ok, true);
-  assert.equal(resumed.projection.phase.phase_id, "STAGING");
-  assert.match(surfaces.render(resumed.projection), /Leave staging/);
+  assert.equal(resumed.projection.phase.phase_id, "STANDARD_RADIO_CHECK");
+  assert.match(surfaces.render(resumed.projection), /RADIO READINESS/);
 });
 
 test("renderer wires dedicated confirmation and suppresses pre-field generic inputs", () => {

@@ -206,3 +206,10 @@
 ### Pass 18 starting files
 
 - `desktop/service.js`, `tools/doctrine-runtime.js`, `tools/q4-experience.js`, `tools/communication-runtime.js`, `tools/q4-radio.js`, `desktop/renderer/surfaces.js`, `desktop/renderer/renderer.js`, `desktop/renderer/styles.css`, `tests/y61-local-standard.test.js`, and `tests/y62-pass17-human-gate.test.js`.
+## Pass 17 human-gate repair — actual state-machine correction
+
+- The rejected 4fd24695 behavior was reproduced and repaired at the production boundaries. Fresh Clear-Q4 sessions expose one preparation surface and one deliberate `DEPLOY` action; briefing/staging/transit/threshold presentation controls no longer advance operational time. A compatibility seam accepts legacy scripted actions only for migration-era records and is not exposed by the production projection.
+- Radio authorship now remains player-owned end to end: `submitAction(COMMUNICATE)` and `RADIO_CHECK` reject without player text; the readiness projection selects STANDARD and leaves the shared composer empty; `submitQ4Communication` records only the submitted text as YOU. Communication resolution now distinguishes composed, queued, transmitting, delivered, acknowledged, failed, expired, timeout, cancellation, and retry recovery. Unavailable coverage cannot enter `AWAITING RESPONSE`.
+- `operational-cycle` and Q4 interaction records retain a deterministic `submission_id`, connecting phase/objective/time changes to the initiating player submission. LOCAL dialogue includes the submitted statement in offline deterministic responses and keeps zero interval cost.
+- Packaged Electron renderer smoke now clicks actual Settings controls, reaches the final control, saves, closes, reopens, and verifies persisted state. `desktop:verify` runs both packaged service and renderer interaction smoke. Focused state-machine coverage is in `tests/y63-pass17-state-machine.test.js` with runtime nonce text.
+- Verification: full `npm test` PASS; focused Pass 17/state-machine tests PASS. Packaged build and artifact verification remain the final handoff checks for this repair.

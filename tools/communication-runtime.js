@@ -177,8 +177,15 @@ function handleEvent(run, definition, event) {
     if (event.payload.acknowledgment !== false) {
       const delay = event.payload.acknowledgment_delay ?? definition.communications?.standard_acknowledgment_delay ?? 1;
       operationalTime.schedule(expedition, { id: `acknowledge-${message.id}`, event_type: "communication.acknowledge", scheduled_interval: expedition.clock.interval + delay, source: message.intended_recipient, target: message.sender, payload: { message_id: message.id }, visibility_policy: "known" });
+      operationalTime.schedule(expedition, { id: `timeout-${message.id}`, event_type: "communication.timeout", scheduled_interval: expedition.clock.interval + delay + 2, source: "communication-authority", target: message.sender, payload: { message_id: message.id }, visibility_policy: "known" });
     }
     return { status: "completed", reason: "message delivered", result: { message_id: message.id, state: message.state } };
+  }
+  if (event.event_type === "communication.timeout") {
+    if (!message || message.state !== "delivered") return { status: "cancelled", reason: "response already resolved" };
+    transition(expedition, message, "expired", "the declared response window closed without acknowledgment");
+    if (expedition.radio) { expedition.radio.state = "available"; expedition.radio.last_transition = "response-timeout-recoverable"; expedition.radio.last_delivery = { status: "timeout", interval: expedition.clock.interval }; }
+    return { status: "completed", reason: "response timeout; retry remains available", result: { message_id: message.id, state: message.state, recoverable: true } };
   }
   if (event.event_type === "communication.acknowledge") {
     if (!message || !["delivered"].includes(message.state)) return { status: "cancelled", reason: "delivered message unavailable for acknowledgment" };

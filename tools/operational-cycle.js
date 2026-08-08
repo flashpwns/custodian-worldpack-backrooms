@@ -57,7 +57,7 @@ function resolve(run, dynamics, spatialDefinition, { action, cost = 0, source = 
     ...environmentUpdates.map((item) => ({ kind:"environment", summary:`${item.kind.replace(/-/g, " ")} changed.`, at:item.at }))
   ];
   clock.to = operational.clock.interval; clock.action_cost = cost; clock.consequence_delay = operational.clock.interval - clock.from - cost; clock.cost = operational.clock.interval - clock.from;
-  const record = { sequence: operational.cycle_history.length + 1, kind: "operational-cycle", action: action ?? null, source, from: before, to: operational.clock.interval, cost: clock.cost, action_cost: cost, consequence_delay: clock.consequence_delay, scheduled_event_ids: scheduled.map((entry) => entry.event_id), decision_count: decisions.length, consequence_ids: hazardResolution.consequences.map((entry) => entry.id), mission_transition_count: missionUpdates.length };
+  const record = { sequence: operational.cycle_history.length + 1, kind: "operational-cycle", action: action ?? null, source, submission_id: run._active_submission_id ?? null, from: before, to: operational.clock.interval, cost: clock.cost, action_cost: cost, consequence_delay: clock.consequence_delay, scheduled_event_ids: scheduled.map((entry) => entry.event_id), decision_count: decisions.length, consequence_ids: hazardResolution.consequences.map((entry) => entry.id), mission_transition_count: missionUpdates.length };
   operational.cycle_history.push(record);
   operational.recent_public_updates = clone(updates);
   run._last_operational_updates = updates; run._last_mission_updates = missionUpdates;

@@ -133,11 +133,13 @@ function react(world, context) {
   return { ...final, reaction: clone(reaction) };
 }
 
-function presentReaction(person, reaction) {
+function presentReaction(person, reaction, playerText = "") {
   if (!reaction) return null;
   const name = person?.first_name ?? person?.display_name ?? "Assigned teammate";
-  const lines = { acknowledgment: "Acknowledged. I have the same report.", warning: "Hold on. This crosses my current safety threshold.", question: "I want confirmation before we continue under that condition.", uncertainty: "I cannot confirm more than what is in front of us." };
-  return `${name}: ${lines[reaction.category] ?? "Acknowledged."}`;
+  const statement = String(playerText ?? "").trim().replace(/\s+/g, " ").slice(0, 96);
+  const subject = statement ? ` about “${statement}”` : " about that";
+  const lines = { acknowledgment: `I heard you${subject}. I can confirm only what I can see here.`, warning: `I heard you${subject}. Hold on; that crosses my current safety threshold.`, question: `I heard you${subject}. Which part do you want me to verify?`, uncertainty: `I heard you${subject}. I cannot confirm more than what is in front of us.` };
+  return `${name}: ${lines[reaction.category] ?? `I heard you${subject}.`}`;
 }
 
 function decisionContext({ world, run, phase, worker_id, request = {} }) {

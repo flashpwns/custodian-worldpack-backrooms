@@ -17,14 +17,15 @@ async function run(windowRef) {
     const form = document.querySelector('#settings'); const initialFocus = document.activeElement?.name;
     const controls = [...form.querySelectorAll('input, select, button')];
     const theme = form.querySelector('[name="theme"]'); theme.value = 'high-contrast'; theme.dispatchEvent(new Event('change', { bubbles:true }));
+    const finalControl = controls.at(-1); finalControl?.focus(); finalControl?.scrollIntoView(); const reachedFinalControl = document.activeElement === finalControl || finalControl?.getBoundingClientRect().bottom <= window.innerHeight;
     form.requestSubmit(); await pause(40); const saved = document.querySelector('#settings-message')?.textContent;
     document.querySelector('[data-action="close-settings"]')?.click(); const closed = await waitFor('[data-testid="world-library"]');
     document.dispatchEvent(new KeyboardEvent('keydown', { key:',', altKey:true, bubbles:true })); const reopened = await waitFor('#settings');
     const settings = await window.yellowBeast.getSettings();
-    return { form: Boolean(form), initialFocus, controls: controls.length, saved, closed, reopened, theme: settings.settings.theme };
+    return { form: Boolean(form), initialFocus, controls: controls.length, reachedFinalControl, saved, closed, reopened, theme: settings.settings.theme };
   })()`);
   console.log(JSON.stringify({ renderer_settings_probe: result }, null, 2)); assert.equal(result.form, true); assert.ok(result.initialFocus); assert.ok(result.controls >= 12); assert.match(result.saved, /saved and applied/i); assert.equal(result.closed, true); assert.equal(result.reopened, true); assert.equal(result.theme, "high-contrast");
-  console.log(JSON.stringify({ renderer_settings_smoke: "passed", controls: result.controls }, null, 2));
+  assert.equal(result.reachedFinalControl, true); console.log(JSON.stringify({ renderer_settings_smoke: "passed", controls: result.controls }, null, 2));
   await pause(10); app.exit(0);
 }
 module.exports = { run };

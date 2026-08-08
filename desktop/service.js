@@ -261,7 +261,7 @@ class DesktopService {
   availableFor(world, mode, entry) {
     if (outcomes.isRetired(world)) return [];
     if (entry.kind === "bootstrap") {
-      const phaseActions = { BRIEFING: "READY", STAGING: "PROCEED", FACILITY_TRANSIT: "APPROACH", THRESHOLD: "CROSS", STANDARD_RADIO_CHECK: q4Radio.ensure(entry.run.expedition).check_completed ? "BEGIN_FIELD_OPERATION" : "RADIO_CHECK" };
+      const phaseActions = { BRIEFING: "DEPLOY", STAGING: "DEPLOY", FACILITY_TRANSIT: "DEPLOY", THRESHOLD: "DEPLOY", STANDARD_RADIO_CHECK: q4Radio.ensure(entry.run.expedition).check_completed ? "BEGIN_FIELD_OPERATION" : null };
       const state = bootstrap.status(entry.run); const observed = bootstrap.look(entry.run, { record: false }); const targets = state.view.targets.map(({ alias }) => ({ ref: alias, label: alias })); const exits = (observed.view?.exits ?? []).map(({ alias }) => ({ ref: alias, label: alias }));
       const objectActions = new Map();
       for (const object of observed.view?.objects ?? []) for (const affordance of object.actions ?? []) if (affordance.available) {
@@ -309,12 +309,12 @@ class DesktopService {
       const next = { kind: "bootstrap", run: started.run, phase: phases.createPhase({ mode: "field-researcher", guided: this.settings().guided_introductions !== false }) }; this.persistSession(world, "field-researcher", next); return { ok: true, result: { outcome: "operations-advanced", public_reason: processed.idempotent ? "The recorded institutional cycle was already complete; the next assignment remains unchanged." : "Institutional processing completed; the next Clear-Q4 assignment is available.", career_cycle: processed.cycle }, projection: this.projectionFor(world, "field-researcher", next) };
     } catch { return publicError("NEXT_EXPEDITION_UNAVAILABLE", "The next assignment could not be prepared safely."); }
   }
-  recordQ4Action(entry, text, result, world = null) {
+  recordQ4Action(entry, text, result, world = null, submission_id = null) {
     const verb = String(text).trim().split(/\s+/, 1)[0].toUpperCase();
     if (verb === "RETURN" && entry.run.expedition?.mission?.hidden_trajectory?.state?.status !== "dormant") q4Trajectories.contain({ world, expedition: entry.run.expedition, run_id: entry.run.run_id, reason: "early return or completed field work" });
     const observation = q4Trajectories.resolveAction({ world, expedition: entry.run.expedition, run_id: entry.run.run_id, phase: entry.phase?.phase_id, verb: verb === "PHOTOGRAPH" ? "RECORD" : verb, result, observation_kind: /record|photograph/i.test(text) ? "record" : /contact|radio|check.?in/i.test(text) ? "contact" : null, comparison: /compare|reconcile|prior|layout/i.test(text) });
     if (observation.observed && result.result) result.result.public_reason = observation.summary;
-    return q4Interactions.record(entry.run.expedition, { channel: "action", speaker: "You", targets: [], player_text: text, attempted_behavior: text, eligibility: result.ok ? "eligible" : "rejected", delivery: "not-applicable", time_cost: result.result?.time_advanced ?? (/^WAIT\b/.test(text) ? 1 : 0), canonical_effects: result.result?.canonical_event_ids ?? [], presentation: { result: observation.summary ?? (result.ok ? result.outcome ?? "succeeded" : result.error?.code ?? "rejected") } });
+    return q4Interactions.record(entry.run.expedition, { channel: "action", speaker: "You", targets: [], player_text: text, attempted_behavior: text, eligibility: result.ok ? "eligible" : "rejected", delivery: "not-applicable", time_cost: result.result?.time_advanced ?? (/^WAIT\b/.test(text) ? 1 : 0), canonical_effects: result.result?.canonical_event_ids ?? [], presentation: { result: observation.summary ?? (result.ok ? result.outcome ?? "succeeded" : result.error?.code ?? "rejected") }, submission_id });
   }
   submitQ4LocalIntent({ world_id, text, request_id = null }) {
     try {
@@ -390,7 +390,7 @@ class DesktopService {
         const request = /\b(hand|pass|give|bring|transfer)\b/i.test(message);
         const requestedEquipment = request ? Object.values(expedition.equipment ?? {}).find((item) => [item.id, item.label, item.type].filter(Boolean).some((value) => message.toLowerCase().includes(String(value).toLowerCase()) || String(value).toLowerCase().split(/\s+/).some((term) => term.length > 4 && message.toLowerCase().includes(term)))) : null;
         const equipmentHolder = requestedEquipment ? expedition.team.members.find((member) => member.personnel_id === requestedEquipment.holder) : null;
-        const responses = recipients.map((recipient) => { const recipientPerson = history.character(world, recipient.personnel_id ?? recipient.id); const reactionContext = personnelContinuity.reactionContext({ world, run: entry.run, phase: entry.phase?.phase_id, worker_id: recipient.personnel_id, player_id: playerId, event: { id: deliveredLocal.message.id, category: "local-communication", summary: "A nearby teammate addressed the worker.", novelty_key: request ? "local-equipment-request" : "local-status-communication", operational_importance: request ? 58 : 85, perceived_risk: 0, observed_by: [recipient.personnel_id], delivered_to: [recipient.personnel_id], participants: [playerId, recipient.personnel_id] } }); const reaction = personnelContinuity.react(world, reactionContext); const response = request ? (requestedEquipment?.holder === recipient.personnel_id ? `${recipient.first_name}: I hear the request. The ${requestedEquipment.label.toLowerCase()} remains with me until we complete a physical handoff.` : requestedEquipment?.holder === playerId ? `${recipient.first_name}: You already hold the ${requestedEquipment.label.toLowerCase()}.` : equipmentHolder ? `${recipient.first_name}: ${equipmentHolder.first_name} has the ${requestedEquipment.label.toLowerCase()}; a physical handoff still has to happen in person.` : `${recipient.first_name}: I hear the request, but I cannot confirm that equipment in my custody.`) : personnelContinuity.presentReaction(recipientPerson, reaction.reaction); return { recipient: recipient.display_name, text: response }; });
+        const responses = recipients.map((recipient) => { const recipientPerson = history.character(world, recipient.personnel_id ?? recipient.id); const reactionContext = personnelContinuity.reactionContext({ world, run: entry.run, phase: entry.phase?.phase_id, worker_id: recipient.personnel_id, player_id: playerId, event: { id: deliveredLocal.message.id, category: "local-communication", summary: `The teammate heard the player's statement: ${message}`, novelty_key: request ? "local-equipment-request" : `local-statement-${message.toLowerCase().slice(0, 80)}`, operational_importance: request ? 58 : 85, perceived_risk: 0, observed_by: [recipient.personnel_id], delivered_to: [recipient.personnel_id], participants: [playerId, recipient.personnel_id] } }); const reaction = personnelContinuity.react(world, reactionContext); const response = request ? (requestedEquipment?.holder === recipient.personnel_id ? `${recipient.first_name}: I hear the request. The ${requestedEquipment.label.toLowerCase()} remains with me until we complete a physical handoff.` : requestedEquipment?.holder === playerId ? `${recipient.first_name}: You already hold the ${requestedEquipment.label.toLowerCase()}.` : equipmentHolder ? `${recipient.first_name}: ${equipmentHolder.first_name} has the ${requestedEquipment.label.toLowerCase()}; a physical handoff still has to happen in person.` : `${recipient.first_name}: I hear the request, but I cannot confirm that equipment in my custody.`) : personnelContinuity.presentReaction(recipientPerson, reaction.reaction, message); return { recipient: recipient.display_name, text: response }; });
         const response = responses.map((item) => item.text).join(" ");
         personnelContinuity.recordSharedHistory(world, { run_id: entry.run.run_id, participants: [playerId, ...recipients.map((recipient) => recipient.personnel_id ?? recipient.id)], kind: "local-communication", refs: { message_id: deliveredLocal.message.id, geography_shared: /\b(route|corridor|passage|location|map|survey|where)\b/i.test(message) }, at: expedition.clock.interval });
         const interaction = q4Interactions.record(expedition, { channel, speaker: "You", targets: recipients.map((item) => item.display_name), player_text: message, attempted_behavior: "speak with nearby participating personnel", eligibility: "eligible", delivery: "heard", time_cost: 0, canonical_effects: ["communication.local.delivered"], presentation: { result: "heard", response } });
@@ -439,7 +439,7 @@ class DesktopService {
       }
       const delivery = actuallyDelivered ? "delivered" : resolvedMessage.state === "delayed" ? "delayed" : "queued";
       const interaction = q4Interactions.record(expedition, { channel, speaker: "You", targets: ["Standard"], player_text: message, attempted_behavior: "transmit over the survey radio", eligibility: "eligible", delivery, time_cost: 1, canonical_effects: ["communication.sent"], observer_knowledge: actuallyDelivered ? [{ observer: "Standard", kind: "reported-communication", text: message }] : [], presentation: { result: delivery } });
-      if (radioCheckPhase && resolvedMessage.state === "acknowledged") q4Interactions.record(expedition, { channel: "standard", speaker: "STANDARD", targets: ["Clear-Q4 team"], player_text: "Standard acknowledgment received.", attempted_behavior: "scheduled radio-check acknowledgment", eligibility: "eligible", delivery: "received", canonical_effects: ["q4.radio.check.acknowledged"], presentation: { result: "received" } });
+      if (radioCheckPhase && resolvedMessage.state === "acknowledged") q4Interactions.record(expedition, { channel: "standard", speaker: "STANDARD", targets: ["Clear-Q4 team"], player_text: "Standard acknowledgment received for Radio check.", attempted_behavior: "scheduled radio-check acknowledgment", eligibility: "eligible", delivery: "received", canonical_effects: ["q4.radio.check.acknowledged"], presentation: { result: "received" } });
       if (!radioCheckPhase) q4Trajectories.noteCommunication({ world, expedition, run_id: entry.run.run_id, channel: "standard", delivered: actuallyDelivered, text: message });
       const missionUpdates = [...cycle.mission_updates, ...(acknowledgmentCycle?.mission_updates ?? [])];
       this.persistSession(world, "field-researcher", entry);
@@ -476,13 +476,16 @@ class DesktopService {
     } catch (error) { this.log(`Q4 store selection failed: ${error.message}`); return publicError("STAGING_RUNTIME_ERROR", "The optional store could not be selected safely."); }
   }
   submitAction({ world_id, mode, action, target = null }) {
-    try { const world = this.getWorld(world_id); if (outcomes.isRetired(world)) return publicError("WORLD_RETIRED", "This world is a read-only historical record."); const entry = this.session(world_id, mode) ?? this.restoreSession(world, mode, readJson(this.sessionFile(world_id, mode), null)); if (!entry) return publicError("SESSION_NOT_FOUND", "Start or continue a session first."); const verb = String(action ?? "").toUpperCase(); let result; if (entry.kind === "bootstrap") entry.run._last_mission_updates = [];
+    try { const world = this.getWorld(world_id); if (outcomes.isRetired(world)) return publicError("WORLD_RETIRED", "This world is a read-only historical record."); const entry = this.session(world_id, mode) ?? this.restoreSession(world, mode, readJson(this.sessionFile(world_id, mode), null)); if (!entry) return publicError("SESSION_NOT_FOUND", "Start or continue a session first."); const verb = String(action ?? "").toUpperCase(); let result; if (entry.kind === "bootstrap") { entry.run._last_mission_updates = []; entry.run._active_submission_id = `player-submission-${crypto.createHash("sha256").update(JSON.stringify([entry.run.run_id, entry.run.expedition.interaction_history?.length ?? 0, verb, target ?? null])).digest("hex").slice(0, 18)}`; }
       if (entry.kind === "bootstrap" && verb === "ADVANCE_OPERATIONS") return this.advanceQ4Operations({ world_id });
-      if (entry.kind === "bootstrap" && verb === "COMMUNICATE") return this.submitQ4Communication({ world_id, channel: String(target).toLowerCase() === "standard" ? "standard" : "local", text: String(target).toLowerCase() === "standard" ? "Check-in to Standard." : "Check in with the team.", target });
-      if (entry.kind === "bootstrap" && ["READY", "PROCEED", "APPROACH", "CROSS", "RADIO_CHECK", "BEGIN_FIELD_OPERATION"].includes(verb)) {
+      if (entry.kind === "bootstrap" && verb === "COMMUNICATE") return publicError("PLAYER_TRANSMISSION_REQUIRED", "Type and deliberately submit your own message in the communication composer.");
+      if (entry.kind === "bootstrap" && ["DEPLOY", "READY", "PROCEED", "APPROACH", "CROSS", "RADIO_CHECK", "BEGIN_FIELD_OPERATION"].includes(verb)) {
         const phase = entry.phase?.phase_id;
         const radioChecked = q4Radio.ensure(entry.run.expedition).check_completed;
-        const expected = { BRIEFING: "READY", STAGING: "PROCEED", FACILITY_TRANSIT: "APPROACH", THRESHOLD: "CROSS", STANDARD_RADIO_CHECK: radioChecked ? "BEGIN_FIELD_OPERATION" : "RADIO_CHECK" }[phase];
+        // READY/PROCEED/APPROACH/CROSS remain a migration seam for saved
+        // automation records. The production preparation surface exposes
+        // only DEPLOY; new sessions never present the legacy chain.
+        const expected = { BRIEFING: verb === "DEPLOY" ? "DEPLOY" : "READY", STAGING: verb === "DEPLOY" ? "DEPLOY" : "PROCEED", FACILITY_TRANSIT: verb === "DEPLOY" ? "DEPLOY" : "APPROACH", THRESHOLD: verb === "DEPLOY" ? "DEPLOY" : "CROSS", STANDARD_RADIO_CHECK: radioChecked ? "BEGIN_FIELD_OPERATION" : "RADIO_CHECK" }[phase];
         if (verb !== expected) return publicError("PHASE_GUARD_REJECTED", "That transition is not available from the current expedition phase.");
         if (verb === "RADIO_CHECK") {
           return publicError("PLAYER_TRANSMISSION_REQUIRED", "Type and deliberately submit the required radio check in the STANDARD composer. The application will not speak for you.");
@@ -491,6 +494,13 @@ class DesktopService {
           if (!advanced.ok) return publicError(advanced.code, "Standard has not authorized field departure.");
           entry.phase = advanced.phase; bootstrap.enterSpatialField(entry.run); q4Equipment.updatePhase(entry.run.expedition, entry.phase.phase_id);
           result = { ok: true, outcome: "field-operation-entered", result: { public_reason: null, mission_updates: [...(entry.run._last_mission_updates ?? [])] } };
+        } else if (verb === "DEPLOY") {
+          const crossed = bootstrap.crossThreshold(entry.run);
+          if (!crossed.ok) return publicError(crossed.error?.code ?? crossed.code ?? "DEPLOYMENT_REJECTED", crossed.error?.public_reason ?? crossed.reason ?? "Deployment could not be established from the current preparation state.");
+          const advanced = q4.nextPhase(entry.phase, { action: verb, canonical_crossed: true, legacy_flow: false });
+          if (!advanced.ok) return publicError(advanced.code, "The expedition cannot deploy from its current preparation state.");
+          entry.phase = advanced.phase; q4Radio.authorize(entry.run.expedition); bootstrap.setSpatialPhase(entry.run, entry.phase.phase_id); q4Equipment.updatePhase(entry.run.expedition, entry.phase.phase_id);
+          result = { ok: true, outcome: "deployed-to-radio-readiness", result: { public_reason: "You deliberately deployed the accounted team to radio readiness." } };
         } else if (verb === "CROSS") {
           result = bootstrap.crossThreshold(entry.run);
           if (result.ok) { const advanced = q4.nextPhase(entry.phase, { action: verb, canonical_crossed: true, legacy_flow: false }); if (!advanced.ok) return publicError(advanced.code, "The expedition cannot cross from its current state."); entry.phase = advanced.phase; q4Radio.authorize(entry.run.expedition); bootstrap.setSpatialPhase(entry.run, entry.phase.phase_id); q4Equipment.updatePhase(entry.run.expedition, entry.phase.phase_id); }
@@ -501,7 +511,7 @@ class DesktopService {
         }
         if (verb !== "RADIO_CHECK" && result.ok) {
           if (entry.run.expedition?.mission_state) entry.run.expedition.mission_state.phase = entry.phase.phase_id;
-          const authoredCost = bootstrap.dynamicsDefinitionFor(entry.run.spatial_pack_id).action_costs[verb] ?? 0;
+          const authoredCost = verb === "DEPLOY" ? 1 : (bootstrap.dynamicsDefinitionFor(entry.run.spatial_pack_id).action_costs[verb] ?? 0);
           const cycle = bootstrap.resolveOperationalCycle(entry.run, verb, authoredCost, "phase-action");
           result.result = { ...(result.result ?? {}), time_advanced: cycle.clock.cost, mission_updates: [...(result.result?.mission_updates ?? []), ...cycle.mission_updates], operational_updates: cycle.public_updates };
         }
@@ -512,10 +522,10 @@ class DesktopService {
       if (!result.ok) return publicError(result.error?.code ?? result.code ?? "ACTION_REJECTED", result.error?.public_reason ?? result.result?.public_reason ?? result.public_reason ?? "That action is not available right now.");
       if (entry.kind === "bootstrap" && q4Radio.ensure(entry.run.expedition).check_completed && !q4Interactions.history(entry.run.expedition, "standard").some((item) => item.attempted_behavior === "scheduled radio-check acknowledgment")) {
         const acknowledged = entry.run.expedition.messages?.find((item) => item.purpose === "radio-check" && item.state === "acknowledged");
-        if (acknowledged) q4Interactions.record(entry.run.expedition, { channel: "standard", speaker: "STANDARD", targets: ["Clear-Q4 team"], player_text: "Standard acknowledgment received.", attempted_behavior: "scheduled radio-check acknowledgment", eligibility: "eligible", delivery: "received", canonical_effects: ["q4.radio.check.acknowledged"], presentation: { result: "received" } });
+        if (acknowledged) q4Interactions.record(entry.run.expedition, { channel: "standard", speaker: "STANDARD", targets: ["Clear-Q4 team"], player_text: "Standard acknowledgment received for Radio check.", attempted_behavior: "scheduled radio-check acknowledgment", eligibility: "eligible", delivery: "received", canonical_effects: ["q4.radio.check.acknowledged"], presentation: { result: "received" } });
       }
       if (entry.kind === "bootstrap") {
-        this.recordQ4Action(entry, `${verb}${target ? ` ${target}` : ""}`, result, world);
+        this.recordQ4Action(entry, `${verb}${target ? ` ${target}` : ""}`, result, world, entry.run._active_submission_id);
         if (["RETURN", "ABORT"].includes(verb) && entry.run.expedition?.mission_state?.return?.requested && entry.phase?.phase_id !== "RETURN") {
           const returning = phases.transition(entry.phase, "RETURN", { reason: verb.toLowerCase(), guard: true });
           if (returning.ok) { entry.phase = returning.phase; bootstrap.evaluateMissionState(entry.run, "RETURN"); }
@@ -545,6 +555,21 @@ class DesktopService {
     const labels = [...new Set(actions.flatMap((action) => action.targets ?? []).map((target) => target.label).filter(Boolean))];
     const surface = projection.surface ?? {}; const location = surface.view?.location?.alias ?? surface.surroundings?.location?.alias ?? surface.base?.known_access_point ?? "the current setting";
     const doctrine = doctrineRuntime.context(); return { version: "yellow-beast-interpretation-context@v1", profile_title: projection.mode.label, scenario: projection.mode.description, lifecycle: "active", authority_contract: { doctrine: doctrine.source, doctrine_sha256: doctrine.sha256, doctrine_priority: doctrine.priority, order: ["canonical-world", "simulation", "institution", "observation", "presentation"], generation_role: "candidate-only" }, doctrine_runtime: doctrine, observer_location: location, visible_reference_labels: labels, known_resource_labels: surface.status?.carried ?? [], public_reason: null, grounding: { version: "yellow-beast-observer-grounding-context@v1", candidates: labels.map((label) => ({ ref: label, label, category: "entity", source: "visible", aliases: [label], attributes: [] })) } };
+  }
+  retryQ4Communication({ world_id, message_id }) {
+    try {
+      const world = this.getWorld(world_id); const entry = this.session(world_id, "field-researcher") ?? this.restoreSession(world, "field-researcher", readJson(this.sessionFile(world_id, "field-researcher"), null));
+      const prior = entry?.run?.expedition?.messages?.find((item) => item.id === message_id);
+      if (!prior || prior.channel !== "FIELD_RADIO" || !["failed", "expired"].includes(prior.state)) return publicError("COMMUNICATION_RETRY_UNAVAILABLE", "That radio transmission is not in a retryable state.");
+      return this.submitQ4Communication({ world_id, channel: "standard", text: prior.text });
+    } catch { return publicError("COMMUNICATION_RETRY_UNAVAILABLE", "The radio transmission could not be retried safely."); }
+  }
+  cancelQ4Communication({ world_id, message_id }) {
+    try {
+      const world = this.getWorld(world_id); const entry = this.session(world_id, "field-researcher") ?? this.restoreSession(world, "field-researcher", readJson(this.sessionFile(world_id, "field-researcher"), null)); const message = entry?.run?.expedition?.messages?.find((item) => item.id === message_id);
+      if (!message || !["queued", "transmitting", "delayed", "delivered"].includes(message.state)) return publicError("COMMUNICATION_CANCEL_UNAVAILABLE", "That radio transmission cannot be cancelled now.");
+      communicationRuntime.transition(entry.run.expedition, message, "expired", "player cancelled the unresolved radio transmission"); q4Radio.transition(entry.run.expedition, "available", "player-cancelled-radio-recovery"); this.persistSession(world, "field-researcher", entry); return { ok: true, result: { outcome: "cancelled", message_id, recoverable: true }, projection: this.projectionFor(world, "field-researcher", entry) };
+    } catch { return publicError("COMMUNICATION_CANCEL_UNAVAILABLE", "The radio transmission could not be cancelled safely."); }
   }
   q4InterpretationContext(world, entry) {
     const projection = this.projectionFor(world, "field-researcher", entry); const view = projection.q4; const actions = projection.available_actions;
