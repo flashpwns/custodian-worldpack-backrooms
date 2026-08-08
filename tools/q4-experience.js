@@ -20,6 +20,7 @@ const hazardRuntime = require("./hazard-runtime");
 const logisticsRuntime = require("./logistics-runtime");
 const institutionalRuntime = require("./institutional-runtime");
 const surveyFrontier = require("./survey-frontier");
+const career = require("./q4-career-loop");
 const cloneUpdates = (value) => structuredClone(value ?? []);
 
 const VERSION = "yellow-beast-clear-q4-experience@v3";
@@ -154,6 +155,7 @@ function presentation(run, phase, unfinished = null, world = null) {
     equipment: equip,
     inventory,
     institution: institutional,
+    career: world ? career.projection(world) : null,
     radio: communication.messages.slice(-5),
     communications: communication,
     channels,

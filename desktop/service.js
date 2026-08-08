@@ -23,6 +23,7 @@ const q4Personnel = require("../tools/q4-personnel");
 const q4Equipment = require("../tools/q4-equipment");
 const q4Trajectories = require("../tools/q4-trajectories");
 const q4Continuity = require("../tools/q4-continuity");
+const q4Career = require("../tools/q4-career-loop");
 const assignmentEngine = require("../tools/q4-assignment-engine");
 const q4Cognition = require("../tools/q4-cognition");
 const q4Radio = require("../tools/q4-radio");
@@ -265,9 +266,10 @@ class DesktopService {
     try {
       const world = this.getWorld(world_id); const entry = this.session(world_id, "field-researcher") ?? this.restoreSession(world, "field-researcher", readJson(this.sessionFile(world_id, "field-researcher"), null));
       if (!entry || entry.kind !== "bootstrap" || entry.run.lifecycle !== "completed" || entry.phase?.phase_id !== "DEBRIEF") return publicError("REVIEW_REQUIRED", "Complete the current review before advancing operations.");
-      const seed = q4Continuity.nextSeed(world, entry.run.expedition?.mission?.id ?? entry.run.expedition?.id); q4Continuity.advanceOperations(world); const current = world.q4_operations?.controlled_player; const currentPerson = current ? history.character(world, current) : null; const succession = currentPerson?.status === "dead" ? q4Personnel.selectSuccessor(world, entry.run.run_id, seed) : null; if (succession && !succession.ok) return publicError("SUCCESSOR_UNAVAILABLE", "No living Q4-capable successor is available.");
+      const processed = q4Career.process(world, bootstrap.institutionalDefinitionFor(entry.run.spatial_pack_id), entry.run, q4Continuity.review(world, entry.run.expedition?.mission?.id));
+      const seed = q4Continuity.nextSeed(world, entry.run.expedition?.mission?.id ?? entry.run.expedition?.id); const current = world.q4_operations?.controlled_player; const currentPerson = current ? history.character(world, current) : null; const succession = currentPerson?.status === "dead" ? q4Personnel.selectSuccessor(world, entry.run.run_id, seed) : null; if (succession && !succession.ok) return publicError("SUCCESSOR_UNAVAILABLE", "No living Q4-capable successor is available.");
       const started = bootstrap.startRun({ profile: "field-researcher", seed, scenario: "procedural-survey", world, player_identity: succession?.successor?.identity ?? current, spatial_worldpack: "clear-q4" }); if (!started.ok) return publicError("NEXT_EXPEDITION_UNAVAILABLE", "The next assignment could not be prepared safely.");
-      const next = { kind: "bootstrap", run: started.run, phase: phases.createPhase({ mode: "field-researcher", guided: this.settings().guided_introductions !== false }) }; this.persistSession(world, "field-researcher", next); return { ok: true, result: { outcome: "operations-advanced", public_reason: succession ? `Personnel control transferred from ${succession.handover.former} (${succession.handover.final_status}) to ${succession.handover.new_controlled_person}.` : "Institutional time advances to the next Clear-Q4 assignment.", handover: succession?.handover ?? null }, projection: this.projectionFor(world, "field-researcher", next) };
+      const next = { kind: "bootstrap", run: started.run, phase: phases.createPhase({ mode: "field-researcher", guided: this.settings().guided_introductions !== false }) }; this.persistSession(world, "field-researcher", next); return { ok: true, result: { outcome: "operations-advanced", public_reason: succession ? `Personnel control transferred from ${succession.handover.former} (${succession.handover.final_status}) to ${succession.handover.new_controlled_person}.` : processed.idempotent ? "The recorded institutional cycle was already complete; the next assignment remains unchanged." : "Institutional processing completed; the next Clear-Q4 assignment is available.", handover: succession?.handover ?? null, career_cycle: processed.cycle }, projection: this.projectionFor(world, "field-researcher", next) };
     } catch { return publicError("NEXT_EXPEDITION_UNAVAILABLE", "The next assignment could not be prepared safely."); }
   }
   recordQ4Action(entry, text, result, world = null) {
@@ -421,9 +423,9 @@ class DesktopService {
           if (returning.ok) { entry.phase = returning.phase; bootstrap.evaluateMissionState(entry.run, "RETURN"); }
         }
         if (entry.run.lifecycle === "completed" && entry.run.expedition?.mission && !entry.run.expedition.institutional_closure_ingested) {
-          logisticsRuntime.reconcile(entry.run.expedition, bootstrap.logisticsDefinitionFor(entry.run.spatial_pack_id), { ...this.q4LogisticsContext(entry, world), actor: entry.run.session.startup.player.observer_id });
+          logisticsRuntime.reconcile(entry.run.expedition, bootstrap.logisticsDefinitionFor(entry.run.spatial_pack_id), { ...this.q4LogisticsContext(entry, world), actor: entry.run.session.startup.player.observer_id }); q4Equipment.syncWorld(world, entry.run.expedition);
           const continuity = q4Continuity.commitOutcome(world, entry.run, entry.run.expedition.mission_state?.return?.abort_requested ? "ABORT" : "RETURN");
-           institutionalRuntime.ingestClosure(world, bootstrap.institutionalDefinitionFor(entry.run.spatial_pack_id), entry.run, continuity.review); institutionalRuntime.advance(world, bootstrap.institutionalDefinitionFor(entry.run.spatial_pack_id), 1);
+           institutionalRuntime.ingestClosure(world, bootstrap.institutionalDefinitionFor(entry.run.spatial_pack_id), entry.run, continuity.review);
            entry.run.expedition.institutional_closure_ingested = true;
           history.updateQ4Mission(world, entry.run.run_id, entry.run.expedition.mission.id, { status: entry.run.expedition.mission_state.final_result.final_mission_state, result: entry.run.expedition.mission_state.final_result });
           assignmentEngine.resolve(world, entry.run.expedition.mission.work_order_id ?? entry.run.expedition.mission.id, { completed: entry.run.expedition.mission_state.final_result.final_mission_state === "completed", aborted: entry.run.expedition.mission_state.return?.abort_requested === true });

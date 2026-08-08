@@ -69,7 +69,16 @@ function staffQ4(world, run_id, player_identity = null, seed = "q4", staffing_ru
   let coworkerIds = world.q4_operations.generated_rosters[seed];
   const rosterUnavailable = (ids) => !Array.isArray(ids) || ids.length < 2 || ids.length > 4 || ids.some((id) => history.character(world, id)?.status !== "active");
   if (rosterUnavailable(coworkerIds)) {
+    // Existing active records are the first staffing pool. New generation only
+    // fills a genuine gap, preserving a career's identities across shifts.
+    const established = Object.values(world.characters ?? {}).filter((person) => person.identity !== player.identity && person.status === "active" && person.role && person.clearance && /q4-|field|survey|documentation/i.test(`${person.classification ?? ""} ${person.role}`)).sort((a, b) => cryptoScore([seed, a.identity]) - cryptoScore([seed, b.identity]) || a.identity.localeCompare(b.identity));
+    const roleSet = new Set(established.map((person) => person.role));
+    if (established.length >= 2 && roleSet.has("survey technician") && roleSet.has("documentation specialist")) {
+      const required = ["survey technician", "documentation specialist"].map((role) => established.find((person) => person.role === role));
+      coworkerIds = [...required, ...established.filter((person) => !required.includes(person))].slice(0, 3).map((person) => person.identity);
+    }
     for (let attempt = 0; attempt < 32; attempt += 1) {
+      if (!rosterUnavailable(coworkerIds)) break;
       const generationSeed = attempt === 0 && !Array.isArray(coworkerIds) ? seed : `${seed}:restaff:${attempt + 1}`;
       const generated = personnelGeneration.generate({ seed: generationSeed, world_id: world.world_id, player: safePerson(player), staffing: staffing_rules });
       const candidateIds = generated.coworkers.map((spec) => ensure(world, run_id, { ...spec, classification: "q4-generated-personnel", provenance: "seeded-operational-staffing", authority: "institutional-personnel-record" }).identity);
