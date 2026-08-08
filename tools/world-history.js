@@ -68,12 +68,16 @@ function setCharacterStatus(world, { run_id, identity, status, reason = null }) 
 }
 function rebuildCharacters(world) {
   assertWorld(world); const rebuilt = {};
-  for (const entry of world.events.filter((item) => item.type === "character.instantiated" || item.type === "character.died" || item.type === "character.status.changed").sort((a, b) => a.sequence - b.sequence)) {
+  for (const entry of world.events.filter((item) => item.type.startsWith("character.")).sort((a, b) => a.sequence - b.sequence)) {
     const payload = entry.payload ?? {};
     if (entry.type === "character.instantiated" && !rebuilt[payload.identity]) rebuilt[payload.identity] = { identity: payload.identity, display_name: payload.display_name, first_name: payload.first_name ?? null, last_name: payload.last_name ?? null, role: payload.role ?? null, clearance: payload.clearance ?? null, condition: payload.condition ?? "normal", current_assignment: payload.current_assignment ?? null, assignment_history: clone(payload.assignment_history ?? []), classification: payload.classification, status: "active", provenance: payload.provenance, authority: payload.authority, source_claim_ids: clone(payload.source_claim_ids ?? []), instantiated_by: entry.run_id, death: null };
     if (entry.type === "character.died" && rebuilt[payload.identity]) { rebuilt[payload.identity].status = "dead"; rebuilt[payload.identity].death = { run_id: entry.run_id, reason: payload.reason ?? null }; }
     if (entry.type === "character.status.changed" && rebuilt[payload.identity] && rebuilt[payload.identity].status !== "dead") rebuilt[payload.identity].status = payload.status;
     if (entry.type === "character.assignment.changed" && rebuilt[payload.identity] && rebuilt[payload.identity].status !== "dead") { rebuilt[payload.identity].current_assignment = payload.assignment ?? null; if (payload.assignment) rebuilt[payload.identity].assignment_history = [...(rebuilt[payload.identity].assignment_history ?? []), clone(payload.assignment)]; }
+    if (entry.type === "character.continuity.initialized" && rebuilt[payload.identity]) rebuilt[payload.identity].continuity = clone(payload.continuity);
+    if (entry.type === "character.shared-history.recorded") for (const identity of payload.participants ?? []) if (rebuilt[identity]?.continuity && !rebuilt[identity].continuity.shared_history.some((fact) => fact.id === payload.id)) rebuilt[identity].continuity.shared_history.push(clone(payload));
+    if (entry.type === "character.equipment-custody.recorded") for (const identity of [payload.from, payload.to].filter(Boolean)) if (rebuilt[identity]?.continuity && !rebuilt[identity].continuity.equipment_custody_history.some((fact) => fact.id === payload.id)) rebuilt[identity].continuity.equipment_custody_history.push(clone(payload));
+    if (entry.type === "character.reaction.recorded" && rebuilt[payload.identity]?.continuity && !rebuilt[payload.identity].continuity.reaction_history.some((fact) => fact.id === payload.reaction?.id)) rebuilt[payload.identity].continuity.reaction_history.push(clone(payload.reaction));
   }
   return rebuilt;
 }

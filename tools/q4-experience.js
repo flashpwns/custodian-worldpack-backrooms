@@ -21,6 +21,7 @@ const logisticsRuntime = require("./logistics-runtime");
 const institutionalRuntime = require("./institutional-runtime");
 const surveyFrontier = require("./survey-frontier");
 const career = require("./q4-career-loop");
+const personnelContinuity = require("./q4-personnel-continuity");
 const cloneUpdates = (value) => structuredClone(value ?? []);
 
 const VERSION = "yellow-beast-clear-q4-experience@v3";
@@ -83,14 +84,14 @@ function presentation(run, phase, unfinished = null, world = null) {
   const standardHistory = interactions.history(expedition, "standard").map(interactions.publicEntry);
   const actionHistory = interactions.history(expedition, "action").map(interactions.publicEntry);
   const team = run.spatial_pack_id ? teamRuntime.project(run) : personnel.publicTeam(run, phase.phase_id, world);
-  const safeTeam = team.map(({ id, personnel_id, ...member }) => member);
+  const playerId = run.session?.startup?.player?.observer_id ?? expedition?.team?.members?.[0]?.personnel_id;
+  const safeTeam = team.map(({ id, personnel_id, ...member }) => ({ ...member, continuity: personnelContinuity.publicRecord(world?.characters?.[personnel_id ?? id], playerId) }));
   const player = team.find((member) => member.controlled) ?? team[0] ?? null;
   const safePlayer = safeTeam.find((member) => member.controlled) ?? safeTeam[0] ?? null;
   const coworkers = team.filter((member) => !member.controlled);
   const localCoworkers = coworkers.filter((member) => member.local_eligible);
   const radio = expedition?.equipment?.["survey-radio"];
   const liveLayout = ["FIELD_OPERATION", "RETURN", "DEBRIEF"].includes(phase.phase_id);
-  const playerId = run.session?.startup?.player?.observer_id ?? expedition?.team?.members?.[0]?.personnel_id;
   const safeStatus = run.session ? bootstrap.status(run) : {};
   const topologyDefinition = run.spatial ? bootstrap.topologyFor(run) : null;
   const operationalMap = run.spatial ? spatialRuntime.project(run.spatial, topologyDefinition, {

@@ -4,6 +4,7 @@ const history = require("./world-history");
 const crypto = require("node:crypto");
 const spatialRuntime = require("./spatial-runtime");
 const personnelGeneration = require("./personnel-generation");
+const continuity = require("./q4-personnel-continuity");
 const VERSION = "yellow-beast-q4-personnel@v2";
 
 // Conservative operational identities for the bounded Q4 experience. These
@@ -34,13 +35,13 @@ function createPlayer(world, { first_name, last_name, display_name = null } = {}
   world.q4_operations.player_created_at = { event: "personnel-record-created" };
   return { ok: true, created: true, player: safePerson(created) };
 }
-function safePerson(person) { return person ? { identity: person.identity, first_name: person.first_name, last_name: person.last_name, display_name: displayName(person), role: person.role, clearance: person.clearance, condition: person.condition, status: person.status, current_assignment: person.current_assignment, assignment_history: person.assignment_history ?? [], death: person.status === "dead" ? person.death : null } : null; }
+function safePerson(person) { return person ? { identity: person.identity, first_name: person.first_name, last_name: person.last_name, display_name: displayName(person), role: person.role, clearance: person.clearance, condition: person.condition, status: person.status, current_assignment: person.current_assignment, assignment_history: person.assignment_history ?? [], qualifications: person.continuity?.qualifications ?? continuity.qualifications(person), death: person.status === "dead" ? person.death : null } : null; }
 function ensure(world, run_id, spec) {
   const existing = history.character(world, spec.identity);
-  if (existing) return existing;
+  if (existing) return continuity.ensurePerson(world, run_id, spec.identity);
   const created = history.instantiateCharacter(world, { run_id, ...spec, display_name: displayName(spec), classification: "q4-procedural-personnel", provenance: "q4-operational-staffing" });
   if (!created.ok) throw Object.assign(new Error("Q4 personnel identity unavailable"), { code: created.code });
-  return history.character(world, spec.identity);
+  return continuity.ensurePerson(world, run_id, spec.identity);
 }
 function assign(world, run_id, person, assignment) {
   if (!person || person.status === "dead") return { ok: false, code: "PERSONNEL_UNAVAILABLE" };
@@ -71,7 +72,10 @@ function staffQ4(world, run_id, player_identity = null, seed = "q4", staffing_ru
   if (rosterUnavailable(coworkerIds)) {
     // Existing active records are the first staffing pool. New generation only
     // fills a genuine gap, preserving a career's identities across shifts.
-    const established = Object.values(world.characters ?? {}).filter((person) => person.identity !== player.identity && person.status === "active" && person.role && person.clearance && /q4-|field|survey|documentation/i.test(`${person.classification ?? ""} ${person.role}`)).sort((a, b) => cryptoScore([seed, a.identity]) - cryptoScore([seed, b.identity]) || a.identity.localeCompare(b.identity));
+    const sharedWork = (person) => (person.continuity?.shared_history ?? []).filter((fact) => fact.kind === "served-together" && fact.participants?.includes(player.identity)).length;
+    const immediatePriorRoster = new Set(world.q4_operations.last_roster ?? []);
+    const returningPriority = (person) => sharedWork(person) > 0 && !immediatePriorRoster.has(person.identity) ? 1 : 0;
+    const established = Object.values(world.characters ?? {}).filter((person) => person.identity !== player.identity && person.status === "active" && person.role && person.clearance && /q4-|field|survey|documentation/i.test(`${person.classification ?? ""} ${person.role}`)).sort((a, b) => returningPriority(b) - returningPriority(a) || sharedWork(b) - sharedWork(a) || a.identity.localeCompare(b.identity));
     const roleSet = new Set(established.map((person) => person.role));
     if (established.length >= 2 && roleSet.has("survey technician") && roleSet.has("documentation specialist")) {
       const required = ["survey technician", "documentation specialist"].map((role) => established.find((person) => person.role === role));
@@ -91,7 +95,10 @@ function staffQ4(world, run_id, player_identity = null, seed = "q4", staffing_ru
   if (coworkers.length < 2 || coworkers.length > 4) return { ok: false, code: "Q4_TEAM_UNAVAILABLE" };
   assign(world, run_id, player, { id: "clear-q4-field-survey-alpha", expedition_id: "clear-q4-field-survey-alpha", role: player.role });
   for (const coworker of coworkers) assign(world, run_id, coworker, { id: "clear-q4-field-survey-alpha", expedition_id: "clear-q4-field-survey-alpha", role: coworker.role });
+  continuity.ensureTeam(world, run_id, [player, ...coworkers]);
+  continuity.recordSharedHistory(world, { run_id, participants: [player.identity, ...coworkers.map((coworker) => coworker.identity)], kind: "served-together", refs: { assignment_id: "clear-q4-field-survey-alpha" }, at: world.q4_operations?.institutional_time ?? 0 });
   world.q4_operations.controlled_player = player.identity;
+  world.q4_operations.last_roster = [...coworkerIds];
   const safeCoworkers = coworkers.map(safePerson);
   return { ok: true, player: safePerson(player), peer: safeCoworkers[0], assistant: safeCoworkers[1], coworkers: safeCoworkers, team: [safePerson(player), ...safeCoworkers], generation: { version: personnelGeneration.VERSION, seed, total: coworkers.length + 1 } };
 }
