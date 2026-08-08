@@ -4,6 +4,7 @@ node_modules/
 .env.*
 !.env.example
 dist/
+desktop/build-info.json
 build/
 coverage/
 *.log

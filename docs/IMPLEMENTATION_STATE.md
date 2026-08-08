@@ -67,3 +67,13 @@
 - Playtest defect repair: the field workstation now separates observation, action, LOCAL, STANDARD, and resolution; action remains persistent while support records are subordinate, and the ordinary surface has no page scroll at 1920×1080 or 2560×1440. The bounded interpreter now receives doctrine ordering, worldpack/assignment authority, personnel and witness context, current observation, recent events, institutional record boundaries, and unresolved intent without hidden topology; candidates still resolve only through canonical object/spatial authorities.
 - Human gate: `PENDING HUMAN VALIDATION`. No known automated blocker.
 - Pass 13A should consume `tools/run-bootstrap.js` (`topologyFor`, `startRun`, `act`, `saveRun`), `tools/spatial-runtime.js` (`canonicalDefinition`, `availableFrontiers`, `diagnostics`), `tools/survey-frontier.js` observer maps, `tools/q4-experience.js` mission/frontier projections, and `data/worldpacks/clear-q4/spatial.json` procedural configuration. Assignment generation must target canonical locations without treating any observer projection as truth.
+
+## Pass 13A prerequisite repair — Prompt 08 continuation
+
+- Completed bounded prerequisite repair only; Pass 13A assignment generation remains unstarted.
+- Desktop build authority: `npm run desktop:build` stamps `desktop/build-info.json` with source version, HEAD commit, and UTC build timestamp, then produces the Windows package. `npm run desktop:verify` reads the packaged archive and rejects version/commit mismatches before its executable smoke test.
+- Exact commands: source launch `npm run desktop:dev`; current-HEAD package `npm run desktop:build`; artifact verification `npm run desktop:verify`; verified executable `dist\desktop\win-unpacked\Yellow Beast.exe`.
+- Presentation: canonical pre-field phases remain internal but use one preparation surface; LOCAL and STANDARD now share one observer-safe chronological communications surface and composer. The Complex-side map condenses Facility ingress and draws only observed locations, known routes, and unresolved exits.
+- Settings: the renderer now creates the Settings surface before querying controls; focus, pointer/keyboard opening, save, close, reopen, and persistence are exercised by Electron renderer smoke coverage.
+- Human gate: `PENDING HUMAN VALIDATION`. Capture 1920×1080 screenshots for preparation, field, Settings, and the packaged provenance surface before resuming Pass 13A.
+- Pass 13A start remains: `tools/run-bootstrap.js`, `tools/survey-frontier.js`, `tools/spatial-runtime.js`, `tools/q4-experience.js`, `desktop/service.js`, and `data/worldpacks/clear-q4/*`. Do not let renderer projections become assignment authority.

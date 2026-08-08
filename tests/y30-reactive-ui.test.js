@@ -16,7 +16,7 @@ function projection(mode) {
 test("reactive surfaces keep their presentation identities without crossing private contexts", () => {
   void report;
   const field = surfaces.render(projection("field-researcher"));
-  assert.match(field, /ASSIGNMENT BRIEFING/); assert.match(field, /RADIO/i); assert.match(field, /equipment/i);
+  assert.match(field, /OPERATIONAL PREPARATION/); assert.match(field, /COMMUNICATIONS/i); assert.match(field, /equipment/i);
   const beck = surfaces.render(projection("async-command"));
   assert.match(beck, /Reports and calls/); assert.match(beck, /On the desk/); assert.doesNotMatch(beck, /desk-grid/);
   const nullzone = surfaces.render(projection("local-anomaly"));

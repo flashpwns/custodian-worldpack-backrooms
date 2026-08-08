@@ -37,7 +37,7 @@ test("mode-specific surfaces render only their safe desktop projections", () => 
   const { service } = fixture(); const world = service.createWorld({ name: "Surfaces", seed: "surfaces" }).world;
   for (const mode of MODES.map(({ id }) => id)) {
     const started = service.startSession({ world_id: world.id, mode, seed: `${mode}-seed` }); assert.equal(started.ok, true, mode);
-    const html = surfaces.render(started.projection); assert.match(html, new RegExp(`surface-${mode === "async-command" ? "beck" : mode === "field-researcher" ? "clear-q4" : mode === "local-anomaly" ? "nullzone" : mode}`));
+    const html = surfaces.render(started.projection); assert.match(html, mode === "field-researcher" ? /q4-preparation-surface/ : new RegExp(`surface-${mode === "async-command" ? "beck" : mode === "local-anomaly" ? "nullzone" : mode}`));
     assert.doesNotMatch(html, /<pre>/, `${mode} never renders a raw JSON dump`);
   }
   const lostProjection = service.getGameplayProjection({ world_id: world.id, mode: "lost" }).projection;

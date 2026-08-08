@@ -117,8 +117,9 @@ test("field entry gives a concrete observation, truthful map, and canonical obje
   assert.equal(new Set(field.q4.objectives.map((objective) => objective.label)).size, field.q4.objectives.length);
   assert.equal(new Set(field.q4.objectives.map((objective) => objective.label)).size, field.q4.objectives.length);
   const html = surfaces.render(field);
-  assert.match(html, /Operational Map/);
-  assert.match(html, /Observer record · discovered space only/);
+  assert.match(html, /Field map · observer record/);
+  assert.match(html, /Facility ingress condensed · Complex-side knowledge only/);
+  assert.match(html, /Facility ingress condensed · Complex-side knowledge only/);
   assert.doesNotMatch(html, /Next check-in:\s*0|Keep The Team Accounted For|Nothing notable/);
 });
 

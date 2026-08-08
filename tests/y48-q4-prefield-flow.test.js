@@ -31,18 +31,21 @@ test("personnel creation persists a confirmation gate before assignment briefing
   assert.equal(service.getQ4PersonnelStatus({ world_id: world.id }).confirmation_required, false);
 });
 
-test("dedicated pre-field surfaces contain no field action composer or generic scene receipt", () => {
+test("one preparation surface preserves canonical pre-field transitions without repeated dashboards", () => {
   const { service, world } = fixture();
   const started = start(service, world);
   let html = surfaces.render(started.projection);
-  assert.match(html, /q4-prefield-briefing/);
-  assert.match(html, /Continue to Staging/);
-  assert.match(html, /LOCAL COMMS/);
+  assert.match(html, /q4-preparation-surface/);
+  assert.match(html, /OPERATIONAL PREPARATION/);
+  assert.match(html, /Confirm briefing/);
+  assert.match(html, /data-testid="q4-communications"/);
+  assert.match(html, /data-testid="q4-comms-form"/);
+  assert.doesNotMatch(html, /local-comms|standard-comms|Continue to Staging/);
   assert.match(html, /data-radio-state="unavailable">LINK UNAVAILABLE/);
   assert.doesNotMatch(html, /What do you do\?|Nothing notable changes|natural-form|Structured controls/);
   html = surfaces.render(advance(service, world, "READY").projection);
-  assert.match(html, /q4-prefield-staging/);
-  assert.match(html, /Proceed to Threshold Room/);
+  assert.match(html, /q4-preparation-surface/);
+  assert.match(html, /Leave staging/);
   assert.doesNotMatch(html, /What do you do\?|Nothing notable changes/);
 });
 
@@ -56,17 +59,17 @@ test("pre-field controls advance deterministically through threshold and radio c
   assert.match(surfaces.render(threshold), /Cross Threshold/);
   const radio = advance(service, world, "CROSS");
   assert.equal(radio.projection.phase.phase_id, "STANDARD_RADIO_CHECK");
-  assert.match(surfaces.render(radio.projection), /Establish Radio Contact/);
+  assert.match(surfaces.render(radio.projection), /Run radio check/);
   const checked = advance(service, world, "RADIO_CHECK");
   assert.equal(checked.projection.phase.phase_id, "STANDARD_RADIO_CHECK");
   assert.match(surfaces.render(checked.projection), /YOU[\s\S]*Standard, Clear-Q4 team Complex-side[\s\S]*STANDARD[\s\S]*contact established/i);
-  assert.match(surfaces.render(checked.projection), /Proceed into the Complex/);
+  assert.match(surfaces.render(checked.projection), /Begin field operation/);
   const field = advance(service, world, "BEGIN_FIELD_OPERATION");
   assert.equal(field.projection.phase.phase_id, "FIELD_OPERATION");
   assert.doesNotMatch(surfaces.render(field.projection), /Nothing notable changes/);
 });
 
-test("LOCAL greeting records visible player text and deterministic coworker response", () => {
+test("unified communications records LOCAL exchange without resolving a physical turn", () => {
   const { service, world } = fixture(); const started = start(service, world);
   const peer = started.projection.q4.team.find((member) => !member.controlled);
   const result = service.submitQ4Communication({ world_id: world.id, channel: "local", target: peer.first_name, text: `Good morning, ${peer.first_name}.` });
@@ -75,6 +78,9 @@ test("LOCAL greeting records visible player text and deterministic coworker resp
   assert.match(html, new RegExp(`Good morning, ${peer.first_name}\\.`));
   assert.match(html, new RegExp(`${peer.first_name}:`));
   assert.match(html, /DELIVERED|HEARD/i);
+  assert.match(html, /communication-timeline/);
+  assert.match(html, /message-channel">LOCAL/);
+  assert.doesNotMatch(html, /local-comms|standard-comms/);
 });
 
 test("pre-field resume preserves confirmation and current dedicated phase", () => {
@@ -84,7 +90,7 @@ test("pre-field resume preserves confirmation and current dedicated phase", () =
   const resumed = restarted.resumeSession({ world_id: world.id, mode: "field-researcher" });
   assert.equal(resumed.ok, true);
   assert.equal(resumed.projection.phase.phase_id, "STAGING");
-  assert.match(surfaces.render(resumed.projection), /Proceed to Threshold Room/);
+  assert.match(surfaces.render(resumed.projection), /Leave staging/);
 });
 
 test("renderer wires dedicated confirmation and suppresses pre-field generic inputs", () => {

@@ -16,13 +16,13 @@ function fixture(seed = "console-acceptance") {
   return { service, world, projection: started.projection };
 }
 
-test("Q4 fixed console reserves a bottom communication dock and prevents document scrolling", () => {
+test("Q4 fixed console reserves a bounded unified communications surface", () => {
   const renderer = fs.readFileSync(path.join(__dirname, "../desktop/renderer/renderer.js"), "utf8");
   const css = fs.readFileSync(path.join(__dirname, "../desktop/renderer/styles.css"), "utf8");
-  assert.match(renderer, /q4-communications-dock/);
+  assert.match(renderer, /q4-comms-form/);
   assert.match(css, /operations-shell\{display:grid;grid-template-rows/);
   assert.match(css, /operations-shell[^}]*overflow:hidden/);
-  assert.match(css, /q4-communications-dock \.communication-lanes\{grid-template-columns:repeat\(2/);
+  assert.match(css, /communications-surface/);
   assert.match(renderer, /data-testid="natural-primary"/);
 });
 
@@ -33,7 +33,7 @@ test("briefing LOCAL availability agrees with physically present team status", (
   assert.equal(projection.q4.channels.local.available, true);
   assert.equal(projection.q4.channels.local.target, teammate.first_name);
   assert.equal(projection.q4.channels.local.unavailable_reason, null);
-  assert.match(surfaces.render(projection), /LOCAL COMMS/);
+  assert.match(surfaces.render(projection), /COMMUNICATIONS/);
   assert.doesNotMatch(surfaces.render(projection), /No personnel are within speaking range/);
 });
 
@@ -41,7 +41,7 @@ test("briefing presentation uses institutional prose and hides constitutional la
   const { projection } = fixture("briefing-language");
   const html = surfaces.render(projection);
   assert.doesNotMatch(`${projection.scene.narration}\n${html}`, /observer-qualified|objective truth|interpretation|constitutional|MEANINGFUL|engine receipt/i);
-  assert.match(html, /Assignment Summary|Current Instructions|Required field kit|Prior Survey Record/);
+  assert.match(html, /WORK ORDER|OPERATIONAL PREPARATION|Authorized field kit|Prior Survey Record/);
   assert.match(projection.scene.narration, /Assignment CQ4-/);
 });
 
@@ -72,6 +72,6 @@ test("ordinary header uses short mission ID and phase-specific briefing next ste
   assert.match(renderer, /shortMissionId/);
   assert.match(renderer, /MISSION \$\{escape\(shortMissionId\(mission\)\)\}/);
   assert.equal(projection.available_actions[0].type, "READY");
-  assert.match(surfaces.render(projection), /Review the assignment and assigned team/);
+  assert.match(surfaces.render(projection), /Inspect the work order, speak with the team/);
   assert.doesNotMatch(renderer, /MISSION \$\{escape\(mission\.id/);
 });

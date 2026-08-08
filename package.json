@@ -39,7 +39,7 @@
     "gameplay-report": "node tools/gameplay-report.js",
     "desktop:dev": "electron desktop/main.js",
     "desktop:build": "node tools/build-desktop.js",
-    "desktop:package": "electron-builder",
+    "desktop:package": "npm run desktop:build",
     "desktop:verify": "node tools/verify-desktop-artifact.js",
   "desktop:test": "node --test tests/y26-desktop.test.js",
   "beta-hotfix-test": "node --test tests/y34-beta-hotfix.test.js",

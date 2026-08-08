@@ -74,12 +74,12 @@ test("LOCAL is delivered to a generated coworker before field entry while Standa
 test("phase copy and progression controls identify the destination", () => {
   const { service, world } = fixture("phase-copy"); createAndStart(service, world);
   let projection = service.getGameplayProjection({ world_id: world.id, mode: "field-researcher" }).projection;
-  assert.match(projection.q4.briefing, /continue to staging/i); assert.match(surfaces.render(projection), /Continue to Staging/);
+  assert.match(projection.q4.briefing, /continue to staging/i); assert.match(surfaces.render(projection), /Confirm briefing/);
   for (const [action, phase, copy] of [["READY", "STAGING", /proceed to the threshold room/i], ["PROCEED", "FACILITY_TRANSIT", /toward the Threshold room/i], ["APPROACH", "THRESHOLD", /cross when ready/i]]) {
     const result = service.submitAction({ world_id: world.id, mode: "field-researcher", action }); assert.equal(result.projection.phase.phase_id, phase); assert.match(result.projection.q4.briefing, copy); projection = result.projection;
   }
   assert.match(surfaces.render(projection), /Cross Threshold/);
-  const radio = service.submitAction({ world_id: world.id, mode: "field-researcher", action: "CROSS" }); assert.match(radio.projection.q4.briefing, /Establish contact with Standard/i); assert.match(surfaces.render(radio.projection), /Establish Radio Contact/);
+  const radio = service.submitAction({ world_id: world.id, mode: "field-researcher", action: "CROSS" }); assert.match(radio.projection.q4.briefing, /Establish contact with Standard/i); assert.match(surfaces.render(radio.projection), /Run radio check/);
 });
 
 test("renderer exposes creation, confirmation, phase guidance, and direct progression wiring", () => {
