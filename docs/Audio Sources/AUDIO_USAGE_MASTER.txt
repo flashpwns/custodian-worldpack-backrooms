@@ -1,0 +1,754 @@
+YELLOW BEAST / CUSTODIAN
+AUDIO USAGE MASTER
+Version 1.0
+Status: Normative Audio Behavior Guide
+
+PURPOSE
+
+This document defines how the current Yellow Beast / Kane Pixels-derived sound library should be used in-game.
+
+The goal is NOT to play sounds because they are recognizable.
+The goal is to make the soundscape behave like a coherent simulation.
+
+Audio should communicate:
+- space
+- distance
+- machinery
+- room identity
+- equipment use
+- anomalies
+- player/team actions
+- institutional hardware
+- environmental state
+
+The soundscape should feel alive, restrained, and physically grounded.
+
+GENERAL RULES
+
+1. Ambience is foundational.
+2. Loudness should communicate distance and urgency.
+3. Sounds should be situational, not decorative.
+4. Repeated sounds must not become annoying.
+5. Source identity matters: a sound should appear to come from a room, machine, object, event, or phenomenon.
+6. Do not spam recognizable effects.
+7. Avoid using audio merely to frighten the player.
+8. When possible, audio should continue logically across turns and fade rather than stop abruptly.
+9. Diegetic sounds should obey player position, room composition, line-of-sight assumptions, and distance where the simulation has enough state to support that.
+10. If the simulation cannot justify a sound source, do not play it.
+
+
+============================================================
+I. THRESHOLD / OUTPOST RING
+============================================================
+
+ASSET:
+Equipment/Threshold_Ringing_01.mp3
+
+ROLE:
+Persistent spatial landmark.
+
+BEHAVIOR:
+
+- The ring should be clearly audible before the player crosses the Threshold.
+- It should help establish the Threshold / Outpost as a real machine and location before entry.
+- After crossing, the ring should remain audible for the first few turns while the player remains close enough to plausibly hear it.
+- Its volume should gradually decrease as the team moves farther away.
+- If the player later returns near the Threshold, the ring should become audible again.
+- If the player is far enough away that hearing it would be implausible, it should disappear entirely.
+
+DISTANCE LOGIC:
+
+Use actual spatial/distance data when available.
+
+If the simulation currently uses room/zone adjacency rather than continuous distance, approximate:
+
+VERY NEAR:
+Clearly audible, but never painfully loud.
+
+NEAR:
+Normal background presence.
+
+ADJACENT / ONE OR TWO ROOMS AWAY:
+Quiet.
+
+DISTANT:
+Very quiet, approaching inaudibility.
+
+OUT OF RANGE:
+Silent.
+
+IMPORTANT:
+Do not restart the clip visibly every turn if continuous playback is technically possible.
+Prefer looping/continuous playback with volume interpolation.
+
+If turn-based state is all that is available, preserve continuity conceptually and avoid obvious hard resets.
+
+
+============================================================
+II. THRESHOLD CROSSING / NOCLIP
+============================================================
+
+ASSET:
+Anomalies/Noclip_01.mp3
+
+ROLE:
+Threshold crossing transition.
+
+BEHAVIOR:
+
+- Play quietly whenever a character/player crosses the Threshold into or out of the Complex.
+- It should not overpower Threshold machinery, dialogue, or ambience.
+- It should feel like a subtle spatial/material transition, not a dramatic teleportation effect.
+
+RULE:
+One crossing = one restrained playback event.
+
+Do not loop.
+
+
+============================================================
+III. COMPLEX AMBIENCE SYSTEM
+============================================================
+
+CURRENT ASSETS:
+Ambience/Outpost_Ambience_01.mp3
+Ambience/Threshold_Ambience_01.mp3
+Ambience/Poolrooms_Ambience_01.mp3
+
+ROLE:
+Continuous environmental bed.
+
+CORE RULE:
+Once the player has fully entered the Complex, some form of ambient bed should always be present unless silence is itself an intentional authored environmental condition.
+
+BEHAVIOR:
+
+- Ambience should begin only after the player has finished entering the Complex.
+- It should remain quietly audible.
+- It must never dominate dialogue, radio, event sounds, or player attention.
+- The active ambience should change according to room composition / biome / locale.
+- Changes should crossfade or transition smoothly where possible.
+- Avoid obvious abrupt restarts.
+- Avoid repetitive short loops that reveal themselves quickly.
+
+ROOM-COMPOSITION LOGIC:
+
+The simulation should choose ambience using the current environment.
+
+Examples:
+
+POOLROOM / TILE / WATER-DOMINANT:
+Ambience/Poolrooms_Ambience_01.mp3
+
+THRESHOLD / OUTPOST / INDUSTRIAL EDGE:
+Ambience/Threshold_Ambience_01.mp3 or Outpost_Ambience_01.mp3 depending on location.
+
+GENERIC COMPLEX:
+Use the closest available neutral ambience until additional room-specific beds are added.
+
+FUTURE SYSTEM:
+Ambience should eventually support weighted pools instead of one fixed clip per room type.
+
+Example:
+
+office_generic:
+- ambience_office_01
+- ambience_office_02
+- ambience_hvac_01
+- ambience_fluorescent_01
+
+The system should cycle subtly, avoid repeating the same clip excessively, and respect room tags.
+
+LOUDNESS:
+Quietly audible, not conspicuous.
+
+A good ambience bed should often be noticed more when it disappears than while it is playing.
+
+
+============================================================
+IV. CAMERA AUDIO
+============================================================
+
+ASSETS:
+Equipment/Camera_Movement_01.mp3
+Equipment/Camera_Zoom_01.mp3
+Equipment/Camera_Click_01.mp3
+
+ROLE:
+Diegetic camera-use feedback.
+
+BEHAVIOR:
+
+Use only when camera interaction actually occurs.
+
+Examples:
+
+CAMERA MOVEMENT:
+Play when a camera is physically repositioned, handled, panned, or adjusted where the event is significant enough to warrant feedback.
+
+CAMERA ZOOM:
+Play when optical/digital zoom is explicitly used.
+
+CAMERA CLICK:
+Play when a photograph, capture, shutter-like action, or appropriate recording-control action occurs.
+
+RULES:
+
+- Do not attach camera sounds to unrelated menu actions.
+- Do not trigger camera sounds every turn merely because the player possesses a camera.
+- Do not overuse handling audio.
+- Prefer event-linked playback.
+
+
+============================================================
+V. RADIO BEEP
+============================================================
+
+ASSET:
+Radio/Radio_Beep_01.mp3
+
+ROLE:
+Chat transmission confirmation / push-to-talk analogue.
+
+BEHAVIOR:
+
+Play every time the player presses Enter to submit a message in:
+
+- LOCAL chatbox
+- STANDARD chatbox
+
+The beep should happen on successful submission, not on every keyboard press.
+
+It should feel like the interface/hardware acknowledging transmission.
+
+RULES:
+
+- One submitted message = one beep.
+- Do not play when Enter creates a newline in any future multiline editor.
+- Do not play if submission is blocked or invalid unless the UI specifically treats the attempt as a transmission.
+- Keep volume consistent and restrained.
+
+
+============================================================
+VI. GREEN-LIGHT CRACKLE
+============================================================
+
+ASSET:
+Anomalies/Green_Crackle_01.mp3
+
+ROLE:
+Environmental/anomalous accompaniment to green illumination or green-light phenomena inside the Complex.
+
+BEHAVIOR:
+
+Whenever characters encounter a meaningful green-lit area, green anomalous illumination, or a scene where green light is an established environmental feature, this sound may become part of the local audio layer.
+
+It should not play merely because a UI element is green.
+
+It is environmental.
+
+PREFERRED IMPLEMENTATION:
+
+- spatial/local loop or intermittent crackle
+- volume tied to proximity/intensity
+- fades in as the green-light source becomes relevant
+- fades out when leaving the affected area
+
+USE RESTRAINT:
+Not every green object warrants the sound.
+The green light must be part of the environment or anomaly.
+
+
+============================================================
+VII. RED CITY / RED SUBURB WOBBLE
+============================================================
+
+ASSET:
+Anomalies/Red_City_Wobble_01.mp3
+
+ROLE:
+Locale-signature ambience.
+
+BEHAVIOR:
+
+Audible whenever the player is near or inside a red indoor/outdoor suburb, neighborhood, city, or closely related locale.
+
+DISTANCE:
+
+INSIDE / VERY NEAR:
+Clearly present as a low environmental layer.
+
+NEARBY:
+Quiet but recognizable.
+
+DISTANT:
+Very faint or absent.
+
+The sound should feel attached to the locale, not to an enemy or jump scare.
+
+It may layer underneath the area's normal ambience if the mix remains clean.
+
+
+============================================================
+VIII. MOVEMENT AUDIO
+============================================================
+
+CURRENT ASSETS:
+Movement/Carpet_Footsteps_Run_01.mp3
+Movement/Hazmat_Suit_Rustle_01.mp3
+Movement/Hazmat_Breathing_01.mp3
+
+ROLE:
+Situational embodiment.
+
+MASTER RULE:
+Use movement audio well and very sparingly.
+
+MOVEMENT AUDIO SHOULD NOT:
+- fire on every turn
+- accompany every action
+- become a constant Foley loop
+- drown out ambience
+- make text interaction feel like an action game
+
+CARPET FOOTSTEPS / RUN:
+
+Use for:
+- explicit running
+- hurried repositioning
+- pursuit
+- a significant traversal beat
+- a nearby NPC/team member moving audibly
+
+Do not use for ordinary every-turn movement unless later testing proves it remains subtle.
+
+HAZMAT SUIT RUSTLE:
+
+Use for:
+- gearing up
+- crouching / squeezing
+- handling equipment while suited
+- sudden body movement
+- close-proximity character motion
+- occasional idle embodiment
+
+Do not spam.
+
+HAZMAT BREATHING:
+
+Use very selectively.
+
+Good contexts:
+- exertion
+- fear/stress
+- mask-focused moment
+- enclosed quiet environment
+- temporary emphasis on physical presence
+
+Do NOT leave prominent breathing constantly active unless intentionally designed for a specific sequence.
+
+Movement Foley should behave like seasoning, not soup.
+
+
+============================================================
+IX. ROVER
+============================================================
+
+ASSET:
+Equipment/Async_Rover_01.mp3
+
+ROLE:
+Reserved equipment asset for future rover implementation.
+
+CURRENT STATUS:
+Available, not mandatory.
+
+DO NOT:
+Invent rover events simply to justify the asset.
+
+IF/WHEN ROVER SUPPORT EXISTS:
+
+Possible uses:
+- rover startup
+- rover movement
+- remote exploration
+- equipment deployment
+- rover approaching/leaving
+- rover camera/feed interaction
+
+The eventual implementation should identify what portion of the source clip best represents the rover's intended function before assigning it permanently.
+
+
+============================================================
+X. MONKEY MAN EASTER EGG
+============================================================
+
+ASSET:
+Entities/Monkey_Man_FF1_01.mp3
+
+ROLE:
+Reserved easter-egg audio.
+
+CURRENT STATUS:
+LOCKED / UNUSED.
+
+RULE:
+Do not play under normal simulation conditions.
+
+Only use if an accompanying Monkey Man easter egg is deliberately added to the game.
+
+The audio and easter egg should be implemented together.
+
+No standalone random playback.
+No generic entity use.
+No procedural encounter use.
+
+
+============================================================
+XI. CURRENTLY UNASSIGNED / FLEXIBLE ASSETS
+============================================================
+
+These clips are available but should not be forced into gameplay until a convincing use case exists.
+
+Equipment/FF2_Electrical_Buzz_01.mp3
+Equipment/FF1_Electrical_Buzz_01.mp3
+Equipment/FF1_Electrical_Buzz_02.mp3
+Equipment/Threshold_Door_Tumble_01.mp3
+Equipment/Drill_01.mp3
+Equipment/Outpost_Door_01.mp3
+Equipment/Threshold_Activation_01.mp3
+Equipment/Outpost_Lights_Out_01.mp3
+Alarms/Outpost_Alarm_01.mp3
+Entities/Lifeform_FF1_01.mp3
+Entities/Lifeform_Howl_01.mp3
+Entities/Lifeform_FF2_01.mp3
+Entities/Lifeform_Pitfalls_01.mp3
+Entities/Lifeform_MotionDetected_01.mp3
+Anomalies/Wobbling_Sinewave_01.mp3
+
+POLICY:
+
+Unused is better than misused.
+
+Future passes may assign these based on:
+- equipment interactions
+- authored events
+- entity behavior
+- room identity
+- hazard state
+- anomaly state
+- institutional machinery
+
+Any assignment should be documented in a later revision of this file.
+
+
+============================================================
+XII. MIXING / PRIORITY
+============================================================
+
+Suggested conceptual priority, highest to lowest:
+
+1. Critical alerts / immediate dangerous events
+2. Dialogue / radio / player communication
+3. Important equipment interaction
+4. Local anomaly / entity cue
+5. Movement Foley
+6. Persistent ambience
+7. Distant spatial landmarks
+
+This is not a strict decibel specification.
+It is a mixing hierarchy.
+
+AMBIENCE:
+Quietest persistent layer.
+
+THRESHOLD RING:
+May be prominent nearby, but should become subordinate with distance.
+
+RADIO BEEP:
+Brief and clearly audible.
+
+MOVEMENT:
+Subtle.
+
+ANOMALY LOCALE SOUNDS:
+Noticeable when relevant but not exhausting.
+
+Avoid multiple loud loops competing simultaneously.
+
+
+============================================================
+XIII. SPATIAL AUDIO DOCTRINE
+============================================================
+
+Where practical, audio should be modeled as a property of the world.
+
+Each sound source should ideally have:
+
+- source type
+- source location / room
+- base volume
+- audible radius
+- attenuation rule
+- loop / one-shot flag
+- environmental tags
+- priority
+- cooldown / repetition logic
+
+Example conceptual structure:
+
+sound_source:
+    id: threshold_ring
+    asset: Equipment/Threshold_Ringing_01.mp3
+    source_zone: threshold
+    loop: true
+    base_volume: moderate
+    attenuation: distance
+    persists_across_turns: true
+
+The exact implementation may differ.
+
+The important principle is that sound should follow world state rather than be triggered randomly by prose output.
+
+
+============================================================
+XIV. TURN-BASED CONTINUITY
+============================================================
+
+Yellow Beast is a simulation with turn-based interaction.
+
+Audio should therefore avoid feeling like a collection of disconnected button-triggered clips.
+
+Persistent sounds should be stateful.
+
+Examples:
+
+- Threshold ring continues while in range.
+- Room ambience continues while in that environmental state.
+- Red City wobble persists while near that locale.
+- Green crackle persists/intermittently recurs while within a qualifying green-light area.
+
+One-shot sounds should remain event-driven.
+
+Examples:
+
+- radio beep
+- camera click
+- noclip crossing
+- door impact
+- alarm start
+- camera zoom
+
+
+============================================================
+XV. INITIAL EVENT MAPPING
+============================================================
+
+EVENT:
+Player approaches Threshold
+AUDIO:
+Threshold_Ringing_01
+TYPE:
+Persistent spatial loop
+VOLUME:
+Distance-dependent
+
+EVENT:
+Player crosses Threshold
+AUDIO:
+Noclip_01
+TYPE:
+Quiet one-shot
+
+EVENT:
+Player fully enters Complex
+AUDIO:
+Room-appropriate ambience
+TYPE:
+Persistent/cycling bed
+
+EVENT:
+Player submits LOCAL message
+AUDIO:
+Radio_Beep_01
+TYPE:
+One-shot
+
+EVENT:
+Player submits STANDARD message
+AUDIO:
+Radio_Beep_01
+TYPE:
+One-shot
+
+EVENT:
+Camera used
+AUDIO:
+Appropriate Camera_* asset
+TYPE:
+One-shot
+
+EVENT:
+Green anomalous illumination encountered
+AUDIO:
+Green_Crackle_01
+TYPE:
+Spatial/intermittent environmental layer
+
+EVENT:
+Near red suburb/city locale
+AUDIO:
+Red_City_Wobble_01
+TYPE:
+Spatial environmental layer
+
+EVENT:
+Explicit significant movement / exertion
+AUDIO:
+Relevant Movement/* clip
+TYPE:
+Sparse one-shot / temporary layer
+
+EVENT:
+Monkey Man easter egg
+AUDIO:
+Monkey_Man_FF1_01
+TYPE:
+Reserved
+STATUS:
+Do not use until easter egg exists
+
+EVENT:
+Rover implemented and active
+AUDIO:
+Async_Rover_01
+TYPE:
+TBD by rover behavior
+STATUS:
+Reserved
+
+
+============================================================
+XVI. IMPLEMENTATION RULE FOR CODEX
+============================================================
+
+When implementing audio:
+
+DO NOT simply bind every audio file to an event.
+
+First classify the clip as:
+
+- persistent ambience
+- spatial loop
+- transient one-shot
+- equipment feedback
+- movement Foley
+- anomaly layer
+- entity cue
+- reserved easter egg
+- unused/unassigned
+
+Then implement according to world state.
+
+The system should support future growth without requiring bespoke code for every individual MP3.
+
+Preferred architecture:
+
+audio registry
++
+semantic sound IDs
++
+environment / room tags
++
+distance attenuation
++
+loop lifecycle
++
+event triggers
++
+priority / mixing rules
+
+Gameplay code should request semantic sounds such as:
+
+threshold_ring
+radio_submit
+camera_zoom
+room_ambience
+green_light_crackle
+
+rather than scattering hardcoded file paths throughout unrelated code.
+
+
+============================================================
+XVII. ACCEPTANCE TESTS
+============================================================
+
+The first audio implementation should pass these tests:
+
+1. Before crossing, Threshold ring is audible.
+2. After crossing, Threshold ring becomes progressively quieter over the next few turns as distance increases.
+3. Returning toward Threshold increases its volume again.
+4. Leaving Threshold range silences it.
+5. Crossing Threshold plays the noclip cue quietly.
+6. Once fully inside the Complex, an ambience bed is always active unless intentional silence is authored.
+7. Ambience changes appropriately when moving into a substantially different room/locale type.
+8. Ambience remains quiet enough to avoid fatigue.
+9. LOCAL Enter submission plays radio beep exactly once.
+10. STANDARD Enter submission plays radio beep exactly once.
+11. Camera events trigger only the relevant camera audio.
+12. Green-light environments can activate Green Crackle.
+13. Red suburb/city proximity activates Red City Wobble with distance-aware volume.
+14. Movement Foley remains sparse.
+15. Monkey Man audio never triggers during ordinary play.
+16. Rover audio remains unused until rover behavior exists or is intentionally implemented.
+17. Persistent loops do not restart obnoxiously every turn.
+18. Multiple simultaneous layers obey a sensible mix hierarchy.
+
+
+============================================================
+XVIII. FILE LOCATION / SOURCE OF TRUTH
+============================================================
+
+This document is AUDIO DOCTRINE.
+
+It should live in documentation, not inside the runtime audio folder.
+
+Recommended repository location:
+
+docs/Audio Reference Material/AUDIO_USAGE_MASTER.txt
+
+Recommended runtime asset location:
+
+assets/audio/backrooms/
+
+with:
+
+assets/audio/backrooms/
+    Alarms/
+    Ambience/
+    Anomalies/
+    Entities/
+    Equipment/
+    Movement/
+    Radio/
+
+If the repository's final asset pipeline uses a worldpack-specific assets directory instead, preserve the same internal category structure under that worldpack directory.
+
+The documentation should reference semantic IDs.
+The runtime asset registry should map those IDs to file paths.
+
+
+============================================================
+XIX. COPYRIGHT / DISTRIBUTION NOTE
+============================================================
+
+These audio files originate from external reference/source material.
+
+Before any public distribution, release, package publication, monetized build, or downloadable beta that contains the source audio, verify that you have the rights or permission required to redistribute those files.
+
+For development, private testing, and implementation planning, keep provenance documented.
+
+If redistribution is not permitted, retain this usage doctrine but replace source clips with original or properly licensed equivalents before public release.
+
+
+END OF AUDIO USAGE MASTER v1.0
