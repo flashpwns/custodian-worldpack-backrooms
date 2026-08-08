@@ -43,3 +43,13 @@
 - Desktop build: PASS (`npm run desktop:build`); launch: `npm run desktop:dev`. Human gate: `PENDING HUMAN VALIDATION`.
 - Known defect: richer room-specific operational panels remain deferred; Survey Frontier, geography/knowledge layers, and procedural Complex work were not started.
 - Pass 12A should begin with `desktop/renderer/surfaces.js`, `desktop/renderer/renderer.js`, `tools/q4-experience.js`, and authoritative spatial/worldpack projections.
+
+## Pass 12A handoff — Prompt 06 / 21
+
+- Completed pass: `12A`; checkpoint: `NO`; next checkpoint: `Prompt 07 / Pass 12B  CHECKPOINT 2`.
+- Branch: `agent/pass-10-release-candidate`; resulting commit: local `feat: add Survey Frontier knowledge authority`; version: `0.14.0-beta.1`; active session schema: `yellow-beast-session@7`.
+- Survey Frontier authority: `tools/survey-frontier.js` stores separate personnel, Standard, and historical geographic knowledge over immutable spatial topology. Player and Standard records are observer-safe derived maps; topology remains in `tools/spatial-runtime.js`.
+- Provenance preserves direct observation, traversal, teammate communication, delivered radio reports, and conservative legacy spatial-record migration. Historical claims come from `historical_survey_claims` in the Clear-Q4 spatial worldpack and remain `PRIOR_RECORD_ONLY`.
+- `run.survey_frontier` is serialized inside the existing run envelope. Old saves migrate only their persisted player discoveries; no unseen teammate or Standard knowledge is fabricated.
+- Focused frontier and affected Clear-Q4 tests: PASS. Desktop build: PASS (`npm run desktop:build`). Human gate: `PENDING HUMAN VALIDATION`.
+- Pass 12B must consume `tools/survey-frontier.js` (`migrate`, `observe`, `traverse`, `map`, `standardMap`, `frontier`) alongside `tools/spatial-runtime.js` objective topology and `tools/run-bootstrap.js` serialization. Do not mutate knowledge projections as geography truth.

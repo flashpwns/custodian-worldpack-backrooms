@@ -19,6 +19,7 @@ const operationalTime = require("./operational-time");
 const hazardRuntime = require("./hazard-runtime");
 const logisticsRuntime = require("./logistics-runtime");
 const institutionalRuntime = require("./institutional-runtime");
+const surveyFrontier = require("./survey-frontier");
 const cloneUpdates = (value) => structuredClone(value ?? []);
 
 const VERSION = "yellow-beast-clear-q4-experience@v3";
@@ -94,7 +95,8 @@ function presentation(run, phase, unfinished = null, world = null) {
     personnel: team.map((member) => ({ id: member.personnel_id, name: String(member.display_name).replace(/ · YOU$/, ""), known_location: member.current_or_last_known_location ?? member.location, confirmed_current: ["LOCAL", "SELF"].includes(member.contact_state ?? member.contact_category) })),
     mission_markers: [{ id: "assigned-survey-area", label: "Assigned survey area", location: bootstrap.spatialDefinitionFor(run.spatial_pack_id).field_entry_location }]
   }) : null;
-  const publicMap = operationalMap ? { ...operationalMap, nodes: operationalMap.nodes.map((node) => ({ ...node, personnel: (node.personnel ?? []).map(({ name, status }) => ({ name, status })) })) } : null;
+  const publicMap = run.spatial && run.survey_frontier ? { ...surveyFrontier.map(run.survey_frontier, bootstrap.spatialDefinitionFor(run.spatial_pack_id), run.session.startup.player.observer_id, { current_location: run.spatial.player_location }), route_history: cloneUpdates(run.spatial.route_history), unresolved_exits: spatialRuntime.visibleExits(run.spatial, bootstrap.spatialDefinitionFor(run.spatial_pack_id)).filter((exit) => !surveyFrontier.known(run.survey_frontier, run.session.startup.player.observer_id, exit.destination_id)).map((exit) => ({ ref: exit.ref, label: exit.label, status: exit.status })) } : operationalMap ? { ...operationalMap, nodes: operationalMap.nodes.map((node) => ({ ...node, personnel: (node.personnel ?? []).map(({ name, status }) => ({ name, status })) })) } : null;
+  const standardMap = run.spatial && run.survey_frontier ? surveyFrontier.standardMap(run.survey_frontier, bootstrap.spatialDefinitionFor(run.spatial_pack_id)) : null;
   const topology = operationalMap ?? safeStatus.discovered_topology ?? { spaces: [], connections: [], unknown_exits: [] };
   const context = personnelContext(world, team);
   const equip = equipmentModel.projection(expedition, playerId, context.names, { spatial: run.spatial, observer: playerId, personnel_status: context.status, radio_confirmed_holders: [] });
@@ -155,6 +157,8 @@ function presentation(run, phase, unfinished = null, world = null) {
     channels,
     layout,
     map: publicMap,
+    standard_spatial_record: standardMap,
+    survey_frontier: run.spatial && run.survey_frontier ? surveyFrontier.frontier(run.survey_frontier, bootstrap.spatialDefinitionFor(run.spatial_pack_id), run.session.startup.player.observer_id) : [],
     current_location: location ? { id: location.id, name: location.name, type: location.type, description: location.short_description, environment: location.environment } : null,
     field_observation: fieldObservation,
     interactables,

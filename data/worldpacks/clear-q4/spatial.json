@@ -4,6 +4,9 @@
   "display_name": "CLEAR-Q4 Operational Survey Record",
   "initial_location": "async-briefing-room",
   "field_entry_location": "utility-room",
+  "historical_survey_claims": [
+    { "id": "prior-lower-route", "label": "Prior survey: lower continuation marked passable", "state": "UNCONFIRMED", "source": "Clear-Q4 survey record" }
+  ],
   "phase_locations": {
     "BRIEFING": "async-briefing-room",
     "STAGING": "equipment-staging",

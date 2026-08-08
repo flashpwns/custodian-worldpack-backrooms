@@ -61,6 +61,7 @@ function createMessage(expedition, spec) {
     interference: spec.interference ? clone(spec.interference) : null,
     failure_reason: null,
     evidence_ids: [...(spec.evidence_ids ?? [])],
+    geography_report: spec.geography_report === true,
     provenance: spec.provenance ?? "authoritative-communication-runtime",
     history: [{ sequence: 1, from: null, to: "composed", at, reason: "message composed" }]
   };
@@ -83,13 +84,13 @@ function failRadio(expedition, { sender, recipient = "Standard", text, purpose =
   return { ok: false, message, reason: message.failure_reason };
 }
 
-function queueRadio(run, definition, { sender, recipient = "Standard", text, purpose = "routine-report", evidence_ids = [], acknowledgment = true, acknowledgment_delay = null }) {
+function queueRadio(run, definition, { sender, recipient = "Standard", text, purpose = "routine-report", evidence_ids = [], geography_report = false, acknowledgment = true, acknowledgment_delay = null }) {
   const expedition = run.expedition; ensure(expedition); const at = expedition.clock.interval;
   const senderLocation = run.spatial?.personnel_locations?.[sender] ?? run.spatial?.player_location;
   const senderMember = expedition.team?.members?.find((member) => (member.personnel_id ?? member.id) === sender);
   const senderConnection = senderMember?.movement_history?.at(-1)?.connection_id ?? (senderLocation === run.spatial?.player_location ? run.spatial?.route_history?.at(-1)?.connection_id : null);
   const zone = dynamicsRuntime.interference(definition, senderLocation, senderConnection);
-  const message = createMessage(expedition, { sender, recipient, channel: "FIELD_RADIO", purpose, text, evidence_ids, interference: zone ? { id: zone.id, public_description: zone.public_description, additional_delay: zone.additional_delay } : null });
+  const message = createMessage(expedition, { sender, recipient, channel: "FIELD_RADIO", purpose, text, evidence_ids, geography_report, interference: zone ? { id: zone.id, public_description: zone.public_description, additional_delay: zone.additional_delay } : null });
   transition(expedition, message, "queued", "accepted into the field-radio transmission queue", at);
   if (expedition.radio) { expedition.radio.state = "transmitting"; expedition.radio.last_transition = "message-queued"; }
   operationalTime.schedule(expedition, { id: `transmit-${message.id}`, event_type: "communication.transmit", scheduled_interval: at, source: sender, target: recipient, payload: { message_id: message.id, acknowledgment, acknowledgment_delay }, visibility_policy: "known" });
