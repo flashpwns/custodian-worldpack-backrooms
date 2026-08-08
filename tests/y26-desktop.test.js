@@ -86,3 +86,20 @@ test("provider selection is global presentation state and leaves canonical struc
   assert.equal(service.submitAction({ world_id: world.id, mode: "field-researcher", action: "LOOK" }).ok, true); const after = service.loadWorld({ world_id: world.id }).summary;
   assert.equal(before.world_id, after.world_id); assert.equal(service.getProviderStatus().provider.selected, "offline"); assert.equal(service.testProvider().ok, true);
 });
+test("first-run world creation permits a blank name with an institutional fallback", () => {
+  const { service } = fixture(); const created = service.createWorld({ name: "   ", seed: "pass10a-fallback" });
+  assert.equal(created.ok, true); assert.equal(created.world.name, "Untitled field file"); assert.equal(service.listWorlds().first_run_complete, true); assert.equal(service.loadWorld({ world_id: created.world.id }).ok, true);
+});
+test("first-run canonical path creates personnel, confirms it, and reaches the Clear-Q4 briefing offline", () => {
+  const { service } = fixture(); const created = service.createWorld({ name: "Offline career", seed: "pass10a-path" });
+  assert.equal(created.ok, true); assert.equal(service.getProviderStatus().provider.offline, true); assert.equal(service.getQ4PersonnelStatus({ world_id: created.world.id }).required, true);
+  const personnel = service.createQ4Personnel({ world_id: created.world.id, first_name: "Jack", last_name: "Rocha" }); assert.equal(personnel.ok, true);
+  assert.equal(service.getQ4PersonnelStatus({ world_id: created.world.id }).confirmation_required, true); assert.equal(service.confirmQ4Personnel({ world_id: created.world.id }).ok, true);
+  const started = service.startSession({ world_id: created.world.id, mode: "field-researcher", require_personnel: true, seed: "pass10a-path" });
+  assert.equal(started.ok, true); assert.equal(started.projection.phase.phase_id, "BRIEFING"); assert.match(started.projection.q4.briefing, /survey assignment/i);
+  const restored = new DesktopService({ appDataPath: service.paths.root }).getQ4PersonnelStatus({ world_id: created.world.id }); assert.equal(restored.player.display_name, "Jack Rocha"); assert.equal(restored.confirmation_required, false);
+});
+test("first-run renderer keeps Clear-Q4 selected and exposes recoverable keyboard forms", () => {
+  const renderer = fs.readFileSync(path.join(__dirname, "../desktop/renderer/renderer.js"), "utf8");
+  assert.match(renderer, /mode\.id === "field-researcher"/); assert.match(renderer, /placeholder="Optional/); assert.doesNotMatch(renderer, /name=\\"name\\" required/); assert.match(renderer, /nameInput\?\.focus\(\)/); assert.match(renderer, /personnel record could not be saved/);
+});

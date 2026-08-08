@@ -93,12 +93,17 @@ class DesktopService {
     return { ok: true, worlds: records, first_run_complete: Boolean(data.first_run_complete) };
   }
   createWorld({ name, seed = null } = {}) {
-    if (!friendlyName(name)) return publicError("WORLD_NAME_INVALID", "Choose a world name between 1 and 80 characters.");
-    const actualSeed = seed && typeof seed === "string" ? seed : crypto.randomUUID();
-    const world = history.createWorld({ seed: actualSeed }); const data = this.metadata();
-    if (data.worlds[world.world_id]) return publicError("WORLD_ALREADY_EXISTS", "That world already exists.");
-    this.saveCanonical(world); const now = new Date().toISOString(); data.worlds[world.world_id] = { name: name.trim(), created_at: now, last_played_at: now, last_mode: null }; data.first_run_complete = true; data.last_world_id = world.world_id; this.writeMetadata(data);
-    return { ok: true, world: this.worldInfo(world, data.worlds[world.world_id]) };
+    const worldName = friendlyName(name) ? name.trim() : "Untitled field file";
+    try {
+      const actualSeed = seed && typeof seed === "string" ? seed : crypto.randomUUID();
+      const world = history.createWorld({ seed: actualSeed }); const data = this.metadata();
+      if (data.worlds[world.world_id]) return publicError("WORLD_ALREADY_EXISTS", "That world already exists.");
+      this.saveCanonical(world); const now = new Date().toISOString(); data.worlds[world.world_id] = { name: worldName, created_at: now, last_played_at: now, last_mode: null }; data.first_run_complete = true; data.last_world_id = world.world_id; this.writeMetadata(data);
+      return { ok: true, world: this.worldInfo(world, data.worlds[world.world_id]) };
+    } catch (error) {
+      this.log(`world creation failed: ${error.message}`);
+      return publicError("WORLD_CREATE_FAILED", "The field file could not be established. Your existing records were not changed.");
+    }
   }
   loadWorld({ world_id }) { try { const world = this.getWorld(world_id); const data = this.metadata(); return { ok: true, world: this.worldInfo(world, data.worlds[world_id] ?? {}), summary: history.summary(world) }; } catch (error) { this.log(`world load failed: ${error.message}`); return publicError(error.code ?? "WORLD_LOAD_FAILED", "This world could not be loaded safely."); } }
   getQ4PersonnelStatus({ world_id }) { try { const world = this.getWorld(world_id); const identity = world.q4_operations?.controlled_player ?? null; const person = identity ? history.character(world, identity) : null; return { ok: true, required: !person, confirmation_required: Boolean(person && !world.q4_operations?.personnel_confirmation?.completed), player: person ? q4Personnel.safePerson(person) : null }; } catch { return publicError("WORLD_LOAD_FAILED", "This world could not be loaded safely."); } }
