@@ -3,6 +3,7 @@
 // Intent interpretation is deliberately separate from grounding and simulation.
 // Nothing in this module imports or calls a Custodian mutation API.
 const INTENT_VERSION = "yellow-beast-intent@v1";
+const { createRegistry: createAuthorityRegistry } = require("./authority-registry");
 const STEP_RELATIONS = new Set(["sequence", "parallel"]);
 const REFERENCE_SCOPES = new Set(["entity", "location", "person", "inventory", "phenomenon"]);
 const REFERENCE_STATES = new Set(["unresolved", "contextual"]);
@@ -70,7 +71,16 @@ function legacyActionToIntent({ verb, target_alias = null, actor = null, raw_inp
 // Compatibility name retained for callers. Interpretation and grounding remain
 // noncanonical; a ready resolution plan is applied through Custodian below.
 async function executeNatural({ run, provider, player_text, request_id = null, context: suppliedContext = null, consequenceResolver = null }) {
-  const context = suppliedContext ?? buildSafeContext(run);
+  const baseContext = suppliedContext ?? buildSafeContext(run);
+  const authorityRegistry = createAuthorityRegistry();
+  const context = { ...baseContext, authority_context: authorityRegistry.assemble({
+    worldpackId: run.spatial_pack_id ?? "clear-q4",
+    canonicalState: { lifecycle: run.lifecycle ?? "active", phase: run.phase?.phase_id ?? null, worldpack_id: run.spatial_pack_id ?? null },
+    observerProjection: baseContext,
+    history: baseContext.recent_observer_events ?? [],
+    playerText: player_text,
+    responseContract: { candidate_only: true, no_invented_player_speech: true, observer_safe: true }
+  }) };
   const intent = await interpret(provider, player_text, context, { request_id });
   const { groundIntent } = require("./intent-grounding");
   const grounded_intent = intent.status === "proposal" ? groundIntent(intent, context.grounding) : null;

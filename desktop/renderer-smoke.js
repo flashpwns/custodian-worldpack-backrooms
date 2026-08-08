@@ -1,31 +1,49 @@
 "use strict";
 
-// Runs inside the actual Electron renderer through BrowserWindow.webContents.
-// This covers DOM creation, pointer/keyboard activation, focus, save, close,
-// reopen, and persisted preference state; it is deliberately not a source
-// pattern check.
+// Packaged interaction probe. It uses Chromium hit testing and native input
+// dispatch through webContents; DOM .click(), requestSubmit(), and synthetic
+// KeyboardEvent are intentionally not used as acceptance substitutes.
 const assert = require("node:assert/strict");
 const { app } = require("electron");
 
 const pause = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 async function run(windowRef) {
+  const errors = [];
+  windowRef.show(); windowRef.focus();
+  windowRef.webContents.on("console-message", (_event, level, message) => { if (level >= 2) errors.push(`console:${message}`); });
+  windowRef.webContents.on("render-process-gone", (_event, details) => errors.push(`render-process-gone:${details.reason}`));
   await new Promise((resolve) => windowRef.webContents.once("did-finish-load", resolve));
-  const result = await windowRef.webContents.executeJavaScript(`(async () => {
-    const pause = (ms) => new Promise((resolve) => setTimeout(resolve, ms)); const waitFor = async (selector, present = true) => { for (let i = 0; i < 30; i += 1) { if (Boolean(document.querySelector(selector)) === present) return true; await pause(25); } return false; };
-    document.querySelector('[data-action="skip-boot"]')?.click(); await pause(40);
-    document.querySelector('[data-action="settings"]')?.click(); await pause(40);
-    const form = document.querySelector('#settings'); const initialFocus = document.activeElement?.name;
-    const controls = [...form.querySelectorAll('input, select, button')];
-    const theme = form.querySelector('[name="theme"]'); theme.value = 'high-contrast'; theme.dispatchEvent(new Event('change', { bubbles:true }));
-    const finalControl = controls.at(-1); finalControl?.focus(); finalControl?.scrollIntoView(); const reachedFinalControl = document.activeElement === finalControl || finalControl?.getBoundingClientRect().bottom <= window.innerHeight;
-    form.requestSubmit(); await pause(40); const saved = document.querySelector('#settings-message')?.textContent;
-    document.querySelector('[data-action="close-settings"]')?.click(); const closed = await waitFor('[data-testid="world-library"]');
-    document.dispatchEvent(new KeyboardEvent('keydown', { key:',', altKey:true, bubbles:true })); const reopened = await waitFor('#settings');
-    const settings = await window.yellowBeast.getSettings();
-    return { form: Boolean(form), initialFocus, controls: controls.length, reachedFinalControl, saved, closed, reopened, theme: settings.settings.theme };
-  })()`);
-  console.log(JSON.stringify({ renderer_settings_probe: result }, null, 2)); assert.equal(result.form, true); assert.ok(result.initialFocus); assert.ok(result.controls >= 12); assert.match(result.saved, /saved and applied/i); assert.equal(result.closed, true); assert.equal(result.reopened, true); assert.equal(result.theme, "high-contrast");
-  assert.equal(result.reachedFinalControl, true); console.log(JSON.stringify({ renderer_settings_smoke: "passed", controls: result.controls }, null, 2));
-  await pause(10); app.exit(0);
+  const waitFor = async (selector, present = true) => { for (let i = 0; i < 80; i += 1) { if (Boolean(await windowRef.webContents.executeJavaScript(`Boolean(document.querySelector(${JSON.stringify(selector)}))`)) === present) return true; await pause(25); } return false; };
+  const rect = async (selector) => windowRef.webContents.executeJavaScript(`(() => { const node=document.querySelector(${JSON.stringify(selector)}); if(!node) return null; const r=node.getBoundingClientRect(); return {x:r.left+r.width/2,y:r.top+r.height/2,width:r.width,height:r.height,tag:node.tagName,disabled:node.disabled??false,pointer:getComputedStyle(node).pointerEvents,top:document.elementFromPoint(r.left+r.width/2,r.top+r.height/2)?.tagName}; })()`);
+  const click = async (selector) => { await windowRef.webContents.executeJavaScript(`document.querySelector(${JSON.stringify(selector)})?.scrollIntoView({block:"center", inline:"nearest"})`); const r = await rect(selector); assert.ok(r && r.width > 0 && r.height > 0, `not hit-testable: ${selector}`); assert.equal(r.pointer, "auto", `pointer events blocked: ${selector}`); assert.notEqual(r.top, "BODY", `surface not attached: ${selector}`); await windowRef.webContents.sendInputEvent({ type:"mouseMove", x:Math.round(r.x), y:Math.round(r.y) }); await windowRef.webContents.sendInputEvent({ type:"mouseDown", x:Math.round(r.x), y:Math.round(r.y), button:"left", clickCount:1 }); await windowRef.webContents.sendInputEvent({ type:"mouseUp", x:Math.round(r.x), y:Math.round(r.y), button:"left", clickCount:1 }); await pause(80); };
+  const type = async (selector, value) => { await click(selector); await windowRef.webContents.sendInputEvent({ type:"keyDown", keyCode:"CTRL" }); await windowRef.webContents.sendInputEvent({ type:"keyDown", keyCode:"A", modifiers:["control"] }); await windowRef.webContents.sendInputEvent({ type:"keyUp", keyCode:"A", modifiers:["control"] }); await windowRef.webContents.sendInputEvent({ type:"keyUp", keyCode:"CTRL" }); for (const character of value) { await windowRef.webContents.sendInputEvent({ type:"keyDown", keyCode:character }); await windowRef.webContents.sendInputEvent({ type:"char", keyCode:character }); await windowRef.webContents.sendInputEvent({ type:"keyUp", keyCode:character }); } await pause(30); };
+  const result = await windowRef.webContents.executeJavaScript(`(async () => { document.querySelector('[data-action="skip-boot"]')?.focus(); return { boot:document.activeElement?.dataset?.action ?? null }; })()`);
+  await click('[data-action="skip-boot"]'); await waitFor('[data-testid="world-library"]');
+  await click('[data-action="settings"]'); assert.equal(await waitFor('[data-testid="settings-surface"]'), true);
+  const initialFocus = await windowRef.webContents.executeJavaScript("document.activeElement?.name ?? null");
+  const controls = await windowRef.webContents.executeJavaScript("[...document.querySelector('#settings').querySelectorAll('input,select,button')].map(n=>({name:n.name||n.textContent.trim(),type:n.type||n.tagName,disabled:n.disabled}))");
+  const settingsNonce = `settings-runtime-${Date.now()}`; await type('[name="model"]', settingsNonce);
+  await click('[name="input_mode"]'); await windowRef.webContents.sendInputEvent({ type:"keyDown", keyCode:"DOWN" }); await windowRef.webContents.sendInputEvent({ type:"keyUp", keyCode:"DOWN" });
+  await click('[name="theme"]'); await windowRef.webContents.sendInputEvent({ type:"keyDown", keyCode:"DOWN" }); await windowRef.webContents.sendInputEvent({ type:"keyUp", keyCode:"DOWN" });
+  await click('[name="reduced_motion"]'); await click('[name="guided_introductions"]'); await click('[name="visual_rendering"]'); await click('[name="automatic_evidence_rendering"]'); await click('[name="retry_failed_renders"]');
+  await windowRef.webContents.executeJavaScript("document.querySelector('.settings-surface').scrollTop=document.querySelector('.settings-surface').scrollHeight"); await pause(30); await click('#settings button[type="submit"]'); await waitFor('#settings-message');
+  const saved = await windowRef.webContents.executeJavaScript("document.querySelector('#settings-message')?.textContent");
+  await click('[data-action="close-settings"]'); assert.equal(await waitFor('[data-testid="world-library"]'), true);
+  await windowRef.webContents.sendInputEvent({ type:"keyDown", keyCode:",", modifiers:["alt"] }); await windowRef.webContents.sendInputEvent({ type:"keyUp", keyCode:",", modifiers:["alt"] }); assert.equal(await waitFor('[data-testid="settings-surface"]'), true);
+  const persisted = await windowRef.webContents.executeJavaScript("({model:document.querySelector('[name=\"model\"]')?.value,theme:document.querySelector('[name=\"theme\"]')?.value})");
+  assert.equal(persisted.model, settingsNonce); assert.match(saved, /saved and applied/i); assert.deepEqual(errors, []);
+  await click('[data-action="close-settings"]'); assert.equal(await waitFor('[data-testid="world-library"]'), true);
+  await click('[data-action="about"]'); await pause(80); await click('[data-action="home"]'); assert.equal(await waitFor('[data-testid="world-library"]'), true);
+  await click('[data-action="new"]'); assert.equal(await waitFor('[data-testid="create-world"]'), true);
+  await type('#new-world input[name="name"]', `native-world-${Date.now()}`); await click('#new-world [data-action="submit"]'); assert.equal(await waitFor('[data-testid="q4-personnel-creation"]'), true);
+  await type('#personnel-creation-form input[name="first_name"]', "native"); await type('#personnel-creation-form input[name="last_name"]', "probe"); await click('#personnel-creation-form button[type="submit"]'); const personnelCreated = await waitFor('[data-testid="q4-personnel-confirmation"]'); assert.equal(personnelCreated, true, await windowRef.webContents.executeJavaScript("JSON.stringify({body:document.body.innerText.slice(0,1200), first:document.querySelector('[name=first_name]')?.value, last:document.querySelector('[name=last_name]')?.value})"));
+  await click('[data-action="personnel-confirm-continue"]'); assert.equal(await waitFor('[data-testid="play-shell"]'), true); await click('[data-game-action="DEPLOY"]'); assert.equal(await waitFor('#q4-comms-form'), true);
+  const standardNonce = `standard-runtime-${Date.now()}`; const channel = await windowRef.webContents.executeJavaScript("document.querySelector('[data-testid=q4-channel]')?.value"); assert.equal(channel, "standard"); assert.equal(await windowRef.webContents.executeJavaScript("document.querySelector('#q4-comms-form input[name=text]')?.value"), "");
+  await type('#q4-comms-form input[name="text"]', standardNonce); await click('#q4-comms-form button[type="submit"]'); assert.equal(await waitFor(`[data-testid="q4-comms-form"]`), true); const standardResult = await windowRef.webContents.executeJavaScript(`({ exact:[...document.querySelectorAll('.communication-timeline li, .communication-timeline article')].some((node)=>node.textContent.includes(${JSON.stringify(standardNonce)})), awaiting:document.querySelector('[data-radio-state="awaiting-response"]')!==null })`); assert.equal(standardResult.exact, true); assert.equal(standardResult.awaiting, false); await click('[data-game-action="BEGIN_FIELD_OPERATION"]'); assert.equal(await waitFor('#natural-form'), true);
+  await click('[data-testid="q4-channel"]'); await windowRef.webContents.sendInputEvent({ type:"keyDown", keyCode:"HOME" }); await windowRef.webContents.sendInputEvent({ type:"keyUp", keyCode:"HOME" }); await pause(30); const localNonce = `local-runtime-${Date.now()}`; await type('#q4-comms-form input[name="text"]', localNonce); await click('#q4-comms-form button[type="submit"]'); await pause(1000); const localResult = await windowRef.webContents.executeJavaScript(`({ exact:[...document.querySelectorAll('.communication-timeline li, .communication-timeline article')].some((node)=>node.textContent.includes(${JSON.stringify(localNonce)})), channel:document.querySelector('[data-testid=q4-channel]')?.value, body:document.body.innerText.slice(-1600) })`); assert.equal(localResult.exact, true, JSON.stringify(localResult));
+  assert.equal(await waitFor('#natural-form'), true); await type('#natural-form input[name="text"]', `Move west action-runtime-${Date.now()}`); await click('#natural-form button[type="submit"]'); await pause(1000);
+  console.log(JSON.stringify({ packaged_input_probe:{boot:result.boot,initialFocus,controls:controls.length,settingsNonce,persisted,saved,errors} }, null, 2));
+  assert.ok(initialFocus); assert.ok(controls.length >= 12); assert.equal(persisted.model, settingsNonce); assert.match(saved, /saved and applied/i); assert.deepEqual(errors, []);
+  console.log(JSON.stringify({ renderer_settings_smoke:"passed", packaged_native_input:"passed", controls:controls.length }, null, 2)); await pause(20); app.exit(0);
 }
 module.exports = { run };

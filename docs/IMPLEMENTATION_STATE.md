@@ -205,6 +205,14 @@
 
 ### Pass 18 starting files
 
+## Pass 17 reopened repair - packaged input and interpreter authority
+
+- Root cause: the packaged renderer contained a startup `SyntaxError` from duplicate `const message` declarations in the Settings path. The previous verifier used DOM activation and therefore never exercised the failing packaged renderer. `desktop/renderer-smoke.js` now uses Electron `webContents.sendInputEvent` mouse and keyboard dispatch, Chromium hit testing, focus/value checks, and renderer console/process diagnostics. Renderer failures show a recoverable error surface with retry/back navigation.
+- Settings lifecycle: `settingsController` owns closed/opening/open/saving/saved/closing states, mounts before querying controls, keeps one mounted surface, restores opener focus, and prevents stranded save/error states. `npm run desktop:settings-regression` builds the packaged executable and runs the native Settings regression through `desktop:verify`.
+- Authority registry: `tools/authority-registry.js` explicitly registers constitutional doctrine, design/runtime/provider contracts, Clear-Q4 worldpack records, terminology, personnel, and phenomenon sources with repository paths, classification, scope, required status, byte size, load time, and SHA-256. Required load failure returns visible `AUTHORITY_UNAVAILABLE` recovery rather than generic interpretation.
+- Interpreter context: `tools/ai-adapter.js#executeNatural` assembles the final provider request in doctrine, worldpack/domain, canonical state, observer projection, history, exact player submission, and response-contract order. Provider context contains source IDs/hashes and does not expose hidden canonical projections. Desktop provenance records execution mode, provider/model, invocation, response classification, authority source metadata, and ordered sections.
+- Verification: native packaged interaction and Settings persistence PASS; `node --test tests/y63-pass17-state-machine.test.js tests/y64-pass17-authority.test.js` PASS; `npm run pass17:authority-test` PASS. Full suite and final packaged build are pending this reopened repair. Do not begin Prompt 18.
+
 - `desktop/service.js`, `tools/doctrine-runtime.js`, `tools/q4-experience.js`, `tools/communication-runtime.js`, `tools/q4-radio.js`, `desktop/renderer/surfaces.js`, `desktop/renderer/renderer.js`, `desktop/renderer/styles.css`, `tests/y61-local-standard.test.js`, and `tests/y62-pass17-human-gate.test.js`.
 ## Pass 17 human-gate repair — actual state-machine correction
 

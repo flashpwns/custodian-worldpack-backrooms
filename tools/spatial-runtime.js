@@ -362,7 +362,7 @@ function interpret(state, definition, text, { personnel = [] } = {}) {
   if (!phrase) return { kind: "invalid", reason: "State an observation or movement before acting." };
   const person = personnel.find((item) => phrase.includes(String(item.first_name ?? item.name ?? "").toLowerCase()));
   if (person && /\b(check|look|speak|ask|where|follow)\b/.test(phrase)) return { kind: /follow/.test(phrase) ? "follow" : "person", person };
-  if (/\b(go|move|head|enter|return|walk|proceed|continue|follow)\b/.test(phrase) || /^(north|south|east|west|up|down|back|forward)\b/.test(phrase)) return { kind: "move", target: phrase };
+  if (/\b(go|move|head|enter|return|walk|proceed|continue|follow)\b/.test(phrase) || /^(north|south|east|west|up|down|back|forward)\b/.test(phrase)) return { kind: "move", target: phrase.match(/\b(north|south|east|west|up|down|back|forward)\b/)?.[1] ?? phrase, submitted_text: phrase };
   if (/\b(look|orient|inspect|examine|check|observe|survey|take stock)\b/.test(phrase)) return { kind: "inspect", target: phrase };
   return { kind: "invalid", reason: `That instruction does not identify a visible route, person, or feature.` };
 }
