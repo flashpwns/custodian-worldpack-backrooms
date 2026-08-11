@@ -101,7 +101,7 @@ test("first-run canonical path creates personnel, confirms it, and reaches the C
 });
 test("first-run renderer keeps Clear-Q4 selected and exposes recoverable keyboard forms", () => {
   const renderer = fs.readFileSync(path.join(__dirname, "../desktop/renderer/renderer.js"), "utf8");
-  assert.match(renderer, /mode\.id === "field-researcher"/); assert.match(renderer, /placeholder="Optional/); assert.doesNotMatch(renderer, /name=\\"name\\" required/); assert.match(renderer, /nameInput\?\.focus\(\)/); assert.match(renderer, /personnel record could not be saved/);
+  assert.match(renderer, /mode\.id === "field-researcher"/); assert.match(renderer, /placeholder="Optional/); assert.doesNotMatch(renderer, /name=\\"name\\" required/); assert.match(renderer, /nameInput\?\.focus\(\)/); assert.match(renderer, /personnel record could not be saved/); assert.match(renderer, /current\.world = result\.world; await home\(\)/); assert.match(renderer, /action\.startsWith\("mode:"\)\) enterMode\(action\.slice\(5\)\)/); assert.doesNotMatch(renderer, /action\.startsWith\("mode:"\)\) enterMode\(action\.slice\(6\)\)/);
 });
 
 test("damaged sessions resume a verified previous-good record without overwriting the damaged primary", () => {

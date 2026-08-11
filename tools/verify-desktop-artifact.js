@@ -1,17 +1,70 @@
 "use strict";
-const assert = require("node:assert/strict"); const fs = require("node:fs"); const path = require("node:path"); const os = require("node:os"); const crypto = require("node:crypto"); const { spawnSync, execFileSync } = require("node:child_process"); const asarLib = require("@electron/asar");
-const root = path.resolve(__dirname, ".."); const dist = path.join(root, "dist", "desktop"); const platform = process.platform === "darwin" ? "mac" : process.platform === "win32" ? "win" : null;
-function snapshot(directory) { if (!fs.existsSync(directory)) return []; return fs.readdirSync(directory, { recursive:true }).map((relative) => String(relative).replace(/\\/g, "/")).filter((relative) => fs.statSync(path.join(directory, relative)).isFile()).sort().map((relative) => ({ relative, sha256:crypto.createHash("sha256").update(fs.readFileSync(path.join(directory, relative))).digest("hex"), bytes:fs.statSync(path.join(directory, relative)).size })); }
-function isolatedProfile(label) { return fs.mkdtempSync(path.join(os.tmpdir(), `yellow-beast-${label}-`)); }
+
+const assert = require("node:assert/strict");
+const fs = require("node:fs");
+const path = require("node:path");
+const { execFileSync, spawnSync } = require("node:child_process");
+const asar = require("@electron/asar");
+const profiles = require("../desktop/profile-resolver");
+
+const root = path.resolve(__dirname, "..");
+const dist = path.join(root, "dist", "desktop");
+const platform = process.platform === "darwin" ? "mac" : process.platform === "win32" ? "win" : null;
 if (!platform) throw new Error("desktop artifact verification runs on macOS or Windows");
-function find(dir, predicate) { if (!fs.existsSync(dir)) return null; for (const entry of fs.readdirSync(dir, { withFileTypes: true })) { const file = path.join(dir, entry.name); if (predicate(file, entry)) return file; if (entry.isDirectory()) { const nested = find(file, predicate); if (nested) return nested; } } return null; }
-const executable = platform === "mac" ? find(dist, (file, entry) => entry.isFile() && file.endsWith(path.join("Contents", "MacOS", "Yellow Beast"))) : find(dist, (file, entry) => entry.isFile() && file.endsWith("Yellow Beast.exe")); const archive = platform === "mac" ? find(dist, (file, entry) => entry.isFile() && file.endsWith(path.join("Resources", "app.asar"))) : find(dist, (file, entry) => entry.isFile() && file.endsWith(path.join("resources", "app.asar")));
+
+function find(directory, predicate) {
+  if (!fs.existsSync(directory)) return null;
+  for (const entry of fs.readdirSync(directory, { withFileTypes: true })) {
+    const file = path.join(directory, entry.name);
+    if (predicate(file, entry)) return file;
+    if (entry.isDirectory()) {
+      const nested = find(file, predicate);
+      if (nested) return nested;
+    }
+  }
+  return null;
+}
+
+const executable = platform === "mac" ? find(dist, (file, entry) => entry.isFile() && file.endsWith(path.join("Contents", "MacOS", "Yellow Beast"))) : find(dist, (file, entry) => entry.isFile() && file.endsWith("Yellow Beast.exe"));
+const archive = platform === "mac" ? find(dist, (file, entry) => entry.isFile() && file.endsWith(path.join("Resources", "app.asar"))) : find(dist, (file, entry) => entry.isFile() && file.endsWith(path.join("resources", "app.asar")));
 assert.ok(executable && archive && fs.existsSync(executable) && fs.existsSync(archive), "missing packaged executable or application archive");
-const entry = (suffix) => asarLib.listPackage(archive).find((item) => item.replace(/\\/g, "/") === suffix);
-const readEntry = (suffix) => { const item = entry(suffix); assert.ok(item, `packaged archive missing ${suffix}`); return JSON.parse(asarLib.extractFile(archive, item.replace(/^\\+/, "")).toString("utf8")); };
-const packagedPackage = readEntry("/package.json"); const packagedBuild = readEntry("/desktop/build-info.json");
-const sourceVersion = require("../package.json").version; const sourceCommit = execFileSync("git", ["rev-parse", "HEAD"], { cwd: root, encoding: "utf8" }).trim();
-assert.equal(packagedPackage.version, sourceVersion, "packaged application version differs from current source"); assert.equal(packagedBuild.version, sourceVersion, "packaged build record version differs from current source"); assert.equal(packagedBuild.commit, sourceCommit, "packaged build record commit differs from current HEAD"); assert.match(packagedBuild.built_at, /^\d{4}-\d{2}-\d{2}T/);
-const productionProfile = path.join(process.env.APPDATA ?? os.homedir(), "yellow-beast", "yellow-beast"); const beforeProduction = snapshot(productionProfile);
-const desktopProfile = isolatedProfile("desktop"); const result = spawnSync(executable, ["--desktop-smoke", "--test-profile", desktopProfile], { encoding: "utf8", timeout: 60000, env: { ...process.env, ELECTRON_ENABLE_LOGGING: "0" } }); assert.equal(result.status, 0, result.stderr || result.stdout); assert.match(result.stdout, /desktop_smoke/); assert.deepEqual(snapshot(productionProfile), beforeProduction, "packaged desktop smoke changed the production profile"); console.log(JSON.stringify({ desktop_artifact: executable, version: packagedBuild.version, commit: packagedBuild.commit, built_at: packagedBuild.built_at, offline_smoke: "passed", profile: desktopProfile }, null, 2));
-const rendererProfile = isolatedProfile("renderer"); const renderer = spawnSync(executable, ["--renderer-smoke", "--test-profile", rendererProfile], { encoding: "utf8", timeout: 90000, env: { ...process.env, ELECTRON_ENABLE_LOGGING: "0" } }); assert.equal(renderer.status, 0, renderer.stderr || renderer.stdout); assert.match(renderer.stdout, /renderer_settings_smoke/); assert.deepEqual(snapshot(productionProfile), beforeProduction, "packaged renderer smoke changed the production profile"); console.log(JSON.stringify({ packaged_renderer_interaction: "passed", profile: rendererProfile }, null, 2));
+
+const entry = (suffix) => asar.listPackage(archive).find((item) => item.replace(/\\/g, "/") === suffix);
+const readEntry = (suffix) => {
+  const item = entry(suffix);
+  assert.ok(item, `packaged archive missing ${suffix}`);
+  return JSON.parse(asar.extractFile(archive, item.replace(/^\\+/, "")).toString("utf8"));
+};
+const packagedPackage = readEntry("/package.json");
+const packagedBuild = readEntry("/desktop/build-info.json");
+const sourceVersion = require("../package.json").version;
+const sourceCommit = execFileSync("git", ["rev-parse", "HEAD"], { cwd: root, encoding: "utf8" }).trim();
+assert.equal(packagedPackage.version, sourceVersion, "packaged application version differs from current source");
+assert.equal(packagedBuild.version, sourceVersion, "packaged build record version differs from current source");
+assert.equal(packagedBuild.commit, sourceCommit, "packaged build record commit differs from current HEAD");
+assert.match(packagedBuild.built_at, /^\d{4}-\d{2}-\d{2}T/);
+
+const productionUserData = profiles.defaultProductionUserDataRoot();
+const beforeProduction = profiles.snapshotProfile(productionUserData);
+
+function runIsolated(label, flag, expected, timeout) {
+  const profile = profiles.createIsolatedTestProfile(label, { productionUserDataRoot: productionUserData });
+  let passed = false;
+  try {
+    const result = spawnSync(executable, [flag, "--test-profile", profile.paths.userDataRoot], { encoding: "utf8", timeout, windowsHide: true, env: { ...process.env, ELECTRON_ENABLE_LOGGING: "0" } });
+    assert.equal(result.status, 0, result.stderr || result.stdout);
+    assert.match(result.stdout, expected);
+    profiles.assertSnapshotUnchanged(beforeProduction, profiles.snapshotProfile(productionUserData), `production profile after ${label}`);
+    profiles.cleanupIsolatedTestProfile(profile, { productionUserDataRoot: productionUserData });
+    passed = true;
+    return { profile: profile.paths.userDataRoot, output: result.stdout };
+  } finally {
+    profiles.assertSnapshotUnchanged(beforeProduction, profiles.snapshotProfile(productionUserData), "production profile");
+    if (!passed) process.stderr.write(`Packaged ${label} profile preserved for diagnosis: ${profile.paths.userDataRoot}\n`);
+  }
+}
+
+const desktop = runIsolated("desktop", "--desktop-smoke", /desktop_smoke/, 60000);
+console.log(JSON.stringify({ desktop_artifact: executable, version: packagedBuild.version, commit: packagedBuild.commit, built_at: packagedBuild.built_at, offline_smoke: "passed", profile: desktop.profile, profile_cleaned: true, production_files_hashed: beforeProduction.length, production_unchanged: true }, null, 2));
+const renderer = runIsolated("renderer", "--renderer-smoke", /renderer_settings_smoke/, 90000);
+console.log(JSON.stringify({ packaged_renderer_interaction: "passed", profile: renderer.profile, profile_cleaned: true, production_unchanged: true }, null, 2));
