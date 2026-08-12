@@ -1,9 +1,9 @@
 # Yellow Beast Vision Pass Map
 
-**Phase:** Human-ratified vision-centric campaign; V01 active
+**Phase:** Human-ratified vision-centric campaign; V01 complete; V02 active
 **Evidence date:** 2026-08-12
 **Baseline:** [`YELLOW_BEAST_CURRENT_BASELINE.md`](YELLOW_BEAST_CURRENT_BASELINE.md)
-**Status:** Authoritative current implementation campaign; V02 and later remain prohibited pending V01 checkpoint approval
+**Status:** Authoritative current implementation campaign; V01 checkpoint approved; V02 authorized; V03 and later remain prohibited pending their dependencies and gates
 **Campaign size:** 23 implementation passes
 
 ## Campaign doctrine
