@@ -37,3 +37,7 @@ and reviewer requirements are defined in [Verified source intake](../docs/intake
 A claim may influence objective scenario state only when its reviewed authority
 allows that exact use. Source classification, claim extraction, canon review,
 and scenario admission are separate records.
+
+Simulation Doctrine capability envelopes, the Gameplay Constitution, the Design
+Charter, implemented code, test fixtures, and production reachability may record
+requirements or evidence. None independently admits a behavior as Kane canon.

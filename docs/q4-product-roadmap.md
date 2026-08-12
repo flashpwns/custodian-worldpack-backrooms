@@ -1,5 +1,7 @@
 # Yellow Beast product roadmap: Clear-Q4 first
 
+> Historical product roadmap: superseded by the Gameplay Constitution and `docs/YELLOW_BEAST_VISION_PASS_MAP.md`. The lifecycle and playable-status language below does not govern current Yellow Beast.
+
 Clear-Q4 is the sole active playable experience until it reaches manual
 quality acceptance. The visible roadmap remains ordered as:
 

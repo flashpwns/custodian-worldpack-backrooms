@@ -2,7 +2,7 @@
 
 Yellow Beast is an unofficial, independently maintained declarative world pack
 for [Custodian](https://github.com/flashpwns/custodian).
-It targets `canonical-kernel@v1` and is currently `0.14.0-beta.1` (playable beta).
+It targets `canonical-kernel@v1`. The source version remains `0.14.0-beta.1`, but that historical label is not a product-readiness claim. See [the Current Baseline](docs/YELLOW_BEAST_CURRENT_BASELINE.md) for implementation truth and [the Vision Pass Map](docs/YELLOW_BEAST_VISION_PASS_MAP.md) for current scope.
 
 It is a simulation-pack foundation, not a transcript archive or a statement of
 official canon. Source metadata, claims, and simulation authority are separate:

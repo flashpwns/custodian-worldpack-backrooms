@@ -1,5 +1,7 @@
 # YB-33 public beta candidate audit
 
+> Historical audit: its green/candidate conclusions are superseded by `docs/YELLOW_BEAST_CURRENT_BASELINE.md` and do not establish current product completeness.
+
 YB-33 Pass 3 records the final release-candidate audit. The repository keeps
 the existing `0.13.0-alpha` version because `docs/packaging.md` explicitly
 defers tags/releases and no beta-version policy exists.

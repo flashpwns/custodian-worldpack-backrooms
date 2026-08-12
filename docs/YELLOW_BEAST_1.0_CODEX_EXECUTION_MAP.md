@@ -1,10 +1,12 @@
 # YELLOW BEAST 1.0 — CODEX EXECUTION MAP
 ## Single-Weekly-Allotment Optimization Plan
 
-**Status:** FINAL PLANNING MAP FOR PROMPT CONSTRUCTION  
-**Prepared:** 2026-08-06  
-**Source documents:** Yellow Beast 1.0 Design Charter + Yellow Beast 1.0 Implementation Roadmap  
-**Starting public baseline:** `0.13.0-alpha` / Omnipass 7–9 / PR #42 / `b81165b`  
+**HISTORICAL STATUS:** Superseded as execution authority by `docs/YELLOW_BEAST_VISION_PASS_MAP.md`. Retained only as planning provenance. Its prompt count, pass order, model budget, completion assumptions, death/retirement rule, and checkpoint rule do not govern current work.
+
+**Status:** FINAL PLANNING MAP FOR PROMPT CONSTRUCTION
+**Prepared:** 2026-08-06
+**Source documents:** Yellow Beast 1.0 Design Charter + Yellow Beast 1.0 Implementation Roadmap
+**Starting public baseline:** `0.13.0-alpha` / Omnipass 7–9 / PR #42 / `b81165b`
 **Starting local branch:** `agent/pass-10-release-candidate`
 
 ---
@@ -655,13 +657,13 @@ Submit Prompt 02 because **Prompt 01 passed its human gate**.
 
 # 15. CAMPAIGN SUMMARY
 
-**Planned primary prompts:** 21  
-**Planned Sol prompts:** 3  
-**Luna prompts:** 5  
-**Terra prompts:** 13  
-**Full-suite checkpoints:** 5  
-**Repair reserve:** 0–6 prompts  
-**Default reasoning:** Medium  
+**Planned primary prompts:** 21
+**Planned Sol prompts:** 3
+**Luna prompts:** 5
+**Terra prompts:** 13
+**Full-suite checkpoints:** 5
+**Repair reserve:** 0–6 prompts
+**Default reasoning:** Medium
 **Extra High:** Not planned
 
 High reasoning is reserved for persistence, epistemic state, procedural geography, assignment architecture, personnel cognition, evidence rendering boundaries, environment coupling, phenomena, mortality, genericity proof, and release certification.
@@ -691,5 +693,5 @@ The objective is to make Codex **build Yellow Beast 1.0 before the meter hits ze
 ---
 
 # END
-**YELLOW BEAST 1.0 — CODEX EXECUTION MAP**  
+**YELLOW BEAST 1.0 — CODEX EXECUTION MAP**
 **Frozen for prompt construction**

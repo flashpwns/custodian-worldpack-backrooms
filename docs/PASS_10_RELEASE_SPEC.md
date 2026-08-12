@@ -1,6 +1,8 @@
 YELLOW BEAST PASS 10
 Release Candidate, Kane Fidelity, First External Beta
 
+HISTORICAL PASS SPECIFICATION: This pass is closed history and grants no current authority. Its completeness and release assumptions are superseded by `docs/YELLOW_BEAST_CURRENT_BASELINE.md`; current scope comes only from `docs/YELLOW_BEAST_VISION_PASS_MAP.md` and the approved current pass.
+
 This is the final planned development pass for the current Yellow Beast / Custodian cycle.
 
 Do not treat this as another architecture milestone. Omnipass 7–9 already delivered the complete simulation, institutional, logistics, worldpack, mission, persistence, and packaging foundation.

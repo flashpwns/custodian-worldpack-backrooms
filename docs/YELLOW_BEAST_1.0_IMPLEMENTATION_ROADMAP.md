@@ -1,8 +1,10 @@
 YELLOW BEAST 1.0 IMPLEMENTATION ROADMAP
 Dependency-Ordered Development Plan from 0.13.0-alpha to 1.0.0
 
-Status: Draft for implementation planning
-Source of authority: Yellow Beast 1.0 Design Charter
+HISTORICAL STATUS: Superseded as implementation authority by `docs/YELLOW_BEAST_VISION_PASS_MAP.md`. Retained only as planning provenance. Its pass sequence, baseline optimism, completion assumptions, death/retirement rule, and save/checkpoint rule do not govern current work.
+
+Status: Historical / superseded planning artifact
+Former source of authority: Yellow Beast 1.0 Design Charter as it existed before Phase 01C ratification
 Current public baseline: 0.13.0-alpha, Omnipass 7–9 / PR #42 / b81165b
 Current development line: agent/pass-10-release-candidate
 

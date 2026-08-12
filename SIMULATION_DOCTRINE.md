@@ -2,8 +2,8 @@
 
 ## Constitution of Reality, Interpretation, and Player-Facing Truth
 
-**Version:** 1.0  
-**Status:** Constitutional / Normative  
+**Version:** 1.1
+**Status:** Constitutional / Normative
 **Applies to:** Custodian runtime, Yellow Beast, all Custodian worldpacks, AI providers, deterministic presentation systems, player-facing simulation interpretation, institutional records, dialogue, communications, archive output, evidence presentation, UI interpretation, and future compatible extensions.
 
 ---
@@ -61,14 +61,15 @@ Where a contradiction exists and no explicit constitutional amendment has been d
 When interpreting project requirements, use the following authority order unless an explicit amendment states otherwise:
 
 1. **Simulation Doctrine**
-2. **Worldpack constitutional rules**
-3. **Product / Design Charter**
-4. **Current authoritative simulation state**
-5. **Implementation architecture and authority contracts**
-6. **Current implementation pass**
-7. **Domain-specific presentation doctrine**
-8. **Provider-specific instructions**
-9. **Generated prose**
+2. **Explicit worldpack constitutional addenda / product constitutions**
+3. **Admitted worldpack source / canon claims for external-content truth**
+4. **Product / Design Charter**
+5. **Current authoritative simulation state**
+6. **Implementation architecture and authority contracts**
+7. **Current implementation pass**
+8. **Domain-specific presentation doctrine**
+9. **Provider-specific instructions**
+10. **Generated prose**
 
 Generated prose is therefore among the lowest authorities in the system.
 
@@ -164,6 +165,22 @@ Allowed outcomes include:
 - explicit lack of knowledge.
 
 The system must never fill uncertainty merely because complete prose sounds better.
+
+---
+
+# 0.5 VERSION 1.1 AMENDMENT RECORD
+
+Version 1.1 records the Phase 01C human-ratified Yellow Beast product decisions and is presented for the planned V01 human checkpoint. It removes an obsolete assumption that every controlled-personnel death necessarily retires an entire world and makes real-elapsed progression and persistence categories explicit.
+
+The affected rules are §§2.8–2.9, 2.25, 2.32–2.36, 6.1, 10.0, 16.3, 19.1, 19.6, 19.13–19.23, 19.40–19.44, 20.55–20.57A, 21.10–21.11, and Laws XXXVI and XL–XLII.
+
+The previous rules treated controlled-personnel death, terminal career state, and whole-world retirement as one transition. Version 1.1 instead requires a worldpack/product constitution to define the terminal scope. Death remains irreversible within retained canonical history. A career may end while its world continues, and a world becomes immutable only through an explicit world-retirement transition.
+
+The previous wall-clock default already allowed a narrow worldpack exception. Version 1.1 makes that exception mechanically bounded: elapsed real time establishes deterministic simulation eligibility; it never directly mutates canonical state. Custodian-owned scheduling resolves ordered, reproducible, auditable events, and worldpack policy must protect meaningful player-facing opportunities.
+
+Version 1.1 also distinguishes canonical persistence, crash recovery, session state, player checkpoints, and metagame reload. None automatically authorizes another.
+
+Simulation impact: lifecycle and elapsed-time policy become explicit inputs to canonical authorities. Persistence impact: no existing history is rewritten, and no save migration is authorized by this documentation amendment. Observer impact: none; knowledge and terminology protections remain unchanged or strengthened. Worldpack impact: Yellow Beast may use the explicit specialization in its Gameplay Constitution; other worldpacks retain the generic defaults unless they ratify their own addendum.
 
 ---
 
@@ -1359,7 +1376,7 @@ Opening a screen does not advance canonical time unless that screen represents a
 
 Rerendering the UI does not advance time.
 
-Reloading the game does not advance time unless explicitly modeled.
+Reloading the game does not itself advance time. A worldpack may separately authorize deterministic advancement from recorded elapsed-time eligibility under §2.9.
 
 ---
 
@@ -1376,6 +1393,21 @@ does not equal
 `WORLD SIMULATED FOR REAL-WORLD ELAPSED HOURS`.
 
 If a worldpack explicitly authorizes real-time progression, it must do so deliberately and with bounded deterministic rules.
+
+In that case, wall-clock time is an input only to an elapsed-time eligibility calculation. It may not directly write canonical state.
+
+The required model is:
+
+`RECORDED CANONICAL STATE`
+→ `VALIDATED ELAPSED DURATION`
+→ `BOUNDED ELIGIBILITY`
+→ `CUSTODIAN-OWNED DETERMINISTIC SCHEDULER`
+→ `ORDERED CANONICAL EVENTS`
+→ `TRANSACTIONAL PERSISTENCE`.
+
+Equivalent canonical state, seed, and eligible elapsed duration must produce equivalent event ordering and resolution regardless of process cadence, UI frame rate, provider timing, timezone, or how catch-up work is batched. Clock rollback, implausible jumps, and incomplete catch-up require explicit deterministic handling.
+
+An authorizing worldpack must also define opportunity protection so offline resolution does not systematically consume the most meaningful player-facing work. World independence permits consequential history. It does not authorize the scheduler to play the entire product while the player is absent.
 
 Otherwise, simulation history advances through simulation events.
 
@@ -1761,7 +1793,7 @@ Background activity may perform:
 
 Major irreversible consequences require strong causal justification.
 
-The simulation must not casually:
+The simulation must not casually or without a deterministic causal chain:
 
 - kill important personnel,
 - discover extraordinary phenomena,
@@ -1771,6 +1803,8 @@ The simulation must not casually:
 merely because the player was absent.
 
 The player's absence does not create narrative permission.
+
+Where a worldpack authorizes substantial offline progression, serious consequences may occur only through the same canonical authorities, event ordering, persistence, knowledge propagation, and audit requirements used during active play. Opportunity-protection policy must reserve, defer, transform, or otherwise preserve a meaningful share of player-facing opportunities.
 
 ---
 
@@ -1937,9 +1971,11 @@ No event should happen merely because:
 - archive reopened,
 - world selected.
 
-Restore canonical state exactly.
+Restore canonical state exactly for the selected persistence mechanism and branch.
 
 Then resume causal progression.
+
+Canonical commits may occur whenever simulation integrity requires them. Their existence does not create a player-selectable save point.
 
 ---
 
@@ -1958,6 +1994,8 @@ Do not infer missing history from presentation artifacts.
 A recovery event may be recorded.
 
 Canonical history must remain conservative.
+
+Crash recovery is an internal transactional mechanism. It must not become an ordinary player-selectable checkpoint, a source of new outcome rolls, or an arbitrary rollback facility.
 
 ---
 
@@ -1987,26 +2025,42 @@ Schema migration must preserve meaning.
 
 ---
 
+## 2.34A Persistence Mechanisms Are Distinct
+
+The following concepts must not be conflated:
+
+1. **Canonical persistence** durably records canonical history and current truth whenever simulation integrity requires it.
+2. **Crash recovery** restores the latest trustworthy transaction after technical failure without offering arbitrary player rollback.
+3. **Session state** stores ephemeral runtime or presentation state that may be reconstructed and is not automatically canonical.
+4. **Player checkpoint state** is a worldpack-authorized boundary the player may deliberately save or restore.
+5. **Metagame reload** selects a sanctioned checkpoint and abandons the later branch; it is not an in-world event or time-travel mechanism.
+
+Creating or updating one category does not automatically create another. Player-facing save rules constrain player checkpoint access, not Custodian's obligation to persist canonical truth or journal transactions safely.
+
+---
+
 ## 2.35 Player Death Is a Causal Terminal Event
 
-Where the worldpack defines player death as terminal, death becomes canonical only through outcome authority.
+Where the worldpack defines controlled-personnel death as career-terminal, death becomes canonical only through outcome authority.
 
 Once resolved:
 
 `PLAYER DECEASED`
-→ terminal world state
+→ terminal career state
 → transactional persistence
-→ world retirement.
+→ worldpack-defined world lifecycle consequence.
 
 Presentation occurs after the terminal state is safely persisted.
 
 Crashing the application must not become resurrection.
 
+The worldpack/product constitution must state whether the containing world continues, permits a successor career, or enters retirement. Career termination does not imply world retirement by default.
+
 ---
 
 ## 2.36 Retired Worlds Do Not Continue
 
-A retired world is historical state.
+A world that has undergone an explicit retirement transition is historical state.
 
 Ordinary canonical mutations cease.
 
@@ -4430,6 +4484,10 @@ A personnel record represents:
 - behavioral tendencies.
 
 Character emerges from the interaction of these facts over time.
+
+Any personnel state that can affect simulation resolution or future institutional causality is canonical unless an authority explicitly documents it as a derived presentation value. This includes, where modeled, condition, history, competencies, relationships, career state, memories, injuries, assignments, and institutional consequences.
+
+Presentation may derive summaries, labels, or visual emphasis from that state. It may not become a substitute owner whose loss silently changes the person.
 
 ---
 
@@ -7031,6 +7089,16 @@ The ninth law of Custodian is:
 
 
 # CHAPTER X — RARE PHENOMENA, ENTITY ECOLOGY, STILL LIFE, AND BACTERIA
+
+## 10.0 Capability Doctrine Is Not External Canon Admission
+
+This chapter defines simulation boundaries and desired capability envelopes if a worldpack admits the relevant phenomenon and behavior. It does not itself prove that a behavior is supported by Kane-primary authority.
+
+For Yellow Beast, `canon/SOURCE_POLICY.md` and claim-level admission records independently determine whether a behavior is admitted primary canon, project-original negative-space content, extrapolation, fixture-only behavior, prohibited, or unresolved. Implemented behavior and production reachability are evidence, not admission.
+
+Do not delete desired behavior merely because source review is incomplete. Do not label it Kane-canonical merely because it appears in this Doctrine, the Design Charter, the Gameplay Constitution, or code. Until admission or human disposition, treat it as a contested design envelope and keep internal identity unavailable to player and institutional observers.
+
+---
 
 ## 10.1 Extraordinary State Is Rare
 
@@ -11443,13 +11511,15 @@ A worldpack may not bypass universal Custodian rules for:
 - observer knowledge,
 - communication delivery,
 - evidence provenance,
-- death,
+- mortality causality and irreversible personnel death within retained canonical history,
 - save integrity,
 - canonical action validation.
 
 Content changes.
 
 Reality law remains.
+
+A worldpack/product constitution may define whether controlled-personnel death ends only a career or also retires the containing world. It may also authorize sanctioned checkpoint/metagame branch selection. Those lifecycle policies remain subject to canonical ownership, explicit branch semantics, persistence integrity, observer boundaries, and the prohibition on in-branch resurrection.
 
 ---
 
@@ -13472,7 +13542,7 @@ Outcomes may include:
 - evidence loss,
 - unresolved condition,
 - player death,
-- world retirement.
+- world retirement where an explicit lifecycle rule requires it.
 
 Outcome authority resolves these states from canonical history.
 
@@ -13538,6 +13608,8 @@ Personnel may transition through states such as:
 - confirmed deceased.
 
 Do not implement medical detail beyond what gameplay requires.
+
+Condition, injury, history, competencies, relationships, career state, memories, assignments, and institutional consequences are canonical whenever they can affect later simulation. A presentation projection may summarize them but may not replace or erase their canonical owner.
 
 ---
 
@@ -13641,7 +13713,7 @@ Do not confirm death merely because outcome authority knows it.
 
 ## 19.13 Death Is Irreversible
 
-Once canonical death occurs:
+Once canonical death occurs within a retained canonical branch:
 
 do not:
 
@@ -13652,31 +13724,33 @@ do not:
 
 History accepts the consequence.
 
+A product may authorize a metagame reload to a previously sanctioned checkpoint. That operation abandons the later branch and selects the checkpoint branch as active. It is not resurrection inside the failed branch, not canonical in-world time travel, and not permission to combine facts or rewards from both branches.
+
 ---
 
-## 19.14 Player Death Is Terminal for That World
+## 19.14 Player Death Is Terminal for That Career
 
 If the controlled personnel dies:
 
 the active career ends.
 
-The world becomes a historical world.
-
-The human player may create another world.
-
 The deceased player character does not return.
+
+The governing worldpack/product constitution determines the containing world's lifecycle. It may require whole-world retirement, allow a new employee career in the same persistent world, permit a sanctioned metagame checkpoint reload, or offer a combination of explicitly separate choices.
+
+When the world continues, the deceased or missing former controlled person remains part of its history with whatever records, remains, survival state, knowledge consequences, and institutional status are canonically justified. A successor does not inherit that person's private knowledge merely by becoming controlled.
 
 ---
 
 ## 19.15 Death Must Persist Atomically
 
-The terminal transition should be safely persisted before presentation.
+The career-terminal transition should be safely persisted before presentation.
 
 Conceptually:
 
 `DEATH RESOLVED`
-→ `TERMINAL STATE WRITTEN`
-→ `WORLD RETIREMENT`
+→ `CAREER-TERMINAL STATE WRITTEN`
+→ `WORLDPACK-DEFINED WORLD LIFECYCLE TRANSITION`
 → `PRESENTATION`.
 
 Avoid:
@@ -13685,17 +13759,21 @@ death occurs,
 application closes,
 reload resurrects.
 
+This atomicity requirement governs canonical persistence and crash recovery. It does not create a player checkpoint. If a sanctioned pre-event checkpoint already exists, selecting it is the separate metagame branch-abandonment operation defined by the product constitution.
+
 ---
 
 ## 19.16 World Retirement
 
-A player-death world becomes:
+A world becomes:
 
 `RETIRED`
 
-or equivalent.
+or equivalent only through an explicit lifecycle rule and transition.
 
 A retired world is immutable under ordinary gameplay.
+
+Controlled-personnel death does not itself imply this transition unless the governing worldpack/product constitution says it does.
 
 ---
 
@@ -13782,11 +13860,13 @@ A meta-level archive may record:
 
 This is outside in-world observer knowledge.
 
+If the world continues after a career ends, the former controlled person also remains a normal canonical personnel identity in that same world's history. Their in-world records and consequences are governed by ordinary observer and institutional knowledge, not by the meta archive.
+
 ---
 
-## 19.23 Meta Archive Does Not Rewrite New Worlds
+## 19.23 New Careers and Meta Archives Do Not Grant Personal Knowledge
 
-A new controlled worker does not inherit:
+A new controlled worker does not personally inherit:
 
 - old maps,
 - entity aliases,
@@ -13794,6 +13874,8 @@ A new controlled worker does not inherit:
 - archive knowledge.
 
 Meta history belongs to player-facing product continuity.
+
+In a genuinely new world, old institutional history does not transfer. In a successor career inside the same world, existing world and institutional history remains canonical and may be accessed only through legitimate observation, communication, records, access, and role. Changing the controlled observer never creates omniscience.
 
 ---
 
@@ -14038,13 +14120,15 @@ Player death should feel final without becoming theatrical.
 
 The simulation does not celebrate or sensationalize.
 
-History closes.
+The controlled career closes. The containing world's lifecycle follows its explicit authority.
 
 ---
 
 ## 19.41 Save Exploits Must Not Undo Canonical Terminal State
 
-Ordinary continue/load should not offer pre-death resurrection once terminal state was committed.
+Ordinary continue/load should not offer in-branch pre-death resurrection once terminal state was committed.
+
+A separately authorized metagame reload may select the sanctioned pre-expedition checkpoint and abandon the failed branch. It must be presented as a metagame operation, must not merge branch consequences, and must not be exposed as arbitrary mid-expedition rollback.
 
 Debug/developer tools may exist separately.
 
@@ -14093,9 +14177,10 @@ Before resolving an outcome, ask:
 7. What remains unresolved?
 8. Did any death occur?
 9. Is death confirmed institutionally?
-10. Does world retirement apply?
-11. Is terminal state persisted before presentation?
-12. Does follow-up work derive from actual consequence?
+10. What career and world lifecycle transitions apply?
+11. Is the career-terminal state persisted before presentation?
+12. Are checkpoint reload and same-world succession, if offered, separate authorized choices?
+13. Does follow-up work derive from actual consequence?
 
 ---
 
@@ -15315,8 +15400,7 @@ Different observer perspective must remain genuine.
 
 **Canonical State**
 
-Player died.
-World retired.
+Worldpack/product lifecycle authority explicitly retired the world after a career-terminal event.
 
 **Correct**
 
@@ -15346,6 +15430,8 @@ Loads pre-death active operation.
 
 Terminal canonical state persists.
 
+A separately sanctioned checkpoint reload is a different test: it selects the checkpoint branch and abandons the failed branch rather than loading the retired branch as active.
+
 ---
 
 ## 20.57 New World After Retirement
@@ -15363,6 +15449,27 @@ New Standard remembers old player's death.
 **Why**
 
 Meta continuity and in-world continuity are separate.
+
+---
+
+## 20.57A Successor Career in a Continuing World
+
+**Canonical State**
+
+Controlled personnel's career ended.
+The governing product constitution keeps the world active and permits a successor career.
+
+**Correct**
+
+The former employee remains a distinct historical personnel identity. Institutional history remains in the same world. The successor knows only what they legitimately observe, receive, or access.
+
+**Incorrect**
+
+The successor inherits the former employee's private memories, or world state resets as though the former career never occurred.
+
+**Why**
+
+World continuity, personnel identity, and observer knowledge are separate authorities.
 
 ---
 
@@ -15754,9 +15861,9 @@ Do not rewrite original historical content silently.
 
 ---
 
-## 21.10 Worldpack Constitutional Addenda
+## 21.10 Worldpack / Product Constitutional Addenda
 
-A worldpack may include a doctrine addendum.
+A worldpack or setting-specific product may include a doctrine addendum or product constitution.
 
 The addendum may specify:
 
@@ -15766,7 +15873,7 @@ The addendum may specify:
 - setting-specific information boundaries,
 - presentation behavior.
 
-It may not silently override universal Doctrine.
+It may not silently override universal Doctrine. It may explicitly select among lifecycle, checkpoint, and elapsed-time policies that this Doctrine leaves to worldpack/product authority, provided it preserves the universal invariants.
 
 ---
 
@@ -15788,6 +15895,8 @@ Then define:
 - observer impact.
 
 Exceptions must be narrow.
+
+The Yellow Beast Gameplay Constitution explicitly authorizes real-elapsed institutional progression, career-terminal death without mandatory whole-world retirement, same-world successor careers, and sanctioned pre-expedition metagame reload. Those are Yellow Beast rules, not universal defaults for Custodian or other worldpacks.
 
 ---
 
@@ -16606,6 +16715,8 @@ Loading reconstructs canonical state.
 
 It does not grant a new roll on established reality.
 
+Canonical persistence, crash recovery, session state, player checkpoints, and metagame reload are distinct. A sanctioned metagame reload selects a checkpoint branch and abandons the later branch; it does not rewrite events within a retained branch.
+
 ---
 
 ## LAW XXXVII — MIGRATION IS NOT RETCON
@@ -16634,9 +16745,9 @@ Presentation must reflect observer knowledge.
 
 ---
 
-## LAW XL — PLAYER DEATH ENDS THAT WORLD'S ACTIVE CAREER
+## LAW XL — PLAYER DEATH ENDS THE CONTROLLED CAREER
 
-Death is final where worldpack doctrine establishes it.
+Death is final within retained canonical history where worldpack doctrine establishes it.
 
 No lives.
 
@@ -16644,11 +16755,13 @@ No ordinary rewind.
 
 No resurrection by crash.
 
+The worldpack/product constitution determines whether the containing world retires, continues for a successor career, offers a sanctioned checkpoint branch, or offers explicitly separate choices.
+
 ---
 
 ## LAW XLI — RETIRED WORLDS ARE HISTORY
 
-A retired world may be inspected.
+A world becomes retired only through an explicit lifecycle transition. A retired world may be inspected.
 
 It may not continue mutating through ordinary gameplay.
 
@@ -16659,6 +16772,8 @@ It may not continue mutating through ordinary gameplay.
 Meta player memory may persist.
 
 In-world institutional knowledge does not, unless an explicit sanctioned mechanism says otherwise.
+
+A successor career in the same world is not a new world. That world retains its canonical institutional history, while the new controlled person remains a bounded observer without inherited private memory.
 
 ---
 
@@ -16913,4 +17028,4 @@ That distinction is the purpose of Custodian.
 
 ---
 
-# END OF CUSTODIAN SIMULATION DOCTRINE v1.0
+# END OF CUSTODIAN SIMULATION DOCTRINE v1.1

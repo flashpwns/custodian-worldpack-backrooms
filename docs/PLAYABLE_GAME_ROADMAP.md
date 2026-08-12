@@ -1,5 +1,7 @@
 # Roadmap to a Complete Playable Yellow Beast Game
 
+> Historical roadmap: superseded by `docs/YELLOW_BEAST_VISION_PASS_MAP.md`. Delivered-pass claims below are implementation history, not current completeness or implementation authority.
+
 Status: implementation passes 1–9 delivered; Pass 10 remains.
 
 ## Delivered foundation

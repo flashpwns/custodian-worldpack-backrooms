@@ -3,10 +3,26 @@
 Before modifying this repository, interpreting simulation state, designing player-facing behavior, or generating implementation that may affect player-facing output, read the following in order:
 
 1. `SIMULATION_DOCTRINE.md`
-2. the Yellow Beast 1.0 Design Charter
-3. `docs/IMPLEMENTATION_STATE.md`, if present
-4. the current pass specification
-5. any domain-specific doctrine explicitly referenced by the current pass, including UI or audio doctrine
+2. `docs/reconciliation/YELLOW_BEAST_GAMEPLAY_CONSTITUTION.md`
+3. `canon/SOURCE_POLICY.md` and the claim/admission records relevant to the work
+4. `docs/YELLOW_BEAST_1.0_DESIGN_CHARTER.md`
+5. `docs/YELLOW_BEAST_CURRENT_BASELINE.md`
+6. `docs/YELLOW_BEAST_VISION_PASS_MAP.md`
+7. `docs/IMPLEMENTATION_STATE.md`, if present
+8. the current pass specification
+9. any domain-specific doctrine explicitly referenced by the current pass, including UI or audio doctrine
+
+The authority roles are distinct:
+
+- `SIMULATION_DOCTRINE.md` defines setting-independent Custodian reality law.
+- the Gameplay Constitution is the current Yellow Beast product/player-promise authority and the explicit Yellow Beast constitutional specialization identified within it.
+- `canon/SOURCE_POLICY.md` plus admitted claim records determine what external Kane material is admitted; product desire or existing code is not canon admission.
+- the Design Charter elaborates the Yellow Beast destination but may not contradict the Gameplay Constitution.
+- the Current Baseline describes implementation truth; it does not authorize implementation or redefine the product.
+- the Vision Pass Map defines the current implementation campaign and pass scope.
+- `docs/IMPLEMENTATION_STATE.md` is a current orientation plus a historical implementation ledger, not evidence of product completeness.
+
+The old numbered Implementation Roadmap, Codex Execution Map, reconciliation audits, recovery prompts, and historical pass summaries are retained as provenance only. They are not current product or campaign authority.
 
 ## Constitutional Authority
 
@@ -25,7 +41,7 @@ Before modifying this repository, interpreting simulation state, designing playe
 - presentation of uncertain or incomplete information,
 - worldpack interpretation.
 
-Lower-order documents may refine, implement, or narrow these rules.
+Lower-order documents may refine, implement, or narrow these rules. The Gameplay Constitution may specialize a generic Custodian default only where it explicitly declares a Yellow Beast constitutional rule under the Doctrine's amendment/addendum mechanism.
 
 They may not silently contradict them.
 

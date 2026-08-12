@@ -1,5 +1,7 @@
 # Roadmap
 
+> Historical YB-numbered roadmap: retained as implementation/canon-research provenance only. It is superseded for product intent by the Gameplay Constitution and for current work by `docs/YELLOW_BEAST_VISION_PASS_MAP.md`.
+
 ## YB-1: Canon Foundation and Live World-Pack Repository
 
 Source/claim model, small curated registry, minimal Threshold Baseline, and

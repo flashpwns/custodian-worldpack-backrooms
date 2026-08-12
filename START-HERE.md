@@ -1,5 +1,7 @@
 # START HERE — Yellow Beast Alpha
 
+> Historical operator guide: this describes an earlier action-driven Clear-Q4 build and is not current product or campaign authority. Use `docs/YELLOW_BEAST_CURRENT_BASELINE.md` for implementation truth and `docs/YELLOW_BEAST_VISION_PASS_MAP.md` for the active campaign.
+
 Launch **Yellow Beast.command** on macOS or **Yellow Beast.bat** on Windows. Choose **Async: Clear-Q4 — PLAYABLE ALPHA**.
 
 Clear-Q4 is a complete operation: create or resume a world, confirm your generated team, review Standard’s briefing, configure issued equipment and containers, enter the Complex, investigate branching routes, manage check-ins and delayed radio contact, direct coworkers, respond to hazards, collect and containerize evidence, return or abort, reconcile accountability, and receive a state-derived debrief and follow-up.

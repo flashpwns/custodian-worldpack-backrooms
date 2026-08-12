@@ -1,9 +1,11 @@
 YELLOW BEAST 1.0 DESIGN CHARTER
 Internal Product Definition and Final Feature Envelope
 
-Status: Pre-pass planning charter
-Current public baseline: 0.13.0-alpha, Omnipass 7–9 / PR #42 / b81165b
-Current local development branch: agent/pass-10-release-candidate
+Status: Active Yellow Beast product-design authority subordinate to the human-ratified Gameplay Constitution
+Current implementation truth: docs/YELLOW_BEAST_CURRENT_BASELINE.md
+Current implementation campaign: docs/YELLOW_BEAST_VISION_PASS_MAP.md
+
+Authority note: `SIMULATION_DOCTRINE.md` defines setting-independent simulation law. `docs/reconciliation/YELLOW_BEAST_GAMEPLAY_CONSTITUTION.md` defines the current Yellow Beast player promise and its explicit lifecycle/time/checkpoint specialization. `canon/SOURCE_POLICY.md` and admitted claim records independently control Kane-canon admission. This Charter elaborates the destination; where historical Charter language conflicts with the Gameplay Constitution, the Constitution governs. Historical roadmaps and pass completion do not define product completeness.
 
 This charter defines what Yellow Beast 1.0 is supposed to be before the remaining work is decomposed into implementation passes.
 
@@ -11,7 +13,7 @@ It is intentionally not a pass plan, backlog, or technical implementation order.
 
 It is the destination.
 
-The original roadmap already establishes a mature simulation foundation across spatial topology, movement, observation, missions, time, communications, personnel, hazards, logistics, institutional response, persistence, AI boundaries, and worldpack authoring. The remaining development should compose and extend that architecture into the complete player experience described below rather than replace proven authorities without cause.
+Historical implementation produced useful foundations across spatial topology, movement, observation, missions, communications, personnel scaffolding, hazards, logistics, institutional response, persistence, AI boundaries, and worldpack authoring. Their present quality and completeness are defined by the Current Baseline, not by the old roadmap's completion claims. Preserve proven semantics selectively and repair or replace defective ownership at the lowest correct authority.
 
 1. PRODUCT THESIS
 
@@ -173,7 +175,7 @@ That is Yellow Beast.
 
 5. THE WORLD IS NOT A SAVE SLOT
 
-A Yellow Beast world represents the history of that installation and the player's career within it.
+A Yellow Beast world represents the history of that installation and every employee career lived within it.
 
 During the life of a world, state persists.
 
@@ -202,13 +204,13 @@ The player should eventually know parts of the world because they personally mad
 
 6. WORLD LIFE AND PLAYER DEATH
 
-A world continues until the controlled player character dies or is permanently lost.
+A world continues according to its own lifecycle; the controlled player character's death or permanent loss ends that employee's career, not inherently the world.
 
-Player death is not a reload point.
+Player death offers only the ratified metagame choices after its canonical career consequence has been resolved and safely persisted.
 
-It is the end of that active world.
+It is the end of that active employee career.
 
-The world becomes an immutable retired record available from the title interface as a museum of that playthrough.
+The player may reload the sanctioned pre-expedition checkpoint by abandoning the failed branch, or begin a new employee career in the same persistent world. Whole-world retirement occurs only through a separately authorized lifecycle transition.
 
 A retired world may expose:
 
@@ -228,21 +230,21 @@ maps
 photographs
 notable records
 
-The player then begins a new world with a new personnel identity.
+If a world is explicitly retired, the player may begin a genuinely new world with a new personnel identity.
 
-There is no resurrection.
+There is no resurrection within a retained canonical branch.
 
-There is no rewind.
+There is no ordinary in-world rewind or arbitrary mid-expedition rollback.
 
-There is no “continue from checkpoint” after confirmed player death.
+The only death reload is the sanctioned pre-expedition metagame checkpoint. It abandons the failed branch and is not in-world time travel.
 
 Legacy Personnel Archive
 
-Former player characters from retired worlds may remain searchable from later worlds through a Legacy Personnel Archive.
+Former player characters remain historical personnel. They may persist inside the same continuing world through its records and canonical consequences; characters from retired worlds may also remain searchable through a Legacy Personnel Archive.
 
-This is a meta-level historical feature only.
+Cross-world Legacy Personnel Archive access is a meta-level historical feature only. Same-world personnel and institutional records remain ordinary canonical world history.
 
-A new world does not inherit the old world's simulation state, geography, equipment, institutional decisions, or consequences.
+A genuinely new world does not inherit the old world's simulation state, geography, equipment, institutional decisions, or consequences. A successor career in the same world is not a new world and therefore retains that world's history without granting the successor private knowledge.
 
 But searching personnel archives may surface records such as:
 
@@ -250,7 +252,7 @@ ROCHA, JACK
 FIELD STATUS: UNRETURNED
 ARCHIVED PERSONNEL RECORD
 
-This allows a player's accumulated Yellow Beast history to become a museum of careers without weakening the finality of death.
+This allows accumulated Yellow Beast history to contain many careers without weakening the finality of death within retained canonical history.
 
 7. THE SURVEY FRONTIER
 
@@ -581,9 +583,13 @@ The player notices that the next work order exists because of what previously ha
 
 The institution does not cease existing when the player returns to the title screen.
 
-However, background simulation must be strictly bounded to preserve player agency and attachment.
+New worlds begin in 1991. Standard/institutional chronology advances from validated real elapsed time while the player is absent. Complex expedition time is separately modeled and may diverge from Standard time.
 
-Between assignments, the simulation may resolve believable institutional activity such as:
+Wall-clock time does not directly mutate canonical state. It establishes bounded eligibility for Custodian's deterministic scheduler. Equivalent canonical state, seed, and eligible elapsed duration must resolve to equivalent ordered history regardless of process cadence, timezone, provider timing, or catch-up batching.
+
+Background simulation remains bounded by causality, deterministic budgets, persistence, observer knowledge, and opportunity protection.
+
+Between assignments or during absence, the simulation may resolve believable institutional activity such as:
 
 administrative review
 equipment servicing
@@ -597,19 +603,13 @@ records being confirmed or rejected
 equipment being relocated
 caches being established
 known areas being administratively reclassified
+autonomous expeditions
+discoveries and lost opportunities
+injuries, disappearances, or deaths with strong canonical causes
+promotion, discipline, management, funding, and facility changes
 Hard agency boundary
 
-Background operations must not casually inflict irreversible dramatic consequences on important persistent personnel.
-
-In particular, the game should not suddenly report:
-
-Your favorite coworker died during an operation you never saw.
-
-Permanent death, disappearance, severe injury, or equivalent irreversible personnel outcomes should normally require one of:
-
-player-present operations,
-a causal chain initiated during player-present operations,
-an explicitly understood assignment or risk involving that personnel record.
+Background operations must not casually inflict irreversible dramatic consequences. Serious outcomes require the same canonical causes, owning authorities, stable ordering, transaction safety, and knowledge propagation as player-present outcomes. Player absence is not itself a cause.
 
 Offscreen simulation may make coworkers:
 
@@ -620,7 +620,9 @@ under review
 recovering
 assigned elsewhere
 
-But player attachment must not be invalidated by arbitrary background catastrophe.
+Coworkers may also participate in consequential autonomous operations, suffer injuries, disappear, die, advance, or leave ASYNC when deterministic institutional and operational history justifies it.
+
+Player attachment must not be invalidated by arbitrary background catastrophe, and the scheduler must not systematically consume the most meaningful player-facing exploration, relationship, evidence, assignment, or phenomenon opportunities. It must reserve, defer, transform, or otherwise preserve a meaningful share of those opportunities for player participation.
 
 The world lives without the player.
 
@@ -679,6 +681,8 @@ decision tendencies
 operational judgment
 uncertainty
 relationships arising naturally from shared history
+
+Simulation-relevant personnel state is canonical unless its owning authority explicitly documents it as derived presentation state. Condition, history, competencies, relationships, career state, memories, injuries, assignments, and institutional consequences must survive persistence and replay where modeled.
 
 They should not rely on massive chatbot personality prompts.
 
@@ -1079,6 +1083,8 @@ equipment matters more
 Standard still does not automatically know why
 28. RARE PHENOMENA
 
+The behavior envelopes in sections 28–30 are product intent, not independent Kane-canon admission. `canon/SOURCE_POLICY.md` and claim-level admission records determine whether each behavior is primary-supported, project-original, extrapolative, fixture-only, prohibited, or unresolved. Implemented and production-reachable behavior remain separate evidence classes. Desired behavior must neither be silently deleted nor falsely promoted to Kane-canonical production authority.
+
 Phenomena should be genuinely rare.
 
 Players should be able to complete several operations with nothing overtly supernatural occurring.
@@ -1226,7 +1232,7 @@ Total personnel loss
 
 No assigned field personnel return.
 
-If this includes the controlled player, the active world ends under the death rules above.
+If this includes the controlled player, that employee's career ends under the death rules above; the world's lifecycle follows the separately authorized same-world succession, checkpoint, or retirement choice.
 
 34. INSTITUTIONAL AFTERMATH
 
@@ -1644,6 +1650,12 @@ The interface should be pleasurable enough for repeated play.
 
 Save behavior must be boringly reliable.
 
+Player-controlled saving is permitted inside ASYNC facilities, before Complex entry, and after return. Ordinary player-accessible mid-expedition save/load is not part of 1.0.
+
+That player checkpoint policy is separate from canonical persistence. Custodian may commit canonical state whenever integrity requires it, including during an expedition. Invisible transactional journaling may support crash recovery, but it must not become an ordinary player-selectable checkpoint or arbitrary rollback mechanism.
+
+After death, a sanctioned pre-expedition reload is a metagame branch-abandonment operation. It is not canonical time travel. Canonical persistence, crash recovery, session state, player checkpoint state, and metagame reload must remain distinct authorities and artifacts.
+
 The game should preserve:
 
 world state
@@ -1841,7 +1853,7 @@ receive a grounded debrief
 discover follow-up work
 close the game
 return later
-find the simulation exactly where it belongs
+find the simulation exactly where its deterministic elapsed history says it belongs
 
 And after several runs, they can describe what happened in actual Backrooms-world terms rather than explaining UI mechanics.
 
@@ -1859,7 +1871,7 @@ Presentation never invents canonical state.
 5. Worlds remember.
 6. Death is final.
 
-A player's death retires the world rather than rewinding it.
+A player's death ends that employee's career. It does not automatically retire the world. The player may abandon the failed branch by reloading the sanctioned pre-expedition checkpoint or begin a new employee career in the same persistent world. Neither choice resurrects the deceased inside retained canonical history.
 
 7. Personnel become characters through history.
 
@@ -1905,7 +1917,7 @@ It belongs only if it serves this charter.
 
 56. YELLOW BEAST 1.0, IN ONE SENTENCE
 
-A persistent institutional simulation in which the player works for ASYNC, repeatedly enters a growing and partially understood Complex through the fixed Threshold, builds relationships and records through lived operations, preserves evidence and consequences across a finite mortal career, and slowly participates in an institution trying to impose procedure on something that may never fully submit to it.
+A persistent institutional simulation in which the player works successive finite employee careers for ASYNC, repeatedly enters a growing and partially understood Complex through the fixed Threshold, builds relationships and records through lived operations, preserves evidence and consequences across absence and careers, and slowly participates in an institution trying to impose procedure on something that may never fully submit to it.
 
 END STATE
 

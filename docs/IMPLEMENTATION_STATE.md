@@ -1,5 +1,29 @@
 # Yellow Beast Implementation State
 
+## Current orientation — V01 authority checkpoint — 2026-08-12
+
+- Phase 01C human ratification is complete. `docs/reconciliation/YELLOW_BEAST_GAMEPLAY_CONSTITUTION.md` is the current Yellow Beast player/product authority; `docs/YELLOW_BEAST_VISION_PASS_MAP.md` is the current implementation campaign; `docs/YELLOW_BEAST_CURRENT_BASELINE.md` is current implementation truth.
+- `SIMULATION_DOCTRINE.md` remains setting-independent Custodian constitutional law. Doctrine v1.1 now leaves career-versus-world lifecycle scope to explicit product/worldpack authority and records the bounded deterministic elapsed-time and five-state persistence contracts. These are not universalized Yellow Beast content rules.
+- `canon/SOURCE_POLICY.md` plus reviewed claim/admission records independently govern Kane-canon admission. Desired, implemented, fixture-reachable, production-reachable, and primary-supported phenomenon behavior remain separate classifications.
+- V01 is documentation/authority work only and is the active pass. V02 and all later implementation remain unauthorized until the planned V01 human checkpoint is approved.
+- No runtime behavior changed in V01. Current whole-world retirement, per-action field autosave, save-time reconciliation, action-driven time, personnel replay loss, backup retirement reversal, and provider terminology leakage remain implementation defects for their assigned later passes.
+- The old numbered Implementation Roadmap, Codex Execution Map, reconciliation audits, Recovery Prompt sequence, Pass 10–17 summaries, `PLAYABLE BETA` labels, and green historical suite claims are historical evidence only. They do not determine current product completeness or authorize work.
+
+### Current authority hierarchy
+
+1. Simulation Doctrine — universal reality, causality, persistence, observer, and provider law.
+2. Gameplay Constitution — current Yellow Beast player promise and explicit Yellow Beast lifecycle/time/checkpoint specialization.
+3. Canon source policy and admitted claims — external Kane-canon authority.
+4. Design Charter — product elaboration subordinate to the Gameplay Constitution.
+5. Current Baseline — present implementation facts and defects.
+6. Vision Pass Map — current campaign order, dependencies, and pass scope.
+7. Current pass specification — authority for work allowed now.
+8. This file's older entries — historical implementation evidence only.
+
+## Historical implementation ledger
+
+Everything below this heading records prior implementation claims, tests, gates, and handoffs in their historical context. Later current-orientation sections supersede them for present scope and authority.
+
 ## Pass 10D — Accessibility, Interface Certification, and Beta Identity
 
 - Completed pass: `10D`; Pass 10 automated exit: `ACCEPTED`.
@@ -245,3 +269,11 @@
 - Artifact: `dist\desktop\win-unpacked\Yellow Beast.exe`. The final build must be launched normally, without test-profile flags, for Jack's planned ordinary-profile acceptance. The four reported worlds and all other existing production records must remain present; one deliberate human-created world should appear exactly once and persist across relaunch.
 - Known unrelated work: no Settings, provider, dialogue, radio, ACTION, exploration, map, presentation, onboarding, interpreter, or later-game behavior was repaired. Electron-builder's default-icon warning and Node's `DEP0190` warning remain non-blocking. One failed, marked diagnostic profile under the OS temporary directory was intentionally preserved; it is outside production and contains no production data.
 - Human gate: `HUMAN VALIDATION PENDING`. Do not begin Recovery Prompt 2 or Pass 18 until Jack explicitly accepts the packaged create/open/quit/relaunch/reopen route.
+
+## Historical Phase 01C proposed authority-conflict handoff — 2026-08-12
+
+- Historical status at time of writing: Phase 01C was documentation-only and awaiting human ratification. Phase 01C has since been ratified and V01 has reconciled the listed authority conflicts; the current-orientation section at the top of this file governs.
+- The owner-ratified product decision that employee death may end a career while the persistent world remains available for a new employee directly conflicts with the active whole-world retirement requirements in Simulation Doctrine §§19.13–19.17 / Laws XL–XLI and related Design Charter language.
+- The sanctioned pre-expedition metagame restore and ASYNC save boundaries require deliberate reconciliation with active retirement/save language. Canonical persistence, invisible crash recovery, ephemeral session state, player checkpoint state, and branch-abandoning metagame reload must be separate authorities.
+- Deterministic real-elapsed-time offline progression requires an explicit bounded worldpack exception under the Doctrine's wall-clock rules. It must not authorize uncontrolled timer mutation and must include a scheduler constraint against systematic consumption of meaningful player opportunities.
+- Phase 01C does not silently reinterpret or amend those rules. The first proposed implementation pass is a documentation/authority-only human checkpoint to legislate the conflicts before runtime repair. Current world-retirement, persistence, checkpoint, and action-driven time behavior therefore remains historical implementation state, not proof of conformance to the ratified product direction.
