@@ -1,0 +1,184 @@
+{
+  "version": "yellow-beast-verification-authority@v1",
+  "required_tests": {
+    "aggregate": [
+      "tests/anomaly-model.test.js", "tests/architecture-model.test.js", "tests/corpus-transition-model.test.js", "tests/intake-model.test.js", "tests/operations-model.test.js", "tests/recovered-records.test.js", "tests/survey-model.test.js", "tests/y12b.test.js", "tests/y12c-playable-alpha.test.js", "tests/y13-ai-interface.test.js", "tests/y14-packaging.test.js", "tests/y15-openai-provider.test.js", "tests/y165-context-closure.test.js", "tests/y16-expedition.test.js", "tests/y17-procedural-complex.test.js", "tests/y18-world-history.test.js", "tests/y19-becks-desk.test.js", "tests/y20-nullzone-exposure.test.js", "tests/y22-cross-mode.test.js", "tests/y22-persistence.test.js", "tests/y22-v2-topology.test.js", "tests/y23-behavior.test.js", "tests/y23-encounter.test.js", "tests/y24-institution.test.js", "tests/y25-gameplay.test.js", "tests/y26-desktop.test.js", "tests/y27-freeform-loop.test.js", "tests/y27-intent.test.js", "tests/y28-beck.test.js", "tests/y28-immersive-convergence.test.js", "tests/y28-lost.test.js", "tests/y28-nullzone.test.js", "tests/y28-phase.test.js", "tests/y28-q4.test.js", "tests/y28-scene.test.js", "tests/y29-canon-convergence.test.js", "tests/y29-canon-runtime.test.js", "tests/y29-character-continuity.test.js", "tests/y29-environment-world.test.js", "tests/y29-human-world.test.js", "tests/y29-phenomena-world.test.js", "tests/y29-story-threads.test.js", "tests/y30-interaction-feel.test.js", "tests/y30-navigation.test.js", "tests/y30-qol.test.js", "tests/y30-reactive-ui.test.js", "tests/y30-ux.test.js", "tests/y31-closure.test.js", "tests/y31-performance.test.js", "tests/y32-run-identity.test.js", "tests/y36-q4-channels.test.js", "tests/y37-q4-personnel.test.js", "tests/y38-q4-equipment.test.js", "tests/y39-q4-missions.test.js", "tests/y40-q4-trajectories.test.js", "tests/y41-q4-continuity.test.js", "tests/y42-q4-async-interface.test.js", "tests/y43-q4-visual-assets.test.js", "tests/y44-q4-replayability.test.js", "tests/y45-q4-beta-gate.test.js", "tests/y46-q4-console-acceptance.test.js", "tests/y47-q4-player-identity.test.js", "tests/y48-q4-prefield-flow.test.js", "tests/y49-playable-spine-map.test.js", "tests/y50-structured-interactions.test.js", "tests/y51-mission-state.test.js", "tests/y52-operational-dynamics.test.js", "tests/y53-omnipass.test.js", "tests/y67-recovery-profile.test.js", "tests/y68-verification-gate.test.js", "tests/y68-long-world-known-failures.test.js"
+    ],
+    "long-world": [
+      "tests/profile-model.test.js", "tests/run-bootstrap.test.js", "tests/y21-lost.test.js", "tests/y30-accessibility.test.js", "tests/y31-authoring.test.js", "tests/y31-dev-commands.test.js", "tests/y31-dev-console.test.js", "tests/y31-dev-workflow.test.js", "tests/y32-consequence-echoes.test.js", "tests/y32-discovery-density.test.js", "tests/y32-replayability.test.js", "tests/y32-unfinished-business.test.js", "tests/y33-long-world-torture.test.js", "tests/y33-stranger-flow.test.js", "tests/y55-survey-frontier.test.js", "tests/y56-persistent-procedural-complex.test.js", "tests/y58-assignment-engine.test.js", "tests/y59-career-loop.test.js", "tests/y60-personnel-continuity.test.js", "tests/y61-local-standard.test.js", "tests/y62-evidence-archive.test.js", "tests/y62-pass17-human-gate.test.js", "tests/y63-evidence-media.test.js", "tests/y63-pass17-state-machine.test.js", "tests/y64-environment-simulation.test.js", "tests/y64-pass17-authority.test.js", "tests/y65-phenomenon-ecology.test.js", "tests/y66-outcomes-retirement.test.js"
+    ],
+    "native": [
+      "tests/y54-settings-regression.test.js", "tests/y57-desktop-prerequisite-repair.test.js"
+    ],
+    "manual": [
+      "tests/y34-beta-hotfix.test.js", "tests/y35-product-focus.test.js"
+    ]
+  },
+  "required_fast_tests": [
+    "tests/anomaly-model.test.js", "tests/architecture-model.test.js", "tests/corpus-transition-model.test.js", "tests/intake-model.test.js", "tests/operations-model.test.js", "tests/recovered-records.test.js", "tests/survey-model.test.js", "tests/y12b.test.js", "tests/y13-ai-interface.test.js", "tests/y165-context-closure.test.js", "tests/y17-procedural-complex.test.js", "tests/y18-world-history.test.js", "tests/y22-cross-mode.test.js", "tests/y22-persistence.test.js", "tests/y22-v2-topology.test.js", "tests/y23-behavior.test.js", "tests/y23-encounter.test.js", "tests/y24-institution.test.js", "tests/y25-gameplay.test.js", "tests/y27-intent.test.js", "tests/y28-beck.test.js", "tests/y28-lost.test.js", "tests/y28-nullzone.test.js", "tests/y28-phase.test.js", "tests/y28-q4.test.js", "tests/y28-scene.test.js", "tests/y31-closure.test.js", "tests/y68-verification-gate.test.js"
+  ],
+  "test_hashes": {
+    "tests/anomaly-model.test.js": "9586538f77443245b99505ff8ee23a367a8a1054ba0ae74a5dee743e94fa3ad9",
+    "tests/architecture-model.test.js": "9a1c35a4bd0ac212b978d07890df9e9b88703693909788a3bb61e482b7d1a634",
+    "tests/corpus-transition-model.test.js": "75150ce0ee0d8e4106fda83684d3514b0330fb45d51bf96652c28b45798966ea",
+    "tests/intake-model.test.js": "d2e7db061c8a7bd158dc1906fdf3a226c2fa0c5fbba28b62c8da8dff6edb6988",
+    "tests/operations-model.test.js": "4bb85cb8ea8e9849704b343d97fc6754a115e2ebd709634c28fcbf01358b98eb",
+    "tests/profile-model.test.js": "255a5dd774067234a1764a9265a9e1e75b063e377008344c21fa98fd722c3ce7",
+    "tests/recovered-records.test.js": "8d25fb1840014d650737f91f6965ad27b63a8dd029d4036a7f3c396a74452515",
+    "tests/run-bootstrap.test.js": "5ac518a2fb00f3d19f4ba5de133d508fa4adfc9d259f43405bc83478433894d5",
+    "tests/survey-model.test.js": "cf379dc0a937e2a74ec7d56ce6961aca8e0c33cb1b2d48b48b45705a51e4a8a0",
+    "tests/y12b.test.js": "74236943b02d1920e2ded6ea65a7b460e51ce8e27e962ceb76fae0534d1c7c32",
+    "tests/y12c-playable-alpha.test.js": "d9c637a32bd4b9a437a690eab64dd4ac3e24cddfdb385a98eae2619fb050ca51",
+    "tests/y13-ai-interface.test.js": "e8619409329465f7ce7bf4cc2631363ffb4edbe11878015f6955b2b1ee68ca54",
+    "tests/y14-packaging.test.js": "c852ff3b88b356b7fcfe80e9be51c133f5b0e0cb1062a2ff2f1aef4db9235d81",
+    "tests/y15-openai-provider.test.js": "45533446e5b49ed52c7d74a03a1eb15e4eb5cdab001cce85315538a747a043b8",
+    "tests/y16-expedition.test.js": "f3039ce69283bc6a054033886c157a8029beca32d2ff2c46df33362061afb1fb",
+    "tests/y165-context-closure.test.js": "3f1d3321b04ab6e4060d23c2a80f7790bf60693d2bb02344d510bd362c6b5789",
+    "tests/y17-procedural-complex.test.js": "1812f909e34349f5f608b0efdaadb70d22222a52f6f792fa8ad30f99ee244cda",
+    "tests/y18-world-history.test.js": "67ea33b0481848c1a09fb582cf5733613e9bed0ec0c9d3e8d16816eabef2d0f6",
+    "tests/y19-becks-desk.test.js": "b43251e6865e6c411d56e895e3514d4005163d96ac49293b7a0cdebb684dde0e",
+    "tests/y20-nullzone-exposure.test.js": "7b7fdaf52e349620a7c98796f15b6e7eb4c70a7702ce229563cad68cc0ea7fa4",
+    "tests/y21-lost.test.js": "5cf2540905bd17369126d1dc40afc7b3b2f4cd736a30536b7771a23307ac6f41",
+    "tests/y22-cross-mode.test.js": "c997a4c7b9f2c0cb73cfc06637dc8155882b1fdd8b7b9c4e44cd44f4c9814dcc",
+    "tests/y22-persistence.test.js": "2a5b4ae0acda9ff630f4badd67bebcb39264d770edb43d766f4b0101b87ca178",
+    "tests/y22-v2-topology.test.js": "9220502c8807ddeebab9355c5171b54007ce167434ed9f5823dde7150d423fb5",
+    "tests/y23-behavior.test.js": "ae8475d10d86cf9e6ad7fa2cfc85afd78c3500e0462db6792b1e1ca6bb7b157f",
+    "tests/y23-encounter.test.js": "dcf19b17e0907102cb2334d92bd9fa66f5d7c534de5bb7333f24fa65db8401b5",
+    "tests/y24-institution.test.js": "e2ab745578d9e2ca9698734e5f01ca6179e8d58d2594dfb2df4d376a99b82b50",
+    "tests/y25-gameplay.test.js": "1f932f70e659ad382078d0acf40536d78ad271de9c9e12ab0b7c758767905f3c",
+    "tests/y26-desktop.test.js": "6e65ebb9b66e0ce2ac0a87aefc5d0a198cdf8d52b1cb659799918377081e6c1b",
+    "tests/y27-freeform-loop.test.js": "b66d7368638d2edcb84d0e50cbe367afe7e2d4db26dcd87acd7ca5671e160ee7",
+    "tests/y27-intent.test.js": "6611979efafa7ac7252e9c7caf0b99c22791c54229377176833cb3cdcbb6c890",
+    "tests/y28-beck.test.js": "320948680139bc3900be99af0b40a3f6b46cef5f7220ec6e1f42bab78e69173a",
+    "tests/y28-immersive-convergence.test.js": "84b7e16a6c88b3e3e11909c8e1828ba873a7d2a3e645014134d66640cd5636b3",
+    "tests/y28-lost.test.js": "50b891a34744dc592b98e4e853eb8c8592f52dcd13e4255145e80d3b85afa0c9",
+    "tests/y28-nullzone.test.js": "a40a87c53a8f5fb64b806df3d1f7eae25effd4b31b90276f2745ba9891f93014",
+    "tests/y28-phase.test.js": "752e9437a8a0ca79ed3b78947b0fc8519414550184d3001267e48fe2a32d8f55",
+    "tests/y28-q4.test.js": "de0b99c14b3bbe59cc0b9023c7024b42089ec9b69594be95497904658d3cb524",
+    "tests/y28-scene.test.js": "a79f4417ff8a311e19661d4991a12b6f6097db5ce571ca887b2078acc9e33ef1",
+    "tests/y29-canon-convergence.test.js": "2502c65f5e33670839c74d82d7101b30e210ec9ffaafa8e119a4650a23bc82c9",
+    "tests/y29-canon-runtime.test.js": "b57cab808fbe33d851c302f35d77b370201423291d9192c090f2c71b1c4b7c8d",
+    "tests/y29-character-continuity.test.js": "54ba2a69078048446b786d5ae2511b67b8e6a3c6168ed961776ff8b9dd31e2fa",
+    "tests/y29-environment-world.test.js": "5fba7e1bcc8b04c202d2c065baa304b2c36d417eb0a1067851724e36279d235b",
+    "tests/y29-human-world.test.js": "00e3fa7cbe2416ea11dbf5030b5e65bdbd50b3f2adfc73e00327fd448af0793f",
+    "tests/y29-phenomena-world.test.js": "b72178c874c8218c0460e9438a3a7af00e648ef76e9ae4e34e867526c0dca8f7",
+    "tests/y29-story-threads.test.js": "aecdd21a4657ae1c3a4c8394859bba0be66587f4cefa10ee8b9fc9b747bbd7a4",
+    "tests/y30-accessibility.test.js": "3e14602d24d312d5f519f72b56ef2d19b8bdb61e0d49d232f6fc56e27e41dad5",
+    "tests/y30-interaction-feel.test.js": "960cd5b4b0a5797aa7a4cafaa9ff9ae2c8c72688fb3e05424e7ffffe31e0eb5f",
+    "tests/y30-navigation.test.js": "f37aa13a4756389db4084df115e8dc68ee5a711df64e1815446ca2f9a47659e5",
+    "tests/y30-qol.test.js": "91945d2c6e1522d73e1bf5673064c87062759b9d87e8fef91a1ec9b1d1634312",
+    "tests/y30-reactive-ui.test.js": "6044d85ac1dc9cd1417b6037e44542a5f03cf239344c66b83dd53e60d38f87b5",
+    "tests/y30-ux.test.js": "012d7213f65924fad7e64731887c051cd34585575294499a6e7db76801c7ffce",
+    "tests/y31-authoring.test.js": "715825cb0bec71296be13be717e03fff902913de1fd6f40f008b053cb4b725c0",
+    "tests/y31-closure.test.js": "eb2aa430c579a8265bb88c74d3c50810ed7230322d9f340ad77fc138d0332949",
+    "tests/y31-dev-commands.test.js": "dcab8eeeacf6c35cf8f3d734a51ae0ff8c5b13ca7fc1a935fc39a26684fab766",
+    "tests/y31-dev-console.test.js": "c72c46aedf2cd1ce2ea1a6ccee9a7efe491060a525c72b639b34682b22526025",
+    "tests/y31-dev-workflow.test.js": "0fd451bae62cd051052d7acd1054157e5af9ee74e2b298ea11ee3fe96ac09cc6",
+    "tests/y31-performance.test.js": "46b766ff0ae79e18f4592c607ba997d58f5b78a38624d3259c02c2d5e8ddc31b",
+    "tests/y32-consequence-echoes.test.js": "1701f5751bf7825d1e84852cf336211c53468a00fc0ef2c7b5a580d476927dd7",
+    "tests/y32-discovery-density.test.js": "bb5bdc9df915d1a64ff005cf695fe0fb463008373d456efeba69ad8a5453a850",
+    "tests/y32-replayability.test.js": "4a124f370cbf4672955c83de1653a4dfd86b8dd271e1370046747a85959d7e51",
+    "tests/y32-run-identity.test.js": "41874bdfe8a2c22a528edce4fa7cca2014de00c27f5df8e220c10c10cd45cd0f",
+    "tests/y32-unfinished-business.test.js": "ecff522bc1814fff6c99ce6581fff1315d4daf7700a2a678a23a4b3ee87a0604",
+    "tests/y33-long-world-torture.test.js": "2f377ebaecbd7badd0bebafe57e8a4c5e70fed3728712e5faa712dcffcc6c700",
+    "tests/y33-stranger-flow.test.js": "c2c7e844c1e1e7f50e527533741e35fc95a0f80bab5b05813da35c583364e9e1",
+    "tests/y34-beta-hotfix.test.js": "cda28b588d7c2453fe93dc130d959603635c03d370d4ac6f0675ee602cd411be",
+    "tests/y35-product-focus.test.js": "dbbe50733408d623f315350e0064f8b71ffec8ba10790384e567fb790b6afcc6",
+    "tests/y36-q4-channels.test.js": "ec8abe96eb2577b7d400842c4d17bba0a4e6e6b5b353324889575efd71fbc40a",
+    "tests/y37-q4-personnel.test.js": "2b62fe79fb42e084a41b747f6a3912d532e67579ee0f678d10c49eda299c4b52",
+    "tests/y38-q4-equipment.test.js": "1e3cdc4e9cef98b1dfa6fe46e6ea7d418962abb40c4169e732b753b61dc0c474",
+    "tests/y39-q4-missions.test.js": "6b7a254b6f71eed139d4d99d6d5af7795a1ea5fea3698c3f0d508a077940f5ab",
+    "tests/y40-q4-trajectories.test.js": "b7a9e37ee11b7e7cc5cc474efaa36ac54e1ebc8d3c63ad007aa3f2d87de65f86",
+    "tests/y41-q4-continuity.test.js": "b74d019b1ac7fa65230147167b14e9252bbf0917214c8334a94993e2af27d65b",
+    "tests/y42-q4-async-interface.test.js": "119b51aa5b910f7ea0e5bb9dfd032d535f675a160f82cfac006539a91a08ca73",
+    "tests/y43-q4-visual-assets.test.js": "a2fbcc39a81f3b3b24c9738ffab6c5eac84b7efb2290b7da376fd7506cb76319",
+    "tests/y44-q4-replayability.test.js": "e4a750a659ed2bcf2a2734072d83bbb4da25474bfd2587663891ed811e78dea1",
+    "tests/y45-q4-beta-gate.test.js": "7614be3c219a94e35f2703e85b3f1a58cf7980c8f55740ee6619e95cfd98ba6d",
+    "tests/y46-q4-console-acceptance.test.js": "5de32b90fe5647f7b06a91a567f5bc31b695f96cf8750f95bf9c0d52bbc9839b",
+    "tests/y47-q4-player-identity.test.js": "078bc22ebfdbb0d8d49a2e6c62a92bcce11ba9110cf49e6c4240a7b31218bbe8",
+    "tests/y48-q4-prefield-flow.test.js": "6a19214c2043ba30739729733eb8a65038bc363c5d4a301fea50a12b38dedcc8",
+    "tests/y49-playable-spine-map.test.js": "36add27e6d155b4c72c771e6292b5ebb31a807e5b8901c916682b801addf2251",
+    "tests/y50-structured-interactions.test.js": "b1f22004e37d978c227fd8b607b9146ab5f78dc422ba9b43c822cfff6250ddd1",
+    "tests/y51-mission-state.test.js": "720ad27b06228f625c805760d6a06807c06a94adc1945476f2d408bd44f12b1e",
+    "tests/y52-operational-dynamics.test.js": "baae29a7a462dab4d50454f9b092ae9965d19dc030e96d93595301a92b5fc8a5",
+    "tests/y53-omnipass.test.js": "e95161f4768390ba054ecd7819c317942732fdfd0a01078046b62d266298b313",
+    "tests/y54-settings-regression.test.js": "50b4ec733cfdd99e09c8175734e7ac4068d3f7d2b5c059ac4d23815be041018e",
+    "tests/y55-survey-frontier.test.js": "04a6a2ef0fb7bc9af1e73245b182dd2f37f09a21cb4f807e96c3939ffbe7b882",
+    "tests/y56-persistent-procedural-complex.test.js": "fb1fc72748218c390bfa4699d2eace23c5d6cae5590da7b5fc35493cc885bcbd",
+    "tests/y57-desktop-prerequisite-repair.test.js": "1b2a1da11ef426374fb0165b8a5971d1d16c07067e9006a30751b34c24c48d66",
+    "tests/y58-assignment-engine.test.js": "39fcd9c5bb3e5bb6cc5827389646bc856e53ba32f931d6144a9b1363dddc3939",
+    "tests/y59-career-loop.test.js": "3813182c93e1b980f0419829ed186ab424d8b281cd1d289096a83b2a5259c090",
+    "tests/y60-personnel-continuity.test.js": "10dcff0ac1613b5ba7dd50523e81e6e0a78942957d414f7308c02d0e897857f4",
+    "tests/y61-local-standard.test.js": "8969aee3b639e79b2275adddb7ad3b360b9ff9ead68129cd3270e5c4b7a2d9ba",
+    "tests/y62-evidence-archive.test.js": "f2c14fe94ec3576fa5e036c50d7f1dfaea19570fab0d04d998ec6068244e326d",
+    "tests/y62-pass17-human-gate.test.js": "6608e3548c9d575fe4f3f6ac991362a95f1e4a8882df501da40d88a306e7319c",
+    "tests/y63-evidence-media.test.js": "9b5295ba2b8d13573a7717c940261c539ebf45843dca0cfe288def1bb365c56a",
+    "tests/y63-pass17-state-machine.test.js": "77fb0f3b37aebd5a6cea1978ffac7cd3d04b65c83283f38b050608af78720e3e",
+    "tests/y64-environment-simulation.test.js": "e17e1fd808851b6a8e7d9670fe36d433d5f7cd572165cc0cc68653fd808d3445",
+    "tests/y64-pass17-authority.test.js": "c644c8014009b4b4f33b07b9c31e9a388ba4c61f5969a0bb293e9bcdeed346b3",
+    "tests/y65-phenomenon-ecology.test.js": "7fba329761d7ff35f978251d96e08ee0ef0839b3202cd9b7ab8dec84e351a363",
+    "tests/y66-outcomes-retirement.test.js": "6e545ac997d1a3684b1a2aeed74827fbdd987b1f3ac4e5a035ba0f798989ba82",
+    "tests/y67-recovery-profile.test.js": "d495b4c6056f19be50cb12c3b0b20703dd86af75ad8fac3ec3fc8ceecc5c4c17",
+    "tests/y68-long-world-known-failures.test.js": "f47ce74ec65ba0f238dea57244bee58664115988c7905c433cfaec062d60c19c",
+    "tests/y68-verification-gate.test.js": "f7efb4562cf204cc02b89397113f58a2fed352375a48a371eca69434b23515fd"
+  },
+  "verification_core_hashes": {
+    "tools/verification-inventory.js": "0f27da4645f1d85e48b52133475371bbbce55072807b6900108c3a1afd344f3b",
+    "tools/verification-runner.js": "02326366bb7800b7cb9b058947cdfe70b1fd294b6836c5dbf41dd4307a5ccb8c",
+    "tests/y68-verification-gate.test.js": "f7efb4562cf204cc02b89397113f58a2fed352375a48a371eca69434b23515fd",
+    "tests/y68-long-world-known-failures.test.js": "f47ce74ec65ba0f238dea57244bee58664115988c7905c433cfaec062d60c19c"
+  },
+  "known_defects": [
+    {
+      "defect_id": "YB-V03-CANONICAL-EQUIVALENCE",
+      "file": "tests/y33-long-world-torture.test.js",
+      "owner": "V03 canonical-persistence-normalization pass",
+      "summary": "Known product defect: first-load canonical save/reload equivalence is broken (save-time reconciliation mutates canonical state). Preserved as failing evidence; V03 owns the repair.",
+      "review_condition": "V03 exit gate"
+    },
+    {
+      "defect_id": "YB-V08-STALE-BETA-HOTFIX",
+      "file": "tests/y34-beta-hotfix.test.js",
+      "owner": "repo owner (human)",
+      "summary": "Stale test expectations asserting pre-campaign UI structures with no current product counterpart (accepted 2026-08-11 full-suite audit). Assertions are not rewritten.",
+      "review_condition": "V08 canonical-ownership consolidation human review"
+    },
+    {
+      "defect_id": "YB-V08-STALE-PRODUCT-FOCUS",
+      "file": "tests/y35-product-focus.test.js",
+      "owner": "repo owner (human)",
+      "summary": "Stale test expectations asserting pre-campaign UI structures with no current product counterpart (accepted 2026-08-11 full-suite audit). Assertions are not rewritten.",
+      "review_condition": "V08 canonical-ownership consolidation human review"
+    },
+    {
+      "defect_id": "YB-V23-NATIVE-SETTINGS-DISPLAY",
+      "file": "tests/y54-settings-regression.test.js",
+      "owner": "native verification (desktop:verify family)",
+      "summary": "Native Electron display regression; failure is environment-bound (display surface), actual configuration behavior is correct per accepted 2026-08-11 audit. Not CI-compatible in the aggregate gate.",
+      "review_condition": "V23 release-certification gate"
+    }
+  ],
+  "retirements": [],
+  "tier_transitions": [],
+  "executable_hashes": {
+    "tools/corpus-coverage-report.js": "67bf6d06d5ef35a78bf5518cb23cb0bb7c904953ec1b7881d5bd6fc2535fe8ae",
+    "tools/stranger-flow-report.js": "66ee49cfed5bd89458323aca1d1f173caeb0c1f658368849ba1f9b8f35f07ecf",
+    "tools/y32-replayability-report.js": "0808fade6e37c420efa398a949ec2e50690d621cff3aba37b6fa551f03654857",
+    "tools/yb33-torture-report.js": "0cc7282b26b84ef4640a734d598512b53bec74ef70c87c57825970e7bfe26729",
+    "tools/build-desktop.js": "248a8b1dfb34923dd6a29fdd7f10f8eda4d0ff9f58e184679f5c680037a0fd55",
+    "tools/verify-desktop-artifact.js": "b0998ff7731a48ef2850002af24ecb75b8fc135f51e381cd24bfc143eae1eef5",
+    "tools/verify-first-run-artifact.js": "7868c8e85920ce3050696912f0f6e1e0228de70997bf31bfb9a91a4768478266"
+  },
+  "verification_script_dispositions": {
+    "canonical_aggregate": ["test"],
+    "tier_command": ["test:meta", "test:inventory", "test:fast", "test:long-world", "test:native"],
+    "required_report": ["corpus-coverage-report", "stranger-flow-report", "y32-replayability-report", "yb33-torture-report"],
+    "native_required": ["desktop:verify", "desktop:settings-regression", "desktop:first-run-regression"],
+    "supporting_non_authoritative": [
+      "conformance", "validate-assets", "validate-contracts", "evidence-report", "operations-report", "records-report", "architecture-report", "survey-report", "anomaly-report", "corpus-report", "transition-report", "profile-report", "build:alpha", "verify:alpha", "run-report", "expedition-report", "procedural-report", "world-history-report", "management-report", "nullzone-report", "lost-report", "complex-simulation-report", "still-life-report", "entity-report", "institution-report", "gameplay-report", "desktop:build", "desktop:package", "recovery:first-run-focused", "desktop:test", "pass17:authority-test", "beta-hotfix-test", "intent-report", "scene-report", "freeform-report", "phase-report", "q4-report", "q4-replayability", "q4-beta-gate", "playable-spine-test", "acceptance:playable-spine", "structured-interaction-test", "acceptance:structured-interaction", "mission-state-test", "acceptance:mission-state", "operational-dynamics-test", "acceptance:operational-dynamics", "omnipass-test", "persistent-complex-test", "checkpoint-2", "acceptance:omnipass", "worldpack:validate", "worldpack:test", "beck-report", "immersive-report", "canon-runtime-report", "character-continuity-report", "human-world-report", "environment-world-report", "phenomena-report", "story-thread-report", "canon-convergence-report", "navigation-report", "reactive-ui-report", "interaction-report", "qol-report", "accessibility-report", "ux-report", "dev-workflow-report", "dev-console-report", "dev-command-report", "authoring-report", "performance-report", "y31-closure-report", "run-identity-report", "discovery-density-report", "consequence-echo-report", "unfinished-business-report", "dev:check", "validate", "reports", "check-admission"
+    ],
+    "non_verification": [
+      "intake-summary", "start-run", "play", "desktop:dev", "worldpack:create", "worldpack:preview", "worldpack:trace", "dev"
+    ]
+  }
+}

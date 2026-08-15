@@ -141,5 +141,5 @@ async function report() {
   };
 }
 
-if (require.main === module) report().then((value) => process.stdout.write(`${JSON.stringify(value, null, 2)}\n`));
+if (require.main === module) report().then((value) => { process.stdout.write(`${JSON.stringify(value, null, 2)}\n`); process.exit(value.passed ? 0 : 1); });
 module.exports = { report, growCanonicalWorld };

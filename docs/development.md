@@ -8,7 +8,8 @@ canonical authority, or player path.
 
 - `npm run dev:check` — fast local guard: asset validation, focused YB-30/YB-31
   tests, desktop service tests, and whitespace check.
-- `npm run validate` — full regression (`npm test`) plus desktop staging build.
+- `npm run validate` — authoritative aggregate (`npm test`) plus desktop staging build. It does not run the
+  separately reported long-world, native, or manual tiers.
 - `npm run reports` — grouped canon, world, mode, player, and developer reports.
 - `node --test tests/y31-dev-workflow.test.js` — one test file. Milestone
   families use `tests/y29-*.test.js`, `tests/y30-*.test.js`, and onward.

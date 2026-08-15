@@ -1,5 +1,13 @@
 # Yellow Beast Implementation State
 
+## Current orientation — V02 verification-governance repair — 2026-08-15
+
+- V02 remains limited to executable verification truth. No persistence, gameplay, provider, canon, or player-facing simulation authority changed.
+- `verification/verification-authority.json` is the approved mutable governance baseline for exact test identities, test content hashes, required tiers, fast membership, known defects, retirements, authorized tier transitions, explicit dispositions for every package script, verifier-core hashes, and the exact required report/native executable hash set. It is not a cryptographic root of trust; governance changes require explicit external review against an approved Git baseline.
+- `verification/test-manifest.json` remains the mutable execution manifest. Inventory rejects coordinated disk/manifest test deletion relative to the approved authority, manifest-only tier migration, unregistered quarantine/retirement, undisposed package scripts, governed test/core content drift, duplicate report executable paths, and missing/extra/mismatched required report/native executable hashes. Test, report, and native subprocesses have bounded fail-closed timeouts.
+- Known long-world canonical equivalence remains a truthful V03-owned failure. V02 does not repair or relabel it.
+- The independent certification findings that prompted this repair are implementation inputs, not accepted closure. Fresh certification remains required before V02 can be considered complete.
+
 ## Current orientation — V01 authority checkpoint — 2026-08-12
 
 - Phase 01C human ratification is complete. `docs/reconciliation/YELLOW_BEAST_GAMEPLAY_CONSTITUTION.md` is the current Yellow Beast player/product authority; `docs/YELLOW_BEAST_VISION_PASS_MAP.md` is the current implementation campaign; `docs/YELLOW_BEAST_CURRENT_BASELINE.md` is current implementation truth.
