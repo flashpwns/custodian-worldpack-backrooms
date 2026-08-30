@@ -121,7 +121,7 @@ const evidence = (expedition?.evidence ?? []).map((item) => ({ id: item.id, miss
     prior_records: (mission?.prior_history ?? []).filter((item) => item.kind === "prior-layout-record").map((item) => ({ text: item.text, status: "PRIOR SURVEY RECORD" })),
     confidence: liveLayout ? ((publicMap?.unresolved_exits?.length ?? topology.unknown_exits?.length) ? "unresolved continuation" : "confirmed current observation") : "PRIOR SURVEY RECORD"
   };
-  const radioState = radioModel.ensure(expedition);
+  const radioState = radioModel.read(expedition);
   const radioEquipmentReady = equipmentModel.stateUsable(radio) && radio?.charges > 0 && radio?.holder === playerId;
   // During readiness the composer is deliberately available even before the
   // first exchange.  A failed attempt is a canonical failed transmission,

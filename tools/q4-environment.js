@@ -21,6 +21,20 @@ function normal() { return { power:"normal", lighting:"normal", communications:"
 function valid(domain, value) { return STATES[domain]?.includes(value); }
 function generatedBase(location, seed) { const base = normal(); if (!location?.generation) return base; const pick = parseInt(digest(["environment", CONFIG_VERSION, seed, location.id]).slice(0, 2), 16) % 10; if (pick === 0) base.lighting = "dim"; else if (pick === 1) base.moisture = "damp"; else if (pick === 2) base.acoustic = "reverberant"; return base; }
 function create(definition, seed = "environment") { const locations = {}; for (const location of definition.locations ?? []) locations[location.id] = { base:{ ...generatedBase(location, seed), ...(AUTHORED[location.id] ?? {}) }, effective:null }; const state = { version:VERSION, config_version:CONFIG_VERSION, locations, infrastructure:Object.fromEntries(Object.entries(INFRASTRUCTURE).map(([id, item]) => [id, { power:item.power }])), conditions:{}, history:[] }; refresh(state); return state; }
+function validateCurrent(state, definition) {
+  const fail = (reason) => { throw Object.assign(new Error(`invalid current Q4 environment: ${reason}`), { code:"RUN_STATE_INVALID" }); };
+  const record = (value) => Boolean(value && typeof value === "object" && !Array.isArray(value));
+  if (!record(state) || state.version !== VERSION || state.config_version !== CONFIG_VERSION || !record(state.locations) || !record(state.infrastructure) || !record(state.conditions) || !Array.isArray(state.history)) fail("authority containers are missing or malformed");
+  const validateLocation = (location, id) => {
+    if (!record(location) || !record(location.base) || !record(location.effective) || !record(location.phenomenon_overrides)) fail(`location ${id} is missing or malformed`);
+    for (const domain of Object.keys(STATES)) if (!valid(domain, location.base[domain]) || !valid(domain, location.effective[domain])) fail(`location ${id} has invalid ${domain}`);
+    for (const override of Object.values(location.phenomenon_overrides)) if (!record(override) || typeof override.phenomenon_id !== "string" || !record(override.patch) || !validatePatch(override.patch) || (override.active != null && typeof override.active !== "boolean")) fail(`location ${id} has an invalid phenomenon override`);
+  };
+  for (const authored of definition?.locations ?? []) { const location = state.locations[authored.id]; if (!location) fail(`location ${authored.id} is missing`); validateLocation(location, authored.id); }
+  for (const [id, location] of Object.entries(state.locations)) validateLocation(location, id);
+  for (const id of Object.keys(INFRASTRUCTURE)) if (!record(state.infrastructure[id]) || !valid("power", state.infrastructure[id].power)) fail(`infrastructure ${id} is missing or malformed`);
+  return state;
+}
 function ensure(spatial, definition, seed = "environment") { spatial.environment ??= create(definition, seed); const state = spatial.environment; if (state.version !== VERSION) throw new Error("unsupported Q4 environment state"); state.locations ??= {}; state.infrastructure ??= {}; state.conditions ??= {}; state.history ??= [];
   for (const location of definition.locations ?? []) state.locations[location.id] ??= { base:{ ...generatedBase(location, seed), ...(AUTHORED[location.id] ?? {}) }, effective:null };
   for (const [id, item] of Object.entries(INFRASTRUCTURE)) state.infrastructure[id] ??= { power:item.power };
@@ -50,4 +64,4 @@ function coverage(state, location_id) { return current(state, location_id)?.comm
 function captureContext(state, location_id, options = {}) { const observed = observation(state, location_id, options); return observed ? { lighting:observed.lighting, communications:observed.communications, structural:observed.structural, moisture:observed.moisture, acoustic:observed.acoustic, visibility:observed.visibility } : null; }
 function assignmentConditions(state) { return Object.values(state?.conditions ?? {}).filter((condition) => condition.status === "unresolved" && condition.institutional_available === true).map(clone); }
 function diagnostics(state, location_id = null) { return { version:VERSION, config_version:state?.config_version ?? CONFIG_VERSION, current:location_id ? current(state, location_id) : null, infrastructure:clone(state?.infrastructure ?? {}), conditions:clone(state?.conditions ?? {}), recent_mutations:clone((state?.history ?? []).slice(-12)) }; }
-module.exports = { VERSION, CONFIG_VERSION, STATES, create, ensure, refresh, infrastructure, mutatePower, mutateLocation, setPhenomenonOverride, clearPhenomenonOverride, blockRoute, clearRoute, reconcile, report, current, observation, coverage, captureContext, assignmentConditions, diagnostics };
+module.exports = { VERSION, CONFIG_VERSION, STATES, create, validateCurrent, ensure, refresh, infrastructure, mutatePower, mutateLocation, setPhenomenonOverride, clearPhenomenonOverride, blockRoute, clearRoute, reconcile, report, current, observation, coverage, captureContext, assignmentConditions, diagnostics };

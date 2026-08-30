@@ -11,9 +11,11 @@ const VERSION = "yellow-beast-q4-career@v1";
 const clone = (value) => structuredClone(value);
 const digest = (value) => crypto.createHash("sha256").update(JSON.stringify(value)).digest("hex");
 
+function createState() { return { version: VERSION, completed_operations: 0, operation_history: [], cycles: {}, recent_updates: [] }; }
+
 function ensure(world) {
   history.assertWorld(world);
-  world.q4_career_state ??= { version: VERSION, completed_operations: 0, operation_history: [], cycles: {}, recent_updates: [] };
+  world.q4_career_state ??= createState();
   const state = world.q4_career_state;
   if (state.version !== VERSION) throw new Error("unsupported Clear-Q4 career state");
   state.operation_history ??= []; state.cycles ??= {}; state.recent_updates ??= []; state.completed_operations ??= 0;
@@ -82,5 +84,12 @@ function process(world, definition, run, review) {
   return { ok: true, idempotent: false, cycle: clone(cycle) };
 }
 
-function projection(world) { const state = ensure(world); return { completed_operations: state.completed_operations, recent_updates: clone(state.recent_updates), history: clone(state.operation_history) }; }
-module.exports = { VERSION, ensure, cycleId, process, projection, assertAgencyBoundary };
+function read(world) {
+  history.assertWorld(world);
+  const state = world.q4_career_state;
+  if (state == null) throw Object.assign(new Error("missing Clear-Q4 career state"), { code:"Q4_CAREER_STATE_INVALID" });
+  if (state.version !== VERSION || !Number.isInteger(state.completed_operations) || state.completed_operations < 0 || !Array.isArray(state.operation_history) || !state.cycles || typeof state.cycles !== "object" || Array.isArray(state.cycles) || !Array.isArray(state.recent_updates)) throw Object.assign(new Error("invalid Clear-Q4 career state"), { code:"Q4_CAREER_STATE_INVALID" });
+  return state;
+}
+function projection(world) { const state = read(world); return { completed_operations: state.completed_operations, recent_updates: clone(state.recent_updates), history: clone(state.operation_history) }; }
+module.exports = { VERSION, createState, ensure, read, cycleId, process, projection, assertAgencyBoundary };

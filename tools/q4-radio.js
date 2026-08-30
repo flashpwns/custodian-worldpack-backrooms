@@ -12,6 +12,13 @@ function ensure(expedition) {
   return expedition.radio;
 }
 
+function read(expedition) {
+  const radio = expedition?.radio;
+  if (radio == null) return { version: VERSION, state: "unavailable", check_completed: false, authorized: false, last_transition: null, last_delivery: null };
+  if (radio.version !== VERSION || !STATES.includes(radio.state) || typeof radio.check_completed !== "boolean" || typeof radio.authorized !== "boolean") throw Object.assign(new Error("invalid radio state"), { code:"Q4_RADIO_STATE_INVALID" });
+  return radio;
+}
+
 function transition(expedition, state, reason) {
   if (!STATES.includes(state)) throw new Error(`unsupported radio state: ${state}`);
   const radio = ensure(expedition);
@@ -26,9 +33,9 @@ function startTransmission(expedition) { const radio = ensure(expedition); if (!
 function delivered(expedition, { awaiting = false } = {}) { const radio = transition(expedition, awaiting ? "awaiting-response" : "available", awaiting ? "transmission-delivered-awaiting-response" : "transmission-delivered"); radio.last_delivery = { status: "delivered", interval: expedition.clock?.interval ?? 0 }; return radio; }
 function failed(expedition, intermittent = false) { return transition(expedition, intermittent ? "intermittent" : "lost", intermittent ? "transmission-not-confirmed" : "link-lost"); }
 
-function available(expedition) { const radio = ensure(expedition); return radio.authorized && radio.check_completed && ["available", "transmitting", "awaiting-response", "intermittent"].includes(radio.state); }
+function available(expedition) { const radio = read(expedition); return radio.authorized && radio.check_completed && ["available", "transmitting", "awaiting-response", "intermittent"].includes(radio.state); }
 function label(expedition) {
-  const radio = ensure(expedition);
+  const radio = read(expedition);
   return ({
     unavailable: "LINK UNAVAILABLE",
     establishing: "ESTABLISHING LINK",
@@ -41,4 +48,4 @@ function label(expedition) {
   })[radio.state];
 }
 
-module.exports = { VERSION, STATES, ensure, transition, authorize, completeCheck, startTransmission, delivered, failed, available, label };
+module.exports = { VERSION, STATES, ensure, read, transition, authorize, completeCheck, startTransmission, delivered, failed, available, label };

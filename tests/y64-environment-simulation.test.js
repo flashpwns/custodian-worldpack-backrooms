@@ -1,6 +1,10 @@
 "use strict";
 const assert = require("node:assert/strict");
+const fs = require("node:fs");
+const os = require("node:os");
+const path = require("node:path");
 const test = require("node:test");
+const { DesktopService } = require("../desktop/service");
 const history = require("../tools/world-history");
 const bootstrap = require("../tools/run-bootstrap");
 const environment = require("../tools/q4-environment");
@@ -65,9 +69,51 @@ test("evidence fixes observed environmental capture context while later mutation
   assert.equal(record.environmental_conditions.lighting, "dark"); assert.equal(media.validateSpec(record).environment.lighting, "dark"); assert.equal(environment.current(env, "relay-alcove").lighting, "intermittent");
 });
 
-test("environment initialization is deterministic, observer-safe, and migrates old canonical geography conservatively", () => {
+test("environment initialization is deterministic, while missing current-v9 state fails closed or restores previous-good", () => {
   const one = fixture("same").run.spatial.environment; const two = fixture("same").run.spatial.environment;
   assert.deepEqual(one.locations, two.locations); assert.equal(environment.current(one, "records-annex").communications, "weak");
-  const legacy = fixture("legacy").run; delete legacy.spatial.environment; const resumed = bootstrap.resumeRun(bootstrap.saveRun(legacy), { spatial_worldpack:"clear-q4" });
-  assert.equal(environment.current(resumed.run.spatial.environment, "utility-room").structural, "stable");
+  assert.equal(Object.hasOwn(environment.observation(one, "records-annex"), "hidden_entities"), false);
+
+  const current = fixture("current-environment-corruption").run;
+  const saved = bootstrap.saveRun(current);
+  const corrupt = structuredClone(saved);
+  delete corrupt.spatial.environment;
+  const corruptBefore = structuredClone(corrupt);
+  assert.deepEqual(bootstrap.resumeRun(corrupt, { spatial_worldpack:"clear-q4" }), { ok:false, error:{ code:"RUN_STATE_INVALID" } });
+  assert.deepEqual(corrupt, corruptBefore);
+
+  delete current.spatial.environment;
+  const unsavableBefore = structuredClone(current);
+  assert.throws(() => bootstrap.saveRun(current), { code:"RUN_STATE_INVALID" });
+  assert.deepEqual(current, unsavableBefore);
+
+  const appDataPath = fs.mkdtempSync(path.join(os.tmpdir(), "yb-environment-recovery-"));
+  const service = new DesktopService({ appDataPath });
+  const world = service.createWorld({ name:"Environment recovery", seed:"environment-recovery" }).world;
+  assert.equal(service.startSession({ world_id:world.id, mode:"field-researcher", seed:"environment-recovery" }).ok, true);
+  service.persistSession(service.getWorld(world.id), "field-researcher", service.session(world.id, "field-researcher"));
+  const sessionFile = service.sessionFile(world.id, "field-researcher");
+  const sessionBackup = service.sessionBackupFile(world.id, "field-researcher");
+  const worldFile = service.worldFile(world.id);
+  const primary = JSON.parse(fs.readFileSync(sessionFile, "utf8"));
+  delete primary.payload.spatial.environment;
+  fs.writeFileSync(sessionFile, `${JSON.stringify(primary, null, 2)}\n`);
+  const damagedPrimary = fs.readFileSync(sessionFile);
+  const validPrevious = fs.readFileSync(sessionBackup);
+  const worldBytes = fs.readFileSync(worldFile);
+  const previous = JSON.parse(validPrevious);
+
+  const recovering = new DesktopService({ appDataPath });
+  const recovered = recovering.resumeSession({ world_id:world.id, mode:"field-researcher" });
+  assert.equal(recovered.ok, true);
+  assert.equal(recovered.recovery.session.source, "previous-good-session");
+  const recoveredRun = recovering.session(world.id, "field-researcher").run;
+  assert.deepEqual(bootstrap.saveRun(recoveredRun), previous.payload);
+  const recoveredEnvironment = recoveredRun.spatial.environment;
+  assert.deepEqual(recoveredEnvironment, previous.payload.spatial.environment);
+  assert.deepEqual(recoveredEnvironment.history, previous.payload.spatial.environment.history);
+  assert.deepEqual(recoveredRun.expedition.operational.events, previous.payload.expedition.operational.events);
+  assert.equal(fs.readFileSync(sessionFile).equals(damagedPrimary), true);
+  assert.equal(fs.readFileSync(sessionBackup).equals(validPrevious), true);
+  assert.equal(fs.readFileSync(worldFile).equals(worldBytes), true);
 });

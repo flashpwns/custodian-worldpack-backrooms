@@ -21,6 +21,8 @@ const clone = (value) => structuredClone(value);
 const digest = (value) => crypto.createHash("sha256").update(JSON.stringify(value)).digest("hex");
 const stableId = (world, family, location, provenance) => `q4-phenomenon-${digest([world.world_id, family, location, provenance]).slice(0, 20)}`;
 const now = (run) => run?.expedition?.clock?.interval ?? 0;
+const plainObject = (value) => Boolean(value && typeof value === "object" && !Array.isArray(value) && Object.getPrototypeOf(value) === Object.prototype);
+function invalidState(reason) { throw Object.assign(new Error(`invalid Q4 phenomenon ecology state: ${reason}`), { code:"Q4_ECOLOGY_INVALID" }); }
 
 const STILL_PROFILES = Object.freeze({
   INERT: { apparent_vitality:"lifeless", breathing:false, mobility:"none", vocalization:"none", fear_response:"none", aggression:"none", avoidance:"none", environmental_interaction:"none", light_interaction:"none", approach_response:"none", physical_interference_response:"none", self_directed_hazard_movement:false, perception:[] },
@@ -40,30 +42,71 @@ function validateConfig() {
   return true;
 }
 
-function state(world) {
-  history.assertWorld(world);
-  world.phenomena ??= {};
-  world.q4_phenomenon_ecology ??= { version:VERSION, config_version:config.version, evaluated_locations:[], eligibility_history:[], last_instantiated_evaluation:null, fixture_ids:[], conditions:{}, incidents:{}, recent_errors:[] };
-  const value = world.q4_phenomenon_ecology;
-  if (value.version !== VERSION) throw new Error("unsupported Q4 phenomenon ecology state");
-  value.evaluated_locations ??= []; value.eligibility_history ??= []; value.fixture_ids ??= []; value.conditions ??= {}; value.incidents ??= {}; value.recent_errors ??= [];
+function createState({ existing_locations = [], migrated_conservatively = false } = {}) {
+  const value = { version:VERSION, config_version:config.version, evaluated_locations:[...new Set(existing_locations.filter((item) => item?.id).map((item) => item.id))], eligibility_history:[], last_instantiated_evaluation:null, fixture_ids:[], conditions:{}, incidents:{}, recent_errors:[] };
+  if (migrated_conservatively) value.migrated_conservatively = true;
   return value;
 }
 
+function currentState() {
+  return createState();
+}
+
+function normalizeState(value) {
+  const state = value ?? createState();
+  if (!plainObject(state)) invalidState("state must be a plain object");
+  if (state.version == null) state.version = VERSION;
+  if (state.version !== VERSION) throw new Error("unsupported Q4 phenomenon ecology state");
+  state.config_version ??= config.version;
+  state.evaluated_locations ??= [];
+  state.eligibility_history ??= [];
+  state.last_instantiated_evaluation ??= null;
+  state.fixture_ids ??= [];
+  state.conditions ??= {};
+  state.incidents ??= {};
+  state.recent_errors ??= [];
+  return state;
+}
+
+function state(world) {
+  history.assertWorld(world);
+  const value = world.q4_phenomenon_ecology;
+  if (value == null) return createState();
+  if (!plainObject(value) || value.version !== VERSION || value.config_version !== config.version) invalidState("unsupported version or container shape");
+  if (!Array.isArray(value.evaluated_locations) || !value.evaluated_locations.every((item) => typeof item === "string" && item.length > 0)) invalidState("evaluated_locations must contain location ids");
+  if (!Array.isArray(value.eligibility_history) || !Array.isArray(value.fixture_ids) || !value.fixture_ids.every((item) => typeof item === "string") || !plainObject(value.conditions) || !plainObject(value.incidents) || !Array.isArray(value.recent_errors)) invalidState("current collections are malformed");
+  if (value.last_instantiated_evaluation !== null && !plainObject(value.last_instantiated_evaluation)) invalidState("last_instantiated_evaluation is malformed");
+  if (Object.hasOwn(value, "migrated_conservatively") && typeof value.migrated_conservatively !== "boolean") invalidState("migration marker is malformed");
+  return value;
+}
+
+function ensureState(world) {
+  history.assertWorld(world);
+  world.phenomena ??= {};
+  world.q4_phenomenon_ecology = normalizeState(world.q4_phenomenon_ecology);
+  return world.q4_phenomenon_ecology;
+}
+
 function migrate(world, { existing_locations = null } = {}) {
-  const hadState = Boolean(world.q4_phenomenon_ecology);
-  const value = state(world);
-  if (!hadState) {
+  const legacy = world.q4_phenomenon_ecology;
+  if (legacy?.version === VERSION) return state(world);
+  if (legacy != null && (!plainObject(legacy) || !Object.hasOwn(legacy, "conditions") || !plainObject(legacy.conditions))) invalidState("legacy shape is malformed or ambiguous");
+  if (legacy != null && Object.keys(legacy).some((key) => !["conditions", "evaluated_locations"].includes(key))) invalidState("legacy shape contains unrecognized fields");
+  if (legacy != null && Object.hasOwn(legacy, "evaluated_locations") && (!Array.isArray(legacy.evaluated_locations) || !legacy.evaluated_locations.every((item) => typeof item === "string" && item.length > 0))) invalidState("legacy evaluated_locations is malformed");
+  const value = createState({ migrated_conservatively:true });
+  if (legacy != null) value.conditions = clone(legacy.conditions);
+  if (legacy?.evaluated_locations) value.evaluated_locations = [...new Set(legacy.evaluated_locations)];
+  else {
     const geography = existing_locations ?? spatialRuntime.canonicalDefinition(world.q4_geography, require("../data/worldpacks/clear-q4/spatial.json")).locations;
     // Existing geography is grandfathered as ordinary. Migration never invents
     // prior population, sightings, aliases, or incidents.
     value.evaluated_locations = [...new Set(geography.filter((item) => item?.id).map((item) => item.id))];
-    value.migrated_conservatively = true;
   }
-  return value;
+  world.q4_phenomenon_ecology = value;
+  return state(world);
 }
 
-function records(world) { state(world); return Object.values(world.phenomena).filter((item) => item?.record_version === RECORD_VERSION); }
+function records(world) { history.assertWorld(world); return Object.values(world.phenomena ?? {}).filter((item) => item?.record_version === RECORD_VERSION); }
 function record(world, id) { const item = world?.phenomena?.[id]; return item?.record_version === RECORD_VERSION ? item : null; }
 function append(item, type, payload = {}, at = 0) { const entry = { sequence:item.history.length + 1, type, at, ...clone(payload) }; item.history.push(entry); item.last_known_state = { location_id:item.location_id, current_state:item.current_state, at }; return entry; }
 function regionFor(location) { return location?.generation?.region_id ?? `depth-band-${Math.floor(Number(location?.generation?.depth ?? 0) / 4)}`; }
@@ -94,7 +137,7 @@ function baseRecord(world, { family, location_id, region_id, provenance, generat
 }
 
 function instantiate(world, spec) {
-  validateConfig(); const ecology = state(world);
+  validateConfig(); const ecology = ensureState(world);
   if (!CANONICAL_FAMILIES.includes(spec.family)) return { ok:false, code:"PHENOMENON_FAMILY_INVALID" };
   const topology = spec.definition ?? spatialRuntime.canonicalDefinition(spec.spatial ?? world.q4_geography, require("../data/worldpacks/clear-q4/spatial.json"));
   const location = topology.locations.find((item) => item.id === spec.location_id);
@@ -137,7 +180,7 @@ function eligibleFamily(world, location, evaluationIndex) {
 }
 
 function materializeEligible(world, { spatial = null, definition = null, at = 0 } = {}) {
-  const ecology = state(world); const topology = definition ?? spatialRuntime.canonicalDefinition(spatial ?? world.q4_geography, require("../data/worldpacks/clear-q4/spatial.json")); const created = [];
+  const ecology = ensureState(world); const topology = definition ?? spatialRuntime.canonicalDefinition(spatial ?? world.q4_geography, require("../data/worldpacks/clear-q4/spatial.json")); const created = [];
   const fresh = topology.locations.filter((location) => !ecology.evaluated_locations.includes(location.id)).sort((a,b) => a.id.localeCompare(b.id));
   for (const location of fresh) {
     ecology.evaluated_locations.push(location.id); const evaluationIndex = ecology.eligibility_history.length;
@@ -209,11 +252,11 @@ function deliverReport(world, id, { observer, message_id, summary = null, includ
   const alias = include_alias ? item.aliases.find((entry) => entry.known_by.includes(observer)) : null;
   item.institutional_designation = { designation:observation.designation, summary:String(summary ?? observation.description).slice(0, 240), source_observer:observer, message_id, received_at:at, alias:alias?.value ?? null };
   if (alias) { alias.known_by = [...new Set([...alias.known_by, "Standard"])]; alias.institutionalized = false; }
-  const ecology = state(world); const conditionId = `phenomenon-report:${item.id}`; ecology.conditions[conditionId] = { id:conditionId, type:"reported-phenomenon", phenomenon_id:item.id, designation:observation.designation, location_id:observation.location_id, status:"unresolved", institutional_available:true, message_id, reported_at:at };
+  const ecology = ensureState(world); const conditionId = `phenomenon-report:${item.id}`; ecology.conditions[conditionId] = { id:conditionId, type:"reported-phenomenon", phenomenon_id:item.id, designation:observation.designation, location_id:observation.location_id, status:"unresolved", institutional_available:true, message_id, reported_at:at };
   append(item, "reported", { observer, message_id, designation:observation.designation, alias:alias?.value ?? null }, at); return { ok:true, condition:clone(ecology.conditions[conditionId]), institutional_designation:clone(item.institutional_designation) };
 }
 function assignmentConditions(world) { return Object.values(state(world).conditions).filter((item) => item.status === "unresolved" && item.institutional_available).map(({ phenomenon_id, ...item }) => clone(item)); }
-function resolveCondition(world, conditionId, { work_order_id = null } = {}) { const condition=state(world).conditions[conditionId];if(!condition)return{ok:false,code:"PHENOMENON_CONDITION_UNKNOWN"};condition.status="resolved";condition.resolved_by=work_order_id;return{ok:true,condition:clone(condition)}; }
+function resolveCondition(world, conditionId, { work_order_id = null } = {}) { const condition=ensureState(world).conditions[conditionId];if(!condition)return{ok:false,code:"PHENOMENON_CONDITION_UNKNOWN"};condition.status="resolved";condition.resolved_by=work_order_id;return{ok:true,condition:clone(condition)}; }
 
 function linkEvidence(world, id, { observer, evidence_id } = {}) { const item = record(world, id); const evidence = world?.q4_evidence_archive?.records?.[evidence_id]; if (!item || !item.observer_designations[observer] || !evidence) return { ok:false, code:"PHENOMENON_EVIDENCE_INVALID" }; if (!item.evidence_ids.includes(evidence_id)) item.evidence_ids.push(evidence_id); const observation = item.observer_designations[observer]; if (!observation.evidence_ids.includes(evidence_id)) observation.evidence_ids.push(evidence_id); append(item, "evidence-linked", { observer, evidence_id }, evidence.timestamp?.interval ?? 0); return { ok:true }; }
 function establishEvidenceInconsistency(world, id, { evidence_a, evidence_b, basis = "canonical recorded discrepancy" } = {}) { const item = record(world, id); if (!item || item.canonical_family !== "EVIDENCE_INCONSISTENCY") return { ok:false, code:"EVIDENCE_INCONSISTENCY_INVALID" }; const result = evidenceAuthority.contradict(world, { left:evidence_a, right:evidence_b, claim:basis, source:`phenomenon:${id}` }); if (result.ok) { for (const evidenceId of [evidence_a,evidence_b]) if (!item.evidence_ids.includes(evidenceId)) item.evidence_ids.push(evidenceId); append(item, "evidence-inconsistency-established", { evidence_a,evidence_b, contradiction_id:result.contradiction?.id }, 0); } return result; }
@@ -242,10 +285,10 @@ function acquireBacteria(world,run,id,{target_id,signal="visual"}={}) { const it
 function bacteriaPursue(world,run,id) { const item=record(world,id);if(!item||item.canonical_family!=="BACTERIA")return{ok:false,code:"BACTERIA_UNKNOWN"};const target=item.state_data.target;if(!target)return{ok:false,code:"BACTERIA_NO_TARGET"};const topology=spatialRuntime.canonicalDefinition(run.spatial,require("../data/worldpacks/clear-q4/spatial.json"));const actual=run.spatial.personnel_locations[target.personnel_id];if(actual&&distance(topology,item.location_id,actual,run.spatial)<=1)target.last_perceived_location=actual;item.current_state="PURSUING";const moves=[];for(let step=0;step<item.behavior_profile.movement_speed;step++){if(item.location_id===target.last_perceived_location)break;const next=routeStep(topology,item.location_id,target.last_perceived_location,run.spatial);if(!next||!Number.isFinite(next.remaining))break;move(item,next.location_id,next.edge,now(run),"high-speed-pursuit");moves.push(next.edge.id);}if(actual===item.location_id)return bacteriaCapture(world,run,id,{target_id:target.personnel_id,moves});append(item,"pursuit-advanced",{moves,target_last_perceived_location:target.last_perceived_location},now(run));return{ok:true,state:item.current_state,moves,location_id:item.location_id,captured:false}; }
 function bacteriaCapture(world,run,id,{target_id,moves=[]}={}) { const item=record(world,id);const targetLocation=run.spatial.personnel_locations[target_id];if(!item||item.canonical_family!=="BACTERIA"||targetLocation!==item.location_id)return{ok:false,code:"BACTERIA_CAPTURE_PROXIMITY_INVALID"};item.current_state="CAPTURED_PERSONNEL";item.state_data.capture={personnel_id:target_id,location_id:item.location_id,captured_at:now(run),restrained:true};run.expedition.phenomenon_contact??={captures:{},history:[]};run.expedition.phenomenon_contact.captures[target_id]={phenomenon_id:id,location_id:item.location_id,state:"restrained",at:now(run)};run.expedition.phenomenon_contact.history.push({type:"capture",personnel_id:target_id,location_id:item.location_id,at:now(run)});append(item,"personnel-captured",{personnel_id:target_id,location_id:item.location_id,moves},now(run));return{ok:true,state:item.current_state,moves,location_id:item.location_id,captured:true,target_id}; }
 function isCaptured(world,personnelId) { return records(world).some((item)=>item.canonical_family==="BACTERIA"&&item.state_data.capture?.personnel_id===personnelId&&item.state_data.capture.restrained); }
-function bacteriaSlam(world,run,id,{surface_id=null,witnesses=[]}={}) { const item=record(world,id);const capture=item?.state_data?.capture;if(!item||item.canonical_family!=="BACTERIA"||!capture?.restrained)return{ok:false,code:"BACTERIA_SLAM_CAPTURE_REQUIRED"};const topology=spatialRuntime.canonicalDefinition(run.spatial,require("../data/worldpacks/clear-q4/spatial.json"));const location=topology.locations.find((entry)=>entry.id===item.location_id);if(!location)return{ok:false,code:"BACTERIA_SLAM_SURFACE_UNAVAILABLE"};const surface=surface_id??location.landmarks?.[0]?.name??`${location.type} structural surface`;const member=run.expedition.team.members.find((entry)=>(entry.personnel_id??entry.id)===capture.personnel_id);const next=String(member?.condition).toLowerCase()==="serious injury"?"incapacitated":"serious injury";const consequence=consequenceRuntime.apply(run,{source:`entity-physical-action:${id}`,classification:"phenomenon-contact",effects:[{kind:"personnel-condition",target:capture.personnel_id,condition:next,status:next==="incapacitated"?"incapacitated":"active",reason:`captured personnel impacted ${surface}`}],observable_to:witnesses.filter((observer)=>run.spatial.personnel_locations[observer]===item.location_id),public_summary:"A captured worker was driven into a nearby structural surface."});if(!consequence.ok)return consequence;const incidentId=`incident-${digest([id,capture.personnel_id,surface,now(run),item.incident_ids.length]).slice(0,16)}`;const incident={id:incidentId,type:"entity-environment-impact",phenomenon_id:id,personnel_id:capture.personnel_id,location_id:item.location_id,surface,consequence_id:consequence.consequence.id,witnesses:consequence.consequence.observable_to,at:now(run)};state(world).incidents[incidentId]=incident;item.incident_ids.push(incidentId);item.current_state="RESTRAINING";append(item,"environmental-slam",incident,now(run));return{ok:true,incident:clone(incident),consequence:consequence.consequence}; }
+function bacteriaSlam(world,run,id,{surface_id=null,witnesses=[]}={}) { const item=record(world,id);const capture=item?.state_data?.capture;if(!item||item.canonical_family!=="BACTERIA"||!capture?.restrained)return{ok:false,code:"BACTERIA_SLAM_CAPTURE_REQUIRED"};const topology=spatialRuntime.canonicalDefinition(run.spatial,require("../data/worldpacks/clear-q4/spatial.json"));const location=topology.locations.find((entry)=>entry.id===item.location_id);if(!location)return{ok:false,code:"BACTERIA_SLAM_SURFACE_UNAVAILABLE"};const surface=surface_id??location.landmarks?.[0]?.name??`${location.type} structural surface`;const member=run.expedition.team.members.find((entry)=>(entry.personnel_id??entry.id)===capture.personnel_id);const next=String(member?.condition).toLowerCase()==="serious injury"?"incapacitated":"serious injury";const consequence=consequenceRuntime.apply(run,{source:`entity-physical-action:${id}`,classification:"phenomenon-contact",effects:[{kind:"personnel-condition",target:capture.personnel_id,condition:next,status:"unavailable",reason:`captured personnel impacted ${surface}`}],observable_to:witnesses.filter((observer)=>run.spatial.personnel_locations[observer]===item.location_id),public_summary:"A captured worker was driven into a nearby structural surface."});if(!consequence.ok)return consequence;const incidentId=`incident-${digest([id,capture.personnel_id,surface,now(run),item.incident_ids.length]).slice(0,16)}`;const incident={id:incidentId,type:"entity-environment-impact",phenomenon_id:id,personnel_id:capture.personnel_id,location_id:item.location_id,surface,consequence_id:consequence.consequence.id,witnesses:consequence.consequence.observable_to,at:now(run)};ensureState(world).incidents[incidentId]=incident;item.incident_ids.push(incidentId);item.current_state="RESTRAINING";append(item,"environmental-slam",incident,now(run));return{ok:true,incident:clone(incident),consequence:consequence.consequence}; }
 
 function advance(world,run,{action="WAIT"}={}) { const updates=[];for(const item of records(world)){if(item.canonical_family==="BACTERIA"&&["ACQUIRED","PURSUING"].includes(item.current_state)){const result=bacteriaPursue(world,run,item.id);if(result.ok)updates.push({phenomenon_id:item.id,type:"bacteria-pursuit",result});}else if(item.canonical_family==="STILL_LIFE"&&item.current_state==="APPROACHING"&&item.behavior_profile.aggression==="contact"){const target=run.session.startup.player.observer_id;const targetLocation=run.spatial.personnel_locations[target];if(targetLocation===item.location_id){const consequence=consequenceRuntime.apply(run,{source:`still-life-contact:${item.id}`,classification:"phenomenon-contact",effects:[{kind:"personnel-condition",target,condition:"minor injury",status:"active",reason:"physical contact with an unidentified form"}],observable_to:Object.entries(run.spatial.personnel_locations).filter(([,loc])=>loc===item.location_id).map(([id])=>id),public_summary:"Physical contact with an unidentified form caused a personnel injury."});if(consequence.ok){item.current_state="AGGRESSIVE_CONTACT";append(item,"aggressive-contact",{consequence_id:consequence.consequence.id},now(run));updates.push({phenomenon_id:item.id,type:"still-life-contact"});}}}}return updates; }
 
 function diagnostics(world,{developer=false}={}) { const items=records(world);const safe={version:VERSION,config_version:config.version,recent_errors:clone(state(world).recent_errors.slice(-5))};if(!developer)return safe;return{...safe,instantiated_count:items.length,counts_by_family:Object.fromEntries(CANONICAL_FAMILIES.map((family)=>[family,items.filter((item)=>item.canonical_family===family).length])),production_count:items.filter((item)=>item.generation.mode==="production").length,fixture_count:items.filter((item)=>item.generation.mode==="controlled-test-fixture").length,evaluated_location_count:state(world).evaluated_locations.length,deterministic_test_seed:"pass-16b-controlled",controlled_fixture_status:"token-gated"}; }
 
-module.exports = { VERSION, RECORD_VERSION, FIXTURE_TOKEN, CANONICAL_FAMILIES, STILL_PROFILES, config, validateConfig, state, migrate, records, record, materializeEligible, instantiate, instantiateFixture, observe, projection, resolveObservedTarget, coinAlias, deliverReport, assignmentConditions, resolveCondition, linkEvidence, establishEvidenceInconsistency, applySpatialState, displaceObject, applyEnvironmentalDiscontinuity, emitAcousticAnomaly, stillLifeStimulus, recordSpeech, bacteriaMimic, acquireBacteria, bacteriaPursue, bacteriaCapture, bacteriaSlam, isCaptured, advance, diagnostics, distance };
+module.exports = { VERSION, RECORD_VERSION, FIXTURE_TOKEN, CANONICAL_FAMILIES, STILL_PROFILES, config, validateConfig, createState, currentState, state, ensureState, migrate, records, record, materializeEligible, instantiate, instantiateFixture, observe, projection, resolveObservedTarget, coinAlias, deliverReport, assignmentConditions, resolveCondition, linkEvidence, establishEvidenceInconsistency, applySpatialState, displaceObject, applyEnvironmentalDiscontinuity, emitAcousticAnomaly, stillLifeStimulus, recordSpeech, bacteriaMimic, acquireBacteria, bacteriaPursue, bacteriaCapture, bacteriaSlam, isCaptured, advance, diagnostics, distance };

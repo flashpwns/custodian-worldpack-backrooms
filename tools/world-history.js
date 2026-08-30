@@ -1,6 +1,94 @@
 "use strict";
 const crypto = require("node:crypto"); const fs = require("node:fs"); const path = require("node:path");
-const VERSION = "yellow-beast-world-history@v1"; const clone = (value) => structuredClone(value); const digest = (value) => crypto.createHash("sha256").update(JSON.stringify(value)).digest("hex");
+const VERSION = "yellow-beast-world-history@v1";
+const CURRENT_SHAPE_VERSION = "yellow-beast-canonical-world-shape@v1";
+const STORAGE_MIGRATION_ID = "yellow-beast-storage-migration@v1-to-canonical-shape-v1";
+const MAX_CANONICAL_ARRAY_LENGTH = 1_000_000;
+const clone = (value) => structuredClone(value); const digest = (value) => crypto.createHash("sha256").update(JSON.stringify(value)).digest("hex");
+function canonicalValueError(code, path, reason) { return Object.assign(new Error(`invalid canonical value at ${path}: ${reason}`), { code }); }
+function isArrayIndexKey(key) {
+  if (typeof key !== "string" || !/^(0|[1-9]\d*)$/.test(key)) return false;
+  const index = Number(key);
+  return Number.isInteger(index) && index >= 0 && index < 0xFFFFFFFF && String(index) === key;
+}
+function assertCanonicalJsonValue(value, { code = "CANONICAL_JSON_INVALID", path = "$", stack = new Set() } = {}) {
+  if (value === null || typeof value === "string" || typeof value === "boolean") return value;
+  if (typeof value === "number") { if (!Number.isFinite(value) || Object.is(value, -0)) throw canonicalValueError(code, path, "number is not losslessly JSON-representable"); return value; }
+  if (typeof value !== "object") throw canonicalValueError(code, path, `${typeof value} is not supported`);
+  if (stack.has(value)) throw canonicalValueError(code, path, "cyclic reference is not supported");
+  stack.add(value);
+  try {
+    if (Array.isArray(value)) {
+      if (Object.getPrototypeOf(value) !== Array.prototype) throw canonicalValueError(code, path, "custom array instances are not supported");
+      if (Object.getOwnPropertySymbols(value).length) throw canonicalValueError(code, path, "symbol properties are not supported");
+      const lengthDescriptor = Object.getOwnPropertyDescriptor(value, "length");
+      if (!lengthDescriptor || lengthDescriptor.enumerable || lengthDescriptor.configurable || lengthDescriptor.writable !== true || !("value" in lengthDescriptor) || lengthDescriptor.value !== value.length) throw canonicalValueError(code, `${path}.length`, "invalid array length descriptor");
+      if (value.length > MAX_CANONICAL_ARRAY_LENGTH) throw canonicalValueError(code, `${path}.length`, "array exceeds the canonical serialization limit");
+      for (const key of Object.getOwnPropertyNames(value)) if (key !== "length" && !isArrayIndexKey(key)) throw canonicalValueError(code, `${path}.${key}`, "array properties outside valid indexed values are not supported");
+      for (let index = 0; index < value.length; index += 1) {
+        if (!Object.hasOwn(value, index)) throw canonicalValueError(code, `${path}[${index}]`, "sparse array slots are not supported");
+        const descriptor = Object.getOwnPropertyDescriptor(value, String(index));
+        if (!descriptor?.enumerable || descriptor.writable !== true || descriptor.configurable !== true || !("value" in descriptor)) throw canonicalValueError(code, `${path}[${index}]`, "nonstandard array value descriptors are not supported");
+        assertCanonicalJsonValue(descriptor.value, { code, path:`${path}[${index}]`, stack });
+      }
+      return value;
+    }
+    if (Object.getPrototypeOf(value) !== Object.prototype) throw canonicalValueError(code, path, "only plain objects are supported");
+    if (Object.getOwnPropertySymbols(value).length) throw canonicalValueError(code, path, "symbol properties are not supported");
+    for (const key of Object.getOwnPropertyNames(value)) {
+      const descriptor = Object.getOwnPropertyDescriptor(value, key);
+      if (!descriptor?.enumerable || descriptor.writable !== true || descriptor.configurable !== true || !("value" in descriptor)) throw canonicalValueError(code, `${path}.${key}`, "nonstandard properties and accessors are not supported");
+      assertCanonicalJsonValue(descriptor.value, { code, path:`${path}.${key}`, stack });
+    }
+    return value;
+  } finally { stack.delete(value); }
+}
+function canonicalJson(value, { code = "CANONICAL_JSON_INVALID" } = {}) { assertCanonicalJsonValue(value, { code }); return JSON.parse(JSON.stringify(value)); }
+function canonicalEventPayload(value) {
+  const stack = new Set();
+  function visit(item, path, undefinedRule = "reject") {
+    if (item === undefined) {
+      if (undefinedRule === "omit") return undefined;
+      if (undefinedRule === "null") return null;
+      throw canonicalValueError("CANONICAL_JSON_INVALID", path, "undefined is supported only as an omitted object property or null array slot");
+    }
+    if (item === null || typeof item === "string" || typeof item === "boolean") return item;
+    if (typeof item === "number") return Number.isFinite(item) ? (Object.is(item, -0) ? 0 : item) : null;
+    if (typeof item !== "object") throw canonicalValueError("CANONICAL_JSON_INVALID", path, `${typeof item} is not supported`);
+    if (stack.has(item)) throw canonicalValueError("CANONICAL_JSON_INVALID", path, "cyclic reference is not supported");
+    stack.add(item);
+    try {
+      if (Array.isArray(item)) {
+        if (Object.getPrototypeOf(item) !== Array.prototype) throw canonicalValueError("CANONICAL_JSON_INVALID", path, "custom array instances are not supported");
+        if (Object.getOwnPropertySymbols(item).length) throw canonicalValueError("CANONICAL_JSON_INVALID", path, "symbol properties are not supported");
+        const lengthDescriptor = Object.getOwnPropertyDescriptor(item, "length");
+        if (!lengthDescriptor || lengthDescriptor.enumerable || lengthDescriptor.configurable || lengthDescriptor.writable !== true || !("value" in lengthDescriptor) || lengthDescriptor.value !== item.length) throw canonicalValueError("CANONICAL_JSON_INVALID", `${path}.length`, "invalid array length descriptor");
+        if (item.length > MAX_CANONICAL_ARRAY_LENGTH) throw canonicalValueError("CANONICAL_JSON_INVALID", `${path}.length`, "array exceeds the canonical serialization limit");
+        for (const key of Object.getOwnPropertyNames(item)) if (key !== "length" && !isArrayIndexKey(key)) throw canonicalValueError("CANONICAL_JSON_INVALID", `${path}.${key}`, "array properties outside valid indexed values are not supported");
+        const result = [];
+        for (let index = 0; index < item.length; index += 1) {
+          if (!Object.hasOwn(item, index)) { result.push(null); continue; }
+          const descriptor = Object.getOwnPropertyDescriptor(item, String(index));
+          if (!descriptor?.enumerable || descriptor.writable !== true || descriptor.configurable !== true || !("value" in descriptor)) throw canonicalValueError("CANONICAL_JSON_INVALID", `${path}[${index}]`, "nonstandard array value descriptors are not supported");
+          result.push(visit(descriptor.value, `${path}[${index}]`, "null"));
+        }
+        return result;
+      }
+      const prototype = Object.getPrototypeOf(item);
+      if (prototype !== Object.prototype && prototype !== null) throw canonicalValueError("CANONICAL_JSON_INVALID", path, "only plain objects are supported");
+      if (Object.getOwnPropertySymbols(item).length) throw canonicalValueError("CANONICAL_JSON_INVALID", path, "symbol properties are not supported");
+      const result = {};
+      for (const key of Object.getOwnPropertyNames(item)) {
+        const descriptor = Object.getOwnPropertyDescriptor(item, key);
+        if (!descriptor?.enumerable || descriptor.writable !== true || descriptor.configurable !== true || !("value" in descriptor)) throw canonicalValueError("CANONICAL_JSON_INVALID", `${path}.${key}`, "nonstandard properties and accessors are not supported");
+        const normalized = visit(descriptor.value, `${path}.${key}`, "omit");
+        if (normalized !== undefined) Object.defineProperty(result, key, { value:normalized, enumerable:true, writable:true, configurable:true });
+      }
+      return result;
+    } finally { stack.delete(item); }
+  }
+  return visit(value, "$payload");
+}
 const GENERATOR_V1 = "yellow-beast-complex-generator@v1";
 const GENERATOR_V2 = "yellow-beast-complex-generator@v2";
 const SUPPORTED_GENERATORS = new Set([GENERATOR_V1, GENERATOR_V2]);
@@ -16,9 +104,9 @@ function assertRegion(region) {
   if (version === GENERATOR_V2 && region.state.version !== GENERATOR_V2) throw Object.assign(new Error("v2 region state/version mismatch"), { code: "REGION_VERSION_MISMATCH" });
   return version;
 }
-function createWorld({ id = null, seed = "yellow-beast-world" } = {}) { const world_id = id ?? `world-${digest(["world", seed]).slice(0, 12)}`; return { version: VERSION, world_id, seed, next_run: 1, event_sequence: 0, runs: {}, regions: {}, evidence: {}, artifacts: {}, characters: {}, phenomena: {}, q4_phenomenon_ecology:null, q4_missions: {}, q4_reviews: {}, q4_scars: {}, q4_knowledge: {}, q4_geography: null, q4_survey_frontier: null, q4_object_state: null, q4_operations: { institutional_time: 0, last_review: null }, q4_lifecycle:{ version:"yellow-beast-q4-outcome-authority@v1", status:"ACTIVE", immutable_write_rejections:0, final_incident:null, retirement_transaction:null }, q4_legacy_personnel:{}, events: [], knowledge: { institutional: { records: {} }, civilian: { records: {} } } }; }
+function createWorld({ id = null, seed = "yellow-beast-world" } = {}) { const world_id = id ?? `world-${digest(["world", seed]).slice(0, 12)}`; return { version: VERSION, canonical_shape_version:CURRENT_SHAPE_VERSION, storage_migrations:[], world_id, seed, next_run: 1, event_sequence: 0, runs: {}, regions: {}, evidence: {}, artifacts: {}, characters: {}, phenomena: {}, q4_phenomenon_ecology:require("./q4-phenomenon-ecology").currentState(), q4_evidence_archive:require("./q4-evidence-authority").createState(), q4_career_state:require("./q4-career-loop").createState(), q4_missions: {}, q4_reviews: {}, q4_scars: {}, q4_knowledge: {}, q4_geography: null, q4_survey_frontier: null, q4_object_state: null, q4_operations: { institutional_time: 0, last_review: null }, q4_lifecycle:{ version:"yellow-beast-q4-outcome-authority@v1", status:"ACTIVE", immutable_write_rejections:0, final_incident:null, retirement_transaction:null }, q4_legacy_personnel:{}, events: [], knowledge: { institutional: { records: {} }, civilian: { records: {} } } }; }
 function assertWorld(world) { if (!world || world.version !== VERSION || !world.world_id) throw Object.assign(new Error("unsupported world history"), { code: "WORLD_VERSION_UNSUPPORTED" }); return world; }
-function event(world, run_id, type, payload, authority = "pack-original-world-history") { const sequence = ++world.event_sequence; const id = `history-${digest([world.world_id, sequence, run_id, type, payload]).slice(0, 16)}`; const record = { id, world_id: world.world_id, run_id, sequence, type, payload: clone(payload), authority, provenance: "yellow-beast-structured-result" }; world.events.push(record); return record; }
+function event(world, run_id, type, payload, authority = "pack-original-world-history") { const material = canonicalEventPayload(payload); const sequence = ++world.event_sequence; const id = `history-${digest([world.world_id, sequence, run_id, type, material]).slice(0, 16)}`; const record = { id, world_id: world.world_id, run_id, sequence, type, payload: material, authority, provenance: "yellow-beast-structured-result" }; world.events.push(record); return record; }
 function beginRun(world, { profile, scenario, seed }) { assertWorld(world); const ordinal = world.next_run++; const run_id = `run-${digest([world.world_id, ordinal, profile, scenario, seed]).slice(0, 16)}`; world.runs[run_id] = { id: run_id, world_id: world.world_id, ordinal, profile, scenario, seed, status: "active", history_ingested: false }; event(world, run_id, "run.started", { profile, scenario, seed }); return run_id; }
 function regionId(state) { return `region-${digest([state.version, state.region_seed]).slice(0, 16)}`; }
 function promoteRegion(world, run_id, state) { if (!state) return null; if (!SUPPORTED_GENERATORS.has(state.version)) throw Object.assign(new Error("unsupported generator version"), { code: "GENERATOR_VERSION_UNSUPPORTED" }); const id = regionId(state); const existing = world.regions[id]; if (existing && (existing.generator_version !== state.version || existing.region_seed !== state.region_seed)) throw Object.assign(new Error("conflicting region materialization"), { code: "REGION_CONFLICT" }); if (!existing) { world.regions[id] = { id, generator_version: state.version, region_seed: state.region_seed, first_materialized_by: run_id, baseline_state: clone(state), state: clone(state), discovery: [], provenance: { grammar_rule_ids: Object.values(state.nodes).map((node) => node.grammar_rule_id).sort(), authorities: [...new Set(Object.values(state.nodes).map((node) => node.authority))] } }; event(world, run_id, "region.materialized", { region_id: id, generator_version: state.version }); }
@@ -48,13 +136,14 @@ function recoverArtifact(world, { run_id, artifact_id, holder }) { const item = 
 // Character records are canonical world state plus append-only history events.
 // The object index is a cacheable current-state view: it can be rebuilt from
 // character.* events and is never an observer knowledge ledger or role table.
-function characterState(world) { assertWorld(world); world.characters ??= {}; return world.characters; }
+function characterState(world) { assertWorld(world); if (!world.characters || typeof world.characters !== "object" || Array.isArray(world.characters)) throw Object.assign(new Error("invalid character state"), { code:"CHARACTER_STATE_INVALID" }); return world.characters; }
+function ensureCharacterState(world) { assertWorld(world); world.characters ??= {}; if (typeof world.characters !== "object" || Array.isArray(world.characters)) throw Object.assign(new Error("invalid character state"), { code:"CHARACTER_STATE_INVALID" }); return world.characters; }
 function character(world, identity) { return characterState(world)[identity] ?? null; }
 function canInstantiateCharacter(world, identity) { return !character(world, identity); }
 function instantiateCharacter(world, { run_id, identity, display_name, first_name = null, last_name = null, role = null, clearance = null, condition = "normal", current_assignment = null, assignment_history = [], classification = "named-character", provenance = "pack-original-character-fixture", authority = "scenario-optional", source_claim_ids = [] }) {
   if (!identity || !display_name || !canInstantiateCharacter(world, identity)) return { ok: false, code: "CHARACTER_IDENTITY_UNAVAILABLE" };
   const record = { identity, display_name, first_name, last_name, role, clearance, condition, current_assignment, assignment_history: clone(assignment_history), classification, status: "active", provenance, authority, source_claim_ids: clone(source_claim_ids), instantiated_by: run_id, death: null };
-  characterState(world)[identity] = record; event(world, run_id, "character.instantiated", { identity, display_name, first_name, last_name, role, clearance, condition, current_assignment, assignment_history: clone(assignment_history), classification, provenance, authority, source_claim_ids: clone(source_claim_ids) }, authority);
+  ensureCharacterState(world)[identity] = record; event(world, run_id, "character.instantiated", { identity, display_name, first_name, last_name, role, clearance, condition, current_assignment, assignment_history: clone(assignment_history), classification, provenance, authority, source_claim_ids: clone(source_claim_ids) }, authority);
   return { ok: true, character: clone(record) };
 }
 function setCharacterStatus(world, { run_id, identity, status, condition = null, reason = null }) {
@@ -83,6 +172,34 @@ function rebuildCharacters(world) {
 }
 function knownRegions(world, profile) { assertWorld(world); if (profile !== "field-researcher" && profile !== "async-command") return []; return Object.values(world.knowledge.institutional.records).filter((record) => record.id.startsWith("institutional-region-")).map((record) => ({ record_id: record.id, region_id: record.payload.region_id })); }
 function summary(world, profile) { assertWorld(world); return { world_id: world.world_id, version: world.version, completed_runs: Object.values(world.runs).filter((run) => run.history_ingested).length, institutional_regions: knownRegions(world, profile).length, archived_expeditions: Object.values(world.runs).filter((run) => run.expedition_id).length }; }
-function saveWorld(file, world) { assertWorld(world); fs.mkdirSync(path.dirname(file), { recursive: true }); fs.writeFileSync(file, `${JSON.stringify(world, null, 2)}\n`); }
-function loadWorld(file) { const world = assertWorld(JSON.parse(fs.readFileSync(file, "utf8"))); world.q4_geography ??= null; world.q4_survey_frontier ??= null; world.q4_object_state ??= null; require("./q4-evidence-authority").migrate(world); require("./q4-phenomenon-ecology").migrate(world); require("./q4-outcome-authority").migrate(world); const rebuiltCharacters = rebuildCharacters(world); if (Object.keys(rebuiltCharacters).length) world.characters = rebuiltCharacters; else world.characters ??= {}; for (const region of Object.values(world.regions)) { if (!region.generator_version && region.state?.version === GENERATOR_V1) region.generator_version = GENERATOR_V1; assertRegion(region); if (region.generator_version === GENERATOR_V2) region.state = rebuildRegion(world, region.id); } return world; }
-module.exports = { VERSION, GENERATOR_V1, GENERATOR_V2, SUPPORTED_GENERATORS, createWorld, assertWorld, event, beginRun, ingestRun, promoteRegion, regionId, generatorVersion, restoreRegion, rebuildRegion, leaveRemnant, visibleArtifacts, mutateRegion, recoverArtifact, characterState, character, canInstantiateCharacter, instantiateCharacter, setCharacterStatus, rebuildCharacters, recordInstitutional, recordQ4Mission, updateQ4Mission, recordInstitutionalRegionSummary, knownRegions, summary, saveWorld, loadWorld };
+function assertCurrentWorld(world, { validate_regions = true } = {}) {
+  assertWorld(world);
+  if (world.canonical_shape_version !== CURRENT_SHAPE_VERSION) throw Object.assign(new Error("unsupported canonical world shape"), { code:"WORLD_SHAPE_VERSION_UNSUPPORTED" });
+  if (!Array.isArray(world.storage_migrations)) throw Object.assign(new Error("invalid storage migration ledger"), { code:"WORLD_SHAPE_INVALID" });
+  for (const key of ["runs","regions","evidence","artifacts","characters","phenomena","q4_career_state","q4_missions","q4_reviews","q4_scars","q4_knowledge","q4_operations","q4_legacy_personnel"]) if (!world[key] || typeof world[key] !== "object" || Array.isArray(world[key])) throw Object.assign(new Error(`invalid current world field: ${key}`), { code:"WORLD_SHAPE_INVALID" });
+  for (const key of ["q4_geography","q4_survey_frontier","q4_object_state"]) if (!Object.hasOwn(world, key)) throw Object.assign(new Error(`missing current world field: ${key}`), { code:"WORLD_SHAPE_INVALID" });
+  if (!Array.isArray(world.events) || !world.knowledge?.institutional?.records || !world.knowledge?.civilian?.records) throw Object.assign(new Error("invalid current world history collections"), { code:"WORLD_SHAPE_INVALID" });
+  if (!world.q4_evidence_archive || !world.q4_phenomenon_ecology) throw Object.assign(new Error("missing current canonical domain state"), { code:"WORLD_SHAPE_INVALID" });
+  const evidenceAuthority = require("./q4-evidence-authority"); evidenceAuthority.readState(world); const evidenceValidation = evidenceAuthority.validate(world); if (!evidenceValidation.ok) throw Object.assign(new Error(`invalid current evidence archive: ${evidenceValidation.broken.join(", ")}`), { code:"WORLD_SHAPE_INVALID" }); require("./q4-phenomenon-ecology").state(world); require("./q4-career-loop").read(world);
+  if (world.q4_geography != null) { try { const authored = require("../data/worldpacks/clear-q4/spatial.json"); const topology = require("./spatial-runtime").canonicalDefinition(world.q4_geography, authored); require("./q4-environment").validateCurrent(world.q4_geography.environment, authored); require("./survey-frontier").validateCurrent(world.q4_survey_frontier, topology, { player:world.q4_operations?.controlled_player ?? null }); } catch { throw Object.assign(new Error("invalid current Clear-Q4 spatial authority state"), { code:"WORLD_SHAPE_INVALID" }); } }
+  try { require("./q4-outcome-authority").readLifecycle(world); } catch { throw Object.assign(new Error("invalid current lifecycle state"), { code:"WORLD_SHAPE_INVALID" }); }
+  if (validate_regions) for (const region of Object.values(world.regions)) assertRegion(region);
+  return world;
+}
+function migrateWorld(input) {
+  const world = assertWorld(canonicalJson(input));
+  if (world.canonical_shape_version != null && world.canonical_shape_version !== CURRENT_SHAPE_VERSION) throw Object.assign(new Error("unsupported canonical world shape"), { code:"WORLD_SHAPE_VERSION_UNSUPPORTED" });
+  if (world.canonical_shape_version === CURRENT_SHAPE_VERSION) return assertCurrentWorld(world);
+  world.q4_geography ??= null; world.q4_survey_frontier ??= null; world.q4_object_state ??= null;
+  world.runs ??= {}; world.regions ??= {}; world.evidence ??= {}; world.artifacts ??= {}; world.characters ??= {}; world.phenomena ??= {}; world.q4_career_state ??= require("./q4-career-loop").createState(); world.q4_missions ??= {}; world.q4_reviews ??= {}; world.q4_scars ??= {}; world.q4_knowledge ??= {}; world.q4_operations ??= { institutional_time:0, last_review:null }; world.events ??= []; world.knowledge ??= { institutional:{ records:{} }, civilian:{ records:{} } }; world.knowledge.institutional ??= { records:{} }; world.knowledge.institutional.records ??= {}; world.knowledge.civilian ??= { records:{} }; world.knowledge.civilian.records ??= {};
+  require("./q4-evidence-authority").migrate(world); require("./q4-phenomenon-ecology").migrate(world); require("./q4-outcome-authority").migrate(world);
+  const rebuiltCharacters = rebuildCharacters(world); for (const [identity, record] of Object.entries(rebuiltCharacters)) world.characters[identity] ??= record;
+  for (const entry of world.events) entry.payload = canonicalEventPayload(entry.payload);
+  for (const region of Object.values(world.regions)) { if (!region.generator_version && region.state?.version === GENERATOR_V1) region.generator_version = GENERATOR_V1; assertRegion(region); if (region.generator_version === GENERATOR_V2) region.state = rebuildRegion(world, region.id); }
+  world.storage_migrations = [...new Set([...(Array.isArray(world.storage_migrations) ? world.storage_migrations : []), STORAGE_MIGRATION_ID])]; world.canonical_shape_version = CURRENT_SHAPE_VERSION;
+  return assertCurrentWorld(world);
+}
+function normalizeWorld(world) { assertWorld(world); if (world.canonical_shape_version === CURRENT_SHAPE_VERSION) { const normalized = canonicalJson(world, { code:"CANONICAL_WORLD_VALUE_INVALID" }); return assertCurrentWorld(normalized, { validate_regions:false }); } return migrateWorld(world); }
+function saveWorld(file, world) { const normalized = normalizeWorld(world); fs.mkdirSync(path.dirname(file), { recursive: true }); fs.writeFileSync(file, `${JSON.stringify(normalized, null, 2)}\n`); return normalized; }
+function loadWorld(file) { const world = assertWorld(JSON.parse(fs.readFileSync(file, "utf8"))); return world.canonical_shape_version === CURRENT_SHAPE_VERSION ? assertCurrentWorld(world) : migrateWorld(world); }
+module.exports = { VERSION, CURRENT_SHAPE_VERSION, STORAGE_MIGRATION_ID, GENERATOR_V1, GENERATOR_V2, SUPPORTED_GENERATORS, canonicalJson, canonicalEventPayload, createWorld, assertWorld, assertCurrentWorld, migrateWorld, normalizeWorld, event, beginRun, ingestRun, promoteRegion, regionId, generatorVersion, restoreRegion, rebuildRegion, leaveRemnant, visibleArtifacts, mutateRegion, recoverArtifact, characterState, character, canInstantiateCharacter, instantiateCharacter, setCharacterStatus, rebuildCharacters, recordInstitutional, recordQ4Mission, updateQ4Mission, recordInstitutionalRegionSummary, knownRegions, summary, saveWorld, loadWorld };

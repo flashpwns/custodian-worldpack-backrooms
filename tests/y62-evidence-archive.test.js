@@ -27,6 +27,42 @@ test("archive hides unavailable evidence and retains simulation-authored conflic
   const standard = evidence.archive(world, { observer:"standard" }); assert.deepEqual(standard.records.map((record) => record.id), ["CQ4-E-ONE"]); assert.equal(standard.contradictions.length, 0);
   const player = evidence.archive(world); assert.equal(player.records.length, 2); assert.equal(player.contradictions[0].claim, "fixture condition"); assert.equal(evidence.validate(world).ok, true);
 });
-test("legacy evidence migrates conservatively without inventing custody", () => {
-  const world = history.createWorld({ seed:"legacy-evidence" }); world.evidence.legacy = { id:"legacy", type:"field-note", creator:"unknown", custody:[], availability:"unknown" }; evidence.migrate(world); const record = evidence.archive(world).records[0]; assert.equal(record.method, "unknown / legacy record"); assert.equal(record.custody.state, "unknown"); assert.equal(record.standard_available, false);
+test("legacy evidence rejects missing custody, provenance, or access without mutation and accepts a well-formed control", () => {
+  const legacyWorld = (seed) => {
+    const world = history.createWorld({ seed });
+    history.instantiateCharacter(world, { run_id:"legacy-setup", identity:"operator", display_name:"Operator", role:"field researcher", authority:"legacy-record" });
+    delete world.canonical_shape_version;
+    delete world.storage_migrations;
+    delete world.q4_evidence_archive;
+    world.evidence.legacy = { id:"legacy", type:"field-note", creator:"operator", origin_run:"legacy-run", custody:[{ holder:"operator", event:"created" }], availability:"observer-held", provenance:"preserved-legacy-field-note", available_to_player:true };
+    return world;
+  };
+
+  const corruptions = [
+    (record) => { record.custody = []; },
+    (record) => { delete record.provenance; },
+    (record) => { delete record.available_to_player; }
+  ];
+  for (const corrupt of corruptions) {
+    const input = legacyWorld("legacy-evidence-invalid");
+    corrupt(input.evidence.legacy);
+    const before = structuredClone(input);
+    assert.throws(() => history.migrateWorld(input), { code:"EVIDENCE_ARCHIVE_INVALID" });
+    assert.deepEqual(input, before);
+    assert.equal(input.q4_evidence_archive, undefined);
+  }
+
+  const control = legacyWorld("legacy-evidence-control");
+  const controlBefore = structuredClone(control);
+  const migrated = history.migrateWorld(control);
+  assert.deepEqual(control, controlBefore);
+  assert.deepEqual(evidence.validate(migrated), { ok:true, broken:[] });
+  const record = migrated.q4_evidence_archive.records.legacy;
+  assert.equal(record.method, "unknown / legacy record");
+  assert.equal(record.provenance.source, "preserved-legacy-field-note");
+  assert.deepEqual(record.custody.history, control.evidence.legacy.custody);
+  assert.equal(record.custody.state, "observer-held");
+  assert.equal(record.player_access, true);
+  assert.equal(record.standard_available, false);
+  assert.deepEqual(evidence.archive(migrated, { observer:"standard" }).records, []);
 });

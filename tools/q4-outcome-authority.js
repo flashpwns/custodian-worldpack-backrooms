@@ -7,9 +7,11 @@ const history = require("./world-history");
 const VERSION = "yellow-beast-q4-outcome-authority@v1";
 const clone = (value) => structuredClone(value);
 const digest = (value) => crypto.createHash("sha256").update(JSON.stringify(value)).digest("hex").slice(0, 18);
+const LIFECYCLE_STATUSES = new Set(["ACTIVE", "RETIREMENT_PENDING", "RETIRED"]);
 
 function lifecycle(world) { history.assertWorld(world); world.q4_lifecycle ??= { version: VERSION, status: "ACTIVE", immutable_write_rejections: 0, final_incident: null, retirement_transaction: null }; const state = world.q4_lifecycle; state.version ??= VERSION; state.status ??= "ACTIVE"; state.immutable_write_rejections ??= 0; return state; }
-function isRetired(world) { return lifecycle(world).status === "RETIRED"; }
+function readLifecycle(world) { history.assertWorld(world); const state = world.q4_lifecycle; if (!state || state.version !== VERSION || !LIFECYCLE_STATUSES.has(state.status) || !Number.isInteger(state.immutable_write_rejections) || state.immutable_write_rejections < 0) throw Object.assign(new Error("invalid Q4 lifecycle state"), { code:"Q4_LIFECYCLE_INVALID" }); return state; }
+function isRetired(world) { return readLifecycle(world).status === "RETIRED"; }
 function assertMutable(world, operation = "canonical mutation") { const state = lifecycle(world); if (state.status !== "RETIRED") return true; state.immutable_write_rejections += 1; throw Object.assign(new Error(`retired world rejects ${operation}`), { code: "WORLD_RETIRED_IMMUTABLE" }); }
 function memberId(member) { return member?.personnel_id ?? member?.id; }
 function conditionStatus(condition) { const value = String(condition ?? "normal").toLowerCase(); if (["dead", "deceased"].includes(value)) return "dead"; if (value === "missing") return "missing"; if (["incapacitated", "serious injury", "recovering"].includes(value)) return "unavailable"; return "active"; }
@@ -29,6 +31,6 @@ function resolve(world, run, { cause = null } = {}) {
   return { ok: true, classification, personnel_changes: changes, player_deceased: playerDeceased };
 }
 function retire(world, run) { const state = lifecycle(world); const playerId = world.q4_operations?.controlled_player ?? run?.session?.startup?.player?.observer_id; if (state.status === "RETIRED") return { ok: true, idempotent: true, legacy: clone(Object.values(world.q4_legacy_personnel ?? {})[0] ?? null) }; if (history.character(world, playerId)?.status !== "dead") return { ok: false, code: "PLAYER_DEATH_REQUIRED" }; state.status = "RETIRED"; state.retired_at_run = run?.run_id ?? null; state.retirement_transaction ??= { id: `retirement-${digest([world.world_id, playerId])}`, run_id: run?.run_id ?? null, player_id: playerId }; state.retirement_transaction.state = "committed"; const legacy = legacyRecord(world, run, playerId); history.event(world, run?.run_id ?? "retirement", "q4.world.retired", { retirement_transaction: clone(state.retirement_transaction), final_incident_id: state.final_incident?.id ?? null, legacy_record_id: legacy?.id ?? null }, "q4-outcome-authority"); return { ok: true, idempotent: false, legacy: clone(legacy) }; }
-function archive(world) { const state = lifecycle(world); return { lifecycle: state.status, final_incident: clone(state.final_incident), personnel: clone(Object.values(world.q4_legacy_personnel ?? {})), read_only: state.status === "RETIRED" }; }
+function archive(world) { const state = readLifecycle(world); return { lifecycle: state.status, final_incident: clone(state.final_incident), personnel: clone(Object.values(world.q4_legacy_personnel ?? {})), read_only: state.status === "RETIRED" }; }
 function migrate(world) { lifecycle(world); world.q4_legacy_personnel ??= {}; return world; }
-module.exports = { VERSION, lifecycle, isRetired, assertMutable, resolve, retire, archive, migrate };
+module.exports = { VERSION, LIFECYCLE_STATUSES, lifecycle, readLifecycle, isRetired, assertMutable, resolve, retire, archive, migrate };

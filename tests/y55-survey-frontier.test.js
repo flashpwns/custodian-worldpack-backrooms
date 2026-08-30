@@ -29,22 +29,64 @@ test("Survey Frontier keeps player, teammate, Standard, and historical geography
   assert.ok(frontier.frontier(state, definition, "jack").length > 0);
 });
 
-test("Survey Frontier persists and legacy saves migrate without fabricating teammate or Standard knowledge", () => {
+test("Survey Frontier persists, while missing current-v9 frontier state fails closed or restores previous-good", () => {
   const started = bootstrap.startRun({ profile: "field-researcher", seed: "frontier-save", spatial_worldpack: "clear-q4" });
   assert.equal(started.ok, true);
   const run = bootstrap.enterSpatialField(started.run);
   const player = run.session.startup.player.observer_id;
   frontier.observe(run.survey_frontier, definition, player, "utility-room", { at: 1 });
   frontier.report(run.survey_frontier, player, { at: 2, message_id: "route-report" });
-  const restored = bootstrap.resumeRun(bootstrap.saveRun(run), { spatial_worldpack: "clear-q4", phase: "FIELD_OPERATION" });
+  const saved = bootstrap.saveRun(run);
+  const frontierBefore = structuredClone(saved.survey_frontier);
+  const eventsBefore = structuredClone(saved.expedition.operational.events);
+  const restored = bootstrap.resumeRun(saved, { spatial_worldpack: "clear-q4", phase: "FIELD_OPERATION" });
   assert.equal(restored.ok, true);
   assert.equal(frontier.known(restored.run.survey_frontier, player, "utility-room"), true);
   assert.equal(frontier.standardMap(restored.run.survey_frontier, definition).nodes.some((node) => node.id === "utility-room"), true);
+  const peer = restored.run.expedition.team.members.find((member) => member.personnel_id !== player).personnel_id;
+  assert.equal(frontier.known(restored.run.survey_frontier, peer, "columned-corridor"), false);
 
-  const old = bootstrap.saveRun(run); delete old.survey_frontier;
-  const migrated = bootstrap.resumeRun(old, { spatial_worldpack: "clear-q4", phase: "FIELD_OPERATION" });
-  const peer = migrated.run.expedition.team.members.find((member) => member.personnel_id !== player).personnel_id;
-  assert.equal(frontier.known(migrated.run.survey_frontier, peer, "columned-corridor"), false);
+  const corrupt = structuredClone(saved);
+  delete corrupt.survey_frontier;
+  const corruptBefore = structuredClone(corrupt);
+  assert.deepEqual(bootstrap.resumeRun(corrupt, { spatial_worldpack: "clear-q4", phase: "FIELD_OPERATION" }), { ok: false, error: { code: "RUN_STATE_INVALID" } });
+  assert.deepEqual(corrupt, corruptBefore);
+  assert.deepEqual(saved.survey_frontier, frontierBefore);
+  assert.deepEqual(saved.expedition.operational.events, eventsBefore);
+
+  const unsavable = restored.run;
+  delete unsavable.survey_frontier;
+  const unsavableBefore = structuredClone(unsavable);
+  assert.throws(() => bootstrap.saveRun(unsavable), { code: "RUN_STATE_INVALID" });
+  assert.deepEqual(unsavable, unsavableBefore);
+
+  const appDataPath = fs.mkdtempSync(path.join(os.tmpdir(), "yb-frontier-recovery-"));
+  const service = new DesktopService({ appDataPath });
+  const world = service.createWorld({ name: "Frontier recovery", seed: "frontier-recovery" }).world;
+  assert.equal(service.startSession({ world_id: world.id, mode: "field-researcher", seed: "frontier-recovery" }).ok, true);
+  service.persistSession(service.getWorld(world.id), "field-researcher", service.session(world.id, "field-researcher"));
+  const sessionFile = service.sessionFile(world.id, "field-researcher");
+  const sessionBackup = service.sessionBackupFile(world.id, "field-researcher");
+  const worldFile = service.worldFile(world.id);
+  const primary = JSON.parse(fs.readFileSync(sessionFile, "utf8"));
+  delete primary.payload.survey_frontier;
+  fs.writeFileSync(sessionFile, `${JSON.stringify(primary, null, 2)}\n`);
+  const damagedPrimary = fs.readFileSync(sessionFile);
+  const validPrevious = fs.readFileSync(sessionBackup);
+  const worldBytes = fs.readFileSync(worldFile);
+  const previous = JSON.parse(validPrevious);
+
+  const recovering = new DesktopService({ appDataPath });
+  const recovered = recovering.resumeSession({ world_id: world.id, mode: "field-researcher" });
+  assert.equal(recovered.ok, true);
+  assert.equal(recovered.recovery.session.source, "previous-good-session");
+  const recoveredRun = recovering.session(world.id, "field-researcher").run;
+  assert.deepEqual(bootstrap.saveRun(recoveredRun), previous.payload);
+  assert.deepEqual(recoveredRun.survey_frontier, previous.payload.survey_frontier);
+  assert.deepEqual(recoveredRun.expedition.operational.events, previous.payload.expedition.operational.events);
+  assert.equal(fs.readFileSync(sessionFile).equals(damagedPrimary), true);
+  assert.equal(fs.readFileSync(sessionBackup).equals(validPrevious), true);
+  assert.equal(fs.readFileSync(worldFile).equals(worldBytes), true);
 });
 
 test("a delivered Standard survey report, not player movement, updates the institutional spatial record", () => {

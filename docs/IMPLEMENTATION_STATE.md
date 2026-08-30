@@ -1,5 +1,12 @@
 # Yellow Beast Implementation State
 
+## Governance amendment — four stale long-world expectations — 2026-08-15
+
+- Approved external baseline: `e57ceead36167e873412a5974a296dfef74d45ed`. This amendment is limited to verification governance and does not certify or modify the independently supplied persistence implementation awaiting final certification.
+- Human adjudication replaces one stale expectation in each of `tests/y55-survey-frontier.test.js`, `tests/y61-local-standard.test.js`, `tests/y62-evidence-archive.test.js`, and `tests/y64-environment-simulation.test.js`. The former assertions required restore-time manufacture of current-v9 Survey Frontier state, a current Clear-Q4 Standard operator, incomplete legacy evidence provenance/access, or current-v9 environment state.
+- The governed replacement contract is fail-closed: corrupt current-v9 state rejects or uses an already-valid previous-good artifact without creating observations, provenance, environment, personnel, contacts, access, or history. Well-formed legacy evidence remains eligible for conservative migration with its explicit facts preserved.
+- Protected status and `long-world` tier membership remain unchanged. `verification/verification-authority.json` changes only the four corresponding governed content hashes. `verification/test-manifest.json`, verifier-core files, runner/inventory semantics, known-defect dispositions, retirements, and tier transitions remain unchanged.
+
 ## Current orientation — V02 verification-governance repair — 2026-08-15
 
 - V02 remains limited to executable verification truth. No persistence, gameplay, provider, canon, or player-facing simulation authority changed.

@@ -6,9 +6,23 @@ const logistics = require("./logistics-runtime");
 
 const VERSION = "yellow-beast-consequence-runtime@v1";
 const PERSONNEL_CONDITIONS = new Set(["uninjured", "minor injury", "serious injury", "incapacitated", "missing", "dead", "stabilized minor injury"]);
+const PERSONNEL_STATUSES = new Set(["active", "unavailable", "missing", "unknown", "retired", "removed", "dead"]);
 const EQUIPMENT_STATES = new Set(["operational", "serviceable", "damaged", "disabled", "depleted", "dropped", "lost", "recoverable", "destroyed"]);
 const clone = (value) => structuredClone(value);
 function memberId(member) { return member.personnel_id ?? member.id; }
+function statusForCondition(condition) {
+  if (["serious injury", "incapacitated"].includes(condition)) return "unavailable";
+  if (["missing", "dead"].includes(condition)) return condition;
+  return "active";
+}
+function validatePersonnelSnapshot(member) {
+  const condition = String(member?.condition ?? "").toLowerCase(); const status = String(member?.status ?? "").toLowerCase();
+  const supportedConditions = new Set([...PERSONNEL_CONDITIONS, "normal", "recovering", "deceased"]);
+  if (!supportedConditions.has(condition) || !PERSONNEL_STATUSES.has(status)) return { ok:false, code:"SESSION_PERSONNEL_STATE_INVALID" };
+  const expected = statusForCondition(condition === "deceased" ? "dead" : condition === "recovering" ? "serious injury" : condition);
+  if (status !== expected) return { ok:false, code:"SESSION_PERSONNEL_COMBINATION_INVALID" };
+  return { ok:true, condition, status };
+}
 
 function ensure(expedition) {
   const operational = operationalTime.ensure(expedition);
@@ -21,7 +35,7 @@ function validate(run, proposal) {
   if (!proposal || !Array.isArray(proposal.effects) || !proposal.effects.length) return { ok: false, code: "CONSEQUENCE_EMPTY" };
   const members = new Set((run.expedition?.team?.members ?? []).map(memberId)); const equipment = run.expedition?.equipment ?? {};
   for (const effect of proposal.effects) {
-    if (effect.kind === "personnel-condition") { if (!members.has(effect.target) || !PERSONNEL_CONDITIONS.has(effect.condition)) return { ok: false, code: "CONSEQUENCE_PERSONNEL_INVALID" }; const current = run.expedition.team.members.find((entry) => memberId(entry) === effect.target); if (["dead", "missing"].includes(String(current?.condition).toLowerCase()) && effect.condition !== current.condition) return { ok: false, code: "CONSEQUENCE_PERSONNEL_IRREVERSIBLE" }; }
+    if (effect.kind === "personnel-condition") { if (!members.has(effect.target) || !PERSONNEL_CONDITIONS.has(effect.condition)) return { ok: false, code: "CONSEQUENCE_PERSONNEL_INVALID" }; const expectedStatus = statusForCondition(effect.condition); if (effect.status != null && (!PERSONNEL_STATUSES.has(effect.status) || effect.status !== expectedStatus)) return { ok:false, code:"CONSEQUENCE_PERSONNEL_STATUS_INVALID" }; const current = run.expedition.team.members.find((entry) => memberId(entry) === effect.target); if (["dead", "missing"].includes(String(current?.condition).toLowerCase()) && effect.condition !== current.condition) return { ok: false, code: "CONSEQUENCE_PERSONNEL_IRREVERSIBLE" }; }
     else if (["equipment-dropped", "equipment-state"].includes(effect.kind)) { if (!equipment[effect.target] || (effect.state && !EQUIPMENT_STATES.has(effect.state))) return { ok: false, code: "CONSEQUENCE_EQUIPMENT_INVALID" }; if (equipment[effect.target].state === "destroyed" && effect.state && effect.state !== "destroyed") return { ok: false, code: "CONSEQUENCE_EQUIPMENT_IRREVERSIBLE" }; }
     else if (effect.kind === "route-blocked") { if (!run.spatial || typeof effect.connection_id !== "string") return { ok: false, code: "CONSEQUENCE_ROUTE_INVALID" }; }
     else if (effect.kind === "operational-delay") { if (!Number.isInteger(effect.amount) || effect.amount < 1) return { ok: false, code: "CONSEQUENCE_DELAY_INVALID" }; }
@@ -39,7 +53,7 @@ function apply(run, proposal) {
   for (const effect of proposal.effects) {
     if (effect.kind === "personnel-condition") {
       const member = draft.team.members.find((entry) => memberId(entry) === effect.target); member.condition = effect.condition; member.health = effect.condition; member.observed_condition = effect.condition;
-      if (effect.status) member.status = effect.status; if (effect.condition === "incapacitated") member.status = "incapacitated"; if (["missing", "dead"].includes(effect.condition)) member.status = effect.condition;
+      member.status = statusForCondition(effect.condition);
       member.condition_history ??= []; member.condition_history.push({ sequence: member.condition_history.length + 1, condition: effect.condition, status: member.status, at: run.expedition.clock.interval, reason: effect.reason ?? proposal.source });
     } else if (effect.kind === "equipment-dropped") {
       const authoritative = draft.logistics?.items?.[effect.target]; const item = authoritative ?? draft.equipment[effect.target]; const priorHolder = authoritative ? item.current_holder : item.holder; const location = effect.location_id ?? draft.spatial?.personnel_locations?.[priorHolder] ?? "unknown"; if (authoritative) { item.condition = "dropped"; item.current_location = location; item.current_holder = null; item.current_container = null; item.recoverability = "recoverable"; item.equipped = false; item.history.push({ action: "DROP", actor: priorHolder, location, at: run.expedition.clock.interval, reason: effect.reason ?? proposal.source }); } else { item.state = "dropped"; item.location = location; item.holder = null; item.recoverable = true; item.history ??= []; item.history.push({ event: "dropped", from: priorHolder, location, at: run.expedition.clock.interval, reason: effect.reason ?? proposal.source }); }
@@ -108,4 +122,4 @@ function clearRoute(run, connectionId, actor) {
   return recover(run, { source: "field-mitigation", actor, effects: [{ kind: "route-cleared", connection_id: connectionId }], public_summary: "The temporary route obstruction is cleared." });
 }
 
-module.exports = { VERSION, PERSONNEL_CONDITIONS, EQUIPMENT_STATES, ensure, validate, apply, recover, recoverEquipment, clearRoute };
+module.exports = { VERSION, PERSONNEL_CONDITIONS, PERSONNEL_STATUSES, EQUIPMENT_STATES, statusForCondition, validatePersonnelSnapshot, ensure, validate, apply, recover, recoverEquipment, clearRoute };

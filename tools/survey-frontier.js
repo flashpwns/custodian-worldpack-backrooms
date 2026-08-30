@@ -8,6 +8,29 @@ const direct = (at, source = "direct-observation") => ({ state: "OBSERVED", prov
 const add = (bucket, id, entry) => { const prior = bucket[id]; if (!prior) { bucket[id] = entry; return; } prior.provenance ??= []; prior.provenance.push(...(entry.provenance ?? [])); if (prior.state === "PARTIALLY_OBSERVED" && entry.state === "OBSERVED") prior.state = entry.state; };
 
 function person(state, id) { state.personnel[id] ??= { locations: {}, connections: {} }; return state.personnel[id]; }
+function readPerson(state, id) { return state?.personnel?.[id] ?? null; }
+function validateCurrent(state, definition, { player, personnel = [] } = {}) {
+  const fail = (reason) => { throw Object.assign(new Error(`invalid current Survey Frontier: ${reason}`), { code:"RUN_STATE_INVALID" }); };
+  const record = (value) => Boolean(value && typeof value === "object" && !Array.isArray(value));
+  const validStates = new Set(["OBSERVED", "PARTIALLY_OBSERVED", "SURVEYED", "REPORTED", "CONFIRMED"]);
+  const validateBucket = (bucket, validIds, label) => {
+    if (!record(bucket)) fail(`${label} is malformed`);
+    for (const [id, claim] of Object.entries(bucket)) {
+      if (!validIds.has(id) || !record(claim) || !validStates.has(claim.state) || !Array.isArray(claim.provenance)) fail(`${label}.${id} is malformed`);
+      for (const provenance of claim.provenance) if (!record(provenance) || typeof provenance.source !== "string" || !Object.hasOwn(provenance, "at") || typeof provenance.direct !== "boolean") fail(`${label}.${id} provenance is malformed`);
+    }
+  };
+  if (!record(state) || state.version !== VERSION || state.worldpack_id !== definition?.worldpack_id || !record(state.personnel) || !record(state.standard) || !record(state.historical) || !Array.isArray(state.historical.claims)) fail("authority containers are missing or malformed");
+  const locationIds = new Set((definition.locations ?? []).map((item) => item.id)); const connectionIds = new Set((definition.connections ?? []).map((item) => item.id));
+  for (const [id, knowledge] of Object.entries(state.personnel)) { if (!record(knowledge)) fail(`observer ${id} is malformed`); validateBucket(knowledge.locations, locationIds, `personnel.${id}.locations`); validateBucket(knowledge.connections, connectionIds, `personnel.${id}.connections`); }
+  for (const id of [player, ...personnel].filter(Boolean)) {
+    const knowledge = readPerson(state, id); if (!record(knowledge)) fail(`required observer ${id} is missing`);
+    validateBucket(knowledge.locations, locationIds, `personnel.${id}.locations`); validateBucket(knowledge.connections, connectionIds, `personnel.${id}.connections`);
+  }
+  validateBucket(state.standard.locations, locationIds, "standard.locations"); validateBucket(state.standard.connections, connectionIds, "standard.connections");
+  for (const claim of state.historical.claims) if (!record(claim) || typeof claim.id !== "string" || typeof claim.label !== "string") fail("historical claim is malformed");
+  return state;
+}
 function historical(definition) { return clone(definition.historical_survey_claims ?? []); }
 function create(definition, { player, personnel = [], spatial = null, at = 0 } = {}) {
   const state = { version: VERSION, worldpack_id: definition.worldpack_id, personnel: {}, standard: { locations: {}, connections: {} }, historical: { claims: historical(definition) } };
@@ -48,15 +71,18 @@ function report(state, observer, { at = 0, message_id = null } = {}) {
   for (const [id, value] of Object.entries(knowledge.locations)) add(state.standard.locations, id, { state: state.standard.locations[id] ? "CONFIRMED" : "REPORTED", provenance: [{ source: "delivered-radio-report", observer, message_id, at, direct: false }] });
   for (const [id, value] of Object.entries(knowledge.connections)) add(state.standard.connections, id, { state: state.standard.connections[id] ? "CONFIRMED" : "REPORTED", provenance: [{ source: "delivered-radio-report", observer, message_id, at, direct: false }] });
 }
-function known(state, observer, id, kind = "locations") { return Boolean(person(state, observer)[kind]?.[id]); }
-function map(state, definition, observer, { current_location = null } = {}) {
-  const knowledge = person(state, observer); const locations = Object.fromEntries(definition.locations.map((item) => [item.id, item])); const connections = Object.fromEntries(definition.connections.map((item) => [item.id, item]));
+function known(state, observer, id, kind = "locations") { return Boolean(readPerson(state, observer)?.[kind]?.[id]); }
+function projectMap(state, definition, knowledge, current_location = null) {
+  knowledge ??= { locations:{}, connections:{} }; const locations = Object.fromEntries(definition.locations.map((item) => [item.id, item])); const connections = Object.fromEntries(definition.connections.map((item) => [item.id, item]));
   const nodes = Object.entries(knowledge.locations).map(([id, item]) => ({ id, name: locations[id]?.name ?? "Recorded location", type: locations[id]?.type ?? "recorded-location", coordinates: clone(locations[id]?.coordinates ?? null), status: item.state, current: id === current_location, provenance: item.provenance.at(-1)?.source ?? "record" }));
   const nodeIds = new Set(nodes.map((item) => item.id));
   const edges = Object.entries(knowledge.connections).map(([id, item]) => { const connection = connections[id]; if (!connection) return null; const from = nodeIds.has(connection.from) ? connection.from : nodeIds.has(connection.to) ? connection.to : null; if (!from) return null; const to = nodeIds.has(connection.from) && nodeIds.has(connection.to) ? (from === connection.from ? connection.to : connection.from) : null; return { id, from, to, status: item.state, label: connection.relationship }; }).filter(Boolean);
-  const claims = state.historical.claims.map((claim) => ({ id: claim.id, label: claim.label, status: "PRIOR_RECORD_ONLY", claim_state: claim.state ?? "UNCONFIRMED" }));
+  const claims = (state.historical?.claims ?? []).map((claim) => ({ id: claim.id, label: claim.label, status: "PRIOR_RECORD_ONLY", claim_state: claim.state ?? "UNCONFIRMED" }));
   return { version: "yellow-beast-survey-frontier-map@v1", nodes, edges, historical_claims: claims, current_location: nodeIds.has(current_location) ? current_location : null };
 }
-function standardMap(state, definition) { const saved = state.personnel.__standard_projection__ ?? null; state.personnel.__standard_projection__ = { locations: state.standard.locations, connections: state.standard.connections }; const projected = map(state, definition, "__standard_projection__"); if (saved) state.personnel.__standard_projection__ = saved; else delete state.personnel.__standard_projection__; return { ...projected, historical_claims: projected.historical_claims }; }
-function frontier(state, definition, observer) { const knowledge = person(state, observer); return Object.keys(knowledge.locations).flatMap((location) => definition.connections.filter((connection) => connection.from === location || connection.to === location).filter((connection) => !knowledge.connections[connection.id] || knowledge.connections[connection.id].state !== "SURVEYED").map((connection) => ({ location, route: connection.relationship, state: knowledge.connections[connection.id]?.state ?? "UNKNOWN" }))); }
-module.exports = { VERSION, create, migrate, observe, traverse, share, report, known, map, standardMap, frontier };
+function map(state, definition, observer, { current_location = null } = {}) {
+  return projectMap(state, definition, readPerson(state, observer), current_location);
+}
+function standardMap(state, definition) { return projectMap(state, definition, state.standard); }
+function frontier(state, definition, observer) { const knowledge = readPerson(state, observer) ?? { locations:{}, connections:{} }; return Object.keys(knowledge.locations).flatMap((location) => definition.connections.filter((connection) => connection.from === location || connection.to === location).filter((connection) => !knowledge.connections[connection.id] || knowledge.connections[connection.id].state !== "SURVEYED").map((connection) => ({ location, route: connection.relationship, state: knowledge.connections[connection.id]?.state ?? "UNKNOWN" }))); }
+module.exports = { VERSION, create, migrate, validateCurrent, observe, traverse, share, report, known, map, standardMap, frontier };

@@ -78,12 +78,56 @@ test("one Standard operator persists and knows only delivered contact", () => {
   assert.equal(resumed.ok, true); assert.equal(restarted.getWorld(world.id).q4_standard_operator.identity, initialIdentity);
 });
 
-test("legacy Clear-Q4 sessions acquire one deterministic Standard operator on resume", () => {
-  const { service, world, appDataPath } = fixture("standard-migration");
-  const legacy = service.getWorld(world.id); delete legacy.q4_standard_operator; service.saveCanonical(legacy);
+test("active current Clear-Q4 rejects a missing Standard and recovers the exact previous-good operator", () => {
+  const { service, world, appDataPath } = fixture("standard-corruption");
+  const current = service.getWorld(world.id);
+  const operator = structuredClone(current.q4_standard_operator);
+  assert.ok(operator.identity);
+  assert.ok(operator.contacts.length >= 1);
+  const operatorCharacter = structuredClone(current.characters[operator.identity]);
+  const eventCount = current.events.length;
+  const characterIds = Object.keys(current.characters).sort();
+
   const restarted = new DesktopService({ appDataPath });
   assert.equal(restarted.resumeSession({ world_id: world.id, mode: "field-researcher" }).ok, true);
-  const migrated = restarted.getWorld(world.id).q4_standard_operator;
-  assert.ok(migrated?.identity); assert.equal(migrated.contacts.length, 0);
-  assert.equal(migrated.identity, standard.ensure(restarted.getWorld(world.id)).identity);
+  const legitimate = restarted.getWorld(world.id);
+  assert.deepEqual(legitimate.q4_standard_operator, operator);
+  assert.deepEqual(legitimate.characters[operator.identity], operatorCharacter);
+  assert.equal(legitimate.events.length, eventCount);
+  assert.deepEqual(Object.keys(legitimate.characters).sort(), characterIds);
+
+  const worldFile = restarted.worldFile(world.id);
+  const worldBackup = restarted.backupFile(world.id);
+  const sessionFile = restarted.sessionFile(world.id, "field-researcher");
+  const sessionBackup = restarted.sessionBackupFile(world.id, "field-researcher");
+  delete legitimate.q4_standard_operator;
+  const malformedBefore = structuredClone(legitimate);
+  const runBefore = structuredClone(restarted.session(world.id, "field-researcher").run);
+  const preflightArtifacts = [worldFile, worldBackup, sessionFile, sessionBackup].map((file) => fs.readFileSync(file));
+  assert.throws(() => restarted.persistSession(legitimate, "field-researcher", restarted.session(world.id, "field-researcher")), { code: "SESSION_WORLD_STATE_INVALID" });
+  assert.deepEqual(legitimate, malformedBefore);
+  assert.deepEqual(restarted.session(world.id, "field-researcher").run, runBefore);
+  for (const [index, file] of [worldFile, worldBackup, sessionFile, sessionBackup].entries()) assert.equal(fs.readFileSync(file).equals(preflightArtifacts[index]), true);
+
+  restarted.saveCanonical(legitimate);
+  const rejectedArtifacts = [worldFile, worldBackup, sessionFile, sessionBackup].map((file) => fs.readFileSync(file));
+  const rejecting = new DesktopService({ appDataPath });
+  const rejected = rejecting.resumeSession({ world_id: world.id, mode: "field-researcher" });
+  assert.equal(rejected.ok, false);
+  assert.equal(rejected.error.code, "SESSION_SAVE_DAMAGED");
+  assert.equal(rejecting.session(world.id, "field-researcher"), null);
+  const stillMalformed = rejecting.getWorld(world.id);
+  assert.equal(stillMalformed.q4_standard_operator, undefined);
+  assert.equal(stillMalformed.events.length, eventCount);
+  assert.deepEqual(Object.keys(stillMalformed.characters).sort(), characterIds);
+  assert.deepEqual(stillMalformed.characters[operator.identity], operatorCharacter);
+  assert.equal(Object.keys(stillMalformed.characters).filter((identity) => identity.startsWith("q4-standard-")).length, 1);
+  for (const [index, file] of [worldFile, worldBackup, sessionFile, sessionBackup].entries()) assert.equal(fs.readFileSync(file).equals(rejectedArtifacts[index]), true);
+
+  assert.equal(rejecting.restoreBackup({ world_id: world.id, confirmed: true }).ok, true);
+  const recovered = new DesktopService({ appDataPath });
+  assert.equal(recovered.resumeSession({ world_id: world.id, mode: "field-researcher" }).ok, true);
+  assert.deepEqual(recovered.getWorld(world.id).q4_standard_operator, operator);
+  assert.deepEqual(recovered.getWorld(world.id).characters[operator.identity], operatorCharacter);
+  assert.equal(recovered.getWorld(world.id).events.length, eventCount);
 });
