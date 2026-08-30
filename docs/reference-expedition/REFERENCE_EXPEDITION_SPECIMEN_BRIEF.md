@@ -1,8 +1,14 @@
 # Project Reference Expedition — Specimen Brief
 
-**Status:** Proposed milestone definition; requires owner ratification before implementation.  
-**Depends on:** *Project Reference Expedition — Invariants*.  
-**Purpose:** define the smallest complete Yellow Beast expedition capable of proving the project’s player promise and exposing the current architecture’s real strengths and failures.
+**Status:** Owner-ratified governing milestone proof; not a claim of current completion.
+
+**Depends on:** *Project Reference Expedition — Invariants*.
+
+**Authority:** Subordinate to `SIMULATION_DOCTRINE.md`, the Gameplay Constitution, admitted canon/source policy, `YELLOW_BEAST_RECONSTRUCTION_AUTHORITY.md`, and the Invariants.
+
+**Implementation authority:** None beyond the current approved pass. The current repository does not yet satisfy this specimen.
+
+**Purpose:** define the bounded playable proof capable of demonstrating the Yellow Beast player promise and exposing the current architecture’s real strengths and failures.
 
 ## 1. The claim this specimen must prove
 

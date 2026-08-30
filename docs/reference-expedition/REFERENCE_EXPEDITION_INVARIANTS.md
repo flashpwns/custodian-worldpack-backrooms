@@ -1,6 +1,8 @@
 # Project Reference Expedition — Invariants
 
-**Status:** Milestone contract, not a claim of current completion. **Purpose:** prove one trustworthy, replayable expedition before wider reconstruction. **Authority:** Simulation Doctrine → admitted canon/source policy → current Yellow Beast product authorities → this specimen constraint.
+**Status:** Owner-ratified governing milestone contract, not a claim of current completion. **Purpose:** prove one trustworthy, replayable expedition before wider reconstruction. **Authority:** subordinate to `SIMULATION_DOCTRINE.md`, the Gameplay Constitution, admitted canon/source policy, and `YELLOW_BEAST_RECONSTRUCTION_AUTHORITY.md`.
+
+**Authority effect.** These invariants are the non-negotiable Reference Expedition contract. They neither admit canon nor authorize implementation beyond the current approved pass. The current repository does not yet satisfy them.
 
 **Thesis.** A player-led, four-person A-Sync team performs a routine layout/survey assignment through established infrastructure into a modest frontier section containing one subtle structural discrepancy of unresolved cause and meaning.
 
@@ -22,4 +24,4 @@
 
 **Acceptance boundary.** Score every run for **agency, knowledge, continuity, tone, institutional, and human breaks**; track **friction breaks** internally. Pass only when the full UI route proves meaningful choice, evidence-to-belief causality, persistent human/world consequences, save/reload equivalence, and provider-independent completion. It does not prove campaign breadth, entities, deep separation/stress behavior, or long-horizon institutional evolution.
 
-**Reconciled stale assumptions.** “One discrepancy” is a specimen condition, not an engagement director. “Persistent four-person team” does not require Jack/Nora/Alex/Steven or permanent global staffing. Deployment ritual is required despite current compression. V03 persistence changes remain uncommitted work, not a certified foundation.
+**Reconciled stale assumptions.** “One discrepancy” is a specimen condition, not an engagement director. “Persistent four-person team” does not require Jack/Nora/Alex/Steven or permanent global staffing. Deployment ritual is required despite current compression. V03 persistence changes are committed at checkpoint `c60f362` but remain uncertified; they are evidence of progress, not a certified foundation.

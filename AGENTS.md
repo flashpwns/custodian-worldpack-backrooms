@@ -5,12 +5,20 @@ Before modifying this repository, interpreting simulation state, designing playe
 1. `SIMULATION_DOCTRINE.md`
 2. `docs/reconciliation/YELLOW_BEAST_GAMEPLAY_CONSTITUTION.md`
 3. `canon/SOURCE_POLICY.md` and the claim/admission records relevant to the work
-4. `docs/YELLOW_BEAST_1.0_DESIGN_CHARTER.md`
-5. `docs/YELLOW_BEAST_CURRENT_BASELINE.md`
-6. `docs/YELLOW_BEAST_VISION_PASS_MAP.md`
-7. `docs/IMPLEMENTATION_STATE.md`, if present
-8. the current pass specification
-9. any domain-specific doctrine explicitly referenced by the current pass, including UI or audio doctrine
+4. `YELLOW_BEAST_RECONSTRUCTION_AUTHORITY.md`
+5. `docs/YELLOW_BEAST_1.0_DESIGN_CHARTER.md`
+6. `docs/YELLOW_BEAST_CURRENT_BASELINE.md`
+7. `docs/YELLOW_BEAST_VISION_PASS_MAP.md`
+8. `docs/IMPLEMENTATION_STATE.md`, if present
+9. the current pass specification
+10. any domain-specific doctrine explicitly referenced by the current pass, including UI or audio doctrine
+
+For Project Reference Expedition work, then read, in order:
+
+1. `docs/reference-expedition/REFERENCE_EXPEDITION_INVARIANTS.md`
+2. `docs/reference-expedition/REFERENCE_EXPEDITION_SPECIMEN_BRIEF.md`
+
+The owner-ratified Invariants are the non-negotiable milestone contract. The owner-ratified Specimen Brief is its bounded playable proof. Neither document supersedes universal simulation law, admits external canon, or authorizes implementation beyond the current approved pass. The current repository does not yet satisfy the specimen.
 
 The authority roles are distinct:
 
@@ -18,6 +26,8 @@ The authority roles are distinct:
 - the Gameplay Constitution is the current Yellow Beast product/player-promise authority and the explicit Yellow Beast constitutional specialization identified within it.
 - `canon/SOURCE_POLICY.md` plus admitted claim records determine what external Kane material is admitted; product desire or existing code is not canon admission.
 - the Design Charter elaborates the Yellow Beast destination but may not contradict the Gameplay Constitution.
+- the Reconstruction Authority specializes the Yellow Beast reconstruction target but remains subordinate to the Simulation Doctrine, the Gameplay Constitution, and admitted canon/source policy in their respective domains.
+- the Reference Expedition Invariants and Specimen Brief govern only that milestone contract and proof; they do not broaden implementation scope.
 - the Current Baseline describes implementation truth; it does not authorize implementation or redefine the product.
 - the Vision Pass Map defines the current implementation campaign and pass scope.
 - `docs/IMPLEMENTATION_STATE.md` is a current orientation plus a historical implementation ledger, not evidence of product completeness.
