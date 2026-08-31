@@ -155,7 +155,7 @@ Any unexplained state rewrite, knowledge leak, invented player speech, blank suc
 
 The current Clear-Q4 repository already provides useful foundations: deterministic action resolution, bounded persistent geography, seeded staffing, equipment custody, communications state, evidence provenance/archive, mission deviation, controlled abort, physical return, debrief, and offline fallback.
 
-The specimen still depends on targeted completion or repair of deployment ritual, compound agency, human LOCAL behavior, personnel continuity, the fixed discrepancy contract, evidence-to-belief processing, and certified canonical save/reload behavior. Current uncommitted V03 persistence work is evidence of progress, not an accepted dependency.
+The specimen still depends on targeted completion or repair of deployment ritual, compound agency, human LOCAL behavior, personnel continuity, the fixed discrepancy contract, evidence-to-belief processing, and certified canonical save/reload behavior. V03 persistence work is committed at checkpoint `c60f362` but remains uncertified; it is evidence of progress, not an accepted dependency.
 
 Explicitly excluded: entities, new phenomenon families, large procedural expansion, multiple mission types, campaign progression, deep facility simulation, personnel hiring, advanced inventory scarcity, full separation/stress simulation, elaborate audiovisual presentation, and work justified only by later-game possibility.
 
