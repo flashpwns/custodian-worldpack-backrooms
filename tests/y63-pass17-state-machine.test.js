@@ -45,3 +45,28 @@ test("LOCAL uses the submitted statement and does not consume an interval", () =
   assert.equal(result.projection.q4.operational_clock.interval, before);
   assert.match(result.result.public_reason, /west relay|team remains together/i);
 });
+
+test("production state machine completes radio outside and crosses only on player CROSS", () => {
+  const { service, world } = fixture();
+  for (const action of ["READY", "PROCEED", "APPROACH", "READY"]) assert.equal(service.submitAction({ world_id: world.id, mode: "field-researcher", action }).ok, true);
+  let projection = service.getGameplayProjection({ world_id: world.id, mode: "field-researcher" }).projection;
+  assert.equal(projection.phase.phase_id, "STANDARD_RADIO_CHECK");
+  assert.equal(projection.q4.current_location.name, "Threshold Room");
+  assert.equal(projection.q4.radio_check.authorized, true);
+  assert.equal(projection.q4.radio_check.completed, false);
+  assert.equal(service.session(world.id, "field-researcher").run.spatial.route_history.some((item) => item.connection_id === "threshold-crossing"), false);
+
+  const statement = "State Tester to Standard. Team accounted for outside the Threshold. Radio check.";
+  const sent = service.submitQ4Communication({ world_id: world.id, channel: "standard", text: statement });
+  assert.equal(sent.ok, true);
+  assert.ok(sent.projection.q4.channels.standard.history.some((item) => item.speaker === "You" && item.text === statement));
+  assert.deepEqual(sent.projection.available_actions[0], { type: "CROSS", target_required: false, targets: [] });
+
+  const crossed = service.submitAction({ world_id: world.id, mode: "field-researcher", action: "CROSS" });
+  assert.equal(crossed.ok, true);
+  assert.equal(crossed.projection.phase.phase_id, "FIELD_OPERATION");
+  assert.equal(crossed.projection.q4.current_location.name, "Utility Room");
+  const entry = service.session(world.id, "field-researcher");
+  assert.equal(entry.run.spatial.route_history.filter((item) => item.connection_id === "threshold-crossing").length, 1);
+  assert.ok(Object.values(entry.run.spatial.personnel_locations).every((location) => location === "utility-room"));
+});

@@ -27,7 +27,7 @@ function transition(expedition, state, reason) {
   return radio;
 }
 
-function authorize(expedition) { const radio = transition(expedition, "establishing", "threshold-crossed"); radio.authorized = true; return radio; }
+function authorize(expedition, reason = "radio-procedure-started") { const radio = transition(expedition, "establishing", reason); radio.authorized = true; return radio; }
 function completeCheck(expedition) { const radio = transition(expedition, "available", "standard-acknowledged-radio-check"); radio.authorized = true; radio.check_completed = true; radio.last_delivery = { status: "delivered", interval: expedition.clock?.interval ?? 0 }; return radio; }
 function startTransmission(expedition) { const radio = ensure(expedition); if (!["available", "intermittent"].includes(radio.state)) return { ok: false, state: radio.state }; transition(expedition, "transmitting", "outbound-transmission"); return { ok: true, radio }; }
 function delivered(expedition, { awaiting = false } = {}) { const radio = transition(expedition, awaiting ? "awaiting-response" : "available", awaiting ? "transmission-delivered-awaiting-response" : "transmission-delivered"); radio.last_delivery = { status: "delivered", interval: expedition.clock?.interval ?? 0 }; return radio; }

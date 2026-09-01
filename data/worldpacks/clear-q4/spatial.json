@@ -12,7 +12,7 @@
     "STAGING": "equipment-staging",
     "FACILITY_TRANSIT": "threshold-approach",
     "THRESHOLD": "threshold-room",
-    "STANDARD_RADIO_CHECK": "threshold-side-entry",
+    "STANDARD_RADIO_CHECK": "threshold-room",
     "FIELD_OPERATION": "utility-room"
   },
   "locations": [

@@ -32,7 +32,7 @@ const copy = {
   BRIEFING: "Review the Clear-Q4 survey assignment and continue to staging.",
   STAGING: "Review issued equipment and proceed to the Threshold room.",
   FACILITY_TRANSIT: "Proceed with the accounted team toward the Threshold room.",
-  THRESHOLD: "Confirm personnel accountability and cross when ready.",
+  THRESHOLD: "Confirm personnel accountability and begin the Standard radio procedure.",
   STANDARD_RADIO_CHECK: "Establish contact with Standard and wait for acknowledgment before departure.",
   FIELD_OPERATION: "Continue the declared survey. Record what you actually observe and report only what you choose to transmit.",
   RETURN: "Return with the equipment and evidence that remain with the team.",
@@ -198,10 +198,10 @@ function nextPhase(phase, { action, canonical_crossed = false, returned = false,
   const current = phase.phase_id;
   const table = {
     BRIEFING: String(action ?? "").toUpperCase() === "READY" ? "STAGING" : null,
-    STAGING: "FACILITY_TRANSIT",
-    FACILITY_TRANSIT: "THRESHOLD",
-    THRESHOLD: canonical_crossed ? (legacy_flow ? "FIELD_OPERATION" : "STANDARD_RADIO_CHECK") : null,
-    STANDARD_RADIO_CHECK: action === "BEGIN_FIELD_OPERATION" && radio_check_completed ? "FIELD_OPERATION" : null,
+    STAGING: action === "PROCEED" ? "FACILITY_TRANSIT" : null,
+    FACILITY_TRANSIT: action === "APPROACH" ? "THRESHOLD" : null,
+    THRESHOLD: action === "READY" ? "STANDARD_RADIO_CHECK" : legacy_flow && action === "CROSS" && canonical_crossed ? "STANDARD_RADIO_CHECK" : null,
+    STANDARD_RADIO_CHECK: action === "CROSS" && canonical_crossed && radio_check_completed ? "FIELD_OPERATION" : legacy_flow && action === "BEGIN_FIELD_OPERATION" && radio_check_completed ? "FIELD_OPERATION" : null,
     FIELD_OPERATION: returned ? "RETURN" : null,
     RETURN: returned ? "DEBRIEF" : null
   };

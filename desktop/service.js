@@ -395,7 +395,7 @@ class DesktopService {
     const scene = { version: "yellow-beast-scene@v1", scene_id: `briefing-${entry.run.run_id ?? entry.run.session.id}`, world_ref: entry.run.world_id ?? null, session_ref: entry.run.session.id, turn_ref: "briefing", observer_ref: entry.run.session.startup.player.observer_id, mode, profile: "clear-q4", scene_type: "briefing", significance: "Operational notice", location: "ASYNC briefing room", safe_facts: facts, immediate_changes: [], visible_actors: [], communications: [], sensory_facts: [], inventory: [], object_state_changes: [], unresolved_facts: [], continuing_conditions: [], context, interaction_prompt: "Review the assignment and confirm when you are ready to stage.", provenance: { source: "observer-safe-q4-briefing", input: null } };
     const sentence = (text) => String(text).replace(/[.]+$/, "") + ".";
     scene.narration = `Assignment ${view.mission_record?.display_id ?? view.mission_record?.id ?? "Clear-Q4"}. ${sentence(view.display_mission)} Assigned team: ${team}. Required equipment: ${equipment}. ${view.reporting ? `Reporting: ${sentence(view.reporting)}` : "Reporting expectations are recorded in the assignment."} Before departure, review the assignment and confirm readiness to stage.`;
-    const phaseInstruction = { BRIEFING: "Review the Clear-Q4 survey assignment and continue to staging.", STAGING: "Review issued equipment and proceed to the threshold room.", FACILITY_TRANSIT: "Proceed with the accounted team toward the Threshold room.", THRESHOLD: "Confirm personnel accountability and cross when ready.", STANDARD_RADIO_CHECK: "Establish contact with Standard before entering the field." }[phaseId];
+    const phaseInstruction = { BRIEFING: "Review the Clear-Q4 survey assignment and continue to staging.", STAGING: "Review issued equipment and proceed to the threshold room.", FACILITY_TRANSIT: "Proceed with the accounted team toward the Threshold room.", THRESHOLD: "Confirm personnel accountability and begin the Standard radio procedure.", STANDARD_RADIO_CHECK: "Establish contact with Standard before entering the field." }[phaseId];
     if (phaseInstruction) { scene.interaction_prompt = phaseInstruction; scene.narration = scene.narration.replace(/ Before departure.*$/, ` ${phaseInstruction}`); }
     scene.narration_source = "fallback";
     return scene;
@@ -434,7 +434,10 @@ class DesktopService {
   availableFor(world, mode, entry) {
     if (outcomes.isRetired(world)) return [];
     if (entry.kind === "bootstrap") {
-      const phaseActions = { BRIEFING: "READY", STAGING: "DEPLOY", FACILITY_TRANSIT: "DEPLOY", THRESHOLD: "DEPLOY", STANDARD_RADIO_CHECK: q4Radio.read(entry.run.expedition).check_completed ? "BEGIN_FIELD_OPERATION" : null };
+      const legacyFlow = entry.legacy_flow === true || entry.phase?.legacy_flow === true;
+      const phaseActions = legacyFlow
+        ? { BRIEFING: "READY", STAGING: "PROCEED", FACILITY_TRANSIT: "APPROACH", THRESHOLD: "CROSS", STANDARD_RADIO_CHECK: q4Radio.read(entry.run.expedition).check_completed ? "BEGIN_FIELD_OPERATION" : null }
+        : { BRIEFING: "READY", STAGING: "PROCEED", FACILITY_TRANSIT: "APPROACH", THRESHOLD: "READY", STANDARD_RADIO_CHECK: q4Radio.read(entry.run.expedition).check_completed ? "CROSS" : null };
       const state = bootstrap.status(entry.run); const observed = bootstrap.look(entry.run, { record: false }); const targets = state.view.targets.map(({ alias }) => ({ ref: alias, label: alias })); const exits = (observed.view?.exits ?? []).map(({ alias }) => ({ ref: alias, label: alias }));
       const objectActions = new Map();
       for (const object of observed.view?.objects ?? []) for (const affordance of object.actions ?? []) if (affordance.available) {
@@ -656,10 +659,10 @@ class DesktopService {
       if (entry.kind === "bootstrap" && ["DEPLOY", "READY", "PROCEED", "APPROACH", "CROSS", "RADIO_CHECK", "BEGIN_FIELD_OPERATION"].includes(verb)) {
         const phase = entry.phase?.phase_id;
         const radioChecked = q4Radio.ensure(entry.run.expedition).check_completed;
-        // READY is the production briefing-to-staging boundary. The later
-        // PROCEED/APPROACH/CROSS actions remain a migration seam for saved
-        // automation records; they do not redefine a fresh briefing.
-        const expected = { BRIEFING: "READY", STAGING: verb === "DEPLOY" ? "DEPLOY" : "PROCEED", FACILITY_TRANSIT: verb === "DEPLOY" ? "DEPLOY" : "APPROACH", THRESHOLD: verb === "DEPLOY" ? "DEPLOY" : "CROSS", STANDARD_RADIO_CHECK: radioChecked ? "BEGIN_FIELD_OPERATION" : "RADIO_CHECK" }[phase];
+        const legacyFlow = entry.legacy_flow === true || entry.phase?.legacy_flow === true;
+        const expected = legacyFlow
+          ? { BRIEFING: "READY", STAGING: "PROCEED", FACILITY_TRANSIT: "APPROACH", THRESHOLD: "CROSS", STANDARD_RADIO_CHECK: radioChecked ? "BEGIN_FIELD_OPERATION" : "RADIO_CHECK" }[phase]
+          : { BRIEFING: "READY", STAGING: "PROCEED", FACILITY_TRANSIT: "APPROACH", THRESHOLD: "READY", STANDARD_RADIO_CHECK: radioChecked ? "CROSS" : "RADIO_CHECK" }[phase];
         if (verb !== expected) return publicError("PHASE_GUARD_REJECTED", "That transition is not available from the current expedition phase.");
         if (verb === "RADIO_CHECK") {
           return publicError("PLAYER_TRANSMISSION_REQUIRED", "Type and deliberately submit the required radio check in the STANDARD composer. The application will not speak for you.");
@@ -676,12 +679,19 @@ class DesktopService {
           entry.phase = advanced.phase; q4Radio.authorize(entry.run.expedition); bootstrap.setSpatialPhase(entry.run, entry.phase.phase_id); q4Equipment.updatePhase(entry.run.expedition, entry.phase.phase_id);
           result = { ok: true, outcome: "deployed-to-radio-readiness", result: { public_reason: "You deliberately deployed the accounted team to radio readiness." } };
         } else if (verb === "CROSS") {
-          result = bootstrap.crossThreshold(entry.run);
-          if (result.ok) { const advanced = q4.nextPhase(entry.phase, { action: verb, canonical_crossed: true, legacy_flow: false }); if (!advanced.ok) return publicError(advanced.code, "The expedition cannot cross from its current state."); entry.phase = advanced.phase; q4Radio.authorize(entry.run.expedition); bootstrap.setSpatialPhase(entry.run, entry.phase.phase_id); q4Equipment.updatePhase(entry.run.expedition, entry.phase.phase_id); }
+          result = bootstrap.crossThreshold(entry.run, { require_radio_check: !legacyFlow });
+          if (result.ok) {
+            const advanced = q4.nextPhase(entry.phase, { action: verb, canonical_crossed: true, radio_check_completed: radioChecked, legacy_flow: legacyFlow });
+            if (!advanced.ok) return publicError(advanced.code, "The expedition cannot cross from its current state.");
+            entry.phase = advanced.phase;
+            if (entry.phase.phase_id === "FIELD_OPERATION") bootstrap.enterSpatialField(entry.run);
+            else q4Radio.authorize(entry.run.expedition, "legacy-threshold-crossed");
+            q4Equipment.updatePhase(entry.run.expedition, entry.phase.phase_id);
+          }
         } else {
           result = { ok: true, outcome: "phase-advanced" };
           if (verb === "PROCEED") { const readiness = q4Equipment.projection(entry.run.expedition, entry.run.session.startup.player.observer_id); if (!readiness.readiness) { entry.run.expedition.deviations.push("proceeded-with-required-equipment-unavailable"); expeditionEvent(entry.run.expedition, "q4.loadout.proceeded_without_required", { missing: readiness.missing }); } }
-          const advanced = q4.nextPhase(entry.phase, { action: verb }); if (!advanced.ok) return publicError(advanced.code, "The expedition cannot advance from its current state."); entry.phase = advanced.phase; bootstrap.setSpatialPhase(entry.run, entry.phase.phase_id); q4Equipment.updatePhase(entry.run.expedition, entry.phase.phase_id);
+          const advanced = q4.nextPhase(entry.phase, { action: verb, legacy_flow: legacyFlow }); if (!advanced.ok) return publicError(advanced.code, "The expedition cannot advance from its current state."); entry.phase = advanced.phase; bootstrap.setSpatialPhase(entry.run, entry.phase.phase_id); if (entry.phase.phase_id === "STANDARD_RADIO_CHECK") q4Radio.authorize(entry.run.expedition); q4Equipment.updatePhase(entry.run.expedition, entry.phase.phase_id);
         }
         if (verb !== "RADIO_CHECK" && result.ok) {
           if (entry.run.expedition?.mission_state) entry.run.expedition.mission_state.phase = entry.phase.phase_id;

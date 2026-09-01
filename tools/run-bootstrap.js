@@ -511,7 +511,24 @@ function act(runValue, verb, target) {
   if (result.ok && result.outcome === "succeeded") { if (verb === "MOVE") run.checklist.moved = true; if (verb === "USE") { run.checklist.used = true; if (run.expedition) useEquipment(run.expedition, "field-light", run.session.startup.player.observer_id); } }
   return { ...result, run };
 }
-function crossThreshold(runValue) { const run = normalizeRun(runValue); const result = submitSessionAction({ session: run.session, actor: run.session.startup.player.observer_id, action: "traverse-controlled-route" }); if (result.session) run.session = result.session; return { ...result, run }; }
+function crossThreshold(runValue, { require_radio_check = true } = {}) {
+  const run = normalizeRun(runValue);
+  if (run.spatial_pack_id && run.spatial) {
+    const definition = spatialDefinitionFor(run.spatial_pack_id);
+    if (run.spatial.player_location !== definition.phase_locations?.THRESHOLD) return { ok: false, error: { code: "THRESHOLD_CROSSING_UNAVAILABLE" }, result: { public_reason: "The party is not at the Threshold crossing point." }, run };
+    if (run.spatial.route_history.some((item) => item.connection_id === "threshold-crossing")) return { ok: false, error: { code: "THRESHOLD_ALREADY_CROSSED" }, result: { public_reason: "The recorded Threshold crossing has already occurred." }, run };
+    if (require_radio_check && !q4Radio.read(run.expedition).check_completed) return { ok: false, error: { code: "RADIO_CHECK_REQUIRED" }, result: { public_reason: "Complete the acknowledged Standard radio check before crossing." }, run };
+  }
+  const result = submitSessionAction({ session: run.session, actor: run.session.startup.player.observer_id, action: "traverse-controlled-route" });
+  if (!result.ok) return { ...result, run };
+  if (result.session) run.session = result.session;
+  if (!run.spatial_pack_id || !run.spatial) return { ...result, run };
+  run.spatial.authorizations["threshold-authorized"] = true;
+  run.spatial.authorizations["radio-check-complete"] = q4Radio.read(run.expedition).check_completed;
+  const moved = spatialRuntime.move(run.spatial, spatialDefinitionFor(run.spatial_pack_id), "threshold-crossing", spatialContext(run));
+  if (!moved.ok) return { ok: false, error: { code: moved.code }, result: { public_reason: moved.reason }, run };
+  return { ...result, result: { ...(result.result ?? {}), public_reason: moved.narration }, spatial: { from: moved.from, to: moved.to, connection: moved.connection_id }, run };
+}
 function saveRun(runValue) { const run = normalizeRun(runValue); return { version: "yellow-beast-save@v9", profile_id: run.profile_id, profile_title: run.profile_title, scenario: run.scenario, seed: run.seed, lifecycle: run.lifecycle, checklist: clone(run.checklist), aliases: clone(run.aliases), expedition: clone(run.expedition), procedural: clone(run.procedural), spatial_pack_id: run.spatial_pack_id, spatial: clone(run.spatial), object_state: clone(run.object_state), survey_frontier: clone(run.survey_frontier), interpretation_state: clone(run.interpretation_state), world_id: run.world_id, run_id: run.run_id, envelope: exportSession(run.session).envelope }; }
 function resumeRun(save, { world = null, spatial_worldpack = null, phase = "BRIEFING" } = {}) {
   const supported = new Set(Array.from({ length: 9 }, (_, index) => `yellow-beast-save@v${index + 1}`));

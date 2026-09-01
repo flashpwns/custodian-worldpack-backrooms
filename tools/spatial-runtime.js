@@ -177,8 +177,7 @@ function moveTeamTo(state, definition, location, { player, personnel = [], sourc
 function setPhase(state, definition, phase, context = {}) {
   const location = definition.phase_locations?.[phase];
   if (!location) return state;
-  if (phase === "STANDARD_RADIO_CHECK") state.authorizations["threshold-authorized"] = true;
-  return moveTeamTo(state, definition, location, { ...context, source: `phase:${phase.toLowerCase()}`, recordRoute: phase === "STANDARD_RADIO_CHECK", connection_id: phase === "STANDARD_RADIO_CHECK" ? "threshold-crossing" : null });
+  return moveTeamTo(state, definition, location, { ...context, source: `phase:${phase.toLowerCase()}` });
 }
 
 function enterField(state, definition, context = {}) {
