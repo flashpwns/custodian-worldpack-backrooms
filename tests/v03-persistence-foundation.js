@@ -366,3 +366,55 @@ test("coordinated world and session commit rolls back every injected filesystem 
   const failRename = (targetFile) => () => { const original = fs.renameSync; let fired = false; fs.renameSync = (source,target) => { if (!fired && target === targetFile) { fired = true; throw new Error(`injected rename ${path.basename(targetFile)}`); } return original(source,target); }; return () => { fs.renameSync = original; }; };
   attempt("world-temp", failWrite("pair-world.tmp")); attempt("session-temp", failWrite("pair-session.tmp")); attempt("world-backup", failCopy(`${path.basename(worldBackup)}.`)); attempt("session-backup", failCopy(`${path.basename(sessionBackup)}.`)); attempt("first-primary", failRename(worldFile)); attempt("second-primary", failRename(sessionFile)); attempt("world-backup-update", failRename(worldBackup)); attempt("session-backup-update", failRename(sessionBackup));
 });
+
+function injuredPersistencePair(t, name) {
+  const root = temporary(t, name); const mode = "field-researcher"; const service = new DesktopService({ appDataPath:root }); const created = service.createWorld({ name, seed:name });
+  assert.equal(service.startSession({ world_id:created.world.id, mode, seed:name }).ok, true);
+  const world = service.getWorld(created.world.id); const entry = service.session(created.world.id, mode); const player = entry.run.session.startup.player.observer_id; const member = entry.run.expedition.team.members.find((item) => (item.personnel_id ?? item.id) !== player); const identity = member.personnel_id ?? member.id;
+  member.condition = "serious injury"; member.health = "serious injury"; member.status = "unavailable"; service.persistSession(world, mode, entry);
+  const files = { world:service.worldFile(created.world.id), session:service.sessionFile(created.world.id, mode), worldBackup:service.backupFile(created.world.id), sessionBackup:service.sessionBackupFile(created.world.id, mode) };
+  assert.equal(JSON.parse(fs.readFileSync(files.world)).characters[identity].status, "unavailable"); assert.equal(JSON.parse(fs.readFileSync(files.worldBackup)).characters[identity].status, "active");
+  return { root, mode, service, worldId:created.world.id, identity, files };
+}
+
+test("session-side recovery adopts only the coordinated previous-good pair", (t) => {
+  const fixture = injuredPersistencePair(t, "v03-session-pair-recovery"); const before = Object.values(fixture.files).map((file) => fs.readFileSync(file)); fs.writeFileSync(fixture.files.session, "{ damaged current session"); const damaged = fs.readFileSync(fixture.files.session); const recovering = new DesktopService({ appDataPath:fixture.root }); const resumed = recovering.resumeSession({ world_id:fixture.worldId, mode:fixture.mode });
+  assert.equal(resumed.ok, true); assert.equal(resumed.recovery.coordinated_pair, true); assert.equal(resumed.recovery.world.source, "previous-good-world"); assert.equal(resumed.recovery.session.source, "previous-good-session");
+  const recoveredWorld = recovering.getWorld(fixture.worldId); const recoveredMember = recovering.session(fixture.worldId, fixture.mode).run.expedition.team.members.find((item) => (item.personnel_id ?? item.id) === fixture.identity);
+  assert.equal(recoveredWorld.characters[fixture.identity].status, "active"); assert.equal(recoveredMember.status, "active"); assert.notEqual(recoveredWorld.characters[fixture.identity].status, JSON.parse(before[0]).characters[fixture.identity].status);
+  assert.equal(fs.readFileSync(fixture.files.session).equals(damaged), true); assert.equal(fs.readFileSync(fixture.files.world).equals(before[0]), true); assert.equal(fs.readFileSync(fixture.files.worldBackup).equals(before[2]), true); assert.equal(fs.readFileSync(fixture.files.sessionBackup).equals(before[3]), true);
+});
+
+test("automatic coordinated recovery followed by shutdown cannot erase a committed injury", (t) => {
+  const fixture = injuredPersistencePair(t, "v03-recovery-shutdown"); fs.writeFileSync(fixture.files.session, "{ damaged current session"); const artifacts = Object.values(fixture.files).map((file) => fs.readFileSync(file)); const primary = JSON.parse(artifacts[0]); const events = primary.events.length; const recovering = new DesktopService({ appDataPath:fixture.root }); assert.equal(recovering.resumeSession({ world_id:fixture.worldId, mode:fixture.mode }).ok, true); recovering.shutdown();
+  Object.values(fixture.files).forEach((file, index) => assert.equal(fs.readFileSync(file).equals(artifacts[index]), true)); const after = JSON.parse(fs.readFileSync(fixture.files.world)); assert.equal(after.characters[fixture.identity].status, "unavailable"); assert.equal(after.characters[fixture.identity].condition, "serious injury"); assert.equal(after.events.length, events);
+});
+
+test("automatic coordinated recovery rejects mutation before changing recovered caller state", (t) => {
+  const fixture = injuredPersistencePair(t, "v03-recovery-read-only"); fs.writeFileSync(fixture.files.session, "{ damaged current session"); const recovering = new DesktopService({ appDataPath:fixture.root }); assert.equal(recovering.resumeSession({ world_id:fixture.worldId, mode:fixture.mode }).ok, true);
+  const beforeWorld = JSON.stringify(recovering.getWorld(fixture.worldId)); const beforeSession = JSON.stringify(recovering.session(fixture.worldId, fixture.mode)); const artifacts = Object.values(fixture.files).map((file) => fs.readFileSync(file)); const rejected = recovering.submitAction({ world_id:fixture.worldId, mode:fixture.mode, action:"READY" });
+  assert.equal(rejected.ok, false); assert.equal(rejected.error.code, "PERSISTENCE_RECOVERY_READ_ONLY"); assert.equal(JSON.stringify(recovering.getWorld(fixture.worldId)), beforeWorld); assert.equal(JSON.stringify(recovering.session(fixture.worldId, fixture.mode)), beforeSession); Object.values(fixture.files).forEach((file,index) => assert.equal(fs.readFileSync(file).equals(artifacts[index]), true));
+});
+
+test("explicit previous-good restoration replaces a compatible world and session together", (t) => {
+  const fixture = injuredPersistencePair(t, "v03-explicit-pair-restore"); const restored = fixture.service.restoreBackup({ world_id:fixture.worldId, confirmed:true }); assert.equal(restored.ok, true); const world = JSON.parse(fs.readFileSync(fixture.files.world)); const session = JSON.parse(fs.readFileSync(fixture.files.session)); const member = session.payload.expedition.team.members.find((item) => (item.personnel_id ?? item.id) === fixture.identity);
+  assert.equal(world.characters[fixture.identity].status, "active"); assert.equal(member.status, "active"); assert.equal(world.persistence_pairs[fixture.mode].id, session.persistence_pair.id);
+});
+
+test("incompatible explicit recovery rejects without changing any canonical artifact", (t) => {
+  const fixture = injuredPersistencePair(t, "v03-explicit-pair-reject"); fs.writeFileSync(fixture.files.sessionBackup, "{ damaged previous session"); const artifacts = Object.values(fixture.files).map((file) => fs.readFileSync(file)); const restored = fixture.service.restoreBackup({ world_id:fixture.worldId, confirmed:true }); assert.equal(restored.ok, false); assert.equal(restored.error.code, "BACKUP_PAIR_INCOMPATIBLE"); Object.values(fixture.files).forEach((file, index) => assert.equal(fs.readFileSync(file).equals(artifacts[index]), true));
+});
+
+test("reproduced malformed current structures are rejected before persistence", (t) => {
+  const root = temporary(t, "v03-reproduced-current-validation"); const mode = "field-researcher"; const service = new DesktopService({ appDataPath:root }); const created = service.createWorld({ name:"Current validation", seed:"v03-current-validation" }); assert.equal(service.startSession({ world_id:created.world.id, mode, seed:"v03-current-validation" }).ok, true); service.shutdown();
+  const files = [service.worldFile(created.world.id), service.sessionFile(created.world.id, mode), service.backupFile(created.world.id), service.sessionBackupFile(created.world.id, mode)];
+  const rejectWorld = (corrupt) => { const artifacts = files.map((file) => fs.readFileSync(file)); const world = service.getWorld(created.world.id); corrupt(world); assert.throws(() => service.saveCanonical(world)); files.forEach((file,index) => assert.equal(fs.readFileSync(file).equals(artifacts[index]), true)); };
+  rejectWorld((world) => { Object.values(world.characters)[0].status = "BANANA"; });
+  rejectWorld((world) => { const person = Object.values(world.characters)[0]; person.status = "dead"; person.condition = "normal"; });
+  rejectWorld((world) => { world.q4_standard_operator.contacts = {}; world.q4_standard_operator.revealed = "yes"; });
+  rejectWorld((world) => { world.q4_career_state.operation_history = [null]; world.q4_career_state.cycles.bad = null; });
+  rejectWorld((world) => { world.q4_geography.environment.history = [null]; world.q4_geography.environment.conditions.bad = null; });
+  rejectWorld((world) => { world.q4_phenomenon_ecology.conditions.bad = null; });
+  rejectWorld((world) => { world.events.push(null); });
+  const world = service.getWorld(created.world.id); const loaded = service.loadSession(world, mode); assert.equal(loaded.ok, true); loaded.entry.run.lifecycle = "BANANA"; const artifacts = files.map((file) => fs.readFileSync(file)); assert.throws(() => service.persistSession(world, mode, loaded.entry), { code:"RUN_STATE_INVALID" }); files.forEach((file,index) => assert.equal(fs.readFileSync(file).equals(artifacts[index]), true));
+});

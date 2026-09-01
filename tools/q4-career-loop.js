@@ -89,6 +89,8 @@ function read(world) {
   const state = world.q4_career_state;
   if (state == null) throw Object.assign(new Error("missing Clear-Q4 career state"), { code:"Q4_CAREER_STATE_INVALID" });
   if (state.version !== VERSION || !Number.isInteger(state.completed_operations) || state.completed_operations < 0 || !Array.isArray(state.operation_history) || !state.cycles || typeof state.cycles !== "object" || Array.isArray(state.cycles) || !Array.isArray(state.recent_updates)) throw Object.assign(new Error("invalid Clear-Q4 career state"), { code:"Q4_CAREER_STATE_INVALID" });
+  const record = (value) => Boolean(value && typeof value === "object" && !Array.isArray(value));
+  if (!state.operation_history.every(record) || !state.recent_updates.every(record) || !Object.values(state.cycles).every(record)) throw Object.assign(new Error("invalid Clear-Q4 career records"), { code:"Q4_CAREER_STATE_INVALID" });
   return state;
 }
 function projection(world) { const state = read(world); return { completed_operations: state.completed_operations, recent_updates: clone(state.recent_updates), history: clone(state.operation_history) }; }

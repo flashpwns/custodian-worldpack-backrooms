@@ -179,6 +179,7 @@ function startRun({ profile, seed = "yellow-beast-bootstrap", scenario = null, w
 }
 function normalizeRun(value) {
   if (value?.version === "yellow-beast-run@v9") {
+    if (!["active", "completed"].includes(value.lifecycle)) throw Object.assign(new Error("invalid current run lifecycle"), { code:"RUN_STATE_INVALID" });
     const activeClearQ4 = (value.lifecycle ?? "active") === "active" && value.spatial_pack_id === "clear-q4";
     if (!value.session || !value.checklist || !value.aliases || (value.spatial_pack_id && (!value.expedition || !value.spatial || !value.object_state || !value.survey_frontier)) || (activeClearQ4 && value.spatial?.environment?.version !== environment.VERSION)) throw Object.assign(new Error("invalid current run state"), { code:"RUN_STATE_INVALID" });
     if (activeClearQ4) {

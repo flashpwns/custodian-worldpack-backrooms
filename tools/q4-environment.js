@@ -33,6 +33,8 @@ function validateCurrent(state, definition) {
   for (const authored of definition?.locations ?? []) { const location = state.locations[authored.id]; if (!location) fail(`location ${authored.id} is missing`); validateLocation(location, authored.id); }
   for (const [id, location] of Object.entries(state.locations)) validateLocation(location, id);
   for (const id of Object.keys(INFRASTRUCTURE)) if (!record(state.infrastructure[id]) || !valid("power", state.infrastructure[id].power)) fail(`infrastructure ${id} is missing or malformed`);
+  for (const [id, condition] of Object.entries(state.conditions)) if (!record(condition)) fail(`condition ${id} is malformed`);
+  for (const [index, change] of state.history.entries()) if (!record(change)) fail(`history entry ${index} is malformed`);
   return state;
 }
 function ensure(spatial, definition, seed = "environment") { spatial.environment ??= create(definition, seed); const state = spatial.environment; if (state.version !== VERSION) throw new Error("unsupported Q4 environment state"); state.locations ??= {}; state.infrastructure ??= {}; state.conditions ??= {}; state.history ??= [];

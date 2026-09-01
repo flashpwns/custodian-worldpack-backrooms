@@ -75,6 +75,7 @@ function state(world) {
   if (!plainObject(value) || value.version !== VERSION || value.config_version !== config.version) invalidState("unsupported version or container shape");
   if (!Array.isArray(value.evaluated_locations) || !value.evaluated_locations.every((item) => typeof item === "string" && item.length > 0)) invalidState("evaluated_locations must contain location ids");
   if (!Array.isArray(value.eligibility_history) || !Array.isArray(value.fixture_ids) || !value.fixture_ids.every((item) => typeof item === "string") || !plainObject(value.conditions) || !plainObject(value.incidents) || !Array.isArray(value.recent_errors)) invalidState("current collections are malformed");
+  if (!Object.values(value.conditions).every(plainObject) || !Object.values(value.incidents).every(plainObject)) invalidState("current condition or incident records are malformed");
   if (value.last_instantiated_evaluation !== null && !plainObject(value.last_instantiated_evaluation)) invalidState("last_instantiated_evaluation is malformed");
   if (Object.hasOwn(value, "migrated_conservatively") && typeof value.migrated_conservatively !== "boolean") invalidState("migration marker is malformed");
   return value;

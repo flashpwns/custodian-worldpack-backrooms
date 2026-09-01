@@ -111,7 +111,8 @@ test("damaged sessions resume a verified previous-good record without overwritin
   const file = path.join(root, "saves", `${world.id}-field-researcher.json`); assert.ok(fs.existsSync(`${file}.previous-good`)); fs.writeFileSync(file, "{ interrupted");
   const restarted = new DesktopService({ appDataPath: root }); const resumed = restarted.resumeSession({ world_id: world.id, mode: "field-researcher" });
   assert.equal(resumed.ok, true); assert.equal(resumed.recovery.session.recovered, true); assert.equal(resumed.projection.phase.phase_id, "BRIEFING"); assert.equal(fs.readFileSync(file, "utf8"), "{ interrupted");
-  assert.equal(restarted.submitAction({ world_id: world.id, mode: "field-researcher", action: "READY" }).ok, true);
+  const rejected = restarted.submitAction({ world_id: world.id, mode: "field-researcher", action: "READY" });
+  assert.equal(rejected.ok, false); assert.equal(rejected.error.code, "PERSISTENCE_RECOVERY_READ_ONLY"); assert.equal(fs.readFileSync(file, "utf8"), "{ interrupted");
 });
 
 test("unsupported or unrecoverable session records fail safely and remain intact", () => {

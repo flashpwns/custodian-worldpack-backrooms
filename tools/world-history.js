@@ -4,6 +4,8 @@ const VERSION = "yellow-beast-world-history@v1";
 const CURRENT_SHAPE_VERSION = "yellow-beast-canonical-world-shape@v1";
 const STORAGE_MIGRATION_ID = "yellow-beast-storage-migration@v1-to-canonical-shape-v1";
 const MAX_CANONICAL_ARRAY_LENGTH = 1_000_000;
+const CHARACTER_STATUSES = new Set(["active", "unavailable", "missing", "unknown", "retired", "removed", "dead"]);
+const CHARACTER_CONDITIONS = new Set(["normal", "uninjured", "minor injury", "serious injury", "incapacitated", "missing", "dead", "stabilized minor injury", "recovering", "deceased"]);
 const clone = (value) => structuredClone(value); const digest = (value) => crypto.createHash("sha256").update(JSON.stringify(value)).digest("hex");
 function canonicalValueError(code, path, reason) { return Object.assign(new Error(`invalid canonical value at ${path}: ${reason}`), { code }); }
 function isArrayIndexKey(key) {
@@ -150,7 +152,7 @@ function setCharacterStatus(world, { run_id, identity, status, condition = null,
   const record = character(world, identity); if (!record) return { ok: false, code: "CHARACTER_UNKNOWN" };
   if (record.status === "dead" && status !== "dead") return { ok: false, code: "CHARACTER_DEATH_IRREVERSIBLE" };
   if (!["active", "unavailable", "missing", "unknown", "retired", "removed", "dead"].includes(status)) return { ok: false, code: "CHARACTER_STATUS_INVALID" };
-  record.status = status; if (condition != null) record.condition = condition;
+  const nextCondition = condition ?? (["missing", "dead"].includes(status) ? status : null); record.status = status; if (nextCondition != null) record.condition = nextCondition;
   if (status === "dead") { record.death ??= { run_id, reason }; event(world, run_id, "character.died", { identity, condition:record.condition, reason }, record.authority); }
   else event(world, run_id, "character.status.changed", { identity, status, condition:condition ?? null, reason }, record.authority);
   return { ok: true, character: clone(record) };
@@ -181,6 +183,9 @@ function assertCurrentWorld(world, { validate_regions = true } = {}) {
   if (!Array.isArray(world.events) || !world.knowledge?.institutional?.records || !world.knowledge?.civilian?.records) throw Object.assign(new Error("invalid current world history collections"), { code:"WORLD_SHAPE_INVALID" });
   if (!world.q4_evidence_archive || !world.q4_phenomenon_ecology) throw Object.assign(new Error("missing current canonical domain state"), { code:"WORLD_SHAPE_INVALID" });
   const evidenceAuthority = require("./q4-evidence-authority"); evidenceAuthority.readState(world); const evidenceValidation = evidenceAuthority.validate(world); if (!evidenceValidation.ok) throw Object.assign(new Error(`invalid current evidence archive: ${evidenceValidation.broken.join(", ")}`), { code:"WORLD_SHAPE_INVALID" }); require("./q4-phenomenon-ecology").state(world); require("./q4-career-loop").read(world);
+  for (const [identity, person] of Object.entries(world.characters)) { const condition = person?.condition == null ? null : String(person.condition).toLowerCase(); if (!person || typeof person !== "object" || Array.isArray(person) || person.identity !== identity || !CHARACTER_STATUSES.has(person.status) || condition != null && !CHARACTER_CONDITIONS.has(condition) || person.status === "dead" && !["dead","deceased"].includes(condition) || person.status !== "dead" && ["dead","deceased"].includes(condition)) throw Object.assign(new Error(`invalid current personnel record: ${identity}`), { code:"WORLD_SHAPE_INVALID" }); }
+  for (const [index, entry] of world.events.entries()) if (!entry || typeof entry !== "object" || Array.isArray(entry)) throw Object.assign(new Error(`invalid current event record: ${index}`), { code:"WORLD_SHAPE_INVALID" });
+  try { require("./q4-standard-operator").read(world); } catch { throw Object.assign(new Error("invalid current Standard operator state"), { code:"WORLD_SHAPE_INVALID" }); }
   if (world.q4_geography != null) { try { const authored = require("../data/worldpacks/clear-q4/spatial.json"); const topology = require("./spatial-runtime").canonicalDefinition(world.q4_geography, authored); require("./q4-environment").validateCurrent(world.q4_geography.environment, authored); require("./survey-frontier").validateCurrent(world.q4_survey_frontier, topology, { player:world.q4_operations?.controlled_player ?? null }); } catch { throw Object.assign(new Error("invalid current Clear-Q4 spatial authority state"), { code:"WORLD_SHAPE_INVALID" }); } }
   try { require("./q4-outcome-authority").readLifecycle(world); } catch { throw Object.assign(new Error("invalid current lifecycle state"), { code:"WORLD_SHAPE_INVALID" }); }
   if (validate_regions) for (const region of Object.values(world.regions)) assertRegion(region);

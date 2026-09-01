@@ -46,7 +46,7 @@
     "tests/y23-encounter.test.js": "dcf19b17e0907102cb2334d92bd9fa66f5d7c534de5bb7333f24fa65db8401b5",
     "tests/y24-institution.test.js": "e2ab745578d9e2ca9698734e5f01ca6179e8d58d2594dfb2df4d376a99b82b50",
     "tests/y25-gameplay.test.js": "1f932f70e659ad382078d0acf40536d78ad271de9c9e12ab0b7c758767905f3c",
-    "tests/y26-desktop.test.js": "6e65ebb9b66e0ce2ac0a87aefc5d0a198cdf8d52b1cb659799918377081e6c1b",
+    "tests/y26-desktop.test.js": "5c30e056f6ed5e1563b769a23ca4bdecf451b092f87cc8e7a1a0a8a2a43f9c4c",
     "tests/y27-freeform-loop.test.js": "b66d7368638d2edcb84d0e50cbe367afe7e2d4db26dcd87acd7ca5671e160ee7",
     "tests/y27-intent.test.js": "6611979efafa7ac7252e9c7caf0b99c22791c54229377176833cb3cdcbb6c890",
     "tests/y28-beck.test.js": "320948680139bc3900be99af0b40a3f6b46cef5f7220ec6e1f42bab78e69173a",
