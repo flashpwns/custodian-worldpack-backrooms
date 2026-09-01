@@ -32,6 +32,7 @@ const surveyFrontier = require("./survey-frontier");
 const environment = require("./q4-environment");
 const phenomenonEcology = require("./q4-phenomenon-ecology");
 const personnelContinuity = require("./q4-personnel-continuity");
+const referenceExpedition = require("./reference-expedition");
 
 const root = path.resolve(__dirname, "..");
 const read = (relative) => JSON.parse(fs.readFileSync(path.join(root, relative), "utf8"));
@@ -158,16 +159,19 @@ function startRun({ profile, seed = "yellow-beast-bootstrap", scenario = null, w
   if (!result.ok) return result;
   const restored = restoreSession(exportSession(result.session).envelope);
   const procedural_scenario = profile === FIELD_PROFILE && scenario === "procedural-survey";
-  const run_id = world ? history.beginRun(world, { profile, scenario: procedural_scenario ? "async-clear-q4-procedural-survey" : result.session.scenario.id, seed }) : null;
+  const reference_scenario = profile === FIELD_PROFILE && referenceExpedition.isReference(scenario);
+  const runtimeScenario = procedural_scenario ? "async-clear-q4-procedural-survey" : reference_scenario ? referenceExpedition.RUNTIME_SCENARIO : result.session.scenario.id;
+  const run_id = world ? history.beginRun(world, { profile, scenario: runtimeScenario, seed }) : null;
   const dynamics = profile === FIELD_PROFILE && spatial_worldpack ? dynamicsDefinitionFor(spatial_worldpack) : null;
   const institution = profile === FIELD_PROFILE && world && spatial_worldpack ? institutionalRuntime.ensure(world, institutionalDefinitionFor(spatial_worldpack)) : null;
   const followUpMinimum = Math.max(0, ...(institution?.follow_up_assignments ?? []).filter((item) => item.status === "available").map((item) => item.staffing_modifier?.minimum_total ?? 0));
   const institutionalStaffing = dynamics ? { ...dynamics.staffing, minimum_total: Math.min(dynamics.staffing.maximum_total, Math.max(dynamics.staffing.minimum_total, followUpMinimum, institution?.dimensions?.staffing_posture === "reinforced" ? 4 : 0)) } : null;
-  const staffing = profile === FIELD_PROFILE && world ? q4Personnel.staffQ4(world, run_id, player, seed, institutionalStaffing ?? {}) : null;
+  const staffingRules = reference_scenario ? referenceExpedition.staffingRules(institutionalStaffing ?? {}) : (institutionalStaffing ?? {});
+  const staffing = profile === FIELD_PROFILE && world ? q4Personnel.staffQ4(world, run_id, player, seed, staffingRules) : null;
   if (staffing && !staffing.ok) return { ok: false, error: { code: staffing.code } };
-  const assignment = profile === FIELD_PROFILE && world ? assignmentEngine.issue(world, { run_id, seed, selection_context: `${world.world_id}:${world.q4_operations?.institutional_time ?? 0}`, staffing }) : null;
+  const assignment = profile === FIELD_PROFILE && world && !reference_scenario ? assignmentEngine.issue(world, { run_id, seed, selection_context: `${world.world_id}:${world.q4_operations?.institutional_time ?? 0}`, staffing }) : null;
   if (assignment && !assignment.ok) return { ok: false, error: { code: assignment.code } };
-  const mission = profile === FIELD_PROFILE ? (assignment?.mission ?? q4Missions.generate({ world, run_id, seed, staffing })) : null;
+  const mission = profile === FIELD_PROFILE ? (reference_scenario ? referenceExpedition.mission({ run_id, seed, staffing }) : (assignment?.mission ?? q4Missions.generate({ world, run_id, seed, staffing }))) : null;
   if (mission && world) history.recordQ4Mission(world, run_id, mission);
   const loadout = profile === FIELD_PROFILE && world ? q4Equipment.prepare(world, run_id, { player: staffing.player.identity, coworkers: staffing.coworkers, required_keys: mission.required_equipment }) : null;
   const existing = region_id && world?.regions?.[region_id];
@@ -175,6 +179,7 @@ function startRun({ profile, seed = "yellow-beast-bootstrap", scenario = null, w
   const procedural_state = existing ? clone(history.restoreRegion(world, region_id).state) : (procedural_scenario && generator_version === proceduralV2.VERSION ? generator.initialize({ seed, observer: player, policy: "moderate" }) : undefined);
   if (procedural_state) { const known = procedural_state.discovery[player] ?? { spaces: [], edges: [], features: [] }; procedural_state.discovery = { [player]: { spaces: [], edges: [], features: [] } }; procedural_state.current = { [player]: Object.keys(procedural_state.nodes)[0] }; void known; }
   const run = newRun({ profile, seed, session: result.session, staffing, loadout, mission, procedural_scenario, procedural_state, spatial_pack_id: spatial_worldpack, spatial_state: world?.q4_geography ?? null, object_state: world?.q4_object_state ?? null, survey_frontier: world?.q4_survey_frontier ?? null, world_id: world?.world_id ?? null, run_id, world });
+  if (reference_scenario) { run.scenario = referenceExpedition.RUNTIME_SCENARIO; referenceExpedition.instantiate(run); }
   return { ok: restored.ok, session: result.session, run, restored_equivalent: restored.ok && stableSerialize(restored.session) === stableSerialize(result.session), summary: { session_id: result.session.id, profile, profile_title: profileRecord.title, scenario: result.session.scenario.id, seed, player: startup.player, knowledge: startup.knowledge, permissions: startup.permissions, resources: startup.resources } };
 }
 function normalizeRun(value) {
@@ -496,12 +501,21 @@ function act(runValue, verb, target) {
   if (verb === "MOVE" && run.procedural) { const moved = generatorFor(run.procedural).move(run.procedural, run.session.startup.player.observer_id, target); if (!moved.ok) return { ok: false, error: { code: "TARGET_UNAVAILABLE" }, result: { public_reason: moved.public_reason }, run }; run.checklist.moved = true; event(run.expedition, "procedural.space.discovered", { location: moved.view.location.alias }); return { ok: true, outcome: "succeeded", result: { public_reason: null, view: moved.view }, run }; }
   if (verb === "USE" && target && target !== "field-light") {
     if (target !== "survey-instrument") return { ok: false, error: { code: "EQUIPMENT_UNAVAILABLE" }, run };
-    const operator = run.spatial ? run.session.startup.player.observer_id : run.expedition.equipment?.[target]?.holder ?? run.session.startup.player.observer_id;
+    const operator = run.expedition.equipment?.[target]?.holder ?? run.session.startup.player.observer_id;
+    if (run.spatial && run.spatial.personnel_locations?.[operator] !== run.spatial.player_location) return { ok: false, error: { code: "EQUIPMENT_NOT_ACCESSIBLE" }, run };
     const used = useEquipment(run.expedition, target, operator); if (!used.ok) return { ok: false, error: { code: used.code }, run };
     run.checklist.used = true;
     event(run.expedition, "measurement.recorded", { equipment: target, interval: run.expedition.clock.interval, type: "qualitative-survey" });
+    const referenceMeasurement = referenceExpedition.measurementEvidence(run, operator);
+    if (referenceMeasurement) {
+      referenceMeasurement.mission_id = run.expedition.mission?.id ?? null;
+      referenceMeasurement.environmental_conditions = environment.captureContext(run.spatial.environment, run.spatial.player_location, { has_field_light:q4Equipment.stateUsable(run.expedition.equipment?.["field-light"]) });
+      if (run._world) evidenceAuthority.capture(run._world, run, referenceMeasurement);
+      if (!(run.expedition.evidence ?? []).some((item) => item.id === referenceMeasurement.id)) run.expedition.evidence.push(referenceMeasurement);
+      event(run.expedition, "evidence.recorded", referenceMeasurement);
+    }
     const cycle = run.spatial_pack_id ? resolveOperationalCycle(run, verb, dynamicsRuntime.actionCost(dynamicsDefinitionFor(run.spatial_pack_id), verb), "equipment-use") : (operationalTime.advance(run.expedition, 1, "equipment-use"), { clock: { cost: 1 }, mission_updates: [] });
-    return { ok: true, outcome: "succeeded", result: { public_reason: null, time_advanced: cycle.clock.cost, measurement: "qualitative-survey", mission_updates: cycle.mission_updates, operational_updates: cycle.public_updates ?? [] }, run };
+    return { ok: true, outcome: "succeeded", result: { public_reason: referenceMeasurement?.target_observation ?? null, time_advanced: cycle.clock.cost, measurement: referenceMeasurement?.measurement ?? "qualitative-survey", evidence: referenceMeasurement ? { id:referenceMeasurement.id, type:referenceMeasurement.type } : null, mission_updates: cycle.mission_updates, operational_updates: cycle.public_updates ?? [] }, run };
   }
   const action = { MOVE: "traverse-controlled-route", USE: "toggle-light" }[verb];
   if (!action) return { ok: false, error: { code: "UNSUPPORTED_VERB" }, run };

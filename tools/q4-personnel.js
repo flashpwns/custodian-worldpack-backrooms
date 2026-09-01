@@ -68,7 +68,14 @@ function staffQ4(world, run_id, player_identity = null, seed = "q4", staffing_ru
   world.q4_operations ??= { institutional_time: 0, last_review: null };
   world.q4_operations.generated_rosters ??= {};
   let coworkerIds = world.q4_operations.generated_rosters[seed];
-  const rosterUnavailable = (ids) => !Array.isArray(ids) || ids.length < 2 || ids.length > 4 || ids.some((id) => history.character(world, id)?.status !== "active");
+  const requiredCoworkers = Number.isInteger(staffing_rules.total) ? staffing_rules.total - 1 : null;
+  const requiredRoles = requiredCoworkers !== null && Array.isArray(staffing_rules.coworker_roles) ? staffing_rules.coworker_roles.slice(0, requiredCoworkers) : null;
+  const rosterUnavailable = (ids) => {
+    if (!Array.isArray(ids) || ids.length < 2 || ids.length > 4 || (requiredCoworkers !== null && ids.length !== requiredCoworkers)) return true;
+    const people = ids.map((id) => history.character(world, id));
+    if (people.some((person) => person?.status !== "active")) return true;
+    return requiredRoles ? requiredRoles.some((role) => !people.some((person) => person.role === role)) : false;
+  };
   if (rosterUnavailable(coworkerIds)) {
     // Existing active records are the first staffing pool. New generation only
     // fills a genuine gap, preserving a career's identities across shifts.
@@ -77,22 +84,29 @@ function staffQ4(world, run_id, player_identity = null, seed = "q4", staffing_ru
     const returningPriority = (person) => sharedWork(person) > 0 && !immediatePriorRoster.has(person.identity) ? 1 : 0;
     const established = Object.values(world.characters ?? {}).filter((person) => person.identity !== player.identity && person.status === "active" && person.role && person.clearance && /q4-|field|survey|documentation/i.test(`${person.classification ?? ""} ${person.role}`)).sort((a, b) => returningPriority(b) - returningPriority(a) || sharedWork(b) - sharedWork(a) || a.identity.localeCompare(b.identity));
     const roleSet = new Set(established.map((person) => person.role));
-    if (established.length >= 2 && roleSet.has("survey technician") && roleSet.has("documentation specialist")) {
+    if (requiredRoles?.length === requiredCoworkers && requiredRoles.every((role) => roleSet.has(role))) {
+      coworkerIds = requiredRoles.map((role) => established.find((person) => person.role === role).identity);
+    } else if (!requiredRoles && established.length >= 2 && roleSet.has("survey technician") && roleSet.has("documentation specialist")) {
       const required = ["survey technician", "documentation specialist"].map((role) => established.find((person) => person.role === role));
-      coworkerIds = [...required, ...established.filter((person) => !required.includes(person))].slice(0, 3).map((person) => person.identity);
+      coworkerIds = [...required, ...established.filter((person) => !required.includes(person))].slice(0, requiredCoworkers ?? 3).map((person) => person.identity);
     }
     for (let attempt = 0; attempt < 32; attempt += 1) {
       if (!rosterUnavailable(coworkerIds)) break;
       const generationSeed = attempt === 0 && !Array.isArray(coworkerIds) ? seed : `${seed}:restaff:${attempt + 1}`;
       const generated = personnelGeneration.generate({ seed: generationSeed, world_id: world.world_id, player: safePerson(player), staffing: staffing_rules });
-      const candidateIds = generated.coworkers.map((spec) => ensure(world, run_id, { ...spec, classification: "q4-generated-personnel", provenance: "seeded-operational-staffing", authority: "institutional-personnel-record" }).identity);
+      const selectedExisting = new Set();
+      const candidateIds = generated.coworkers.map((spec) => {
+        const compatible = requiredRoles ? established.find((person) => person.role === spec.role && !selectedExisting.has(person.identity)) : null;
+        if (compatible) { selectedExisting.add(compatible.identity); return compatible.identity; }
+        return ensure(world, run_id, { ...spec, classification: "q4-generated-personnel", provenance: "seeded-operational-staffing", authority: "institutional-personnel-record" }).identity;
+      });
       if (!rosterUnavailable(candidateIds)) { coworkerIds = candidateIds; break; }
     }
     if (rosterUnavailable(coworkerIds)) return { ok: false, code: "Q4_TEAM_UNAVAILABLE" };
     world.q4_operations.generated_rosters[seed] = [...coworkerIds];
   }
   const coworkers = coworkerIds.map((id) => history.character(world, id)).filter((person) => person?.status === "active" && person.identity !== player.identity);
-  if (coworkers.length < 2 || coworkers.length > 4) return { ok: false, code: "Q4_TEAM_UNAVAILABLE" };
+  if (coworkers.length < 2 || coworkers.length > 4 || (requiredCoworkers !== null && coworkers.length !== requiredCoworkers)) return { ok: false, code: "Q4_TEAM_UNAVAILABLE" };
   assign(world, run_id, player, { id: "clear-q4-field-survey-alpha", expedition_id: "clear-q4-field-survey-alpha", role: player.role });
   for (const coworker of coworkers) assign(world, run_id, coworker, { id: "clear-q4-field-survey-alpha", expedition_id: "clear-q4-field-survey-alpha", role: coworker.role });
   continuity.ensureTeam(world, run_id, [player, ...coworkers]);

@@ -1,0 +1,76 @@
+{
+  "version": "yellow-beast-reference-expedition@v1",
+  "id": "clear-q4-reference-expedition",
+  "scenario": "reference-expedition",
+  "staffing": {
+    "total": 4,
+    "minimum_total": 4,
+    "maximum_total": 4,
+    "clearance": "field",
+    "coworker_roles": [
+      "survey technician",
+      "documentation specialist",
+      "route specialist"
+    ]
+  },
+  "mission": {
+    "family": "reference-layout-survey",
+    "family_label": "Preliminary Layout and Condition Survey",
+    "rationale": "ASYNC requires a current, bounded layout and condition record for the declared Clear-Q4 frontier section.",
+    "site": {
+      "label": "the established route through the Utility Room to the Open Passage survey line",
+      "boundary": "open-passage",
+      "knowledge_status": "assigned from the prior survey record; current dimensions require field verification"
+    },
+    "primary": "Verify the established approach, measure and document the Open Passage survey line, update route markers where required, and return with an accountable field record.",
+    "procedures": [
+      "Follow the established route through the Utility Room.",
+      "Measure the Open Passage extent from the recorded south-wall datum.",
+      "Retain current measurements separately from the prior layout record.",
+      "Report observations and accountability to Standard, or record why a report was not delivered."
+    ]
+  },
+  "canonical_geometry": {
+    "datum": {
+      "id": "open-passage-south-wall-datum",
+      "location_id": "open-passage",
+      "axis": "north",
+      "unit": "metre"
+    },
+    "current_passage": {
+      "id": "open-passage-measured-volume",
+      "location_id": "open-passage",
+      "width_m": 2.8,
+      "depth_m": 18.0,
+      "axis_interval_m": [0.0, 18.0]
+    },
+    "parallel_corridor_volume": {
+      "id": "parallel-columned-corridor-volume",
+      "location_id": "columned-corridor",
+      "axis_interval_m": [14.0, 18.5]
+    },
+    "euclidean_relation": {
+      "kind": "occupied-volume-overlap",
+      "passage_id": "open-passage-measured-volume",
+      "corridor_id": "parallel-columned-corridor-volume",
+      "overlap_interval_m": [14.0, 18.0],
+      "overlap_depth_m": 4.0
+    }
+  },
+  "prior_record": {
+    "id": "clear-q4-prior-layout-sheet-17b",
+    "kind": "prior-layout-record",
+    "status": "institutional record; current field verification pending",
+    "source": "Clear-Q4 layout survey sheet 17-B",
+    "recorded_passage_depth_m": 9.5,
+    "parallel_corridor_axis_interval_m": [14.0, 18.5],
+    "recorded_clearance_m": 4.5,
+    "text": "Layout sheet 17-B records the Open Passage survey line as 9.5 metres deep from the south-wall datum; the parallel corridor volume begins 14 metres from that datum."
+  },
+  "measurement": {
+    "location_id": "open-passage",
+    "equipment_id": "survey-instrument",
+    "evidence_type": "passage-depth-measurement",
+    "method": "survey-instrument baseline measurement"
+  }
+}
