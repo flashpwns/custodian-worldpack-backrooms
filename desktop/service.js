@@ -434,7 +434,7 @@ class DesktopService {
   availableFor(world, mode, entry) {
     if (outcomes.isRetired(world)) return [];
     if (entry.kind === "bootstrap") {
-      const phaseActions = { BRIEFING: "DEPLOY", STAGING: "DEPLOY", FACILITY_TRANSIT: "DEPLOY", THRESHOLD: "DEPLOY", STANDARD_RADIO_CHECK: q4Radio.read(entry.run.expedition).check_completed ? "BEGIN_FIELD_OPERATION" : null };
+      const phaseActions = { BRIEFING: "READY", STAGING: "DEPLOY", FACILITY_TRANSIT: "DEPLOY", THRESHOLD: "DEPLOY", STANDARD_RADIO_CHECK: q4Radio.read(entry.run.expedition).check_completed ? "BEGIN_FIELD_OPERATION" : null };
       const state = bootstrap.status(entry.run); const observed = bootstrap.look(entry.run, { record: false }); const targets = state.view.targets.map(({ alias }) => ({ ref: alias, label: alias })); const exits = (observed.view?.exits ?? []).map(({ alias }) => ({ ref: alias, label: alias }));
       const objectActions = new Map();
       for (const object of observed.view?.objects ?? []) for (const affordance of object.actions ?? []) if (affordance.available) {
@@ -656,10 +656,10 @@ class DesktopService {
       if (entry.kind === "bootstrap" && ["DEPLOY", "READY", "PROCEED", "APPROACH", "CROSS", "RADIO_CHECK", "BEGIN_FIELD_OPERATION"].includes(verb)) {
         const phase = entry.phase?.phase_id;
         const radioChecked = q4Radio.ensure(entry.run.expedition).check_completed;
-        // READY/PROCEED/APPROACH/CROSS remain a migration seam for saved
-        // automation records. The production preparation surface exposes
-        // only DEPLOY; new sessions never present the legacy chain.
-        const expected = { BRIEFING: verb === "DEPLOY" ? "DEPLOY" : "READY", STAGING: verb === "DEPLOY" ? "DEPLOY" : "PROCEED", FACILITY_TRANSIT: verb === "DEPLOY" ? "DEPLOY" : "APPROACH", THRESHOLD: verb === "DEPLOY" ? "DEPLOY" : "CROSS", STANDARD_RADIO_CHECK: radioChecked ? "BEGIN_FIELD_OPERATION" : "RADIO_CHECK" }[phase];
+        // READY is the production briefing-to-staging boundary. The later
+        // PROCEED/APPROACH/CROSS actions remain a migration seam for saved
+        // automation records; they do not redefine a fresh briefing.
+        const expected = { BRIEFING: "READY", STAGING: verb === "DEPLOY" ? "DEPLOY" : "PROCEED", FACILITY_TRANSIT: verb === "DEPLOY" ? "DEPLOY" : "APPROACH", THRESHOLD: verb === "DEPLOY" ? "DEPLOY" : "CROSS", STANDARD_RADIO_CHECK: radioChecked ? "BEGIN_FIELD_OPERATION" : "RADIO_CHECK" }[phase];
         if (verb !== expected) return publicError("PHASE_GUARD_REJECTED", "That transition is not available from the current expedition phase.");
         if (verb === "RADIO_CHECK") {
           return publicError("PLAYER_TRANSMISSION_REQUIRED", "Type and deliberately submit the required radio check in the STANDARD composer. The application will not speak for you.");

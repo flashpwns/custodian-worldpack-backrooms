@@ -37,33 +37,48 @@ test("one preparation surface preserves canonical pre-field transitions without 
   let html = surfaces.render(started.projection);
   assert.match(html, /q4-preparation-surface/);
   assert.match(html, /OPERATIONAL PREPARATION/);
-  assert.match(html, /Deploy to radio readiness/);
+  assert.match(html, /Continue to Staging/);
   assert.match(html, /data-testid="q4-communications"/);
   assert.match(html, /data-testid="q4-comms-form"/);
-  assert.doesNotMatch(html, /local-comms|standard-comms|Continue to Staging/);
+  assert.doesNotMatch(html, /local-comms|standard-comms|Deploy to radio readiness/);
   assert.match(html, /data-radio-state="unavailable">LINK UNAVAILABLE/);
   assert.doesNotMatch(html, /What do you do\?|Nothing notable changes|natural-form|Structured controls/);
-  html = surfaces.render(advance(service, world, "DEPLOY").projection);
+  html = surfaces.render(advance(service, world, "READY").projection);
   assert.match(html, /q4-preparation-surface/);
-  assert.match(html, /RADIO READINESS/);
+  assert.match(html, /Preparation remains non-operational/);
+  assert.match(html, /data-testid="select-store-route-marker-kit"/);
   assert.doesNotMatch(html, /What do you do\?|Nothing notable changes/);
 });
 
-test("pre-field has one deliberate deployment before the radio check", () => {
-  const { service, world } = fixture(); start(service, world);
-  const radio = advance(service, world, "DEPLOY");
-  assert.equal(radio.projection.phase.phase_id, "STANDARD_RADIO_CHECK");
-  assert.match(surfaces.render(radio.projection), /Select STANDARD|RADIO READINESS/);
-  const rejected = service.submitAction({ world_id: world.id, mode: "field-researcher", action: "RADIO_CHECK" });
-  assert.equal(rejected.ok, false);
-  const checked = service.submitQ4Communication({ world_id: world.id, channel: "standard", text: "Standard, Clear-Q4 team accounted for. Radio check." });
-  assert.equal(checked.ok, true);
-  assert.equal(checked.projection.phase.phase_id, "STANDARD_RADIO_CHECK");
-  assert.match(surfaces.render(checked.projection), /Radio check/);
-  assert.match(surfaces.render(checked.projection), /Begin field operation|Select STANDARD/);
-  const field = advance(service, world, "BEGIN_FIELD_OPERATION");
-  assert.equal(field.projection.phase.phase_id, "FIELD_OPERATION");
-  assert.doesNotMatch(surfaces.render(field.projection), /Nothing notable changes/);
+test("fresh production briefing enters staging without crossing or starting Standard", () => {
+  const { service, world } = fixture(); const started = start(service, world);
+  assert.deepEqual(started.projection.available_actions[0], { type: "READY", target_required: false, targets: [] });
+  assert.equal(advance(service, world, "DEPLOY").error.code, "PHASE_GUARD_REJECTED");
+
+  const staged = advance(service, world, "READY");
+  assert.equal(staged.ok, true);
+  assert.equal(staged.projection.phase.phase_id, "STAGING");
+  assert.equal(staged.projection.q4.current_location.name, "Equipment Staging");
+  assert.equal(staged.projection.q4.radio_check.authorized, false);
+  assert.equal(staged.projection.q4.radio_check.completed, false);
+  assert.equal(staged.projection.q4.channels.standard.available, false);
+  assert.equal(staged.projection.q4.channels.standard.history.length, 0);
+
+  const entry = service.session(world.id, "field-researcher");
+  assert.equal(entry.run.spatial.player_location, "equipment-staging");
+  assert.deepEqual(entry.run.spatial.visited_locations, ["async-briefing-room", "equipment-staging"]);
+  assert.equal(entry.run.spatial.route_history.some((item) => item.connection_id === "threshold-crossing"), false);
+  const complexSide = new Set(["threshold-side-entry", "utility-room", "columned-corridor", "open-passage", "lower-level-transition", "level-2-boundary", "relay-alcove", "records-annex", "service-bypass"]);
+  assert.equal(entry.run.spatial.visited_locations.some((id) => complexSide.has(id)), false);
+  assert.equal(entry.run.spatial.authorizations["threshold-authorized"], false);
+  assert.equal(entry.run.spatial.authorizations["radio-check-complete"], false);
+
+  assert.ok(staged.projection.q4.equipment.optional.some((item) => item.ref === "route-marker-kit"));
+  assert.match(surfaces.render(staged.projection), /data-testid="select-store-route-marker-kit"/);
+  const selected = service.selectQ4OptionalStore({ world_id: world.id, item_id: "route-marker-kit" });
+  assert.equal(selected.ok, true);
+  assert.ok(selected.projection.q4.equipment.required.some((item) => item.ref === "route-marker-kit"));
+  assert.equal(selected.projection.q4.equipment.optional.some((item) => item.ref === "route-marker-kit"), false);
 });
 
 test("unified communications records LOCAL exchange without resolving a physical turn", () => {
@@ -80,14 +95,60 @@ test("unified communications records LOCAL exchange without resolving a physical
   assert.doesNotMatch(html, /local-comms|standard-comms/);
 });
 
-test("pre-field resume preserves confirmation and current dedicated phase", () => {
+test("staging and its deliberate equipment choice survive shutdown and restart without progress", () => {
   const { service, world } = fixture(); start(service, world);
-  advance(service, world, "DEPLOY");
+  advance(service, world, "READY");
+  assert.equal(service.selectQ4OptionalStore({ world_id: world.id, item_id: "route-marker-kit" }).ok, true);
+  const beforeEntry = service.session(world.id, "field-researcher");
+  const before = structuredClone({
+    phase: beforeEntry.phase,
+    player_location: beforeEntry.run.spatial.player_location,
+    visited_locations: beforeEntry.run.spatial.visited_locations,
+    route_history: beforeEntry.run.spatial.route_history,
+    authorizations: beforeEntry.run.spatial.authorizations,
+    radio: beforeEntry.run.expedition.radio,
+    clock: beforeEntry.run.expedition.clock,
+    equipment: beforeEntry.run.expedition.equipment,
+    optional_stores: beforeEntry.run.expedition.optional_stores
+  });
+  service.shutdown();
   const restarted = new DesktopService({ appDataPath: service.paths.root });
   const resumed = restarted.resumeSession({ world_id: world.id, mode: "field-researcher" });
   assert.equal(resumed.ok, true);
-  assert.equal(resumed.projection.phase.phase_id, "STANDARD_RADIO_CHECK");
-  assert.match(surfaces.render(resumed.projection), /RADIO READINESS/);
+  assert.equal(resumed.projection.phase.phase_id, "STAGING");
+  assert.equal(resumed.projection.q4.current_location.name, "Equipment Staging");
+  const afterEntry = restarted.session(world.id, "field-researcher");
+  assert.deepEqual({
+    phase: afterEntry.phase,
+    player_location: afterEntry.run.spatial.player_location,
+    visited_locations: afterEntry.run.spatial.visited_locations,
+    route_history: afterEntry.run.spatial.route_history,
+    authorizations: afterEntry.run.spatial.authorizations,
+    radio: afterEntry.run.expedition.radio,
+    clock: afterEntry.run.expedition.clock,
+    equipment: afterEntry.run.expedition.equipment,
+    optional_stores: afterEntry.run.expedition.optional_stores
+  }, before);
+  assert.match(surfaces.render(resumed.projection), /data-testid="q4-preparation-surface"/);
+});
+
+test("a legacy-marked briefing save remains loadable and follows the new fresh-run boundary", () => {
+  const { service, world } = fixture(); start(service, world);
+  const entry = service.session(world.id, "field-researcher");
+  entry.legacy_flow = true;
+  entry.phase.legacy_flow = true;
+  service.persistSession(service.getWorld(world.id), "field-researcher", entry);
+  service.shutdown();
+
+  const restarted = new DesktopService({ appDataPath: service.paths.root });
+  const resumed = restarted.resumeSession({ world_id: world.id, mode: "field-researcher" });
+  assert.equal(resumed.ok, true);
+  assert.equal(resumed.projection.phase.phase_id, "BRIEFING");
+  assert.deepEqual(resumed.projection.available_actions[0], { type: "READY", target_required: false, targets: [] });
+  const staged = restarted.submitAction({ world_id: world.id, mode: "field-researcher", action: "READY" });
+  assert.equal(staged.ok, true);
+  assert.equal(staged.projection.phase.phase_id, "STAGING");
+  assert.equal(staged.projection.q4.current_location.name, "Equipment Staging");
 });
 
 test("renderer wires dedicated confirmation and suppresses pre-field generic inputs", () => {

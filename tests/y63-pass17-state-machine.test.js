@@ -15,25 +15,21 @@ function fixture() {
   return { service, world };
 }
 
-test("production opening has one deliberate deployment and no generated speech", () => {
+test("production opening reaches staging without deployment or generated speech", () => {
   const { service, world } = fixture();
   let projection = service.getGameplayProjection({ world_id: world.id, mode: "field-researcher" }).projection;
-  assert.deepEqual(projection.available_actions[0], { type: "DEPLOY", target_required: false, targets: [] });
+  assert.deepEqual(projection.available_actions[0], { type: "READY", target_required: false, targets: [] });
   assert.equal(projection.q4.operational_clock.interval, 0);
   assert.equal(service.submitAction({ world_id: world.id, mode: "field-researcher", action: "COMMUNICATE", target: "standard" }).error.code, "PLAYER_TRANSMISSION_REQUIRED");
-  const deployed = service.submitAction({ world_id: world.id, mode: "field-researcher", action: "DEPLOY" });
-  assert.equal(deployed.ok, true);
-  assert.equal(deployed.projection.phase.phase_id, "STANDARD_RADIO_CHECK");
-  assert.equal(deployed.projection.q4.operational_clock.interval, 1);
-  assert.equal(deployed.projection.q4.channels.standard.history.length, 0);
-  const nonce = `runtime-only-${Date.now()}-${Math.random().toString(36).slice(2)}`;
-  const sent = service.submitQ4Communication({ world_id: world.id, channel: "standard", text: nonce });
-  assert.equal(sent.ok, true);
-  const record = sent.projection.q4.channels.standard.history.find((item) => item.speaker === "You" && item.text === nonce);
-  assert.ok(record);
-  assert.match(sent.projection.q4.channels.standard.history.at(-1).text, /Radio check/);
-  assert.notEqual(sent.projection.q4.channels.standard.state, "awaiting-response");
-  assert.ok(sent.projection.q4.operational_clock.interval > 1);
+  assert.equal(service.submitAction({ world_id: world.id, mode: "field-researcher", action: "DEPLOY" }).error.code, "PHASE_GUARD_REJECTED");
+  const staged = service.submitAction({ world_id: world.id, mode: "field-researcher", action: "READY" });
+  assert.equal(staged.ok, true);
+  assert.equal(staged.projection.phase.phase_id, "STAGING");
+  assert.equal(staged.projection.q4.current_location.name, "Equipment Staging");
+  assert.equal(staged.projection.q4.operational_clock.interval, 0);
+  assert.equal(staged.projection.q4.channels.standard.history.length, 0);
+  assert.equal(staged.projection.q4.radio_check.authorized, false);
+  assert.equal(staged.projection.q4.radio_check.completed, false);
   const cycle = service.getDeveloperSnapshot({ world_id: world.id, mode: "field-researcher" });
   assert.ok(cycle.active.simulation_truth.event_queue);
   assert.ok(cycle.active.simulation_truth.authoritative_clock);
@@ -41,8 +37,7 @@ test("production opening has one deliberate deployment and no generated speech",
 
 test("LOCAL uses the submitted statement and does not consume an interval", () => {
   const { service, world } = fixture();
-  service.submitAction({ world_id: world.id, mode: "field-researcher", action: "DEPLOY" });
-  service.submitQ4Communication({ world_id: world.id, channel: "standard", text: "I am ready for the radio check." });
+  service.submitAction({ world_id: world.id, mode: "field-researcher", action: "READY" });
   const before = service.getGameplayProjection({ world_id: world.id, mode: "field-researcher" }).projection.q4.operational_clock.interval;
   const statement = "The west relay is quiet but the team remains together.";
   const result = service.submitQ4Communication({ world_id: world.id, channel: "local", text: statement });

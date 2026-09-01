@@ -90,7 +90,7 @@
   function operationalPreField(projection) {
     const view = projection.q4 ?? {}; const mission = view.mission_record ?? {}; const phase = projection.phase?.phase_id ?? "BRIEFING"; const radioChecked = view.radio_check?.completed === true;
     const labels = {
-      BRIEFING: ["PREPARATION", "Inspect the work order, speak with the team, and choose whether to deploy.", "Deploy to radio readiness", "DEPLOY"],
+      BRIEFING: ["PREPARATION", "Inspect the work order and assigned team, then continue to Equipment Staging.", "Continue to Staging", "READY"],
       STAGING: ["PREPARATION", "Preparation remains non-operational. Choose optional equipment, then deploy when ready.", "Deploy to radio readiness", "DEPLOY"],
       FACILITY_TRANSIT: ["PREPARATION", "Preparation remains non-operational. Choose optional equipment, then deploy when ready.", "Deploy to radio readiness", "DEPLOY"],
       THRESHOLD: ["PREPARATION", "Preparation remains non-operational. Choose optional equipment, then deploy when ready.", "Deploy to radio readiness", "DEPLOY"],

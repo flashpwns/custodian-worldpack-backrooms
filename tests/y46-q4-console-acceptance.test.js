@@ -71,7 +71,7 @@ test("ordinary header uses short mission ID and phase-specific briefing next ste
   const { projection } = fixture("header-clarity");
   assert.match(renderer, /shortMissionId/);
   assert.match(renderer, /MISSION \$\{escape\(shortMissionId\(mission\)\)\}/);
-  assert.equal(projection.available_actions[0].type, "DEPLOY");
-  assert.match(surfaces.render(projection), /Inspect the work order, speak with the team/);
+  assert.equal(projection.available_actions[0].type, "READY");
+  assert.match(surfaces.render(projection), /Inspect the work order and assigned team, then continue to Equipment Staging/);
   assert.doesNotMatch(renderer, /MISSION \$\{escape\(mission\.id/);
 });

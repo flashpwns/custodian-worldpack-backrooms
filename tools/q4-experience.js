@@ -197,7 +197,7 @@ const evidence = (expedition?.evidence ?? []).map((item) => ({ id: item.id, miss
 function nextPhase(phase, { action, canonical_crossed = false, returned = false, radio_check_completed = false, legacy_flow = phase.legacy_flow !== false } = {}) {
   const current = phase.phase_id;
   const table = {
-    BRIEFING: action === "DEPLOY" ? "STANDARD_RADIO_CHECK" : "STAGING",
+    BRIEFING: String(action ?? "").toUpperCase() === "READY" ? "STAGING" : null,
     STAGING: "FACILITY_TRANSIT",
     FACILITY_TRANSIT: "THRESHOLD",
     THRESHOLD: canonical_crossed ? (legacy_flow ? "FIELD_OPERATION" : "STANDARD_RADIO_CHECK") : null,
