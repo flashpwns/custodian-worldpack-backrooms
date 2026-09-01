@@ -464,6 +464,85 @@ function objectInteraction(run, verb, target) {
   const cycle = resolveOperationalCycle(run, String(verb).toUpperCase(), result.time_cost, "object-interaction");
   return { ok: true, outcome: "succeeded", result: { public_reason: result.narration, time_advanced: cycle.clock.cost, state_changed: result.state_changed, evidence: result.evidence ? { id: result.evidence.id, type: result.evidence.type, render_status: result.evidence.render?.status ?? "fallback-ready" } : null, mission_updates: cycle.mission_updates, operational_updates: cycle.public_updates, canonical_event_ids: [eventId] }, run };
 }
+
+function coordinatedFailure(run, code, reason) { return { ok:false, outcome:"rejected", error:{ code }, result:{ public_reason:reason }, run }; }
+function validateCoordinatedAttempts(run, bundle) {
+  const player = run.session?.startup?.player?.observer_id;
+  if (!bundle || typeof bundle !== "object" || Array.isArray(bundle) || typeof bundle.submission_id !== "string" || !bundle.submission_id.trim()) return { ok:false, code:"COORDINATED_BUNDLE_MALFORMED", reason:"A coordinated attempt requires an explicit submission identity." };
+  if (!bundle.player_attempt || typeof bundle.player_attempt !== "object" || Array.isArray(bundle.player_attempt)) return { ok:false, code:"COORDINATED_PLAYER_ATTEMPT_REQUIRED", reason:"A coordinated interval requires an explicitly supplied player attempt." };
+  if (!Array.isArray(bundle.coworker_attempts) || bundle.coworker_attempts.length < 1) return { ok:false, code:"COORDINATED_COWORKER_ATTEMPT_REQUIRED", reason:"A coordinated interval requires at least one explicit coworker attempt." };
+  const attempts = [bundle.player_attempt, ...bundle.coworker_attempts];
+  if (attempts.some((attempt) => !attempt || typeof attempt !== "object" || typeof attempt.actor !== "string" || typeof attempt.action !== "string" || typeof attempt.target !== "string")) return { ok:false, code:"COORDINATED_BUNDLE_MALFORMED", reason:"Every coordinated attempt requires an explicit actor, action, and target." };
+  if (bundle.player_attempt.actor !== player) return { ok:false, code:"COORDINATED_PLAYER_ACTOR_INVALID", reason:"The player attempt actor must be the controlled player." };
+  if (bundle.coworker_attempts.some((attempt) => attempt.actor === player)) return { ok:false, code:"COORDINATED_PLAYER_IN_COWORKER_ATTEMPTS", reason:"The controlled player cannot appear among coworker attempts." };
+  const actors = attempts.map((attempt) => attempt.actor);
+  if (new Set(actors).size !== actors.length) return { ok:false, code:"COORDINATED_DUPLICATE_ACTOR", reason:"An actor may make only one explicit attempt in a coordinated interval." };
+  const equipmentClaims = attempts.filter((attempt) => String(attempt.action).toUpperCase() === "USE" && typeof attempt.equipment === "string").map((attempt) => attempt.equipment);
+  if (new Set(equipmentClaims).size !== equipmentClaims.length) return { ok:false, code:"COORDINATED_RESOURCE_CONFLICT", reason:"One exclusive equipment item is claimed by more than one simultaneous attempt." };
+  const members = new Map((run.expedition?.team?.members ?? []).map((member) => [member.personnel_id ?? member.id, member]));
+  const playerLocation = run.spatial?.personnel_locations?.[player];
+  if (!run.spatial || !run.object_state || !playerLocation) return { ok:false, code:"COORDINATED_SCENE_UNAVAILABLE", reason:"A confirmed field scene is required for coordinated physical execution." };
+  const interactions = interactionDefinitionFor(run.spatial_pack_id); const spatial = spatialDefinitionFor(run.spatial_pack_id); const resources = new Map(); const prepared = [];
+  for (const [index, submitted] of attempts.entries()) {
+    const attempt = { actor:submitted.actor, action:String(submitted.action).toUpperCase(), target:submitted.target, equipment:submitted.equipment ?? null, role:index === 0 ? "player" : "coworker" };
+    const member = members.get(attempt.actor);
+    if (!member || (index > 0 && attempt.actor === player)) return { ok:false, code:"COORDINATED_ACTOR_UNASSIGNED", reason:"Every coordinated actor must be assigned to the current expedition." };
+    if (String(member.status).toLowerCase() !== "active" || member.health === "incapacitated" || /incapacitat|unconscious|deceased/i.test(String(member.condition))) return { ok:false, code:"COORDINATED_ACTOR_INCAPABLE", reason:"Every coordinated actor must be active and capable at the start of the interval." };
+    if (run.spatial.personnel_locations[attempt.actor] !== playerLocation) return { ok:false, code:"COORDINATED_ACTOR_OUT_OF_RANGE", reason:"Local physical attempts require confirmed co-presence at the start of the interval." };
+    if (attempt.action === "USE") {
+      if (typeof attempt.equipment !== "string" || !attempt.equipment) return { ok:false, code:"COORDINATED_EQUIPMENT_REQUIRED", reason:"Equipment use requires an explicit equipment identity." };
+      const item = run.expedition.equipment?.[attempt.equipment];
+      if (!item || !q4Equipment.stateUsable(item) || Number(item.charges ?? 0) <= 0) return { ok:false, code:"COORDINATED_EQUIPMENT_UNAVAILABLE", reason:"The declared equipment is not operationally available." };
+      const operator = item.holder; const operatorMember = members.get(operator);
+      if (!operatorMember || String(operatorMember.status).toLowerCase() !== "active" || run.spatial.personnel_locations[operator] !== playerLocation) return { ok:false, code:"COORDINATED_EQUIPMENT_OUT_OF_RANGE", reason:"The actual equipment holder is not active and co-present." };
+      if (operator !== attempt.actor) return { ok:false, code:"COORDINATED_EQUIPMENT_NOT_HELD", reason:"A coordinated equipment attempt requires the declared actor to hold and operate the equipment." };
+      if (attempt.equipment === "survey-instrument") {
+        if (!referenceExpedition.isReference(run.scenario) || playerLocation !== referenceExpedition.definition.measurement.location_id || ![playerLocation, "Open Passage", "open passage"].includes(attempt.target)) return { ok:false, code:"COORDINATED_MEASUREMENT_UNAVAILABLE", reason:"The declared passage measurement is not available from this scene." };
+        if ((run.expedition.evidence ?? []).some((item) => item.type === referenceExpedition.definition.measurement.evidence_type && item.location === playerLocation)) return { ok:false, code:"EVIDENCE_REDUNDANT", reason:"The current passage measurement is already recorded." };
+      } else return { ok:false, code:"COORDINATED_ACTION_UNSUPPORTED", reason:"That equipment action is not supported by the bounded coordinated executor." };
+      const claim = resources.get(attempt.equipment); if (claim) return { ok:false, code:"COORDINATED_RESOURCE_CONFLICT", reason:`The ${item.label.toLowerCase()} is claimed by more than one simultaneous attempt.` };
+      resources.set(attempt.equipment, attempt.actor); prepared.push({ ...attempt, operator, kind:"equipment-use" }); continue;
+    }
+    if (attempt.action === "INSPECT" && attempt.role === "coworker") {
+      const object = objectRuntime.resolveTarget(run.object_state, interactions, attempt.target, playerLocation);
+      if (object.ok) { prepared.push({ ...attempt, kind:"object-inspection" }); continue; }
+      const landmark = spatialRuntime.inspect(run.spatial, spatial, attempt.target);
+      if (!landmark.ok) return { ok:false, code:"COORDINATED_TARGET_UNAVAILABLE", reason:landmark.reason };
+      prepared.push({ ...attempt, kind:"spatial-inspection", validation_narration:landmark.narration }); continue;
+    }
+    return { ok:false, code:"COORDINATED_ACTION_UNSUPPORTED", reason:"The bounded coordinated executor supports passage measurement and coworker inspection only." };
+  }
+  return { ok:true, submission_id:bundle.submission_id.trim(), player, player_location:playerLocation, prepared };
+}
+function resolveCoordinatedAttempts(runValue, bundle) {
+  const run = normalizeRun(runValue); if (run.lifecycle === "completed") return coordinatedFailure(run, "RUN_COMPLETE", "The operation is already complete.");
+  const validation = validateCoordinatedAttempts(run, bundle); if (!validation.ok) return coordinatedFailure(run, validation.code, validation.reason);
+  const from = run.expedition.clock.interval; const interval = from + 1; const intervalId = `coordinated:${run.run_id ?? run.expedition.id}:${validation.submission_id}:${interval}`; const priorSubmission = run._active_submission_id; run._active_submission_id = validation.submission_id;
+  const outcomes = [];
+  for (const attempt of validation.prepared) {
+    if (attempt.kind === "equipment-use") {
+      const used = q4Equipment.use(run.expedition, attempt.equipment, attempt.operator);
+      if (!used.ok) { run._active_submission_id = priorSubmission; return coordinatedFailure(run, used.code, "Validated equipment became unavailable before coordinated commit."); }
+      const evidence = referenceExpedition.measurementEvidence(run, attempt.operator, interval);
+      if (evidence) {
+        evidence.mission_id = run.expedition.mission?.id ?? null; evidence.environmental_conditions = environment.captureContext(run.spatial.environment, validation.player_location, { has_field_light:q4Equipment.stateUsable(run.expedition.equipment?.["field-light"]) });
+        if (run._world) evidenceAuthority.capture(run._world, run, evidence); run.expedition.evidence.push(evidence); event(run.expedition, "evidence.recorded", evidence);
+      }
+      run.checklist.used = true; const outcome = { actor:attempt.actor, role:attempt.role, action:attempt.action, target:attempt.target, equipment:attempt.equipment, operator:attempt.operator, outcome:"succeeded", interval_id:intervalId, interval, evidence_id:evidence?.id ?? null, public_reason:evidence?.target_observation ?? "The equipment procedure was completed." };
+      event(run.expedition, "coordinated.attempt.resolved", outcome); outcomes.push(outcome); continue;
+    }
+    const member = run.expedition.team.members.find((item) => (item.personnel_id ?? item.id) === attempt.actor); let inspected;
+    if (attempt.kind === "object-inspection") inspected = objectRuntime.inspection(run.object_state, interactionDefinitionFor(run.spatial_pack_id), { observer:attempt.actor, location:validation.player_location, target:attempt.target, time:interval, toolContext:{ resolveTool:toolAdapter(run).resolveTool } });
+    else inspected = { ok:true, action:"inspect", target:attempt.target, narration:attempt.validation_narration, time_cost:0, state_changed:false };
+    member.known_information ??= []; member.known_information.push({ kind:"coordinated-inspection", target:inspected.target, location:validation.player_location, at:interval, source:"direct-observation", interval_id:intervalId }); run.checklist.inspected = true;
+    const outcome = { actor:attempt.actor, role:attempt.role, action:attempt.action, target:inspected.target, equipment:null, operator:attempt.actor, outcome:"succeeded", interval_id:intervalId, interval, evidence_id:null, public_reason:inspected.narration };
+    event(run.expedition, "coordinated.attempt.resolved", outcome); outcomes.push(outcome);
+  }
+  const cycle = resolveOperationalCycle(run, "COORDINATED_ATTEMPT", 1, "coordinated-attempt");
+  const record = { version:"yellow-beast-coordinated-attempt@v1", submission_id:validation.submission_id, interval_id:intervalId, interval, from, to:cycle.clock.to, outcomes:clone(outcomes), mission_transition_count:cycle.mission_updates.length, environment_update_count:cycle.environment_updates.length };
+  run.expedition.coordinated_attempts ??= []; run.expedition.coordinated_attempts.push(record); event(run.expedition, "coordinated.interval.resolved", record); run._active_submission_id = priorSubmission;
+  return { ok:true, outcome:"coordinated-interval-resolved", result:{ interval_id:intervalId, interval, outcomes:clone(outcomes), time_advanced:cycle.clock.cost, mission_updates:cycle.mission_updates, operational_updates:cycle.public_updates, cycle }, run };
+}
 function act(runValue, verb, target) {
   const run = normalizeRun(runValue);
   if (verb === "LOOK") return { ok: true, outcome: "succeeded", result: look(run), run };
@@ -562,4 +641,4 @@ function resumeRun(save, { world = null, spatial_worldpack = null, phase = "BRIE
 }
 
 if (require.main === module) { const args = process.argv.slice(2); const value = (name) => args[args.indexOf(name) + 1]; const result = startRun({ profile: value("--profile") || "lost", seed: value("--seed") || "yellow-beast-bootstrap" }); console.log(JSON.stringify(result.ok ? result.summary : result, null, 2)); process.exitCode = result.ok ? 0 : 1; }
-module.exports = { startRun, status, look, inspect, act, saveRun, resumeRun, generatorFor, spatialDefinitionFor, topologyFor, interactionDefinitionFor, missionDefinitionFor, dynamicsDefinitionFor, logisticsDefinitionFor, institutionalDefinitionFor, ensureSpatial, setSpatialPhase, enterSpatialField, crossThreshold, objectProjection, evaluateMissionState, resolveOperationalCycle, synchronizeMissionOutcome };
+module.exports = { startRun, status, look, inspect, act, resolveCoordinatedAttempts, saveRun, resumeRun, generatorFor, spatialDefinitionFor, topologyFor, interactionDefinitionFor, missionDefinitionFor, dynamicsDefinitionFor, logisticsDefinitionFor, institutionalDefinitionFor, ensureSpatial, setSpatialPhase, enterSpatialField, crossThreshold, objectProjection, evaluateMissionState, resolveOperationalCycle, synchronizeMissionOutcome };

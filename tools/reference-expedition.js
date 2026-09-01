@@ -71,12 +71,13 @@ function instantiate(run) {
   return run;
 }
 
-function measurementEvidence(run, operator = null) {
+function measurementEvidence(run, operator = null, interval = null) {
   if (!isReference(run?.scenario) || !run.spatial?.reference_expedition || run.spatial.player_location !== definition.measurement.location_id) return null;
   const existing = (run.expedition?.evidence ?? []).find((item) => item.type === definition.measurement.evidence_type && item.location === definition.measurement.location_id);
   if (existing) return null;
   const player = run.session.startup.player.observer_id;
   const actualOperator = operator ?? player;
+  const capturedInterval = Number.isInteger(interval) ? interval : run.expedition.clock.interval;
   const geometry = run.spatial.reference_expedition.canonical_geometry.current_passage;
   return {
     id: `reference-measurement-${digest([run.run_id, actualOperator, geometry.id]).slice(0, 16)}`,
@@ -94,7 +95,7 @@ function measurementEvidence(run, operator = null) {
     device: "Portable survey instrument",
     device_id: definition.measurement.equipment_id,
     storage: "with the field survey record",
-    captured_at: { interval: run.expedition.clock.interval },
+    captured_at: { interval: capturedInterval },
     target_observation: `The Open Passage measures ${geometry.depth_m.toFixed(1)} metres from the recorded south-wall datum.`,
     visible_objects: ["Open Passage walls", "south-wall datum", "survey baseline"],
     condition_summary: `Instrument baseline: ${geometry.depth_m.toFixed(1)} metres from the south-wall datum.`,
@@ -104,7 +105,7 @@ function measurementEvidence(run, operator = null) {
     available_to_player: true,
     available_to_standard: false,
     reporting_state: "unreported",
-    interval: run.expedition.clock.interval
+    interval: capturedInterval
   };
 }
 

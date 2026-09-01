@@ -44,9 +44,9 @@ function action(service, world, verb, target = null) {
 function reachField(service, world, { markerKit = false } = {}) {
   action(service, world, "READY");
   if (markerKit) assert.equal(service.selectQ4OptionalStore({ world_id: world.id, item_id: "route-marker-kit" }).ok, true);
-  for (const verb of ["PROCEED", "APPROACH", "CROSS"]) action(service, world, verb);
+  for (const verb of ["PROCEED", "APPROACH", "READY"]) action(service, world, verb);
   assert.equal(service.submitQ4Communication({ world_id: world.id, channel: "standard", text: "Standard, Clear-Q4 team accounted for. Radio check." }).ok, true);
-  action(service, world, "BEGIN_FIELD_OPERATION");
+  action(service, world, "CROSS");
   return service.getGameplayProjection({ world_id: world.id, mode: "field-researcher" }).projection;
 }
 
