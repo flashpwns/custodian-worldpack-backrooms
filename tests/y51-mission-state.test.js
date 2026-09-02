@@ -58,7 +58,7 @@ function action(service, world, verb, target = null) {
 function reachField(service, world, { markerKit = true } = {}) {
   action(service, world, "READY");
   if (markerKit) assert.equal(service.selectQ4OptionalStore({ world_id: world.id, item_id: "route-marker-kit" }).ok, true);
-  for (const verb of ["PROCEED", "APPROACH", "CROSS", "RADIO_CHECK", "BEGIN_FIELD_OPERATION"]) action(service, world, verb);
+  for (const verb of ["PROCEED", "APPROACH", "READY", "RADIO_CHECK", "CROSS"]) action(service, world, verb);
   return service.session(world.id, "field-researcher");
 }
 
@@ -276,12 +276,12 @@ test("Clear-Q4 objectives activate, block, recover, satisfy, and update only fro
 
   action(service, world, "READY");
   assert.equal(service.selectQ4OptionalStore({ world_id: world.id, item_id: "route-marker-kit" }).ok, true);
-  for (const verb of ["PROCEED", "APPROACH", "CROSS"]) action(service, world, verb);
+  for (const verb of ["PROCEED", "APPROACH", "READY"]) action(service, world, verb);
   projection = service.getGameplayProjection({ world_id: world.id, mode: "field-researcher" }).projection;
   assert.equal(projection.q4.mission_progress.required_objectives.find((item) => item.name === "Establish radio contact").state, "active");
   const radio = action(service, world, "RADIO_CHECK");
   assert.ok(radio.result.mission_updates.some((item) => item.headline === "Establish radio contact complete"));
-  const field = action(service, world, "BEGIN_FIELD_OPERATION");
+  const field = action(service, world, "CROSS");
   assert.ok(field.result.mission_updates.some((item) => item.headline === "Enter the declared survey area complete"));
   assert.equal(field.projection.q4.mission_progress.required_objectives.find((item) => item.name === "Report field evidence").state, "blocked");
   assert.match(surfaces.render(field.projection), /Current blockers[\s\S]*A valid object-specific field record is required/i);

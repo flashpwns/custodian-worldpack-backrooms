@@ -32,7 +32,7 @@ function action(service, world, verb, target = null) {
 function field(service, world) {
   action(service, world, "READY");
   assert.equal(service.selectQ4OptionalStore({ world_id: world.id, item_id: "route-marker-kit" }).ok, true);
-  for (const verb of ["PROCEED", "APPROACH", "CROSS", "RADIO_CHECK", "BEGIN_FIELD_OPERATION"]) action(service, world, verb);
+  for (const verb of ["PROCEED", "APPROACH", "READY", "RADIO_CHECK", "CROSS"]) action(service, world, verb);
   return service.session(world.id, "field-researcher");
 }
 

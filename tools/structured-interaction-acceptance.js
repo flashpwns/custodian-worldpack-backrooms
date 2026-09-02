@@ -13,7 +13,9 @@ const scratch = fs.mkdtempSync(path.join(os.tmpdir(), "yellow-beast-structured-i
 const escape = (value) => String(value ?? "").replace(/[&<>\"]/g, (character) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[character]);
 
 function action(service, world, verb, target = null) {
-  const result = service.submitAction({ world_id: world.id, mode: "field-researcher", action: verb, target });
+  const result = verb === "RADIO_CHECK"
+    ? service.submitQ4Communication({ world_id: world.id, channel: "standard", text: "Standard, Clear-Q4 team accounted for. Radio check." })
+    : service.submitAction({ world_id: world.id, mode: "field-researcher", action: verb, target });
   assert.equal(result.ok, true, `${verb} ${target ?? ""} must succeed: ${result.error?.message ?? "unknown failure"}`);
   return result;
 }
@@ -62,8 +64,8 @@ async function main() {
   assert.equal(service.startSession({ world_id: world.id, mode: "field-researcher", seed: "structured-interaction-manual-acceptance", require_personnel: true }).ok, true);
   action(service, world, "READY");
   assert.equal(service.selectQ4OptionalStore({ world_id: world.id, item_id: "route-marker-kit" }).ok, true);
-  for (const verb of ["PROCEED", "APPROACH", "CROSS", "RADIO_CHECK"]) action(service, world, verb);
-  const fieldEntry = action(service, world, "BEGIN_FIELD_OPERATION");
+  for (const verb of ["PROCEED", "APPROACH", "READY", "RADIO_CHECK"]) action(service, world, verb);
+  const fieldEntry = action(service, world, "CROSS");
 
   const inspectedFixture = action(service, world, "INSPECT", "fluorescent fixture");
   const testedFixture = action(service, world, "TEST", "fluorescent fixture");

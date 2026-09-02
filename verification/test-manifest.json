@@ -121,7 +121,12 @@
     { "file": "tests/y66-outcomes-retirement.test.js", "status": "included", "tier": "long-world" },
     { "file": "tests/y67-recovery-profile.test.js", "status": "included", "tier": "aggregate" },
     { "file": "tests/y68-verification-gate.test.js", "status": "included", "tier": "aggregate", "fast": true },
-    { "file": "tests/y68-long-world-known-failures.test.js", "status": "included", "tier": "aggregate" }
+    { "file": "tests/y68-long-world-known-failures.test.js", "status": "included", "tier": "aggregate" },
+    { "file": "tests/y69-reference-expedition.test.js", "status": "included", "tier": "long-world" },
+    { "file": "tests/y70-coordinated-execution.test.js", "status": "included", "tier": "long-world" },
+    { "file": "tests/y71-ai-interpreter-boundary.test.js", "status": "included", "tier": "long-world" },
+    { "file": "tests/y72-live-scene-projection.test.js", "status": "included", "tier": "long-world" },
+    { "file": "tests/y73-ai-living-turn.test.js", "status": "included", "tier": "long-world" }
   ],
   "report_tools": [
     { "id": "corpus-context-closure", "script": "corpus-coverage-report", "file": "tools/corpus-coverage-report.js", "status": "required", "tier": "aggregate" },

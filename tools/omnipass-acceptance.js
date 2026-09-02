@@ -18,7 +18,9 @@ const read = (relative) => JSON.parse(fs.readFileSync(path.join(root, relative),
 const missionDefinition = read("data/worldpacks/clear-q4/mission.json");
 
 function action(service, world, verb, targetValue = null) {
-  const result = service.submitAction({ world_id: world.id, mode: "field-researcher", action: verb, target: targetValue });
+  const result = verb === "RADIO_CHECK"
+    ? service.submitQ4Communication({ world_id: world.id, channel: "standard", text: "Standard, Clear-Q4 team accounted for. Radio check." })
+    : service.submitAction({ world_id: world.id, mode: "field-researcher", action: verb, target: targetValue });
   assert.equal(result.ok, true, `${verb} ${targetValue ?? ""} must succeed: ${result.error?.message ?? result.error?.code ?? "unknown failure"}`);
   return result;
 }
@@ -132,7 +134,7 @@ async function main() {
   logistics(service, world, "HAND_OVER", "field-notebook", { target_holder: coworker });
   projection = logistics(service, world, "RETRIEVE", "field-light").projection; const loadoutConfigured = projection;
 
-  for (const verb of ["PROCEED", "APPROACH", "CROSS", "RADIO_CHECK", "BEGIN_FIELD_OPERATION"]) projection = action(service, world, verb).projection;
+  for (const verb of ["PROCEED", "APPROACH", "READY", "RADIO_CHECK", "CROSS"]) projection = action(service, world, verb).projection;
   for (const [verb, object] of [["INSPECT", "fluorescent fixture"], ["TEST", "fluorescent fixture"], ["INSPECT", "scuffed floor"], ["PHOTOGRAPH", "scuffed floor"], ["MARK", "scuffed floor"], ["INSPECT", "service panel"]]) projection = action(service, world, verb, object).projection;
   const initialEvidence = projection;
 

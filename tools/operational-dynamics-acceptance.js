@@ -13,7 +13,9 @@ const scratch = fs.mkdtempSync(path.join(os.tmpdir(), "yellow-beast-operational-
 const escape = (value) => String(value ?? "").replace(/[&<>\"]/g, (character) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[character]);
 
 function action(service, world, verb, target = null) {
-  const result = service.submitAction({ world_id: world.id, mode: "field-researcher", action: verb, target });
+  const result = verb === "RADIO_CHECK"
+    ? service.submitQ4Communication({ world_id: world.id, channel: "standard", text: "Standard, Clear-Q4 team accounted for. Radio check." })
+    : service.submitAction({ world_id: world.id, mode: "field-researcher", action: verb, target });
   assert.equal(result.ok, true, `${verb} ${target ?? ""} must succeed: ${result.error?.message ?? "unknown failure"}`);
   return result;
 }
@@ -85,9 +87,9 @@ async function main() {
 
   action(service, world, "READY");
   assert.equal(service.selectQ4OptionalStore({ world_id: world.id, item_id: "route-marker-kit" }).ok, true);
-  for (const verb of ["PROCEED", "APPROACH", "CROSS"]) action(service, world, verb);
+  for (const verb of ["PROCEED", "APPROACH", "READY"]) action(service, world, verb);
   const radio = action(service, world, "RADIO_CHECK");
-  let projection = action(service, world, "BEGIN_FIELD_OPERATION").projection;
+  let projection = action(service, world, "CROSS").projection;
   const scheduled = projection;
 
   for (const [verb, object] of [["INSPECT", "fluorescent fixture"], ["INSPECT", "scuffed floor"], ["PHOTOGRAPH", "scuffed floor"], ["MARK", "scuffed floor"], ["INSPECT", "service panel"]]) projection = action(service, world, verb, object).projection;

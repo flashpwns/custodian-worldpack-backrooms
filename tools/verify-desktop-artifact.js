@@ -47,11 +47,12 @@ assert.match(packagedBuild.built_at, /^\d{4}-\d{2}-\d{2}T/);
 const productionUserData = profiles.defaultProductionUserDataRoot();
 const beforeProduction = profiles.snapshotProfile(productionUserData);
 
-function runIsolated(label, flag, expected, timeout) {
+function runIsolated(label, flags, expected, timeout) {
   const profile = profiles.createIsolatedTestProfile(label, { productionUserDataRoot: productionUserData });
   let passed = false;
   try {
-    const result = spawnSync(executable, [flag, "--test-profile", profile.paths.userDataRoot], { encoding: "utf8", timeout, windowsHide: true, env: { ...process.env, ELECTRON_ENABLE_LOGGING: "0" } });
+    const launchFlags = Array.isArray(flags) ? flags : [flags];
+    const result = spawnSync(executable, [...launchFlags, "--test-profile", profile.paths.userDataRoot], { encoding: "utf8", timeout, windowsHide: true, env: { ...process.env, ELECTRON_ENABLE_LOGGING: "0" } });
     assert.equal(result.status, 0, result.stderr || result.stdout);
     assert.match(result.stdout, expected);
     profiles.assertSnapshotUnchanged(beforeProduction, profiles.snapshotProfile(productionUserData), `production profile after ${label}`);
@@ -66,5 +67,5 @@ function runIsolated(label, flag, expected, timeout) {
 
 const desktop = runIsolated("desktop", "--desktop-smoke", /desktop_smoke/, 60000);
 console.log(JSON.stringify({ desktop_artifact: executable, version: packagedBuild.version, commit: packagedBuild.commit, built_at: packagedBuild.built_at, offline_smoke: "passed", profile: desktop.profile, profile_cleaned: true, production_files_hashed: beforeProduction.length, production_unchanged: true }, null, 2));
-const renderer = runIsolated("renderer", "--renderer-smoke", /renderer_settings_smoke/, 90000);
+const renderer = runIsolated("renderer", ["--renderer-smoke", "--reference-expedition"], /renderer_settings_smoke/, 90000);
 console.log(JSON.stringify({ packaged_renderer_interaction: "passed", profile: renderer.profile, profile_cleaned: true, production_unchanged: true }, null, 2));

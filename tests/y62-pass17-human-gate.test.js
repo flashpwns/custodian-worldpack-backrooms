@@ -6,18 +6,22 @@ const path = require("node:path");
 const test = require("node:test");
 const { DesktopService } = require("../desktop/service");
 
-function fieldFixture(developerMode = false) {
+function fieldFixture(developerMode = false, crossThreshold = true) {
   const service = new DesktopService({ appDataPath: fs.mkdtempSync(path.join(os.tmpdir(), "yb-pass17-")), developerMode });
   const world = service.createWorld({ name: "Pass 17 human gate", seed: "pass17-human-gate" }).world;
   service.createQ4Personnel({ world_id: world.id, first_name: "Jack", last_name: "Rocha" });
   service.confirmQ4Personnel({ world_id: world.id });
   service.startSession({ world_id: world.id, mode: "field-researcher", seed: "pass17-human-gate" });
-  for (const action of ["READY", "PROCEED", "APPROACH", "CROSS"]) assert.equal(service.submitAction({ world_id: world.id, mode: "field-researcher", action }).ok, true);
+  for (const action of ["READY", "PROCEED", "APPROACH", "READY"]) assert.equal(service.submitAction({ world_id: world.id, mode: "field-researcher", action }).ok, true);
+  if (crossThreshold) {
+    assert.equal(service.submitQ4Communication({ world_id: world.id, channel: "standard", text: "Standard, Clear-Q4 team accounted for. Radio check." }).ok, true);
+    assert.equal(service.submitAction({ world_id: world.id, mode: "field-researcher", action: "CROSS" }).ok, true);
+  }
   return { service, world };
 }
 
 test("radio check never invents player speech and accepts the actual submitted transmission", () => {
-  const { service, world } = fieldFixture();
+  const { service, world } = fieldFixture(false, false);
   const before = service.getGameplayProjection({ world_id: world.id, mode: "field-researcher" }).projection.q4.channels.standard.history;
   const rejected = service.submitAction({ world_id: world.id, mode: "field-researcher", action: "RADIO_CHECK" });
   assert.equal(rejected.ok, false);

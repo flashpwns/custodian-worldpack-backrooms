@@ -100,12 +100,16 @@ async function run(windowRef) {
     assert.equal((await worlds()).worlds.length, 0, "world was created before deliberate confirmation");
     await click('#new-world [data-action="submit"]');
     assert.equal(await waitFor('[data-testid="create-world"]', false), true, "naming surface did not close");
-    assert.equal(await waitFor('[data-testid="world-library"]'), true, "world library did not refresh after creation");
+    assert.equal(await waitFor('[data-testid="world-entry"]'), true, "program selector did not open after creation");
   }
 
   const persisted = await worlds();
   assert.equal(persisted.worlds.length, 1, `${phase} phase did not contain exactly one world`);
   assert.equal(persisted.worlds[0].name, expectedName, `${phase} phase loaded the wrong world name`);
+  if (phase === "create") {
+    await click('[data-action="home"]');
+    assert.equal(await waitFor('[data-testid="world-library"]'), true, "create phase could not return to records");
+  }
   const visible = await visibleWorlds();
   assert.equal(visible.length, 1, `${phase} phase displayed the world more than once`);
   assert.deepEqual(visible[0], { name: expectedName, heading: expectedName, hidden: false });

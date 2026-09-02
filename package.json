@@ -139,6 +139,7 @@
       "scenarios/**/*",
       "data/**/*",
       "SIMULATION_DOCTRINE.md",
+      "canon/terminology.json",
       "canon/operational-spatial-schema.json",
       "canon/operational-interaction-schema.json",
       "canon/operational-mission-schema.json",
@@ -158,7 +159,10 @@
       "!tests/**/*",
       "!docs/**/*",
       "!dist/**/*",
-      "!**/*.test.js"
+      "!**/*.test.js",
+      "docs/YELLOW_BEAST_1.0_DESIGN_CHARTER.md",
+      "docs/ai-interface-contract.md",
+      "docs/ai-provider.md"
     ],
     "mac": {
       "target": [

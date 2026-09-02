@@ -28,5 +28,8 @@ test("Settings renderer uses explicit controls and guards unavailable settings r
   assert.match(source, /const control = \(name\) => form\.querySelector/);
   assert.doesNotMatch(source, /form\.input_mode|form\.provider|form\.theme|form\.text_scale/);
   assert.match(source, /form\.addEventListener\("submit"/);
+  assert.match(source, /current\.mode && current\.projection/);
+  assert.match(source, /settingsForm\.querySelectorAll\("input,select,button"\)/);
+  assert.ok(source.indexOf("const data = new FormData(form)") < source.indexOf('form.querySelectorAll("input,select,button").forEach((item) => { item.disabled = true; })'), "settings must snapshot successful controls before disabling them");
   assert.match(source, /button\("Back", "home"\)/);
 });

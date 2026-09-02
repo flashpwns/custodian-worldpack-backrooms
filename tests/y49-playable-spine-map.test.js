@@ -28,7 +28,7 @@ function phaseAction(service, world, action) {
 }
 
 function reachRadio(service, world) {
-  for (const action of ["READY", "PROCEED", "APPROACH", "CROSS"]) phaseAction(service, world, action);
+  for (const action of ["READY", "PROCEED", "APPROACH", "READY"]) phaseAction(service, world, action);
 }
 
 function reachField(service, world) {
@@ -38,8 +38,7 @@ function reachField(service, world) {
   const checked = service.submitQ4Communication({ world_id: world.id, channel: "standard", text: "Standard, Clear-Q4 team accounted for. Radio check." });
   assert.equal(checked.ok, true);
   assert.equal(checked.projection.phase.phase_id, "STANDARD_RADIO_CHECK");
-  phaseAction(service, world, "WAIT");
-  return phaseAction(service, world, "BEGIN_FIELD_OPERATION");
+  return phaseAction(service, world, "CROSS");
 }
 
 test("registered programs expose institutional availability without development copy", () => {

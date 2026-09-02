@@ -14,9 +14,9 @@ function fixture() {
   return { service, world };
 }
 function reachField(service, world) {
-  for (const action of ["READY", "PROCEED", "APPROACH", "CROSS"]) assert.equal(service.submitAction({ world_id: world.id, mode: "field-researcher", action }).ok, true);
+  for (const action of ["READY", "PROCEED", "APPROACH", "READY"]) assert.equal(service.submitAction({ world_id: world.id, mode: "field-researcher", action }).ok, true);
   assert.equal(service.submitQ4Communication({ world_id: world.id, channel: "standard", text: "Standard, Clear-Q4 team accounted for. Radio check." }).ok, true);
-  assert.equal(service.submitAction({ world_id: world.id, mode: "field-researcher", action: "BEGIN_FIELD_OPERATION" }).ok, true);
+  assert.equal(service.submitAction({ world_id: world.id, mode: "field-researcher", action: "CROSS" }).ok, true);
   return service.getGameplayProjection({ world_id: world.id, mode: "field-researcher" }).projection;
 }
 

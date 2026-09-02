@@ -37,9 +37,9 @@ async function report() {
   const guidedMarkup = RENDERER.includes('data-testid="guided-introduction"');
   const guidedModeSpecific = ["Current instruction", "Channel guidance", "Desk instruction", "Investigation instruction", "Field instruction"].every((text) => RENDERER.includes(text));
 
-  service.submitAction({ world_id: worldId, mode: "field-researcher", action: "DEPLOY" });
+  for (const action of ["READY", "PROCEED", "APPROACH", "READY"]) service.submitAction({ world_id: worldId, mode: "field-researcher", action });
   service.submitQ4Communication({ world_id: worldId, channel: "standard", text: "Standard, Clear-Q4 team accounted for. Radio check." });
-  const fieldEntry = service.submitAction({ world_id: worldId, mode: "field-researcher", action: "BEGIN_FIELD_OPERATION" });
+  const fieldEntry = service.submitAction({ world_id: worldId, mode: "field-researcher", action: "CROSS" });
   const fieldPhase = fieldEntry.projection.phase.phase_id;
 
   const naturalResult = await service.submitNatural({ world_id: worldId, mode: "field-researcher", text: PHRASES["field-researcher"] });

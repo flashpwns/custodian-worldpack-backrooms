@@ -13,7 +13,9 @@ const scratch = fs.mkdtempSync(path.join(os.tmpdir(), "yellow-beast-playable-spi
 const escape = (value) => String(value ?? "").replace(/[&<>\"]/g, (character) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[character]);
 
 function action(service, world, verb) {
-  const result = service.submitAction({ world_id: world.id, mode: "field-researcher", action: verb });
+  const result = verb === "RADIO_CHECK"
+    ? service.submitQ4Communication({ world_id: world.id, channel: "standard", text: "Standard, Clear-Q4 team accounted for. Radio check." })
+    : service.submitAction({ world_id: world.id, mode: "field-researcher", action: verb });
   assert.equal(result.ok, true, `${verb} must succeed`);
   return result;
 }
@@ -48,9 +50,9 @@ async function main() {
   assert.equal(started.ok, true);
   const briefing = started.projection;
 
-  for (const verb of ["READY", "PROCEED", "APPROACH", "CROSS"]) action(service, world, verb);
+  for (const verb of ["READY", "PROCEED", "APPROACH", "READY"]) action(service, world, verb);
   const radio = action(service, world, "RADIO_CHECK").projection;
-  const field = action(service, world, "BEGIN_FIELD_OPERATION").projection;
+  const field = action(service, world, "CROSS").projection;
   const oriented = await service.submitNatural({ world_id: world.id, mode: "field-researcher", text: "Orient myself." });
   assert.equal(oriented.ok, true);
   const peer = field.q4.team.find((member) => !member.controlled);
@@ -84,7 +86,7 @@ async function main() {
     generated_at: new Date().toISOString(),
     evidence_kind: "deterministic rendered-surface and persisted-state capture",
     world_name: "ClearQ4est",
-    opening_controls: ["READY", "PROCEED", "APPROACH", "CROSS", "RADIO_CHECK", "BEGIN_FIELD_OPERATION"],
+    opening_controls: ["READY", "PROCEED", "APPROACH", "READY", "RADIO_CHECK", "CROSS"],
     natural_actions: ["Orient myself.", "Move into the corridor."],
     stages: {
       briefing: facts(briefing),

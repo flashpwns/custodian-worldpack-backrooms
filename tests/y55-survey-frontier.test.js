@@ -94,9 +94,9 @@ test("a delivered Standard survey report, not player movement, updates the insti
   const world = service.createWorld({ name: "Frontier radio", seed: "frontier-radio" }).world;
   service.createQ4Personnel({ world_id: world.id, first_name: "Jack", last_name: "Rocha" }); service.confirmQ4Personnel({ world_id: world.id });
   service.startSession({ world_id: world.id, mode: "field-researcher", seed: "frontier-radio", require_personnel: true });
-  for (const action of ["READY", "PROCEED", "APPROACH", "CROSS"]) assert.equal(service.submitAction({ world_id: world.id, mode: "field-researcher", action }).ok, true);
+  for (const action of ["READY", "PROCEED", "APPROACH", "READY"]) assert.equal(service.submitAction({ world_id: world.id, mode: "field-researcher", action }).ok, true);
   assert.equal(service.submitQ4Communication({ world_id: world.id, channel: "standard", text: "Standard, Clear-Q4 team accounted for. Radio check." }).ok, true);
-  assert.equal(service.submitAction({ world_id: world.id, mode: "field-researcher", action: "BEGIN_FIELD_OPERATION" }).ok, true);
+  assert.equal(service.submitAction({ world_id: world.id, mode: "field-researcher", action: "CROSS" }).ok, true);
   let projection = service.getGameplayProjection({ world_id: world.id, mode: "field-researcher" }).projection;
   assert.equal(projection.q4.map.nodes.some((node) => node.id === "utility-room"), true);
   assert.equal(projection.q4.standard_spatial_record.nodes.some((node) => node.id === "utility-room"), false);

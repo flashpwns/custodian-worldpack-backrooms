@@ -64,10 +64,10 @@ test("briefing, equipment, radio, personnel, and map surfaces remain observer-sa
 
 test("layout projection preserves observation distinctions without hidden state", () => {
   const { service, world } = fixture("interface-map");
-  for (const action of ["READY", "PROCEED", "APPROACH", "CROSS"]) assert.equal(service.submitAction({ world_id: world.id, mode: "field-researcher", action }).ok, true);
+  for (const action of ["READY", "PROCEED", "APPROACH", "READY"]) assert.equal(service.submitAction({ world_id: world.id, mode: "field-researcher", action }).ok, true);
   assert.equal(service.submitQ4Communication({ world_id: world.id, channel: "standard", text: "Standard, Clear-Q4 team accounted for. Radio check." }).ok, true);
   assert.equal(service.submitAction({ world_id: world.id, mode: "field-researcher", action: "WAIT" }).ok, true);
-  assert.equal(service.submitAction({ world_id: world.id, mode: "field-researcher", action: "BEGIN_FIELD_OPERATION" }).ok, true);
+  assert.equal(service.submitAction({ world_id: world.id, mode: "field-researcher", action: "CROSS" }).ok, true);
   const projection = service.getGameplayProjection({ world_id: world.id, mode: "field-researcher" }).projection;
   assert.ok(projection.q4.layout.observed_spaces.length);
   assert.ok(projection.q4.layout.unknown_continuations.length);

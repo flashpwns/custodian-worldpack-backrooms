@@ -13,7 +13,9 @@ const scratch = fs.mkdtempSync(path.join(os.tmpdir(), "yellow-beast-mission-stat
 const escape = (value) => String(value ?? "").replace(/[&<>\"]/g, (character) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[character]);
 
 function action(service, world, verb, target = null) {
-  const result = service.submitAction({ world_id: world.id, mode: "field-researcher", action: verb, target });
+  const result = verb === "RADIO_CHECK"
+    ? service.submitQ4Communication({ world_id: world.id, channel: "standard", text: "Standard, Clear-Q4 team accounted for. Radio check." })
+    : service.submitAction({ world_id: world.id, mode: "field-researcher", action: verb, target });
   assert.equal(result.ok, true, `${verb} ${target ?? ""} must succeed: ${result.error?.message ?? "unknown failure"}`);
   return result;
 }
@@ -70,9 +72,9 @@ async function main() {
 
   action(service, world, "READY");
   assert.equal(service.selectQ4OptionalStore({ world_id: world.id, item_id: "route-marker-kit" }).ok, true);
-  for (const verb of ["PROCEED", "APPROACH", "CROSS"]) action(service, world, verb);
+  for (const verb of ["PROCEED", "APPROACH", "READY"]) action(service, world, verb);
   const radio = action(service, world, "RADIO_CHECK");
-  const field = action(service, world, "BEGIN_FIELD_OPERATION");
+  const field = action(service, world, "CROSS");
   assert.equal(field.projection.q4.mission_progress.required_objectives.find((item) => item.name === "Report field evidence").state, "blocked");
 
   const inspected = action(service, world, "INSPECT", "fluorescent fixture");
@@ -142,7 +144,7 @@ async function main() {
     version: "yellow-beast-mission-state-acceptance@v1",
     generated_at: new Date().toISOString(),
     evidence_kind: "deterministic renderer-backed and persisted authoritative-state capture",
-    actions: ["review briefing", "READY", "select route-marker kit", "PROCEED", "APPROACH", "CROSS", "RADIO_CHECK", "BEGIN_FIELD_OPERATION", "INSPECT and TEST fixture", "PHOTOGRAPH and MARK floor", "INSPECT panel", "report evidence and check in", "move away and return", "verify and secure marker", "RETURN", "COMPLETE_RETURN", "shutdown", "restart", "resume final record"],
+    actions: ["review briefing", "READY", "select route-marker kit", "PROCEED", "APPROACH", "READY", "RADIO_CHECK", "CROSS", "INSPECT and TEST fixture", "PHOTOGRAPH and MARK floor", "INSPECT panel", "report evidence and check in", "move away and return", "verify and secure marker", "RETURN", "COMPLETE_RETURN", "shutdown", "restart", "resume final record"],
     stages: {
       briefing: safeFacts(briefing),
       radio_check: safeFacts(radio.projection),

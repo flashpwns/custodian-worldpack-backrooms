@@ -202,7 +202,8 @@ function agencySupported(attempt, playerText) {
   }
   if (attempt.agency !== "player-order") return false;
   const actor = normalized(attempt.actor.reference);
-  return span.includes(actor) && /\b(have|tell|ask|order|send|let)\b/.test(span);
+  const directVocative = span.startsWith(actor) && terms.some((term) => span.includes(normalized(term)));
+  return span.includes(actor) && (/\b(have|tell|ask|order|send|let)\b/.test(span) || directVocative);
 }
 
 function matchReference(query, records) {

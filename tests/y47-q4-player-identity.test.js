@@ -18,7 +18,7 @@ function createAndStart(service, world, first_name = "Jack", last_name = "Rocha"
   assert.equal(service.confirmQ4Personnel({ world_id: world.id }).ok, true);
   return service.startSession({ world_id: world.id, mode: "field-researcher", seed: "player-identity", require_personnel: true });
 }
-function advanceTo(service, world, actions = ["READY", "PROCEED", "APPROACH", "CROSS"]) {
+function advanceTo(service, world, actions = ["READY", "PROCEED", "APPROACH", "READY", "RADIO_CHECK", "CROSS"]) {
   let result;
   for (const action of actions) {
     if (action === "RADIO_CHECK") {
@@ -68,23 +68,23 @@ test("LOCAL is delivered to a generated coworker before field entry while Standa
   const threshold = service.getGameplayProjection({ world_id: world.id, mode: "field-researcher" }).projection;
   assert.equal(threshold.phase.phase_id, "THRESHOLD"); assert.equal(threshold.q4.channels.standard.available, false);
   assert.match(service.submitQ4Communication({ world_id: world.id, channel: "standard", text: "Hello?" }).error.message, /approach|contact/i);
-  const crossed = advanceTo(service, world, ["CROSS"]); assert.equal(crossed.projection.phase.phase_id, "STANDARD_RADIO_CHECK");
-  assert.equal(crossed.projection.q4.channels.standard.available, true);
-  assert.equal(crossed.projection.q4.channels.standard.state, "establishing");
+  const radioReady = advanceTo(service, world, ["READY"]); assert.equal(radioReady.projection.phase.phase_id, "STANDARD_RADIO_CHECK");
+  assert.equal(radioReady.projection.q4.channels.standard.available, true);
+  assert.equal(radioReady.projection.q4.channels.standard.state, "establishing");
   const checked = advanceTo(service, world, ["RADIO_CHECK"]); assert.equal(checked.projection.phase.phase_id, "STANDARD_RADIO_CHECK");
   assert.equal(checked.projection.q4.channels.standard.available, true);
-  const field = advanceTo(service, world, ["BEGIN_FIELD_OPERATION"]); assert.equal(field.projection.phase.phase_id, "FIELD_OPERATION");
+  const field = advanceTo(service, world, ["CROSS"]); assert.equal(field.projection.phase.phase_id, "FIELD_OPERATION");
 });
 
 test("phase copy and progression controls identify the destination", () => {
   const { service, world } = fixture("phase-copy"); createAndStart(service, world);
   let projection = service.getGameplayProjection({ world_id: world.id, mode: "field-researcher" }).projection;
-  assert.match(projection.q4.briefing, /continue to staging/i); assert.match(surfaces.render(projection), /Deploy to radio readiness/);
-  for (const [action, phase, copy] of [["READY", "STAGING", /proceed to the threshold room/i], ["PROCEED", "FACILITY_TRANSIT", /toward the Threshold room/i], ["APPROACH", "THRESHOLD", /cross when ready/i]]) {
+  assert.match(projection.q4.briefing, /continue to staging/i); assert.match(surfaces.render(projection), /Continue to Staging/);
+  for (const [action, phase, copy] of [["READY", "STAGING", /proceed to the threshold room/i], ["PROCEED", "FACILITY_TRANSIT", /toward the Threshold room/i], ["APPROACH", "THRESHOLD", /begin the Standard radio procedure/i]]) {
     const result = service.submitAction({ world_id: world.id, mode: "field-researcher", action }); assert.equal(result.projection.phase.phase_id, phase); assert.match(result.projection.q4.briefing, copy); projection = result.projection;
   }
-  assert.match(surfaces.render(projection), /Deploy to radio readiness/);
-  const radio = service.submitAction({ world_id: world.id, mode: "field-researcher", action: "CROSS" }); assert.match(radio.projection.q4.briefing, /Establish contact with Standard/i); assert.match(surfaces.render(radio.projection), /Compose your own speech or transmission/);
+  assert.match(surfaces.render(projection), /Begin radio procedure/);
+  const radio = service.submitAction({ world_id: world.id, mode: "field-researcher", action: "READY" }); assert.match(radio.projection.q4.briefing, /Establish contact with Standard/i); assert.match(surfaces.render(radio.projection), /Compose your own speech or transmission/i);
 });
 
 test("renderer exposes creation, confirmation, phase guidance, and direct progression wiring", () => {

@@ -39,7 +39,7 @@ test("continuity missions reference only actual recorded history and do not turn
 
 test("mission conduct remains player-controlled and completion does not depend on a future X-factor", () => {
   const { service, world } = fixture("mission-conduct"); const entry = service.session(world.id, "field-researcher"); assert.equal(entry.run.expedition.mission.objective.completion_criteria.some((item) => /X-factor|anomaly escalation|discover/i.test(item)), false);
-  for (const action of ["READY", "PROCEED", "APPROACH", "CROSS"]) assert.equal(service.submitAction({ world_id: world.id, mode: "field-researcher", action }).ok, true);
+  for (const action of ["READY", "PROCEED", "APPROACH", "READY"]) assert.equal(service.submitAction({ world_id: world.id, mode: "field-researcher", action }).ok, true);
   assert.equal(service.submitAction({ world_id: world.id, mode: "field-researcher", action: "ABORT" }).ok, true);
   assert.equal(entry.run.expedition.mission_state.return.abort_requested, true);
   assert.equal(entry.run.expedition.mission_state.lifecycle, "returning");

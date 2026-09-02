@@ -57,9 +57,9 @@ test("offline fallback creates evidence presentation immediately and ComfyUI rem
 
 test("recording creates canonical evidence before any optional render and survives reopen", () => {
   const { service, world } = fixture("evidence-record");
-  for (const action of ["READY", "PROCEED", "APPROACH", "CROSS"]) assert.equal(service.submitAction({ world_id: world.id, mode: "field-researcher", action }).ok, true);
+  for (const action of ["READY", "PROCEED", "APPROACH", "READY"]) assert.equal(service.submitAction({ world_id: world.id, mode: "field-researcher", action }).ok, true);
   assert.equal(service.submitQ4Communication({ world_id: world.id, channel: "standard", text: "Standard, Clear-Q4 team accounted for. Radio check." }).ok, true);
-  assert.equal(service.submitAction({ world_id: world.id, mode: "field-researcher", action: "BEGIN_FIELD_OPERATION" }).ok, true);
+  assert.equal(service.submitAction({ world_id: world.id, mode: "field-researcher", action: "CROSS" }).ok, true);
   const recorded = service.submitAction({ world_id: world.id, mode: "field-researcher", action: "PHOTOGRAPH", target: "fluorescent fixture" });
   assert.equal(recorded.ok, true);
   assert.equal(recorded.projection.q4.evidence.length, 1);
