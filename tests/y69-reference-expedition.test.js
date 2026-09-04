@@ -23,6 +23,32 @@ function fixture() {
 
 function phase(service, world, action) { const result = service.submitAction({ world_id:world.id, mode:"field-researcher", action }); assert.equal(result.ok, true); return result; }
 
+function enterField(service, world) {
+  for (const action of ["READY", "PROCEED", "APPROACH", "READY"]) phase(service, world, action);
+  assert.equal(service.submitQ4Communication({ world_id:world.id, channel:"standard", text:"Standard, four personnel accounted for outside the Threshold. Radio check." }).ok, true);
+  phase(service, world, "CROSS");
+  return service.session(world.id, "field-researcher");
+}
+
+function returnToReport(service, world) {
+  const entry = service.session(world.id, "field-researcher");
+  if (entry.phase.phase_id !== "RETURN") phase(service, world, "ABORT");
+  for (let guard = 0; entry.run.spatial.player_location !== "threshold-side-entry" && guard < 4; guard += 1) {
+    const projection = service.getGameplayProjection({ world_id:world.id, mode:"field-researcher" }).projection;
+    const desired = entry.run.spatial.player_location === "open-passage" ? "Utility Room" : "Threshold-Side Entry";
+    const target = projection.available_actions.find((action) => action.type === "MOVE")?.targets.find((item) => item.label.includes(desired));
+    assert.ok(target, `expected a confirmed return route to ${desired}`);
+    const moved = service.submitAction({ world_id:world.id, mode:"field-researcher", action:"MOVE", target:target.ref });
+    assert.equal(moved.ok, true, moved.error?.message);
+  }
+  assert.equal(entry.run.spatial.player_location, "threshold-side-entry");
+  const closed = phase(service, world, "COMPLETE_RETURN");
+  assert.equal(closed.projection.phase.phase_id, "REPORT");
+  assert.equal(entry.run.expedition.return_processing.evidence_custody_completed, true);
+  assert.equal(entry.run.expedition.institutional_closure_ingested, undefined);
+  return closed;
+}
+
 test("DesktopService defaults field-researcher starts to generic procedural survey", () => {
   const service = new DesktopService({ appDataPath:fs.mkdtempSync(path.join(os.tmpdir(), "yb-default-expedition-")) });
   const world = service.createWorld({ name:"Default Expedition", seed:"default-expedition" }).world;
@@ -150,4 +176,54 @@ test("Reference geometry, prior record, evidence, and party survive restart with
   assert.equal(after.run.expedition.team.members.some((member) => member.belief || member.conclusion), false);
   assert.equal(restarted.submitAction({ world_id:world.id, mode:"field-researcher", action:"ABORT" }).ok, true);
   assert.equal(after.run.expedition.evidence.every((item) => item.reporting_state === "unreported"), true);
+});
+
+test("returned evidence, player report, and institutional assessment remain separate through reload", async () => {
+  const { appDataPath, service, world } = fixture();
+  const entry = enterField(service, world);
+  assert.equal(service.submitAction({ world_id:world.id, mode:"field-researcher", action:"MOVE", target:"open passage" }).ok, true);
+  assert.equal(service.submitAction({ world_id:world.id, mode:"field-researcher", action:"USE", target:"survey-instrument" }).ok, true);
+  const evidence = entry.run.expedition.evidence.find((item) => item.type === "passage-depth-measurement");
+  assert.ok(evidence);
+  returnToReport(service, world);
+  const missionId = entry.run.expedition.mission.id;
+  const custody = service.getWorld(world.id).q4_evidence_archive.records[evidence.id];
+  assert.equal(custody.standard_available, true);
+  assert.equal(custody.custody.state, "archived");
+  assert.deepEqual(custody.measurement, evidence.measurement);
+  assert.equal(service.getWorld(world.id).q4_reviews?.[missionId], undefined, "institutional closure must wait for the player's written claim");
+  service.shutdown();
+
+  const restarted = new DesktopService({ appDataPath });
+  const resumed = restarted.resumeSession({ world_id:world.id, mode:"field-researcher" });
+  assert.equal(resumed.ok, true);
+  assert.equal(resumed.projection.phase.phase_id, "REPORT");
+  assert.equal(resumed.projection.q4.written_report, null);
+  const submitted = await restarted.submitNatural({ world_id:world.id, mode:"field-researcher", text:"The Open Passage measured 18.0 metres from the south-wall datum. This conflicts with layout sheet 17-B and requires review." });
+  assert.equal(submitted.ok, true);
+  assert.equal(submitted.projection.phase.phase_id, "DEBRIEF");
+  assert.equal(submitted.result.turn_status, "REPORT_SUBMITTED");
+  assert.equal(submitted.result.institutional_assessment.status, "provisional-spatial-discrepancy");
+  assert.deepEqual(submitted.result.institutional_assessment.basis.evidence_ids, [evidence.id]);
+  assert.equal(submitted.projection.q4.review.written_report.text, "The Open Passage measured 18.0 metres from the south-wall datum. This conflicts with layout sheet 17-B and requires review.");
+  assert.equal(submitted.projection.q4.review.institutional_findings.reference_assessment.claims_cause, false);
+});
+
+test("contrasting report paths preserve unresolved claim and omission outcomes", async () => {
+  const claimed = fixture();
+  enterField(claimed.service, claimed.world);
+  returnToReport(claimed.service, claimed.world);
+  const weak = await claimed.service.submitNatural({ world_id:claimed.world.id, mode:"field-researcher", text:"I believe the layout contains a discrepancy, but we returned without a measurement." });
+  assert.equal(weak.result.institutional_assessment.status, "unresolved-field-claim");
+  assert.deepEqual(weak.result.institutional_assessment.basis.evidence_ids, []);
+  assert.ok(claimed.service.getWorld(claimed.world.id).institutional_response.uncertain_claims.some((item) => item.provenance.id === weak.result.report_id));
+
+  const omitted = fixture();
+  enterField(omitted.service, omitted.world);
+  returnToReport(omitted.service, omitted.world);
+  const routine = await omitted.service.submitNatural({ world_id:omitted.world.id, mode:"field-researcher", text:"The team returned accounted for. No additional spatial finding is entered in this report." });
+  assert.equal(routine.result.institutional_assessment.status, "no-spatial-discrepancy-entered");
+  assert.deepEqual(routine.result.institutional_assessment.basis.evidence_ids, []);
+  assert.equal(routine.projection.q4.review.written_report.kind, "player-authored-claim");
+  assert.equal(reference.deriveContradiction(omitted.service.session(omitted.world.id, "field-researcher").run).established, false);
 });

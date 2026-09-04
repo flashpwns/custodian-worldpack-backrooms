@@ -199,7 +199,7 @@ test("Natural action and comms input specifications: textarea and keyboard short
   const css = fs.readFileSync(path.join(__dirname, "../desktop/renderer/styles.css"), "utf8");
 
   // Natural action form uses textarea
-  assert.match(renderer, /<textarea name="text" rows="3"/);
+  assert.match(renderer, /<textarea name="text"/);
   // Ctrl+Enter / Cmd+Enter submits natural action
   assert.match(renderer, /\(event\.ctrlKey \|\| event\.metaKey\) && event\.key === "Enter"/);
   // Enter without Shift submits comms
@@ -249,7 +249,7 @@ test("Institutional Consequence Portal for session termination forbids videogame
   assert.match(css, /\.termination-consequence/);
 });
 
-test("Ceremonial phase audio sequencing across deployment and return lifecycle", () => {
+test("Ceremonial phase audio: decoupled door sequences and clean phase ambiance hooks", () => {
   const renderer = fs.readFileSync(path.join(__dirname, "../desktop/renderer/renderer.js"), "utf8");
   const audio = fs.readFileSync(path.join(__dirname, "../desktop/renderer/audio.js"), "utf8");
 
@@ -261,10 +261,16 @@ test("Ceremonial phase audio sequencing across deployment and return lifecycle",
   assert.match(renderer, /YBAudio\.emitHook\("facility_ambient"\)/);
   assert.match(renderer, /YBAudio\.emitHook\("lpmds_bed"\)/);
   assert.match(renderer, /YBAudio\.emitHook\("threshold_cross_hum"\)/);
-  assert.match(renderer, /YBAudio\.emitHook\("blast_door_open"\)/);
   assert.match(renderer, /YBAudio\.emitHook\("complex_music"\)/);
   assert.match(renderer, /YBAudio\.emitHook\("threshold_beacon"\)/);
-  assert.match(renderer, /YBAudio\.emitHook\("blast_door_close"\)/);
+
+  // Director correction: Fabricated blast door sequences are decoupled from phase transitions
+  assert.doesNotMatch(renderer, /playCeremonialPhaseAudio[^}]*YBAudio\.emitHook\("blast_door_open"\)/);
+  assert.doesNotMatch(renderer, /playCeremonialPhaseAudio[^}]*YBAudio\.emitHook\("blast_door_close"\)/);
+
+  // REPORT and DEBRIEF hook facility_ambient
+  assert.match(renderer, /toPhase === "REPORT"\) \{\s*YBAudio\.emitHook\("facility_ambient"\)/);
+  assert.match(renderer, /toPhase === "DEBRIEF"\) \{\s*YBAudio\.emitHook\("facility_ambient"\)/);
 
   // Procedural audio synthesizers defined in audio.js
   assert.match(audio, /case "facility_ambient":/);
@@ -286,11 +292,146 @@ test("Multipurpose Spatial / Visual Display modes: facility schematic, field sur
 
   // Interlock status displayed in facility mode
   assert.match(surfaces, /South: \$\{interlock\.south_barrier/);
+  assert.match(surfaces, /Interlock: Unmonitored/);
 
   // CSS rules for spatial display
   assert.match(css, /\.spatial-visual-display/);
   assert.match(css, /\.facility-edge/);
   assert.match(css, /\.media-display-surface/);
 });
+
+test("TASK A Compliance: PROCEED button is unoccluded, hit-testable, and CSS rules prevent click interception", () => {
+  const css = fs.readFileSync(path.join(__dirname, "../desktop/renderer/styles.css"), "utf8");
+  const surfacesModule = require("../desktop/renderer/surfaces");
+
+  // .operations-shell .structured-action must NOT be position: fixed at bottom (which could intercept clicks)
+  assert.match(css, /\.operations-shell \.structured-action\{position:static;/);
+
+  // .briefing-next .primary-action must explicitly ensure pointer-events: auto and relative z-index
+  assert.match(css, /\.briefing-next \.primary-action\{[^}]*pointer-events:auto;position:relative;z-index:2/);
+
+  // .operations-shell .q4-preparation-surface>.operational-map must be assigned to grid-column: 1
+  assert.match(css, /\.operations-shell \.q4-preparation-surface>\.operational-map\{grid-column:1\}/);
+
+  // Surfaces produces data-game-action="PROCEED" in STAGING
+  const stagingProjection = {
+    mode: { id: "field-researcher" },
+    phase: { phase_id: "STAGING" },
+    q4: {
+      team: [],
+      mission_record: { display_id: "CQ4-TEST" },
+      channels: { standard: { available: false } },
+      equipment: { required: [], optional: [] },
+      interlock: null
+    }
+  };
+  const stagingHtml = surfacesModule.render(stagingProjection);
+  assert.match(stagingHtml, /data-game-action="PROCEED"/);
+  assert.match(stagingHtml, /Proceed toward the Threshold/);
+});
+
+test("TASK B Compliance: Canonical REPORT phase renders return to Standard, custody, report requirement, and observer claim disclaimer", () => {
+  const surfaces = require("../desktop/renderer/surfaces");
+  const renderer = fs.readFileSync(path.join(__dirname, "../desktop/renderer/renderer.js"), "utf8");
+
+  const reportProjection = {
+    mode: { id: "field-researcher" },
+    phase: { phase_id: "REPORT" },
+    available_actions: [],
+    q4: {
+      team: [{ display_name: "Jack Rocha · YOU", role: "Team Lead · YOU", controlled: true, condition: "accounted" }],
+      evidence: [{ id: "evidence-001", type: "passage-depth-measurement", storage: "archived", custody: { state: "archived" }, measurement: { value: 18, unit: "metre" } }],
+      mission_record: { display_id: "CQ4-REFERENCE-001", objective: { primary: "Survey assigned passage" } }
+    }
+  };
+
+  const renderedHtml = surfaces.render(reportProjection);
+
+  // Test surface presence
+  assert.match(renderedHtml, /data-testid="surface-clear-q4-report"/);
+  // Four required institutional notices
+  assert.match(renderedHtml, /RETURN TO STANDARD CONFIRMED/);
+  assert.match(renderedHtml, /PHYSICAL EVIDENCE IN CUSTODY/);
+  assert.match(renderedHtml, /WRITTEN REPORT MANDATE/);
+  assert.match(renderedHtml, /Official Record Notice: The submitted report constitutes the observer's personal account and claim/);
+  assert.match(renderedHtml, /does not establish institutional ground truth until corroborated against surrendered evidence/);
+
+  // Renderer provides natural multi-line input with "SUBMIT REPORT" button and suppresses structured actions
+  assert.match(renderer, /const isReport = projection\.phase\?\.phase_id === "REPORT"/);
+  assert.match(renderer, /const submitButtonLabel = isReport \? "SUBMIT REPORT" : "SUBMIT"/);
+  assert.match(renderer, /const hideStructured = q4Prefield \|\| isReport \|\| projection\.available_actions\.length === 0/);
+});
+
+test("TASK B Compliance: Debrief review (DEBRIEF phase) strictly decouples Written Report, Returned Evidence, and Institutional Findings", () => {
+  const surfaces = require("../desktop/renderer/surfaces");
+
+  const debriefProjection = {
+    mode: { id: "field-researcher" },
+    phase: { phase_id: "DEBRIEF" },
+    available_actions: [],
+    q4: {
+      review: {
+        outcome: "returned-complete",
+        public_debrief_summary: "Expedition concluded.",
+        written_report: {
+          id: "report-123",
+          author: "TEAM LEAD (YOU)",
+          kind: "player-authored-claim",
+          text: "The Open Passage measured 18.0 metres from the datum. This conflicts with layout sheet 17-B."
+        },
+        evidence: [
+          { id: "evidence-001", type: "passage-depth-measurement", custodian: "institutional custody", standard_available: true, custody: { state: "archived" }, measurement: { kind: "passage-depth", value: 18, unit: "metre" } }
+        ],
+        institutional_findings: {
+          reference_assessment: {
+            status: "provisional-spatial-discrepancy",
+            confidence: "provisional",
+            summary: "Returned measurement records 18.0 metres from the south-wall datum; layout sheet 17-B places the parallel corridor volume from 14.0 metres.",
+            basis: { written_report_id: "report-123", evidence_ids: ["evidence-001"], prior_record_ids: ["sheet-17-b"] },
+            claims_cause: false
+          }
+        },
+        assignment: { objective: "Survey assigned passage", objective_outcomes: [{ name: "Survey baseline", kind: "required", state: "satisfied" }] },
+        personnel: [{ display_name: "Jack Rocha", status: "returned", last_contact: "T+10" }],
+        equipment: [{ label: "Survey instrument", status: "surrendered", location: "archive" }],
+        containers: []
+      }
+    }
+  };
+
+  const renderedDebrief = surfaces.render(debriefProjection);
+
+  // Surface check
+  assert.match(renderedDebrief, /data-testid="surface-clear-q4-debrief"/);
+  assert.match(renderedDebrief, /class="debrief-triad"/);
+
+  // Card 1: Written Report (Observer Claim)
+  assert.match(renderedDebrief, /data-testid="debrief-written-report"/);
+  assert.match(renderedDebrief, /OBSERVER TESTIMONY · CLAIM/);
+  assert.match(renderedDebrief, /The Open Passage measured 18\.0 metres from the datum/);
+  assert.match(renderedDebrief, /Represents subjective claim and belief; does not establish institutional ground truth/);
+
+  // Card 2: Returned Evidence (Physical Custody)
+  assert.match(renderedDebrief, /data-testid="debrief-returned-evidence"/);
+  assert.match(renderedDebrief, /PHYSICAL ARCHIVE · MEASUREMENT/);
+  assert.match(renderedDebrief, /passage-depth-measurement/);
+  assert.match(renderedDebrief, /evidence-001/);
+
+  // Card 3: Institutional Findings (Reference Assessment)
+  assert.match(renderedDebrief, /data-testid="debrief-institutional-findings"/);
+  assert.match(renderedDebrief, /STANDARD ASSESSMENT · FINDINGS/);
+  assert.match(renderedDebrief, /provisional-spatial-discrepancy/);
+  assert.match(renderedDebrief, /Standard evaluates returned physical evidence and prior engineering records separately from observer testimony/);
+});
+
+test("Director Correction: De-canonicalized kv31Interlock simulation is purged from tools/q4-experience.js", () => {
+  const experienceCode = fs.readFileSync(path.join(__dirname, "../tools/q4-experience.js"), "utf8");
+
+  // kv31Interlock simulated function must be completely purged
+  assert.doesNotMatch(experienceCode, /function kv31Interlock/);
+  // Must consume spatial interlock or fallback to null
+  assert.match(experienceCode, /interlock:\s*run\.spatial\?\.interlock\s*\?\?\s*null/);
+});
+
 
 

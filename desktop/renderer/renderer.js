@@ -117,8 +117,17 @@ function recapMarkup(projection) {
   return `<details id="recap-panel" class="qol-recap" data-testid="qol-recap"><summary>What do I know?</summary><div class="qol-recap-body"><p>${escape(recap.title)} · only what this experience has legitimately revealed.</p>${recap.sections.some((part) => part.search) ? `<label>Find in this record <input id="recap-filter" autocomplete="off" placeholder="Search known notes"></label>` : ""}${sections}<section class="qol-recap-section"><h3>Recent record</h3><ul>${historyItems}</ul></section><button type="button" data-copy="scene">Copy current scene</button><p class="muted">Shortcut: ? opens this record; Escape closes it.</p></div></details>`;
 }
 function guidedIntroduction(projection) {
-  if (projection.phase?.tutorial_context?.enabled !== true || current.guidanceDismissed || (projection.mode.id === "field-researcher" && !["FIELD_OPERATION", "RETURN", "DEBRIEF"].includes(projection.phase?.phase_id))) return "";
-  const q4Guidance = { BRIEFING:["Current instruction","Review the assignment and assigned team, then continue to staging."], STAGING:["Current instruction","Review issued equipment, adjust optional stores, and confirm readiness."], FACILITY_TRANSIT:["Current instruction","Proceed with the accounted team toward the Threshold room."], THRESHOLD:["Current instruction","Verify team accountability and begin the Standard radio procedure."], STANDARD_RADIO_CHECK:["Current instruction","Establish contact with Standard before entering the field."], FIELD_OPERATION:["Channel guidance","ACTION affects the environment. LOCAL addresses nearby personnel. STANDARD transmits over radio when available."] };
+  if (projection.phase?.tutorial_context?.enabled !== true || current.guidanceDismissed || (projection.mode.id === "field-researcher" && !["FIELD_OPERATION", "RETURN", "REPORT", "DEBRIEF"].includes(projection.phase?.phase_id))) return "";
+  const q4Guidance = {
+    BRIEFING: ["Current instruction", "Review the assignment and assigned team, then continue to staging."],
+    STAGING: ["Current instruction", "Review issued equipment, adjust optional stores, and confirm readiness."],
+    FACILITY_TRANSIT: ["Current instruction", "Proceed with the accounted team toward the Threshold room."],
+    THRESHOLD: ["Current instruction", "Verify team accountability and begin the Standard radio procedure."],
+    STANDARD_RADIO_CHECK: ["Current instruction", "Establish contact with Standard before entering the field."],
+    FIELD_OPERATION: ["Channel guidance", "ACTION affects the environment. LOCAL addresses nearby personnel. STANDARD transmits over radio when available."],
+    REPORT: ["Report requirement", "Submit your personal written account of the expedition. Your statement will be preserved as observer testimony."],
+    DEBRIEF: ["Institutional debriefing", "Review your submitted report, custody log of returned evidence, and the institutional findings."]
+  };
   const guidance = projection.mode.id === "field-researcher" ? (q4Guidance[projection.phase?.phase_id] ?? ["Current instruction", "Continue with the assigned operation."]) : ({ "async-command":["Desk instruction","Review the reports and choose what needs attention."], "local-anomaly":["Investigation instruction","Keep observations separate from conclusions."], lost:["Field instruction","Start with what you can see, hear, carry, or remember."] }[projection.mode.id] ?? ["Current instruction", "Describe your next attempt."]);
   return `<aside class="guided-introduction" data-testid="guided-introduction" aria-labelledby="guided-introduction-heading"><h2 id="guided-introduction-heading">${escape(guidance[0])}</h2><p>${escape(guidance[1])}</p><button type="button" data-guidance-dismiss>Hide guidance</button></aside>`;
 }
@@ -130,14 +139,21 @@ function compactLayout(projection) { const map = projection.q4?.layout ?? {}; co
 function play(message = "", state = "") {
   const projection = current.projection;
   const context = requestContext(); const draft = presentation.draft(context);
-  const q4Prefield = projection.mode.id === "field-researcher" && !["FIELD_OPERATION", "RETURN", "DEBRIEF"].includes(projection.phase?.phase_id);
+  const isReport = projection.phase?.phase_id === "REPORT";
+  const q4Prefield = projection.mode.id === "field-researcher" && !["FIELD_OPERATION", "RETURN", "REPORT", "DEBRIEF"].includes(projection.phase?.phase_id);
   const actionOptions = projection.available_actions.map((action) => `<option value="${escape(action.type)}">${escape(YBSurfaces.actionLabel(action.type))}</option>`).join("");
   applyPreferences(projection.settings); const scene = q4Prefield || !projection.scene || (projection.mode.id === "field-researcher" && state !== "result") ? "" : `<section class="scene resolution-band ${state === "result" ? "scene-result" : ""}" aria-labelledby="current-scene-heading"><span class="sr-only">Current scene observation record</span><h2 id="current-scene-heading">OBSERVATION RECORD</h2><p>${escape(projection.scene.narration)}</p>${projection.scene.inventory?.length ? `<p class="muted">Carrying: ${escape(projection.scene.inventory.map((item) => item.text).join(", "))}</p>` : ""}</section>`;
-  const natural = q4Prefield ? "" : `<section class="action-dock natural-action" data-testid="natural-primary"><div><p class="eyebrow">ACTION</p><h2>${escape(YBSurfaces.inputPrompt(projection.mode.id))}</h2></div><form id="natural-form"><label><span class="sr-only">Describe what you are trying to do</span><textarea name="text" rows="3" autocomplete="off" placeholder="${escape(YBSurfaces.inputExample(projection.mode.id))}">${escape(draft)}</textarea></label><button type="submit">SUBMIT</button></form><p>Attempt a physical action here. LOCAL and STANDARD communication remain separate below.</p></section>`;
+  const naturalHeading = isReport ? "Written Expedition Account" : YBSurfaces.inputPrompt(projection.mode.id);
+  const naturalEyebrow = isReport ? "EXPEDITION REPORT" : "ACTION";
+  const naturalPlaceholder = isReport ? "Provide your written statement of events, observations, and anomalies encountered beyond the Threshold..." : YBSurfaces.inputExample(projection.mode.id);
+  const submitButtonLabel = isReport ? "SUBMIT REPORT" : "SUBMIT";
+  const naturalInstruction = isReport ? "Official Record Notice: The submitted report constitutes the observer's personal account and claim. It does not establish institutional ground truth until verified against returned evidence." : "Attempt a physical action here. LOCAL and STANDARD communication remain separate below.";
+  const natural = q4Prefield ? "" : `<section class="action-dock natural-action" data-testid="natural-primary"><div><p class="eyebrow">${escape(naturalEyebrow)}</p><h2>${escape(naturalHeading)}</h2></div><form id="natural-form"><label><span class="sr-only">${isReport ? "Written expedition account" : "Describe what you are trying to do"}</span><textarea name="text" rows="${isReport ? "6" : "3"}" autocomplete="off" placeholder="${escape(naturalPlaceholder)}">${escape(draft)}</textarea></label><button type="submit">${escape(submitButtonLabel)}</button></form><p>${escape(naturalInstruction)}</p></section>`;
   const retry = state === "application-error" ? `<button type="button" data-action="refresh-view">Refresh view</button>` : "";
   const q4Shell = projection.mode.id === "field-researcher"; const core = q4Shell ? `<section class="operations-layout" data-testid="async-operations-layout"><div class="operations-left">${compactOperationsRail(projection)}</div><main class="operations-main">${scene}${natural}${YBSurfaces.render(projection)}</main><aside class="operations-right">${compactLayout(projection)}${panelMarkup("EVIDENCE / MEDIA", (projection.q4?.evidence ?? []).map((item) => `<li data-view-media="${escape(item.id)}" style="cursor:pointer;" title="Inspect in Spatial Display"><span class="media-frame ${escape(item.visual?.frame_class ?? "media-render-pending")}" aria-hidden="true">${item.visual?.unavailable ? "▧" : "▣"}</span><strong>${escape(item.type)}</strong><small>${escape(item.render?.status ?? item.visual?.render_state ?? "VISUAL RECORD PENDING")} · ${escape(item.storage)} · T+${escape(item.time?.interval ?? 0)}</small></li>`).join(""), "No media returned or recorded.", "evidence-panel")}</aside></section>` : `${scene}${natural}${YBSurfaces.render(projection)}`;
   const feedbackContent = (state === "submitted" || state === "resolving") ? `<span class="feedback-text">${escape(message)}</span> ${expeditionLoadingMotif()}${retry}` : `${escape(message)}${retry}`;
-  app.innerHTML = `<section class="shell play ${q4Shell ? "operations-shell" : ""} mode-${escape(projection.mode.id)}" data-testid="play-shell">${q4Shell ? asyncHeader(projection) : `<header><div><p class="eyebrow">${escape(projection.world.name)}</p><h1>${escape(projection.mode.label)}</h1><p>${escape(projection.mode.description)}</p></div>${button("Settings", "settings")}${button("TERMINATE FIELD SESSION", "leave")}</header>`}<p id="interaction-feedback" class="interaction-feedback" data-state="${escape(state)}" role="status" aria-live="polite" aria-atomic="true">${feedbackContent}</p>${guidedIntroduction(projection)}${core}${q4Prefield ? "" : `<details class="action-dock structured-action"><summary>Structured controls</summary><form id="action-form" aria-label="Structured action input"><label>Choose action <select name="action" data-testid="action-select">${actionOptions}</select></label><label id="target-label">Valid target <select name="target" data-testid="target-select"></select></label><button type="submit" data-testid="submit-action">SUBMIT</button></form></details><p class="muted">Accepted actions save automatically.</p>`}</section>`;
+  const hideStructured = q4Prefield || isReport || projection.available_actions.length === 0;
+  app.innerHTML = `<section class="shell play ${q4Shell ? "operations-shell" : ""} mode-${escape(projection.mode.id)}" data-testid="play-shell">${q4Shell ? asyncHeader(projection) : `<header><div><p class="eyebrow">${escape(projection.world.name)}</p><h1>${escape(projection.mode.label)}</h1><p>${escape(projection.mode.description)}</p></div>${button("Settings", "settings")}${button("TERMINATE FIELD SESSION", "leave")}</header>`}<p id="interaction-feedback" class="interaction-feedback" data-state="${escape(state)}" role="status" aria-live="polite" aria-atomic="true">${feedbackContent}</p>${guidedIntroduction(projection)}${core}${hideStructured ? "" : `<details class="action-dock structured-action"><summary>Structured controls</summary><form id="action-form" aria-label="Structured action input"><label>Choose action <select name="action" data-testid="action-select">${actionOptions}</select></label><label id="target-label">Valid target <select name="target" data-testid="target-select"></select></label><button type="submit" data-testid="submit-action">SUBMIT</button></form></details><p class="muted">Accepted actions save automatically.</p>`}</section>`;
   if (current.developer) document.querySelector(".play header").insertAdjacentHTML("beforeend", button("Developer console", "developer"));
   const form = document.querySelector("#action-form"); const actionSelect = form?.action; const targetSelect = form?.target;
   const targetsForAction = () => { if (!form) return; const action = projection.available_actions.find((item) => item.type === actionSelect.value); const targets = action?.targets ?? []; targetSelect.innerHTML = targets.map((target) => `<option value="${escape(target.ref)}">${escape(target.label)}</option>`).join(""); targetSelect.disabled = targets.length === 0; document.querySelector("#target-label").hidden = !action?.target_required; };
@@ -283,16 +299,13 @@ function playCeremonialPhaseAudio(fromPhase, toPhase) {
     YBAudio.emitHook("radio_rx_cue");
   } else if (toPhase === "FIELD_OPERATION") {
     YBAudio.emitHook("threshold_cross_hum");
-    YBAudio.emitHook("blast_door_open");
     YBAudio.emitHook("complex_hum");
     YBAudio.emitHook("complex_music");
   } else if (toPhase === "RETURN") {
     YBAudio.emitHook("threshold_beacon");
-    YBAudio.emitHook("blast_door_release");
-    YBAudio.emitHook("blast_door_open");
+  } else if (toPhase === "REPORT") {
+    YBAudio.emitHook("facility_ambient");
   } else if (toPhase === "DEBRIEF") {
-    YBAudio.emitHook("blast_door_close");
-    YBAudio.emitHook("blast_door_close_impact");
     YBAudio.emitHook("facility_ambient");
   }
 }

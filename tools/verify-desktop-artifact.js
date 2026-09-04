@@ -33,7 +33,7 @@ const entry = (suffix) => asar.listPackage(archive).find((item) => item.replace(
 const readEntry = (suffix) => {
   const item = entry(suffix);
   assert.ok(item, `packaged archive missing ${suffix}`);
-  return JSON.parse(asar.extractFile(archive, item.replace(/^\\+/, "")).toString("utf8"));
+  return JSON.parse(asar.extractFile(archive, item.replace(/^[/\\]+/, "")).toString("utf8"));
 };
 const packagedPackage = readEntry("/package.json");
 const packagedBuild = readEntry("/desktop/build-info.json");

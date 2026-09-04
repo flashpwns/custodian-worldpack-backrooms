@@ -435,6 +435,50 @@ class DesktopService {
   getInstitutionProjection({ world_id }) { try { const world = this.getWorld(world_id); return { ok: true, projection: { management: desk.projection(world), standard: institutionalRuntime.project(world, bootstrap.institutionalDefinitionFor("clear-q4")) } }; } catch { return publicError("INSTITUTION_UNAVAILABLE", "Institution state is not available."); } }
 
   q4LogisticsContext(entry, world) { const player = entry.run.session.startup.player.observer_id; const team = entry.run.expedition.team?.members ?? []; const names = Object.fromEntries(team.map((member) => [member.personnel_id ?? member.id, member.display_name])); const institution = institutionalRuntime.ensure(world, bootstrap.institutionalDefinitionFor(entry.run.spatial_pack_id)); return { player, actor: player, team, names, spatial: entry.run.spatial, location: entry.run.spatial?.player_location, at: entry.run.expedition.clock?.interval ?? 0, phase: entry.phase?.phase_id, restrictions: institution.restrictions?.equipment ?? [] }; }
+  prepareQ4Return(world, entry) {
+    const expedition = entry.run.expedition;
+    if (expedition.return_processing?.evidence_custody_completed) return expedition.return_processing;
+    logisticsRuntime.reconcile(expedition, bootstrap.logisticsDefinitionFor(entry.run.spatial_pack_id), { ...this.q4LogisticsContext(entry, world), actor:entry.run.session.startup.player.observer_id });
+    q4Equipment.syncWorld(world, expedition);
+    evidenceAuthority.synchronizeReturn(world, entry.run, expedition.mission_state?.final_result?.return_outcome?.completed === true);
+    expedition.return_processing = { version:"yellow-beast-return-processing@v1", evidence_custody_completed:true, completed_at:{ interval:expedition.clock?.interval ?? 0 } };
+    return expedition.return_processing;
+  }
+  finalizeQ4Closure(world, entry) {
+    const expedition = entry.run.expedition;
+    if (expedition.institutional_closure_ingested) return q4Continuity.review(world, expedition.mission?.id);
+    this.prepareQ4Return(world, entry);
+    const continuity = q4Continuity.commitOutcome(world, entry.run, expedition.mission_state?.return?.abort_requested ? "ABORT" : "RETURN");
+    institutionalRuntime.ingestClosure(world, bootstrap.institutionalDefinitionFor(entry.run.spatial_pack_id), entry.run, continuity.review);
+    expedition.institutional_closure_ingested = true;
+    history.updateQ4Mission(world, entry.run.run_id, expedition.mission.id, { status:expedition.mission_state.final_result.final_mission_state, result:expedition.mission_state.final_result });
+    assignmentEngine.resolve(world, expedition.mission.work_order_id ?? expedition.mission.id, { completed:expedition.mission_state.final_result.final_mission_state === "completed", aborted:expedition.mission_state.return?.abort_requested === true });
+    const readyForDebrief = ["RETURN", "REPORT"].includes(entry.phase?.phase_id) ? { ok:true, phase:entry.phase } : phases.transition(entry.phase, "RETURN", { reason:"mission-closure", guard:true });
+    entry.phase = readyForDebrief.ok ? phases.transition(readyForDebrief.phase, "DEBRIEF", { reason:"mission-review", guard:true }).phase : entry.phase;
+    bootstrap.evaluateMissionState(entry.run, "DEBRIEF");
+    return continuity.review;
+  }
+  submitReferenceWrittenReport({ world_id, text }) {
+    const world = this.getWorld(world_id);
+    const entry = this.session(world_id, "field-researcher") ?? this.restoreSession(world, "field-researcher", readJson(this.sessionFile(world_id, "field-researcher"), null));
+    if (!entry || entry.kind !== "bootstrap" || !referenceExpedition.isReference(entry.run.scenario) || entry.phase?.phase_id !== "REPORT") return publicError("REFERENCE_REPORT_UNAVAILABLE", "A written expedition report is not available from the current phase.");
+    const written = referenceExpedition.writeReport(entry.run, { author:entry.run.session.startup.player.observer_id, text, at:entry.run.expedition.clock?.interval ?? 0 });
+    if (!written.ok) return publicError(written.code, written.code === "REFERENCE_REPORT_EMPTY" ? "Enter the account you intend to submit to A-Sync." : written.code === "REFERENCE_REPORT_TOO_LONG" ? "The written report exceeds the 4,000-character field limit." : "The written report could not be accepted.");
+    const report = entry.run.expedition.written_report;
+    const records = evidenceAuthority.archive(world, { observer:"standard" }).records.filter((record) => record.operation_id === report.mission_id);
+    report.available_evidence_ids = records.map((record) => record.id);
+    const prior = entry.run.expedition.mission.prior_history.find((item) => item.id === referenceExpedition.definition.prior_record.id);
+    report.institutional_assessment = referenceExpedition.assessInstitutionalRecord({ report, prior_record:prior, evidence_records:records });
+    const institutionDefinition = bootstrap.institutionalDefinitionFor(entry.run.spatial_pack_id);
+    if (records.length) institutionalRuntime.ingest(world, null, institutionDefinition, { type:"evidence-report", state:"confirmed", quality:"recorded", summary:`${records.length} returned evidence record${records.length === 1 ? "" : "s"} entered Evidence Intake custody.`, facts:records.map((record) => ({ kind:"returned-evidence", id:record.id })), provenance:{ kind:"returned-evidence", id:`${report.id}:evidence-intake`, report_id:report.id } });
+    const assessment = report.institutional_assessment;
+    institutionalRuntime.ingest(world, null, institutionDefinition, { type:assessment.status === "no-spatial-discrepancy-entered" ? "normal-report" : "contradictory-report", state:"confirmed", quality:assessment.basis.evidence_ids.length ? "recorded" : "claim", summary:report.text, facts:[{ kind:"written-report-claim", id:report.id }, ...(assessment.status === "no-spatial-discrepancy-entered" ? [] : [{ kind:"spatial-discrepancy-assessment", id:assessment.status }])], provenance:{ kind:"written-report", id:report.id, author:report.author } });
+    history.event(world, entry.run.run_id, "q4.written-report.submitted", { report_id:report.id, mission_id:report.mission_id, author:report.author, available_evidence_ids:[...report.available_evidence_ids], assessment_status:assessment.status }, "q4-canonical-continuity");
+    const review = this.finalizeQ4Closure(world, entry);
+    this.persistSession(world, "field-researcher", entry);
+    const scene = this.sceneFor(entry, "field-researcher", { scene_type:"delta", accepted:true, public_reason:assessment.summary }, world);
+    return { ok:true, result:{ turn_status:"REPORT_SUBMITTED", executed:true, report_id:report.id, institutional_assessment:clone(assessment), summary:assessment.summary, scene }, projection:this.projectionFor(world, "field-researcher", entry), review };
+  }
   submitQ4Logistics({ world_id, action, item_id = null, container_id = null, target_holder = null, target_container = null, source_item_id = null, quantity = 1 }) {
     if (outcomes.isRetired(this.getWorld(world_id))) return publicError("WORLD_RETIRED", "This world is a read-only historical record.");
     try { const world = this.getWorld(world_id); const entry = this.session(world_id, "field-researcher") ?? this.restoreSession(world, "field-researcher", readJson(this.sessionFile(world_id, "field-researcher"), null)); if (!entry || entry.kind !== "bootstrap") return publicError("SESSION_NOT_FOUND", "Start or continue Clear-Q4 before managing equipment."); const context = this.q4LogisticsContext(entry, world); const definition = bootstrap.logisticsDefinitionFor(entry.run.spatial_pack_id); const resolveHolder = (value) => { if (!value) return null; if (value === "You") return context.actor; const member = context.team.find((candidate) => [candidate.personnel_id, candidate.id, candidate.display_name].includes(value)); return member?.personnel_id ?? member?.id ?? value; }; const request = { action, item_id, container_id, actor: context.actor, target_holder: resolveHolder(target_holder), target_container, source_item_id, quantity }; const result = container_id ? logisticsRuntime.transactContainer(entry.run.expedition, definition, request, context) : logisticsRuntime.transact(entry.run.expedition, definition, request, context); if (!result.ok) return publicError(result.code, result.public_reason); logisticsRuntime.syncSpatial(entry.run.expedition, entry.run.spatial); spatialRuntime.syncEquipment(entry.run.spatial, entry.run.expedition); const authoredCost = bootstrap.dynamicsDefinitionFor(entry.run.spatial_pack_id).action_costs[String(action).toUpperCase()] ?? (/^INSPECT|^VERIFY/.test(String(action).toUpperCase()) ? 0 : 1); const cycle = bootstrap.resolveOperationalCycle(entry.run, String(action).toUpperCase(), authoredCost, "logistics-transaction"); expeditionEvent(entry.run.expedition, "logistics.transaction.committed", { transaction_id: result.transaction.id, action: result.transaction.action, item_id: result.transaction.item_id ?? null, container_id: result.transaction.container_id ?? null }); this.persistSession(world, "field-researcher", entry); return { ok: true, result: { outcome: "succeeded", public_reason: result.public_reason, transaction: { action: result.transaction.action, summary: result.transaction.summary, at: result.transaction.at }, time_advanced: cycle.clock.cost, mission_updates: cycle.mission_updates }, projection: this.projectionFor(world, "field-researcher", entry) }; } catch (error) { this.log(`Q4 logistics failed: ${error.message}`); return publicError("LOGISTICS_RUNTIME_ERROR", "The logistics transaction could not be committed safely."); }
@@ -442,6 +486,7 @@ class DesktopService {
   availableFor(world, mode, entry) {
     if (outcomes.isRetired(world)) return [];
     if (entry.kind === "bootstrap") {
+      if (entry.phase?.phase_id === "REPORT") return [];
       const legacyFlow = entry.legacy_flow === true || entry.phase?.legacy_flow === true;
       const phaseActions = legacyFlow
         ? { BRIEFING: "READY", STAGING: "PROCEED", FACILITY_TRANSIT: "APPROACH", THRESHOLD: "CROSS", STANDARD_RADIO_CHECK: q4Radio.read(entry.run.expedition).check_completed ? "BEGIN_FIELD_OPERATION" : null }
@@ -787,16 +832,12 @@ class DesktopService {
           if (returning.ok) { entry.phase = returning.phase; bootstrap.evaluateMissionState(entry.run, "RETURN"); }
         }
         if (entry.run.lifecycle === "completed" && entry.run.expedition?.mission && !entry.run.expedition.institutional_closure_ingested) {
-          logisticsRuntime.reconcile(entry.run.expedition, bootstrap.logisticsDefinitionFor(entry.run.spatial_pack_id), { ...this.q4LogisticsContext(entry, world), actor: entry.run.session.startup.player.observer_id }); q4Equipment.syncWorld(world, entry.run.expedition);
-          const continuity = q4Continuity.commitOutcome(world, entry.run, entry.run.expedition.mission_state?.return?.abort_requested ? "ABORT" : "RETURN");
-           evidenceAuthority.synchronizeReturn(world, entry.run, continuity.review.return_outcome?.completed === true || continuity.outcome.startsWith("returned"));
-           institutionalRuntime.ingestClosure(world, bootstrap.institutionalDefinitionFor(entry.run.spatial_pack_id), entry.run, continuity.review);
-           entry.run.expedition.institutional_closure_ingested = true;
-          history.updateQ4Mission(world, entry.run.run_id, entry.run.expedition.mission.id, { status: entry.run.expedition.mission_state.final_result.final_mission_state, result: entry.run.expedition.mission_state.final_result });
-          assignmentEngine.resolve(world, entry.run.expedition.mission.work_order_id ?? entry.run.expedition.mission.id, { completed: entry.run.expedition.mission_state.final_result.final_mission_state === "completed", aborted: entry.run.expedition.mission_state.return?.abort_requested === true });
-          const returned = entry.phase?.phase_id === "RETURN" ? { ok: true, phase: entry.phase } : phases.transition(entry.phase, "RETURN", { reason: verb.toLowerCase(), guard: true });
-          entry.phase = returned.ok ? phases.transition(returned.phase, "DEBRIEF", { reason: "mission-review", guard: true }).phase : entry.phase;
-          bootstrap.evaluateMissionState(entry.run, "DEBRIEF");
+          this.prepareQ4Return(world, entry);
+          if (referenceExpedition.isReference(entry.run.scenario) && !entry.run.expedition.written_report) {
+            const reportPhase = phases.transition(entry.phase, "REPORT", { reason:"evidence-custody-complete", guard:true });
+            if (reportPhase.ok) entry.phase = reportPhase.phase;
+            result.result = { ...(result.result ?? {}), public_reason:"Returned evidence entered A-Sync custody. Submit your written account before institutional review." };
+          } else this.finalizeQ4Closure(world, entry);
         }
       }
       const missionUpdates = result.result?.mission_updates ?? entry.run?._last_mission_updates ?? [];
@@ -883,6 +924,7 @@ class DesktopService {
       const world = this.getWorld(world_id);
       const entry = this.session(world_id, mode) ?? this.restoreSession(world, mode, readJson(this.sessionFile(world_id, mode), null));
       if (!entry) return publicError("SESSION_NOT_FOUND", "Start or continue this session first.");
+      if (entry.kind === "bootstrap" && mode === "field-researcher" && entry.phase?.phase_id === "REPORT") return this.submitReferenceWrittenReport({ world_id, text });
       if (entry.kind === "bootstrap" && referenceExpedition.isReference(entry.run.scenario) && ["FIELD_OPERATION", "RETURN"].includes(entry.phase?.phase_id) && entry.run.spatial) {
         const configured = this.settings().provider === "openai";
         const key = configured ? this.credentials.get("openai") : null;

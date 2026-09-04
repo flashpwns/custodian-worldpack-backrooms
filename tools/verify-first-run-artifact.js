@@ -17,7 +17,7 @@ const packagedEntry = (suffix) => asar.listPackage(archive).find((entry) => entr
 const readPackagedJson = (suffix) => {
   const entry = packagedEntry(suffix);
   assert.ok(entry, `packaged archive missing ${suffix}`);
-  return JSON.parse(asar.extractFile(archive, entry.replace(/^\\+/, "")).toString("utf8"));
+  return JSON.parse(asar.extractFile(archive, entry.replace(/^[/\\]+/, "")).toString("utf8"));
 };
 const packagedPackage = readPackagedJson("/package.json");
 const packagedBuild = readPackagedJson("/desktop/build-info.json");

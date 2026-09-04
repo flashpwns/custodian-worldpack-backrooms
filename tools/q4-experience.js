@@ -36,6 +36,7 @@ const copy = {
   STANDARD_RADIO_CHECK: "Establish contact with Standard and wait for acknowledgment before departure.",
   FIELD_OPERATION: "Continue the declared survey. Record what you actually observe and report only what you choose to transmit.",
   RETURN: "Return with the equipment and evidence that remain with the team.",
+  REPORT: "Write the account you are submitting to A-Sync. Your report is a claim and does not rewrite the expedition record.",
   DEBRIEF: "Review the expedition record. What you report remains distinct from what occurred and what you observed."
 };
 
@@ -69,46 +70,12 @@ function facilityContext(phaseId, hasReturnedMaterial = false) {
     THRESHOLD: { id: "threshold-chamber", label: "Threshold Chamber", purpose: "final accountability and crossing" },
     FIELD_OPERATION: { id: "complex", label: "Complex", purpose: "field operation and observation" },
     RETURN: { id: "threshold-chamber", label: "Threshold Chamber", purpose: "return accountability and reconciliation" },
+    REPORT: { id: hasReturnedMaterial ? "biomedical-evidence" : "lower-offices", label: hasReturnedMaterial ? "Evidence Intake" : "Lower Offices", purpose: "returned evidence custody and written reporting" },
     DEBRIEF: { id: hasReturnedMaterial ? "biomedical-evidence" : "lower-offices", label: hasReturnedMaterial ? "Biomedical / Evidence" : "Lower Offices", purpose: hasReturnedMaterial ? "returned material and records" : "debrief and next work" }
   };
   return contexts[phaseId] ?? contexts.BRIEFING;
 }
 
-function kv31Interlock(phaseId, playerLocation) {
-  const isField = phaseId === "FIELD_OPERATION";
-  const isReturn = phaseId === "RETURN";
-  const isDebrief = phaseId === "DEBRIEF";
-  const isCrossingOrOutpost = phaseId === "STANDARD_RADIO_CHECK" || playerLocation === "threshold-side-entry";
-
-  let southBarrier = "open";
-  let eastBlastDoor = "sealed";
-  let status = "PRE_CROSSING_READY";
-
-  if (isField) {
-    southBarrier = "open";
-    eastBlastDoor = "sealed";
-    status = "FIELD_DEPLOYED_SEALED";
-  } else if (isReturn) {
-    southBarrier = "sealed";
-    eastBlastDoor = "open";
-    status = "RETURN_INTAKE_ACTIVE";
-  } else if (isDebrief) {
-    southBarrier = "open";
-    eastBlastDoor = "sealed";
-    status = "RECONCILED";
-  } else if (isCrossingOrOutpost) {
-    southBarrier = "sealed";
-    eastBlastDoor = "open";
-    status = "INTERLOCK_CYCLED_EAST_OPEN";
-  }
-
-  return {
-    status,
-    south_barrier: { state: southBarrier, label: "Threshold Chamber Barrier (South / Standard)" },
-    east_blast_door: { state: eastBlastDoor, label: "Expedition Blast Door (East / Complex)" },
-    simultaneous_exposure_prevented: true
-  };
-}
 
 function canonicalObjectives(runOrExpedition) {
   const progress = runOrExpedition?.spatial_pack_id ? missionProjection(runOrExpedition) : null;
@@ -130,7 +97,7 @@ function presentation(run, phase, unfinished = null, world = null) {
   const coworkers = team.filter((member) => !member.controlled);
   const localCoworkers = coworkers.filter((member) => member.local_eligible);
   const radio = expedition?.equipment?.["survey-radio"];
-  const liveLayout = ["FIELD_OPERATION", "RETURN", "DEBRIEF"].includes(phase.phase_id);
+  const liveLayout = ["FIELD_OPERATION", "RETURN", "REPORT", "DEBRIEF"].includes(phase.phase_id);
   const safeStatus = run.session ? bootstrap.status(run) : {};
   const topologyDefinition = run.spatial ? bootstrap.topologyFor(run) : null;
   const operationalMap = run.spatial ? spatialRuntime.project(run.spatial, topologyDefinition, {
@@ -147,7 +114,7 @@ function presentation(run, phase, unfinished = null, world = null) {
   const inventory = run.spatial_pack_id ? logisticsRuntime.project(expedition, bootstrap.logisticsDefinitionFor(run.spatial_pack_id), playerId, { player: playerId, actor: playerId, team: expedition.team?.members ?? [], names: context.names, spatial: run.spatial, location: run.spatial?.player_location, at: expedition.clock?.interval ?? 0, phase: phase.phase_id, restrictions: institutional?.restrictions?.equipment ?? [] }) : null;
 const evidence = (expedition?.evidence ?? []).map((item) => ({ id: item.id, mission_id: mission?.id ?? null, type: item.type, capture_event: item.capture_event ?? "evidence.recorded", method: item.method ?? "field record", device: item.device ?? "field recording device", observer: (item.capturing_observer ?? item.creator) === playerId ? "YOU" : context.names[item.capturing_observer ?? item.creator] ?? "assigned personnel", source: item.source_name ?? item.target_alias ?? "observed field feature", condition: item.condition_summary ?? item.target_observation ?? "Condition recorded at capture", location: item.source_location_name ?? item.location?.alias ?? item.location ?? null, time: item.captured_at ?? { interval: item.interval ?? 0 }, provenance: item.provenance, storage: item.storage ?? "with field record", reporting_state: item.reporting_state ?? (item.available_to_standard ? "reported" : "unreported"), render: item.render ?? { status: "fallback-ready" }, visual: q4Visuals.mediaVisual(item), available_to_player: item.available_to_player !== false, available_to_standard: item.available_to_standard === true }));
   const archive = world?.q4_evidence_archive ? require("./q4-evidence-authority").archive(world, { observer: "player" }) : { records: [], contradictions: [] };
-  const facility = facilityContext(phase.phase_id, evidence.length > 0 && ["RETURN", "DEBRIEF"].includes(phase.phase_id));
+  const facility = facilityContext(phase.phase_id, evidence.length > 0 && ["RETURN", "REPORT", "DEBRIEF"].includes(phase.phase_id));
   const mapNames = Object.fromEntries((publicMap?.nodes ?? []).map((node) => [node.id, node.name]));
   const layout = {
     current: liveLayout ? `${safeStatus.view?.location?.alias ?? "Current location"}${(run.spatial?.route_markers ?? []).some((marker) => marker.location === run.spatial.player_location) ? ` · MARKER: ${(run.spatial.route_markers ?? []).filter((marker) => marker.location === run.spatial.player_location).map((marker) => marker.label).join(", ")}` : ""}` : "Prior survey boundary",
@@ -220,13 +187,14 @@ const evidence = (expedition?.evidence ?? []).map((item) => ({ id: item.id, miss
     phenomena,
     evidence,
     archive,
+    written_report: expedition.written_report ? { id:expedition.written_report.id, text:expedition.written_report.text, author:expedition.written_report.author === playerId ? "YOU" : context.names[expedition.written_report.author] ?? "assigned personnel", submitted_at:cloneUpdates(expedition.written_report.submitted_at), available_evidence_ids:cloneUpdates(expedition.written_report.available_evidence_ids), institutional_assessment:cloneUpdates(expedition.written_report.institutional_assessment) } : null,
     hazards: hazardView,
     operational_updates: cloneUpdates(run._last_operational_updates ?? expedition.operational?.recent_public_updates),
     visuals: q4Visuals.projection({ team: safeTeam, equipment: equip, evidence, channels, layout, review: phase.phase_id === "DEBRIEF" }),
     field_conditions: phase.phase_id === "FIELD_OPERATION" ? trajectories.publicState(expedition) : null,
     review: phase.phase_id === "DEBRIEF" ? continuity.review(world, mission?.id) : null,
     facility,
-    interlock: kv31Interlock(phase.phase_id, run.spatial?.player_location),
+    interlock: run.spatial?.interlock ?? null,
     operational_follow_up: (unfinished?.items ?? []).filter((item) => ["communication", "observation", "personnel", "report", "object"].includes(item.kind)),
     human_context: humanWorld.q4Context()
   };
@@ -241,7 +209,8 @@ function nextPhase(phase, { action, canonical_crossed = false, returned = false,
     THRESHOLD: action === "READY" ? "STANDARD_RADIO_CHECK" : legacy_flow && action === "CROSS" && canonical_crossed ? "STANDARD_RADIO_CHECK" : null,
     STANDARD_RADIO_CHECK: action === "CROSS" && canonical_crossed && radio_check_completed ? "FIELD_OPERATION" : legacy_flow && action === "BEGIN_FIELD_OPERATION" && radio_check_completed ? "FIELD_OPERATION" : null,
     FIELD_OPERATION: returned ? "RETURN" : null,
-    RETURN: returned ? "DEBRIEF" : null
+    RETURN: returned ? "DEBRIEF" : null,
+    REPORT: returned ? "DEBRIEF" : null
   };
   const next = table[current];
   return next ? phases.transition(phase, next, { reason: action ?? "q4-gameflow", guard: true }) : { ok: false, code: "PHASE_GUARD_REJECTED", phase };
