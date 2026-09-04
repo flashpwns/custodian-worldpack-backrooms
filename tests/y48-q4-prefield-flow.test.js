@@ -6,7 +6,7 @@ const path = require("node:path");
 const test = require("node:test");
 const { DesktopService } = require("../desktop/service");
 const surfaces = require("../desktop/renderer/surfaces");
-const { FACILITY_EVENT_TYPES, fieldExpedition, recordFacilityEvent, facilityOperationsProjection } = require("../tools/expedition");
+const { FACILITY_EVENT_TYPES, fieldExpedition, recordFacilityEvent, reconcileFacilityOperations, facilityOperationsProjection } = require("../tools/expedition");
 
 function fixture() {
   const service = new DesktopService({ appDataPath: fs.mkdtempSync(path.join(os.tmpdir(), "yb-q4-prefield-")) });
@@ -160,6 +160,12 @@ test("facility operations represent physical milestones only through explicit ca
   const projection = facilityOperationsProjection(expedition);
   assert.deepEqual(projection.events.map((item) => item.type), FACILITY_EVENT_TYPES);
   assert.deepEqual(projection.current, { threshold_crossing:"crossed", kv31_arrival:"arrived", standard_side_barrier:"secure", east_blast_door:"closed", field_release:"released" });
+
+  const migrated = fieldExpedition("migrated-player");
+  delete migrated.facility_operations;
+  reconcileFacilityOperations(migrated, { route_history:[{ sequence:4, connection_id:"threshold-crossing", at:7 }] });
+  assert.deepEqual(facilityOperationsProjection(migrated).events.map((item) => item.type), ["THRESHOLD_CROSSING"]);
+  assert.equal(facilityOperationsProjection(migrated).current.east_blast_door, null);
 });
 
 test("unified communications records LOCAL exchange without resolving a physical turn", () => {

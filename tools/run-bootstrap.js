@@ -3,7 +3,7 @@
 const fs = require("node:fs");
 const path = require("node:path");
 const { createSession, exportSession, restoreSession, stableSerialize, getAvailableSessionActions, submitSessionAction, inspectSessionObserver } = require("custodian");
-const { FIELD_SCENARIO, fieldExpedition, event, useEquipment, safeSummary, finalize, ensureFacilityOperations, recordFacilityEvent } = require("./expedition");
+const { FIELD_SCENARIO, fieldExpedition, event, useEquipment, safeSummary, finalize, ensureFacilityOperations, recordFacilityEvent, reconcileFacilityOperations } = require("./expedition");
 const procedural = require("./procedural-complex");
 const proceduralV2 = require("./procedural-complex-v2");
 const history = require("./world-history");
@@ -136,6 +136,7 @@ function newRun({ profile, seed, session, expedition, staffing = null, loadout =
     const definition = spatialDefinitionFor(run.spatial_pack_id);
     const context = spatialContext(run);
     run.spatial = spatialRuntime.migrate(run.spatial, definition, { ...context, phase });
+    reconcileFacilityOperations(run.expedition, run.spatial);
     const topology = topologyFor(run);
     environment.ensure(run.spatial, topology, run.seed);
     run.survey_frontier = surveyFrontier.migrate(run.survey_frontier, topology, { ...context, spatial: run.spatial, at: run.expedition.clock?.interval ?? 0 });
@@ -193,7 +194,7 @@ function normalizeRun(value) {
       environment.validateCurrent(value.spatial.environment, spatialDefinitionFor(value.spatial_pack_id));
       surveyFrontier.validateCurrent(value.survey_frontier, topology, { player, personnel });
     }
-    if (value.expedition) ensureFacilityOperations(value.expedition);
+    if (value.expedition) reconcileFacilityOperations(value.expedition, value.spatial);
     return value;
   }
   if (["yellow-beast-run@v8", "yellow-beast-run@v7", "yellow-beast-run@v6", "yellow-beast-run@v5", "yellow-beast-run@v4", "yellow-beast-run@v3", "yellow-beast-run@v2", "yellow-beast-run@v1"].includes(value?.version)) return newRun({ profile: value.profile_id, seed: value.seed, session: value.session, expedition: value.expedition, procedural_state: value.procedural, procedural_scenario: Boolean(value.procedural), spatial_state: value.spatial, object_state: value.object_state, survey_frontier: value.survey_frontier, spatial_pack_id: value.spatial_pack_id ?? null, world_id: value.world_id, run_id: value.run_id });
