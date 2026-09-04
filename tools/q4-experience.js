@@ -25,6 +25,7 @@ const personnelContinuity = require("./q4-personnel-continuity");
 const standardOperator = require("./q4-standard-operator");
 const environmentModel = require("./q4-environment");
 const outcomes = require("./q4-outcome-authority");
+const { facilityOperationsProjection } = require("./expedition");
 const cloneUpdates = (value) => structuredClone(value ?? []);
 
 const VERSION = "yellow-beast-clear-q4-experience@v3";
@@ -163,6 +164,7 @@ const evidence = (expedition?.evidence ?? []).map((item) => ({ id: item.id, miss
     operational_clock: operationalClock,
     check_in: checkIn,
     radio_check: { completed: radioState.check_completed, authorized: radioState.authorized, state: radioState.state },
+    facility_operations: facilityOperationsProjection(expedition),
     objectives: canonicalObjectives(run),
     mission_progress: missionProgress,
     player: player ? { name: String(player.display_name).replace(/ · YOU$/, ""), first_name: player.first_name, role: String(player.role ?? "").replace(/ · YOU$/, ""), clearance: player.clearance, condition: player.condition, assignment: player.assignment, visual: q4Visuals.personnelVisual(safePlayer) } : null,

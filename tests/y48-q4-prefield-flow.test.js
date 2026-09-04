@@ -6,6 +6,7 @@ const path = require("node:path");
 const test = require("node:test");
 const { DesktopService } = require("../desktop/service");
 const surfaces = require("../desktop/renderer/surfaces");
+const { FACILITY_EVENT_TYPES, fieldExpedition, recordFacilityEvent, facilityOperationsProjection } = require("../tools/expedition");
 
 function fixture() {
   const service = new DesktopService({ appDataPath: fs.mkdtempSync(path.join(os.tmpdir(), "yb-q4-prefield-")) });
@@ -108,6 +109,7 @@ test("fresh production completes Standard outside before one explicit Threshold 
   const complexSide = new Set(["threshold-side-entry", "utility-room", "columned-corridor", "open-passage", "lower-level-transition", "level-2-boundary", "relay-alcove", "records-annex", "service-bypass"]);
   assert.equal(entry.run.spatial.route_history.some((item) => item.connection_id === "threshold-crossing"), false);
   assert.equal(entry.run.spatial.visited_locations.some((id) => complexSide.has(id)), false);
+  assert.deepEqual(result.projection.q4.facility_operations.current, { threshold_crossing:null, kv31_arrival:null, standard_side_barrier:null, east_blast_door:null, field_release:null });
 
   const statement = "Standard, Clear-Q4 team accounted for outside the Threshold. Radio check.";
   const checked = service.submitQ4Communication({ world_id: world.id, channel: "standard", text: statement });
@@ -136,11 +138,28 @@ test("fresh production completes Standard outside before one explicit Threshold 
   entry = restarted.session(world.id, "field-researcher");
   assert.equal(entry.run.spatial.route_history.filter((item) => item.connection_id === "threshold-crossing").length, 1);
   assert.equal(entry.run.spatial.route_history.filter((item) => item.connection_id === "entry-to-utility").length, 1);
+  assert.deepEqual(crossed.projection.q4.facility_operations.events.map((item) => item.type), ["THRESHOLD_CROSSING"]);
+  assert.equal(crossed.projection.q4.facility_operations.current.threshold_crossing, "crossed");
+  assert.equal(crossed.projection.q4.facility_operations.current.east_blast_door, null);
   assert.ok(entry.run.spatial.visited_locations.includes("threshold-side-entry"));
   assert.ok(entry.run.spatial.visited_locations.includes("utility-room"));
   assert.ok(Object.values(entry.run.spatial.personnel_locations).every((location) => location === "utility-room"));
   assert.equal(restarted.submitAction({ world_id: world.id, mode: "field-researcher", action: "CROSS" }).error.code, "PHASE_GUARD_REJECTED");
   assert.equal(entry.run.spatial.route_history.filter((item) => item.connection_id === "threshold-crossing").length, 1);
+  assert.equal(entry.run.expedition.facility_operations.events.length, 1);
+  restarted.shutdown();
+  const resumedAfterCrossing = new DesktopService({ appDataPath: service.paths.root }).resumeSession({ world_id:world.id, mode:"field-researcher" });
+  assert.deepEqual(resumedAfterCrossing.projection.q4.facility_operations.events.map((item) => item.type), ["THRESHOLD_CROSSING"]);
+});
+
+test("facility operations represent physical milestones only through explicit canonical events", () => {
+  const expedition = fieldExpedition("player-one");
+  assert.deepEqual(facilityOperationsProjection(expedition).current, { threshold_crossing:null, kv31_arrival:null, standard_side_barrier:null, east_blast_door:null, field_release:null });
+  for (const [index, type] of FACILITY_EVENT_TYPES.entries()) recordFacilityEvent(expedition, type, { at:{ interval:index }, source:"fixture-canonical-operation", source_ref:`fixture:${type}` });
+  recordFacilityEvent(expedition, "THRESHOLD_CROSSING", { source_ref:"fixture:THRESHOLD_CROSSING" });
+  const projection = facilityOperationsProjection(expedition);
+  assert.deepEqual(projection.events.map((item) => item.type), FACILITY_EVENT_TYPES);
+  assert.deepEqual(projection.current, { threshold_crossing:"crossed", kv31_arrival:"arrived", standard_side_barrier:"secure", east_blast_door:"closed", field_release:"released" });
 });
 
 test("unified communications records LOCAL exchange without resolving a physical turn", () => {

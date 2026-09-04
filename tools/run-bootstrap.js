@@ -3,7 +3,7 @@
 const fs = require("node:fs");
 const path = require("node:path");
 const { createSession, exportSession, restoreSession, stableSerialize, getAvailableSessionActions, submitSessionAction, inspectSessionObserver } = require("custodian");
-const { FIELD_SCENARIO, fieldExpedition, event, useEquipment, safeSummary, finalize } = require("./expedition");
+const { FIELD_SCENARIO, fieldExpedition, event, useEquipment, safeSummary, finalize, ensureFacilityOperations, recordFacilityEvent } = require("./expedition");
 const procedural = require("./procedural-complex");
 const proceduralV2 = require("./procedural-complex-v2");
 const history = require("./world-history");
@@ -129,6 +129,7 @@ function newRun({ profile, seed, session, expedition, staffing = null, loadout =
   const staffingRules = spatial_pack_id ? dynamicsDefinitionFor(spatial_pack_id).staffing : {};
   const run = { version: "yellow-beast-run@v9", profile_id: profile, profile_title: profileRecord.title, scenario: procedural_scenario ? "async-clear-q4-procedural-survey" : session.scenario.id, seed, session, lifecycle: "active", checklist: { moved: false, inspected: false, used: false }, aliases: {}, expedition: expedition ?? (profile === FIELD_PROFILE ? fieldExpedition(player, staffing, loadout, mission, seed, staffingRules) : null), procedural: procedural_scenario ? (procedural_state ?? procedural.initialize({ seed, observer: player })) : null, spatial_pack_id: profile === FIELD_PROFILE ? spatial_pack_id : null, spatial: spatial_state, object_state, survey_frontier, interpretation_state, world_id, run_id, _world: world };
   if (run.spatial_pack_id) {
+    ensureFacilityOperations(run.expedition);
     const logisticsDefinition = logisticsDefinitionFor(run.spatial_pack_id);
     logisticsRuntime.migrate(run.expedition, logisticsDefinition, { player, team: run.expedition.team?.members ?? [], location: run.spatial?.player_location ?? logisticsDefinition.containers.find((item) => item.kind === "staging")?.location ?? null, at: run.expedition.clock?.interval ?? 0 });
     if (world) institutionalRuntime.ensure(world, institutionalDefinitionFor(run.spatial_pack_id));
@@ -192,6 +193,7 @@ function normalizeRun(value) {
       environment.validateCurrent(value.spatial.environment, spatialDefinitionFor(value.spatial_pack_id));
       surveyFrontier.validateCurrent(value.survey_frontier, topology, { player, personnel });
     }
+    if (value.expedition) ensureFacilityOperations(value.expedition);
     return value;
   }
   if (["yellow-beast-run@v8", "yellow-beast-run@v7", "yellow-beast-run@v6", "yellow-beast-run@v5", "yellow-beast-run@v4", "yellow-beast-run@v3", "yellow-beast-run@v2", "yellow-beast-run@v1"].includes(value?.version)) return newRun({ profile: value.profile_id, seed: value.seed, session: value.session, expedition: value.expedition, procedural_state: value.procedural, procedural_scenario: Boolean(value.procedural), spatial_state: value.spatial, object_state: value.object_state, survey_frontier: value.survey_frontier, spatial_pack_id: value.spatial_pack_id ?? null, world_id: value.world_id, run_id: value.run_id });
@@ -620,6 +622,8 @@ function crossThreshold(runValue, { require_radio_check = true } = {}) {
   run.spatial.authorizations["radio-check-complete"] = q4Radio.read(run.expedition).check_completed;
   const moved = spatialRuntime.move(run.spatial, spatialDefinitionFor(run.spatial_pack_id), "threshold-crossing", spatialContext(run));
   if (!moved.ok) return { ok: false, error: { code: moved.code }, result: { public_reason: moved.reason }, run };
+  const route = run.spatial.route_history.at(-1);
+  recordFacilityEvent(run.expedition, "THRESHOLD_CROSSING", { at:{ interval:run.expedition.clock?.interval ?? 0, spatial_time:route?.at ?? run.spatial.time ?? 0 }, source:"canonical-spatial-traversal", source_ref:`threshold-crossing:${route?.sequence ?? 1}` });
   return { ...result, result: { ...(result.result ?? {}), public_reason: moved.narration }, spatial: { from: moved.from, to: moved.to, connection: moved.connection_id }, run };
 }
 function saveRun(runValue) { const run = normalizeRun(runValue); return { version: "yellow-beast-save@v9", profile_id: run.profile_id, profile_title: run.profile_title, scenario: run.scenario, seed: run.seed, lifecycle: run.lifecycle, checklist: clone(run.checklist), aliases: clone(run.aliases), expedition: clone(run.expedition), procedural: clone(run.procedural), spatial_pack_id: run.spatial_pack_id, spatial: clone(run.spatial), object_state: clone(run.object_state), survey_frontier: clone(run.survey_frontier), interpretation_state: clone(run.interpretation_state), world_id: run.world_id, run_id: run.run_id, envelope: exportSession(run.session).envelope }; }
