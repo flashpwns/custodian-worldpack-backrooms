@@ -48,7 +48,7 @@ function sanitizePlayerMessage(text) {
     .replace(/Language assistance needs an access key\.\s*Your world is safe;\s*you can continue offline\./gi, "Field terminal operating under local offline protocol. Operational record intact.")
     .replace(/Deterministic response:\s*/gi, "")
     .trim();
-  if (/^Language assistance/i.test(clean) || /PROVIDER_UNAVAILABLE/i.test(clean) || /PROVIDER FAILURE/i.test(clean)) {
+  if (/^Language assistance/i.test(clean) || /PROVIDER_UNAVAILABLE/i.test(clean) || /PROVIDER[ _]FAILURE/i.test(clean)) {
     clean = "Field terminal operating under local offline protocol. Operational record intact.";
   }
   return clean;
@@ -183,7 +183,7 @@ function play(message = "", state = "") {
   const actionDock = `<footer class="eti-turn-controls">${prefieldAction}${natural}${hideStructured ? "" : structured}</footer>`;
   const q4Shell = projection.mode.id === "field-researcher";
   const phaseRecord = YBSurfaces.render(projection);
-  const providerLabel = projection.scene?.narration_source === "hosted-model" ? "OBSERVER-SAFE RECORD" : projection.scene?.narration_source === "provider-failure" ? "OFFLINE INSTITUTIONAL RECORD" : "DETERMINISTIC FIELD RECORD";
+  const providerLabel = "CURRENT FIELD RECORD";
   // The operational chassis mounts async-operations-layout via YBSurfaces.expeditionCockpit
   const core = q4Shell
     ? (isReport

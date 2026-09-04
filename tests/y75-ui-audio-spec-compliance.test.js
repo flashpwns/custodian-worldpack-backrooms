@@ -81,7 +81,11 @@ test("UI Spec Compliance: Forbidden terms cause failure and frozen vocabulary is
     /LIVE HOSTED AI/,
     /Abandon expedition/,
     /Leave session/,
-    /MODEL INTERPRETATION/
+    /MODEL INTERPRETATION/,
+    /PROVIDER FAILURE/,
+    /DETERMINISTIC FIELD RECORD/,
+    /OBSERVER-SAFE PRESENTATION/,
+    /OBSERVER-SAFE RECORD/
   ];
 
   for (const pattern of forbiddenPatterns) {

@@ -122,3 +122,35 @@ test("Y77-INV-7: Packaging dependencies complete in tools/build-desktop.js", () 
     assert.ok(buildSource.includes(dep), `tools/build-desktop.js must include ${dep}`);
   }
 });
+
+test("Y77-INV-8: Expedition-facing markup rejects inference provenance and implementation labels", () => {
+  const surfaces = require("../desktop/renderer/surfaces");
+  const rendererSource = fs.readFileSync(path.join(REPO_ROOT, "desktop/renderer/renderer.js"), "utf8");
+  const surfacesSource = fs.readFileSync(path.join(REPO_ROOT, "desktop/renderer/surfaces.js"), "utf8");
+
+  const forbiddenExpeditionLabels = [
+    /LIVE HOSTED AI/,
+    /PROVIDER FAILURE/,
+    /DETERMINISTIC FIELD RECORD/,
+    /OBSERVER-SAFE PRESENTATION/,
+    /OBSERVER-SAFE RECORD/
+  ];
+
+  for (const pattern of forbiddenExpeditionLabels) {
+    assert.doesNotMatch(rendererSource, pattern, `renderer.js must not contain ${pattern}`);
+    assert.doesNotMatch(surfacesSource, pattern, `surfaces.js must not contain ${pattern}`);
+  }
+
+  const mockProjection = {
+    mode: { id: "field-researcher" },
+    phase: { phase_id: "FIELD_OPERATION" },
+    q4: { current_location: { name: "Utility Room" }, team: [], evidence: [] },
+    scene: { narration: "Floor tiles and dim light.", narration_source: "hosted-model" },
+    available_actions: []
+  };
+  const html = surfaces.expeditionCockpit(mockProjection, {});
+  assert.match(html, /CURRENT FIELD RECORD/);
+  for (const pattern of forbiddenExpeditionLabels) {
+    assert.doesNotMatch(html, pattern, `Rendered cockpit must not contain ${pattern}`);
+  }
+});
