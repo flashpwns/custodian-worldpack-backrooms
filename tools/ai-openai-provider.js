@@ -35,10 +35,10 @@ function createOpenAIProvider({ apiKey = process.env.OPENAI_API_KEY, model = pro
       response = await sdk.responses.create({ model, store:false, instructions, input:JSON.stringify(payload), text:{ format } });
       if (typeof response?.output_text !== "string") throw new Error("OpenAI response had no text output");
       const parsed = JSON.parse(response.output_text);
-      report({ ...common, status:"completed", response_received:true, response_parsed:true, response_id_sha256:typeof response.id === "string" ? crypto.createHash("sha256").update(response.id).digest("hex") : null, duration_ms:Date.now()-startedAt });
+      report({ ...common, status:"completed", response_received:true, response_parsed:true, provider_request_id:safeErrorField(response?._request_id), response_id_sha256:typeof response.id === "string" ? crypto.createHash("sha256").update(response.id).digest("hex") : null, duration_ms:Date.now()-startedAt });
       return parsed;
     } catch (error) {
-      report({ ...common, status:"failed", response_received:Boolean(response), response_parsed:false, response_id_sha256:typeof response?.id === "string" ? crypto.createHash("sha256").update(response.id).digest("hex") : null, error_type:safeErrorField(error?.name) ?? "Error", error_status:Number.isInteger(error?.status) ? error.status : null, error_code:safeErrorField(error?.code ?? error?.error?.code), error_param:safeErrorField(error?.param ?? error?.error?.param), duration_ms:Date.now()-startedAt });
+      report({ ...common, status:"failed", response_received:Boolean(response), response_parsed:false, provider_request_id:safeErrorField(error?.request_id ?? error?.headers?.["x-request-id"]), response_id_sha256:typeof response?.id === "string" ? crypto.createHash("sha256").update(response.id).digest("hex") : null, error_type:safeErrorField(error?.name) ?? "Error", error_status:Number.isInteger(error?.status) ? error.status : null, error_code:safeErrorField(error?.code ?? error?.error?.code), error_param:safeErrorField(error?.param ?? error?.error?.param), duration_ms:Date.now()-startedAt });
       throw error;
     }
   }

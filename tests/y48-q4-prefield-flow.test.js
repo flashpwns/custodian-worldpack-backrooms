@@ -34,7 +34,7 @@ test("personnel creation persists a confirmation gate before assignment briefing
 test("one preparation surface preserves canonical pre-field transitions without repeated dashboards", () => {
   const { service, world } = fixture();
   const started = start(service, world);
-  let html = surfaces.render(started.projection);
+  let html = surfaces.expeditionCockpit(started.projection);
   assert.match(html, /q4-preparation-surface/);
   assert.match(html, /OPERATIONAL PREPARATION/);
   assert.match(html, /Continue to Staging/);
@@ -43,7 +43,7 @@ test("one preparation surface preserves canonical pre-field transitions without 
   assert.doesNotMatch(html, /local-comms|standard-comms|Deploy to radio readiness/);
   assert.match(html, /data-radio-state="unavailable">LINK UNAVAILABLE/);
   assert.doesNotMatch(html, /What do you do\?|Nothing notable changes|natural-form|Structured controls/);
-  html = surfaces.render(advance(service, world, "READY").projection);
+  html = surfaces.expeditionCockpit(advance(service, world, "READY").projection);
   assert.match(html, /q4-preparation-surface/);
   assert.match(html, /deliberately depart Equipment Staging/);
   assert.match(html, /data-testid="select-store-route-marker-kit"/);
@@ -148,7 +148,7 @@ test("unified communications records LOCAL exchange without resolving a physical
   const peer = started.projection.q4.team.find((member) => !member.controlled);
   const result = service.submitQ4Communication({ world_id: world.id, channel: "local", target: peer.first_name, text: `Good morning, ${peer.first_name}.` });
   assert.equal(result.ok, true);
-  const html = surfaces.render(result.projection);
+  const html = surfaces.expeditionCockpit(result.projection);
   assert.match(html, new RegExp(`Good morning, ${peer.first_name}\\.`));
   assert.match(html, new RegExp(`${peer.first_name}:`));
   assert.match(html, /DELIVERED|HEARD/i);

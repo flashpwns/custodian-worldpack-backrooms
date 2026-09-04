@@ -33,8 +33,9 @@ test("briefing LOCAL availability agrees with physically present team status", (
   assert.equal(projection.q4.channels.local.available, true);
   assert.equal(projection.q4.channels.local.target, teammate.first_name);
   assert.equal(projection.q4.channels.local.unavailable_reason, null);
-  assert.match(surfaces.render(projection), /COMMUNICATIONS/);
-  assert.doesNotMatch(surfaces.render(projection), /No personnel are within speaking range/);
+  const html = surfaces.expeditionCockpit(projection);
+  assert.match(html, /STANDARD \/\/ LOCAL/);
+  assert.doesNotMatch(html, /No personnel are within speaking range/);
 });
 
 test("briefing presentation uses institutional prose and hides constitutional labels", () => {
@@ -70,7 +71,7 @@ test("ordinary header uses short mission ID and phase-specific briefing next ste
   const renderer = fs.readFileSync(path.join(__dirname, "../desktop/renderer/renderer.js"), "utf8");
   const { projection } = fixture("header-clarity");
   assert.match(renderer, /shortMissionId/);
-  assert.match(renderer, /MISSION \$\{escape\(shortMissionId\(mission\)\)\}/);
+  assert.match(renderer, /Expedition Tracing Interface · \$\{escape\(shortMissionId\(mission\)\)\}/);
   assert.equal(projection.available_actions[0].type, "READY");
   assert.match(surfaces.render(projection), /Inspect the work order and assigned team, then continue to Equipment Staging/);
   assert.doesNotMatch(renderer, /MISSION \$\{escape\(mission\.id/);

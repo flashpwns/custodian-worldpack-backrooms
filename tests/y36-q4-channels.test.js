@@ -23,13 +23,13 @@ function reachField(service, world) {
 test("Clear-Q4 exposes dominant ACTION plus LOCAL and STANDARD lanes", () => {
   const { service, world } = fixture();
   const briefing = service.getGameplayProjection({ world_id: world.id, mode: "field-researcher" }).projection;
-  const briefingHtml = surfaces.render(briefing);
+  const briefingHtml = surfaces.expeditionCockpit(briefing);
   assert.equal(briefing.phase.phase_id, "BRIEFING");
   assert.match(briefingHtml, /data-testid="q4-communications"/);
   assert.match(briefingHtml, /data-testid="q4-channel"/);
   assert.match(fs.readFileSync(path.join(__dirname, "../desktop/renderer/renderer.js"), "utf8"), /data-testid="natural-primary"/); // ACTION remains the primary composer.
   const field = reachField(service, world);
-  const fieldHtml = surfaces.render(field);
+  const fieldHtml = surfaces.expeditionCockpit(field);
   assert.match(fieldHtml, /data-testid="q4-communications"/);
   assert.match(fieldHtml, /LOCAL/);
   assert.match(fieldHtml, /STANDARD/);

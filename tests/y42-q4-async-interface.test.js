@@ -29,16 +29,17 @@ test("boot and title/access surfaces identify the institutional ASYNC field syst
 
 test("Clear-Q4 retains the fixed operational information order", () => {
   const { projection } = fixture();
-  const html = surfaces.render(projection);
+  const html = surfaces.expeditionCockpit(projection);
   const renderer = fs.readFileSync(path.join(__dirname, "../desktop/renderer/renderer.js"), "utf8");
   const css = fs.readFileSync(path.join(__dirname, "../desktop/renderer/styles.css"), "utf8");
   assert.match(renderer, /async-system-header/);
-  assert.match(renderer, /async-operations-layout/);
-  assert.match(renderer, /compactLayout/);
+  assert.match(renderer, /expeditionCockpit/);
+  assert.match(html, /data-testid="async-operations-layout"/);
   assert.match(html, /data-testid="q4-communications"/);
   assert.match(html, /data-testid="q4-channel"/);
-  assert.match(css, /grid-template-columns:minmax\(0,1fr\) 310px/);
-  assert.match(css, /operations-shell[^}]*overflow:hidden/);
+  assert.match(css, /eti-cockpit\{[^}]*grid-template-columns:minmax\(245px,19%\).*minmax\(300px,24%\)/);
+  assert.match(css, /eti-shell\{[^}]*overflow:hidden/);
+  assert.equal((html.match(/data-testid="q4-communications"/g) ?? []).length, 1);
   assert.ok(projection.q4.mission_record.id);
   assert.match(projection.q4.operational_time, /^T\+/);
   assert.ok(projection.q4.player.name);
@@ -48,11 +49,11 @@ test("Clear-Q4 retains the fixed operational information order", () => {
 
 test("briefing, equipment, radio, personnel, and map surfaces remain observer-safe", () => {
   const { service, world, projection } = fixture("interface-surfaces");
-  const html = surfaces.render(projection);
+  const html = surfaces.expeditionCockpit(projection);
   assert.match(html, /WORK ORDER/);
   assert.match(html, /Authorized field kit/);
-  assert.match(html, /Immediate team condition/);
-  assert.match(html, /COMMUNICATIONS/);
+  assert.match(html, /Team status/);
+  assert.match(html, /STANDARD \/\/ LOCAL/);
   assert.match(html, /STANDARD/);
   assert.doesNotMatch(html, /charges|durability|rarity|HP/);
   assert.doesNotMatch(JSON.stringify(projection), /hidden_trajectory|latent_condition|X_FACTOR|ESCALATION LEVEL/i);

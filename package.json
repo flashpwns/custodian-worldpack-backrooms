@@ -44,7 +44,7 @@
     "entity-report": "node tools/entity-report.js",
     "institution-report": "node tools/institution-report.js",
     "gameplay-report": "node tools/gameplay-report.js",
-    "desktop:dev": "electron desktop/main.js",
+    "desktop:dev": "node tools/write-build-info.js && electron desktop/main.js",
     "desktop:build": "node tools/build-desktop.js",
     "desktop:package": "npm run desktop:build",
     "desktop:verify": "node tools/verify-desktop-artifact.js",
@@ -123,7 +123,7 @@
     "electron-builder": "^26.15.3"
   },
   "dependencies": {
-    "custodian": "github:flashpwns/custodian#b3738da433c78ee4bdb341114933b36a379bd6a4",
+    "custodian": "github:flashpwns/custodian#0713ad75cedfdc9253ea54e5a97f6cc29186ff52",
     "openai": "^7.1.0"
   },
   "build": {

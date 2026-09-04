@@ -16,7 +16,9 @@ const { resolveModeAttempt } = require("../tools/mode-attempt-resolution");
 const { createOpenAIProvider } = require("../tools/ai-openai-provider");
 const { createMockProvider } = require("../tools/ai-mock-provider");
 const { createLivingProvider } = require("../tools/ai-living-provider");
-const { executeLivingTurn } = require("../tools/ai-living-turn");
+const { VERSION: LIVING_TURN_VERSION } = require("../tools/ai-living-turn");
+const { createCustodianAIHostAdapter } = require("../tools/custodian-ai-host-adapter");
+const { runAIGameTurn } = require("custodian");
 const { buildLocalDialoguePacket, validateLocalDialogue } = require("../tools/ai-local-dialogue");
 const referenceExpedition = require("../tools/reference-expedition");
 const { buildSafeScene, fallbackNarration } = require("../tools/scene-presentation");
@@ -75,7 +77,19 @@ const DEFAULT_SETTINGS = Object.freeze({ version: 5, input_mode: "structured", p
 // Non-Q4 language is deliberately a small phrase-to-existing-control adapter.
 // It cannot invent a target or capability: recognised phrases only select an
 // action already available in the active, observer-safe session.
-function publicError(code, message) { return { ok: false, error: { code, message } }; }
+function publicError(code, message, details = null) { return { ok: false, error: { code, message, ...(details && typeof details === "object" ? details : {}) } }; }
+function providerFailure(error, { provider = "openai", model = null, request_id = null, phase = null } = {}) {
+  const status = Number.isInteger(error?.status) ? error.status : null;
+  const providerCode = typeof (error?.code ?? error?.error?.code) === "string" ? String(error?.code ?? error?.error?.code).slice(0, 80) : null;
+  const providerRequestId = typeof (error?.request_id ?? error?.headers?.["x-request-id"]) === "string" ? String(error?.request_id ?? error?.headers?.["x-request-id"]).slice(0, 120) : null;
+  const detail = String(error?.message ?? "The provider request failed.").replace(/[\r\n]+/g, " ").replace(/\s+/g, " ").trim().slice(0, 500);
+  const code = status === 429 || providerCode === "insufficient_quota" ? "PROVIDER_RATE_LIMITED" : status === 401 || status === 403 ? "PROVIDER_AUTHORIZATION_FAILED" : "PROVIDER_UNAVAILABLE";
+  const label = provider === "openai" ? "OpenAI" : String(provider || "AI provider");
+  return { code, message:`${label} request failed${status ? ` (HTTP ${status})` : ""}: ${detail}`, provider, model, request_id, provider_request_id:providerRequestId, phase, http_status:status, provider_code:providerCode };
+}
+function providerErrorResult(failure, projection, { executed = false } = {}) {
+  return { ok:false, error:{ ...failure }, result:{ provider_unavailable:true, provider_error:{ ...failure }, executed }, projection };
+}
 function safeId(value) { return typeof value === "string" && /^[a-z0-9][a-z0-9_-]{0,100}$/i.test(value); }
 function friendlyName(value) { return typeof value === "string" && value.trim().length > 0 && value.trim().length <= 80; }
 function ensureDirectory(directory) { fs.mkdirSync(directory, { recursive: true }); }
@@ -252,9 +266,9 @@ class DesktopService {
     } catch { return publicError("BACKUP_RESTORE_FAILED", "The previous save could not be restored safely."); }
   }
   exportBrokenWorld({ world_id, destination }) { try { const source = this.worldFile(world_id); if (!destination || !path.isAbsolute(destination) || !fs.existsSync(source)) return publicError("EXPORT_DESTINATION_INVALID", "Choose a destination for this world file."); fs.copyFileSync(source, destination); return { ok: true, file: destination }; } catch { return publicError("EXPORT_FAILED", "The world file could not be copied."); } }
-  getDiagnostics() { const status = this.getProviderStatus().provider; const hosted = this.interpretationProvenance.filter((record) => record.provider === "openai" && record.provider_invoked).at(-1); return { ok: true, diagnostics: { app_version: packageVersion, platform: process.platform, provider: status.selected, provider_status: status.offline ? "offline" : status.openai.status, hosted_ai:hosted ? { request_id:hosted.request_id, request_kind:hosted.request_kind, invocation_status:hosted.invocation_status, hosted_request:hosted.hosted_request === true, response_received:hosted.response_received === true, response_parsed:hosted.response_parsed === true, model:hosted.model, duration_ms:hosted.duration_ms, error_type:hosted.error_type ?? null, error_status:hosted.error_status ?? null, error_code:hosted.error_code ?? null, error_param:hosted.error_param ?? null } : { invocation_status:"not-observed", hosted_request:false, response_received:false, response_parsed:false }, evidence_media:{ pipeline_version:evidenceMedia.PIPELINE_VERSION, provider_mode:status.evidence_media.selected, provider_available:status.evidence_media.available, fallback:status.evidence_media.fallback }, environment:{ version:environment.VERSION, config_version:environment.CONFIG_VERSION, authority:"canonical-spatial-snapshot" }, save_directory: "managed application data", credentials_configured: status.openai.configured, save_schema_version: SAVE_SCHEMA_VERSION, telemetry: "disabled", offline_gameplay: true } }; }
+  getDiagnostics() { const status = this.getProviderStatus().provider; const hosted = this.interpretationProvenance.filter((record) => record.provider === "openai" && record.provider_invoked).at(-1); return { ok: true, diagnostics: { app_version: packageVersion, build:buildInfo.read(), platform: process.platform, provider: status.selected, provider_status: status.offline ? "offline" : status.openai.status, hosted_ai:hosted ? { request_id:hosted.request_id, provider_request_id:hosted.provider_request_id ?? null, request_kind:hosted.request_kind, invocation_status:hosted.invocation_status, hosted_request:hosted.hosted_request === true, response_received:hosted.response_received === true, response_parsed:hosted.response_parsed === true, model:hosted.model, duration_ms:hosted.duration_ms, error_type:hosted.error_type ?? null, error_status:hosted.error_status ?? null, error_code:hosted.error_code ?? null, error_param:hosted.error_param ?? null } : { invocation_status:"not-observed", hosted_request:false, response_received:false, response_parsed:false }, hosted_invocations:clone(this.interpretationProvenance.filter((record) => record.provider === "openai" && record.provider_invoked).slice(-20)), evidence_media:{ pipeline_version:evidenceMedia.PIPELINE_VERSION, provider_mode:status.evidence_media.selected, provider_available:status.evidence_media.available, fallback:status.evidence_media.fallback }, environment:{ version:environment.VERSION, config_version:environment.CONFIG_VERSION, authority:"canonical-spatial-snapshot" }, save_directory: "managed application data", credentials_configured: status.openai.configured, save_schema_version: SAVE_SCHEMA_VERSION, telemetry: "disabled", offline_gameplay: true } }; }
   sanitizedLogTail() { const file = path.join(this.paths.logs, "desktop.log"); try { return fs.readFileSync(file, "utf8").split(/\r?\n/).filter(Boolean).slice(-40).map((line) => redactDiagnostic(line)); } catch { return []; } }
-  exportTesterReport({ world_id, mode = "field-researcher", note = null } = {}) { try { const world = this.getWorld(world_id); const loaded = this.loadSession(world, mode); const entry = this.session(world_id, mode) ?? loaded.entry ?? null; const projection = entry ? this.projectionFor(world, mode, entry) : null; const provider = this.getProviderStatus().provider; const render_diagnostics = evidenceAuthority.archive(world, { observer:"player" }).records.map((record) => ({ evidence_id:record.id, request_id:record.render_presentation?.request_id ?? null, status:record.render_status, last_error:record.render_presentation?.last_error ?? null, artifact_reference:record.render_presentation?.artifact?.relative_path ?? null, seed:record.render_presentation?.seed ?? null, model:record.render_presentation?.provider_model ?? null, pipeline_version:record.render_presentation?.pipeline_version ?? null })); const environment_diagnostics = environment.diagnostics(world.q4_geography?.environment, entry?.run?.spatial?.player_location ?? null); const phenomenon_diagnostics=phenomenonEcology.diagnostics(world); const recent_public_events=developerInspection.recentHistory(world).filter((item)=>!String(item.type).startsWith("q4.phenomenon.")); const input = { world, session: projection, provider: { selected: provider.selected, offline: provider.offline, configured: provider.openai.configured, status: provider.offline ? "offline" : provider.openai.status, evidence_media:provider.evidence_media }, interpretation_provenance: this.interpretationProvenance, doctrine: { source: doctrineRuntime.SOURCE, sha256: doctrineRuntime.read().sha256, priority: "constitutional" }, render_diagnostics, environment_diagnostics, phenomenon_diagnostics, note, save_schema_version: SAVE_SCHEMA_VERSION, recent_public_events, logs: this.sanitizedLogTail(), recovery: { world: this.recoveryStatus(world_id, "world"), session: this.recoveryStatus(world_id, mode) } }; const safeInput = redactDiagnostic(input); const report = q4BetaReport.report(safeInput); const file = q4BetaReport.writeReport(this.paths.logs, safeInput); return { ok: true, file, report }; } catch { return publicError("TESTER_REPORT_FAILED", "The diagnostic record could not be exported safely."); } }
+  exportTesterReport({ world_id, mode = "field-researcher", note = null } = {}) { try { const world = this.getWorld(world_id); const loaded = this.loadSession(world, mode); const entry = this.session(world_id, mode) ?? loaded.entry ?? null; const projection = entry ? this.projectionFor(world, mode, entry) : null; const provider = this.getProviderStatus().provider; const render_diagnostics = evidenceAuthority.archive(world, { observer:"player" }).records.map((record) => ({ evidence_id:record.id, request_id:record.render_presentation?.request_id ?? null, status:record.render_status, last_error:record.render_presentation?.last_error ?? null, artifact_reference:record.render_presentation?.artifact?.relative_path ?? null, seed:record.render_presentation?.seed ?? null, model:record.render_presentation?.provider_model ?? null, pipeline_version:record.render_presentation?.pipeline_version ?? null })); const environment_diagnostics = environment.diagnostics(world.q4_geography?.environment, entry?.run?.spatial?.player_location ?? null); const phenomenon_diagnostics=phenomenonEcology.diagnostics(world); const recent_public_events=developerInspection.recentHistory(world).filter((item)=>!String(item.type).startsWith("q4.phenomenon.")); const input = { world, session: projection, build:buildInfo.read(), provider: { selected: provider.selected, offline: provider.offline, configured: provider.openai.configured, status: provider.offline ? "offline" : provider.openai.status, evidence_media:provider.evidence_media }, interpretation_provenance: this.interpretationProvenance, doctrine: { source: doctrineRuntime.SOURCE, sha256: doctrineRuntime.read().sha256, priority: "constitutional" }, render_diagnostics, environment_diagnostics, phenomenon_diagnostics, note, save_schema_version: SAVE_SCHEMA_VERSION, recent_public_events, logs: this.sanitizedLogTail(), recovery: { world: this.recoveryStatus(world_id, "world"), session: this.recoveryStatus(world_id, mode) } }; const safeInput = redactDiagnostic(input); const report = q4BetaReport.report(safeInput); const file = q4BetaReport.writeReport(this.paths.logs, safeInput); return { ok: true, file, report }; } catch { return publicError("TESTER_REPORT_FAILED", "The diagnostic record could not be exported safely."); } }
   serializeSession(world, mode, entry) { const phase = entry.phase ?? phases.createPhase({ mode, guided: this.settings().guided_introductions !== false }); if (entry.kind === "bootstrap") return { version: 7, schema: SAVE_SCHEMA_VERSION, mode, kind: entry.kind, legacy_flow: entry.legacy_flow === true, phase, payload: bootstrap.saveRun(entry.run) }; if (entry.kind === "lost") return { version: 7, schema: SAVE_SCHEMA_VERSION, mode, kind: entry.kind, phase, payload: clone(entry.run) }; return { version: 7, schema: SAVE_SCHEMA_VERSION, mode, kind: entry.kind, phase, payload: clone(entry) }; }
   validateSessionSave(saved, mode) { if (!saved || typeof saved !== "object") return "SESSION_SAVE_DAMAGED"; if (saved.mode !== mode) return "SESSION_MODE_INVALID"; if (![1, 2, 3, 4, 5, 6, 7].includes(saved.version ?? 1)) return "SESSION_VERSION_UNSUPPORTED"; if (saved.version === 7 && saved.schema !== SAVE_SCHEMA_VERSION) return "SESSION_SCHEMA_UNSUPPORTED"; if (!["bootstrap", "lost", "nullzone", "beck"].includes(saved.kind)) return "SESSION_SAVE_DAMAGED"; if (saved.phase?.mode_id && saved.phase.mode_id !== mode) return "SESSION_SAVE_DAMAGED"; if (saved.kind === "bootstrap" && currentClearQ4(saved.payload) && (!hasCurrentEnvironment(saved.payload) || !bootstrap.resumeRun(saved.payload).ok)) return "SESSION_SAVE_DAMAGED"; try { if (saved.phase?.phase_id) phases.validate(mode, saved.phase.phase_id); } catch { return "SESSION_SAVE_DAMAGED"; } return null; }
   restoreSession(world, mode, saved, { allowUnmarked = true } = {}) { if (this.validateSessionSave(saved, mode) || !persistencePairMatches(world, saved, { mode, allowUnmarked })) return null; const phase = saved.phase ?? phases.createPhase({ mode, guided: this.settings().guided_introductions !== false }); if (saved.kind === "bootstrap") { const current = saved.payload?.version === "yellow-beast-save@v9"; if (currentClearQ4(saved.payload) && !hasCurrentStandardOperator(world)) return null; const hadSpatialState = Boolean(saved.payload?.spatial); const hadRadioState = Boolean(saved.payload?.expedition?.radio); const hadOperationalState = Boolean(saved.payload?.expedition?.operational); const restored = bootstrap.resumeRun(saved.payload, { world, spatial_worldpack: mode === "field-researcher" ? "clear-q4" : null, phase: phase.phase_id }); if (!restored.ok) return null; if (!current) { bootstrap.ensureSpatial(restored.run, phase.phase_id); if (!hadSpatialState) { if (["FIELD_OPERATION", "RETURN", "DEBRIEF"].includes(phase.phase_id)) bootstrap.enterSpatialField(restored.run); else bootstrap.setSpatialPhase(restored.run, phase.phase_id); } if (!hadRadioState && ["FIELD_OPERATION", "RETURN", "DEBRIEF"].includes(phase.phase_id)) q4Radio.completeCheck(restored.run.expedition); if (!hadOperationalState && restored.run.expedition?.clock?.check_in_due_at != null && !restored.run.expedition.communications?.check_ins?.length) q4Time.schedule(restored.run.expedition, Math.max(1, restored.run.expedition.clock.check_in_due_at - restored.run.expedition.clock.interval)); bootstrap.evaluateMissionState(restored.run, phase.phase_id); } return { kind: "bootstrap", run: restored.run, legacy_flow: saved.legacy_flow === true || phase.legacy_flow === true, restored_from_legacy:!current, phase }; } if (saved.kind === "lost") return { kind: "lost", run: saved.payload, phase }; if (saved.kind === "nullzone") return { kind: "nullzone", run_id: saved.payload.run_id, phase }; if (saved.kind === "beck") return { kind: "beck", run_id: saved.payload.run_id, phase }; return null; }
@@ -560,11 +574,16 @@ class DesktopService {
     const requestId = `desktop-local-${world_id}-${Date.now()}`;
     const key = configured ? this.credentials.get("openai") : null;
     if (configured && !key && !this.localDialogueProvider) {
+      context.interaction.presentation.response = null;
+      context.interaction.presentation.source = "provider-failure";
       canonical.result.provider_unavailable = true;
-      canonical.result.presentation_source = "deterministic-fallback";
-      canonical.result.public_reason = `Language assistance is unavailable. Deterministic response: ${context.fallback_text}`;
+      canonical.result.presentation_source = "provider-failure";
+      canonical.result.provider_error = providerFailure(Object.assign(new Error("No OpenAI API key is configured for the selected provider."), { code:"provider_not_configured" }), { request_id:requestId, phase:"local-dialogue" });
+      canonical.result.public_reason = `Your LOCAL message was delivered. ${canonical.result.provider_error.message} No canned coworker reply was substituted.`;
       canonical.result.scene.narration = canonical.result.public_reason;
-      canonical.result.scene.narration_source = "deterministic-fallback";
+      canonical.result.scene.narration_source = "provider-failure";
+      this.persistSession(context.world, "field-researcher", context.entry);
+      canonical.projection = this.projectionFor(context.world, "field-researcher", context.entry);
       return canonical;
     }
     const provider = this.localDialogueProvider ?? createOpenAIProvider({ apiKey:key, model:this.settings().openai_model || undefined, timeout:15000, onInvocation:(event) => this.recordProviderInvocation({ request_id:requestId, route:"submitQ4Communication/local-dialogue", ...event }) });
@@ -574,9 +593,12 @@ class DesktopService {
       const packet = buildLocalDialoguePacket(context);
       const validation = validateLocalDialogue(packet, await provider.presentLocal(structuredClone(packet)));
       if (!validation.ok) {
+        context.interaction.presentation.response = null;
+        context.interaction.presentation.source = "provider-failure";
         canonical.result.provider_unavailable = true;
-        canonical.result.presentation_source = "deterministic-fallback";
-        canonical.result.public_reason = `Language assistance returned an invalid response and was rejected. Deterministic response: ${context.fallback_text}`;
+        canonical.result.presentation_source = "provider-failure";
+        canonical.result.provider_error = { code:"PROVIDER_RESPONSE_INVALID", message:"The AI provider returned dialogue that violated the observer-safe response contract.", provider:provider.name, model:provider.model ?? null, request_id:requestId, provider_request_id:null, phase:"local-dialogue", http_status:null, provider_code:null };
+        canonical.result.public_reason = `Your LOCAL message was delivered. ${canonical.result.provider_error.message} No canned coworker reply was substituted.`;
       } else {
         canonical.result.presentation_source = "hosted-model";
         canonical.result.hosted_request = { request_id:requestId, provider:provider.name, status:"completed" };
@@ -587,12 +609,17 @@ class DesktopService {
       }
     } catch (error) {
       this.log(`LOCAL language assistance unavailable: ${error.message}`);
+      context.interaction.presentation.response = null;
+      context.interaction.presentation.source = "provider-failure";
       canonical.result.provider_unavailable = true;
-      canonical.result.presentation_source = "deterministic-fallback";
-      canonical.result.public_reason = `Language assistance is unavailable. Deterministic response: ${context.fallback_text}`;
+      canonical.result.presentation_source = "provider-failure";
+      canonical.result.provider_error = providerFailure(error, { provider:provider.name, model:provider.model ?? null, request_id:requestId, phase:"local-dialogue" });
+      canonical.result.public_reason = `Your LOCAL message was delivered. ${canonical.result.provider_error.message} No canned coworker reply was substituted.`;
     }
     canonical.result.scene.narration = canonical.result.public_reason;
     canonical.result.scene.narration_source = canonical.result.presentation_source;
+    this.persistSession(context.world, "field-researcher", context.entry);
+    canonical.projection = this.projectionFor(context.world, "field-researcher", context.entry);
     return canonical;
   }
   submitQ4CommunicationCanonical({ world_id, channel, text, target = null }) {
@@ -890,24 +917,37 @@ class DesktopService {
         const selected = this.livingTurnProvider ?? (configured && key
           ? createOpenAIProvider({ apiKey:key, model:this.settings().openai_model || undefined, timeout:15000, onInvocation:(event) => this.recordProviderInvocation({ request_id:requestId, route:"submitNatural/living-turn", ...event }) })
           : createLivingProvider());
-        const interpreter = typeof selected.interpretLiving === "function"
-          ? { name:selected.name, interpret:(request) => selected.interpretLiving(request) }
-          : selected;
-        const presentationProvider = typeof selected.presentLiving === "function"
-          ? { name:selected.name, present:(request) => selected.presentLiving(request) }
-          : selected;
         this.recordInterpretationProvenance({ request_id:requestId, route:"submitNatural/living-turn", event:"provider-selected", input:"player-supplied", provider:selected.name, model:selected.model ?? "deterministic", provider_invoked:false, response_classification:selected.name === "openai" ? "not-yet-observed" : "deterministic", canonical_resolution:"ai-interpreter-boundary -> Custodian -> live-scene-projection", observer_projection:"live-scene-projection@v1" });
-        const living = await executeLivingTurn({ run:entry.run, player_text:text, interpreter, presentation_provider:presentationProvider, request_id:requestId });
-        if (living.status === "clarification") {
-          const question = living.interpretation.question;
+        let hostedProviderFailure = null;
+        const generate = async ({ phase, request }) => {
+          try {
+            if (phase === "interpretation") return await (typeof selected.interpretLiving === "function" ? selected.interpretLiving(request) : selected.interpret(request));
+            if (phase === "presentation") return await (typeof selected.presentLiving === "function" ? selected.presentLiving(request) : selected.present(request));
+            throw new Error("Unsupported Custodian host generation phase.");
+          } catch (error) {
+            hostedProviderFailure = providerFailure(error, { provider:selected.name, model:selected.model ?? null, request_id:requestId, phase });
+            throw error;
+          }
+        };
+        const authoritativeRun = entry.run;
+        const intervalBefore = authoritativeRun.expedition.clock.interval;
+        const hosted = await runAIGameTurn({ session:authoritativeRun, observer:authoritativeRun.session.startup.player.observer_id, player_input:text, generate, host_adapter:createCustodianAIHostAdapter({ request_id:requestId }) });
+        if (!hosted.ok) return hostedProviderFailure ? providerErrorResult(hostedProviderFailure, this.projectionFor(world, mode, entry)) : publicError(hosted.error?.code ?? "LIVING_TURN_REJECTED", "The interpreted attempt could not be completed safely.");
+        if (hosted.session !== authoritativeRun || entry.run !== authoritativeRun) return publicError("HOST_SESSION_IDENTITY_CHANGED", "The authoritative expedition session could not be preserved.");
+        const turn = hosted.turn;
+        if (hostedProviderFailure?.phase === "interpretation") return providerErrorResult(hostedProviderFailure, this.projectionFor(world, mode, entry));
+        if (turn.status === "clarification") {
+          const question = turn.reason ?? turn.environment;
           const scene = { ...this.sceneFor(entry, mode, { scene_type:"observation", accepted:false, public_reason:question }, world), narration:question, narration_source:"deterministic-clarification" };
-          return { ok:true, result:{ turn_status:"CLARIFICATION_REQUIRED", clarification_required:true, clarification_question:question, executed:false, summary:question, scene, living_turn:{ version:living.version, status:living.status, trace:living.trace } }, projection:this.projectionFor(world, mode, entry) };
+          return { ok:true, result:{ turn_status:"CLARIFICATION_REQUIRED", clarification_required:true, clarification_question:question, executed:false, summary:question, scene, living_turn:{ version:LIVING_TURN_VERSION, host_contract:turn.version, status:turn.status, trace:["custodian-package-root", "host-adapter"] } }, projection:this.projectionFor(world, mode, entry) };
         }
-        if (living.status !== "resolved") return publicError(living.resolution?.error?.code ?? "LIVING_TURN_REJECTED", living.resolution?.result?.public_reason ?? "The interpreted attempt is no longer available from the current scene.");
-        this.recordQ4Action(entry, text, { ok:true, outcome:living.resolution.outcome, result:{ time_advanced:living.resolution.time_advanced ?? 0, public_reason:living.resolution.public_reason } }, world, requestId);
+        if (turn.status !== "resolved") return publicError("LIVING_TURN_REJECTED", turn.reason ?? "The interpreted attempt is no longer available from the current scene.");
+        const validation = { accepted:hosted.diagnostics.length === 0, code:hosted.diagnostics[0]?.code ?? null };
+        const timeAdvanced = Math.max(0, authoritativeRun.expedition.clock.interval - intervalBefore);
+        this.recordQ4Action(entry, text, { ok:true, outcome:turn.action_outcome, result:{ time_advanced:timeAdvanced, public_reason:turn.reason } }, world, requestId);
         this.persistSession(world, mode, entry);
-        const scene = { ...this.sceneFor(entry, mode, { scene_type:"delta", accepted:true, public_reason:living.resolution.public_reason }, world), narration:living.presentation.scene_description, narration_source:living.presentation.source };
-        return { ok:true, result:{ turn_status:"RESOLVED", clarification_required:false, clarification_question:null, executed:true, summary:scene.narration, scene, living_turn:{ version:living.version, status:living.status, validation:living.validation, trace:living.trace } }, projection:this.projectionFor(world, mode, entry) };
+        const scene = { ...this.sceneFor(entry, mode, { scene_type:"delta", accepted:true, public_reason:turn.reason }, world), narration:turn.environment, narration_source:validation.accepted ? "provider" : "deterministic-fallback" };
+        return { ok:true, result:{ turn_status:"RESOLVED", provider_unavailable:Boolean(hostedProviderFailure), provider_error:hostedProviderFailure, clarification_required:false, clarification_question:null, executed:true, summary:scene.narration, scene, living_turn:{ version:LIVING_TURN_VERSION, host_contract:turn.version, status:turn.status, validation, trace:["custodian-package-root", "host-adapter"] } }, projection:this.projectionFor(world, mode, entry) };
       }
       if (entry.kind === "bootstrap" && ["FIELD_OPERATION", "RETURN"].includes(entry.phase?.phase_id) && entry.run.spatial) {
         const members = entry.run.expedition.team.members.filter((member) => member.personnel_id !== entry.run.session.startup.player.observer_id);

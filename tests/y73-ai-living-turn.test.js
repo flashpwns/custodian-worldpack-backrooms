@@ -43,9 +43,9 @@ function packet(run, resolution = { ok:true, outcome:"succeeded", result:{ publi
 
 test("1 simple natural-language turn runs end-to-end through the production service seam", async () => {
   const { service, world, run } = fixture("living-simple", { openPassage:false });
-  const before = run.expedition.clock.interval;
+  const authoritativeRun = run; const before = run.expedition.clock.interval; const historyBefore = run.expedition.history.length;
   const result = await service.submitNatural({ world_id:world.id, mode:"field-researcher", text:"I keep walking toward the passage." });
-  assert.equal(result.ok, true); assert.equal(result.result.living_turn.status, "resolved"); assert.equal(run.spatial.player_location, "open-passage"); assert.ok(run.expedition.clock.interval > before); assert.ok(result.result.scene.narration);
+  assert.equal(result.ok, true); assert.equal(result.result.living_turn.host_contract, "custodian-ai-gameplay-host-turn@v1"); assert.equal(result.result.living_turn.status, "resolved"); assert.equal(service.session(world.id, "field-researcher").run, authoritativeRun); assert.equal(run.expedition.history.length, historyBefore + 1); assert.equal(run.spatial.player_location, "open-passage"); assert.ok(run.expedition.clock.interval > before); assert.ok(result.result.scene.narration);
 });
 
 test("2 coordinated Reference Expedition turn resolves end-to-end", async () => {
@@ -229,7 +229,7 @@ test("25 hosted LOCAL presentation is reachable only after canonical personnel a
   assert.doesNotMatch(JSON.stringify(result), /reaction_context|_local_dialogue_context/i);
 });
 
-test("26 invalid hosted LOCAL prose falls back without retracting canonical delivery", async () => {
+test("26 invalid hosted LOCAL prose is surfaced honestly without retracting canonical delivery", async () => {
   const localDialogueProvider = { name:"invalid-local", async presentLocal(packet) { return { version:LOCAL_CANDIDATE_VERSION, observer_id:packet.speaker.observer_id, speech:"You decide to measure the hidden overlap depth." }; } };
   const { service, world, run } = fixture("living-local-fallback", { localDialogueProvider });
   const coworker = run.expedition.team.members.find((member) => member.personnel_id !== player(run));
@@ -238,8 +238,8 @@ test("26 invalid hosted LOCAL prose falls back without retracting canonical deli
   assert.equal(result.ok, true);
   assert.equal(run.expedition.messages.length, beforeMessages + 1);
   assert.equal(result.result.provider_unavailable, true);
-  assert.equal(result.result.presentation_source, "deterministic-fallback");
-  assert.match(result.result.public_reason, /invalid response.*Deterministic response:/i);
+  assert.equal(result.result.presentation_source, "provider-failure");
+  assert.match(result.result.public_reason, /message was delivered.*violated the observer-safe response contract.*no canned coworker reply/i);
   assert.doesNotMatch(result.result.public_reason, /hidden overlap depth/i);
   assert.equal(Object.prototype.hasOwnProperty.call(result, "_local_dialogue_context"), false);
 });

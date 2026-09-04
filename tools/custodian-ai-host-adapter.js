@@ -25,7 +25,7 @@ async function emitTrace(sink, value) {
   try { await sink(structuredClone(value)); } catch { /* Developer diagnostics cannot affect play. */ }
 }
 
-function createCustodianAIHostAdapter() {
+function createCustodianAIHostAdapter({ request_id = null } = {}) {
   return Object.freeze({
     version: VERSION,
     async runTurn({ session: run, observer, player_input, generate, trace }) {
@@ -35,7 +35,8 @@ function createCustodianAIHostAdapter() {
         run,
         player_text: player_input,
         interpreter: { name: "custodian-host", interpret: (request) => generate({ phase: "interpretation", request }) },
-        presentation_provider: { name: "custodian-host", present: (request) => generate({ phase: "presentation", request }) }
+        presentation_provider: { name: "custodian-host", present: (request) => generate({ phase: "presentation", request }) },
+        request_id
       });
       const resolved = living.status === "resolved";
       const reason = resolved ? living.resolution?.public_reason ?? null : living.interpretation?.question ?? living.resolution?.result?.public_reason ?? "The attempted turn was not committed.";
