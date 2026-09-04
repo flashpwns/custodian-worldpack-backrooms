@@ -33,6 +33,7 @@ const environment = require("./q4-environment");
 const phenomenonEcology = require("./q4-phenomenon-ecology");
 const personnelContinuity = require("./q4-personnel-continuity");
 const referenceExpedition = require("./reference-expedition");
+const canonicalLedger = require("./canonical-world-ledger");
 
 const root = path.resolve(__dirname, "..");
 const read = (relative) => JSON.parse(fs.readFileSync(path.join(root, relative), "utf8"));
@@ -561,7 +562,8 @@ function resolveCoordinatedAttempts(runValue, bundle) {
         evidence.mission_id = run.expedition.mission?.id ?? null; evidence.environmental_conditions = environment.captureContext(run.spatial.environment, validation.player_location, { has_field_light:q4Equipment.stateUsable(run.expedition.equipment?.["field-light"]) });
         if (run._world) evidenceAuthority.capture(run._world, run, evidence); run.expedition.evidence.push(evidence); event(run.expedition, "evidence.recorded", evidence);
       }
-      run.checklist.used = true; const outcome = { actor:attempt.actor, role:attempt.role, action:attempt.action, target:attempt.target, equipment:attempt.equipment, operator:attempt.operator, outcome:"succeeded", interval_id:intervalId, interval, evidence_id:evidence?.id ?? null, public_reason:evidence?.target_observation ?? "The equipment procedure was completed." };
+      run.checklist.used = true; const outcome = { actor:attempt.actor, role:attempt.role, action:attempt.action, target:attempt.target, equipment:attempt.equipment, operator:attempt.operator, outcome:"succeeded", interval_id:intervalId, interval, evidence_id:evidence?.id ?? null, public_reason:evidence?.target_observation ?? "The equipment procedure was completed.", cause_attempt_id:intervalId, capturing_observer:attempt.operator, prior_state:null, resulting_state:evidence ? "evidence-recorded" : "used" };
+      canonicalLedger.recordCausalTransition(run, { kind:"coordinated-equipment-use", actor:attempt.actor, target:attempt.target, interval, cause_attempt_id:intervalId, resulting_state:outcome.resulting_state, details:{ equipment:attempt.equipment, evidence_id:evidence?.id ?? null } });
       event(run.expedition, "coordinated.attempt.resolved", outcome); outcomes.push(outcome); continue;
     }
     if (attempt.kind === "object-interaction") {
@@ -595,7 +597,8 @@ function resolveCoordinatedAttempts(runValue, bundle) {
       run.checklist.used = true;
       const eventId = `object.interaction.${interacted.interaction_sequence ?? run.object_state.interaction_history.length}`;
       event(run.expedition, "object.interacted", { action:interacted.action, target:interacted.target, location:validation.player_location, interaction_sequence:interacted.interaction_sequence, evidence_id:interacted.evidence?.id ?? null, time_cost:0 });
-      const outcome = { actor:attempt.actor, role:attempt.role, action:attempt.action, target:interacted.target, equipment:attempt.equipment, operator:attempt.actor, outcome:"succeeded", interval_id:intervalId, interval, evidence_id:interacted.evidence?.id ?? null, public_reason:interacted.narration };
+      const outcome = { actor:attempt.actor, role:attempt.role, action:attempt.action, target:interacted.target, equipment:attempt.equipment, operator:attempt.actor, outcome:"succeeded", interval_id:intervalId, interval, evidence_id:interacted.evidence?.id ?? null, public_reason:interacted.narration, cause_attempt_id:intervalId, capturing_observer:attempt.actor, prior_state:interacted.prior_state ?? null, resulting_state:interacted.state ?? interacted.condition ?? "interacted" };
+      canonicalLedger.recordCausalTransition(run, { kind:"coordinated-object-interaction", actor:attempt.actor, target:interacted.target, interval, cause_attempt_id:intervalId, prior_state:outcome.prior_state, resulting_state:outcome.resulting_state, details:{ action:attempt.action, evidence_id:interacted.evidence?.id ?? null } });
       event(run.expedition, "coordinated.attempt.resolved", outcome);
       outcomes.push(outcome);
       continue;
@@ -607,7 +610,8 @@ function resolveCoordinatedAttempts(runValue, bundle) {
       member.known_information ??= []; member.known_information.push({ kind:"coordinated-inspection", target:inspected.target, location:validation.player_location, at:interval, source:"direct-observation", interval_id:intervalId });
     }
     run.checklist.inspected = true;
-    const outcome = { actor:attempt.actor, role:attempt.role, action:attempt.action, target:inspected.target, equipment:null, operator:attempt.actor, outcome:"succeeded", interval_id:intervalId, interval, evidence_id:null, public_reason:inspected.narration };
+    const outcome = { actor:attempt.actor, role:attempt.role, action:attempt.action, target:inspected.target, equipment:null, operator:attempt.actor, outcome:"succeeded", interval_id:intervalId, interval, evidence_id:null, public_reason:inspected.narration, cause_attempt_id:intervalId, capturing_observer:attempt.actor, prior_state:inspected.prior_state ?? null, resulting_state:"inspected" };
+    canonicalLedger.recordCausalTransition(run, { kind:"coordinated-inspection", actor:attempt.actor, target:inspected.target, interval, cause_attempt_id:intervalId, prior_state:outcome.prior_state, resulting_state:outcome.resulting_state, details:{ action:attempt.action } });
     event(run.expedition, "coordinated.attempt.resolved", outcome); outcomes.push(outcome);
   }
   const cycle = resolveOperationalCycle(run, "COORDINATED_ATTEMPT", 1, "coordinated-attempt");

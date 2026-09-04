@@ -25,7 +25,10 @@ function memberLabel(member) { return member?.display_name ?? ([member?.first_na
 function ordered(values, key) { return values.sort((left, right) => String(key(left)).localeCompare(String(key(right)))); }
 
 function observerMember(run, observerId) {
-  return (run.expedition?.team?.members ?? []).find((member) => memberId(member) === observerId) ?? null;
+  return (run.expedition?.team?.members ?? []).find((member) => {
+    const id = memberId(member);
+    return id === observerId || id === `personnel-${observerId}` || observerId === `personnel-${id}`;
+  }) ?? null;
 }
 
 function locationKnowledge(run, observerId, locationId) {
@@ -139,13 +142,21 @@ function projectMeasurements(run, observerId) {
 
 function projectObserverKnowledge(run, observerId, member) {
   const information = member?.known_information ?? [];
-  const observations = information.filter((item) => ["coordinated-inspection", "location-investigated"].includes(item.kind)).map((item) => ({
+  const directObservations = information.filter((item) => item.source === "direct-observation" || ["coordinated-inspection", "location-investigated"].includes(item.kind)).map((item) => ({
     kind:item.kind,
     target:item.target ?? null,
     location:item.location ?? null,
     observed_at:item.at ?? null,
-    source:item.source ?? null,
+    source:"direct-observation",
     interval_id:item.interval_id ?? null
+  }));
+  const reportedKnowledge = information.filter((item) => item.kind === "reported-knowledge" || (item.source && item.source !== "direct-observation")).map((item) => ({
+    kind:item.kind ?? "reported-knowledge",
+    text:item.text ?? null,
+    sender:item.sender ?? null,
+    at:item.at ?? null,
+    source:item.source ?? "local-communication",
+    message_id:item.message_id ?? null
   }));
   const conclusions = information.filter((item) => CONCLUSION_KINDS.has(item.kind)).map((item) => ({
     kind:item.kind,
@@ -159,7 +170,9 @@ function projectObserverKnowledge(run, observerId, member) {
     mission_context:mission ? { operation_id:mission.display_id ?? mission.id ?? null, assignment:mission.family_label ?? null, objective:mission.objective?.primary ?? null } : null,
     known_records:projectPriorRecords(run, observerId, member),
     established_measurements:projectMeasurements(run, observerId),
-    unresolved_observations:observations,
+    direct_observations:directObservations,
+    reported_knowledge:reportedKnowledge,
+    unresolved_observations:directObservations,
     established_conclusions:conclusions
   };
 }
@@ -221,7 +234,8 @@ function projectLiveScene(runValue, { observer_id:observerId } = {}) {
   // helper cannot alter canonical state.
   const run = clone(runValue);
   const member = observerMember(run, observerId);
-  const locationId = run.spatial?.personnel_locations?.[observerId];
+  const id = member ? memberId(member) : observerId;
+  const locationId = run.spatial?.personnel_locations?.[id] ?? run.spatial?.personnel_locations?.[observerId];
   if (!member || !locationId) return failure("LIVE_SCENE_OBSERVER_UNKNOWN", "The observer is not assigned and physically located in the active scene.");
 
   let topology; try { topology = bootstrap.topologyFor(run); } catch { return failure("LIVE_SCENE_WORLD_UNAVAILABLE", "The active spatial authority could not be projected."); }
@@ -257,4 +271,120 @@ function projectLiveScene(runValue, { observer_id:observerId } = {}) {
   return deepFreeze({ ok:true, packet });
 }
 
-module.exports = { VERSION, projectLiveScene };
+function projectObserverState(runValue, observerId, purpose = "presentation") {
+  if (observerId === "Standard") {
+    const run = clone(runValue);
+    const messages = (run.expedition?.messages ?? []).filter((m) =>
+      m.intended_recipient === "Standard" && ["delivered", "acknowledged"].includes(m.state)
+    );
+    const evidence = (run.expedition?.evidence ?? []).filter((e) => e.reported_to_standard === true);
+    const mission = run.expedition?.mission;
+    return deepFreeze({
+      ok: true,
+      packet: {
+        version: VERSION,
+        observer_id: "Standard",
+        purpose: "standard-operator",
+        mission_parameters: mission ? {
+          id: mission.id,
+          family_label: mission.family_label,
+          objective: mission.objective
+        } : null,
+        received_transmissions: messages.map((m) => ({
+          message_id: m.id,
+          sender: m.sender,
+          text: m.text,
+          purpose: m.purpose,
+          delivered_at: m.delivered_at,
+          evidence_ids: [...(m.evidence_ids ?? [])]
+        })),
+        confirmed_evidence: evidence.map((e) => ({
+          evidence_id: e.id,
+          type: e.type,
+          measurement: e.measurement ?? null
+        }))
+      }
+    });
+  }
+
+  const projected = projectLiveScene(runValue, { observer_id: observerId });
+  if (!projected.ok) return projected;
+  const p = projected.packet;
+
+  if (purpose === "player-interpreter") {
+    const shell = {
+      version: VERSION,
+      purpose: "player-interpreter",
+      observer_id: observerId,
+      location: {
+        id: p.location.id,
+        known_name: p.location.known_name,
+        visible_description: p.location.visible_description
+      },
+      visible_environment: p.visible_environment,
+      visible_objects: p.visible_objects.map((obj) => ({
+        name: obj.name,
+        type: obj.type,
+        visible_condition: obj.visible_condition,
+        observation: obj.observation
+      })),
+      visible_personnel: p.visible_personnel.map((pers) => ({
+        observer_id: pers.observer_id,
+        known_identity: pers.known_identity,
+        role_if_known: pers.role_if_known,
+        visible_condition: pers.visible_condition
+      })),
+      held_equipment: p.available_action_context.held_equipment,
+      visible_targets: p.available_action_context.visible_targets,
+      local_coworkers: p.available_action_context.local_coworkers,
+      recent_observable_events: p.recent_observable_events,
+      observer_knowledge: {
+        direct_observations: p.observer_knowledge.direct_observations ?? p.observer_knowledge.unresolved_observations,
+        reported_knowledge: p.observer_knowledge.reported_knowledge ?? [],
+        established_measurements: p.observer_knowledge.established_measurements
+      }
+    };
+    return deepFreeze({ ok: true, packet: shell });
+  }
+
+  if (purpose === "coworker-mini-shell") {
+    const member = observerMember(runValue, observerId);
+    const shell = {
+      version: VERSION,
+      purpose: "coworker-mini-shell",
+      identity: {
+        observer_id: observerId,
+        known_identity: memberLabel(member),
+        role: member?.role ?? null
+      },
+      physical: {
+        location: p.location,
+        nearby_personnel: p.visible_personnel.filter((pers) => pers.observer_id !== observerId),
+        visible_objects: p.visible_objects,
+        held_equipment: p.available_action_context.held_equipment
+      },
+      operational: {
+        current_task: member?.task ?? null,
+        task_history: member?.task_history?.slice(-3) ?? []
+      },
+      knowledge: {
+        direct_observations: p.observer_knowledge.direct_observations ?? p.observer_knowledge.unresolved_observations,
+        reported_knowledge: p.observer_knowledge.reported_knowledge ?? [],
+        known_records: p.observer_knowledge.known_records,
+        negative_constraints: [
+          "cannot perceive unvisited or offscreen rooms",
+          "cannot perceive equipment held by offscreen personnel without communication",
+          "cannot access un-communicated player thoughts or un-transmitted Standard logs"
+        ]
+      },
+      conversation: {
+        recent_messages: p.communication_context.recent_messages
+      }
+    };
+    return deepFreeze({ ok: true, packet: shell });
+  }
+
+  return projected;
+}
+
+module.exports = { VERSION, projectLiveScene, projectObserverState };
