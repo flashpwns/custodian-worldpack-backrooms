@@ -122,4 +122,64 @@ function deriveContradiction(run) {
     : { established: false, reason: "NO_DERIVABLE_CONTRADICTION" };
 }
 
-module.exports = { VERSION, SCENARIO, RUNTIME_SCENARIO, definition, validate, isReference, staffingRules, mission, instantiate, measurementEvidence, deriveContradiction };
+function writeReport(run, { author = null, text, at = null } = {}) {
+  if (!isReference(run?.scenario) || run?.lifecycle !== "completed") return { ok:false, code:"REFERENCE_REPORT_UNAVAILABLE" };
+  const body = typeof text === "string" ? text.trim() : "";
+  if (!body) return { ok:false, code:"REFERENCE_REPORT_EMPTY" };
+  if (body.length > 4000) return { ok:false, code:"REFERENCE_REPORT_TOO_LONG" };
+  const writer = author ?? run.session?.startup?.player?.observer_id;
+  if (!writer || writer !== run.session?.startup?.player?.observer_id) return { ok:false, code:"REFERENCE_REPORT_AUTHOR_INVALID" };
+  const existing = run.expedition?.written_report;
+  if (existing) return existing.text === body ? { ok:true, idempotent:true, report:clone(existing) } : { ok:false, code:"REFERENCE_REPORT_ALREADY_SUBMITTED" };
+  const report = {
+    version:"yellow-beast-reference-written-report@v1",
+    id:`reference-report-${digest([run.run_id, run.expedition?.mission?.id, writer]).slice(0,16)}`,
+    mission_id:run.expedition?.mission?.id ?? null,
+    run_id:run.run_id,
+    author:writer,
+    text:body,
+    submitted_at:{ interval:Number.isInteger(at) ? at : run.expedition?.clock?.interval ?? 0 },
+    kind:"player-authored-claim",
+    available_evidence_ids:[],
+    institutional_assessment:null
+  };
+  run.expedition.written_report = report;
+  return { ok:true, idempotent:false, report:clone(report) };
+}
+
+function assessInstitutionalRecord({ report, prior_record, evidence_records = [] } = {}) {
+  if (!report?.id || !prior_record?.id) throw new Error("Reference Expedition assessment requires a written report and prior institutional record");
+  const available = evidence_records.filter((record) => record?.standard_available === true && record?.operation_id === report.mission_id);
+  const measurement = available.find((record) => record.type === definition.measurement.evidence_type && record.measurement?.kind === "passage-depth" && Number.isFinite(record.measurement.value));
+  if (measurement) {
+    const corridorStart = Number(prior_record.parallel_corridor_axis_interval_m?.[0]);
+    const overlap = Number.isFinite(corridorStart) ? Math.max(0, measurement.measurement.value - corridorStart) : 0;
+    if (overlap > 0) return {
+      version:"yellow-beast-reference-institutional-assessment@v1",
+      status:"provisional-spatial-discrepancy",
+      confidence:"provisional",
+      summary:`Returned measurement records ${measurement.measurement.value.toFixed(1)} metres from the south-wall datum; layout sheet 17-B places the parallel corridor volume from ${corridorStart.toFixed(1)} metres. The records require spatial review.`,
+      basis:{ written_report_id:report.id, evidence_ids:[measurement.id], prior_record_ids:[prior_record.id] },
+      claims_cause:false
+    };
+  }
+  const discrepancyClaimed = /\b(overlap|contradict|discrepanc|inconsisten|conflict|does not match|doesn't match)/i.test(report.text);
+  if (discrepancyClaimed) return {
+    version:"yellow-beast-reference-institutional-assessment@v1",
+    status:"unresolved-field-claim",
+    confidence:"unverified",
+    summary:"The written report claims a layout discrepancy, but no returned measurement record establishes the relationship.",
+    basis:{ written_report_id:report.id, evidence_ids:[], prior_record_ids:[prior_record.id] },
+    claims_cause:false
+  };
+  return {
+    version:"yellow-beast-reference-institutional-assessment@v1",
+    status:"no-spatial-discrepancy-entered",
+    confidence:"not-assessed",
+    summary:"The submitted report and returned evidence do not establish a spatial discrepancy for institutional review.",
+    basis:{ written_report_id:report.id, evidence_ids:available.map((record) => record.id), prior_record_ids:[prior_record.id] },
+    claims_cause:false
+  };
+}
+
+module.exports = { VERSION, SCENARIO, RUNTIME_SCENARIO, definition, validate, isReference, staffingRules, mission, instantiate, measurementEvidence, deriveContradiction, writeReport, assessInstitutionalRecord };
