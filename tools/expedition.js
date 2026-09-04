@@ -35,6 +35,13 @@ function recordFacilityEvent(expedition, type, { at = null, source = null, sourc
   return facilityEvent;
 }
 
+function reconcileFacilityOperations(expedition, spatial) {
+  const operations = ensureFacilityOperations(expedition);
+  const crossing = (spatial?.route_history ?? []).find((item) => item.connection_id === "threshold-crossing");
+  if (crossing) recordFacilityEvent(expedition, "THRESHOLD_CROSSING", { at:{ interval:null, spatial_time:crossing.at ?? null }, source:"canonical-spatial-migration", source_ref:`threshold-crossing:${crossing.sequence ?? 1}` });
+  return operations;
+}
+
 function facilityOperationsProjection(expedition) {
   const operations = ensureFacilityOperations(expedition);
   const current = { threshold_crossing:null, kv31_arrival:null, standard_side_barrier:null, east_blast_door:null, field_release:null };
@@ -93,4 +100,4 @@ function finalize(expedition, decision, snapshot = {}) {
   event(expedition, "mission.finalized", { decision, outcome: expedition.outcome });
   return expedition.result;
 }
-module.exports = { FIELD_SCENARIO, FACILITY_OPERATIONS_VERSION, FACILITY_EVENT_TYPES, fieldExpedition, event, equipment, useEquipment, safeSummary, finalize, ensureFacilityOperations, recordFacilityEvent, facilityOperationsProjection };
+module.exports = { FIELD_SCENARIO, FACILITY_OPERATIONS_VERSION, FACILITY_EVENT_TYPES, fieldExpedition, event, equipment, useEquipment, safeSummary, finalize, ensureFacilityOperations, recordFacilityEvent, reconcileFacilityOperations, facilityOperationsProjection };
