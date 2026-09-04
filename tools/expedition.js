@@ -4,6 +4,50 @@ const clone = (value) => structuredClone(value);
 const q4Equipment = require("./q4-equipment");
 const personnelGeneration = require("./personnel-generation");
 const FIELD_SCENARIO = "async-clear-q4-field-survey";
+const FACILITY_OPERATIONS_VERSION = "yellow-beast-facility-operations@v1";
+const FACILITY_EVENT_TYPES = Object.freeze([
+  "THRESHOLD_CROSSING",
+  "KV31_ARRIVAL",
+  "STANDARD_SIDE_BARRIER_SECURE",
+  "EAST_BLAST_DOOR_OPEN",
+  "FIELD_RELEASE",
+  "EAST_BLAST_DOOR_CLOSED"
+]);
+
+function ensureFacilityOperations(expedition) {
+  expedition.facility_operations ??= { version: FACILITY_OPERATIONS_VERSION, events: [] };
+  if (expedition.facility_operations.version !== FACILITY_OPERATIONS_VERSION || !Array.isArray(expedition.facility_operations.events)) throw Object.assign(new Error("invalid facility operations state"), { code:"FACILITY_OPERATIONS_STATE_INVALID" });
+  return expedition.facility_operations;
+}
+
+function recordFacilityEvent(expedition, type, { at = null, source = null, source_ref = null } = {}) {
+  if (!FACILITY_EVENT_TYPES.includes(type)) throw Object.assign(new Error(`unsupported facility event: ${type}`), { code:"FACILITY_EVENT_UNSUPPORTED" });
+  const operations = ensureFacilityOperations(expedition);
+  if (source_ref) {
+    const existing = operations.events.find((item) => item.source_ref === source_ref);
+    if (existing) {
+      if (existing.type !== type) throw Object.assign(new Error("facility event source already names another event"), { code:"FACILITY_EVENT_SOURCE_CONFLICT" });
+      return existing;
+    }
+  }
+  const facilityEvent = { id:`facility-event-${operations.events.length + 1}`, sequence:operations.events.length + 1, type, at:clone(at), source:source ?? "canonical-operation", source_ref };
+  operations.events.push(facilityEvent);
+  return facilityEvent;
+}
+
+function facilityOperationsProjection(expedition) {
+  const operations = ensureFacilityOperations(expedition);
+  const current = { threshold_crossing:null, kv31_arrival:null, standard_side_barrier:null, east_blast_door:null, field_release:null };
+  for (const item of operations.events) {
+    if (item.type === "THRESHOLD_CROSSING") current.threshold_crossing = "crossed";
+    else if (item.type === "KV31_ARRIVAL") current.kv31_arrival = "arrived";
+    else if (item.type === "STANDARD_SIDE_BARRIER_SECURE") current.standard_side_barrier = "secure";
+    else if (item.type === "EAST_BLAST_DOOR_OPEN") current.east_blast_door = "open";
+    else if (item.type === "FIELD_RELEASE") current.field_release = "released";
+    else if (item.type === "EAST_BLAST_DOOR_CLOSED") current.east_blast_door = "closed";
+  }
+  return { version:operations.version, current, events:clone(operations.events) };
+}
 
 function fieldExpedition(player, staffing = null, loadout = null, mission = null, seed = "standalone-field-team", staffingRules = {}) {
   const playerPerson = staffing?.player ?? { identity: player, first_name: "Field", last_name: "Researcher", display_name: "Field Researcher", role: "field researcher", clearance: "field", condition: "normal", status: "active" };
@@ -25,7 +69,7 @@ function fieldExpedition(player, staffing = null, loadout = null, mission = null
     clock: { interval: 0, check_in_due_at: null, check_in_overdue: false, check_in_missed: false, check_in_completed_at: null, communication_ticks: 0 },
     operational: { version: "yellow-beast-operational-time@v1", clock: { interval: 0, check_in_due_at: null, check_in_overdue: false, check_in_missed: false, check_in_completed_at: null, communication_ticks: 0 }, events: [], event_history: [], cycle_history: [], evaluation_revision: 0, consequences: [], consequence_revision: 0 },
     radio: { version: "yellow-beast-q4-radio@v1", state: "unavailable", check_completed: false, authorized: false, last_transition: "expedition-created", last_delivery: null },
-    evidence: [], messages: [], interaction_history: [], deviations: [], history: [], outcome: null, result: null
+    evidence: [], messages: [], interaction_history: [], deviations: [], history: [], facility_operations: { version:FACILITY_OPERATIONS_VERSION, events:[] }, outcome: null, result: null
   };
 }
 function event(expedition, kind, payload) { expedition.history.push({ sequence: expedition.history.length + 1, kind, payload: clone(payload) }); }
@@ -49,4 +93,4 @@ function finalize(expedition, decision, snapshot = {}) {
   event(expedition, "mission.finalized", { decision, outcome: expedition.outcome });
   return expedition.result;
 }
-module.exports = { FIELD_SCENARIO, fieldExpedition, event, equipment, useEquipment, safeSummary, finalize };
+module.exports = { FIELD_SCENARIO, FACILITY_OPERATIONS_VERSION, FACILITY_EVENT_TYPES, fieldExpedition, event, equipment, useEquipment, safeSummary, finalize, ensureFacilityOperations, recordFacilityEvent, facilityOperationsProjection };
