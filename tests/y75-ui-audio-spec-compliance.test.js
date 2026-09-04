@@ -433,5 +433,201 @@ test("Director Correction: De-canonicalized kv31Interlock simulation is purged f
   assert.match(experienceCode, /interlock:\s*run\.spatial\?\.interlock\s*\?\?\s*null/);
 });
 
+test("Pass 2 Living Observation Record: surfaces.js renders dominant OBSERVATION RECORD and prose container", () => {
+  const surfaces = require("../desktop/renderer/surfaces");
+  const fieldProjection = {
+    mode: { id: "field-researcher" },
+    phase: { phase_id: "FIELD_OPERATION" },
+    available_actions: [],
+    q4: {
+      current_location: { name: "Columned Room", type: "ANOMALOUS VOLUME" },
+      field_observation: "The ceiling drops three metres. Standard yellow vinyl extends into darkness.",
+      team: [],
+      interactables: [],
+      communications: { messages: [] },
+      channels: { standard: { history: [] }, local: { history: [] } }
+    }
+  };
+  const html = surfaces.render(fieldProjection);
+  assert.match(html, /data-testid="field-observation"/);
+  assert.match(html, /<p class="eyebrow observation-eyebrow">OBSERVATION RECORD · ANOMALOUS VOLUME<\/p>/);
+  assert.match(html, /<div class="observation-prose-container"><p class="observation-prose">The ceiling drops three metres\. Standard yellow vinyl extends into darkness\.<\/p><\/div>/);
+  assert.doesNotMatch(html, /CURRENT OBSERVATION/);
+  assert.doesNotMatch(html, /RESOLUTION/);
+});
 
+test("Pass 2 Communication Lanes: spoken dialogue on LOCAL vs radio protocol on STANDARD with coworker responses", () => {
+  const surfaces = require("../desktop/renderer/surfaces");
+  const commsProjection = {
+    mode: { id: "field-researcher" },
+    phase: { phase_id: "FIELD_OPERATION" },
+    q4: {
+      channels: {
+        local: {
+          available: true,
+          history: [
+            {
+              speaker: "Jack Rocha",
+              text: "Keep eyes on the cable run.",
+              timestamp: "T+05",
+              coworker_response: "Cable run secured at marker four."
+            }
+          ]
+        },
+        standard: {
+          available: true,
+          history: [
+            {
+              speaker: "ASYNC-BASE",
+              text: "Standard telemetry check-in required.",
+              delivery: "acknowledged",
+              delivery_status: "TRANSMITTED",
+              coworker_response: "Copy Standard, proceeding with baseline survey."
+            }
+          ]
+        }
+      },
+      communications: { messages: [] },
+      team: []
+    }
+  };
 
+  const html = surfaces.communicationLanes(commsProjection);
+
+  // Spoken dialogue formatting for local
+  assert.match(html, /class="communication-message channel-local"/);
+  assert.match(html, /class="comm-speaker comm-local-speaker">Jack Rocha:<\/span>/);
+  assert.match(html, /class="comm-text comm-spoken">“Keep eyes on the cable run\.”<\/span>/);
+  assert.match(html, /class="comm-response comm-local-response"/);
+  assert.match(html, /class="comm-speaker comm-coworker-speaker">Coworker:<\/span>/);
+  assert.match(html, /class="comm-text comm-spoken">“Cable run secured at marker four\.”<\/span>/);
+
+  // Radio transmission formatting for standard
+  assert.match(html, /class="communication-message channel-standard"/);
+  assert.match(html, /class="comm-speaker comm-radio-callsign">ASYNC-BASE:<\/span>/);
+  assert.match(html, /class="comm-text comm-radio-body">\[TX\] Standard telemetry check-in required\.<\/span>/);
+  assert.match(html, /class="comm-response comm-radio-rx"/);
+  assert.match(html, /class="comm-text comm-radio-body">\[RX\] Copy Standard, proceeding with baseline survey\.<\/span>/);
+  assert.match(html, /class="badge [^"]*">Acknowledged<\/span>/);
+});
+
+test("Pass 2 Epistemic Integrity: Roster and operations rail maintain un-reconciled observed vs reported status", () => {
+  const surfaces = require("../desktop/renderer/surfaces");
+  const renderer = fs.readFileSync(path.join(__dirname, "../desktop/renderer/renderer.js"), "utf8");
+
+  const rosterProjection = {
+    mode: { id: "field-researcher" },
+    phase: { phase_id: "FIELD_OPERATION" },
+    q4: {
+      channels: { local: { history: [] }, standard: { history: [] } },
+      communications: { messages: [] },
+      team: [
+        {
+          display_name: "Marlowe",
+          role: "Cartographer",
+          condition: "accounted",
+          last_observed: "T+12 direct visual",
+          last_reported: "T+10 radio check-in"
+        },
+        {
+          display_name: "Brody",
+          role: "Technician",
+          condition: "separated",
+          last_reported: "T+08 radio report"
+        },
+        {
+          display_name: "Hansen",
+          role: "Specialist",
+          condition: "unaccounted",
+          last_contact: "T+02 prior to crossing"
+        }
+      ]
+    }
+  };
+
+  const commsHtml = surfaces.communicationLanes(rosterProjection);
+  // Marlowe has last_observed, should display Last Observed
+  assert.match(commsHtml, /Last Observed: T\+12 direct visual/);
+  // Brody has only last_reported, should display Last Reported
+  assert.match(commsHtml, /Last Reported: T\+08 radio report/);
+  // Hansen has only last_contact, should display Last Contact
+  assert.match(commsHtml, /Last Contact: T\+02 prior to crossing/);
+
+  // Check that compactOperationsRail in renderer.js also contains the epistemic distinction
+  assert.match(renderer, /member\.last_observed \? "Last Observed"/);
+  assert.match(renderer, /member\.last_reported \? "Last Reported"/);
+  assert.match(renderer, /epistemic-observed/);
+  assert.match(renderer, /epistemic-reported/);
+});
+
+test("Pass 2 Provider Failure Honesty: Developer error prefixes are purged and honest institutional copy is displayed", () => {
+  const renderer = fs.readFileSync(path.join(__dirname, "../desktop/renderer/renderer.js"), "utf8");
+  const surfaces = fs.readFileSync(path.join(__dirname, "../desktop/renderer/surfaces.js"), "utf8");
+
+  // surfaces.js MUST NOT have any developer prefixes or AI terminology
+  assert.doesNotMatch(surfaces, /Deterministic response/i);
+  assert.doesNotMatch(surfaces, /Language assistance/i);
+  assert.doesNotMatch(surfaces, /PROVIDER FAILURE/i);
+  assert.doesNotMatch(surfaces, /AI narration/i);
+
+  // renderer.js must sanitize public reasons and error messages
+  assert.match(renderer, /sanitizePlayerMessage/);
+  assert.match(renderer, /const sanitized = sanitizePlayerMessage\(raw\)/);
+
+  // Extract sanitizePlayerMessage and test with developer/provider strings
+  const sanitizeMatch = renderer.match(/function sanitizePlayerMessage\([\s\S]*?\n\}/);
+  assert.ok(sanitizeMatch, "sanitizePlayerMessage function found in renderer.js");
+  const sanitize = new Function(`${sanitizeMatch[0]}; return sanitizePlayerMessage;`)();
+
+  // Test deterministic fallback stripping
+  assert.equal(
+    sanitize("Language assistance is unavailable. Deterministic response: Acoustic readings confirm low-frequency hum."),
+    "Acoustic readings confirm low-frequency hum."
+  );
+  assert.equal(
+    sanitize("Language assistance returned an invalid response and was rejected. Deterministic response: Passage leads south."),
+    "Passage leads south."
+  );
+  assert.equal(
+    sanitize("Deterministic response: Threshold seal remains intact."),
+    "Threshold seal remains intact."
+  );
+
+  // Test honest institutional fallback copy
+  assert.equal(
+    sanitize("Language assistance is unavailable. Your world is safe. Continue using structured controls or try again."),
+    "Field terminal operating under local offline protocol. Operational record intact."
+  );
+  assert.equal(
+    sanitize("Language assistance needs an access key. Your world is safe; you can continue offline."),
+    "Field terminal operating under local offline protocol. Operational record intact."
+  );
+  assert.equal(
+    sanitize("PROVIDER FAILURE: 503 Service Unavailable"),
+    "Field terminal operating under local offline protocol. Operational record intact."
+  );
+});
+
+test("Pass 2 Presentation CSS: Observation record, comms lanes distinction, and epistemic badges styled", () => {
+  const css = fs.readFileSync(path.join(__dirname, "../desktop/renderer/styles.css"), "utf8");
+
+  // Observation record styles
+  assert.match(css, /\.observation-eyebrow/);
+  assert.match(css, /\.observation-prose-container/);
+  assert.match(css, /\.observation-prose/);
+
+  // Comms distinction styles
+  assert.match(css, /\.channel-local \.comm-local-speaker/);
+  assert.match(css, /\.channel-local \.comm-spoken/);
+  assert.match(css, /\.channel-standard \.comm-radio-callsign/);
+  assert.match(css, /\.channel-standard \.comm-radio-body/);
+  assert.match(css, /\.comm-local-response/);
+  assert.match(css, /\.comm-radio-rx/);
+
+  // Epistemic badges
+  assert.match(css, /\.epistemic-status/);
+  assert.match(css, /\.contact-status/);
+  assert.match(css, /\.personnel-epistemic/);
+  assert.match(css, /\.epistemic-observed/);
+  assert.match(css, /\.epistemic-reported/);
+});

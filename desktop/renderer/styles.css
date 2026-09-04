@@ -158,4 +158,24 @@
 .findings-basis dd{margin:0;color:var(--async-phosphor);font-weight:700}
 .findings-note small{color:var(--muted);font-size:.63rem;line-height:1.4}
 
+/* Pass 2 Presentation: Living Observation Record, Communication Lanes & Epistemic Badges */
+.observation-eyebrow{color:var(--async-phosphor);letter-spacing:.08em;font-weight:700}
+.observation-prose-container{margin-top:8px;padding:4px 0}
+.observation-prose{font-size:.92rem;line-height:1.6;color:var(--ink);max-width:88ch}
 
+.channel-local .comm-local-speaker{color:var(--async-phosphor);font-weight:700}
+.channel-local .comm-spoken{color:var(--ink);font-style:normal}
+.channel-standard .comm-radio-callsign{color:var(--async-amber);font-family:ui-monospace,monospace;font-weight:700;letter-spacing:.04em}
+.channel-standard .comm-radio-body{color:var(--aeot-blue-white,#d8e4f0);font-family:ui-monospace,monospace}
+.comm-response{margin-top:4px;padding:4px 6px;border-left:2px solid var(--async-line)}
+.comm-local-response{border-left-color:rgba(155,197,156,.5)}
+.comm-local-response .comm-coworker-speaker{color:var(--aeot-epistemic-observed-now,#3ebd68);font-weight:700}
+.comm-radio-rx{border-left-color:rgba(232,167,53,.5);font-family:ui-monospace,monospace}
+.comm-radio-rx .comm-radio-callsign{color:var(--async-amber)}
+.epistemic-status{color:var(--aeot-pale-blue,#7b9ec9);font-size:.62rem}
+.contact-status{color:var(--muted);font-size:.58rem}
+.personnel-epistemic{display:flex;align-items:center;gap:4px;margin-top:2px;font-size:.62rem}
+.epistemic-observed{border-color:var(--aeot-epistemic-observed-now,#3ebd68);color:var(--aeot-epistemic-observed-now,#3ebd68)}
+.epistemic-reported{border-color:var(--async-amber);color:var(--async-amber)}
+.epistemic-contact{border-color:var(--muted);color:var(--muted)}
+.epistemic-time{color:var(--muted);font-size:.6rem}
