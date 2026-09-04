@@ -1,0 +1,37 @@
+/* A-Sync Expedition Over-Watch Terminal (AEOT) / Expedition Tracing Interface (ETI)
+   Frozen UI/UX Master Specification - Color Palette & Surface Tokens
+   Doctrine: Late-1970s/1980s institutional computing. Cold blue-dominant technical system. */
+
+:root {
+  /* Primary Institutional Palette (Cold Blue Dominant) */
+  --aeot-navy-deep: #060a12;
+  --aeot-midnight-desaturated: #0b1320;
+  --aeot-terminal-blue: #152438;
+  --aeot-terminal-blue-active: #1d3350;
+  --aeot-line-blue: #2c476d;
+  --aeot-pale-blue: #7b9ec9;
+  --aeot-blue-white: #d8e4f0;
+
+  /* Secondary Institutional Background & Surfaces */
+  --aeot-cream-dirty: #ded8c4;
+  --aeot-gray-institutional: #626b77;
+  --aeot-offwhite: #e4e2dc;
+  --aeot-green-desaturated: #435e50;
+
+  /* Epistemic Map Accents (Frozen Epistemology) */
+  --aeot-epistemic-observed-now: #3ebd68;        /* BRIGHT GREEN: immediately observed locale / occupied now */
+  --aeot-epistemic-assumed-npc: #25703f;         /* DARK GREEN: last observed / assumed NPC position */
+  --aeot-epistemic-expedition: #e5c158;          /* CREAM / YELLOW: observed during this expedition */
+  --aeot-epistemic-inherited: #5a94d6;           /* BABY BLUE / LIGHT ROYAL: inherited institutional record */
+  --aeot-epistemic-inferred: #d4a942;            /* DOTTED YELLOW: uncertain / inferred connection */
+  --aeot-epistemic-alert: #d94b4b;               /* RED: genuine warnings / failures / termination */
+
+  /* Operational Typography & Hard Divisions */
+  --aeot-border-width: 1px;
+  --aeot-border-focus: 2px;
+  --aeot-border-double: 3px double var(--aeot-line-blue);
+
+  /* Surface Analog / CRT Restraints */
+  --aeot-scanline-opacity: 0.04;
+  --aeot-phosphor-glow: 0 0 8px rgba(123, 158, 201, 0.25);
+}
