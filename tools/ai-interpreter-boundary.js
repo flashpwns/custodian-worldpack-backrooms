@@ -123,11 +123,51 @@ function buildCustodianScope(runValue) {
     else if (type.startsWith("ORDER_")) { targets = localCoworkers; target_required = false; }
     return { type, target_required, targets, ...(equipment.length ? { equipment } : {}) };
   });
+  const allEquipment = Object.entries(run.expedition?.equipment ?? {});
+  const usableEquipment = allEquipment
+    .filter(([, item]) => !["missing", "abandoned", "depleted", "damaged", "jammed"].includes(String(item.state).toLowerCase()) && Number(item.charges ?? 0) > 0);
+  const cameraItem = usableEquipment.find(([ref, item]) => ref === "recording-device" || item?.capability === "photographic documentation");
+  const cameraHolder = cameraItem?.[1]?.holder ?? null;
+  const instrumentItem = usableEquipment.find(([ref, item]) => ref === "survey-instrument" || item?.capability === "qualitative measurement");
+  const instrumentHolder = instrumentItem?.[1]?.holder ?? null;
+
+  const playerCanPhoto = cameraHolder === player;
+  const coworkerCanPhoto = localCoworkers.some((c) => c.ref === cameraHolder);
+  const playerCanTest = instrumentHolder === player;
+  const coworkerCanTest = localCoworkers.some((c) => c.ref === instrumentHolder);
+
   const referenceEquipment = playerEquipment.filter((item) => item.ref === "survey-instrument");
   const currentLocation = location.alias && location.id ? { label: location.alias, ref: location.id, aliases: distinct([location.alias]) } : null;
+
+  const playerCoordinated = [];
+  if (referenceEquipment.length && currentLocation) {
+    playerCoordinated.push({ type: "USE", targets: [currentLocation], equipment: referenceEquipment });
+  }
+  playerCoordinated.push({ type: "INSPECT", targets: aliases });
+  if (playerCanPhoto) {
+    playerCoordinated.push({ type: "PHOTOGRAPH", targets: aliases });
+  }
+  if (playerCanTest) {
+    playerCoordinated.push({ type: "TEST", targets: aliases });
+  }
+
+  const coworkerCoordinated = [];
+  if (localCoworkers.length) {
+    coworkerCoordinated.push({ type: "INSPECT", targets: aliases });
+    if (coworkerCanPhoto) {
+      coworkerCoordinated.push({ type: "PHOTOGRAPH", targets: aliases });
+    }
+    if (coworkerCanTest) {
+      coworkerCoordinated.push({ type: "TEST", targets: aliases });
+    }
+    if (coworkerCanTest && instrumentItem && currentLocation) {
+      coworkerCoordinated.push({ type: "USE", targets: [currentLocation], equipment: [{ label: instrumentItem[1].label ?? "Survey instrument", ref: instrumentItem[0] }] });
+    }
+  }
+
   const coordinated = run.spatial?.reference_expedition && currentLocation ? {
-    player_actions: referenceEquipment.length ? [{ type: "USE", targets: [currentLocation], equipment: referenceEquipment }] : [],
-    coworker_actions: localCoworkers.length ? [{ type: "INSPECT", targets: features.map((label) => targetFor(label)).filter(Boolean) }] : []
+    player_actions: playerCoordinated,
+    coworker_actions: coworkerCoordinated
   } : { player_actions: [], coworker_actions: [] };
   const context = {
     version: CONTEXT_VERSION,
@@ -146,7 +186,7 @@ function buildCustodianScope(runValue) {
     sinks: {
       single_attempt: singleActions.map((action) => ({ type: action.type, target_required: action.target_required, target_labels: action.targets.map((item) => item.label) })),
       coordinated_attempt: {
-        player_actions: coordinated.player_actions.map((action) => ({ type: action.type, target_labels: action.targets.map((item) => item.label), equipment_labels: action.equipment.map((item) => item.label) })),
+        player_actions: coordinated.player_actions.map((action) => ({ type: action.type, target_labels: action.targets.map((item) => item.label), equipment_labels: (action.equipment ?? []).map((item) => item.label) })),
         coworker_actions: coordinated.coworker_actions.map((action) => ({ type: action.type, target_labels: action.targets.map((item) => item.label) }))
       }
     }
@@ -163,11 +203,11 @@ function buildCustodianScope(runValue) {
 }
 
 function proposalShape(value) {
-  if (!only(value, new Set(["version", "status", "noncanonical", "relation", "attempts"]))) return false;
+  if (!only(value, new Set(["version", "status", "noncanonical", "relation", "attempts", "complete"]))) return false;
   if (value.version !== PROPOSAL_VERSION || value.status !== "proposal" || value.noncanonical !== true || !RELATIONS.has(value.relation)) return false;
   if (!Array.isArray(value.attempts) || value.attempts.length < 1 || value.attempts.length > 4) return false;
   return value.attempts.every((attempt) => {
-    if (!only(attempt, new Set(["actor", "action", "target_label", "equipment_label", "agency", "language_span"]))) return false;
+    if (!only(attempt, new Set(["actor", "action", "target_label", "equipment_label", "agency", "language_span", "clause_id", "source_span"]))) return false;
     if (!only(attempt.actor, new Set(["kind", "reference"]))) return false;
     if (attempt.actor.kind === "player" && Object.hasOwn(attempt.actor, "reference")) return false;
     if (attempt.actor.kind === "coworker" && (typeof attempt.actor.reference !== "string" || !attempt.actor.reference.trim())) return false;
@@ -179,17 +219,17 @@ function proposalShape(value) {
 
 function actionTerms(action) {
   return {
-    INSPECT: ["inspect", "examine", "check"],
-    USE: ["use", "measure", "test", "take a reading"],
-    MOVE: ["move", "go", "walk", "enter", "proceed"],
-    LOOK: ["look", "orient", "take stock"],
-    WAIT: ["wait", "hold"],
-    RETURN: ["return", "go back"],
-    ABORT: ["abort", "withdraw"],
-    PHOTOGRAPH: ["photograph", "photo", "picture", "camera", "take a photograph", "take a picture"],
-    TEST: ["test", "meter", "test the light"],
-    TRANSFER: ["transfer", "give", "hand", "pass"],
-    HANDOFF: ["handoff", "hand off"],
+    INSPECT: ["inspect", "inspects", "examine", "examines", "check", "checks"],
+    USE: ["use", "uses", "measure", "measures", "test", "tests", "take a reading", "takes a reading"],
+    MOVE: ["move", "moves", "go", "goes", "walk", "walks", "enter", "enters", "proceed", "proceeds"],
+    LOOK: ["look", "looks", "orient", "orients", "take stock"],
+    WAIT: ["wait", "waits", "hold", "holds"],
+    RETURN: ["return", "returns", "go back"],
+    ABORT: ["abort", "aborts", "withdraw", "withdraws"],
+    PHOTOGRAPH: ["photograph", "photographs", "photo", "photos", "picture", "pictures", "camera", "take a photograph", "takes a photograph", "take a picture", "takes a picture"],
+    TEST: ["test", "tests", "meter", "meters", "test the light"],
+    TRANSFER: ["transfer", "transfers", "give", "gives", "hand", "hands", "pass", "passes"],
+    HANDOFF: ["handoff", "handoffs", "hand off", "hands off"],
     ORDER_HOLD: ["hold", "stay", "wait", "hold position", "stay here"],
     ORDER_FOLLOW: ["follow", "follow me", "come with me", "regroup"],
     ORDER_INVESTIGATE: ["investigate", "check route"]
@@ -220,7 +260,181 @@ function agencySupported(attempt, playerText) {
   if (attempt.agency !== "player-order") return false;
   const actor = normalized(attempt.actor.reference);
   const directVocative = span.startsWith(actor) && terms.some((term) => span.includes(normalized(term)));
-  return span.includes(actor) && (/\b(have|tell|ask|order|send|let)\b/.test(span) || directVocative);
+  const orderGrammar = /\b(have|tell|ask|order|send|let)\b/.test(span);
+  const subjectAction = new RegExp(`\\b${actor}\\b.*\\b(?:${terms.map((t) => normalized(t).replace(/[.*+?^${}()|[\\]\\\\]/g, "\\$&")).join("|")})\\b`).test(span);
+  return span.includes(actor) && (orderGrammar || directVocative || subjectAction);
+}
+
+const ACTION_TERMS = [
+  "inspect", "examine", "check", "look", "orient",
+  "photograph", "photo", "picture", "camera", "snapshot", "record",
+  "test", "meter", "measure", "reading", "use",
+  "move", "walk", "go", "proceed", "enter", "return", "abort",
+  "transfer", "give", "hand", "pass", "handoff",
+  "hold", "stay", "wait", "follow", "regroup",
+  "tell", "ask", "have", "order"
+];
+
+function containsActionTerm(text) {
+  const norm = normalized(text);
+  return ACTION_TERMS.some((term) => new RegExp(`\\b${term}(?:s|ed|ing)?\\b`, "i").test(norm));
+}
+
+function segmentSourceClauses(sourceText, coworkers = []) {
+  const text = String(sourceText ?? "").trim();
+  if (!text) return { clauses: [], hasCondition: false, hasSequence: false };
+
+  const condMatch = /\b(?:if|unless|provided that|on condition that)\b/i.exec(text);
+  if (condMatch) {
+    return { clauses: [{ span: text, isAction: true, isConditional: true }], hasCondition: true, conditionSpan: condMatch[0] };
+  }
+
+  const sequenceMatch = /^(.+?)\s+(?:,\s*)?(?:and then|then)\s+(.+)$/i.exec(text);
+  if (sequenceMatch) {
+    const part1 = sequenceMatch[1].trim().replace(/[,;\s]+$/, "");
+    const part2 = sequenceMatch[2].trim().replace(/[,;\s]+$/, "");
+    return {
+      clauses: [
+        { span: part1, marker: null, isAction: true },
+        { span: part2, marker: "then", isAction: true }
+      ],
+      hasCondition: false,
+      hasSequence: true,
+      relation: "sequence"
+    };
+  }
+
+  const leadingWhile = /^(?:while|whilst|as)\s+([^,]+),\s*(.+)$/i.exec(text);
+  if (leadingWhile) {
+    return {
+      clauses: [
+        { span: leadingWhile[1].trim(), marker: "while", isAction: true },
+        { span: leadingWhile[2].trim(), marker: null, isAction: true }
+      ],
+      hasCondition: false,
+      hasSequence: false,
+      relation: "coordinated"
+    };
+  }
+
+  const midWhile = /^(.+?)\s+\b(?:while|whilst)\b\s+(.+)$/i.exec(text);
+  if (midWhile) {
+    return {
+      clauses: [
+        { span: midWhile[1].trim(), marker: null, isAction: true },
+        { span: midWhile[2].trim(), marker: "while", isAction: true }
+      ],
+      hasCondition: false,
+      hasSequence: false,
+      relation: "coordinated"
+    };
+  }
+
+  const andMatch = /^(.+?)\s+(?:,\s*)?and\s+(.+)$/i.exec(text);
+  if (andMatch) {
+    const left = andMatch[1].trim();
+    const right = andMatch[2].trim();
+    if (containsActionTerm(right) || coworkers.some((c) => (c.aliases ?? [c.label]).some((a) => a && a.length > 2 && normalized(right).includes(normalized(a))))) {
+      return {
+        clauses: [
+          { span: left, marker: null, isAction: true },
+          { span: right, marker: "and", isAction: true }
+        ],
+        hasCondition: false,
+        hasSequence: false,
+        relation: "coordinated"
+      };
+    }
+  }
+
+  return {
+    clauses: [{ span: text, marker: null, isAction: true }],
+    hasCondition: false,
+    hasSequence: false,
+    relation: "single"
+  };
+}
+
+function verifyClauseCoverage(sourceText, proposal, scope, meta) {
+  const { requestId, source } = meta;
+  const segmented = segmentSourceClauses(sourceText, scope.authority.coworkers);
+  if (segmented.hasCondition) {
+    return clarification({
+      sourceText,
+      requestId,
+      source,
+      code: "CONDITIONAL_INSTRUCTION_UNSUPPORTED",
+      question: "Conditional instructions cannot be executed automatically. Please state an immediate action."
+    });
+  }
+  if (segmented.hasSequence && proposal.relation === "coordinated") {
+    return clarification({
+      sourceText,
+      requestId,
+      source,
+      code: "MIXED_RELATION_UNSUPPORTED",
+      question: "Sequential instructions cannot be executed in a single coordinated interval. Please submit actions individually or coordinate simultaneous actions."
+    });
+  }
+
+  if (segmented.clauses.length > 1 && proposal.relation === "single") {
+    return clarification({
+      sourceText,
+      requestId,
+      source,
+      code: "INCOMPLETE_CLAUSE_COVERAGE",
+      question: "Your instruction contains multiple actions, but only one action was proposed. Please restate or confirm each action."
+    });
+  }
+
+  if (segmented.clauses.length > 1) {
+    if (proposal.attempts.length < segmented.clauses.length) {
+      return clarification({
+        sourceText,
+        requestId,
+        source,
+        code: "INCOMPLETE_CLAUSE_COVERAGE",
+        question: "Your instruction contains multiple actions, but not all were accounted for. Please confirm each action."
+      });
+    }
+    if (proposal.attempts.length > segmented.clauses.length) {
+      return clarification({
+        sourceText,
+        requestId,
+        source,
+        code: "EXTRA_CLAUSE_UNSUPPORTED",
+        question: "The proposal included an action not found in your instruction. What action did you want to take?"
+      });
+    }
+    for (const clause of segmented.clauses) {
+      const match = proposal.attempts.some((attempt) => {
+        const span = normalized(attempt.language_span);
+        const clauseSpan = normalized(clause.span);
+        return span.includes(clauseSpan) || clauseSpan.includes(span) || normalized(sourceText).includes(span);
+      });
+      if (!match) {
+        return clarification({
+          sourceText,
+          requestId,
+          source,
+          code: "INCOMPLETE_CLAUSE_COVERAGE",
+          question: `The action "${clause.span}" was not accounted for in the proposal. Please clarify.`
+        });
+      }
+    }
+  }
+
+  if (segmented.clauses.length <= 1 && proposal.attempts.length > 1) {
+    return clarification({
+      sourceText,
+      requestId,
+      source,
+      code: "EXTRA_CLAUSE_UNSUPPORTED",
+      question: "The proposal included extra actions not requested in your instruction."
+    });
+  }
+
+  return null;
 }
 
 function matchReference(query, records) {
@@ -275,6 +489,8 @@ function validateAndResolve(proposal, scope, meta) {
   if (proposal.attempts.some((attempt) => !agencySupported(attempt, sourceText))) {
     return clarification({ sourceText, requestId, source, code: "PLAYER_AGENCY_UNSUPPORTED", question: "What action, if any, do you want your character to take?" });
   }
+  const coverageClarification = verifyClauseCoverage(sourceText, proposal, scope, meta);
+  if (coverageClarification) return coverageClarification;
   const playerAttempts = proposal.attempts.filter((attempt) => attempt.actor.kind === "player");
   const coworkerAttempts = proposal.attempts.filter((attempt) => attempt.actor.kind === "coworker");
   if (proposal.relation === "single") {
@@ -378,5 +594,7 @@ module.exports = {
   COORDINATED_SINK,
   buildCustodianScope,
   interpretPlayerLanguage,
-  dispatchCandidate
+  dispatchCandidate,
+  validateAndResolve,
+  segmentSourceClauses
 };

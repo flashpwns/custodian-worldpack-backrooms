@@ -110,7 +110,7 @@ test("all attempts validate against the shared pre-interval scene and invalid bu
     bundle(run, { submission_id:"duplicate", coworker_attempts:[{ actor:survey.personnel_id, action:"INSPECT", target:"descending grade" }, { actor:survey.personnel_id, action:"INSPECT", target:"descending grade" }] }),
     bundle(run, { submission_id:"player-as-coworker", coworker_attempts:[{ actor:player, action:"INSPECT", target:"descending grade" }] }),
     bundle(run, { submission_id:"missing-player", player_attempt:null }),
-    bundle(run, { submission_id:"invalid-player", player_attempt:{ actor:player, action:"INSPECT", target:"descending grade" }, coworker_attempts:[{ actor:survey.personnel_id, action:"INSPECT", target:"descending grade" }] }),
+    bundle(run, { submission_id:"invalid-player", player_attempt:{ actor:player, action:"UNSUPPORTED_ACTION", target:"descending grade" }, coworker_attempts:[{ actor:survey.personnel_id, action:"INSPECT", target:"descending grade" }] }),
     bundle(run, { submission_id:"invalid-coworker", coworker_attempts:[{ actor:survey.personnel_id, action:"INSPECT", target:"missing fixture" }] })
   ];
   for (const candidate of cases) {

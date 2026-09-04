@@ -262,8 +262,8 @@ function observeCurrentObjects(run) {
   if (!run.object_state || !run.spatial) return [];
   return objectRuntime.observeLocation(run.object_state, interactionDefinitionFor(run.spatial_pack_id), { observer: run.session.startup.player.observer_id, location: run.spatial.player_location, time: run.expedition?.clock?.interval ?? 0 });
 }
-function toolAdapter(run) {
-  const observer = run.session.startup.player.observer_id;
+function toolAdapter(run, activeObserver = null) {
+  const observer = activeObserver ?? run.session.startup.player.observer_id;
   function resolveTool(requirement) {
     const match = Object.entries(run.expedition?.equipment ?? {}).find(([key, item]) => (requirement.key && key === requirement.key) || (!requirement.key && requirement.capability && item.capability === requirement.capability));
     if (!match) return { ok: false, code: "EQUIPMENT_NOT_ACCESSIBLE", reason: requirement.unavailable ?? "The required equipment was not assigned to this operation." };
@@ -506,14 +506,42 @@ function validateCoordinatedAttempts(run, bundle) {
       const claim = resources.get(attempt.equipment); if (claim) return { ok:false, code:"COORDINATED_RESOURCE_CONFLICT", reason:`The ${item.label.toLowerCase()} is claimed by more than one simultaneous attempt.` };
       resources.set(attempt.equipment, attempt.actor); prepared.push({ ...attempt, operator, kind:"equipment-use" }); continue;
     }
-    if (attempt.action === "INSPECT" && attempt.role === "coworker") {
+    if (attempt.action === "INSPECT") {
       const object = objectRuntime.resolveTarget(run.object_state, interactions, attempt.target, playerLocation);
       if (object.ok) { prepared.push({ ...attempt, kind:"object-inspection" }); continue; }
       const landmark = spatialRuntime.inspect(run.spatial, spatial, attempt.target);
       if (!landmark.ok) return { ok:false, code:"COORDINATED_TARGET_UNAVAILABLE", reason:landmark.reason };
       prepared.push({ ...attempt, kind:"spatial-inspection", validation_narration:landmark.narration }); continue;
     }
-    return { ok:false, code:"COORDINATED_ACTION_UNSUPPORTED", reason:"The bounded coordinated executor supports passage measurement and coworker inspection only." };
+    if (attempt.action === "PHOTOGRAPH" || attempt.action === "TEST") {
+      const resolved = objectRuntime.resolveTarget(run.object_state, interactions, attempt.target, playerLocation);
+      if (!resolved.ok) return { ok:false, code:resolved.code === "INTERACTION_TARGET_AMBIGUOUS" ? resolved.code : "COORDINATED_TARGET_UNAVAILABLE", reason:resolved.reason };
+      const affordanceAction = attempt.action.toLowerCase();
+      const affordance = (resolved.object.affordances ?? []).find((item) => item.type === affordanceAction);
+      if (!affordance) return { ok:false, code:"COORDINATED_ACTION_UNSUPPORTED", reason:resolved.object.rejections?.[affordanceAction] ?? `The ${resolved.object.display_name.toLowerCase()} does not support that action.` };
+      const stateFailure = objectRuntime.stateRequirementFailure(resolved.object_state, affordance);
+      if (stateFailure) return { ok:false, code:"COORDINATED_ACTION_UNAVAILABLE", reason:stateFailure };
+      const reqEquipment = affordance.requirements?.equipment ?? [];
+      let requiredItemKey = null;
+      let requiredItem = null;
+      for (const req of reqEquipment) {
+        const match = Object.entries(run.expedition.equipment ?? {}).find(([key, item]) => (req.key && key === req.key) || (!req.key && req.capability && item.capability === req.capability));
+        if (!match) return { ok:false, code:"COORDINATED_EQUIPMENT_UNAVAILABLE", reason:req.unavailable ?? "Required equipment is not available." };
+        const [key, item] = match;
+        if (!q4Equipment.stateUsable(item) || Number(item.charges ?? 0) <= 0) return { ok:false, code:"COORDINATED_EQUIPMENT_UNAVAILABLE", reason:req.unavailable ?? `The ${item.label.toLowerCase()} is not operational.` };
+        if (item.holder !== attempt.actor) return { ok:false, code:"COORDINATED_EQUIPMENT_NOT_HELD", reason:"A coordinated equipment attempt requires the declared actor to hold and operate the equipment." };
+        requiredItemKey = key;
+        requiredItem = item;
+      }
+      if (requiredItemKey) {
+        const claim = resources.get(requiredItemKey);
+        if (claim) return { ok:false, code:"COORDINATED_RESOURCE_CONFLICT", reason:`The ${requiredItem.label.toLowerCase()} is claimed by more than one simultaneous attempt.` };
+        resources.set(requiredItemKey, attempt.actor);
+      }
+      prepared.push({ ...attempt, operator:attempt.actor, kind:"object-interaction", affordance_action:affordanceAction, object_id:resolved.object.id, equipment:requiredItemKey });
+      continue;
+    }
+    return { ok:false, code:"COORDINATED_ACTION_UNSUPPORTED", reason:"The bounded coordinated executor supports passage measurement, inspection, photography, and instrument testing only." };
   }
   return { ok:true, submission_id:bundle.submission_id.trim(), player, player_location:playerLocation, prepared };
 }
@@ -521,6 +549,8 @@ function resolveCoordinatedAttempts(runValue, bundle) {
   const run = normalizeRun(runValue); if (run.lifecycle === "completed") return coordinatedFailure(run, "RUN_COMPLETE", "The operation is already complete.");
   const validation = validateCoordinatedAttempts(run, bundle); if (!validation.ok) return coordinatedFailure(run, validation.code, validation.reason);
   const from = run.expedition.clock.interval; const interval = from + 1; const intervalId = `coordinated:${run.run_id ?? run.expedition.id}:${validation.submission_id}:${interval}`; const priorSubmission = run._active_submission_id; run._active_submission_id = validation.submission_id;
+  const interactions = interactionDefinitionFor(run.spatial_pack_id);
+  const spatial = spatialDefinitionFor(run.spatial_pack_id);
   const outcomes = [];
   for (const attempt of validation.prepared) {
     if (attempt.kind === "equipment-use") {
@@ -534,10 +564,49 @@ function resolveCoordinatedAttempts(runValue, bundle) {
       run.checklist.used = true; const outcome = { actor:attempt.actor, role:attempt.role, action:attempt.action, target:attempt.target, equipment:attempt.equipment, operator:attempt.operator, outcome:"succeeded", interval_id:intervalId, interval, evidence_id:evidence?.id ?? null, public_reason:evidence?.target_observation ?? "The equipment procedure was completed." };
       event(run.expedition, "coordinated.attempt.resolved", outcome); outcomes.push(outcome); continue;
     }
+    if (attempt.kind === "object-interaction") {
+      const tools = toolAdapter(run, attempt.actor);
+      const onEvidence = (evidence) => {
+        evidence.mission_id = run.expedition.mission?.id ?? null;
+        evidence.environmental_conditions = environment.captureContext(run.spatial.environment, validation.player_location, { has_field_light:q4Equipment.stateUsable(run.expedition.equipment?.["field-light"]) });
+        evidence.operator = attempt.actor;
+        evidence.creator = attempt.actor;
+        evidence.capturing_observer = attempt.actor;
+        evidence.custodian = attempt.actor;
+        if (run._world) evidenceAuthority.capture(run._world, run, evidence);
+        evidence.render = { status:"fallback-ready" };
+      };
+      const interacted = objectRuntime.interact(run.object_state, interactions, {
+        observer: attempt.actor,
+        location: validation.player_location,
+        location_name: spatialRuntime.currentLocation(run.spatial, spatial)?.name ?? null,
+        target: attempt.target,
+        action: attempt.affordance_action,
+        time: interval,
+        run_ref: run.run_id ?? run.expedition.id,
+        evidence: run.expedition.evidence,
+        resolveTool: tools.resolveTool,
+        consumeTool: tools.consumeTool,
+        advanceTime: null,
+        onEvidence,
+        renderText: (text, statuses) => renderInteractionText(run, text, statuses)
+      });
+      if (!interacted.ok) { run._active_submission_id = priorSubmission; return coordinatedFailure(run, interacted.code, interacted.reason); }
+      run.checklist.used = true;
+      const eventId = `object.interaction.${interacted.interaction_sequence ?? run.object_state.interaction_history.length}`;
+      event(run.expedition, "object.interacted", { action:interacted.action, target:interacted.target, location:validation.player_location, interaction_sequence:interacted.interaction_sequence, evidence_id:interacted.evidence?.id ?? null, time_cost:0 });
+      const outcome = { actor:attempt.actor, role:attempt.role, action:attempt.action, target:interacted.target, equipment:attempt.equipment, operator:attempt.actor, outcome:"succeeded", interval_id:intervalId, interval, evidence_id:interacted.evidence?.id ?? null, public_reason:interacted.narration };
+      event(run.expedition, "coordinated.attempt.resolved", outcome);
+      outcomes.push(outcome);
+      continue;
+    }
     const member = run.expedition.team.members.find((item) => (item.personnel_id ?? item.id) === attempt.actor); let inspected;
-    if (attempt.kind === "object-inspection") inspected = objectRuntime.inspection(run.object_state, interactionDefinitionFor(run.spatial_pack_id), { observer:attempt.actor, location:validation.player_location, target:attempt.target, time:interval, toolContext:{ resolveTool:toolAdapter(run).resolveTool } });
+    if (attempt.kind === "object-inspection") inspected = objectRuntime.inspection(run.object_state, interactions, { observer:attempt.actor, location:validation.player_location, target:attempt.target, time:interval, toolContext:{ resolveTool:toolAdapter(run, attempt.actor).resolveTool } });
     else inspected = { ok:true, action:"inspect", target:attempt.target, narration:attempt.validation_narration, time_cost:0, state_changed:false };
-    member.known_information ??= []; member.known_information.push({ kind:"coordinated-inspection", target:inspected.target, location:validation.player_location, at:interval, source:"direct-observation", interval_id:intervalId }); run.checklist.inspected = true;
+    if (member) {
+      member.known_information ??= []; member.known_information.push({ kind:"coordinated-inspection", target:inspected.target, location:validation.player_location, at:interval, source:"direct-observation", interval_id:intervalId });
+    }
+    run.checklist.inspected = true;
     const outcome = { actor:attempt.actor, role:attempt.role, action:attempt.action, target:inspected.target, equipment:null, operator:attempt.actor, outcome:"succeeded", interval_id:intervalId, interval, evidence_id:null, public_reason:inspected.narration };
     event(run.expedition, "coordinated.attempt.resolved", outcome); outcomes.push(outcome);
   }

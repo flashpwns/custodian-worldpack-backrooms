@@ -397,5 +397,5 @@ module.exports = {
   VERSION, DEFINITION_VERSION, EVIDENCE_VERSION, AFFORDANCES,
   validateDefinition, createState, migrate, observeLocation, projectLocation,
   resolveTarget, inspection, interact, relocate,
-  interpret, validateState, conditionSnapshot
+  interpret, validateState, conditionSnapshot, stateRequirementFailure
 };

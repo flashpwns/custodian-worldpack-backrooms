@@ -48,6 +48,8 @@ function visibleActionText(packet, event) {
   const target = String(event.target ?? "the nearby feature").replace(/[-_]+/g, " ");
   const action = String(event.action ?? "acts").toUpperCase();
   if (action === "INSPECT") return `${actor} inspects ${target}.`;
+  if (action === "PHOTOGRAPH") return `${actor} photographs ${target}.`;
+  if (action === "TEST") return `${actor} tests ${target}.`;
   if (action === "USE") return `${actor} completes the equipment procedure at ${target}.`;
   return `${actor} completes the recorded ${action.toLowerCase()} attempt.`;
 }
