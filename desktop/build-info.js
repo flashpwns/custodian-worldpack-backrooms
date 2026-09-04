@@ -14,6 +14,9 @@ function sourceCommit() {
   catch { return "source-tree-unresolved"; }
 }
 function read() {
+  if (fs.existsSync(path.join(__dirname, "..", ".git"))) {
+    return { version: packageVersion, commit: sourceCommit(), built_at: "SOURCE_TREE", provenance: "development" };
+  }
   try {
     const value = JSON.parse(fs.readFileSync(file, "utf8"));
     if (value?.version && value?.commit && value?.built_at) return value;
