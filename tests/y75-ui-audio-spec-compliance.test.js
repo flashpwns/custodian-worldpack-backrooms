@@ -66,29 +66,62 @@ test("Spatial attenuation calculates volume and low-pass filtering based on dist
   assert.equal(outOfRange.volume, 0);
 });
 
-test("UI Blacklist Audit detects explicit forbidden terms in renderer source", () => {
+test("UI Spec Compliance: Forbidden terms cause failure and frozen vocabulary is enforced", () => {
   const renderer = fs.readFileSync(path.join(__dirname, "../desktop/renderer/renderer.js"), "utf8");
   const surfaces = fs.readFileSync(path.join(__dirname, "../desktop/renderer/surfaces.js"), "utf8");
+  const html = fs.readFileSync(path.join(__dirname, "../desktop/renderer/index.html"), "utf8");
 
-  // Hard blacklist terms that MUST NEVER exist anywhere
-  assert.doesNotMatch(renderer, /\bXP\b/);
-  assert.doesNotMatch(renderer, /Task Complete!/);
-  assert.doesNotMatch(renderer, /Side Objective/);
-  assert.doesNotMatch(surfaces, /\bXP\b/);
-  assert.doesNotMatch(surfaces, /Task Complete!/);
+  // Hard blacklist terms that MUST NEVER exist anywhere in player-facing code
+  const forbiddenPatterns = [
+    /\bXP\b/,
+    /Task Complete!/,
+    /Side Objective/,
+    /\bQuest\b/,
+    /Submit \/ End Turn/,
+    /LIVE HOSTED AI/,
+    /Abandon expedition/,
+    /Leave session/,
+    /MODEL INTERPRETATION/
+  ];
 
-  // Identified compliance violations (tracked for Pass 5 cleanup)
-  // 1. Action input label "Submit / End Turn" violates Point 25 & 54 (must be "SUBMIT")
-  const hasSubmitEndTurn = renderer.includes("Submit / End Turn");
-  // 2. "LIVE HOSTED AI" violates Point 22 & 53 (AI/provider terminology leak)
-  const hasLiveHostedAI = renderer.includes("LIVE HOSTED AI");
-  // 3. "Abandon expedition" violates Point 41 & 54 (must be "TERMINATE FIELD SESSION")
-  const hasAbandonExpedition = renderer.includes("Abandon expedition");
+  for (const pattern of forbiddenPatterns) {
+    assert.doesNotMatch(renderer, pattern, `Forbidden pattern ${pattern} found in renderer.js`);
+    assert.doesNotMatch(surfaces, pattern, `Forbidden pattern ${pattern} found in surfaces.js`);
+  }
 
-  // Record audit findings as verified truths
-  assert.ok(hasSubmitEndTurn, "Audit: 'Submit / End Turn' found in renderer.js for Pass 5 resolution");
-  assert.ok(hasLiveHostedAI, "Audit: 'LIVE HOSTED AI' found in renderer.js for Pass 5 resolution");
-  assert.ok(hasAbandonExpedition, "Audit: 'Abandon expedition' found in renderer.js for Pass 5 resolution");
+  // index.html title must identify AEOT, not in-universe "Yellow Beast"
+  assert.doesNotMatch(html, /<title>Yellow Beast<\/title>/);
+  assert.match(html, /<title>ASYNC RESEARCH INSTITUTE · EXPEDITION TRACING INTERFACE<\/title>/);
+
+  // Positive compliance checks
+  assert.match(renderer, /<button type="submit"[^>]*>SUBMIT<\/button>/);
+  assert.match(renderer, /TERMINATE FIELD SESSION/);
+});
+
+test("Safe interface audio hooks wired to runtime events", () => {
+  const renderer = fs.readFileSync(path.join(__dirname, "../desktop/renderer/renderer.js"), "utf8");
+
+  // radio_tx_chirp wired to standard communication, never on local
+  assert.match(renderer, /radio_tx_chirp/);
+  // ui_submit wired to submission
+  assert.match(renderer, /ui_submit/);
+  // ui_select wired to interactions
+  assert.match(renderer, /ui_select/);
+  // ui_error wired to error state
+  assert.match(renderer, /ui_error/);
+  // boot_relay and boot_confirm wired to boot sequence
+  assert.match(renderer, /boot_relay/);
+  assert.match(renderer, /boot_confirm/);
+});
+
+test("Radio transmit audio contract: chirp on successful standard send only, never on local", () => {
+  const renderer = fs.readFileSync(path.join(__dirname, "../desktop/renderer/renderer.js"), "utf8");
+
+  // Verify the condition under which radio_tx_chirp is emitted
+  assert.match(renderer, /channel === "standard"/);
+  assert.match(renderer, /!resultIsError\(res\)\s*&&\s*channel === "standard"/);
+  // Ensure radio_tx_chirp is not emitted for local
+  assert.doesNotMatch(renderer, /channel === "local"[^;]*radio_tx_chirp/);
 });
 
 test("Input separation: natural action form and comms form remain distinct DOM structures", () => {
