@@ -151,12 +151,17 @@ function projectObserverKnowledge(run, observerId, member) {
     interval_id:item.interval_id ?? null
   }));
   const reportedKnowledge = information.filter((item) => item.kind === "reported-knowledge" || (item.source && item.source !== "direct-observation")).map((item) => ({
-    kind:item.kind ?? "reported-knowledge",
-    text:item.text ?? null,
-    sender:item.sender ?? null,
-    at:item.at ?? null,
-    source:item.source ?? "local-communication",
-    message_id:item.message_id ?? null
+    kind: item.kind ?? "reported-knowledge",
+    text: item.text ?? item.proposition ?? null,
+    proposition: item.proposition ?? item.text ?? null,
+    sender: item.sender ?? item.source_observer_id ?? null,
+    source_observer_id: item.source_observer_id ?? item.sender ?? null,
+    origin_observer_id: item.origin_observer_id ?? null,
+    via_observer_id: item.via_observer_id ?? null,
+    is_direct_witness: item.is_direct_witness ?? false,
+    at: item.at ?? null,
+    source: item.source ?? "local-communication",
+    message_id: item.message_id ?? item.source_message_id ?? null
   }));
   const conclusions = information.filter((item) => CONCLUSION_KINDS.has(item.kind)).map((item) => ({
     kind:item.kind,
@@ -372,9 +377,10 @@ function projectObserverState(runValue, observerId, purpose = "presentation") {
         reported_knowledge: p.observer_knowledge.reported_knowledge ?? [],
         known_records: p.observer_knowledge.known_records,
         negative_constraints: [
-          "cannot perceive unvisited or offscreen rooms",
-          "cannot perceive equipment held by offscreen personnel without communication",
-          "cannot access un-communicated player thoughts or un-transmitted Standard logs"
+          "Do not claim knowledge of locations not present in this observer shell.",
+          "Do not claim possession or perception of equipment held by offscreen personnel without prior communication.",
+          "Do not access or claim awareness of uncommunicated player thoughts or untransmitted Standard logs.",
+          "Do not assert unobserved events or offscreen phenomena as direct witness."
         ]
       },
       conversation: {
@@ -387,4 +393,56 @@ function projectObserverState(runValue, observerId, purpose = "presentation") {
   return projected;
 }
 
-module.exports = { VERSION, projectLiveScene, projectObserverState };
+function validateNegativeConstraintsNoLeaks(constraints, run) {
+  if (!Array.isArray(constraints)) return { ok: false, leaked: [], reason: "Constraints must be an array" };
+  const leaked = [];
+
+  // Internal ID pattern
+  const internalIdRegex = /\b(?:q4|yb-personnel|coordinated|open-passage|utility-room|clear-q4|actor|object|node|edge|fixture|entity)-[a-z0-9][a-z0-9:-]{3,}\b/i;
+
+  let hiddenLocationIds = [];
+  if (run?.spatial_pack_id) {
+    try {
+      const topology = bootstrap.topologyFor(run);
+      if (topology && Array.isArray(topology.locations)) {
+        hiddenLocationIds = topology.locations.map((loc) => loc.id).filter(Boolean);
+      }
+    } catch {}
+  }
+
+  let hiddenObjectIds = [];
+  if (run?.object_state) {
+    hiddenObjectIds = Object.keys(run.object_state).filter(Boolean);
+  }
+
+  for (const c of constraints) {
+    const text = String(c);
+    const match = text.match(internalIdRegex);
+    if (match && !leaked.includes(match[0])) {
+      leaked.push(match[0]);
+    }
+    for (const locId of hiddenLocationIds) {
+      if (locId && text.toLowerCase().includes(locId.toLowerCase()) && !leaked.includes(locId)) {
+        leaked.push(locId);
+      }
+    }
+    for (const objId of hiddenObjectIds) {
+      if (objId && text.toLowerCase().includes(objId.toLowerCase()) && !leaked.includes(objId)) {
+        leaked.push(objId);
+      }
+    }
+  }
+
+  return {
+    ok: leaked.length === 0,
+    leaked,
+    reason: leaked.length > 0 ? `Negative constraints leaked internal/hidden identifiers: ${leaked.join(", ")}` : null
+  };
+}
+
+module.exports = {
+  VERSION,
+  projectLiveScene,
+  projectObserverState,
+  validateNegativeConstraintsNoLeaks
+};

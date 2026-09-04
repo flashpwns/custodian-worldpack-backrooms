@@ -5,7 +5,7 @@
 // of reality. Every AI context is a deliberately lossy observer-specific projection.
 const clone = (value) => structuredClone(value);
 
-const VERSION = "yellow-beast-canonical-world-ledger@v1";
+const VERSION = "yellow-beast-canonical-world-ledger@v2";
 
 function normalizePersonnelId(run, id) {
   if (!id) return null;
@@ -31,6 +31,13 @@ function getCoworkerLocation(run, memberId) {
 
 function getPersonnelLocations(run) {
   return clone(run.spatial?.personnel_locations ?? {});
+}
+
+function getPersonnelLocation(run, memberId) {
+  if (!memberId) return null;
+  const norm = normalizePersonnelId(run, memberId);
+  const locations = run.spatial?.personnel_locations ?? {};
+  return locations[norm] ?? locations[memberId] ?? null;
 }
 
 function getEquipment(run, equipmentId) {
@@ -109,7 +116,26 @@ function getStandardKnowledge(run) {
     m.intended_recipient === "Standard" && ["delivered", "acknowledged"].includes(m.state)
   );
   const evidence = (run.expedition?.evidence ?? []).filter((e) => e.reported_to_standard === true);
+
+  const receivedClaims = messages.map((m) => {
+    const evidentiarySupport = (m.evidence_ids ?? []).map((id) => getEvidenceProvenance(run, id)).filter(Boolean);
+    const hasEvidence = evidentiarySupport.length > 0;
+    return {
+      claim_id: `claim-${m.id}`,
+      source_observer: m.sender,
+      source_message_id: m.id,
+      received_at_interval: m.delivered_at ?? m.sent_at ?? run.expedition?.clock?.interval ?? 0,
+      semantic_claim: {
+        text: m.text,
+        purpose: m.purpose ?? "routine-report"
+      },
+      evidentiary_support: evidentiarySupport,
+      status: hasEvidence ? "supported" : "unverified"
+    };
+  });
+
   return {
+    received_claims: receivedClaims,
     received_transmissions: messages.map((m) => ({
       message_id: m.id,
       sender: m.sender,
@@ -121,47 +147,97 @@ function getStandardKnowledge(run) {
     reported_evidence: evidence.map((e) => ({
       evidence_id: e.id,
       type: e.type,
-      provenance: getEvidenceProvenance(run, e.id)
+      measurement: e.measurement ?? null
     }))
   };
 }
 
 function recordCausalTransition(run, {
-  kind,
-  actor,
+  kind = null,
+  actor = null,
   target = null,
   prior_state = null,
   resulting_state = null,
-  interval = run.expedition?.clock?.interval ?? 0,
+  interval = null,
   cause_action_id = null,
   cause_attempt_id = null,
   details = null
-}) {
-  run.causal_ledger ??= [];
+} = {}) {
+  run.causal_ledger = run.causal_ledger ?? [];
   const entry = {
-    sequence: run.causal_ledger.length + 1,
-    kind,
-    actor,
-    target,
-    prior_state: clone(prior_state),
-    resulting_state: clone(resulting_state),
-    interval,
-    cause_action_id,
-    cause_attempt_id,
-    details: details ? clone(details) : null,
-    recorded_at: Date.now()
+    index: run.causal_ledger.length,
+    kind: kind ?? null,
+    actor: actor ?? null,
+    target: target ?? null,
+    prior_state: prior_state ? clone(prior_state) : null,
+    resulting_state: resulting_state ? clone(resulting_state) : null,
+    interval: interval ?? run.expedition?.clock?.interval ?? 0,
+    cause_action_id: cause_action_id ?? null,
+    cause_attempt_id: cause_attempt_id ?? null,
+    details: details ? clone(details) : null
   };
   run.causal_ledger.push(entry);
   return entry;
 }
 
+function createDirectObservation({
+  target,
+  location,
+  interval,
+  observation_event_id = null,
+  interval_id = null,
+  observation = null
+}) {
+  return {
+    kind: "direct-observation",
+    source: "direct-observation",
+    target,
+    location,
+    at: interval,
+    observation_event_id: observation_event_id ?? interval_id ?? `obs-${target}-${interval}`,
+    interval_id: interval_id ?? observation_event_id ?? `obs-${target}-${interval}`,
+    observation,
+    is_direct_witness: true
+  };
+}
+
+function createReportedKnowledge({
+  proposition,
+  source_observer_id,
+  source_message_id,
+  interval,
+  origin_observer_id = null,
+  via_observer_id = null
+}) {
+  return {
+    kind: "reported-knowledge",
+    source: "local-communication",
+    proposition,
+    text: proposition,
+    source_observer_id,
+    sender: source_observer_id,
+    source_message_id,
+    message_id: source_message_id,
+    at: interval,
+    origin_observer_id: origin_observer_id ?? source_observer_id,
+    via_observer_id: via_observer_id ?? (origin_observer_id && origin_observer_id !== source_observer_id ? source_observer_id : null),
+    is_direct_witness: false
+  };
+}
+
 function validateInvariants(run) {
   const violations = [];
+  const unverifiable = [];
 
-  // 1. One unique equipment item has at most one holder
+  // 1. One unique equipment item has at most one holder string
+  const validPersonnelIds = new Set((run.expedition?.team?.members ?? []).map((m) => m.personnel_id ?? m.id));
   for (const [eqId, eq] of Object.entries(run.expedition?.equipment ?? {})) {
-    if (eq.holder && typeof eq.holder !== "string") {
-      violations.push({ invariant: 1, message: `Equipment ${eqId} holder is not a string: ${eq.holder}` });
+    if (eq.holder) {
+      if (typeof eq.holder !== "string") {
+        violations.push({ invariant: 1, code: "EQUIPMENT_HOLDER_NOT_STRING", message: `Equipment ${eqId} holder is not a string: ${eq.holder}` });
+      } else if (!validPersonnelIds.has(eq.holder)) {
+        violations.push({ invariant: 1, code: "EQUIPMENT_HOLDER_UNKNOWN", message: `Equipment ${eqId} holder ${eq.holder} not in team roster` });
+      }
     }
   }
 
@@ -170,44 +246,81 @@ function validateInvariants(run) {
   for (const member of run.expedition?.team?.members ?? []) {
     const id = member.personnel_id ?? member.id;
     if (!locations[id]) {
-      violations.push({ invariant: 2, message: `Personnel ${id} has no canonical location in run.spatial.personnel_locations` });
+      violations.push({ invariant: 2, code: "PERSONNEL_LOCATION_MISSING", message: `Personnel ${id} has no canonical location in run.spatial.personnel_locations` });
     }
   }
 
   // 3. Personnel location references existing geography
-  if (run.spatial_pack_id) {
+  if (!run.spatial_pack_id) {
+    unverifiable.push({ invariant: 3, code: "TOPOLOGY_UNAVAILABLE", reason: "spatial_pack_id is missing from run; topology cannot be resolved" });
+  } else {
     try {
       const bootstrap = require("./run-bootstrap");
       const topology = bootstrap.topologyFor(run);
-      const locationIds = new Set(topology.locations.map((loc) => loc.id));
-      for (const [personId, locId] of Object.entries(locations)) {
-        if (!locationIds.has(locId)) {
-          violations.push({ invariant: 3, message: `Personnel ${personId} location ${locId} not found in topology` });
+      if (!topology || !Array.isArray(topology.locations)) {
+        unverifiable.push({ invariant: 3, code: "TOPOLOGY_RESOLUTION_FAILED", reason: "Topology resolution returned no valid location list" });
+      } else {
+        const locationIds = new Set(topology.locations.map((loc) => loc.id));
+        for (const [personId, locId] of Object.entries(locations)) {
+          if (!locationIds.has(locId)) {
+            violations.push({ invariant: 3, code: "PERSONNEL_LOCATION_INVALID", message: `Personnel ${personId} location ${locId} not found in topology` });
+          }
         }
       }
-    } catch {
-      // ignore topology resolution if unavailable
+    } catch (error) {
+      unverifiable.push({ invariant: 3, code: "TOPOLOGY_EXCEPTION", reason: `Topology resolution threw an exception: ${error.message}` });
     }
   }
 
-  // 4. Photographic evidence has a valid capturing observer
-  for (const ev of run.expedition?.evidence ?? []) {
-    if (ev.type?.includes("photo") && !ev.capturing_observer) {
-      violations.push({ invariant: 5, message: `Photographic evidence ${ev.id} lacks capturing_observer` });
+  // 4. Controlled player ID must never accidentally alias a coworker ID
+  const playerId = run.session?.startup?.player?.observer_id;
+  if (playerId) {
+    const matching = (run.expedition?.team?.members ?? []).filter((m) => (m.personnel_id ?? m.id) === playerId);
+    if (matching.length > 1) {
+      violations.push({ invariant: 4, code: "PLAYER_COWORKER_IDENTITY_ALIASED", message: `Controlled player ${playerId} aliases coworker (multiple members match player ID)` });
     }
-  }
-
-  // 5. Direct knowledge has direct-observation provenance
-  for (const member of run.expedition?.team?.members ?? []) {
-    const direct = (member.known_information ?? []).filter((i) => ["coordinated-inspection", "location-investigated"].includes(i.kind));
-    for (const item of direct) {
-      if (item.source !== "direct-observation") {
-        violations.push({ invariant: 6, message: `Direct observation ${item.kind} for ${member.personnel_id} lacks direct-observation source: ${item.source}` });
+    for (const m of run.expedition?.team?.members ?? []) {
+      if ((m.personnel_id ?? m.id) === playerId && (m.contact_category === "LOCAL" || m.mission_authority === "assigned operational authority")) {
+        violations.push({ invariant: 4, code: "PLAYER_COWORKER_IDENTITY_ALIASED", message: `Coworker ${m.first_name} ${m.last_name} aliases player ID ${playerId}` });
       }
     }
   }
 
-  return { ok: violations.length === 0, violations };
+  // 5. Photographic evidence has a valid capturing observer
+  for (const ev of run.expedition?.evidence ?? []) {
+    if (ev.type?.includes("photo")) {
+      if (!ev.capturing_observer) {
+        violations.push({ invariant: 5, code: "PHOTO_EVIDENCE_LACKS_OBSERVER", message: `Photographic evidence ${ev.id} lacks capturing_observer` });
+      } else if (!validPersonnelIds.has(ev.capturing_observer)) {
+        violations.push({ invariant: 5, code: "PHOTO_EVIDENCE_OBSERVER_UNKNOWN", message: `Photographic evidence ${ev.id} capturing_observer ${ev.capturing_observer} not in team roster` });
+      }
+    }
+  }
+
+  // 6. Direct knowledge has direct-observation provenance
+  for (const member of run.expedition?.team?.members ?? []) {
+    const direct = (member.known_information ?? []).filter((i) => ["coordinated-inspection", "location-investigated", "direct-observation"].includes(i.kind));
+    for (const item of direct) {
+      if (item.source !== "direct-observation") {
+        violations.push({ invariant: 6, code: "DIRECT_OBSERVATION_PROVENANCE_INVALID", message: `Direct observation ${item.kind} for ${member.personnel_id ?? member.id} lacks direct-observation source: ${item.source}` });
+      }
+    }
+  }
+
+  // 7. Reported knowledge has communication provenance
+  for (const member of run.expedition?.team?.members ?? []) {
+    const reported = (member.known_information ?? []).filter((i) => i.kind === "reported-knowledge");
+    for (const item of reported) {
+      if (item.source === "direct-observation") {
+        violations.push({ invariant: 7, code: "REPORTED_KNOWLEDGE_CLAIMS_DIRECT", message: `Reported knowledge for ${member.personnel_id ?? member.id} claims direct-observation source` });
+      }
+    }
+  }
+
+  const ok = violations.length === 0 && unverifiable.length === 0;
+  const status = violations.length > 0 ? "FAIL" : (unverifiable.length > 0 ? "UNVERIFIABLE" : "PASS");
+
+  return { ok, status, violations, unverifiable };
 }
 
 module.exports = {
@@ -216,6 +329,7 @@ module.exports = {
   getPlayerLocation,
   getCoworkerLocation,
   getPersonnelLocations,
+  getPersonnelLocation,
   getEquipment,
   getEquipmentHolder,
   getEquipmentHeldBy,
@@ -228,5 +342,7 @@ module.exports = {
   hasObserverObserved,
   getStandardKnowledge,
   recordCausalTransition,
+  createDirectObservation,
+  createReportedKnowledge,
   validateInvariants
 };

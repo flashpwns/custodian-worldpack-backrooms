@@ -174,10 +174,105 @@ function validateDialogueClaims(packet, candidate, run) {
   return { ok: true };
 }
 
+function validateSemanticClaims(claims, speakerId, run) {
+  if (!Array.isArray(claims)) {
+    return { ok: false, code: "SEMANTIC_CLAIMS_INVALID_FORMAT", reason: "Claims must be an array" };
+  }
+  for (const claim of claims) {
+    if (!claim || typeof claim !== "object") {
+      return { ok: false, code: "SEMANTIC_CLAIMS_INVALID_FORMAT", reason: "Each claim must be an object" };
+    }
+    const type = claim.type ?? claim.kind;
+    const subject = claim.subject ?? claim.observer ?? speakerId;
+
+    if (type === "equipment-possession" || type === "equipment_possession") {
+      const item = claim.object ?? claim.item_id ?? claim.equipment;
+      const canonicalHolder = canonicalLedger.getEquipmentHolder(run, item);
+      if (!canonicalHolder || !samePersonnel(canonicalHolder, subject)) {
+        return {
+          ok: false,
+          code: "SEMANTIC_CLAIM_EQUIPMENT_MISMATCH",
+          claim,
+          reason: `Subject ${subject} does not hold ${item}; actual holder is ${canonicalHolder ?? "none"}.`
+        };
+      }
+    } else if (type === "location") {
+      const targetLoc = claim.location_id ?? claim.location;
+      const actualLoc = canonicalLedger.getPersonnelLocation(run, subject);
+      if (actualLoc !== targetLoc) {
+        return {
+          ok: false,
+          code: "SEMANTIC_CLAIM_LOCATION_MISMATCH",
+          claim,
+          reason: `Subject ${subject} is at ${actualLoc}, not ${targetLoc}.`
+        };
+      }
+    } else if (type === "direct-observation" || type === "direct_observation") {
+      const target = claim.target;
+      const hasObserved = canonicalLedger.hasObserverObserved(run, subject, target);
+      let isVisible = false;
+      try {
+        const liveScene = projectLiveScene(run, { observer_id: subject });
+        if (liveScene.ok) {
+          isVisible = (liveScene.packet.visible_objects ?? []).some((obj) =>
+            String(obj.name ?? "").toLowerCase().includes(String(target).toLowerCase())
+          );
+        }
+      } catch {}
+      if (!hasObserved && !isVisible) {
+        return {
+          ok: false,
+          code: "SEMANTIC_CLAIM_UNOBSERVED_TARGET",
+          claim,
+          reason: `Observer ${subject} has no direct observation provenance for ${target}.`
+        };
+      }
+    } else if (type === "reported-claim" || type === "reported-observation" || type === "reported_claim") {
+      const prop = claim.proposition ?? claim.target;
+      const reportedKnowledge = canonicalLedger.getObserverReportedKnowledge(run, subject);
+      const matches = reportedKnowledge.some((item) =>
+        String(item.proposition ?? item.text ?? "").toLowerCase().includes(String(prop).toLowerCase())
+      );
+      if (!matches) {
+        return {
+          ok: false,
+          code: "SEMANTIC_CLAIM_UNREPORTED_TARGET",
+          claim,
+          reason: `Observer ${subject} has no reported knowledge provenance for ${prop}.`
+        };
+      }
+    } else if (type === "measurement") {
+      const target = claim.target ?? claim.evidence_id;
+      const evidenceList = run.expedition?.evidence ?? [];
+      const hasMeasurement = evidenceList.some((e) =>
+        e.valid === true &&
+        e.measurement &&
+        (e.id === target || String(e.source_location_name ?? "").toLowerCase().includes(String(target).toLowerCase()) || String(e.type ?? "").toLowerCase().includes(String(target).toLowerCase()))
+      );
+      if (!hasMeasurement) {
+        return {
+          ok: false,
+          code: "SEMANTIC_CLAIM_UNVERIFIED_MEASUREMENT",
+          claim,
+          reason: `Observer ${subject} has no verified measurement for ${target}.`
+        };
+      }
+    }
+  }
+
+  return { ok: true, claims };
+}
+
 function validateLocalDialogue(packet, candidate, runValue = null) {
   const keys = candidate && typeof candidate === "object" && !Array.isArray(candidate) ? Object.keys(candidate) : [];
-  if (keys.length !== 3 || !keys.every((key) => ["version", "observer_id", "speech"].includes(key))) return { ok: false, code: "LOCAL_PRESENTATION_SCHEMA_INVALID" };
-  if (candidate.version !== CANDIDATE_VERSION || candidate.observer_id !== packet.speaker.observer_id || typeof candidate.speech !== "string") return { ok: false, code: "LOCAL_PRESENTATION_SCHEMA_INVALID" };
+  const requiredKeys = ["version", "observer_id", "speech"];
+  const allowedKeys = new Set(["version", "observer_id", "speech", "speech_act", "semantic_claims", "claims", "surface_intent"]);
+  if (!requiredKeys.every((k) => k in candidate) || !keys.every((k) => allowedKeys.has(k))) {
+    return { ok: false, code: "LOCAL_PRESENTATION_SCHEMA_INVALID" };
+  }
+  if (candidate.version !== CANDIDATE_VERSION || candidate.observer_id !== packet.speaker.observer_id || typeof candidate.speech !== "string") {
+    return { ok: false, code: "LOCAL_PRESENTATION_SCHEMA_INVALID" };
+  }
   const speech = candidate.speech.trim();
   if (!speech || speech.length > 600) return { ok: false, code: "LOCAL_PRESENTATION_SCHEMA_INVALID" };
   if (FORBIDDEN_METADATA.test(speech) || FORBIDDEN_INTERNAL_ID.test(speech)) return { ok: false, code: "LOCAL_PRESENTATION_INTERNAL_METADATA" };
@@ -186,11 +281,26 @@ function validateLocalDialogue(packet, candidate, runValue = null) {
 
   const run = runValue ?? packet?._run ?? null;
   if (run) {
+    const claims = candidate.semantic_claims ?? candidate.claims;
+    if (Array.isArray(claims) && claims.length > 0) {
+      const semanticValidation = validateSemanticClaims(claims, candidate.observer_id, run);
+      if (!semanticValidation.ok) return semanticValidation;
+    }
     const claimValidation = validateDialogueClaims(packet, candidate, run);
     if (!claimValidation.ok) return claimValidation;
   }
 
-  return { ok: true, candidate: deepFreeze({ version: CANDIDATE_VERSION, observer_id: candidate.observer_id, speech }) };
+  return {
+    ok: true,
+    candidate: deepFreeze({
+      version: CANDIDATE_VERSION,
+      observer_id: candidate.observer_id,
+      speech,
+      speech_act: candidate.speech_act ?? null,
+      semantic_claims: candidate.semantic_claims ?? candidate.claims ?? [],
+      surface_intent: candidate.surface_intent ?? null
+    })
+  };
 }
 
 module.exports = {
@@ -198,5 +308,6 @@ module.exports = {
   CANDIDATE_VERSION,
   buildLocalDialoguePacket,
   validateLocalDialogue,
-  validateDialogueClaims
+  validateDialogueClaims,
+  validateSemanticClaims
 };

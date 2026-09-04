@@ -1,33 +1,67 @@
 # Canonical World Ledger & Observer Shell Architecture
 
-## 1. Executive Doctrine & Architectural Rule
+## 1. Executive Doctrine & Epistemic Hierarchy
 
 **There is exactly ONE complete representation of reality.**
+**The Canonical World Ledger is a query and validation interface to this reality, NOT a duplicate or shadow state.**
 **Every AI context is a deliberately lossy, observer-specific projection derived from that reality.**
 
-The model must never receive full world truth merely because the runtime has access to it.
+The runtime formalizes this fundamental epistemic distinction:
 
 ```text
-CANONICAL WORLD LEDGER
-    ↓ (causal provenance & state mutations)
-CAUSAL STATE TRANSITIONS
-    ↓ (projection filter by observer identity)
-OBSERVER / KNOWLEDGE PROJECTION
-    ↓ (purpose-specific boundary filter)
-PLAYER INTERPRETER SHELL  or  COWORKER MINI-SHELL
-    ↓ (bounded natural language generation)
-AI PROPOSAL / PERFORMANCE
-    ↓ (mechanic & epistemic validation)
-CONSISTENCY VALIDATION
-    ↓ (institutional styling & register)
-A-SYNC / KANE PRESENTATION
+CANONICAL FACT
+    != DIRECT OBSERVATION
+    != COMMUNICATED CLAIM
+    != OBSERVER BELIEF / KNOWLEDGE RECORD
+    != STANDARD RECEIVED CLAIM
+    != INSTITUTIONAL ASSESSMENT
+    != PLAYER REPORT CLAIM
+    != SURFACE PROSE
+```
+
+These categories must never collapse merely because they express similar subject matter:
+- Being told something does not turn it into canonical truth.
+- Standard receiving an ungrounded report does not make the report true in the physical world.
+- Surface narrative realize phrasing may vary freely without altering semantic observer knowledge or canonical state.
+
+```text
+CANONICAL REALITY (Run / Worldpack State)
     ↓
-EXPEDITION COCKPIT / PLAYER
+CANONICAL WORLD LEDGER INTERFACE (Deterministic Causal Provenance & Invariant Gates)
+    ↓ (projection filter by observer identity & visibility boundaries)
+OBSERVER / KNOWLEDGE PROJECTION (Direct vs Reported Provenance Chains)
+    ↓ (purpose-specific boundary filter)
+PLAYER INTERPRETER SHELL  or  COWORKER MINI-SHELL  or  STANDARD OPERATOR SHELL
+    ↓ (structured semantic proposal validation)
+SEMANTIC CLAIM VALIDATION (`validateSemanticClaims`)
+    ↓ (secondary regex & metadata defense)
+SURFACE PROSE REALIZATION & VALIDATION (`validateLocalDialogue`)
+    ↓ (institutional styling & register)
+EXPEDITION COCKPIT / PLAYER INTERFACE
 ```
 
 ---
 
-## 2. Reality Ownership Map (26 Authoritative Categories)
+## 2. Reference Expedition Staffing & Identity Invariant
+
+Reference Expedition fixtures (`clear-q4/reference-expedition.json`) adhere strictly to the 4-person staffing model:
+
+```text
+TOTAL EXPEDITION PERSONNEL = 4
+    ├── 1 Controlled Player: Matthew Murphy (Survey Lead / Field Researcher, contact_category: "SELF")
+    └── 3 Autonomous Coworkers:
+            ├── Santiago Stokes (Survey Technician, contact_category: "LOCAL")
+            ├── Beverly Bell (Documentation Specialist, contact_category: "LOCAL")
+            └── Autumn Tucker (Route Specialist, contact_category: "LOCAL")
+```
+
+### Identity Invariant:
+- `controlled_player_id` must NEVER alias any coworker ID.
+- `validateInvariants` mechanically enforces that exactly one roster member matches the player ID, and any coworker aliasing the player ID triggers `PLAYER_COWORKER_IDENTITY_ALIASED` (`status: "FAIL"`).
+
+---
+
+## 3. Reality Ownership Map (26 Authoritative Categories)
 
 | # | Reality Category | Authoritative Owner | Persisted / Ephemeral | Mutated / Derived | AI Visibility | Provenance Reference |
 |---|---|---|---|---|---|---|
@@ -45,9 +79,9 @@ EXPEDITION COCKPIT / PLAYER
 | 12 | **Simulation Time** | `run.expedition.clock.interval` | Persisted | Mutated via `resolveOperationalCycle` | Clock header | Coordinated interval records |
 | 13 | **Local Utterances** | `run.expedition.messages` (`LOCAL`) | Persisted | Appended via `communicationRuntime.local`| Sender & in-range hearers | Message ID, interval, recipients |
 | 14 | **Radio Transmissions** | `run.expedition.messages` (`FIELD_RADIO`) | Persisted | Appended via `queueRadio` | Radio holder & Standard | Message ID, queue state, delivery |
-| 15 | **Standard Knowledge** | Delivered messages (`recipient === "Standard"`) | Persisted | Mutated on radio delivery / ack | Standard projection only | `source_message_id`, `world.q4_standard_operator` |
-| 16 | **Direct Observations**| `member.known_information` (`direct-observation`) | Persisted | Mutated on personal inspection / presence| Observer packet | `interval_id`, `at`, `target`, `location` |
-| 17 | **Reported Knowledge** | `member.known_information` (`local-communication` / `radio`)| Persisted | Mutated on hearing speech / radio | Observer packet (reported) | `message_id`, `sender`, `at` |
+| 15 | **Standard Knowledge** | Delivered messages (`recipient === "Standard"`) | Persisted | Mutated on radio delivery / ack | Standard projection only | `received_claims` with unverified/supported status |
+| 16 | **Direct Observations**| `member.known_information` (`direct-observation`) | Persisted | Mutated on personal inspection / presence| Observer packet | `is_direct_witness: true`, `target`, `location`, `at` |
+| 17 | **Reported Knowledge** | `member.known_information` (`reported-knowledge`)| Persisted | Mutated on hearing speech / radio | Observer packet (reported) | `is_direct_witness: false`, `origin_observer_id`, `via_observer_id` |
 | 18 | **Coworker Knowledge** | Each coworker's `known_information` | Persisted | Mutated on coworker action / hearing | Coworker mini-shell only | Source tag & timestamp |
 | 19 | **Player Knowledge** | Player `known_information` + player survey | Persisted | Mutated on player action / hearing | Player interpreter shell & UI | Source tag & timestamp |
 | 20 | **Route History** | `run.spatial.route_history` | Persisted | Mutated on movement | Trajectory breadcrumbs | `from`, `to`, `at`, `connection_id` |
@@ -60,150 +94,162 @@ EXPEDITION COCKPIT / PLAYER
 
 ---
 
-## 3. Duplicated / Ambiguous Authority Resolutions
-
-1. **Local Communication Target vs Hearers**:
-   - *Previous Defect*: `q4Interactions.record` received `targets: recipients.map(...)`, causing the UI chronology to render `YOU → Santiago Stokes` when speaking to the whole room or addressing another teammate.
-   - *Authoritative Resolution*: `targets` reflects the intended recipient (`[peer.display_name]` if directly addressed, or `["Local Team"]` if broadcast). The responding coworker is recorded in `response_speaker`.
-2. **Speaker vs. Player Scene Projection**:
-   - *Previous Defect*: `tools/ai-local-dialogue.js` projected the player's scene when generating prose for coworker responses.
-   - *Authoritative Resolution*: Dialogue packets for coworkers project the *speaker's* observer state via `projectObserverState(run, speakerId, "coworker-mini-shell")`.
-3. **Hearing vs. Responding**:
-   - *Previous Defect*: Every peer in range generated reactions, risking multi-coworker chorus.
-   - *Authoritative Resolution*: All in-range peers receive `reported-knowledge` in their canonical `known_information`, but exactly ONE responder is selected based on direct address, equipment custody, task ownership, or role relevance.
-4. **Dialogue Claim Validation**:
-   - *Previous Defect*: Coworker dialogue candidates were only filtered by negative regex keywords, allowing hallucinations regarding equipment custody or unobserved events.
-   - *Authoritative Resolution*: `validateDialogueClaims` validates assertions of equipment custody, physical presence, and direct inspection against the Canonical World Ledger before accepting candidate text.
-
----
-
 ## 4. Canonical Ledger Boundary (`tools/canonical-world-ledger.js`)
 
-The Canonical World Ledger provides the unified programmatic interface for reading reality:
+The Canonical World Ledger provides the unified programmatic query, validation, and causal provenance interface over authoritative state:
 
+### Queries & Provenance:
 - `getPlayerLocation(run)`: Current location of the controlled player.
 - `getCoworkerLocation(run, memberId)`: Authoritative location of any coworker.
+- `getPersonnelLocation(run, memberId)`: Authoritative location for any personnel ID.
 - `getEquipmentHolder(run, equipmentId)`: The single personnel ID holding the specified equipment.
 - `getObjectState(run, objectId)`: Current state and custom properties of an interactable object.
 - `getEvidenceProvenance(run, evidenceId)`: Full custody chain (`creator`, `operator`, `capturing_observer`, `custodian`, `captured_at`).
-- `getStandardKnowledge(run)`: Confirmed knowledge delivered to Standard operations desk via radio.
-- `getObserverObservations(run, observerId)`: Direct observations personally witnessed by the observer (`source: "direct-observation"`).
-- `getObserverReportedKnowledge(run, observerId)`: Facts communicated to the observer (`source: "local-communication"` or `"radio"`).
-- `recordCausalTransition(run, transition)`: Records causal provenance linking state transitions to source actions and operational intervals.
-- `validateInvariants(run)`: Mechanically verifies the structural invariants of the living world.
+- `getStandardKnowledge(run)`: Received claims delivered to Standard operations desk via radio (`status: "unverified" | "supported"`).
+- `getObserverObservations(run, observerId)`: Direct observations personally witnessed by the observer (`source: "direct-observation"`, `is_direct_witness: true`).
+- `getObserverReportedKnowledge(run, observerId)`: Facts communicated to the observer (`source: "local-communication"`, `is_direct_witness: false`, preserving origin and via hops).
+
+### Deterministic Causal Provenance:
+- `recordCausalTransition(run, transition)`: Records causal transition entries into `run.causal_ledger`. Completely deterministic: stamps operational cycle interval and cause IDs, omitting non-deterministic wall-clock timestamps (`Date.now()`). Default values are strictly `null` (never `undefined`).
+- `causal_ledger` is historical audit provenance only; it is NEVER an alternate current-state authority. Current physical and spatial reality is authoritatively governed by `run.spatial`, `run.object_state`, and `run.expedition.equipment`.
+
+### Honest Invariant Verification:
+- `validateInvariants(run)`: Returns `{ ok, status: "PASS" | "FAIL" | "UNVERIFIABLE", violations, unverifiable }`.
+- If topology cannot be resolved or `spatial_pack_id` is missing, returns `status: "UNVERIFIABLE"` (`ok: false`) rather than silently passing.
 
 ---
 
-## 5. Observer Projection Model (`tools/live-scene-projection.js`)
+## 5. Knowledge Provenance Contract & Provenance Chains
 
-All observer contexts are generated through `projectObserverState(run, observerId, purpose)`:
+Every observer-known factual item has explicit epistemic provenance:
 
-### A. Player Interpreter Shell (`purpose: "player-interpreter"`)
-- Contains only:
-  - Known location ID and display name.
-  - Visible environment conditions (lighting, acoustic, surface moisture).
-  - Visible objects in the player's immediate location.
-  - Visible/audible coworkers in the player's location.
-  - Player-held equipment and visible interaction affordances.
-  - Recent observable events in the player's location.
-  - Observer knowledge (direct observations and reported knowledge).
-- Structurally excludes:
-  - Unvisited nodes in topology graph.
-  - Objects in other rooms.
-  - Offscreen coworker events.
-  - Private Standard logs.
-  - Authored internal IDs.
-
-### B. Coworker Mini-Shell (`purpose: "coworker-mini-shell"`)
-- Compact observer context:
-  - **Identity**: stable ID, full name, role.
-  - **Physical**: current location, nearby coworkers, visible objects, held equipment.
-  - **Operational**: current assigned task, task history.
-  - **Knowledge**: direct observations, reported knowledge, mission records, explicit negative constraints.
-  - **Conversation**: recent utterances heard by this coworker.
-
-### C. Standard Operator Shell (`purpose: "standard-operator"`)
-- Institutional operations desk context:
-  - Confirmed radio transmissions delivered and acknowledged.
-  - Reported evidence cataloged by the field team.
-  - Mission baseline parameters.
-  - Excludes un-transmitted field observations and local team conversation.
-
----
-
-## 6. Hearing vs. Responding Architecture
-
-Local communication follows a four-stage pipeline:
-
-```text
-1. LOCAL UTTERANCE
-       ↓
-2. DETERMINE ELIGIBLE HEARERS (in-range peers)
-       ↓
-3. UPDATE HEARD / REPORTED KNOWLEDGE (all hearers receive reported-knowledge in known_information)
-       ↓
-4. SELECT AUTHORIZED RESPONDER (direct address > equipment holder > task owner > role relevance)
-       ↓
-5. GENERATE SINGLE RESPONSE (or silence)
-```
-
-Hearing does not imply speaking. Silence is valid.
-
----
-
-## 7. AI Claim Consistency Validation (`tools/ai-local-dialogue.js`)
-
-Candidate coworker dialogue must pass semantic claim validation against the Canonical World Ledger:
-
-1. **Equipment Custody Claims**:
-   - Phrases asserting custody ("I have the camera", "my camera", "in my custody") must match `getEquipmentHolder(run, equipmentId) === speakerId`.
-   - Contradictions reject with `LOCAL_PRESENTATION_CLAIM_CONTRADICTION`.
-2. **Direct Observation Claims**:
-   - Phrases asserting direct inspection ("I saw the fixture", "I inspected the mark") require that the speaker either has a matching `direct-observation` in `known_information` or the target is currently visible in their location.
-3. **Reported Event Claims**:
-   - Referencing past events or outcomes requires either direct observation or prior `reported-knowledge`.
-4. **Zero Mutation Guarantee**:
-   - Dialogue validation is a pure read-only function that never mutates canonical run state.
-
----
-
-## 8. Presentation Separation: Canonical Fact vs. Kane Prose
-
-Simulation state records mechanical, objective facts:
 ```javascript
-// Canonical simulation fact:
-{ target: "fluorescent-fixture", condition: "photographed", charges: 2 }
+// 1. DIRECT OBSERVATION:
+{
+  kind: "direct-observation",
+  source: "direct-observation",
+  target: "wall-seam",
+  location: "utility-room",
+  at: 1,
+  observation: "horizontal seam displaced by 4mm",
+  is_direct_witness: true
+}
+
+// 2. REPORTED KNOWLEDGE (Local Communication):
+{
+  kind: "reported-knowledge",
+  source: "local-communication",
+  proposition: "wall-seam displaced by 4mm",
+  source_observer_id: "personnel-beverly-bell",
+  origin_observer_id: "personnel-santiago-stokes",
+  via_observer_id: "personnel-beverly-bell",
+  at: 3,
+  is_direct_witness: false
+}
 ```
 
-Approved semantic fact:
-```javascript
-// Observer-known semantic fact:
-{ target: "utility fluorescent fixture", observation: "photographed by Beverly Bell" }
-```
-
-A-Sync / Kane surface prose:
-```text
-// Presentation prose:
-"Beverly adjusts the optical focus on the photographic unit and captures the fixture seam."
-```
-
-Flavor vocabulary, narrative tone, and atmospheric descriptions belong strictly to the presentation layer and never enter simulation state variables.
+### Transmission Rule:
+- When Observer A (Santiago) observes X and tells B (Beverly), and B tells C (Matthew):
+  - Santiago has `is_direct_witness: true`.
+  - Beverly has `is_direct_witness: false`, `origin_observer_id: Santiago`, `via_observer_id: null`.
+  - Matthew has `is_direct_witness: false`, `origin_observer_id: Santiago`, `via_observer_id: Beverly`.
+- Receiving communication NEVER upgrades an observer to direct witness.
 
 ---
 
-## 9. Save / Reload Reconstruction
+## 6. Structured Semantic Claim Validation (`tools/ai-local-dialogue.js`)
+
+AI dialogue candidates propose structured semantic claims before surface realizations are accepted:
+
+```javascript
+{
+  version: "yellow-beast-local-dialogue-candidate@v1",
+  observer_id: "personnel-santiago-stokes",
+  speech: "The survey instrument is secured in my pack.",
+  semantic_claims: [
+    { type: "equipment-possession", subject: "personnel-santiago-stokes", object: "survey-instrument" }
+  ]
+}
+```
+
+### Fact Classes Checked by `validateSemanticClaims`:
+1. `equipment-possession`: Subject must match `getEquipmentHolder(run, object)`. Contradiction returns `SEMANTIC_CLAIM_EQUIPMENT_MISMATCH`.
+2. `location`: Subject must match `getPersonnelLocation(run, subject)`. Contradiction returns `SEMANTIC_CLAIM_LOCATION_MISMATCH`.
+3. `direct-observation`: Observer must have direct observation provenance or the target must be visible in the live scene. Contradiction returns `SEMANTIC_CLAIM_UNOBSERVED_TARGET`.
+4. `reported-claim`: Observer must have reported knowledge provenance matching the proposition. Contradiction returns `SEMANTIC_CLAIM_UNREPORTED_TARGET`.
+5. `measurement`: Observer must have verified measurement evidence. Contradiction returns `SEMANTIC_CLAIM_UNVERIFIED_MEASUREMENT`.
+
+Secondary regex checks (`validateDialogueClaims`) remain active as an additional defense-in-depth safety net.
+
+---
+
+## 7. Observer-Safe Handle Doctrine & Negative Constraints
+
+### A. Observer-Safe Handles vs. Hidden Canonical Identifiers:
+- **Display Name**: Human-readable label presented in the interface (`"Fluorescent Fixture"`, `"Survey Instrument"`).
+- **Observer-Safe Handle**: Stable opaque identifier referring to an entity the observer can actually perceive in their current scene (`"recording-device"`, `"survey-instrument"`).
+- **Hidden Canonical Identifier**: Internal identifier encoding hidden semantics or offscreen nodes (`"utility-room-02"`, `"open-passage-corridor-03"`, `"anomaly-origin-node-17"`). These are structurally prohibited from model context envelopes.
+
+### B. Negative Constraints & Zero-Leak Guarantee:
+Coworker shells contain `knowledge.negative_constraints`. These MUST be authored as category-level behavioral instructions, NEVER lists of hidden room or object IDs:
+- **Forbidden (Leaky)**: `"Santiago does not know about utility-room-02."` (Leaks the existence of `utility-room-02`).
+- **Required (Category-Level)**:
+  - `"Do not claim knowledge of locations not present in this observer shell."`
+  - `"Do not claim possession or perception of equipment held by offscreen personnel without prior communication."`
+  - `"Do not access or claim awareness of uncommunicated player thoughts or untransmitted Standard logs."`
+  - `"Do not assert unobserved events or offscreen phenomena as direct witness."`
+
+Enforced and verified by `validateNegativeConstraintsNoLeaks(constraints, run)`.
+
+---
+
+## 8. Actual AI Envelope Leak Prevention
+
+Model boundaries are rigorously guarded across runtime routes:
+1. **Player Natural Interpretation** (`DesktopService.submitNatural` / `executePlayerTurn`):
+   - Provider receives `q4InterpretationContext` containing only visible interactables, co-present personnel, and discovered routes.
+   - Hidden geometry, offscreen nodes, causal logs, and raw graph definitions are completely absent from the serialized context.
+2. **Coworker Local Dialogue** (`DesktopService.submitQ4Communication` / `buildLocalDialoguePacket`):
+   - Provider receives speaker mini-shell containing only the speaker's own location, co-present personnel, and personal `known_information`.
+   - Other coworkers' private thoughts, diaries, and uncommunicated knowledge are strictly excluded.
+3. **Standard Operator Desk** (`getStandardKnowledge` / `projectObserverState`):
+   - Standard context receives only delivered radio transmissions and formally reported evidence. Un-transmitted field observations remain invisible to Standard.
+
+---
+
+## 9. Save / Reload Epistemic Continuity
 
 1. All reality lives in the persisted session file (`run`).
 2. Reloading a session reconstructs the exact same Canonical World Ledger.
-3. Calling `projectObserverState` on restored state produces deeply equal projections to the pre-save state.
-4. Altering presentation narration in the transcript does not alter reconstructed canonical state or observer shells.
+3. Provenance chains (`origin_observer_id`, `via_observer_id`, `is_direct_witness`) persist across save/reload cycles without degradation.
+4. Calling `projectObserverState` on restored state produces deeply equal projections to the pre-save state.
+5. Altering presentation narration in the transcript does not alter reconstructed canonical state or observer shells.
 
 ---
 
-## 10. Integration Surfaces
+## 10. Integration Matrix & Test Coverage
 
-- **Interpreter**: `tools/ai-interpreter-boundary.js` receives `player-interpreter` shell.
-- **Living Turn**: `tools/ai-living-turn.js` resolves atomic coordinated actions and calls `canonicalLedger.recordCausalTransition`.
-- **Dialogue**: `tools/ai-local-dialogue.js` projects speaker mini-shell and validates semantic claims.
-- **Service**: `desktop/service.js` enforces hearing vs responding and records truthful interaction targets.
-- **Renderer**: `desktop/renderer/surfaces.js` renders truthful communication targets and response speakers.
+- **Y70–Y73**: Natural action interpretation, grounding, and capability planning.
+- **Y78–Y79**: Facility operations, threshold transit, and expedition protocol.
+- **Y80**: Canonical World Ledger & Observer Shell baseline (20/20 PASS).
+- **Y81**: Adversarial Epistemic Hardening & Integrity suite (20/20 PASS).
+  1. Player ID cannot accidentally alias coworker ID.
+  2. Canonical causal records are deterministic.
+  3. Invariant checker cannot silently pass unresolved topology.
+  4. Standard receives false player claim without world state becoming true.
+  5. Coworker receives false player claim as reported claim, not direct fact.
+  6. A observes X, tells B, B tells C; provenance remains distinct.
+  7. Unobserved coworker cannot truthfully assert X.
+  8. Reported coworker may say "X occurred" without asserting direct witness.
+  9. Semantic possession claim contradicting ledger fails.
+  10. Valid semantic possession claim succeeds.
+  11. Semantic location claim contradicting ledger fails.
+  12. Semantic direct-observation claim without observation provenance fails.
+  13. Approved semantic claim can be surfaced in multiple wording variants.
+  14. Wording variants do not change semantic observer knowledge.
+  15. Negative constraints leak zero hidden IDs.
+  16. Actual player interpreter provider envelope excludes hidden state.
+  17. Actual coworker provider envelope excludes other coworkers' private knowledge.
+  18. Causal ledger does not become competing current-state authority.
+  19. Modifying cloned ledger query result cannot mutate canonical state.
+  20. Save/reload preserves knowledge provenance chains.
