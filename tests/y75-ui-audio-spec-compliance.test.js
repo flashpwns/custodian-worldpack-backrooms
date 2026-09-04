@@ -150,3 +150,36 @@ test("Mechanical channel switch presentation and audio toggle contract", () => {
   // Audio wiring for toggle
   assert.match(renderer, /ui_toggle/);
 });
+
+test("Visual hierarchy: Map -> Interpretive Output -> Comms dominates operational field", () => {
+  const css = fs.readFileSync(path.join(__dirname, "../desktop/renderer/styles.css"), "utf8");
+
+  // Map is positioned at grid row 1 (center-top)
+  assert.match(css, /\.operational-field>\.operational-map\{grid-row:1/);
+  // Field observation / Interpretive Output is positioned at grid row 2 (center-bottom)
+  assert.match(css, /\.operational-field>\.field-observation\{grid-row:2\}/);
+  // Interactables at row 3
+  assert.match(css, /\.operational-field>\[data-testid="field-interactables"\]\{grid-row:3\}/);
+  // Objectives and operational status at row 4
+  assert.match(css, /\.operational-field>\.field-priority-grid\{grid-row:4\}/);
+  // Comms surface occupies column 2 spanning rows (right rail)
+  assert.match(css, /\.operational-field>\.communications-surface\{[^}]*grid-column:2;grid-row:1 \/ span 4/);
+});
+
+test("AEOT Palette: cold blue tokens and epistemic accents exist in CSS stylesheets", () => {
+  const palette = fs.readFileSync(path.join(__dirname, "../desktop/renderer/aeot-palette.css"), "utf8");
+  const styles = fs.readFileSync(path.join(__dirname, "../desktop/renderer/styles.css"), "utf8");
+
+  // Palette tokens
+  assert.match(palette, /--aeot-navy-deep:\s*#060a12/);
+  assert.match(palette, /--aeot-midnight-desaturated:\s*#0b1320/);
+  assert.match(palette, /--aeot-line-blue:\s*#2c476d/);
+  assert.match(palette, /--aeot-pale-blue:\s*#7b9ec9/);
+  assert.match(palette, /--aeot-epistemic-observed-now:\s*#3ebd68/);
+  assert.match(palette, /--aeot-epistemic-alert:\s*#d94b4b/);
+
+  // Stylesheet uses cold blue vars
+  assert.match(styles, /var\(--aeot-navy-deep/);
+  assert.match(styles, /var\(--aeot-midnight-desaturated/);
+});
+
