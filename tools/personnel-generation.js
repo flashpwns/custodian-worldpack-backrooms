@@ -52,6 +52,25 @@ function generate({ seed, world_id = "standalone", player, staffing = {}, pool_o
   const used = new Set([String(player?.display_name ?? "").trim().toLowerCase()].filter(Boolean));
   const coworkers = [];
   for (let slot = 0; slot < total - 1; slot += 1) {
+    if (Array.isArray(staffing.coworkers) && staffing.coworkers[slot]) {
+      const authored = staffing.coworkers[slot];
+      const display = authored.display_name ?? `${authored.first_name} ${authored.last_name}`;
+      used.add(display.toLowerCase());
+      coworkers.push({
+        identity: authored.identity ?? `yb-personnel-${crypto.createHash("sha256").update(`${world_id}|${seed}|${slot}`).digest("hex").slice(0, 20)}`,
+        first_name: authored.first_name,
+        last_name: authored.last_name,
+        display_name: display,
+        role: authored.role ?? roles[slot],
+        clearance: authored.clearance ?? staffing.clearance ?? "field",
+        condition: authored.condition ?? "normal",
+        status: authored.status ?? "active",
+        generated: false,
+        authored: true,
+        generation: { version: VERSION, seed_digest: crypto.createHash("sha256").update(String(seed)).digest("hex").slice(0, 16), slot }
+      });
+      continue;
+    }
     let selected = null;
     for (let attempt = 0; attempt < pools.first_names.length * 2; attempt += 1) {
       const first = pools.first_names[(score([seed, world_id, slot, attempt, "first"]) + attempt) % pools.first_names.length];

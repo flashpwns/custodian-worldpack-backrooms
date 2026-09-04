@@ -376,7 +376,7 @@ function status(runValue) {
   const actions = getAvailableSessionActions({ session: run.session, actor: observer }).actions;
   const active = run.lifecycle === "active";
   const closing = run.expedition?.mission_state?.return?.requested === true;
-  const operationalVerbs = run.spatial_pack_id ? ["ORDER_HOLD", "ORDER_INVESTIGATE", "ORDER_FOLLOW", "ASSIST", "RECOVER", "MITIGATE"] : [];
+  const operationalVerbs = run.spatial_pack_id ? ["ORDER_HOLD", "ORDER_INVESTIGATE", "ORDER_FOLLOW", "TRANSFER", "ASSIST", "RECOVER", "MITIGATE"] : [];
   const expeditionVerbs = active && run.expedition ? ["COMMUNICATE", "RECORD", "WAIT", "RETURN", "ABORT", ...operationalVerbs, ...(closing ? ["COMPLETE_RETURN"] : [])] : [];
   const objectVerbs = active ? [...new Set((view.view?.objects ?? []).flatMap((object) => object.actions ?? []).map((item) => item.action))] : [];
   const discovered = run.spatial ? spatialRuntime.project(run.spatial, spatialDefinitionFor(run.spatial_pack_id), { personnel: (run.expedition?.team?.members ?? []).map((member) => ({ id: member.personnel_id ?? member.id, name: member.display_name })) }) : run.procedural ? generatorFor(run.procedural).map(run.procedural, observer) : null;
@@ -552,11 +552,101 @@ function act(runValue, verb, target) {
   if (verb === "INSPECT") { const result = inspect(run, target); return result.outcome === "succeeded" ? { ok: true, outcome: "succeeded", result, run } : { ok: false, outcome: "rejected", error: { code: "INTERACTION_TARGET_UNAVAILABLE" }, result, public_reason: result.public_reason, run }; }
   if (run.lifecycle === "completed") return { ok: false, error: { code: "RUN_COMPLETE" }, run };
   if (String(verb).startsWith("ORDER_") && run.spatial) {
-    const parts = String(target ?? "").split("|"); const type = String(verb).slice(6).toLowerCase().replace(/_/g, "-"); const recipient = parts[0]; const destination = parts[1] ?? null;
-    const ordered = teamRuntime.issueOrder(run, spatialDefinitionFor(run.spatial_pack_id), { recipient, type, target: destination, channel: "LOCAL" });
-    if (!ordered.ok) return { ok: false, error: { code: ordered.code }, result: { public_reason: ordered.reason }, run };
+    const parts = String(target ?? "").split("|");
+    const type = String(verb).slice(6).toLowerCase().replace(/_/g, "-");
+    const recipientArg = parts[0]?.trim();
+    const destination = parts[1]?.trim() ?? null;
+    const player = run.session.startup.player.observer_id;
+    const isAll = !recipientArg || ["all", "everyone", "team"].includes(recipientArg.toLowerCase());
+    const recipients = isAll
+      ? (run.expedition?.team?.members ?? []).filter((m) => (m.personnel_id ?? m.id) !== player && run.spatial.personnel_locations[m.personnel_id ?? m.id] === run.spatial.player_location).map((m) => m.personnel_id ?? m.id)
+      : [recipientArg];
+    if (recipients.length === 0) return { ok: false, error: { code: "PERSONNEL_NOT_AVAILABLE" }, result: { public_reason: "No eligible teammates are present to receive that order." }, run };
+    let lastOrdered = null;
+    for (const recipient of recipients) {
+      lastOrdered = teamRuntime.issueOrder(run, spatialDefinitionFor(run.spatial_pack_id), { recipient, type, target: destination, channel: "LOCAL" });
+    }
+    if (!lastOrdered?.ok) return { ok: false, error: { code: lastOrdered?.code ?? "ORDER_REJECTED" }, result: { public_reason: lastOrdered?.reason }, run };
     const cycle = resolveOperationalCycle(run, "ORDER", dynamicsRuntime.actionCost(dynamicsDefinitionFor(run.spatial_pack_id), "ORDER"), "team-order");
-    return { ok: true, outcome: ordered.order.state, result: { public_reason: ordered.public_reason, order: ordered.order, time_advanced: cycle.clock.cost, mission_updates: cycle.mission_updates, operational_updates: cycle.public_updates }, run };
+    const publicReason = isAll ? `The team acknowledges the instruction to ${type.replace(/-/g, " ")}.` : lastOrdered.public_reason;
+    return { ok: true, outcome: lastOrdered.order.state, result: { public_reason: publicReason, order: lastOrdered.order, time_advanced: cycle.clock.cost, mission_updates: cycle.mission_updates, operational_updates: cycle.public_updates }, run };
+  }
+  if ((verb === "TRANSFER" || verb === "HANDOFF") && run.spatial && run.expedition) {
+    const player = run.session.startup.player.observer_id;
+    let itemId = null;
+    let recipientId = null;
+    if (typeof target === "object" && target !== null) {
+      itemId = target.item ?? target.item_id ?? target.equipment;
+      recipientId = target.recipient ?? target.recipient_id ?? target.target_holder;
+    } else {
+      const parts = String(target ?? "").split("|");
+      itemId = parts[0]?.trim();
+      recipientId = parts[1]?.trim();
+    }
+    const itemEntry = Object.entries(run.expedition.equipment ?? {}).find(([key, val]) =>
+      key === itemId || val.id === itemId || val.instance_id === itemId ||
+      val.label?.toLowerCase() === itemId?.toLowerCase() ||
+      val.model?.toLowerCase() === itemId?.toLowerCase() ||
+      (itemId && val.label?.toLowerCase().includes(itemId.toLowerCase()))
+    );
+    if (!itemEntry) return { ok: false, error: { code: "ITEM_UNKNOWN" }, result: { public_reason: "That equipment is not part of this operation." }, run };
+    const [itemKey, item] = itemEntry;
+
+    const recipientMember = run.expedition.team?.members?.find((m) =>
+      (m.personnel_id ?? m.id) === recipientId ||
+      m.first_name?.toLowerCase() === recipientId?.toLowerCase() ||
+      m.display_name?.toLowerCase() === recipientId?.toLowerCase() ||
+      (recipientId && m.display_name?.toLowerCase().includes(recipientId.toLowerCase()))
+    );
+    if (!recipientMember) return { ok: false, error: { code: "PERSONNEL_UNKNOWN" }, result: { public_reason: "That teammate is not part of the assigned field team." }, run };
+    const targetHolder = recipientMember.personnel_id ?? recipientMember.id;
+
+    if (run.spatial.personnel_locations[player] !== run.spatial.personnel_locations[targetHolder]) {
+      return { ok: false, error: { code: "TRANSFER_OUT_OF_RANGE" }, result: { public_reason: "Both people must share confirmed speaking range for a physical transfer." }, run };
+    }
+
+    let action = "HAND_OVER";
+    if (item.holder !== player) {
+      if (item.holder === targetHolder) {
+        action = "RECEIVE";
+      } else {
+        return { ok: false, error: { code: "ITEM_NOT_IN_CUSTODY" }, result: { public_reason: "The item is not in the custody of either participant." }, run };
+      }
+    }
+
+    const logisticsContext = {
+      player,
+      spatial: run.spatial,
+      team: run.expedition.team?.members ?? [],
+      at: run.expedition.clock?.interval ?? 0
+    };
+    const definition = logisticsDefinitionFor(run.spatial_pack_id);
+    const transacted = logisticsRuntime.transact(run.expedition, definition, {
+      action,
+      item_id: itemKey,
+      actor: player,
+      target_holder: targetHolder
+    }, logisticsContext);
+
+    if (!transacted.ok) {
+      return { ok: false, error: { code: transacted.code }, result: { public_reason: transacted.public_reason }, run };
+    }
+
+    spatialRuntime.syncEquipment(run.spatial, run.expedition);
+    event(run.expedition, "equipment.transferred", { item: itemKey, from: transacted.item.current_holder === targetHolder ? player : targetHolder, to: transacted.item.current_holder });
+    const cycle = resolveOperationalCycle(run, "TRANSFER", 1, "equipment-transfer");
+    return {
+      ok: true,
+      outcome: "succeeded",
+      result: {
+        public_reason: transacted.public_reason,
+        time_advanced: cycle.clock.cost,
+        item: transacted.item,
+        mission_updates: cycle.mission_updates,
+        operational_updates: cycle.public_updates
+      },
+      run
+    };
   }
   if (verb === "ASSIST" && run.spatial) { const assisted = teamRuntime.assist(run, target); if (!assisted.ok) return { ok: false, error: { code: assisted.code }, result: { public_reason: assisted.reason }, run }; const cycle = resolveOperationalCycle(run, verb, dynamicsRuntime.actionCost(dynamicsDefinitionFor(run.spatial_pack_id), verb), "personnel-recovery"); return { ok: true, outcome: "recovered-complication", result: { public_reason: assisted.public_reason, time_advanced: cycle.clock.cost, mission_updates: cycle.mission_updates, operational_updates: cycle.public_updates }, run }; }
   if (verb === "RECOVER" && run.spatial) { const recovered = consequenceRuntime.recoverEquipment(run, target, run.session.startup.player.observer_id); if (!recovered.ok) return { ok: false, error: { code: recovered.code }, result: { public_reason: recovered.reason }, run }; const cycle = resolveOperationalCycle(run, verb, dynamicsRuntime.actionCost(dynamicsDefinitionFor(run.spatial_pack_id), verb), "equipment-recovery"); return { ok: true, outcome: "recovered-complication", result: { public_reason: recovered.public_reason, time_advanced: cycle.clock.cost, mission_updates: cycle.mission_updates, operational_updates: cycle.public_updates }, run }; }

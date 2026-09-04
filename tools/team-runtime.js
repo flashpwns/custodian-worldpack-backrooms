@@ -74,7 +74,7 @@ function issueOrder(run, spatialDefinition, { recipient, type, target = null, ch
   if (decision && decision.state !== "accepted") return resolve(decision.state === "cannot-comply" ? "refused" : decision.state, decision.reason.replace(/_/g, " ").toLowerCase());
   if (["dead", "missing", "incapacitated"].includes(String(member.status).toLowerCase()) || member.health === "incapacitated") return resolve("refused", "I cannot accept that task in my current condition.");
   if (["investigate", "move-to", "return"].includes(type) && /injur|wound/i.test(String(member.condition))) return resolve("delayed", "I need field assistance before I can safely take another movement task.");
-  if (member.current_task?.state === "active" && !["follow", "wait"].includes(member.current_task.type) && type !== "assist") return resolve("delayed", `I am still completing ${member.current_task.type}; I will not leave it unfinished.`);
+  if (member.current_task?.state === "active" && !["follow", "wait", "hold"].includes(member.current_task.type) && type !== "assist") return resolve("delayed", `I am still completing ${member.current_task.type}; I will not leave it unfinished.`);
   if (["investigate", "move-to", "return"].includes(type)) {
     const destination = knownDestination(run, spatialDefinition, location(run, recipient), target);
     if (!destination) return resolve("refused", "No known, available route supports that movement.");

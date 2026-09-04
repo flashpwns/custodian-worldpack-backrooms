@@ -11,6 +11,26 @@
       "survey technician",
       "documentation specialist",
       "route specialist"
+    ],
+    "coworkers": [
+      {
+        "identity": "personnel-santiago-stokes",
+        "first_name": "Santiago",
+        "last_name": "Stokes",
+        "role": "survey technician"
+      },
+      {
+        "identity": "personnel-beverly-bell",
+        "first_name": "Beverly",
+        "last_name": "Bell",
+        "role": "documentation specialist"
+      },
+      {
+        "identity": "personnel-autumn-tucker",
+        "first_name": "Autumn",
+        "last_name": "Tucker",
+        "role": "route specialist"
+      }
     ]
   },
   "mission": {

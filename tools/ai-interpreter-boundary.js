@@ -112,8 +112,16 @@ function buildCustodianScope(runValue) {
   const targetFor = (label) => aliases.find((item) => normalized(item.label) === normalized(label));
   const singleActions = state.available_verbs.map((action) => {
     const type = String(action).toUpperCase();
-    const targets = type === "MOVE" ? exits : type === "INSPECT" ? aliases : type === "USE" ? playerEquipment : [];
-    return { type, target_required: targets.length > 0, targets };
+    let targets = [];
+    let equipment = [];
+    let target_required = false;
+    if (type === "MOVE") { targets = exits; target_required = true; }
+    else if (type === "INSPECT") { targets = aliases; target_required = true; }
+    else if (type === "USE") { targets = playerEquipment; target_required = targets.length > 0; }
+    else if (type === "PHOTOGRAPH" || type === "TEST") { targets = aliases; target_required = true; }
+    else if (type === "TRANSFER" || type === "HANDOFF") { targets = localCoworkers; equipment = playerEquipment; target_required = true; }
+    else if (type.startsWith("ORDER_")) { targets = localCoworkers; target_required = false; }
+    return { type, target_required, targets, ...(equipment.length ? { equipment } : {}) };
   });
   const referenceEquipment = playerEquipment.filter((item) => item.ref === "survey-instrument");
   const currentLocation = location.alias && location.id ? { label: location.alias, ref: location.id, aliases: distinct([location.alias]) } : null;
@@ -177,7 +185,14 @@ function actionTerms(action) {
     LOOK: ["look", "orient", "take stock"],
     WAIT: ["wait", "hold"],
     RETURN: ["return", "go back"],
-    ABORT: ["abort", "withdraw"]
+    ABORT: ["abort", "withdraw"],
+    PHOTOGRAPH: ["photograph", "photo", "picture", "camera", "take a photograph", "take a picture"],
+    TEST: ["test", "meter", "test the light"],
+    TRANSFER: ["transfer", "give", "hand", "pass"],
+    HANDOFF: ["handoff", "hand off"],
+    ORDER_HOLD: ["hold", "stay", "wait", "hold position", "stay here"],
+    ORDER_FOLLOW: ["follow", "follow me", "come with me", "regroup"],
+    ORDER_INVESTIGATE: ["investigate", "check route"]
   }[action] ?? [action.toLowerCase().replace(/_/g, " ")];
 }
 
@@ -198,7 +213,9 @@ function agencySupported(attempt, playerText) {
   if (attempt.actor.kind === "player") {
     if (attempt.agency === "first-person") return /\b(i|i will|i ll|let me)\b/.test(span);
     if (attempt.agency !== "direct-player") return false;
-    return terms.some((term) => span.startsWith(normalized(term)));
+    return terms.some((term) => span.startsWith(normalized(term)))
+      || /\b(give|pass|hand|take|bring|photograph|photo|picture)\b/.test(span)
+      || /\b(stay|hold|follow)\b/.test(span);
   }
   if (attempt.agency !== "player-order") return false;
   const actor = normalized(attempt.actor.reference);
@@ -267,7 +284,14 @@ function validateAndResolve(proposal, scope, meta) {
     if (!action) return clarification({ sourceText, requestId, source, code: "ACTION_NOT_AVAILABLE", question: "Which currently available action did you mean?", options: scope.authority.single_actions.map((item) => item.type) });
     const resolved = resolveAttempt({ attempt: proposed, action: { ...action, actor: scope.authority.player }, coworkers: [], sourceText, requestId, source });
     if (resolved.clarification) return resolved.clarification;
-    return { kind: SINGLE_SINK, payload: { action: resolved.attempt.action, target: resolved.attempt.target } };
+    const targetPayload = (resolved.attempt.action === "TRANSFER" || resolved.attempt.action === "HANDOFF")
+      ? `${resolved.attempt.equipment ?? ""}|${resolved.attempt.target ?? ""}`
+      : resolved.attempt.action.startsWith("ORDER_")
+      ? `${resolved.attempt.target ?? ""}|`
+      : (resolved.attempt.action === "USE" && !resolved.attempt.target && resolved.attempt.equipment)
+      ? resolved.attempt.equipment
+      : resolved.attempt.target;
+    return { kind: SINGLE_SINK, payload: { action: resolved.attempt.action, target: targetPayload } };
   }
   if (playerAttempts.length !== 1 || coworkerAttempts.length < 1 || proposal.attempts.length !== playerAttempts.length + coworkerAttempts.length) return malformed(sourceText, requestId, source, "UNSUPPORTED_ATTEMPT_SHAPE");
   const playerProposal = playerAttempts[0];

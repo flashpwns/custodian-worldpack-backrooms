@@ -158,7 +158,7 @@ function migrate(state, definition, { player, personnel = [], equipment = [], ph
   return next;
 }
 
-function moveTeamTo(state, definition, location, { player, personnel = [], source = "phase", recordRoute = false, connection_id = null } = {}) {
+function moveTeamTo(state, definition, location, { player, personnel = [], equipment = [], source = "phase", recordRoute = false, connection_id = null } = {}) {
   definition = canonicalDefinition(state, definition);
   const locations = index(definition).locations;
   if (!locations[location]) throw new Error(`unknown spatial location: ${location}`);
@@ -170,7 +170,21 @@ function moveTeamTo(state, definition, location, { player, personnel = [], sourc
   discoverLocation(state, definition, location, "confirmed", source);
   observeConnections(state, definition, location);
   if (recordRoute && prior && prior !== location) state.route_history.push({ sequence: state.route_history.length + 1, from: prior, to: location, connection_id, at: state.time ?? 0 });
-  for (const [equipmentId, equipmentLocation] of Object.entries(state.equipment_locations)) if (equipmentLocation === prior) state.equipment_locations[equipmentId] = location;
+  const equipmentMap = new Map();
+  for (const item of equipment ?? []) {
+    if (item?.id) equipmentMap.set(item.id, item);
+    if (item?.key) equipmentMap.set(item.key, item);
+  }
+  for (const [equipmentId, equipmentLocation] of Object.entries(state.equipment_locations)) {
+    const item = equipmentMap.get(equipmentId);
+    if (item?.holder) {
+      if (state.personnel_locations[item.holder]) {
+        state.equipment_locations[equipmentId] = state.personnel_locations[item.holder];
+      }
+    } else if (equipmentLocation === prior) {
+      state.equipment_locations[equipmentId] = location;
+    }
+  }
   return state;
 }
 
@@ -196,10 +210,12 @@ function proximity(state, observer, subject) {
 }
 
 function syncEquipment(state, expedition) {
-  for (const item of Object.values(expedition?.equipment ?? {})) {
+  for (const [key, item] of Object.entries(expedition?.equipment ?? {})) {
     if (!item?.id) continue;
     if (["missing", "abandoned"].includes(item.state) && state.equipment_locations[item.id]) continue;
-    state.equipment_locations[item.id] = state.personnel_locations[item.holder] ?? state.equipment_locations[item.id] ?? state.player_location;
+    const loc = state.personnel_locations[item.holder] ?? state.equipment_locations[item.id] ?? state.equipment_locations[key] ?? state.player_location;
+    state.equipment_locations[item.id] = loc;
+    state.equipment_locations[key] = loc;
   }
   return state;
 }
@@ -209,6 +225,7 @@ function aliasesFor(oriented, locations) {
   return [...new Set([
     oriented.direction,
     oriented.connection.relationship,
+    destination?.id,
     destination?.name,
     destination?.type,
     ...(oriented.connection.aliases ?? [])
