@@ -39,14 +39,21 @@ function calculateCooldownMs(failureClass, error) {
 }
 
 class ProviderPool {
-  constructor({ credentials = null, settingsGetter = null, onInvocation = null, onProvenance = null } = {}) {
+  constructor({ credentials = null, settingsGetter = null, onInvocation = null, onProvenance = null, clientFactory = null, providerFactory = null } = {}) {
     this.credentials = credentials;
     this.settingsGetter = typeof settingsGetter === "function" ? settingsGetter : () => ({ provider: "auto" });
     this.onInvocation = onInvocation;
     this.onProvenance = onProvenance;
+    this.clientFactory = clientFactory;
+    this.providerFactory = providerFactory;
+    this.clients = new Map();
     this.health = new Map();
     this.instances = new Map();
     this.lastAttemptChain = [];
+  }
+
+  setClient(providerId, client) {
+    this.clients.set(providerId, client);
   }
 
   isConfigured(providerId) {
@@ -107,14 +114,22 @@ class ProviderPool {
   }
 
   getProviderInstance(providerId, { onInvocation = null } = {}) {
+    if (typeof this.providerFactory === "function") {
+      const custom = this.providerFactory(providerId, { onInvocation });
+      if (custom) return custom;
+    }
     if (providerId === "offline") {
       return createLivingProvider();
     }
     const key = this.getKey(providerId);
     const model = this.getModel(providerId);
     const spec = PROVIDER_SPECS[providerId];
+    const client = typeof this.clientFactory === "function"
+      ? this.clientFactory(providerId)
+      : (this.clients?.get(providerId) || undefined);
     return createHostedProvider({
       providerId,
+      client,
       apiKey: key,
       baseURL: spec?.baseURL,
       model,
