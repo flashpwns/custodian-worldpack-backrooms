@@ -313,6 +313,154 @@
         break;
       }
 
+      case "facility_ambient": {
+        // Low warm institutional facility drone
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = "triangle";
+        osc.frequency.setValueAtTime(110, now);
+        gain.gain.setValueAtTime(0.001, now);
+        gain.gain.linearRampToValueAtTime(gainLevel * 0.08, now + 0.1);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.6);
+        osc.connect(gain).connect(ctx.destination);
+        osc.start(now);
+        osc.stop(now + 0.62);
+        break;
+      }
+
+      case "lpmds_bed": {
+        // Low mechanical low-frequency distortion bed from LPMDS
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = "sine";
+        osc.frequency.setValueAtTime(45, now);
+        gain.gain.setValueAtTime(0.001, now);
+        gain.gain.linearRampToValueAtTime(gainLevel * 0.14, now + 0.15);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.7);
+        osc.connect(gain).connect(ctx.destination);
+        osc.start(now);
+        osc.stop(now + 0.72);
+        break;
+      }
+
+      case "blast_door_release": {
+        // Pneumatic pressure relief and solenoid latch
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = "square";
+        osc.frequency.setValueAtTime(240, now);
+        gain.gain.setValueAtTime(gainLevel * 0.09, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.08);
+        osc.connect(gain).connect(ctx.destination);
+        osc.start(now);
+        osc.stop(now + 0.085);
+        break;
+      }
+
+      case "blast_door_open": {
+        // Heavy mechanical door motor and track travel
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = "sawtooth";
+        osc.frequency.setValueAtTime(75, now);
+        osc.frequency.linearRampToValueAtTime(115, now + 0.4);
+        gain.gain.setValueAtTime(gainLevel * 0.11, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.45);
+        osc.connect(gain).connect(ctx.destination);
+        osc.start(now);
+        osc.stop(now + 0.46);
+        break;
+      }
+
+      case "blast_door_open_stop":
+      case "blast_door_close_impact": {
+        // Heavy steel contact thud / impact
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = "triangle";
+        osc.frequency.setValueAtTime(hookId === "blast_door_close_impact" ? 55 : 70, now);
+        gain.gain.setValueAtTime(gainLevel * 0.16, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.18);
+        osc.connect(gain).connect(ctx.destination);
+        osc.start(now);
+        osc.stop(now + 0.19);
+        break;
+      }
+
+      case "blast_door_close": {
+        // Heavy mechanical door closure movement
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = "sawtooth";
+        osc.frequency.setValueAtTime(115, now);
+        osc.frequency.linearRampToValueAtTime(75, now + 0.4);
+        gain.gain.setValueAtTime(gainLevel * 0.11, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.45);
+        osc.connect(gain).connect(ctx.destination);
+        osc.start(now);
+        osc.stop(now + 0.46);
+        break;
+      }
+
+      case "complex_hum": {
+        // 60Hz fluorescent transformer ballast buzz
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = "sawtooth";
+        osc.frequency.setValueAtTime(60, now);
+        gain.gain.setValueAtTime(gainLevel * 0.07, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.6);
+        osc.connect(gain).connect(ctx.destination);
+        osc.start(now);
+        osc.stop(now + 0.62);
+        break;
+      }
+
+      case "complex_music": {
+        // Cold minimalist expedition sine chimes
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = "sine";
+        osc.frequency.setValueAtTime(523.25, now); // C5
+        osc.frequency.exponentialRampToValueAtTime(440, now + 0.4);
+        gain.gain.setValueAtTime(gainLevel * 0.1, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.8);
+        osc.connect(gain).connect(ctx.destination);
+        osc.start(now);
+        osc.stop(now + 0.82);
+        break;
+      }
+
+      case "ui_toggle": {
+        // Crisp selector snap
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = "triangle";
+        osc.frequency.setValueAtTime(480, now);
+        gain.gain.setValueAtTime(gainLevel * 0.08, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.03);
+        osc.connect(gain).connect(ctx.destination);
+        osc.start(now);
+        osc.stop(now + 0.035);
+        break;
+      }
+
+      case "ui_panel_open":
+      case "ui_panel_close": {
+        // Sliding mechanical console latch
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = "sine";
+        osc.frequency.setValueAtTime(hookId === "ui_panel_open" ? 360 : 480, now);
+        osc.frequency.linearRampToValueAtTime(hookId === "ui_panel_open" ? 480 : 360, now + 0.05);
+        gain.gain.setValueAtTime(gainLevel * 0.06, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.06);
+        osc.connect(gain).connect(ctx.destination);
+        osc.start(now);
+        osc.stop(now + 0.065);
+        break;
+      }
+
       default: {
         // Generic subtle operational blip
         const osc = ctx.createOscillator();

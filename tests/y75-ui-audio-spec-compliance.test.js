@@ -183,3 +183,114 @@ test("AEOT Palette: cold blue tokens and epistemic accents exist in CSS styleshe
   assert.match(styles, /var\(--aeot-midnight-desaturated/);
 });
 
+test("Interpretive Heading: Dominant prose uses OBSERVATION RECORD and purges RESOLUTION", () => {
+  const renderer = fs.readFileSync(path.join(__dirname, "../desktop/renderer/renderer.js"), "utf8");
+
+  // Dominant prose heading is OBSERVATION RECORD
+  assert.match(renderer, /<h2 id="current-scene-heading">OBSERVATION RECORD<\/h2>/);
+  assert.match(renderer, /<span class="sr-only">Current scene observation record<\/span>/);
+
+  // RESOLUTION is purged from player-facing scene resolution
+  assert.doesNotMatch(renderer, /<h2 id="current-scene-heading">RESOLUTION<\/h2>/);
+});
+
+test("Natural action and comms input specifications: textarea and keyboard shortcuts", () => {
+  const renderer = fs.readFileSync(path.join(__dirname, "../desktop/renderer/renderer.js"), "utf8");
+  const css = fs.readFileSync(path.join(__dirname, "../desktop/renderer/styles.css"), "utf8");
+
+  // Natural action form uses textarea
+  assert.match(renderer, /<textarea name="text" rows="3"/);
+  // Ctrl+Enter / Cmd+Enter submits natural action
+  assert.match(renderer, /\(event\.ctrlKey \|\| event\.metaKey\) && event\.key === "Enter"/);
+  // Enter without Shift submits comms
+  assert.match(renderer, /event\.key === "Enter" && !event\.shiftKey/);
+
+  // Textarea styling
+  assert.match(css, /\.natural-action textarea/);
+});
+
+test("Expedition loading motif: restrained 3-person walking pictogram with rear glance", () => {
+  const renderer = fs.readFileSync(path.join(__dirname, "../desktop/renderer/renderer.js"), "utf8");
+  const css = fs.readFileSync(path.join(__dirname, "../desktop/renderer/styles.css"), "utf8");
+
+  // 3-person walking pictogram: lead camera [▣], middle case [■], rear lamp/tape [◌↩]
+  assert.match(renderer, /expeditionLoadingMotif/);
+  assert.match(renderer, /\[▣\]/);
+  assert.match(renderer, /\[■\]/);
+  assert.match(renderer, /\[◌↩\]/);
+
+  // CSS animations
+  assert.match(css, /\.expedition-loading-motif/);
+  assert.match(css, /@keyframes rear-glance/);
+  assert.match(css, /animation:\s*rear-glance/);
+  assert.match(css, /prefers-reduced-motion:reduce/);
+});
+
+test("Institutional Consequence Portal for session termination forbids videogame popups", () => {
+  const renderer = fs.readFileSync(path.join(__dirname, "../desktop/renderer/renderer.js"), "utf8");
+  const surfaces = fs.readFileSync(path.join(__dirname, "../desktop/renderer/surfaces.js"), "utf8");
+  const css = fs.readFileSync(path.join(__dirname, "../desktop/renderer/styles.css"), "utf8");
+
+  // Zero instances of videogame popups like "Are you sure?"
+  assert.doesNotMatch(renderer, /are you sure\?/i);
+  assert.doesNotMatch(surfaces, /are you sure\?/i);
+  assert.doesNotMatch(renderer, /are you sure you want to quit/i);
+
+  // Strict institutional consequence vocabulary
+  assert.match(renderer, /showTerminationPortal/);
+  assert.match(renderer, /\[RETURN TO EXPEDITION\]/);
+  assert.match(renderer, /\[CONFIRM SESSION TERMINATION\]/);
+  assert.match(renderer, /A-SYNC PROTOCOL KV31-C/);
+  assert.match(renderer, /Institutional Consequence Warning/);
+
+  // Styling for consequence portal
+  assert.match(css, /\.termination-portal/);
+  assert.match(css, /\.termination-dialog/);
+  assert.match(css, /\.termination-consequence/);
+});
+
+test("Ceremonial phase audio sequencing across deployment and return lifecycle", () => {
+  const renderer = fs.readFileSync(path.join(__dirname, "../desktop/renderer/renderer.js"), "utf8");
+  const audio = fs.readFileSync(path.join(__dirname, "../desktop/renderer/audio.js"), "utf8");
+
+  // Audio sequencing function exists and is hooked to phase changes
+  assert.match(renderer, /playCeremonialPhaseAudio/);
+  assert.match(renderer, /prevPhase !== nextPhase/);
+
+  // Key ceremonial hooks are wired to corresponding phases
+  assert.match(renderer, /YBAudio\.emitHook\("facility_ambient"\)/);
+  assert.match(renderer, /YBAudio\.emitHook\("lpmds_bed"\)/);
+  assert.match(renderer, /YBAudio\.emitHook\("threshold_cross_hum"\)/);
+  assert.match(renderer, /YBAudio\.emitHook\("blast_door_open"\)/);
+  assert.match(renderer, /YBAudio\.emitHook\("complex_music"\)/);
+  assert.match(renderer, /YBAudio\.emitHook\("threshold_beacon"\)/);
+  assert.match(renderer, /YBAudio\.emitHook\("blast_door_close"\)/);
+
+  // Procedural audio synthesizers defined in audio.js
+  assert.match(audio, /case "facility_ambient":/);
+  assert.match(audio, /case "lpmds_bed":/);
+  assert.match(audio, /case "blast_door_open":/);
+  assert.match(audio, /case "blast_door_close":/);
+  assert.match(audio, /case "complex_music":/);
+  assert.match(audio, /case "complex_hum":/);
+});
+
+test("Multipurpose Spatial / Visual Display modes: facility schematic, field survey, and media playback", () => {
+  const surfaces = fs.readFileSync(path.join(__dirname, "../desktop/renderer/surfaces.js"), "utf8");
+  const css = fs.readFileSync(path.join(__dirname, "../desktop/renderer/styles.css"), "utf8");
+
+  // Supports facility, field-survey, and media modes
+  assert.match(surfaces, /data-display-mode="facility"/);
+  assert.match(surfaces, /data-display-mode="field-survey"/);
+  assert.match(surfaces, /data-display-mode="media"/);
+
+  // Interlock status displayed in facility mode
+  assert.match(surfaces, /South: \$\{interlock\.south_barrier/);
+
+  // CSS rules for spatial display
+  assert.match(css, /\.spatial-visual-display/);
+  assert.match(css, /\.facility-edge/);
+  assert.match(css, /\.media-display-surface/);
+});
+
+

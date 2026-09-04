@@ -71,3 +71,46 @@
 .mission-status{margin-top:8px;border-left:3px solid var(--async-amber)!important}.mission-status>header{align-items:center;border-bottom:1px solid var(--async-line);padding-bottom:6px}.mission-status>header h2{margin:.1rem 0}.mission-status>p{font-size:.72rem}.mission-subsection{margin-top:8px}.mission-subsection h3{margin:.35rem 0}.mission-objective{display:grid!important;grid-template-columns:20px minmax(0,1fr) auto!important;align-items:start!important}.mission-objective>div{display:block}.mission-objective strong,.mission-objective span,.mission-objective small{display:block}.mission-objective small{margin-top:3px;color:var(--async-phosphor);font-size:.63rem}.mission-objective details{margin-top:4px}.mission-objective details p{font-size:.65rem;margin:.25rem 0}.objective-symbol{font-size:1rem!important;color:var(--async-amber)}.mission-satisfied .objective-symbol{color:#9bc59c}.mission-failed .objective-symbol,.mission-abandoned .objective-symbol{color:var(--async-alert)}.state-label{border:1px solid var(--async-line);padding:2px 4px;text-transform:uppercase;letter-spacing:.05em;white-space:nowrap}.mission-updates{border-top:1px solid var(--async-line);padding-top:5px}.return-readiness{border-top:1px solid var(--async-amber);padding-top:6px}.return-readiness p{margin:.2rem 0}.q4-prefield-surface>.mission-status{max-height:34vh;overflow:auto}
 .operational-status{border-left:3px solid var(--async-phosphor)!important}.operational-status>header{align-items:center;border-bottom:1px solid var(--async-line);padding-bottom:6px}.operational-status>header h2{margin:.1rem 0}.operational-status>p,.operational-status li{font-size:.7rem}.operational-status h3{margin:.65rem 0 .25rem}.operational-status .data-list li{align-items:start}.operational-status .data-list li>span:not(.badge){display:block}.operational-updates{margin-top:8px;border-top:1px solid var(--async-amber);padding-top:4px}.operational-updates li{color:var(--async-phosphor)}.badge-delayed,.badge-transmitting,.badge-overdue,.badge-missed{border-color:var(--async-alert);color:#efb5a2}.badge-acknowledged,.badge-recovered,.badge-completed{border-color:#6a9978;color:#bde0c3}.field-support [data-testid="field-team"] small{display:block;color:var(--muted);font-size:.62rem}.field-support [data-testid="field-team"] li{align-items:start}
 .evidence-archive-record{display:grid;gap:.4rem}.evidence-media-artifact{display:block;width:min(100%,34rem);max-height:28rem;object-fit:contain;border:1px solid var(--async-line);background:#111}.evidence-media-fallback{width:min(100%,34rem);min-height:7rem;display:grid;place-items:center;padding:1rem;border:1px dashed var(--async-line);color:var(--muted);background:var(--async-panel);text-align:center}
+
+/* Multipurpose Spatial / Visual Display and Media Frame */
+.spatial-visual-display{background:var(--async-panel);border:1px solid var(--async-line)}
+.facility-edge{stroke:var(--aeot-line-blue,#2c476d);stroke-width:2.5}
+.facility-edge-dashed{stroke-dasharray:5 4;stroke:var(--async-phosphor)}
+.facility-node circle{fill:var(--async-panel);stroke:var(--async-phosphor);stroke-width:2}
+.facility-node text{fill:var(--aeot-blue-white,#d8e4f0);font-size:10px;font-family:ui-monospace,monospace}
+.facility-node.map-current-node circle{fill:var(--aeot-terminal-blue,#152438);stroke:var(--aeot-epistemic-observed-now,#3ebd68);stroke-width:3}
+.facility-ingress{fill:var(--async-phosphor);font-size:9px;letter-spacing:.1em}
+.media-display-surface{background:#04070c;border:1px solid var(--async-line);padding:8px}
+.media-display-header{display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid var(--async-line);padding-bottom:6px;font-size:.72rem}
+.media-display-header span{color:var(--muted);font-size:.65rem}
+.media-display-body{min-height:180px;display:flex;align-items:center;justify-content:center;margin:8px 0;background:#000}
+.media-artifact-frame{max-width:100%;max-height:260px;object-fit:contain;border:1px solid var(--async-line)}
+.media-crt-raster{width:100%;height:180px;display:flex;align-items:center;justify-content:center;background:radial-gradient(circle,#0b1928,#020509);border:1px solid var(--async-line);text-align:center}
+.media-telemetry-text{font-size:.8rem;color:var(--async-phosphor);letter-spacing:.08em}
+.media-telemetry-text small{display:block;margin-top:6px;color:var(--muted);font-size:.64rem}
+.media-display-footer{display:flex;justify-content:flex-end;border-top:1px solid var(--async-line);padding-top:6px}
+
+/* Natural action textarea formatting */
+.natural-action textarea{width:100%;box-sizing:border-box;font:inherit;font-family:ui-monospace,monospace;font-size:.85rem;padding:.55rem;background:#0b1320;color:var(--ink);border:1px solid var(--async-line);border-radius:0;resize:vertical}
+.natural-action textarea:focus-visible{outline:2px solid var(--aeot-pale-blue,#7b9ec9);outline-offset:1px}
+
+/* Expedition Loading Motif: restrained 3-person walking pictogram */
+.expedition-loading-motif{display:inline-flex;align-items:center;gap:4px;font-family:ui-monospace,monospace;font-size:.78rem;letter-spacing:.05em;color:var(--async-amber);margin-left:8px;user-select:none}
+.expedition-loading-motif .walking-person{display:inline-block}
+.expedition-loading-motif .walking-person.lead{color:var(--aeot-epistemic-expedition,#e5c158)}
+.expedition-loading-motif .walking-person.middle{color:var(--async-phosphor)}
+.expedition-loading-motif .walking-person.rear{color:var(--muted);animation:rear-glance 4.5s ease-in-out infinite}
+@keyframes rear-glance{0%,80%,100%{transform:translateX(0);opacity:0.85}88%{transform:translateX(-2px) scaleX(-1);opacity:1}94%{transform:translateX(-2px) scaleX(-1);opacity:1}}
+@media(prefers-reduced-motion:reduce){.expedition-loading-motif .walking-person.rear{animation:none}}
+
+/* Institutional Consequence Portal (Section XXVII) */
+.termination-portal{position:fixed;inset:0;background:rgba(4,7,12,0.88);z-index:100;display:flex;align-items:center;justify-content:center;padding:16px;backdrop-filter:blur(2px)}
+.termination-dialog{background:var(--async-panel);border:2px solid var(--async-alert);max-width:560px;width:100%;padding:20px;box-shadow:0 12px 40px rgba(0,0,0,0.8);font-family:ui-monospace,monospace}
+.termination-dialog .eyebrow{color:var(--async-alert);margin:0 0 6px}
+.termination-dialog h2{margin:0 0 12px;font-size:1.15rem;color:var(--ink);border-bottom:1px solid var(--async-line);padding-bottom:8px}
+.termination-consequence{font-size:.78rem;line-height:1.55;color:var(--muted);margin:0 0 16px}
+.termination-actions{display:flex;justify-content:flex-end;gap:10px;flex-wrap:wrap}
+.termination-actions button{font-family:inherit;font-size:.76rem;letter-spacing:.04em;padding:.6rem 1rem;border-radius:0}
+.termination-actions .primary-action{background:var(--async-panel);color:var(--async-phosphor);border:1px solid var(--async-phosphor)}
+.termination-actions .danger-action{background:var(--async-alert);color:#fff;border:1px solid #ff7b7b}
+

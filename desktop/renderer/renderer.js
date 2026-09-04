@@ -21,14 +21,24 @@ const resultIsError = (result) => result?.ok === false || Boolean(result?.error)
 const applicationError = (result) => /WORLD_|SAVE|REQUEST|INTERNAL/.test(result?.error?.code ?? "");
 const applyPreferences = (settings) => YBAccessibility.apply(document, settings);
 
+function expeditionLoadingMotif() {
+  return `<span class="expedition-loading-motif" aria-label="Field expedition progression" role="img"><span class="walking-person lead" title="Lead surveyor (camera)">[▣]</span><span class="walking-person middle" title="Survey technician (equipment case)">[■]</span><span class="walking-person rear" title="Trailing researcher (lamp / tape)">[◌↩]</span></span>`;
+}
 function setFeedback(text, state = "resolving") {
   const node = document.querySelector("#interaction-feedback");
-  if (node) { node.textContent = text; node.dataset.state = state; }
+  if (node) {
+    node.dataset.state = state;
+    if (state === "submitted" || state === "resolving") {
+      node.innerHTML = `<span class="feedback-text">${escape(text)}</span> ${expeditionLoadingMotif()}`;
+    } else {
+      node.textContent = text;
+    }
+  }
 }
 function disableTurnForms() {
-  app.querySelectorAll("#natural-form input, #natural-form button, #action-form select, #action-form button").forEach((item) => { item.disabled = true; });
+  app.querySelectorAll("#natural-form textarea, #natural-form input, #natural-form button, #action-form select, #action-form button, #q4-comms-form textarea, #q4-comms-form input, #q4-comms-form button, #q4-comms-form select").forEach((item) => { item.disabled = true; });
 }
-function focusNaturalInput() { document.querySelector("#natural-form input")?.focus({ preventScroll: true }); }
+function focusNaturalInput() { (document.querySelector("#natural-form textarea") || document.querySelector("#natural-form input"))?.focus({ preventScroll: true }); }
 function renderMessage(result, natural) {
   const detail = result?.result ?? {};
   if (natural && detail.interpretation_error) return "That attempt could not be interpreted safely. No world state changed.";
@@ -92,7 +102,13 @@ async function enterMode(mode) {
   const resumed = await yellowBeast.resumeSession({ world_id:current.world.id, mode });
   const result = resultIsError(resumed) && resumed.error?.code === "SESSION_NOT_FOUND" ? await yellowBeast.startSession({ world_id:current.world.id, mode, require_personnel:true }) : resumed;
   if (resultIsError(result)) { app.innerHTML = `<section class="shell"><h1>Unable to enter experience</h1><p class="error">${escape(result.error.message)}</p>${button("Back", `world:${current.world.id}`)}</section>`; return; }
-  current.projection = result.projection; applyPreferences(current.projection.settings); const recovery = result.recovery?.world?.recovered ? result.recovery.world.message : result.recovery?.session?.recovered ? result.recovery.session.message : null; play(recovery ?? (resumed.ok ? YBQol.history(current.projection, 1).length ? `Last time: ${YBQol.history(current.projection, 1)[0]}` : "Last time: return to what you can observe now." : ""));
+  current.projection = result.projection; applyPreferences(current.projection.settings);
+  const initialPhase = current.projection?.phase?.phase_id;
+  if (typeof YBAudio !== "undefined") {
+    if (initialPhase === "FIELD_OPERATION") YBAudio.emitHook("complex_hum");
+    else if (initialPhase) YBAudio.emitHook("facility_ambient");
+  }
+  const recovery = result.recovery?.world?.recovered ? result.recovery.world.message : result.recovery?.session?.recovered ? result.recovery.session.message : null; play(recovery ?? (resumed.ok ? YBQol.history(current.projection, 1).length ? `Last time: ${YBQol.history(current.projection, 1)[0]}` : "Last time: return to what you can observe now." : ""));
 }
 function recapMarkup(projection) {
   const recap = YBQol.recap(projection); const context = requestContext(); const history = YBQol.history(projection);
@@ -116,11 +132,12 @@ function play(message = "", state = "") {
   const context = requestContext(); const draft = presentation.draft(context);
   const q4Prefield = projection.mode.id === "field-researcher" && !["FIELD_OPERATION", "RETURN", "DEBRIEF"].includes(projection.phase?.phase_id);
   const actionOptions = projection.available_actions.map((action) => `<option value="${escape(action.type)}">${escape(YBSurfaces.actionLabel(action.type))}</option>`).join("");
-  applyPreferences(projection.settings); const scene = q4Prefield || !projection.scene || (projection.mode.id === "field-researcher" && state !== "result") ? "" : `<section class="scene resolution-band ${state === "result" ? "scene-result" : ""}" aria-labelledby="current-scene-heading"><span class="sr-only">Current scene resolution</span><h2 id="current-scene-heading">RESOLUTION</h2><p>${escape(projection.scene.narration)}</p>${projection.scene.inventory?.length ? `<p class="muted">Carrying: ${escape(projection.scene.inventory.map((item) => item.text).join(", "))}</p>` : ""}</section>`;
-  const natural = q4Prefield ? "" : `<section class="action-dock natural-action" data-testid="natural-primary"><div><p class="eyebrow">ACTION</p><h2>${escape(YBSurfaces.inputPrompt(projection.mode.id))}</h2></div><form id="natural-form"><label><span class="sr-only">Describe what you are trying to do</span><input name="text" autocomplete="off" value="${escape(draft)}" placeholder="${escape(YBSurfaces.inputExample(projection.mode.id))}"></label><button type="submit">SUBMIT</button></form><p>Attempt a physical action here. LOCAL and STANDARD communication remain separate below.</p></section>`;
+  applyPreferences(projection.settings); const scene = q4Prefield || !projection.scene || (projection.mode.id === "field-researcher" && state !== "result") ? "" : `<section class="scene resolution-band ${state === "result" ? "scene-result" : ""}" aria-labelledby="current-scene-heading"><span class="sr-only">Current scene observation record</span><h2 id="current-scene-heading">OBSERVATION RECORD</h2><p>${escape(projection.scene.narration)}</p>${projection.scene.inventory?.length ? `<p class="muted">Carrying: ${escape(projection.scene.inventory.map((item) => item.text).join(", "))}</p>` : ""}</section>`;
+  const natural = q4Prefield ? "" : `<section class="action-dock natural-action" data-testid="natural-primary"><div><p class="eyebrow">ACTION</p><h2>${escape(YBSurfaces.inputPrompt(projection.mode.id))}</h2></div><form id="natural-form"><label><span class="sr-only">Describe what you are trying to do</span><textarea name="text" rows="3" autocomplete="off" placeholder="${escape(YBSurfaces.inputExample(projection.mode.id))}">${escape(draft)}</textarea></label><button type="submit">SUBMIT</button></form><p>Attempt a physical action here. LOCAL and STANDARD communication remain separate below.</p></section>`;
   const retry = state === "application-error" ? `<button type="button" data-action="refresh-view">Refresh view</button>` : "";
-  const q4Shell = projection.mode.id === "field-researcher"; const core = q4Shell ? `<section class="operations-layout" data-testid="async-operations-layout"><div class="operations-left">${compactOperationsRail(projection)}</div><main class="operations-main">${scene}${natural}${YBSurfaces.render(projection)}</main><aside class="operations-right">${compactLayout(projection)}${panelMarkup("EVIDENCE / MEDIA", (projection.q4?.evidence ?? []).map((item) => `<li><span class="media-frame ${escape(item.visual?.frame_class ?? "media-render-pending")}" aria-hidden="true">${item.visual?.unavailable ? "▧" : "▣"}</span><strong>${escape(item.type)}</strong><small>${escape(item.render?.status ?? item.visual?.render_state ?? "VISUAL RECORD PENDING")} · ${escape(item.storage)} · T+${escape(item.time?.interval ?? 0)}</small></li>`).join(""), "No media returned or recorded.", "evidence-panel")}</aside></section>` : `${scene}${natural}${YBSurfaces.render(projection)}`;
-  app.innerHTML = `<section class="shell play ${q4Shell ? "operations-shell" : ""} mode-${escape(projection.mode.id)}" data-testid="play-shell">${q4Shell ? asyncHeader(projection) : `<header><div><p class="eyebrow">${escape(projection.world.name)}</p><h1>${escape(projection.mode.label)}</h1><p>${escape(projection.mode.description)}</p></div>${button("Settings", "settings")}${button("TERMINATE FIELD SESSION", "leave")}</header>`}<p id="interaction-feedback" class="interaction-feedback" data-state="${escape(state)}" role="status" aria-live="polite" aria-atomic="true">${escape(message)}${retry}</p>${guidedIntroduction(projection)}${core}${q4Prefield ? "" : `<details class="action-dock structured-action"><summary>Structured controls</summary><form id="action-form" aria-label="Structured action input"><label>Choose action <select name="action" data-testid="action-select">${actionOptions}</select></label><label id="target-label">Valid target <select name="target" data-testid="target-select"></select></label><button type="submit" data-testid="submit-action">SUBMIT</button></form></details><p class="muted">Accepted actions save automatically.</p>`}</section>`;
+  const q4Shell = projection.mode.id === "field-researcher"; const core = q4Shell ? `<section class="operations-layout" data-testid="async-operations-layout"><div class="operations-left">${compactOperationsRail(projection)}</div><main class="operations-main">${scene}${natural}${YBSurfaces.render(projection)}</main><aside class="operations-right">${compactLayout(projection)}${panelMarkup("EVIDENCE / MEDIA", (projection.q4?.evidence ?? []).map((item) => `<li data-view-media="${escape(item.id)}" style="cursor:pointer;" title="Inspect in Spatial Display"><span class="media-frame ${escape(item.visual?.frame_class ?? "media-render-pending")}" aria-hidden="true">${item.visual?.unavailable ? "▧" : "▣"}</span><strong>${escape(item.type)}</strong><small>${escape(item.render?.status ?? item.visual?.render_state ?? "VISUAL RECORD PENDING")} · ${escape(item.storage)} · T+${escape(item.time?.interval ?? 0)}</small></li>`).join(""), "No media returned or recorded.", "evidence-panel")}</aside></section>` : `${scene}${natural}${YBSurfaces.render(projection)}`;
+  const feedbackContent = (state === "submitted" || state === "resolving") ? `<span class="feedback-text">${escape(message)}</span> ${expeditionLoadingMotif()}${retry}` : `${escape(message)}${retry}`;
+  app.innerHTML = `<section class="shell play ${q4Shell ? "operations-shell" : ""} mode-${escape(projection.mode.id)}" data-testid="play-shell">${q4Shell ? asyncHeader(projection) : `<header><div><p class="eyebrow">${escape(projection.world.name)}</p><h1>${escape(projection.mode.label)}</h1><p>${escape(projection.mode.description)}</p></div>${button("Settings", "settings")}${button("TERMINATE FIELD SESSION", "leave")}</header>`}<p id="interaction-feedback" class="interaction-feedback" data-state="${escape(state)}" role="status" aria-live="polite" aria-atomic="true">${feedbackContent}</p>${guidedIntroduction(projection)}${core}${q4Prefield ? "" : `<details class="action-dock structured-action"><summary>Structured controls</summary><form id="action-form" aria-label="Structured action input"><label>Choose action <select name="action" data-testid="action-select">${actionOptions}</select></label><label id="target-label">Valid target <select name="target" data-testid="target-select"></select></label><button type="submit" data-testid="submit-action">SUBMIT</button></form></details><p class="muted">Accepted actions save automatically.</p>`}</section>`;
   if (current.developer) document.querySelector(".play header").insertAdjacentHTML("beforeend", button("Developer console", "developer"));
   const form = document.querySelector("#action-form"); const actionSelect = form?.action; const targetSelect = form?.target;
   const targetsForAction = () => { if (!form) return; const action = projection.available_actions.find((item) => item.type === actionSelect.value); const targets = action?.targets ?? []; targetSelect.innerHTML = targets.map((target) => `<option value="${escape(target.ref)}">${escape(target.label)}</option>`).join(""); targetSelect.disabled = targets.length === 0; document.querySelector("#target-label").hidden = !action?.target_required; };
@@ -128,8 +145,22 @@ function play(message = "", state = "") {
   app.querySelectorAll("[data-game-action]").forEach((item) => item.addEventListener("click", () => { if (typeof YBAudio !== "undefined") YBAudio.emitHook("ui_select"); const selectedAction = projection.available_actions.find((action) => action.type === item.dataset.gameAction); if (!selectedAction) return; if (!selectedAction.target_required) { submitTurn("structured", () => yellowBeast.submitAction({ world_id:current.world.id, mode:current.mode, action:selectedAction.type })); return; } if (!form) return; form.closest("details").open = true; actionSelect.value = selectedAction.type; targetsForAction(); actionSelect.focus({ preventScroll: true }); }));
   app.querySelectorAll("[data-object-action]").forEach((item) => item.addEventListener("click", () => { if (typeof YBAudio !== "undefined") YBAudio.emitHook("ui_select"); submitTurn("structured", () => yellowBeast.submitAction({ world_id:current.world.id, mode:current.mode, action:item.dataset.objectAction, target:item.dataset.objectTarget })); }));
   form?.addEventListener("submit", (event) => { event.preventDefault(); if (typeof YBAudio !== "undefined") YBAudio.emitHook("ui_submit"); const data = new FormData(form); submitTurn("structured", () => yellowBeast.submitAction({ world_id:current.world.id, mode:current.mode, action:data.get("action"), target:data.get("target") || null })); });
-  const naturalForm = document.querySelector("#natural-form"); naturalForm?.text.addEventListener("input", () => presentation.setDraft(context, naturalForm.text.value));
-  naturalForm?.addEventListener("submit", (event) => { event.preventDefault(); if (typeof YBAudio !== "undefined") YBAudio.emitHook("ui_submit"); const data = new FormData(event.currentTarget); submitTurn("natural", () => yellowBeast.submitNatural({ world_id:current.world.id, mode:current.mode, text:data.get("text") })); });
+  const naturalForm = document.querySelector("#natural-form");
+  const naturalInput = naturalForm?.querySelector("textarea, input[name='text']");
+  naturalInput?.addEventListener("input", () => presentation.setDraft(context, naturalInput.value));
+  naturalInput?.addEventListener("keydown", (event) => {
+    if ((event.ctrlKey || event.metaKey) && event.key === "Enter") {
+      event.preventDefault();
+      if (naturalForm.requestSubmit) naturalForm.requestSubmit();
+      else naturalForm.dispatchEvent(new Event("submit", { cancelable: true, bubbles: true }));
+    }
+  });
+  naturalForm?.addEventListener("submit", (event) => {
+    event.preventDefault();
+    if (typeof YBAudio !== "undefined") YBAudio.emitHook("ui_submit");
+    const data = new FormData(event.currentTarget);
+    submitTurn("natural", () => yellowBeast.submitNatural({ world_id:current.world.id, mode:current.mode, text:data.get("text") }));
+  });
   const commsForm = document.querySelector("#q4-comms-form");
   const updateChannelSwitch = (channelVal) => {
     const selector = commsForm?.querySelector(".mechanical-channel-selector");
@@ -157,6 +188,14 @@ function play(message = "", state = "") {
       }
     });
   });
+  const commsInput = commsForm?.querySelector("input[name='text'], textarea[name='text']");
+  commsInput?.addEventListener("keydown", (event) => {
+    if (event.key === "Enter" && !event.shiftKey) {
+      event.preventDefault();
+      if (commsForm.requestSubmit) commsForm.requestSubmit();
+      else commsForm.dispatchEvent(new Event("submit", { cancelable: true, bubbles: true }));
+    }
+  });
   commsForm?.addEventListener("submit", (event) => {
     event.preventDefault();
     const data = new FormData(commsForm);
@@ -167,6 +206,26 @@ function play(message = "", state = "") {
         if (typeof YBAudio !== "undefined") YBAudio.emitHook("radio_tx_chirp");
       }
       return res;
+    });
+  });
+  app.querySelectorAll("[data-spatial-mode]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      if (typeof YBAudio !== "undefined") YBAudio.emitHook("ui_select");
+      current.activeMedia = null;
+      if (current.projection) current.projection.activeMedia = null;
+      play(message, state);
+    });
+  });
+  app.querySelectorAll("[data-view-media]").forEach((item) => {
+    item.addEventListener("click", () => {
+      if (typeof YBAudio !== "undefined") YBAudio.emitHook("ui_select");
+      const evidenceId = item.dataset.viewMedia;
+      const found = (current.projection?.q4?.evidence ?? []).find((e) => e.id === evidenceId);
+      if (found) {
+        current.activeMedia = found;
+        if (current.projection) current.projection.activeMedia = found;
+        play(message, state);
+      }
     });
   });
   app.querySelectorAll("[data-q4-store]").forEach((item) => item.addEventListener("click", () => { if (typeof YBAudio !== "undefined") YBAudio.emitHook("ui_select"); submitTurn("structured", () => yellowBeast.selectQ4OptionalStore({ world_id:current.world.id, item_id:item.dataset.q4Store })); }));
@@ -198,12 +257,57 @@ async function submitTurn(kind, request) {
     play(applicationError(result) ? YBInteraction.applicationMessage() : (result.error?.message ?? YBInteraction.simulationMessage()), applicationError(result) ? "application-error" : "simulation-result");
     return;
   }
+  const prevPhase = current.projection?.phase?.phase_id;
   current.projection = result.projection;
   if (result.result?.scene) current.projection.scene = result.result.scene;
+  const nextPhase = current.projection?.phase?.phase_id;
+  if (prevPhase && nextPhase && prevPhase !== nextPhase) {
+    playCeremonialPhaseAudio(prevPhase, nextPhase);
+  }
   const message = renderMessage(result, kind === "natural");
   const saved = kind === "structured" || result.result?.executed ? " Saved." : "";
   if (kind === "structured" || result.result?.executed) presentation.clearDraft(context);
   play(`${message}${saved}`, "result");
+}
+function playCeremonialPhaseAudio(fromPhase, toPhase) {
+  if (typeof YBAudio === "undefined") return;
+  if (!toPhase || fromPhase === toPhase) return;
+  if (toPhase === "STAGING") {
+    YBAudio.emitHook("facility_ambient");
+  } else if (toPhase === "FACILITY_TRANSIT") {
+    YBAudio.emitHook("lpmds_bed");
+  } else if (toPhase === "THRESHOLD") {
+    YBAudio.emitHook("lpmds_bed");
+    YBAudio.emitHook("threshold_cross_hum");
+  } else if (toPhase === "STANDARD_RADIO_CHECK") {
+    YBAudio.emitHook("radio_rx_cue");
+  } else if (toPhase === "FIELD_OPERATION") {
+    YBAudio.emitHook("threshold_cross_hum");
+    YBAudio.emitHook("blast_door_open");
+    YBAudio.emitHook("complex_hum");
+    YBAudio.emitHook("complex_music");
+  } else if (toPhase === "RETURN") {
+    YBAudio.emitHook("threshold_beacon");
+    YBAudio.emitHook("blast_door_release");
+    YBAudio.emitHook("blast_door_open");
+  } else if (toPhase === "DEBRIEF") {
+    YBAudio.emitHook("blast_door_close");
+    YBAudio.emitHook("blast_door_close_impact");
+    YBAudio.emitHook("facility_ambient");
+  }
+}
+function showTerminationPortal() {
+  const existing = document.querySelector(".termination-portal");
+  if (existing) return;
+  const portal = document.createElement("div");
+  portal.className = "termination-portal";
+  portal.dataset.testid = "termination-portal";
+  portal.setAttribute("role", "dialog");
+  portal.setAttribute("aria-modal", "true");
+  portal.setAttribute("aria-labelledby", "termination-heading");
+  portal.innerHTML = `<div class="termination-dialog"><p class="eyebrow">A-SYNC PROTOCOL KV31-C · FIELD SESSION TERMINATION</p><h2 id="termination-heading">Institutional Consequence Warning</h2><p class="termination-consequence">Unreturned field personnel, unresolved equipment, and uncommitted survey telemetry will be recorded under protocol exception. The operational session will close and career accountability will be finalized.</p><div class="termination-actions"><button type="button" class="action-button primary-action" data-action="cancel-termination">[RETURN TO EXPEDITION]</button><button type="button" class="action-button danger-action" data-action="confirm-termination">[CONFIRM SESSION TERMINATION]</button></div></div>`;
+  app.appendChild(portal);
+  portal.querySelector('[data-action="cancel-termination"]')?.focus();
 }
 const settingsController = { state: "closed", opener: null, mounted: null, returnTo: null };
 async function settings(invoker = document.activeElement) {
@@ -223,10 +327,32 @@ async function settings(invoker = document.activeElement) {
   document.querySelector("#openai").addEventListener("submit", async (event) => { event.preventDefault(); const data = new FormData(event.currentTarget); const saved = await yellowBeast.configureOpenAI({ api_key:data.get("api_key"), model:data.get("model") || null }); message.textContent = saved.ok ? "Access key stored. It is never shown here again." : saved.error.message; if (saved.ok) settings(); }); form.querySelector("select, input, button")?.focus({ preventScroll:true });
 }
 function about() { requestGate.invalidate(); app.innerHTML = `<section class="shell narrow"><p class="eyebrow">ABOUT · UNOFFICIAL</p><h1>Yellow Beast</h1><p>An unofficial persistent, shared-world field experience inspired by institutional horror. It works offline, with optional language assistance.</p><p>Worlds are saved in your application data folder; normal play never requires a terminal. Yellow Beast is not an official ASYNC or Kane Pixels product.</p>${button("Back", "home")}</section>`; }
-document.addEventListener("click", async (event) => { const action = event.target.dataset.action; if (!action) return; if (typeof YBAudio !== "undefined") YBAudio.emitHook("ui_select"); if (action === "personnel-continue") { enterMode("field-researcher"); return; } if (action === "developer") { developerConsole(); return; } if (action === "renderer-retry") { settingsController.state = "closed"; if (rendererDiagnostics.surface === "settings") settings(event.target); else home(); return; } if (action === "home" || action === "leave") home(); else if (action === "close-settings") { settingsController.state = "closing"; const opener = settingsController.opener; const returnTo = current.settingsReturn ?? home; current.settingsReturn = null; returnTo(); settingsController.state = "closed"; queueMicrotask(() => opener?.isConnected && opener.focus()); } else if (action === "new") newWorld(); else if (action === "import") { const imported = await yellowBeast.chooseImportWorld(); if (resultIsError(imported) && imported.error.code !== "IMPORT_CANCELLED") alert(imported.error.message); home(); } else if (action === "settings") settings(event.target); else if (action === "about") about(); else if (action === "reset-preferences") { const saved = await yellowBeast.updateSettings({ settings:{ theme:"system", text_scale:"default", reduced_motion:false, guided_introductions:true } }); if (!resultIsError(saved)) applyPreferences(saved.settings); settings(event.target); } else if (action === "refresh-view") { const context = requestContext(); const refreshed = await yellowBeast.getGameplayProjection({ world_id:context.worldId, mode:context.mode }); if (!resultIsError(refreshed) && requestContext().worldId === context.mode) { current.projection = refreshed.projection; play("Current view refreshed.", "result"); } } else if (action === "remove-key") { await yellowBeast.removeOpenAIKey(); settings(event.target); } else if (action.startsWith("rename:")) { const worldId = action.slice(7); const prior = event.target.closest("li")?.dataset.worldName ?? ""; const name = prompt("Rename this world. This changes only its library name.", prior); if (name !== null) { const renamed = await yellowBeast.renameWorld({ world_id:worldId, name }); if (resultIsError(renamed)) alert(renamed.error.message); home(); } } else if (action.startsWith("restore:")) { const restored = await yellowBeast.restoreBackup({ world_id:action.slice(8), confirmed:confirm("Restore the previous save? Recent changes may be lost.") }); if (!resultIsError(restored)) selectWorld(action.slice(8)); else alert(restored.error.message); } else if (action.startsWith("export:")) { const result = await yellowBeast.chooseExportWorld({ world_id: action.slice(7) }); if (resultIsError(result) && result.error.code !== "EXPORT_CANCELLED") alert(result.error.message); } else if (action.startsWith("delete:")) { const worldId = action.slice(7); const name = event.target.closest("li")?.dataset.worldName ?? "this world"; if (confirm(`Delete “${name}” and its saved sessions? This cannot be undone.`)) { const deleted = await yellowBeast.deleteWorld({ world_id:worldId, confirmed:true }); if (resultIsError(deleted)) alert(result.error.message); home(); } } else if (action.startsWith("world:")) selectWorld(action.slice(6)); else if (action.startsWith("mode:")) enterMode(action.slice(5)); });
+document.addEventListener("click", async (event) => { const action = event.target.dataset.action; if (!action) return; if (typeof YBAudio !== "undefined") YBAudio.emitHook("ui_select"); if (action === "personnel-continue") { enterMode("field-researcher"); return; } if (action === "developer") { developerConsole(); return; } if (action === "renderer-retry") { settingsController.state = "closed"; if (rendererDiagnostics.surface === "settings") settings(event.target); else home(); return; } if (action === "home") { home(); return; }
+else if (action === "leave") {
+  const isField = current.projection?.mode?.id === "field-researcher" && ["FIELD_OPERATION", "RETURN"].includes(current.projection?.phase?.phase_id);
+  if (isField) {
+    if (typeof YBAudio !== "undefined") YBAudio.emitHook("ui_panel_open");
+    showTerminationPortal();
+    return;
+  }
+  home();
+  return;
+}
+else if (action === "cancel-termination") {
+  if (typeof YBAudio !== "undefined") YBAudio.emitHook("ui_panel_close");
+  document.querySelector(".termination-portal")?.remove();
+  focusNaturalInput();
+  return;
+}
+else if (action === "confirm-termination") {
+  if (typeof YBAudio !== "undefined") YBAudio.emitHook("ui_select");
+  document.querySelector(".termination-portal")?.remove();
+  home();
+  return;
+} else if (action === "close-settings") { settingsController.state = "closing"; const opener = settingsController.opener; const returnTo = current.settingsReturn ?? home; current.settingsReturn = null; returnTo(); settingsController.state = "closed"; queueMicrotask(() => opener?.isConnected && opener.focus()); } else if (action === "new") newWorld(); else if (action === "import") { const imported = await yellowBeast.chooseImportWorld(); if (resultIsError(imported) && imported.error.code !== "IMPORT_CANCELLED") alert(imported.error.message); home(); } else if (action === "settings") settings(event.target); else if (action === "about") about(); else if (action === "reset-preferences") { const saved = await yellowBeast.updateSettings({ settings:{ theme:"system", text_scale:"default", reduced_motion:false, guided_introductions:true } }); if (!resultIsError(saved)) applyPreferences(saved.settings); settings(event.target); } else if (action === "refresh-view") { const context = requestContext(); const refreshed = await yellowBeast.getGameplayProjection({ world_id:context.worldId, mode:context.mode }); if (!resultIsError(refreshed) && requestContext().worldId === context.mode) { current.projection = refreshed.projection; play("Current view refreshed.", "result"); } } else if (action === "remove-key") { await yellowBeast.removeOpenAIKey(); settings(event.target); } else if (action.startsWith("rename:")) { const worldId = action.slice(7); const prior = event.target.closest("li")?.dataset.worldName ?? ""; const name = prompt("Rename this world. This changes only its library name.", prior); if (name !== null) { const renamed = await yellowBeast.renameWorld({ world_id:worldId, name }); if (resultIsError(renamed)) alert(renamed.error.message); home(); } } else if (action.startsWith("restore:")) { const restored = await yellowBeast.restoreBackup({ world_id:action.slice(8), confirmed:confirm("Restore the previous save? Recent changes may be lost.") }); if (!resultIsError(restored)) selectWorld(action.slice(8)); else alert(restored.error.message); } else if (action.startsWith("export:")) { const result = await yellowBeast.chooseExportWorld({ world_id: action.slice(7) }); if (resultIsError(result) && result.error.code !== "EXPORT_CANCELLED") alert(result.error.message); } else if (action.startsWith("delete:")) { const worldId = action.slice(7); const name = event.target.closest("li")?.dataset.worldName ?? "this world"; if (confirm(`Delete “${name}” and its saved sessions? This cannot be undone.`)) { const deleted = await yellowBeast.deleteWorld({ world_id:worldId, confirmed:true }); if (resultIsError(deleted)) alert(result.error.message); home(); } } else if (action.startsWith("world:")) selectWorld(action.slice(6)); else if (action.startsWith("mode:")) enterMode(action.slice(5)); });
 document.addEventListener("click", async (event) => { const action = event.target.dataset.action; if (!action?.startsWith("diagnostic:")) return; const result = await yellowBeast.exportTesterReport({ world_id:action.slice(11), mode:"field-researcher" }); alert(resultIsError(result) ? result.error.message : `Diagnostic record exported to ${result.file}. Credentials and provider keys are omitted.`); });
 document.addEventListener("click", async (event) => { if (event.target.dataset.action !== "personnel-confirm-continue") return; const confirmed = await yellowBeast.confirmQ4Personnel({ world_id:current.world.id }); if (!resultIsError(confirmed)) enterMode("field-researcher"); });
-document.addEventListener("keydown", (event) => { if (event.key === "Escape" && document.querySelector("[data-testid=settings-surface]")) { event.preventDefault(); document.querySelector("[data-action=close-settings]")?.click(); return; } if (event.altKey && event.key === ",") { event.preventDefault(); settings(); return; } if (!current.projection || event.target.matches("input, textarea, select, button")) return; const recap = document.querySelector("#recap-panel"); if (event.key === "?" && recap) { event.preventDefault(); recap.open = true; recap.querySelector("summary")?.focus({ preventScroll:true }); } else if (event.key === "Escape" && recap?.open) { event.preventDefault(); recap.open = false; focusNaturalInput(); } });
+document.addEventListener("keydown", (event) => { if (event.key === "Escape" && document.querySelector(".termination-portal")) { event.preventDefault(); document.querySelector('[data-action="cancel-termination"]')?.click(); return; } if (event.key === "Escape" && document.querySelector("[data-testid=settings-surface]")) { event.preventDefault(); document.querySelector("[data-action=close-settings]")?.click(); return; } if (event.altKey && event.key === ",") { event.preventDefault(); settings(); return; } if (!current.projection || event.target.matches("input, textarea, select, button")) return; const recap = document.querySelector("#recap-panel"); if (event.key === "?" && recap) { event.preventDefault(); recap.open = true; recap.querySelector("summary")?.focus({ preventScroll:true }); } else if (event.key === "Escape" && recap?.open) { event.preventDefault(); recap.open = false; focusNaturalInput(); } });
 function boot() { const bypass = window.__YB_TEST_BYPASS_BOOT__ === true || /(?:bypass-boot|test-mode)/i.test(window.location.search + window.location.hash); if (bypass) { home(); return; } if (typeof YBAudio !== "undefined") YBAudio.emitHook("boot_relay"); app.innerHTML = `<section class="async-boot" data-testid="async-boot" role="status" aria-live="polite"><div class="async-boot-mark"><span>A</span><strong>ASYNC</strong></div><p>FIELD OPERATIONS SYSTEM</p><small>IDENTIFICATION / INITIALIZING</small><div class="boot-rule"><i></i></div><button type="button" data-action="skip-boot">Skip initialization</button></section>`; const timer = window.setTimeout(() => { if (typeof YBAudio !== "undefined") YBAudio.emitHook("boot_confirm"); home(); }, 700); document.querySelector("[data-action=skip-boot]").addEventListener("click", () => { window.clearTimeout(timer); if (typeof YBAudio !== "undefined") YBAudio.emitHook("boot_confirm"); home(); }); }
 boot();
 
