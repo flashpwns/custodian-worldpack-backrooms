@@ -74,6 +74,42 @@ function facilityContext(phaseId, hasReturnedMaterial = false) {
   return contexts[phaseId] ?? contexts.BRIEFING;
 }
 
+function kv31Interlock(phaseId, playerLocation) {
+  const isField = phaseId === "FIELD_OPERATION";
+  const isReturn = phaseId === "RETURN";
+  const isDebrief = phaseId === "DEBRIEF";
+  const isCrossingOrOutpost = phaseId === "STANDARD_RADIO_CHECK" || playerLocation === "threshold-side-entry";
+
+  let southBarrier = "open";
+  let eastBlastDoor = "sealed";
+  let status = "PRE_CROSSING_READY";
+
+  if (isField) {
+    southBarrier = "open";
+    eastBlastDoor = "sealed";
+    status = "FIELD_DEPLOYED_SEALED";
+  } else if (isReturn) {
+    southBarrier = "sealed";
+    eastBlastDoor = "open";
+    status = "RETURN_INTAKE_ACTIVE";
+  } else if (isDebrief) {
+    southBarrier = "open";
+    eastBlastDoor = "sealed";
+    status = "RECONCILED";
+  } else if (isCrossingOrOutpost) {
+    southBarrier = "sealed";
+    eastBlastDoor = "open";
+    status = "INTERLOCK_CYCLED_EAST_OPEN";
+  }
+
+  return {
+    status,
+    south_barrier: { state: southBarrier, label: "Threshold Chamber Barrier (South / Standard)" },
+    east_blast_door: { state: eastBlastDoor, label: "Expedition Blast Door (East / Complex)" },
+    simultaneous_exposure_prevented: true
+  };
+}
+
 function canonicalObjectives(runOrExpedition) {
   const progress = runOrExpedition?.spatial_pack_id ? missionProjection(runOrExpedition) : null;
   if (!progress) return [];
@@ -189,6 +225,8 @@ const evidence = (expedition?.evidence ?? []).map((item) => ({ id: item.id, miss
     visuals: q4Visuals.projection({ team: safeTeam, equipment: equip, evidence, channels, layout, review: phase.phase_id === "DEBRIEF" }),
     field_conditions: phase.phase_id === "FIELD_OPERATION" ? trajectories.publicState(expedition) : null,
     review: phase.phase_id === "DEBRIEF" ? continuity.review(world, mission?.id) : null,
+    facility,
+    interlock: kv31Interlock(phase.phase_id, run.spatial?.player_location),
     operational_follow_up: (unfinished?.items ?? []).filter((item) => ["communication", "observation", "personnel", "report", "object"].includes(item.kind)),
     human_context: humanWorld.q4Context()
   };
