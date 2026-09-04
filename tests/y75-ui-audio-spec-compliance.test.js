@@ -135,3 +135,18 @@ test("Input separation: natural action form and comms form remain distinct DOM s
   // Comms selector uses name="channel"
   assert.match(surfaces, /name="channel"/);
 });
+
+test("Mechanical channel switch presentation and audio toggle contract", () => {
+  const surfaces = fs.readFileSync(path.join(__dirname, "../desktop/renderer/surfaces.js"), "utf8");
+  const renderer = fs.readFileSync(path.join(__dirname, "../desktop/renderer/renderer.js"), "utf8");
+  const css = fs.readFileSync(path.join(__dirname, "../desktop/renderer/styles.css"), "utf8");
+
+  // Visual mechanical slider/switch indicator
+  assert.match(surfaces, /mechanical-channel-switch/);
+  assert.match(surfaces, /\[■■□□\]/);
+  assert.match(css, /\.mechanical-channel-switch/);
+  assert.match(css, /\.switch-track/);
+
+  // Audio wiring for toggle
+  assert.match(renderer, /ui_toggle/);
+});

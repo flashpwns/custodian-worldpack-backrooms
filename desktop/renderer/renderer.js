@@ -131,7 +131,32 @@ function play(message = "", state = "") {
   const naturalForm = document.querySelector("#natural-form"); naturalForm?.text.addEventListener("input", () => presentation.setDraft(context, naturalForm.text.value));
   naturalForm?.addEventListener("submit", (event) => { event.preventDefault(); if (typeof YBAudio !== "undefined") YBAudio.emitHook("ui_submit"); const data = new FormData(event.currentTarget); submitTurn("natural", () => yellowBeast.submitNatural({ world_id:current.world.id, mode:current.mode, text:data.get("text") })); });
   const commsForm = document.querySelector("#q4-comms-form");
-  commsForm?.querySelector('[name="channel"]')?.addEventListener("change", () => { if (typeof YBAudio !== "undefined") YBAudio.emitHook("ui_toggle"); });
+  const updateChannelSwitch = (channelVal) => {
+    const selector = commsForm?.querySelector(".mechanical-channel-selector");
+    if (!selector) return;
+    const isStandard = channelVal === "standard";
+    selector.dataset.channelCurrent = isStandard ? "standard" : "local";
+    const track = selector.querySelector(".switch-track");
+    if (track) track.textContent = isStandard ? "[■■□□]" : "[□□■■]";
+    selector.querySelector(".switch-standard")?.classList.toggle("active", isStandard);
+    selector.querySelector(".switch-local")?.classList.toggle("active", !isStandard);
+  };
+  commsForm?.querySelector('[name="channel"]')?.addEventListener("change", (event) => {
+    if (typeof YBAudio !== "undefined") YBAudio.emitHook("ui_toggle");
+    updateChannelSwitch(event.target.value);
+  });
+  commsForm?.querySelectorAll(".switch-slot").forEach((slot) => {
+    slot.addEventListener("click", () => {
+      const select = commsForm.querySelector('[name="channel"]');
+      if (!select || select.disabled) return;
+      const targetVal = slot.classList.contains("switch-standard") ? "standard" : "local";
+      const option = select.querySelector(`option[value="${targetVal}"]`);
+      if (option && !option.disabled && select.value !== targetVal) {
+        select.value = targetVal;
+        select.dispatchEvent(new Event("change", { bubbles: true }));
+      }
+    });
+  });
   commsForm?.addEventListener("submit", (event) => {
     event.preventDefault();
     const data = new FormData(commsForm);
