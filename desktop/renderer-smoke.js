@@ -46,7 +46,7 @@ async function run(windowRef) {
   const communicationsBeforeNatural = beforeNatural.projection.q4.channels.standard.history.length + beforeNatural.projection.q4.channels.local.history.length;
   assert.equal(beforeNatural.projection.q4.current_location.name, "Utility Room");
   const naturalInput = `Move west action-runtime-${Date.now()}`;
-  await type('#natural-form input[name="text"]', naturalInput); await click('#natural-form button[type="submit"]');
+  await type('#natural-form [name="text"]', naturalInput); await click('#natural-form button[type="submit"]');
   let afterNatural = null;
   for (let index = 0; index < 120; index += 1) {
     afterNatural = await windowRef.webContents.executeJavaScript(`window.yellowBeast.getGameplayProjection({world_id:${JSON.stringify(createdWorlds.worlds[0].id)},mode:"field-researcher"})`);
