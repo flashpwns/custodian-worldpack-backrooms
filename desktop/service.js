@@ -5,6 +5,7 @@
 const fs = require("node:fs");
 const path = require("node:path");
 const crypto = require("node:crypto");
+const { AsyncLocalStorage } = require("node:async_hooks");
 const history = require("../tools/world-history");
 const gameplay = require("../tools/gameplay");
 const desk = require("../tools/becks-desk");
@@ -114,6 +115,8 @@ class DesktopService {
     this.credentials = credentials ?? new CredentialStore();
     this.developerMode = developerMode === true;
     this.sessions = new Map();
+    this.naturalTurnInflight = new Map();
+    this.naturalCommandContext = new AsyncLocalStorage();
     this.recovery = new Map();
     this.recoveredWorlds = new Map();
     [this.paths.root, this.paths.worlds, this.paths.saves, this.paths.logs, this.paths.media].forEach(ensureDirectory);
@@ -193,7 +196,8 @@ class DesktopService {
   recordProviderInvocation({ request_id, route, ...event }) { this.recordInterpretationProvenance({ request_id, route, event:"provider-invocation", ...event, provider_invoked:true, invocation_status:event.status, response_classification:event.status === "completed" ? "model-response-parsed" : event.status === "failed" ? "provider-failure" : "provider-request-started" }); }
   getDeveloperSnapshot({ world_id, mode = null } = {}) { if (!this.developerMode) return publicError("DEVELOPER_DISABLED", "Developer tooling is disabled."); try { const world = this.getWorld(world_id); const entry = mode ? (this.session(world_id, mode) ?? this.restoreSession(world, mode, readJson(this.sessionFile(world_id, mode), null))) : null; const provider = this.getProviderStatus().provider; const run = entry?.kind === "bootstrap" ? entry.run : null; const simulationTruth = run ? { developer_only: true, authoritative_clock: structuredClone(run.expedition.clock), event_queue: structuredClone(run.expedition.operational?.events ?? []), mission_state: structuredClone(run.expedition.mission_state), teammate_locations: structuredClone(run.spatial?.personnel_locations ?? {}), teammate_decisions: structuredClone(run.expedition.team_runtime?.decision_history ?? run.expedition.operational?.decision_history ?? []), hazard_state: structuredClone(run.expedition.hazards ?? {}), phenomenon_state:phenomenonEcology.diagnostics(world,{developer:true}), item_custody: structuredClone(run.expedition.logistics?.items ?? {}), container_contents: structuredClone(run.expedition.logistics?.containers ?? {}), institutional_knowledge: structuredClone(world.institutional_response?.confirmed_knowledge ?? []), standard_response_queue: structuredClone(world.institutional_response?.pending_decisions ?? []), observer_safe_projection: q4.presentation(run, entry.phase, null, world) } : null; return { ok:true, snapshot:developerInspection.snapshot(world), active:{ mode, phase:entry?.phase ?? null, session_kind:entry?.kind ?? null, simulation_truth:simulationTruth }, provider:{ selected:provider.selected, offline:provider.offline, configured:provider.openai.configured, status:provider.offline ? "offline" : provider.openai.status }, doctrine: doctrineRuntime.read(), interpretation_provenance: clone(this.interpretationProvenance), provider_safe_context:run ? developerInspection.providerSafeContext(run) : null, recent_history:developerInspection.recentHistory(world) }; } catch { return publicError("DEVELOPER_SNAPSHOT_UNAVAILABLE", "The selected world could not be inspected."); } }
   async traceDeveloperIntent({ world_id, mode, text }) { if (!this.developerMode) return publicError("DEVELOPER_DISABLED", "Developer tooling is disabled."); try { const world = this.getWorld(world_id); const entry = this.session(world_id, mode) ?? this.restoreSession(world, mode, readJson(this.sessionFile(world_id, mode), null)); if (!entry || entry.kind !== "bootstrap") return publicError("TRACE_UNAVAILABLE", "A Clear-Q4 session is required for this non-executing trace."); return { ok:true, trace:await developerInspection.intentTrace({ run:entry.run, provider:createMockProvider(), player_text:text }) }; } catch { return publicError("TRACE_UNAVAILABLE", "The selected session could not be traced."); } }
-  controlQ4PhenomenonFixture({ world_id, action="instantiate", family=null, location_id=null, profile_id=null, phenomenon_id=null, text=null, target_id=null, alias=null }={}) { if(!this.developerMode)return publicError("DEVELOPER_DISABLED","Developer tooling is disabled.");try{const world=this.getWorld(world_id);const entry=this.session(world_id,"field-researcher")??this.restoreSession(world,"field-researcher",readJson(this.sessionFile(world_id,"field-researcher"),null));if(!entry||entry.kind!=="bootstrap"||!entry.run.spatial)return publicError("FIXTURE_SESSION_REQUIRED","Start Clear-Q4 before using a controlled phenomenon fixture.");const run=entry.run;const player=run.session.startup.player.observer_id;const location=location_id??run.spatial.player_location;let result;
+  controlQ4PhenomenonFixture({ world_id, action="instantiate", family=null, location_id=null, profile_id=null, phenomenon_id=null, text=null, target_id=null, alias=null }={}) {
+    if (this.commandBusy(world_id)) return publicError("SESSION_BUSY", "Wait for the current action to finish before changing this operation."); if(!this.developerMode)return publicError("DEVELOPER_DISABLED","Developer tooling is disabled.");try{const world=this.getWorld(world_id);const entry=this.session(world_id,"field-researcher")??this.restoreSession(world,"field-researcher",readJson(this.sessionFile(world_id,"field-researcher"),null));if(!entry||entry.kind!=="bootstrap"||!entry.run.spatial)return publicError("FIXTURE_SESSION_REQUIRED","Start Clear-Q4 before using a controlled phenomenon fixture.");const run=entry.run;const player=run.session.startup.player.observer_id;const location=location_id??run.spatial.player_location;let result;
     if(action==="instantiate")result=phenomenonEcology.instantiateFixture(world,{family,location_id:location,profile_id,fixture_id:`desktop-${family}-${profile_id??"canonical"}-${location}`,spatial:run.spatial},{control:phenomenonEcology.FIXTURE_TOKEN});
     else if(action==="observe")result=phenomenonEcology.observe(world,{run,observer:player,location_id:location,co_observers:Object.entries(run.spatial.personnel_locations).filter(([id,value])=>id!==player&&value===location).map(([id])=>id),has_field_light:q4Equipment.stateUsable(run.expedition.equipment?.["field-light"])});
     else if(action==="stimulus")result=phenomenonEcology.stillLifeStimulus(world,run,phenomenon_id,{kind:text??"approach",actor_location:run.spatial.player_location});
@@ -229,10 +233,14 @@ class DesktopService {
   }
   loadWorld({ world_id }) { try { const world = this.getWorld(world_id); const data = this.metadata(); return { ok: true, world: this.worldInfo(world, data.worlds[world_id] ?? {}), summary: history.summary(world), recovery: this.recoveryStatus(world_id, "world") }; } catch (error) { this.log(`world load failed: ${error.message}`); return publicError(error.code ?? "WORLD_LOAD_FAILED", "This world could not be loaded safely."); } }
   getQ4PersonnelStatus({ world_id }) { try { const world = this.getWorld(world_id); const identity = world.q4_operations?.controlled_player ?? null; const person = identity ? history.character(world, identity) : null; return { ok: true, required: !person, confirmation_required: Boolean(person && !world.q4_operations?.personnel_confirmation?.completed), player: person ? q4Personnel.safePerson(person) : null }; } catch { return publicError("WORLD_LOAD_FAILED", "This world could not be loaded safely."); } }
-  createQ4Personnel({ world_id, first_name, last_name, display_name = null }) { try { const world = this.getWorld(world_id); if (outcomes.isRetired(world)) return publicError("WORLD_RETIRED", "This world is a read-only historical record."); const created = q4Personnel.createPlayer(world, { first_name, last_name, display_name }); if (!created.ok) return publicError(created.code, "Enter a valid first and last name for the personnel record."); this.saveCanonical(world); return { ok: true, created: created.created, player: created.player }; } catch { return publicError("PERSONNEL_CREATION_FAILED", "The ASYNC personnel record could not be created safely."); } }
-  confirmQ4Personnel({ world_id }) { try { const world = this.getWorld(world_id); if (outcomes.isRetired(world)) return publicError("WORLD_RETIRED", "This world is a read-only historical record."); const identity = world.q4_operations?.controlled_player; const person = identity ? history.character(world, identity) : null; if (!person) return publicError("PERSONNEL_CREATION_REQUIRED", "Create your ASYNC personnel record before confirming it."); world.q4_operations.personnel_confirmation = { completed: true, personnel_id: identity, confirmed_at: world.q4_operations.personnel_confirmation?.confirmed_at ?? new Date().toISOString() }; this.saveCanonical(world); return { ok: true, player: q4Personnel.safePerson(person) }; } catch { return publicError("PERSONNEL_CONFIRMATION_FAILED", "The personnel record could not be confirmed safely."); } }
-  saveWorld({ world_id }) { try { const world = this.getWorld(world_id); this.saveCanonical(world); return { ok: true }; } catch (error) { return publicError(error.code ?? "WORLD_SAVE_FAILED", "This world could not be saved."); } }
+  createQ4Personnel({ world_id, first_name, last_name, display_name = null }) {
+    if (this.commandBusy(world_id)) return publicError("SESSION_BUSY", "Wait for the current action to finish before changing this operation."); try { const world = this.getWorld(world_id); if (outcomes.isRetired(world)) return publicError("WORLD_RETIRED", "This world is a read-only historical record."); const created = q4Personnel.createPlayer(world, { first_name, last_name, display_name }); if (!created.ok) return publicError(created.code, "Enter a valid first and last name for the personnel record."); this.saveCanonical(world); return { ok: true, created: created.created, player: created.player }; } catch { return publicError("PERSONNEL_CREATION_FAILED", "The ASYNC personnel record could not be created safely."); } }
+  confirmQ4Personnel({ world_id }) {
+    if (this.commandBusy(world_id)) return publicError("SESSION_BUSY", "Wait for the current action to finish before changing this operation."); try { const world = this.getWorld(world_id); if (outcomes.isRetired(world)) return publicError("WORLD_RETIRED", "This world is a read-only historical record."); const identity = world.q4_operations?.controlled_player; const person = identity ? history.character(world, identity) : null; if (!person) return publicError("PERSONNEL_CREATION_REQUIRED", "Create your ASYNC personnel record before confirming it."); world.q4_operations.personnel_confirmation = { completed: true, personnel_id: identity, confirmed_at: world.q4_operations.personnel_confirmation?.confirmed_at ?? new Date().toISOString() }; this.saveCanonical(world); return { ok: true, player: q4Personnel.safePerson(person) }; } catch { return publicError("PERSONNEL_CONFIRMATION_FAILED", "The personnel record could not be confirmed safely."); } }
+  saveWorld({ world_id }) {
+    if (this.commandBusy(world_id)) return publicError("SESSION_BUSY", "Wait for the current action to finish before changing this operation."); try { const world = this.getWorld(world_id); this.saveCanonical(world); return { ok: true }; } catch (error) { return publicError(error.code ?? "WORLD_SAVE_FAILED", "This world could not be saved."); } }
   deleteWorld({ world_id, confirmed = false }) {
+    if (this.commandBusy(world_id)) return publicError("SESSION_BUSY", "Wait for the current action to finish before changing this operation.");
     if (confirmed !== true) return publicError("DELETE_CONFIRMATION_REQUIRED", "Confirm deletion before removing this world.");
     try { const file = this.worldFile(world_id); if (!fs.existsSync(file)) return publicError("WORLD_NOT_FOUND", "This world no longer exists."); fs.unlinkSync(file);
       for (const mode of MODES) { const session = this.sessionFile(world_id, mode.id); if (fs.existsSync(session)) fs.unlinkSync(session); this.sessions.delete(`${world_id}:${mode.id}`); }
@@ -246,7 +254,8 @@ class DesktopService {
   }
   getProviderStatus() { const selected = this.settings().provider ?? "offline"; const configured = this.credentials.configured("openai"); const settings = this.settings(); const media = this.evidenceMedia.status(settings); const pool = this.providerPool; return { ok: true, provider: { selected, offline: selected === "offline", openai: { configured, status: selected === "openai" ? (configured ? "ready" : "configuration-required") : "inactive" }, groq: { configured: this.credentials.configured("groq"), status: selected === "groq" ? (this.credentials.configured("groq") ? "ready" : "configuration-required") : "inactive" }, gemini: { configured: this.credentials.configured("gemini"), status: selected === "gemini" ? (this.credentials.configured("gemini") ? "ready" : "configuration-required") : "inactive" }, openrouter: { configured: this.credentials.configured("openrouter"), status: selected === "openrouter" ? (this.credentials.configured("openrouter") ? "ready" : "configuration-required") : "inactive" }, auto: { active: selected === "auto", eligible: pool ? pool.getCandidates({ preferredProvider: "auto" }) : [], health: pool ? Object.fromEntries(["groq", "gemini", "openrouter", "openai"].map((id) => [id, pool.getHealth(id)])) : {} }, local_provider: { supported: true, adapter: settings.visual_adapter, endpoint: settings.comfyui_endpoint, status: media.local.selected ? (media.local.available ? "ready" : "unavailable") : "inactive" }, evidence_media: media } }; }
   async renderEvidence({ world_id, evidence_id, retry = false } = {}) { const key = `${world_id}:${evidence_id}:${retry ? "retry" : "render"}`; if (this.evidenceRenderInflight.has(key)) return this.evidenceRenderInflight.get(key); const task = this.renderEvidenceNow({ world_id, evidence_id, retry }).finally(() => this.evidenceRenderInflight.delete(key)); this.evidenceRenderInflight.set(key, task); return task; }
-  async renderEvidenceNow({ world_id, evidence_id, retry = false } = {}) { try { const world = this.getWorld(world_id); const record = evidenceAuthority.archive(world, { observer:"player" }).records.find((item) => item.id === evidence_id); if (!record) return publicError("EVIDENCE_UNAVAILABLE", "That evidence record is not available to this observer."); const before = clone(record); const result = await this.evidenceMedia.render({ world_id:world.world_id, record, settings:this.settings(), retry, onPresentation:(presentation) => evidenceAuthority.setPresentation(world, evidence_id, presentation) }); this.saveCanonical(world); const after = evidenceAuthority.archive(world, { observer:"player" }).records.find((item) => item.id === evidence_id); const canonicalUnchanged = JSON.stringify({ ...before, render_status:undefined, render_presentation:undefined }) === JSON.stringify({ ...after, render_status:undefined, render_presentation:undefined }); if (!canonicalUnchanged) throw new Error("evidence truth changed during media rendering"); const entry = this.session(world_id, "field-researcher") ?? this.restoreSession(world, "field-researcher", readJson(this.sessionFile(world_id, "field-researcher"), null)); return { ok:true, result:{ success:result.ok, code:result.code ?? null, presentation:result.presentation ?? null, fallback:result.fallback ?? null }, projection:entry ? this.projectionFor(world, "field-researcher", entry) : null }; } catch (error) { this.log(`evidence rendering failed: ${error.message}`); return publicError("EVIDENCE_RENDER_FAILED", "The evidence record remains available; visual rendering could not be completed."); } }
+  async renderEvidenceNow({ world_id, evidence_id, retry = false } = {}) {
+    if (this.commandBusy(world_id)) return publicError("SESSION_BUSY", "Wait for the current action to finish before changing this operation."); try { const world = this.getWorld(world_id); const record = evidenceAuthority.archive(world, { observer:"player" }).records.find((item) => item.id === evidence_id); if (!record) return publicError("EVIDENCE_UNAVAILABLE", "That evidence record is not available to this observer."); const before = clone(record); const result = await this.evidenceMedia.render({ world_id:world.world_id, record, settings:this.settings(), retry, onPresentation:(presentation) => evidenceAuthority.setPresentation(world, evidence_id, presentation) }); this.saveCanonical(world); const after = evidenceAuthority.archive(world, { observer:"player" }).records.find((item) => item.id === evidence_id); const canonicalUnchanged = JSON.stringify({ ...before, render_status:undefined, render_presentation:undefined }) === JSON.stringify({ ...after, render_status:undefined, render_presentation:undefined }); if (!canonicalUnchanged) throw new Error("evidence truth changed during media rendering"); const entry = this.session(world_id, "field-researcher") ?? this.restoreSession(world, "field-researcher", readJson(this.sessionFile(world_id, "field-researcher"), null)); return { ok:true, result:{ success:result.ok, code:result.code ?? null, presentation:result.presentation ?? null, fallback:result.fallback ?? null }, projection:entry ? this.projectionFor(world, "field-researcher", entry) : null }; } catch (error) { this.log(`evidence rendering failed: ${error.message}`); return publicError("EVIDENCE_RENDER_FAILED", "The evidence record remains available; visual rendering could not be completed."); } }
   configureProvider({ provider = "openai", api_key, model = null } = {}) { const stored = this.credentials.set(provider, api_key); if (!stored.ok) return publicError(stored.code, `Enter a valid ${provider} key.`); const next = { ...this.settings(), provider, input_mode: "natural" }; if (model && typeof model === "string" && model.length <= 120) next[`${provider}_model`] = model; this.providerPool?.resetHealth(provider); writeJson(this.settingsFile, next); return { ok: true, provider: { configured: true, persistent: stored.persistent } }; }
   configureOpenAI({ api_key, model = null } = {}) { return this.configureProvider({ provider: "openai", api_key, model }); }
   removeProviderKey({ provider = "openai" } = {}) { this.credentials.remove(provider); this.providerPool?.resetHealth(provider); const next = { ...this.settings() }; if (next.provider === provider) { next.provider = "offline"; next.input_mode = "structured"; } delete next[`${provider}_model`]; writeJson(this.settingsFile, next); return { ok: true }; }
@@ -263,6 +272,7 @@ class DesktopService {
     } finally { for (const file of [...staged.map((item) => item.next), ...rollback.map((item) => item.prior)]) { try { if (fs.existsSync(file)) fs.unlinkSync(file); } catch {} } }
   }
   restoreBackup({ world_id, confirmed = false }) {
+    if (this.commandBusy(world_id)) return publicError("SESSION_BUSY", "Wait for the current action to finish before changing this operation.");
     if (confirmed !== true) return publicError("RESTORE_CONFIRMATION_REQUIRED", "Confirm that restoring the previous save may lose recent changes.");
     try {
       const worldBackup = this.backupFile(world_id); if (!fs.existsSync(worldBackup)) return publicError("BACKUP_UNAVAILABLE", "No previous save is available for this world."); const world = this.loadWorldFile(worldBackup);
@@ -372,6 +382,7 @@ class DesktopService {
     return retired;
   }
   startSession({ world_id, mode, seed = "desktop", require_personnel = false, scenario = null }) {
+    if (this.commandBusy(world_id)) return publicError("SESSION_BUSY", "Wait for the current action to finish before changing this operation.");
     try { const world = this.getWorld(world_id); if (outcomes.isRetired(world)) return publicError("WORLD_RETIRED", "This world is a read-only historical record."); const descriptor = this.getMode(mode); if (!descriptor) return publicError("MODE_INVALID", "Choose one of the available roles."); let entry;
       if (mode === "field-researcher") { if (require_personnel && !world.q4_operations?.controlled_player) return publicError("PERSONNEL_CREATION_REQUIRED", "Create your ASYNC personnel record before receiving an assignment."); const requestedScenario = scenario === "reference-expedition" || (scenario == null && this.defaultQ4Scenario === "reference-expedition") ? "reference-expedition" : "procedural-survey"; const started = bootstrap.startRun({ profile: mode, seed, scenario: requestedScenario, world, spatial_worldpack: "clear-q4" }); if (!started.ok) return publicError("SESSION_START_FAILED", "The field session could not start."); standardOperator.ensure(world, started.run.run_id); entry = { kind: "bootstrap", run: started.run, legacy_flow: false, phase: phases.createPhase({ mode, guided: this.settings().guided_introductions !== false }) }; bootstrap.setSpatialPhase(entry.run, entry.phase.phase_id); }
       else if (mode === "lost") entry = { kind: "lost", run: lost.start(world, seed), phase: phases.createPhase({ mode, guided: this.settings().guided_introductions !== false }) };
@@ -380,6 +391,7 @@ class DesktopService {
     } catch (error) { this.log(`session start failed: ${error.message}`); return publicError("SESSION_START_FAILED", "This session could not start safely."); }
   }
   resumeSession({ world_id, mode }) {
+    if (this.commandBusy(world_id)) return publicError("SESSION_BUSY", "Wait for the current action to finish before changing this operation.");
     try {
       const loaded = this.loadPersistencePair(world_id, mode);
       if (!loaded.ok) {
@@ -484,6 +496,7 @@ class DesktopService {
     return continuity.review;
   }
   submitReferenceWrittenReport({ world_id, text }) {
+    if (this.commandBusy(world_id)) return publicError("SESSION_BUSY", "Wait for the current action to finish before changing this operation.");
     const world = this.getWorld(world_id);
     const entry = this.session(world_id, "field-researcher") ?? this.restoreSession(world, "field-researcher", readJson(this.sessionFile(world_id, "field-researcher"), null));
     if (!entry || entry.kind !== "bootstrap" || !referenceExpedition.isReference(entry.run.scenario) || entry.phase?.phase_id !== "REPORT") return publicError("REFERENCE_REPORT_UNAVAILABLE", "A written expedition report is not available from the current phase.");
@@ -505,6 +518,7 @@ class DesktopService {
     return { ok:true, result:{ turn_status:"REPORT_SUBMITTED", executed:true, report_id:report.id, institutional_assessment:clone(assessment), summary:assessment.summary, scene }, projection:this.projectionFor(world, "field-researcher", entry), review };
   }
   submitQ4Logistics({ world_id, action, item_id = null, container_id = null, target_holder = null, target_container = null, source_item_id = null, quantity = 1 }) {
+    if (this.commandBusy(world_id)) return publicError("SESSION_BUSY", "Wait for the current action to finish before changing this operation.");
     if (outcomes.isRetired(this.getWorld(world_id))) return publicError("WORLD_RETIRED", "This world is a read-only historical record.");
     try { const world = this.getWorld(world_id); const entry = this.session(world_id, "field-researcher") ?? this.restoreSession(world, "field-researcher", readJson(this.sessionFile(world_id, "field-researcher"), null)); if (!entry || entry.kind !== "bootstrap") return publicError("SESSION_NOT_FOUND", "Start or continue Clear-Q4 before managing equipment."); const context = this.q4LogisticsContext(entry, world); const definition = bootstrap.logisticsDefinitionFor(entry.run.spatial_pack_id); const resolveHolder = (value) => { if (!value) return null; if (value === "You") return context.actor; const member = context.team.find((candidate) => [candidate.personnel_id, candidate.id, candidate.display_name].includes(value)); return member?.personnel_id ?? member?.id ?? value; }; const request = { action, item_id, container_id, actor: context.actor, target_holder: resolveHolder(target_holder), target_container, source_item_id, quantity }; const result = container_id ? logisticsRuntime.transactContainer(entry.run.expedition, definition, request, context) : logisticsRuntime.transact(entry.run.expedition, definition, request, context); if (!result.ok) return publicError(result.code, result.public_reason); logisticsRuntime.syncSpatial(entry.run.expedition, entry.run.spatial); spatialRuntime.syncEquipment(entry.run.spatial, entry.run.expedition); const authoredCost = bootstrap.dynamicsDefinitionFor(entry.run.spatial_pack_id).action_costs[String(action).toUpperCase()] ?? (/^INSPECT|^VERIFY/.test(String(action).toUpperCase()) ? 0 : 1); const cycle = bootstrap.resolveOperationalCycle(entry.run, String(action).toUpperCase(), authoredCost, "logistics-transaction"); expeditionEvent(entry.run.expedition, "logistics.transaction.committed", { transaction_id: result.transaction.id, action: result.transaction.action, item_id: result.transaction.item_id ?? null, container_id: result.transaction.container_id ?? null }); this.persistSession(world, "field-researcher", entry); return { ok: true, result: { outcome: "succeeded", public_reason: result.public_reason, transaction: { action: result.transaction.action, summary: result.transaction.summary, at: result.transaction.at }, time_advanced: cycle.clock.cost, mission_updates: cycle.mission_updates }, projection: this.projectionFor(world, "field-researcher", entry) }; } catch (error) { this.log(`Q4 logistics failed: ${error.message}`); return publicError("LOGISTICS_RUNTIME_ERROR", "The logistics transaction could not be committed safely."); }
   }
@@ -554,6 +568,7 @@ class DesktopService {
   }
   getAvailableActions({ world_id, mode }) { const current = this.getGameplayProjection({ world_id, mode }); return current.ok ? { ok: true, actions: current.projection.available_actions } : current; }
   advanceQ4Operations({ world_id }) {
+    if (this.commandBusy(world_id)) return publicError("SESSION_BUSY", "Wait for the current action to finish before changing this operation.");
     try {
       const world = this.getWorld(world_id); if (outcomes.isRetired(world)) return publicError("WORLD_RETIRED", "This world is a read-only historical record."); const entry = this.session(world_id, "field-researcher") ?? this.restoreSession(world, "field-researcher", readJson(this.sessionFile(world_id, "field-researcher"), null));
       if (!entry || entry.kind !== "bootstrap" || entry.run.lifecycle !== "completed" || entry.phase?.phase_id !== "DEBRIEF") return publicError("REVIEW_REQUIRED", "Complete the current review before advancing operations.");
@@ -564,14 +579,15 @@ class DesktopService {
       const next = { kind: "bootstrap", run: started.run, phase: phases.createPhase({ mode: "field-researcher", guided: this.settings().guided_introductions !== false }) }; this.persistSession(world, "field-researcher", next); return { ok: true, result: { outcome: "operations-advanced", public_reason: processed.idempotent ? "The recorded institutional cycle was already complete; the next assignment remains unchanged." : "Institutional processing completed; the next Clear-Q4 assignment is available.", career_cycle: processed.cycle }, projection: this.projectionFor(world, "field-researcher", next) };
     } catch { return publicError("NEXT_EXPEDITION_UNAVAILABLE", "The next assignment could not be prepared safely."); }
   }
-  recordQ4Action(entry, text, result, world = null, submission_id = null) {
-    const verb = String(text).trim().split(/\s+/, 1)[0].toUpperCase();
+  recordQ4Action(entry, text, result, world = null, submission_id = null, canonicalAction = null) {
+    const verb = canonicalAction ?? String(text).trim().split(/\s+/, 1)[0].toUpperCase();
     if (verb === "RETURN" && entry.run.expedition?.mission?.hidden_trajectory?.state?.status !== "dormant") q4Trajectories.contain({ world, expedition: entry.run.expedition, run_id: entry.run.run_id, reason: "early return or completed field work" });
     const observation = q4Trajectories.resolveAction({ world, expedition: entry.run.expedition, run_id: entry.run.run_id, phase: entry.phase?.phase_id, verb: verb === "PHOTOGRAPH" ? "RECORD" : verb, result, observation_kind: /record|photograph/i.test(text) ? "record" : /contact|radio|check.?in/i.test(text) ? "contact" : null, comparison: /compare|reconcile|prior|layout/i.test(text) });
     if (observation.observed && result.result) result.result.public_reason = observation.summary;
     return q4Interactions.record(entry.run.expedition, { channel: "action", speaker: "You", targets: [], player_text: text, attempted_behavior: text, eligibility: result.ok ? "eligible" : "rejected", delivery: "not-applicable", time_cost: result.result?.time_advanced ?? (/^WAIT\b/.test(text) ? 1 : 0), canonical_effects: result.result?.canonical_event_ids ?? [], presentation: { result: observation.summary ?? (result.ok ? result.outcome ?? "succeeded" : result.error?.code ?? "rejected") }, submission_id });
   }
   submitQ4LocalIntent({ world_id, text, request_id = null }) {
+    if (this.commandBusy(world_id)) return publicError("SESSION_BUSY", "Wait for the current action to finish before changing this operation.");
     try {
       const world = this.getWorld(world_id); if (outcomes.isRetired(world)) return publicError("WORLD_RETIRED", "This world is a read-only historical record."); const entry = this.session(world_id, "field-researcher") ?? this.restoreSession(world, "field-researcher", readJson(this.sessionFile(world_id, "field-researcher"), null));
       if (!entry || entry.kind !== "bootstrap") return publicError("SESSION_NOT_FOUND", "Start or continue Clear-Q4 before issuing a LOCAL order.");
@@ -670,6 +686,7 @@ class DesktopService {
     return canonical;
   }
   submitQ4CommunicationCanonical({ world_id, channel, text, target = null }) {
+    if (this.commandBusy(world_id)) return publicError("SESSION_BUSY", "Wait for the current action to finish before changing this operation.");
     if (outcomes.isRetired(this.getWorld(world_id))) return publicError("WORLD_RETIRED", "This world is a read-only historical record.");
     try {
       const world = this.getWorld(world_id); const entry = this.session(world_id, "field-researcher") ?? this.restoreSession(world, "field-researcher", readJson(this.sessionFile(world_id, "field-researcher"), null));
@@ -716,7 +733,7 @@ class DesktopService {
         const chosen = addressedRecipient ?? equipmentRespondent ?? responses.find((item) => item.reaction && item.text) ?? responses[0];
         const response = chosen?.text || "";
         personnelContinuity.recordSharedHistory(world, { run_id: entry.run.run_id, participants: [playerId, ...recipients.map((recipient) => recipient.personnel_id ?? recipient.id)], kind: "local-communication", refs: { message_id: deliveredLocal.message.id, geography_shared: /\b(route|corridor|passage|location|map|survey|where)\b/i.test(message) }, at: expedition.clock.interval });
-        const interactionTargets = addressedRecipient ? [addressedRecipient.recipient.display_name] : (recipients.length === 1 ? [recipients[0].display_name] : ["Local Team"]);
+        const interactionTargets = recipients.map(recipient => recipient.display_name);
         const responseBody = response.replace(new RegExp(`^${String(chosen?.recipient?.first_name ?? "").replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}:\\s*`, "i"), "");
         const interaction = q4Interactions.record(expedition, { channel, speaker: "You", targets: interactionTargets, player_text: message, attempted_behavior: "speak with nearby participating personnel", eligibility: "eligible", delivery: "heard", time_cost: 0, canonical_effects: ["communication.local.delivered"], response_speaker: chosen?.recipient?.first_name ?? chosen?.recipient?.display_name ?? null, presentation: { result: "heard", response:responseBody } });
         q4Trajectories.noteCommunication({ world, expedition, run_id: entry.run.run_id, channel: "local", delivered: true, text: message });
@@ -777,6 +794,7 @@ class DesktopService {
     } catch (error) { this.log(`Q4 communication failed: ${error.message}`); return publicError("COMMUNICATION_RUNTIME_ERROR", "The communication could not be resolved safely."); }
   }
   submitQ4Handoff({ world_id, item_id, target = null }) {
+    if (this.commandBusy(world_id)) return publicError("SESSION_BUSY", "Wait for the current action to finish before changing this operation.");
     if (outcomes.isRetired(this.getWorld(world_id))) return publicError("WORLD_RETIRED", "This world is a read-only historical record.");
     try {
       const world = this.getWorld(world_id); const entry = this.session(world_id, "field-researcher") ?? this.restoreSession(world, "field-researcher", readJson(this.sessionFile(world_id, "field-researcher"), null));
@@ -800,6 +818,7 @@ class DesktopService {
     } catch (error) { this.log(`Q4 handoff failed: ${error.message}`); return publicError("HANDOFF_RUNTIME_ERROR", "The physical handoff could not be resolved safely."); }
   }
   selectQ4OptionalStore({ world_id, item_id }) {
+    if (this.commandBusy(world_id)) return publicError("SESSION_BUSY", "Wait for the current action to finish before changing this operation.");
     try {
       const world = this.getWorld(world_id); const entry = this.session(world_id, "field-researcher") ?? this.restoreSession(world, "field-researcher", readJson(this.sessionFile(world_id, "field-researcher"), null));
       if (!entry || entry.kind !== "bootstrap") return publicError("SESSION_NOT_FOUND", "Start or continue Clear-Q4 before selecting stores.");
@@ -813,6 +832,7 @@ class DesktopService {
     } catch (error) { this.log(`Q4 store selection failed: ${error.message}`); return publicError("STAGING_RUNTIME_ERROR", "The optional store could not be selected safely."); }
   }
   submitAction({ world_id, mode, action, target = null }) {
+    if (this.commandBusy(world_id)) return publicError("SESSION_BUSY", "Wait for the current action to finish before changing this operation.");
     if (this.recoveredWorlds.has(world_id)) return publicError("PERSISTENCE_RECOVERY_READ_ONLY", "This verified previous record is available for inspection only until it is explicitly restored.");
     try { const world = this.getWorld(world_id); if (outcomes.isRetired(world)) return publicError("WORLD_RETIRED", "This world is a read-only historical record."); const entry = this.session(world_id, mode) ?? this.restoreSession(world, mode, readJson(this.sessionFile(world_id, mode), null)); if (!entry) return publicError("SESSION_NOT_FOUND", "Start or continue a session first."); const verb = String(action ?? "").toUpperCase(); let result; if (entry.kind === "bootstrap") { entry.run._last_mission_updates = []; entry.run._active_submission_id = `player-submission-${crypto.createHash("sha256").update(JSON.stringify([entry.run.run_id, entry.run.expedition.interaction_history?.length ?? 0, verb, target ?? null])).digest("hex").slice(0, 18)}`; }
       if (entry.kind === "bootstrap" && verb === "ADVANCE_OPERATIONS") return this.advanceQ4Operations({ world_id });
@@ -874,18 +894,7 @@ class DesktopService {
       }
       if (entry.kind === "bootstrap") {
         this.recordQ4Action(entry, `${verb}${target ? ` ${target}` : ""}`, result, world, entry.run._active_submission_id);
-        if (["RETURN", "ABORT"].includes(verb) && entry.run.expedition?.mission_state?.return?.requested && entry.phase?.phase_id !== "RETURN") {
-          const returning = phases.transition(entry.phase, "RETURN", { reason: verb.toLowerCase(), guard: true });
-          if (returning.ok) { entry.phase = returning.phase; bootstrap.evaluateMissionState(entry.run, "RETURN"); }
-        }
-        if (entry.run.lifecycle === "completed" && entry.run.expedition?.mission && !entry.run.expedition.institutional_closure_ingested) {
-          this.prepareQ4Return(world, entry);
-          if (referenceExpedition.isReference(entry.run.scenario) && !entry.run.expedition.written_report) {
-            const reportPhase = phases.transition(entry.phase, "REPORT", { reason:"evidence-custody-complete", guard:true });
-            if (reportPhase.ok) entry.phase = reportPhase.phase;
-            result.result = { ...(result.result ?? {}), public_reason:"Returned evidence entered A-Sync custody. Submit your written account before institutional review." };
-          } else this.finalizeQ4Closure(world, entry);
-        }
+        this.finishQ4Action(world, entry, verb, result);
       }
       const missionUpdates = result.result?.mission_updates ?? entry.run?._last_mission_updates ?? [];
       const mortality = entry.kind === "bootstrap" ? outcomes.resolve(world, entry.run, { cause: result.result?.consequence_id ?? result.outcome ?? verb }) : null;
@@ -901,6 +910,7 @@ class DesktopService {
     const doctrine = doctrineRuntime.context(); return { version: "yellow-beast-interpretation-context@v1", profile_title: projection.mode.label, scenario: projection.mode.description, lifecycle: "active", authority_contract: { doctrine: doctrine.source, doctrine_sha256: doctrine.sha256, doctrine_priority: doctrine.priority, order: ["canonical-world", "simulation", "institution", "observation", "presentation"], generation_role: "candidate-only" }, doctrine_runtime: doctrine, observer_location: location, visible_reference_labels: labels, known_resource_labels: surface.status?.carried ?? [], public_reason: null, grounding: { version: "yellow-beast-observer-grounding-context@v1", candidates: labels.map((label) => ({ ref: label, label, category: "entity", source: "visible", aliases: [label], attributes: [] })) } };
   }
   retryQ4Communication({ world_id, message_id }) {
+    if (this.commandBusy(world_id)) return publicError("SESSION_BUSY", "Wait for the current action to finish before changing this operation.");
     try {
       const world = this.getWorld(world_id); const entry = this.session(world_id, "field-researcher") ?? this.restoreSession(world, "field-researcher", readJson(this.sessionFile(world_id, "field-researcher"), null));
       const prior = entry?.run?.expedition?.messages?.find((item) => item.id === message_id);
@@ -909,6 +919,7 @@ class DesktopService {
     } catch { return publicError("COMMUNICATION_RETRY_UNAVAILABLE", "The radio transmission could not be retried safely."); }
   }
   cancelQ4Communication({ world_id, message_id }) {
+    if (this.commandBusy(world_id)) return publicError("SESSION_BUSY", "Wait for the current action to finish before changing this operation.");
     try {
       const world = this.getWorld(world_id); const entry = this.session(world_id, "field-researcher") ?? this.restoreSession(world, "field-researcher", readJson(this.sessionFile(world_id, "field-researcher"), null)); const message = entry?.run?.expedition?.messages?.find((item) => item.id === message_id);
       if (!message || !["queued", "transmitting", "delayed", "delivered"].includes(message.state)) return publicError("COMMUNICATION_CANCEL_UNAVAILABLE", "That radio transmission cannot be cancelled now.");
@@ -965,15 +976,53 @@ class DesktopService {
     const scene = { version: "yellow-beast-scene@v1", scene_id: `scene-${crypto.createHash("sha256").update(`${world.world_id}:${mode}:${Date.now()}`).digest("hex").slice(0, 20)}`, world_ref: world.world_id, session_ref: entry.run_id ?? entry.run?.run_id ?? mode, turn_ref: "natural-attempt", observer_ref: mode, mode, profile: mode, scene_type: natural.consequence?.result?.accepted ? "delta" : "observation", significance: "ROUTINE", location: String(location), safe_facts: [{ id: "location", category: "location", text: String(location), required: true }], immediate_changes: [{ id: "consequence", category: "change", text: natural.consequence?.result?.observer_safe_summary ?? "Nothing observable changes here.", required: true }], visible_actors: [], communications: [], sensory_facts: [], inventory: [], object_state_changes: [], unresolved_facts: [], continuing_conditions: [], context: [], interaction_prompt: "What do you do?", provenance: { source: "observer-safe-mode-projection", input: "player-supplied" } };
     return { ...scene, narration: fallbackNarration(scene), narration_source: "fallback" };
   }
-  async submitNatural({ world_id, mode, text }) {
+  finishQ4Action(world, entry, verb, result) {
+        if (["RETURN", "ABORT"].includes(verb) && entry.run.expedition?.mission_state?.return?.requested && entry.phase?.phase_id !== "RETURN") {
+          const returning = phases.transition(entry.phase, "RETURN", { reason: verb.toLowerCase(), guard: true });
+          if (returning.ok) { entry.phase = returning.phase; bootstrap.evaluateMissionState(entry.run, "RETURN"); }
+        }
+        if (entry.run.lifecycle === "completed" && entry.run.expedition?.mission && !entry.run.expedition.institutional_closure_ingested) {
+          this.prepareQ4Return(world, entry);
+          if (referenceExpedition.isReference(entry.run.scenario) && !entry.run.expedition.written_report) {
+            const reportPhase = phases.transition(entry.phase, "REPORT", { reason:"evidence-custody-complete", guard:true });
+            if (reportPhase.ok) entry.phase = reportPhase.phase;
+            result.result = { ...(result.result ?? {}), public_reason:"Returned evidence entered A-Sync custody. Submit your written account before institutional review." };
+          } else this.finalizeQ4Closure(world, entry);
+        }
+  }
+  commandBusy(worldId) {
+    return this.naturalTurnInflight.has(worldId) && this.naturalCommandContext.getStore() !== worldId;
+  }
+  async submitNatural(input = {}) {
+    const { world_id, mode, text } = input;
+    if (typeof text !== "string" || !text.trim() || text.length > 4000) return publicError("ACTION_TEXT_INVALID", "Enter an instruction of 1 to 4,000 characters.");
+    if (this.recoveredWorlds.has(world_id)) return publicError("PERSISTENCE_RECOVERY_READ_ONLY", "Restore the recovered operation record before submitting actions.");
+    const requestId = input.request_id ?? `desktop-natural-${crypto.randomUUID()}`;
+    if (typeof requestId !== "string" || !requestId.trim() || requestId.length > 160) return publicError("REQUEST_ID_INVALID", "The action reference is invalid. Submit the action again.");
+    const fingerprint = crypto.createHash("sha256").update(JSON.stringify([world_id, mode, text])).digest("hex");
+    const active = this.naturalTurnInflight.get(world_id);
+    if (active) {
+      if (active.id === requestId && active.fingerprint === fingerprint) return active.promise;
+      return publicError(active.id === requestId ? "REQUEST_ID_REUSED" : "SESSION_BUSY", active.id === requestId ? "That action reference belongs to a different instruction." : "The previous action is still being resolved. Wait for its result before submitting another action.");
+    }
+    const promise = Promise.resolve().then(() => this.naturalCommandContext.run(world_id, () => this.submitNaturalInternal({ ...input, request_id:requestId, input_fingerprint:fingerprint })));
+    this.naturalTurnInflight.set(world_id, { id:requestId, fingerprint, promise });
+    try { return await promise; } finally { this.naturalTurnInflight.delete(world_id); }
+  }
+  async submitNaturalInternal({ world_id, mode, text, request_id, input_fingerprint }) {
     try {
       if (!this.authorityRegistry.healthy) return publicError("AUTHORITY_UNAVAILABLE", "Authoritative interpretation sources are unavailable. Continue with structured controls while the installation is repaired.");
       const world = this.getWorld(world_id);
       const entry = this.session(world_id, mode) ?? this.restoreSession(world, mode, readJson(this.sessionFile(world_id, mode), null));
       if (!entry) return publicError("SESSION_NOT_FOUND", "Start or continue this session first.");
+      const recorded = entry.run?.expedition?.natural_action_receipts?.find(receipt => receipt.id === request_id);
+      if (recorded) {
+        if (recorded.input_fingerprint !== input_fingerprint) return publicError("REQUEST_ID_REUSED", "That action reference belongs to a different instruction.");
+        return { ok:true, result:{ turn_status:"RESOLVED", executed:false, duplicate:true, summary:recorded.public_reason ?? "This action has already been recorded." }, projection:this.projectionFor(world, mode, entry) };
+      }
       if (entry.kind === "bootstrap" && mode === "field-researcher" && entry.phase?.phase_id === "REPORT") return this.submitReferenceWrittenReport({ world_id, text });
       if (entry.kind === "bootstrap" && referenceExpedition.isReference(entry.run.scenario) && ["FIELD_OPERATION", "RETURN"].includes(entry.phase?.phase_id) && entry.run.spatial) {
-        const requestId = `desktop-living-${world_id}-${Date.now()}`;
+        const requestId = request_id;
         const selected = this.livingTurnProvider ?? this.providerPool.createAutoProvider({ requestId, route: "submitNatural/living-turn" });
         const interpreter = typeof selected.interpretLiving === "function"
           ? { name:selected.name, interpret:(request) => selected.interpretLiving(request) }
@@ -982,15 +1031,27 @@ class DesktopService {
           ? { name:selected.name, present:(request) => selected.presentLiving(request) }
           : selected;
         this.recordInterpretationProvenance({ request_id:requestId, route:"submitNatural/living-turn", event:"provider-selected", input:"player-supplied", provider:selected.name, model:selected.model ?? "deterministic", provider_invoked:false, response_classification:(selected.name === "openai" || selected.name === "auto") ? "not-yet-observed" : "deterministic", canonical_resolution:"ai-interpreter-boundary -> Custodian -> live-scene-projection", observer_projection:"live-scene-projection@v1" });
-        const living = await executeLivingTurn({ run:entry.run, player_text:text, interpreter, presentation_provider:presentationProvider, request_id:requestId });
+        const beforeRun = clone(entry.run); const beforeWorld = clone(world); const beforePhase = clone(entry.phase);
+        const living = await executeLivingTurn({ run:entry.run, player_text:text, interpreter, presentation_provider:presentationProvider, request_id:requestId, onResolved:({ resolution, interpretation }) => {
+          const verb = interpretation.sink.payload.action ?? interpretation.sink.payload.player_attempt?.action;
+          this.recordQ4Action(entry, text, resolution, world, requestId, verb);
+          this.finishQ4Action(world, entry, verb, resolution);
+          entry.run.expedition.natural_action_receipts ??= [];
+          entry.run.expedition.natural_action_receipts.push({ id:requestId, input_fingerprint, interval:entry.run.expedition.clock.interval, action:verb, outcome:resolution.outcome, public_reason:resolution.result?.public_reason ?? "The action is recorded." });
+          try { this.persistSession(world, mode, entry); }
+          catch (error) {
+            for (const key of Object.keys(world)) delete world[key]; Object.assign(world,beforeWorld);
+            for (const key of Object.keys(entry.run)) delete entry.run[key]; Object.assign(entry.run,beforeRun); entry.run._world=world; entry.phase=beforePhase;
+            throw Object.assign(new Error("The action could not be committed to its operation record."), { code:"PERSISTENCE_COMMIT_FAILED", cause:error });
+          }
+        } });
         if (living.status === "clarification") {
-          const question = living.interpretation.question;
+          const options = living.interpretation.options ?? [];
+          const question = living.interpretation.question + (options.length ? ` Available: ${options.join("; ")}.` : "");
           const scene = { ...this.sceneFor(entry, mode, { scene_type:"observation", accepted:false, public_reason:question }, world), narration:question, narration_source:"deterministic-clarification" };
           return { ok:true, result:{ turn_status:"CLARIFICATION_REQUIRED", clarification_required:true, clarification_question:question, executed:false, summary:question, scene, living_turn:{ version:living.version, status:living.status, trace:living.trace } }, projection:this.projectionFor(world, mode, entry) };
         }
         if (living.status !== "resolved") return publicError(living.resolution?.error?.code ?? "LIVING_TURN_REJECTED", living.resolution?.result?.public_reason ?? "The interpreted attempt is no longer available from the current scene.");
-        this.recordQ4Action(entry, text, { ok:true, outcome:living.resolution.outcome, result:{ time_advanced:living.resolution.time_advanced ?? 0, public_reason:living.resolution.public_reason } }, world, requestId);
-        this.persistSession(world, mode, entry);
         const scene = { ...this.sceneFor(entry, mode, { scene_type:"delta", accepted:true, public_reason:living.resolution.public_reason }, world), narration:living.presentation.scene_description, narration_source:living.presentation.source };
         return { ok:true, result:{ turn_status:"RESOLVED", clarification_required:false, clarification_question:null, executed:true, summary:scene.narration, scene, living_turn:{ version:living.version, status:living.status, validation:living.validation, trace:living.trace } }, projection:this.projectionFor(world, mode, entry) };
       }
@@ -1034,7 +1095,7 @@ class DesktopService {
       const scene = { ...turn.scene, narration: turn.narration.prose, narration_source: turn.narration.source };
       const hostedFailure = providerSetting !== "offline" && this.interpretationProvenance.some((record) => record.request_id === requestId && record.invocation_status === "failed");
       return { ok: true, result: { turn_status: turn.status, interpretation_error:turn.status === "INTERPRETATION_ERROR", provider_unavailable:hostedFailure, clarification_required: turn.status === "CLARIFICATION_REQUIRED", clarification_question: turn.clarification?.question ?? null, executed: turn.save_required, summary: scene.narration, scene }, projection: this.projectionFor(world, mode, entry) };
-    } catch (error) { this.log(`provider unavailable: ${error.message}`); return publicError("PROVIDER_UNAVAILABLE", "Language assistance is unavailable. Your world is safe. Continue using structured controls or try again."); }
+    } catch (error) { this.log(`natural action failed: ${error.message}`); return error.code === "PERSISTENCE_COMMIT_FAILED" ? publicError(error.code, "The action could not be saved and was not committed. Check the operation record storage before retrying.") : publicError("PROVIDER_UNAVAILABLE", "Language assistance is unavailable. Continue using structured controls or retry this action reference."); }
   }
   shutdown() { for (const [key, entry] of this.sessions) { const [worldId, mode] = key.split(":"); if (this.recoveredWorlds.has(worldId)) continue; try { this.persistSession(this.getWorld(worldId), mode, entry); } catch (error) { this.log(`shutdown save failed: ${error.message}`); } } return { ok: true }; }
 }

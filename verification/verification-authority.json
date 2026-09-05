@@ -80,7 +80,8 @@
       "tests/y79-clause-completeness-coordinated.test.js",
       "tests/y80-canonical-ledger-observer-shell.test.js",
       "tests/y81-canonical-ledger-epistemic-hardening.test.js",
-      "tests/y82-reference-expedition-vertical-blockers.test.js"
+      "tests/y82-reference-expedition-vertical-blockers.test.js",
+      "tests/y83-natural-command-transactions.test.js"
     ],
     "long-world": [
       "tests/profile-model.test.js",
@@ -272,7 +273,8 @@
     "tests/y79-clause-completeness-coordinated.test.js": "f5a006653ec898ec3f74ec82b6156ab106a52981a1c9f812c112d7f8c9e43a56",
     "tests/y80-canonical-ledger-observer-shell.test.js": "c0779d9730611b103287dd647b9845d6e71a25656749ecc1417bd5c1ea15c494",
     "tests/y81-canonical-ledger-epistemic-hardening.test.js": "7fbf1fade5fcab6de54cde4b4cab95f997959b2d40aa919fb95365dcdc5d3f35",
-    "tests/y82-reference-expedition-vertical-blockers.test.js": "e68de04e4516d473bd2828057e57bbda547e891b5244ce29db89057c1e27825c"
+    "tests/y82-reference-expedition-vertical-blockers.test.js": "e68de04e4516d473bd2828057e57bbda547e891b5244ce29db89057c1e27825c",
+    "tests/y83-natural-command-transactions.test.js": "6c32165ac648da0055e15f4313daac463ad64cdbff5609416f7e18f8b7a35abc"
   },
   "verification_core_hashes": {
     "tools/verification-inventory.js": "0f27da4645f1d85e48b52133475371bbbce55072807b6900108c3a1afd344f3b",
@@ -317,9 +319,9 @@
     "tools/stranger-flow-report.js": "29806b11bb301b89fb1c8467805a661959791004fe8810224fdfbc93bc8085d5",
     "tools/y32-replayability-report.js": "1747cf56b47a16763dc92c4de611c713bf997d8c3dce8de2e6ab0beeea8d9e56",
     "tools/yb33-torture-report.js": "e5f3c825352d7645661463f3b68e78398771854d11a85583dac908bc9da41697",
-    "tools/build-desktop.js": "ccc19919e796a11457323357eeac3a48331833aea0ff6e2e02a8abfe0ace6b76",
-    "tools/verify-desktop-artifact.js": "e7246bab8f9f579f823d952e92c7abdfe4dce27a2ae177847315edf714e4a201",
-    "tools/verify-first-run-artifact.js": "b8568b97548022a281e099b81ae6fde79eedb049ae93965fd73c584c653426d6"
+    "tools/build-desktop.js": "f53df79382dcb7d267df79673e2bbee219419a3020d5402b52563654524fed80",
+    "tools/verify-desktop-artifact.js": "1eebf739d00ba79c5373a67ecbf1ed46b7b63749bc2a110e63b0a042d812246f",
+    "tools/verify-first-run-artifact.js": "049dd42db45034b8562220e930616b46e40508a26847a9932ddfa0c0a45b2dfb"
   },
   "verification_script_dispositions": {
     "canonical_aggregate": [

@@ -17,20 +17,80 @@ function proposal(attempts, relation = "single") {
 
 function actorReference(text, coworkers) {
   const source = normalized(text);
+  const matches = [];
   for (const coworker of coworkers) {
     const parts = coworker.label.split(/\s+/).filter(Boolean);
     const options = [coworker.label, parts[0], coworker.role].filter(Boolean);
-    const match = options.find((option) => source.includes(normalized(option)));
-    if (match) return match;
+    const match = options.find((option) => (` ${source} `).includes(` ${normalized(option)} `));
+    if (match) matches.push(match);
   }
-  return null;
+  return matches.length === 1 ? matches[0] : null;
 }
 
 function matchingTarget(text, labels, fallback = null) {
   const source = normalized(text);
-  return labels.find((label) => source.includes(normalized(label)))
-    ?? labels.find((label) => normalized(label).split(" ").some((term) => term.length > 4 && source.includes(term)))
-    ?? fallback;
+  const exact = labels.filter(label => (` ${source} `).includes(` ${normalized(label)} `));
+  if (exact.length) return exact.length === 1 ? exact[0] : null;
+  const partial = labels.filter(label => normalized(label).split(" ").some(term => term.length > 4 && (` ${source} `).includes(` ${term} `)));
+  return partial.length === 1 ? partial[0] : partial.length ? null : fallback;
+}
+
+function singleAttempt(text, context) {
+  const lower = normalized(text);
+  const actions = context.sinks?.single_attempt ?? [];
+  const coworkers = context.local_coworkers ?? [];
+  const attempt = (action, target = null, equipment = null) => proposal([{ actor:{kind:"player"}, action, target_label:target, equipment_label:equipment, agency:/\bi\b/.test(lower) ? "first-person" : "direct-player", language_span:text }]);
+  const unavailable = () => proposal([]);
+  const available = type => actions.find(action => action.type === type);
+  // Resolve the requested verb before considering equipment nouns or movement.
+  // An item name cannot grant permission to use it, and an absent target cannot
+  // silently select the first route or first item in a list.
+  if (/\b(?:give|hand|pass|transfer)\b/.test(lower)) {
+    const transfer = available("TRANSFER") ?? available("HANDOFF");
+    if (!transfer) return unavailable();
+    const equipment = context.local_equipment ?? context.available_equipment ?? [];
+    const label = matchingTarget(text, equipment.map(item => item.label));
+    const item = equipment.find(item => item.label === label);
+    const receiving = /\b(?:give|hand|pass|bring) me\b/.test(lower);
+    const recipient = actorReference(text, coworkers) ?? (receiving ? item?.holder : null);
+    return recipient && label ? attempt(transfer.type, recipient, label) : unavailable();
+  }
+  if (/\b(?:head back|take us home|back to the threshold|head toward the threshold|we re done here)\b/.test(lower) || /^(?:please )?(?:let s )?return(?: home)?$/.test(lower)) return available("RETURN") ? attempt("RETURN") : unavailable();
+  if (/\b(?:follow me|come with me|regroup)\b/.test(lower)) return available("ORDER_FOLLOW") ? attempt("ORDER_FOLLOW", actorReference(text,coworkers)) : unavailable();
+  if (/\b(?:stay|hold|wait)\b/.test(lower)) {
+    const recipient = actorReference(text,coworkers);
+    const teamOrder = recipient || /\b(?:everyone|everybody|team|all|hold up|stay here)\b/.test(lower);
+    return teamOrder && available("ORDER_HOLD") ? attempt("ORDER_HOLD",recipient) : available("WAIT") ? attempt("WAIT") : unavailable();
+  }
+  if (/\b(?:look around|look at the ceiling|take stock|take a closer look|what s over there)\b/.test(lower) || /^(?:please )?(?:i )?(?:look|observe|orient)$/.test(lower)) return available("LOOK") ? attempt("LOOK") : unavailable();
+  if (/\b(?:inspect|check|examine)\b/.test(lower)) {
+    const inspect = available("INSPECT");
+    return inspect ? attempt("INSPECT",matchingTarget(text,inspect.target_labels)) : unavailable();
+  }
+  if (/\b(?:photograph|photo|picture|snapshot)\b/.test(lower)) {
+    const photo = available("PHOTOGRAPH");
+    if (!photo) return unavailable();
+    const targets = photo.target_labels.filter(label => !/ — /.test(label));
+    const target = matchingTarget(text,targets) ?? (targets.length===1 ? targets[0] : null);
+    return attempt("PHOTOGRAPH",target);
+  }
+  if (/\b(?:measure|reading|use)\b/.test(lower)) {
+    const use = available("USE");
+    const target = use && (matchingTarget(text,use.target_labels) ?? use.target_labels.find(label=>/survey|instrument/i.test(label)));
+    return use && target ? attempt("USE",target) : unavailable();
+  }
+  if (/\b(?:walk|go|move|head|proceed|keep moving|keep walking|return to|take the)\b/.test(lower)) {
+    const movement = available("MOVE");
+    if (!movement) return unavailable();
+    if (/\b(?:left|right)\b/.test(lower)) return unavailable();
+    if (/\b(?:go back|previous room|backtrack)\b/.test(lower)) return attempt("MOVE",context.previous_exit);
+    const direction = lower.match(/\b(northwest|northeast|southwest|southeast|north|south|east|west|back|forward|up|down)\b/)?.[1];
+    const directional = direction && movement.target_labels.filter(label=>normalized(label).startsWith(direction+" "));
+    const query = lower.replace(/\bhall(?:way)?\b/g,"corridor");
+    const target = directional?.length===1 ? directional[0] : matchingTarget(query,movement.target_labels);
+    return attempt("MOVE",target);
+  }
+  return unavailable();
 }
 
 function createLivingProvider() {
@@ -174,45 +234,7 @@ function createLivingProvider() {
           return proposal(attempts, "coordinated");
         }
       }
-      const actions = context.sinks?.single_attempt ?? [];
-      const movement = actions.find((action) => action.type === "MOVE");
-      if (movement && /\b(?:walk|go|move|proceed|keep walking)\b/.test(lower)) {
-        const target = matchingTarget(text, movement.target_labels, movement.target_labels.find((label) => /passage/i.test(label)) ?? null);
-        return proposal([{ actor: { kind: "player" }, action: "MOVE", target_label: target, equipment_label: null, agency: /\bi\b/.test(lower) ? "first-person" : "direct-player", language_span: text }]);
-      }
-      const photoAction = actions.find((action) => action.type === "PHOTOGRAPH");
-      if (photoAction && /\b(?:photograph|photo|picture|camera|snapshot)\b/.test(lower)) {
-        const target = matchingTarget(text, photoAction.target_labels) ?? photoAction.target_labels[0];
-        return proposal([{ actor: { kind: "player" }, action: "PHOTOGRAPH", target_label: target, equipment_label: null, agency: /\bi\b/.test(lower) ? "first-person" : "direct-player", language_span: text }]);
-      }
-      const transferAction = actions.find((action) => action.type === "TRANSFER" || action.type === "HANDOFF");
-      if (transferAction && /\b(?:give|hand|pass|transfer)\b/.test(lower)) {
-        const recipient = actorReference(text, coworkers);
-        const equipLabel = (context.available_equipment ?? []).find((eq) => lower.includes(normalized(eq.label)) || normalized(eq.label).split(" ").some((term) => term.length > 4 && lower.includes(term)))?.label ?? (context.available_equipment?.[0]?.label ?? null);
-        if (recipient && equipLabel) {
-          return proposal([{ actor: { kind: "player" }, action: transferAction.type, target_label: recipient, equipment_label: equipLabel, agency: /\bi\b/.test(lower) ? "first-person" : "direct-player", language_span: text }]);
-        }
-      }
-      const holdOrder = actions.find((action) => action.type === "ORDER_HOLD");
-      if (holdOrder && /\b(?:stay|hold|wait)\b/.test(lower)) {
-        const recipient = actorReference(text, coworkers);
-        return proposal([{ actor: { kind: "player" }, action: "ORDER_HOLD", target_label: recipient, equipment_label: null, agency: /\bi\b/.test(lower) ? "first-person" : "direct-player", language_span: text }]);
-      }
-      const followOrder = actions.find((action) => action.type === "ORDER_FOLLOW");
-      if (followOrder && /\b(?:follow|regroup|come with)\b/.test(lower)) {
-        const recipient = actorReference(text, coworkers);
-        return proposal([{ actor: { kind: "player" }, action: "ORDER_FOLLOW", target_label: recipient, equipment_label: null, agency: /\bi\b/.test(lower) ? "first-person" : "direct-player", language_span: text }]);
-      }
-      const useAction = actions.find((action) => action.type === "USE");
-      if (useAction && /\b(?:measure|reading|instrument)\b/.test(lower)) {
-        const target = useAction.target_labels.find((l) => /survey|instrument/i.test(l)) ?? useAction.target_labels[0];
-        return proposal([{ actor: { kind: "player" }, action: "USE", target_label: target, equipment_label: null, agency: /\bi\b/.test(lower) ? "first-person" : "direct-player", language_span: text }]);
-      }
-      const inspection = actions.find((action) => action.type === "INSPECT");
-      if (inspection && /\b(?:inspect|check|examine)\b/.test(lower)) {
-        return proposal([{ actor: { kind: "player" }, action: "INSPECT", target_label: matchingTarget(text, inspection.target_labels), equipment_label: null, agency: /\bi\b/.test(lower) ? "first-person" : "direct-player", language_span: text }]);
-      }
-      return { version: PROPOSAL_VERSION, status: "proposal", noncanonical: true, relation: "single", attempts: [] };
+      return singleAttempt(text, context);
     },
     async present(providerPacket) {
       const packet = providerPacket.player_scene;

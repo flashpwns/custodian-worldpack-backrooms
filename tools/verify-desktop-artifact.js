@@ -8,26 +8,7 @@ const asar = require("@electron/asar");
 const profiles = require("../desktop/profile-resolver");
 
 const root = path.resolve(__dirname, "..");
-const dist = path.join(root, "dist", "desktop");
-const platform = process.platform === "darwin" ? "mac" : process.platform === "win32" ? "win" : null;
-if (!platform) throw new Error("desktop artifact verification runs on macOS or Windows");
-
-function find(directory, predicate) {
-  if (!fs.existsSync(directory)) return null;
-  for (const entry of fs.readdirSync(directory, { withFileTypes: true })) {
-    const file = path.join(directory, entry.name);
-    if (predicate(file, entry)) return file;
-    if (entry.isDirectory()) {
-      const nested = find(file, predicate);
-      if (nested) return nested;
-    }
-  }
-  return null;
-}
-
-const executable = platform === "mac" ? find(dist, (file, entry) => entry.isFile() && file.endsWith(path.join("Contents", "MacOS", "Yellow Beast"))) : find(dist, (file, entry) => entry.isFile() && file.endsWith("Yellow Beast.exe"));
-const archive = platform === "mac" ? find(dist, (file, entry) => entry.isFile() && file.endsWith(path.join("Resources", "app.asar"))) : find(dist, (file, entry) => entry.isFile() && file.endsWith(path.join("resources", "app.asar")));
-assert.ok(executable && archive && fs.existsSync(executable) && fs.existsSync(archive), "missing packaged executable or application archive");
+const { executable, archive } = require("./desktop-artifact-paths").desktopArtifactPaths(root);
 
 const entry = (suffix) => asar.listPackage(archive).find((item) => item.replace(/\\/g, "/") === suffix);
 const readEntry = (suffix) => {

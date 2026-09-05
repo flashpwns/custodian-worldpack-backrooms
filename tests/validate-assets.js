@@ -337,6 +337,23 @@ scripts.push("tools/doctrine-runtime.js", "tests/y62-pass17-human-gate.test.js")
 scripts.push("tests/y63-pass17-state-machine.test.js");
 scripts.push("tools/authority-registry.js", "tests/y64-pass17-authority.test.js");
 scripts.push("desktop/first-run-smoke.js", "desktop/profile-resolver.js", "tools/verify-first-run-artifact.js", "tests/y67-recovery-profile.test.js", "tests/y68-verification-gate.test.js", "tests/y68-long-world-known-failures.test.js", "tools/verification-inventory.js", "tools/verification-runner.js");
+// Explicitly admitted V03 and Reference expedition application/test code.
+// Keep this inventory closed: content under data/, canon/, and scenarios/ must
+// remain non-executable, and an unreviewed new script must still fail this gate.
+scripts.push(
+  "desktop/hosted-ai-smoke.js", "tests/v03-persistence-foundation.js",
+  "tests/y69-reference-expedition.test.js", "tests/y70-coordinated-execution.test.js",
+  "tests/y71-ai-interpreter-boundary.test.js", "tests/y72-live-scene-projection.test.js",
+  "tests/y73-ai-living-turn.test.js", "tests/y75-ui-audio-spec-compliance.test.js",
+  "tests/y76-provider-autoselect-fallback.test.js", "tests/y77-cleanup-adjudication-invariants.test.js",
+  "tests/y78-reference-expedition-living-world.test.js", "tests/y79-clause-completeness-coordinated.test.js",
+  "tests/y80-canonical-ledger-observer-shell.test.js", "tests/y81-canonical-ledger-epistemic-hardening.test.js",
+  "tests/y82-reference-expedition-vertical-blockers.test.js", "tests/y83-natural-command-transactions.test.js",
+  "tools/ai-hosted-transport.js", "tools/ai-interpreter-boundary.js", "tools/ai-living-provider.js",
+  "tools/ai-living-turn.js", "tools/ai-local-dialogue.js", "tools/ai-provider-pool.js",
+  "tools/canonical-world-ledger.js", "tools/custodian-ai-host-adapter.js", "tools/desktop-artifact-paths.js",
+  "tools/live-scene-projection.js", "tools/reference-expedition.js"
+);
 for (const relative of scripts) {
   const content = fs.readFileSync(path.join(root, relative), "utf8");
   assert.doesNotMatch(content, /custodian\/(runtime|state|tools)/, `${relative} uses only public Custodian imports`);

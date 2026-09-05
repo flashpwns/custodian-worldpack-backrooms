@@ -674,6 +674,11 @@ function act(runValue, verb, target) {
     if (!recipientMember) return { ok: false, error: { code: "PERSONNEL_UNKNOWN" }, result: { public_reason: "That teammate is not part of the assigned field team." }, run };
     const targetHolder = recipientMember.personnel_id ?? recipientMember.id;
 
+    // Natural-language transfers carry a direction. Legacy structured requests
+    // retain their documented two-party handoff behavior.
+    if (typeof target === "object" && target.direction === "give" && item.holder !== player) return { ok:false, error:{ code:"ITEM_NOT_IN_CUSTODY" }, result:{ public_reason:`You do not hold the ${item.label.toLowerCase()}. Arrange a handoff with its current holder first.` }, run };
+    if (typeof target === "object" && target.direction === "receive" && item.holder === player) return { ok:false, error:{ code:"ITEM_ALREADY_HELD" }, result:{ public_reason:`You already hold the ${item.label.toLowerCase()}.` }, run };
+
     if (run.spatial.personnel_locations[player] !== run.spatial.personnel_locations[targetHolder]) {
       return { ok: false, error: { code: "TRANSFER_OUT_OF_RANGE" }, result: { public_reason: "Both people must share confirmed speaking range for a physical transfer." }, run };
     }

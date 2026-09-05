@@ -183,7 +183,7 @@ function validatePresentation(providerPacket, candidate) {
   return { ok: true, candidate: deepFreeze(structuredClone(candidate)) };
 }
 
-async function executeLivingTurn({ run, player_text, interpreter, presentation_provider = interpreter, request_id = null } = {}) {
+async function executeLivingTurn({ run, player_text, interpreter, presentation_provider = interpreter, request_id = null, onResolved = null } = {}) {
   const trace = [];
   const beforeInterpretation = structuredClone(run);
   trace.push("interpreter");
@@ -194,6 +194,9 @@ async function executeLivingTurn({ run, player_text, interpreter, presentation_p
   trace.push("resolution");
   const resolution = dispatchCandidate(run, interpretation);
   if (!resolution.ok) return deepFreeze({ version: VERSION, status: "rejected", player_input: player_text, interpretation, resolution: structuredClone(resolution), trace, canonical_mutation: false });
+  // Commit canonical consequences before any asynchronous presentation request.
+  // A failed or interrupted narrator must not erase an accepted action.
+  if (onResolved) onResolved({ resolution, interpretation });
   const afterResolution = structuredClone(run);
 
   trace.push("projection");

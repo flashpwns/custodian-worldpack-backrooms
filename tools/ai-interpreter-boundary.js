@@ -109,6 +109,9 @@ function buildCustodianScope(runValue) {
   const playerEquipment = Object.entries(run.expedition?.equipment ?? {})
     .filter(([, item]) => item?.holder === player && !["missing", "abandoned", "depleted", "damaged", "jammed"].includes(String(item.state).toLowerCase()))
     .map(([ref, item]) => ({ label: item.label ?? item.model ?? "Available equipment", capability: item.capability ?? null, ref, aliases: distinct([item.label, item.model]) }));
+  const transferEquipment = Object.entries(run.expedition?.equipment ?? {})
+    .filter(([, item]) => item.holder === player || localCoworkers.some((member) => member.ref === item.holder))
+    .map(([ref, item]) => ({ label:item.label ?? item.model, ref, holder:item.holder === player ? "You" : localCoworkers.find((member) => member.ref === item.holder).label, aliases:distinct([item.label, item.model]) }));
   const targetFor = (label) => aliases.find((item) => normalized(item.label) === normalized(label));
   const singleActions = state.available_verbs.map((action) => {
     const type = String(action).toUpperCase();
@@ -119,7 +122,7 @@ function buildCustodianScope(runValue) {
     else if (type === "INSPECT") { targets = aliases; target_required = true; }
     else if (type === "USE") { targets = playerEquipment; target_required = targets.length > 0; }
     else if (type === "PHOTOGRAPH" || type === "TEST") { targets = aliases; target_required = true; }
-    else if (type === "TRANSFER" || type === "HANDOFF") { targets = localCoworkers; equipment = playerEquipment; target_required = true; }
+    else if (type === "TRANSFER" || type === "HANDOFF") { targets = [...localCoworkers, { label:"You", ref:player, aliases:["You", "me"] }]; equipment = transferEquipment; target_required = true; }
     else if (type.startsWith("ORDER_")) { targets = localCoworkers; target_required = false; }
     return { type, target_required, targets, ...(equipment.length ? { equipment } : {}) };
   });
@@ -183,6 +186,8 @@ function buildCustodianScope(runValue) {
     visible_targets: visible,
     local_coworkers: localCoworkers.map(({ label, role }) => ({ label, role })),
     available_equipment: playerEquipment.map(({ label, capability }) => ({ label, capability })),
+    local_equipment: transferEquipment.map(({ label, holder }) => ({ label, holder })),
+    previous_exit: exits.find((exit) => exit.ref === run.spatial?.route_history?.at(-1)?.connection_id)?.label ?? null,
     sinks: {
       single_attempt: singleActions.map((action) => ({ type: action.type, target_required: action.target_required, target_labels: action.targets.map((item) => item.label) })),
       coordinated_attempt: {
@@ -220,13 +225,13 @@ function proposalShape(value) {
 function actionTerms(action) {
   return {
     INSPECT: ["inspect", "inspects", "examine", "examines", "check", "checks"],
-    USE: ["use", "uses", "measure", "measures", "test", "tests", "take a reading", "takes a reading"],
-    MOVE: ["move", "moves", "go", "goes", "walk", "walks", "enter", "enters", "proceed", "proceeds"],
+    USE: ["use", "uses", "measure", "measures", "test", "tests", "take a reading", "takes a reading", "get a reading"],
+    MOVE: ["move", "moves", "moving", "go", "goes", "walk", "walks", "walking", "enter", "enters", "proceed", "proceeds", "head", "return to", "keep moving", "take the"],
     LOOK: ["look", "looks", "orient", "orients", "take stock"],
     WAIT: ["wait", "waits", "hold", "holds"],
-    RETURN: ["return", "returns", "go back"],
+    RETURN: ["return", "returns", "head back", "take us home", "back to the threshold", "head toward the threshold", "we re done here"],
     ABORT: ["abort", "aborts", "withdraw", "withdraws"],
-    PHOTOGRAPH: ["photograph", "photographs", "photo", "photos", "picture", "pictures", "camera", "take a photograph", "takes a photograph", "take a picture", "takes a picture"],
+    PHOTOGRAPH: ["photograph", "photographs", "photo", "photos", "take a photograph", "takes a photograph", "take a picture", "takes a picture", "take a snapshot"],
     TEST: ["test", "tests", "meter", "meters", "test the light"],
     TRANSFER: ["transfer", "transfers", "give", "gives", "hand", "hands", "pass", "passes"],
     HANDOFF: ["handoff", "handoffs", "hand off", "hands off"],
@@ -238,7 +243,7 @@ function actionTerms(action) {
 
 function containsTerm(text, terms) {
   const source = normalized(text);
-  return terms.some((term) => source.includes(normalized(term)));
+  return terms.some((term) => (` ${source} `).includes(` ${normalized(term)} `));
 }
 
 function languageSpanIsPresent(playerText, span) {
@@ -248,14 +253,17 @@ function languageSpanIsPresent(playerText, span) {
 function agencySupported(attempt, playerText) {
   if (!languageSpanIsPresent(playerText, attempt.language_span)) return false;
   const span = normalized(attempt.language_span);
+  const requestedAction = String(attempt.action).toUpperCase();
+  if (/\b(?:give|hand|pass|transfer)\b/.test(span) && !["TRANSFER", "HANDOFF"].includes(requestedAction)) return false;
   const terms = actionTerms(String(attempt.action).toUpperCase());
   if (!containsTerm(span, terms)) return false;
   if (attempt.actor.kind === "player") {
     if (attempt.agency === "first-person") return /\b(i|i will|i ll|let me)\b/.test(span);
     if (attempt.agency !== "direct-player") return false;
-    return terms.some((term) => span.startsWith(normalized(term)))
+    const imperative = span.replace(/^(?:please |let s )/, "");
+    return terms.some((term) => imperative.startsWith(normalized(term)))
       || /\b(give|pass|hand|take|bring|photograph|photo|picture)\b/.test(span)
-      || /\b(stay|hold|follow)\b/.test(span);
+      || (requestedAction.startsWith("ORDER_") && /\b(stay|hold|follow|come with me|regroup)\b/.test(span));
   }
   if (attempt.agency !== "player-order") return false;
   const actor = normalized(attempt.actor.reference);
@@ -501,7 +509,7 @@ function validateAndResolve(proposal, scope, meta) {
     const resolved = resolveAttempt({ attempt: proposed, action: { ...action, actor: scope.authority.player }, coworkers: [], sourceText, requestId, source });
     if (resolved.clarification) return resolved.clarification;
     const targetPayload = (resolved.attempt.action === "TRANSFER" || resolved.attempt.action === "HANDOFF")
-      ? `${resolved.attempt.equipment ?? ""}|${resolved.attempt.target ?? ""}`
+      ? { item_id:resolved.attempt.equipment, recipient_id:resolved.attempt.target, direction:/\b(?:give|hand|pass|bring)\s+me\b|\b(?:take|receive)\b.*\bfrom\b/i.test(sourceText) ? "receive" : "give" }
       : resolved.attempt.action.startsWith("ORDER_")
       ? `${resolved.attempt.target ?? ""}|`
       : (resolved.attempt.action === "USE" && !resolved.attempt.target && resolved.attempt.equipment)

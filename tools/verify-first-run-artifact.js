@@ -9,9 +9,7 @@ const asar = require("@electron/asar");
 const profiles = require("../desktop/profile-resolver");
 
 const root = path.resolve(__dirname, "..");
-const executable = path.join(root, "dist", "desktop", "win-unpacked", "Yellow Beast.exe");
-const archive = path.join(root, "dist", "desktop", "win-unpacked", "resources", "app.asar");
-assert.ok(fs.existsSync(executable) && fs.existsSync(archive), "build the packaged executable first");
+const { executable, archive } = require("./desktop-artifact-paths").desktopArtifactPaths(root);
 
 const packagedEntry = (suffix) => asar.listPackage(archive).find((entry) => entry.replace(/\\/g, "/") === suffix);
 const readPackagedJson = (suffix) => {

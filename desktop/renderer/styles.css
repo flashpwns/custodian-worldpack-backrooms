@@ -281,6 +281,10 @@
   .eti-turn-controls .natural-action>p{display:none}
   .eti-spatial{grid-template-columns:1fr}
 }
+@media(min-width:1101px) and (max-width:1600px){
+  .eti-turn-controls>.natural-action{grid-template-columns:130px minmax(0,1fr)!important}
+  .eti-turn-controls .natural-action>p{display:none}
+}
 @media(max-width:820px){
   html,body,#app{height:auto;overflow:auto}
   .eti-shell{height:auto;max-height:none;overflow:visible}

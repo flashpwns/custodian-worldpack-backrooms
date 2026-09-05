@@ -648,6 +648,12 @@
       "file": "tests/y82-reference-expedition-vertical-blockers.test.js",
       "status": "included",
       "tier": "aggregate"
+    },
+    {
+      "file": "tests/y83-natural-command-transactions.test.js",
+      "status": "included",
+      "tier": "aggregate",
+      "fast": false
     }
   ],
   "report_tools": [
