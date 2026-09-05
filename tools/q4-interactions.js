@@ -4,7 +4,7 @@ const VERSION = "yellow-beast-q4-interaction-envelope@v1";
 const CHANNELS = Object.freeze(["action", "local", "standard"]);
 const clone = (value) => structuredClone(value);
 
-function record(expedition, { channel, speaker = "You", targets = [], player_text = null, attempted_behavior = null, eligibility = "eligible", delivery = "not-applicable", time_cost = 0, canonical_effects = [], observer_knowledge = [], presentation = {}, submission_id = null }) {
+function record(expedition, { channel, speaker = "You", targets = [], player_text = null, attempted_behavior = null, eligibility = "eligible", delivery = "not-applicable", time_cost = 0, canonical_effects = [], observer_knowledge = [], presentation = {}, response_speaker = null, submission_id = null }) {
   if (!expedition || !CHANNELS.includes(channel)) throw new Error("Q4 interaction requires a supported channel");
   expedition.interaction_history ??= [];
   const interaction = {
@@ -21,7 +21,8 @@ function record(expedition, { channel, speaker = "You", targets = [], player_tex
     time_cost,
     canonical_effects: [...canonical_effects],
     observer_knowledge: clone(observer_knowledge),
-    presentation: clone(presentation)
+    presentation: clone(presentation),
+    response_speaker
   };
   expedition.interaction_history.push(interaction);
   expedition.clock ??= {};
@@ -44,7 +45,8 @@ function publicEntry(entry) {
     delivery: entry.delivery,
     time_cost: entry.time_cost,
     result: entry.presentation.result ?? null,
-    response: entry.presentation.response ?? null
+    response: entry.presentation.response ?? null,
+    response_speaker: entry.response_speaker ?? null
   };
 }
 

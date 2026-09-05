@@ -142,6 +142,22 @@ function presentReaction(person, reaction, playerText = "") {
   return `${name}: ${lines[reaction.category] ?? `I heard you${subject}.`}`;
 }
 
+function presentKnownAnswer(run, workerId, playerText = "") {
+  if (!/\b(?:what happened|what did you (?:find|see|observe)|while (?:we were )?(?:apart|separated)|report what happened)\b/i.test(String(playerText))) return null;
+  const member = memberFor(run, workerId);
+  if (!member) return null;
+  const direct = (member.known_information ?? []).filter((item) => item.source === "direct-observation").at(-1) ?? null;
+  const condition = (member.condition_history ?? []).at(-1) ?? null;
+  if (!direct && !condition) return null;
+  const name = member.first_name ?? member.display_name ?? "Assigned teammate";
+  const clauses = [];
+  if (direct?.kind === "location-investigated" && direct.location) clauses.push(`I checked the ${String(direct.location).replace(/-/g, " ")}.`);
+  else if (direct?.target) clauses.push(`I inspected ${String(direct.target).replace(/-/g, " ")}.`);
+  if (condition?.reason) clauses.push(`I was ${String(condition.reason).replace(/[.!?]+$/, "")}.`);
+  if (condition?.condition && String(condition.condition).toLowerCase() !== "normal") clauses.push(`My current condition is ${String(condition.condition).replace(/-/g, " ")}.`);
+  return `${name}: ${clauses.join(" ")}`;
+}
+
 function decisionContext({ world, run, phase, worker_id, request = {} }) {
   const worker = ensurePerson(world, run?.run_id, worker_id); const member = memberFor(run, worker_id);
   const location = run?.spatial?.personnel_locations?.[worker_id] ?? null;
@@ -170,4 +186,4 @@ function publicRecord(person, playerId = null) {
   return { role: person.role, qualifications: clone(continuity.qualifications ?? qualifications(person)), status: person.status, assignment_count: person.assignment_history?.length ?? 0, shared_assignment_count: shared.filter((fact) => fact.kind === "served-together").length, relevant_history: shared.slice(-4).map((fact) => ({ kind: fact.kind, refs: clone(fact.refs) })) };
 }
 
-module.exports = { VERSION, tendencies, qualifications, ensurePerson, ensureTeam, recordSharedHistory, recordCustody, reactionContext, salience, react, presentReaction, decisionContext, decide, publicRecord };
+module.exports = { VERSION, tendencies, qualifications, ensurePerson, ensureTeam, recordSharedHistory, recordCustody, reactionContext, salience, react, presentReaction, presentKnownAnswer, decisionContext, decide, publicRecord };

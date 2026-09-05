@@ -746,6 +746,12 @@ function act(runValue, verb, target) {
   if (verb === "MOVE" && run.procedural) { const moved = generatorFor(run.procedural).move(run.procedural, run.session.startup.player.observer_id, target); if (!moved.ok) return { ok: false, error: { code: "TARGET_UNAVAILABLE" }, result: { public_reason: moved.public_reason }, run }; run.checklist.moved = true; event(run.expedition, "procedural.space.discovered", { location: moved.view.location.alias }); return { ok: true, outcome: "succeeded", result: { public_reason: null, view: moved.view }, run }; }
   if (verb === "USE" && target && target !== "field-light") {
     if (target !== "survey-instrument") return { ok: false, error: { code: "EQUIPMENT_UNAVAILABLE" }, run };
+    if (referenceExpedition.isReference(run.scenario) && run.spatial?.player_location !== referenceExpedition.definition.measurement.location_id) {
+      return { ok: false, error: { code: "REFERENCE_MEASUREMENT_UNAVAILABLE" }, result: { public_reason: "The assigned passage measurement can only be taken at the Open Passage survey line." }, public_reason: "The assigned passage measurement can only be taken at the Open Passage survey line.", run };
+    }
+    if (referenceExpedition.isReference(run.scenario) && (run.expedition.evidence ?? []).some((item) => item.type === referenceExpedition.definition.measurement.evidence_type && item.location === run.spatial?.player_location)) {
+      return { ok: false, error: { code: "EVIDENCE_REDUNDANT" }, result: { public_reason: "The Open Passage measurement is already recorded." }, public_reason: "The Open Passage measurement is already recorded.", run };
+    }
     const operator = run.expedition.equipment?.[target]?.holder ?? run.session.startup.player.observer_id;
     if (run.spatial && run.spatial.personnel_locations?.[operator] !== run.spatial.player_location) return { ok: false, error: { code: "EQUIPMENT_NOT_ACCESSIBLE" }, run };
     const used = useEquipment(run.expedition, target, operator); if (!used.ok) return { ok: false, error: { code: used.code }, run };

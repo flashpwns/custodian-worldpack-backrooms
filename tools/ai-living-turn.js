@@ -40,18 +40,20 @@ function sentence(value) {
 }
 
 function publicActor(packet, observerId) {
+  if (packet.observer_id === observerId) return "You";
   return packet.visible_personnel.find((person) => person.observer_id === observerId)?.known_identity ?? "A nearby coworker";
 }
 
 function visibleActionText(packet, event) {
   const actor = publicActor(packet, event.actor_id);
+  const player = actor === "You";
   const target = String(event.target ?? "the nearby feature").replace(/[-_]+/g, " ");
   const action = String(event.action ?? "acts").toUpperCase();
-  if (action === "INSPECT") return `${actor} inspects ${target}.`;
-  if (action === "PHOTOGRAPH") return `${actor} photographs ${target}.`;
-  if (action === "TEST") return `${actor} tests ${target}.`;
-  if (action === "USE") return `${actor} completes the equipment procedure at ${target}.`;
-  return `${actor} completes the recorded ${action.toLowerCase()} attempt.`;
+  if (action === "INSPECT") return `${actor} ${player ? "inspect" : "inspects"} ${target}.`;
+  if (action === "PHOTOGRAPH") return `${actor} ${player ? "photograph" : "photographs"} ${target}.`;
+  if (action === "TEST") return `${actor} ${player ? "test" : "tests"} ${target}.`;
+  if (action === "USE") return `${actor} ${player ? "complete" : "completes"} the equipment procedure at ${target}.`;
+  return `${actor} ${player ? "complete" : "completes"} the recorded ${action.toLowerCase()} attempt.`;
 }
 
 function safeResolution(resolution, action = null) {
@@ -87,9 +89,7 @@ function fallbackPresentation(providerPacket, reason = null) {
   else if (packet.location.known_name) parts.push(`You are at ${packet.location.known_name}.`);
   for (const condition of packet.visible_environment.visible_conditions ?? []) parts.push(sentence(condition));
   if (providerPacket.authoritative_resolution.public_reason) parts.push(sentence(providerPacket.authoritative_resolution.public_reason));
-  for (const event of packet.recent_observable_events ?? []) {
-    if (event.actor_id !== packet.observer_id) parts.push(visibleActionText(packet, event));
-  }
+  for (const event of packet.recent_observable_events ?? []) parts.push(visibleActionText(packet, event));
   if (!parts.length) parts.push("From your present position, the interval produces no further confirmed change.");
   return deepFreeze({
     version: PRESENTATION_VERSION,

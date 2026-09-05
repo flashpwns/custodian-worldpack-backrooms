@@ -219,7 +219,7 @@ function createLivingProvider() {
       const parts = [];
       if (packet.location.visible_description) parts.push(packet.location.visible_description);
       if (providerPacket.authoritative_resolution.public_reason) parts.push(providerPacket.authoritative_resolution.public_reason);
-      for (const event of packet.recent_observable_events ?? []) if (event.actor_id !== packet.observer_id) parts.push(visibleActionText(packet, event));
+      for (const event of packet.recent_observable_events ?? []) parts.push(visibleActionText(packet, event));
       return { version: PRESENTATION_VERSION, scene_description: parts.join(" ") || "The interval produces no further confirmed change.", npc_presentations: [], presentation_claims: [] };
     }
   };
