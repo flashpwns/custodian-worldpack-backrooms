@@ -8,6 +8,10 @@ const test = require("node:test");
 
 const { DesktopService } = require("../desktop/service");
 const { createLivingProvider } = require("../tools/ai-living-provider");
+const { projectLiveScene } = require("../tools/live-scene-projection");
+const spatialRuntime = require("../tools/spatial-runtime");
+const bootstrap = require("../tools/run-bootstrap");
+const reference = require("../tools/reference-expedition");
 const surfaces = require("../desktop/renderer/surfaces");
 
 function fieldFixture(seed) {
@@ -74,4 +78,50 @@ test("transfers use public names and coordinated presentation includes both atte
   assert.equal(coordinated.result.turn_status, "RESOLVED");
   assert.match(coordinated.result.summary, /You inspect service panel\./);
   assert.match(coordinated.result.summary, /Beverly Bell photographs fluorescent fixture\./);
+});
+
+test("CWL-10 route history contains only traversable connections", () => {
+  const { run } = fieldFixture("cwl-valid-routes");
+  const routeHistory = run.spatial?.route_history ?? [];
+  assert.ok(routeHistory.length > 0, "expected non-empty route history");
+  for (const entry of routeHistory) {
+    assert.ok(typeof entry.from === "string", "route entry missing 'from'");
+    assert.ok(typeof entry.to === "string", "route entry missing 'to'");
+    assert.ok(typeof entry.connection_id === "string", "route entry missing 'connection_id'");
+    assert.notEqual(entry.from, entry.to, "route entry has same from and to");
+  }
+});
+
+test("CWL-11 projection does not contain future events", () => {
+  const { run } = fieldFixture("cwl-no-future");
+  const player = run.session.startup.player.observer_id;
+  const result = projectLiveScene(run, { observer_id: player });
+  assert.equal(result.ok, true);
+  const serialized = JSON.stringify(result.packet);
+  const FUTURE = /\b(?:will soon|is going to|is about to|later (?:will|does)|next (?:will|comes))\b/i;
+  assert.equal(FUTURE.test(serialized), false, "projection contains future language");
+});
+
+test("CWL-14 written reports do not mutate canonical geography or evidence", () => {
+  const { run } = fieldFixture("cwl-report-claims");
+  const geoSnapshot = structuredClone(run.spatial.generated_locations);
+  const objSnapshot = structuredClone(run.object_state);
+  run.lifecycle = "completed";
+  reference.writeReport(run, {
+    text: "The passage depth contradicts the prior record. The walls have shifted. Objects have moved.",
+    at: run.expedition.clock.interval
+  });
+  assert.deepEqual(run.spatial.generated_locations, geoSnapshot, "report mutated canonical geography");
+  assert.deepEqual(run.object_state, objSnapshot, "report mutated canonical objects");
+});
+
+test("CWL-17 spatial state validates after operations", () => {
+  const { run } = fieldFixture("cwl-spatial-valid");
+  const errors = spatialRuntime.validateState(
+    run.spatial,
+    bootstrap.topologyFor(run)
+  );
+  if (Array.isArray(errors)) {
+    assert.equal(errors.length, 0, `spatial validation errors: ${JSON.stringify(errors)}`);
+  }
 });

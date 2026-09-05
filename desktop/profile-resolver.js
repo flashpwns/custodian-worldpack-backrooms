@@ -70,7 +70,8 @@ function validateTestProfile(userDataRoot, { productionUserDataRoot = defaultPro
   if (!fs.existsSync(requested) || !fs.statSync(requested).isDirectory()) throw new Error("Test profile must be an existing directory created by its launcher.");
   const resolved = fs.realpathSync.native(requested);
   const resolvedTemporary = fs.realpathSync.native(absolute(temporaryRoot, "Temporary root"));
-  const production = absolute(productionUserDataRoot, "Production userData");
+  const productionAbsolute = absolute(productionUserDataRoot, "Production userData");
+  const production = fs.existsSync(productionAbsolute) ? fs.realpathSync.native(productionAbsolute) : productionAbsolute;
   if (!strictChild(resolved, resolvedTemporary)) throw new Error("Test profile must be a strict child of the OS temporary directory.");
   if (sameOrWithin(resolved, production) || sameOrWithin(production, resolved)) throw new Error("Test profile overlaps the production profile.");
   const { marker, markerPath } = readMarker(resolved);
@@ -102,7 +103,8 @@ function createIsolatedTestProfile(label, { productionUserDataRoot = defaultProd
   const resolvedTemporary = fs.realpathSync.native(absolute(temporaryRoot, "Temporary root"));
   const requested = fs.mkdtempSync(path.join(resolvedTemporary, `yellow-beast-${label}-${process.pid}-`));
   const resolved = fs.realpathSync.native(requested);
-  const production = absolute(productionUserDataRoot, "Production userData");
+  const productionAbsolute = absolute(productionUserDataRoot, "Production userData");
+  const production = fs.existsSync(productionAbsolute) ? fs.realpathSync.native(productionAbsolute) : productionAbsolute;
   if (!strictChild(resolved, resolvedTemporary) || sameOrWithin(resolved, production) || sameOrWithin(production, resolved)) throw new Error("Created test profile failed isolation checks.");
   const runId = crypto.randomUUID();
   const markerPath = path.join(resolved, TEST_PROFILE_MARKER);
