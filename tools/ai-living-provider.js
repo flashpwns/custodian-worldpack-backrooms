@@ -19,7 +19,7 @@ function actorReference(text, coworkers) {
   const source = normalized(text);
   for (const coworker of coworkers) {
     const parts = coworker.label.split(/\s+/).filter(Boolean);
-    const options = [coworker.label, parts[0], coworker.role].filter(Boolean);
+    const options = [coworker.label, parts[0], parts[parts.length - 1], coworker.role].filter(Boolean);
     const match = options.find((option) => source.includes(normalized(option)));
     if (match) return match;
   }
@@ -29,7 +29,7 @@ function actorReference(text, coworkers) {
 function matchingTarget(text, labels, fallback = null) {
   const source = normalized(text);
   return labels.find((label) => source.includes(normalized(label)))
-    ?? labels.find((label) => normalized(label).split(" ").some((term) => term.length > 4 && source.includes(term)))
+    ?? labels.find((label) => normalized(label).split(" ").some((term) => term.length > 3 && source.includes(term)))
     ?? fallback;
 }
 
@@ -175,6 +175,10 @@ function createLivingProvider() {
         }
       }
       const actions = context.sinks?.single_attempt ?? [];
+      const lookAction = actions.find((action) => action.type === "LOOK");
+      if (lookAction && /\b(?:look|orient|survey|take stock)\b/.test(lower)) {
+        return proposal([{ actor: { kind: "player" }, action: "LOOK", target_label: null, equipment_label: null, agency: /\bi\b/.test(lower) ? "first-person" : "direct-player", language_span: text }]);
+      }
       const movement = actions.find((action) => action.type === "MOVE");
       if (movement && /\b(?:walk|go|move|proceed|keep walking)\b/.test(lower)) {
         const target = matchingTarget(text, movement.target_labels, movement.target_labels.find((label) => /passage/i.test(label)) ?? null);
@@ -187,8 +191,27 @@ function createLivingProvider() {
       }
       const transferAction = actions.find((action) => action.type === "TRANSFER" || action.type === "HANDOFF");
       if (transferAction && /\b(?:give|hand|pass|transfer)\b/.test(lower)) {
-        const recipient = actorReference(text, coworkers);
-        const equipLabel = (context.available_equipment ?? []).find((eq) => lower.includes(normalized(eq.label)) || normalized(eq.label).split(" ").some((term) => term.length > 4 && lower.includes(term)))?.label ?? (context.available_equipment?.[0]?.label ?? null);
+        let recipient = actorReference(text, coworkers);
+        if (!recipient) {
+          if (/\b(?:him|he)\b/.test(lower)) {
+            recipient = coworkers.find((c) => !/beverly|sarah|alice|ellen/i.test(c.label))?.label ?? coworkers[0]?.label ?? null;
+          } else if (/\b(?:her|she)\b/.test(lower)) {
+            recipient = coworkers.find((c) => /beverly|sarah|alice|ellen/i.test(c.label))?.label ?? coworkers[0]?.label ?? null;
+          } else if (coworkers.length === 1) {
+            recipient = coworkers[0].label;
+          }
+        }
+        let equipLabel = (context.available_equipment ?? []).find((eq) => lower.includes(normalized(eq.label)) || normalized(eq.label).split(" ").some((term) => term.length > 3 && lower.includes(term)))?.label;
+        if (!equipLabel) {
+          if (/\b(?:camera|photo|recorder|recording)\b/.test(lower)) {
+            equipLabel = (context.available_equipment ?? []).find((eq) => eq.capability?.includes("photo") || /camera|recording/i.test(eq.label))?.label;
+          } else if (/\b(?:instrument|meter|survey)\b/.test(lower)) {
+            equipLabel = (context.available_equipment ?? []).find((eq) => eq.capability?.includes("measurement") || /survey|instrument/i.test(eq.label))?.label;
+          } else if (/\b(?:it|this|that)\b/.test(lower)) {
+            equipLabel = context.available_equipment?.[0]?.label ?? null;
+          }
+        }
+        if (!equipLabel) equipLabel = context.available_equipment?.[0]?.label ?? null;
         if (recipient && equipLabel) {
           return proposal([{ actor: { kind: "player" }, action: transferAction.type, target_label: recipient, equipment_label: equipLabel, agency: /\bi\b/.test(lower) ? "first-person" : "direct-player", language_span: text }]);
         }
@@ -209,8 +232,12 @@ function createLivingProvider() {
         return proposal([{ actor: { kind: "player" }, action: "USE", target_label: target, equipment_label: null, agency: /\bi\b/.test(lower) ? "first-person" : "direct-player", language_span: text }]);
       }
       const inspection = actions.find((action) => action.type === "INSPECT");
-      if (inspection && /\b(?:inspect|check|examine)\b/.test(lower)) {
-        return proposal([{ actor: { kind: "player" }, action: "INSPECT", target_label: matchingTarget(text, inspection.target_labels), equipment_label: null, agency: /\bi\b/.test(lower) ? "first-person" : "direct-player", language_span: text }]);
+      if (inspection && /\b(?:inspect|check|examine|look at)\b/.test(lower)) {
+        let target = matchingTarget(text, inspection.target_labels);
+        if (!target && /\b(?:it|this|that)\b/.test(lower) && inspection.target_labels.length > 0) {
+          target = inspection.target_labels[0];
+        }
+        return proposal([{ actor: { kind: "player" }, action: "INSPECT", target_label: target, equipment_label: null, agency: /\bi\b/.test(lower) ? "first-person" : "direct-player", language_span: text }]);
       }
       return { version: PROPOSAL_VERSION, status: "proposal", noncanonical: true, relation: "single", attempts: [] };
     },

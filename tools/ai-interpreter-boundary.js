@@ -3,6 +3,11 @@
 const crypto = require("node:crypto");
 const bootstrap = require("./run-bootstrap");
 const teamRuntime = require("./team-runtime");
+const referentResolution = require("./referent-resolution");
+const affordanceService = require("./affordance-service");
+const canonicalLedger = require("./canonical-world-ledger");
+const fieldNotes = require("./field-notes");
+const observerContextCompiler = require("./observer-context-compiler");
 
 const PROPOSAL_VERSION = "yellow-beast-interpreter-proposal@v1";
 const CONTEXT_VERSION = "yellow-beast-interpreter-context@v1";
@@ -199,7 +204,8 @@ function buildCustodianScope(runValue) {
     coworkers: localCoworkers,
     coordinated
   };
-  return deepFreeze({ context, authority, digest: digest({ context, authority }) });
+  const observerContext = observerContextCompiler.compileObserverContext(run, player);
+  return deepFreeze({ context, authority, digest: digest({ context, authority }), run_snapshot: run, observer_context: observerContext });
 }
 
 function proposalShape(value) {
@@ -437,7 +443,7 @@ function verifyClauseCoverage(sourceText, proposal, scope, meta) {
   return null;
 }
 
-function matchReference(query, records) {
+function matchReference(query, records, run = null, observerId = "player") {
   const needle = normalized(query);
   if (!needle) return { kind: "missing", matches: [] };
   const exact = records.filter((record) => (record.aliases ?? [record.label]).some((alias) => normalized(alias) === needle));
@@ -446,7 +452,25 @@ function matchReference(query, records) {
     return candidate.includes(needle) || needle.includes(candidate);
   }));
   if (matches.length === 1) return { kind: "resolved", value: matches[0] };
-  return { kind: matches.length > 1 ? "ambiguous" : "missing", matches };
+  if (matches.length > 1) return { kind: "ambiguous", matches };
+
+  if (run) {
+    try {
+      const res = referentResolution.resolveReferent(query, run, observerId);
+      if (res.resolved && res.top_candidate) {
+        const matchedRecord = records.find((r) => r.ref === res.top_candidate.id || normalized(r.label) === normalized(res.top_candidate.name) || (r.aliases ?? []).some((a) => normalized(a) === normalized(res.top_candidate.name)));
+        if (matchedRecord) return { kind: "resolved", value: matchedRecord };
+      }
+      if (!res.resolved && res.candidates.length > 1) {
+        const candRecords = records.filter((r) => res.candidates.some((c) => c.id === r.ref || normalized(r.label) === normalized(c.name)));
+        if (candRecords.length > 1) return { kind: "ambiguous", matches: candRecords };
+      }
+    } catch {
+      // referent resolution fallback
+    }
+  }
+
+  return { kind: "missing", matches: [] };
 }
 
 function referenceClarification(sourceText, requestId, source, match, allRecords) {
@@ -461,22 +485,23 @@ function referenceClarification(sourceText, requestId, source, match, allRecords
   });
 }
 
-function resolveAttempt({ attempt, action, coworkers, sourceText, requestId, source }) {
+function resolveAttempt({ attempt, action, coworkers, sourceText, requestId, source, run = null }) {
+  const observerId = run?.session?.startup?.player?.observer_id ?? "player";
   let actor = action.actor;
   if (attempt.actor.kind === "coworker") {
-    const match = matchReference(attempt.actor.reference, coworkers);
+    const match = matchReference(attempt.actor.reference, coworkers, run, observerId);
     if (match.kind !== "resolved") return { clarification: referenceClarification(sourceText, requestId, source, match, coworkers) };
     actor = match.value.ref;
   }
   let target = null;
   if (action.target_required || attempt.target_label) {
-    const match = matchReference(attempt.target_label, action.targets);
+    const match = matchReference(attempt.target_label, action.targets, run, observerId);
     if (match.kind !== "resolved") return { clarification: referenceClarification(sourceText, requestId, source, match, action.targets) };
     target = match.value.ref;
   }
   let equipment = null;
   if (action.equipment?.length || attempt.equipment_label) {
-    const match = matchReference(attempt.equipment_label, action.equipment ?? []);
+    const match = matchReference(attempt.equipment_label, action.equipment ?? [], run, observerId);
     if (match.kind !== "resolved") return { clarification: referenceClarification(sourceText, requestId, source, match, action.equipment ?? []) };
     equipment = match.value.ref;
   }
@@ -498,7 +523,7 @@ function validateAndResolve(proposal, scope, meta) {
     const proposed = playerAttempts[0];
     const action = scope.authority.single_actions.find((item) => item.type === proposed.action.toUpperCase());
     if (!action) return clarification({ sourceText, requestId, source, code: "ACTION_NOT_AVAILABLE", question: "Which currently available action did you mean?", options: scope.authority.single_actions.map((item) => item.type) });
-    const resolved = resolveAttempt({ attempt: proposed, action: { ...action, actor: scope.authority.player }, coworkers: [], sourceText, requestId, source });
+    const resolved = resolveAttempt({ attempt: proposed, action: { ...action, actor: scope.authority.player }, coworkers: [], sourceText, requestId, source, run: scope.run_snapshot });
     if (resolved.clarification) return resolved.clarification;
     const targetPayload = (resolved.attempt.action === "TRANSFER" || resolved.attempt.action === "HANDOFF")
       ? `${resolved.attempt.equipment ?? ""}|${resolved.attempt.target ?? ""}`
@@ -513,13 +538,13 @@ function validateAndResolve(proposal, scope, meta) {
   const playerProposal = playerAttempts[0];
   const playerAction = scope.authority.coordinated.player_actions.find((item) => item.type === playerProposal.action.toUpperCase());
   if (!playerAction) return clarification({ sourceText, requestId, source, code: "ACTION_NOT_AVAILABLE", question: "Which currently available coordinated player action did you mean?", options: scope.context.sinks.coordinated_attempt.player_actions.map((item) => item.type) });
-  const resolvedPlayer = resolveAttempt({ attempt: playerProposal, action: { ...playerAction, actor: scope.authority.player, target_required: true }, coworkers: [], sourceText, requestId, source });
+  const resolvedPlayer = resolveAttempt({ attempt: playerProposal, action: { ...playerAction, actor: scope.authority.player, target_required: true }, coworkers: [], sourceText, requestId, source, run: scope.run_snapshot });
   if (resolvedPlayer.clarification) return resolvedPlayer.clarification;
   const resolvedCoworkers = [];
   for (const proposed of coworkerAttempts) {
     const action = scope.authority.coordinated.coworker_actions.find((item) => item.type === proposed.action.toUpperCase());
     if (!action) return clarification({ sourceText, requestId, source, code: "ACTION_NOT_AVAILABLE", question: "Which currently available coworker action did you mean?", options: scope.context.sinks.coordinated_attempt.coworker_actions.map((item) => item.type) });
-    const resolved = resolveAttempt({ attempt: proposed, action: { ...action, actor: null, target_required: true }, coworkers: scope.authority.coworkers, sourceText, requestId, source });
+    const resolved = resolveAttempt({ attempt: proposed, action: { ...action, actor: null, target_required: true }, coworkers: scope.authority.coworkers, sourceText, requestId, source, run: scope.run_snapshot });
     if (resolved.clarification) return resolved.clarification;
     resolvedCoworkers.push(resolved.attempt);
   }
@@ -577,13 +602,66 @@ function dispatchCandidate(run, candidate) {
   if (current.digest !== candidate.validation.scope_digest) {
     return { ok: false, outcome: "rejected", error: { code: "STALE_INTERPRETATION" }, result: { public_reason: "The world changed after interpretation; interpret the player's language again." }, run };
   }
+  let resolution;
   if (candidate.sink.kind === SINGLE_SINK) {
-    return bootstrap.act(run, candidate.sink.payload.action, candidate.sink.payload.target);
+    resolution = bootstrap.act(run, candidate.sink.payload.action, candidate.sink.payload.target);
+  } else if (candidate.sink.kind === COORDINATED_SINK) {
+    resolution = bootstrap.resolveCoordinatedAttempts(run, structuredClone(candidate.sink.payload));
+  } else {
+    return { ok: false, outcome: "rejected", error: { code: "INTERPRETATION_SINK_UNAVAILABLE" }, result: { public_reason: "The validated candidate does not target an available Custodian sink." }, run };
   }
-  if (candidate.sink.kind === COORDINATED_SINK) {
-    return bootstrap.resolveCoordinatedAttempts(run, structuredClone(candidate.sink.payload));
+
+  if (resolution && resolution.ok !== false) {
+    try {
+      const interval = run.expedition?.clock?.interval ?? null;
+      const player = run.session?.startup?.player?.observer_id ?? "player";
+      const currentLoc = canonicalLedger.getCoworkerLocation(run, player) ?? run.spatial?.player_location ?? "unknown";
+
+      if (candidate.sink.kind === SINGLE_SINK) {
+        const action = candidate.sink.payload.action;
+        const target = candidate.sink.payload.target;
+        if (action === "MOVE") {
+          canonicalLedger.recordLocationEntered(run, { actor: player, location: target ?? currentLoc, interval });
+        } else if (action === "TRANSFER" || action === "HANDOFF") {
+          const parts = String(target ?? "").split("|");
+          if (parts[0] && parts[1]) {
+            canonicalLedger.recordEquipmentTransfer(run, { from: player, to: parts[1].trim(), item: parts[0].trim(), interval });
+          }
+        } else if (action.startsWith("ORDER_")) {
+          const parts = String(target ?? "").split("|");
+          if (parts[0]) {
+            canonicalLedger.setCoworkerTask(run, parts[0].trim(), action, parts[1] ?? null);
+          }
+        } else if (["INSPECT", "TEST", "PHOTOGRAPH", "USE", "LOOK"].includes(action)) {
+          canonicalLedger.recordObservationMade(run, { observer: player, target: target ?? "environment", location: currentLoc, interval, observation: action });
+        }
+      } else if (candidate.sink.kind === COORDINATED_SINK) {
+        const playerAttempt = candidate.sink.payload.player_attempt;
+        if (playerAttempt) {
+          if (playerAttempt.action === "MOVE") {
+            canonicalLedger.recordLocationEntered(run, { actor: player, location: playerAttempt.target ?? currentLoc, interval });
+          } else if (["INSPECT", "TEST", "PHOTOGRAPH", "USE"].includes(playerAttempt.action)) {
+            canonicalLedger.recordObservationMade(run, { observer: player, target: playerAttempt.target ?? "environment", location: currentLoc, interval, observation: playerAttempt.action });
+          }
+        }
+        for (const cw of candidate.sink.payload.coworker_attempts ?? []) {
+          if (cw.actor) {
+            canonicalLedger.setCoworkerTask(run, cw.actor, cw.action, cw.target);
+            if (["INSPECT", "TEST", "PHOTOGRAPH", "USE"].includes(cw.action)) {
+              const cwLoc = canonicalLedger.getCoworkerLocation(run, cw.actor) ?? currentLoc;
+              canonicalLedger.recordObservationMade(run, { observer: cw.actor, target: cw.target ?? "environment", location: cwLoc, interval, observation: cw.action });
+            }
+          }
+        }
+      }
+
+      fieldNotes.processCausalEventsForFieldNotes(run);
+    } catch {
+      // safe fallback
+    }
   }
-  return { ok: false, outcome: "rejected", error: { code: "INTERPRETATION_SINK_UNAVAILABLE" }, result: { public_reason: "The validated candidate does not target an available Custodian sink." }, run };
+
+  return resolution;
 }
 
 module.exports = {
