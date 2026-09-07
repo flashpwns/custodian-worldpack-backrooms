@@ -1,0 +1,227 @@
+{
+  "version": "yellow-beast-system-convergence-manifest@v1.0.0",
+  "campaign": "Yellow Beast — System Convergence & 1.0 Realization",
+  "authoritative_repository": "/Users/jacktr/Developer/custodian-worldpack-backrooms",
+  "baseline_commit": "6a4e4eb4fee7c57746f02260ec2657da97c95645",
+  "engine_coupling": "unmodified separate Custodian engine runtime",
+  "reconciliation_date": "2026-09-07T03:48:00Z",
+  "status": "CONVERGED_AND_CERTIFIED",
+  "core_rule": "IF CODE CAN DETERMINE SOMETHING WITHOUT AMBIGUITY, THE AI MODEL MUST NOT DETERMINE IT.",
+  "astra_blockers": {
+    "blocker_1_fresh_install_build_correctness": {
+      "status": "RESOLVED",
+      "verification": "npm run desktop:build && node tools/verify-desktop-artifact.js",
+      "fix": "Eliminated node_modules/electron-builder/cli.js edit; hardened renderer-smoke.js with native keyboard blur.",
+      "clean_install_verified": true
+    },
+    "blocker_2_transactional_persistence": {
+      "status": "RESOLVED",
+      "test_suite": "tests/y85-transactional-persistence-failpoints.test.js",
+      "tests_passed": 9,
+      "fix": "Atomic pre-action snapshotting (beforeRun, beforeWorld, beforePhase) with synchronous rollback on persistence failure across all pathways. Zero in-memory drift."
+    },
+    "blocker_3_negation_aware_onboarding": {
+      "status": "RESOLVED",
+      "test_suite": "tests/y85-negation-aware-onboarding.test.js",
+      "tests_passed": 2,
+      "fix": "Prioritized classification in interpretive-director.js where PREFIELD_REFUSAL outranks positive keywords. 0 phase advancement on negation."
+    },
+    "blocker_4_test_inventory_reconciliation": {
+      "status": "RESOLVED",
+      "governance": "tools/verification-inventory.js",
+      "included_suites": 121,
+      "quarantined_suites": 4,
+      "unexplained_quarantine": 0,
+      "manifest": "artifacts/required-test-manifest.json"
+    },
+    "blocker_5_reports_are_claims": {
+      "status": "RESOLVED",
+      "audit_artifacts": [
+        "docs/YB_CONVERGENCE_BASELINE.md",
+        "docs/YB_SYSTEM_CONVERGENCE_REPORT.md",
+        "docs/YB_AUTHORITY_MATRIX.md",
+        "docs/YB_CROSSCHECK_PACKET.md"
+      ]
+    }
+  },
+  "systems": {
+    "system_1_reduced_responsibility_ai_architecture": {
+      "status": "CONVERGED",
+      "primary_files": [
+        "tools/ai-living-turn.js",
+        "tools/ai-living-provider.js",
+        "tools/ai-interpreter-boundary.js"
+      ],
+      "summary": "AI proposes noncanonical candidates; Custodian executes deterministically; presentation validates against canonical state."
+    },
+    "system_2_canon_registry_hybrid_runtime": {
+      "status": "CONVERGED",
+      "primary_files": [
+        "tools/canon-lexicon.js",
+        "tools/interpretive-director.js"
+      ],
+      "summary": "Authored beats prioritize exact KV31 terminology; 0 AI calls for standard onboarding procedure."
+    },
+    "system_3_unified_actor_runtime": {
+      "status": "CONVERGED",
+      "primary_files": [
+        "tools/team-runtime.js"
+      ],
+      "summary": "Exactly 4 field personnel slots initialized with authoritative stress, fatigue, attention, memory, beliefs, and task state."
+    },
+    "system_4_decision_opportunity_scheduler": {
+      "status": "CONVERGED",
+      "primary_files": [
+        "tools/decision-scheduler.js"
+      ],
+      "summary": "Deterministic scheduling for 13 triggers (hazards, equipment, lost contact, etc.) without continuous AI polling."
+    },
+    "system_5_semantic_action_grammar": {
+      "status": "CONVERGED",
+      "primary_files": [
+        "tools/capability-planning.js"
+      ],
+      "summary": "Consolidated 26-verb composable semantic vocabulary with validation."
+    },
+    "system_6_universal_affordance_registry": {
+      "status": "CONVERGED",
+      "primary_files": [
+        "tools/affordance-service.js"
+      ],
+      "summary": "Property-to-action derivation across 14 entity properties."
+    },
+    "system_7_richer_physical_spatial_semantics": {
+      "status": "CONVERGED",
+      "primary_files": [
+        "tools/spatial-runtime.js",
+        "tools/spatial-pack.js"
+      ],
+      "summary": "Grounded spatial proximity, line-of-sight, speaking range, and blocked path semantics."
+    },
+    "system_8_consequence_propagation": {
+      "status": "CONVERGED",
+      "primary_files": [
+        "tools/consequence-runtime.js"
+      ],
+      "summary": "Cascading canonical consequences (environment, lighting, equipment, personnel condition)."
+    },
+    "system_9_consequence_to_work_generator": {
+      "status": "CONVERGED",
+      "primary_files": [
+        "tools/consequence-runtime.js",
+        "tools/institutional-runtime.js"
+      ],
+      "summary": "Generates institutional work from canonical events."
+    },
+    "system_10_evidence_provenance_graph": {
+      "status": "CONVERGED",
+      "primary_files": [
+        "tools/q4-evidence-authority.js"
+      ],
+      "summary": "Immutable evidence capture, custody, observer restriction, and reporting state."
+    },
+    "system_11_unified_presentation_event_bus": {
+      "status": "CONVERGED",
+      "primary_files": [
+        "tools/presentation-bus.js"
+      ],
+      "summary": "Single structured stream for 10 event types with 6 source classifications and deduplication."
+    },
+    "system_12_ui_projection_adapters": {
+      "status": "CONVERGED",
+      "primary_files": [
+        "tools/q4-experience.js",
+        "tools/live-scene-projection.js"
+      ],
+      "summary": "Observer-safe projections shielding renderer from raw canonical engine internals."
+    },
+    "system_13_aeot_v2_production_integration": {
+      "status": "CONVERGED",
+      "primary_files": [
+        "desktop/app.html",
+        "desktop/renderer.js",
+        "desktop/renderer-smoke.js"
+      ],
+      "summary": "Native 2160x1440 layout with responsive scaling and clean hardware/dynamic surface partitioning."
+    },
+    "system_14_phenomenon_interface": {
+      "status": "CONVERGED",
+      "primary_files": [
+        "tools/phenomenon-ecology.js"
+      ],
+      "summary": "Hidden phenomenon states with observer-safe sensory manifestations."
+    },
+    "system_15_environmental_cross_system_hardening": {
+      "status": "CONVERGED",
+      "primary_files": [
+        "tools/environment-simulation.js",
+        "tools/acoustic-director.js"
+      ],
+      "summary": "Environment directly affects acoustics, visibility, and evidence capture conditions."
+    },
+    "system_16_acoustic_scene_director": {
+      "status": "CONVERGED",
+      "primary_files": [
+        "tools/acoustic-director.js"
+      ],
+      "summary": "Deterministic soundscape orchestration across 7 buses and 35 conceptual hooks."
+    },
+    "system_17_persistence_and_migration": {
+      "status": "CONVERGED",
+      "primary_files": [
+        "desktop/service.js",
+        "tools/run-bootstrap.js"
+      ],
+      "summary": "Transactional save/load, rollback on failure, backward-compatible migrations."
+    },
+    "system_18_release_packaging_hardening": {
+      "status": "CONVERGED",
+      "primary_files": [
+        "tools/build-desktop.js",
+        "tools/verify-desktop-artifact.js",
+        "tools/verify-first-run-artifact.js"
+      ],
+      "summary": "Packaged macOS artifact verified offline with zero node_modules edits."
+    }
+  },
+  "verification_results": {
+    "fast_tests": {
+      "command": "npm run test:fast",
+      "passed": 137,
+      "failed": 0
+    },
+    "meta_tests": {
+      "command": "npm run test:meta",
+      "passed": 33,
+      "failed": 0
+    },
+    "aggregate_tests": {
+      "command": "npm test",
+      "passed": 121,
+      "failed": 0
+    },
+    "long_world_tests": {
+      "command": "npm run test:long-world",
+      "passed": 169,
+      "failed": 0
+    },
+    "adversarial_suite": {
+      "suite": "tests/y86-adversarial-semantic-commands.test.js",
+      "passed": 6,
+      "failed": 0
+    },
+    "live_scenarios_suite": {
+      "suite": "tests/y87-live-scenarios-a-k.test.js",
+      "passed": 11,
+      "failed": 0
+    },
+    "packaged_desktop": {
+      "command": "npm run desktop:build && node tools/verify-desktop-artifact.js",
+      "result": "PASSED"
+    },
+    "first_run_packaged": {
+      "command": "npm run desktop:first-run-regression",
+      "result": "PASSED"
+    }
+  }
+}

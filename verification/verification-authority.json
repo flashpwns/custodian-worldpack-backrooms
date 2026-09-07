@@ -85,7 +85,11 @@
       "tests/y84-live-provider-failure.test.js",
       "tests/y83-ai-runtime-stability.test.js",
       "tests/y84-hybrid-canon-hardening.test.js",
-      "tests/y79-canonical-world-ledger-invariants.test.js"
+      "tests/y79-canonical-world-ledger-invariants.test.js",
+      "tests/y85-negation-aware-onboarding.test.js",
+      "tests/y85-transactional-persistence-failpoints.test.js",
+      "tests/y86-adversarial-semantic-commands.test.js",
+      "tests/y87-live-scenarios-a-k.test.js"
     ],
     "long-world": [
       "tests/profile-model.test.js",
@@ -282,7 +286,11 @@
     "tests/y84-live-provider-failure.test.js": "eb77ed4f65ba30c2c6a83a8c4736d7973653466d8ca6065489f71974e2070c91",
     "tests/y83-ai-runtime-stability.test.js": "ff504a1e775fa2ffcce8423d38384c5ac0a238e8ad01f84455ce36b496ee3efc",
     "tests/y84-hybrid-canon-hardening.test.js": "a3a15c3b7f8dc1247af754f53a51557c58caa036fb1eb45bf37885e11a13c4c3",
-    "tests/y79-canonical-world-ledger-invariants.test.js": "89d654ee5dc3ba641e4f4693aad33422826da44d7e1b3f8c94ddbf45e2648d43"
+    "tests/y79-canonical-world-ledger-invariants.test.js": "89d654ee5dc3ba641e4f4693aad33422826da44d7e1b3f8c94ddbf45e2648d43",
+    "tests/y85-negation-aware-onboarding.test.js": "fdda097e42805fa34580669b691cf90682f5c2b051df57eb952804a259a571c7",
+    "tests/y85-transactional-persistence-failpoints.test.js": "bfb29dcbe06cbe1c7278760cb887450236baac6edff7ccf312d9d304b02b333b",
+    "tests/y86-adversarial-semantic-commands.test.js": "f7cfab08b2c9e43224f516294627945399f080a47b6ffbb43f83d73a9509babf",
+    "tests/y87-live-scenarios-a-k.test.js": "53f9a5d7999a4864995f8ca013c8510cbf59402ba18d25e5d82dba2182149c36"
   },
   "verification_core_hashes": {
     "tools/verification-inventory.js": "0f27da4645f1d85e48b52133475371bbbce55072807b6900108c3a1afd344f3b",

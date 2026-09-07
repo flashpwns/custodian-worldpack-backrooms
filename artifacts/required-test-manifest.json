@@ -1,0 +1,1264 @@
+{
+  "version": "yellow-beast-required-test-manifest@v1.0.0",
+  "generated_at": "2026-09-07T03:48:40.780Z",
+  "commit": "6a4e4eb4fee7c57746f02260ec2657da97c95645",
+  "total_governed_files": 125,
+  "summary": {
+    "REQUIRED_ACTIVE": 121,
+    "QUARANTINED_BLOCKING": 2,
+    "LEGACY_SUPERSEDED": 2,
+    "NONPRODUCTION_FIXTURE": 0
+  },
+  "tests": [
+    {
+      "file": "tests/anomaly-model.test.js",
+      "tier": "aggregate",
+      "status": "included",
+      "classification": "REQUIRED_ACTIVE",
+      "fast": true,
+      "hash": "6d92e2c12f073eac0713c2024ec2044198d85151f488815d00d56a21738e67fa",
+      "defect_id": null,
+      "reason": null
+    },
+    {
+      "file": "tests/architecture-model.test.js",
+      "tier": "aggregate",
+      "status": "included",
+      "classification": "REQUIRED_ACTIVE",
+      "fast": true,
+      "hash": "5b12c82b7a6f753634e523a278c1ba67592f158e22782f10a1ed85cd1c5f6b7a",
+      "defect_id": null,
+      "reason": null
+    },
+    {
+      "file": "tests/corpus-transition-model.test.js",
+      "tier": "aggregate",
+      "status": "included",
+      "classification": "REQUIRED_ACTIVE",
+      "fast": true,
+      "hash": "ad6ab4dea7036fd720bc4ed7707857d34ec752cf41c602d1eae88a47807ee646",
+      "defect_id": null,
+      "reason": null
+    },
+    {
+      "file": "tests/intake-model.test.js",
+      "tier": "aggregate",
+      "status": "included",
+      "classification": "REQUIRED_ACTIVE",
+      "fast": true,
+      "hash": "3d0dfba062cd74b01993c14b98b31270e7ee792b4f56faa72d09efc23ab82e33",
+      "defect_id": null,
+      "reason": null
+    },
+    {
+      "file": "tests/operations-model.test.js",
+      "tier": "aggregate",
+      "status": "included",
+      "classification": "REQUIRED_ACTIVE",
+      "fast": true,
+      "hash": "65663f453e36bc4eb39f135f024bc276834378fcf692fa200e35717ac59a953b",
+      "defect_id": null,
+      "reason": null
+    },
+    {
+      "file": "tests/profile-model.test.js",
+      "tier": "long-world",
+      "status": "included",
+      "classification": "REQUIRED_ACTIVE",
+      "fast": false,
+      "hash": "7317310a5c1bb5e569aaa54a195c53098f42c799b50274997536a771482dcd85",
+      "defect_id": null,
+      "reason": null
+    },
+    {
+      "file": "tests/recovered-records.test.js",
+      "tier": "aggregate",
+      "status": "included",
+      "classification": "REQUIRED_ACTIVE",
+      "fast": true,
+      "hash": "31e933a3589316a17f279b34cba0bdb2a0859773b8cc349b51b382f0d8b432bf",
+      "defect_id": null,
+      "reason": null
+    },
+    {
+      "file": "tests/run-bootstrap.test.js",
+      "tier": "long-world",
+      "status": "included",
+      "classification": "REQUIRED_ACTIVE",
+      "fast": false,
+      "hash": "bedc780186257800d5fb1bf2f2a3c703e53334ff2804bae48fb22e8c89f786fc",
+      "defect_id": null,
+      "reason": null
+    },
+    {
+      "file": "tests/survey-model.test.js",
+      "tier": "aggregate",
+      "status": "included",
+      "classification": "REQUIRED_ACTIVE",
+      "fast": true,
+      "hash": "479d0899b432913a88ce9ca7f6f907f840589e5b93f725fb41df76c4a06c3c3e",
+      "defect_id": null,
+      "reason": null
+    },
+    {
+      "file": "tests/y12b.test.js",
+      "tier": "aggregate",
+      "status": "included",
+      "classification": "REQUIRED_ACTIVE",
+      "fast": true,
+      "hash": "7df3812ea92a261f9ebf7985a19d3567ea731812f3260c2bdfaa3694065eaf50",
+      "defect_id": null,
+      "reason": null
+    },
+    {
+      "file": "tests/y12c-playable-alpha.test.js",
+      "tier": "aggregate",
+      "status": "included",
+      "classification": "REQUIRED_ACTIVE",
+      "fast": false,
+      "hash": "86a5eb63135843f3aed032075a7a3e4ae457c69043c91bbc4d0053544a5224ae",
+      "defect_id": null,
+      "reason": null
+    },
+    {
+      "file": "tests/y13-ai-interface.test.js",
+      "tier": "aggregate",
+      "status": "included",
+      "classification": "REQUIRED_ACTIVE",
+      "fast": true,
+      "hash": "881ac6ce88ffa22a458d6c1fc307b79c55f2903072a64d5f159d3dee1071ea81",
+      "defect_id": null,
+      "reason": null
+    },
+    {
+      "file": "tests/y14-packaging.test.js",
+      "tier": "aggregate",
+      "status": "included",
+      "classification": "REQUIRED_ACTIVE",
+      "fast": false,
+      "hash": "0e793b689af601b5d97522b72248d590f25a45ccf405423e114d5b6a70080ef4",
+      "defect_id": null,
+      "reason": null
+    },
+    {
+      "file": "tests/y15-openai-provider.test.js",
+      "tier": "aggregate",
+      "status": "included",
+      "classification": "REQUIRED_ACTIVE",
+      "fast": false,
+      "hash": "e39bf6b392bd037fd68ecf459c49f3e53c6fa29174b9be178baa0a1b333270b3",
+      "defect_id": null,
+      "reason": null
+    },
+    {
+      "file": "tests/y165-context-closure.test.js",
+      "tier": "aggregate",
+      "status": "included",
+      "classification": "REQUIRED_ACTIVE",
+      "fast": true,
+      "hash": "3018e5d58fd6d78f35ca4c2f1eb9b168f8eeee3c0dfd8f47dee1cce6203b2c85",
+      "defect_id": null,
+      "reason": null
+    },
+    {
+      "file": "tests/y16-expedition.test.js",
+      "tier": "aggregate",
+      "status": "included",
+      "classification": "REQUIRED_ACTIVE",
+      "fast": false,
+      "hash": "c5be6ab3a790c3ee9b8f4696d21f1bf90eec29998604af985e5e4f62504a0fcf",
+      "defect_id": null,
+      "reason": null
+    },
+    {
+      "file": "tests/y17-procedural-complex.test.js",
+      "tier": "aggregate",
+      "status": "included",
+      "classification": "REQUIRED_ACTIVE",
+      "fast": true,
+      "hash": "fa3a7e60c522378325682653877ae052f74a2b12a6a9c29d2aa160ccd484a100",
+      "defect_id": null,
+      "reason": null
+    },
+    {
+      "file": "tests/y18-world-history.test.js",
+      "tier": "aggregate",
+      "status": "included",
+      "classification": "REQUIRED_ACTIVE",
+      "fast": true,
+      "hash": "2d25a941c95451006db9b842f8e9206602fc656bd1f68627f9851c37793ae73e",
+      "defect_id": null,
+      "reason": null
+    },
+    {
+      "file": "tests/y19-becks-desk.test.js",
+      "tier": "aggregate",
+      "status": "included",
+      "classification": "REQUIRED_ACTIVE",
+      "fast": false,
+      "hash": "0dc6abad976093c1b81075d0339a6dce0918dedc71f67b8633678aa0e9db505d",
+      "defect_id": null,
+      "reason": null
+    },
+    {
+      "file": "tests/y20-nullzone-exposure.test.js",
+      "tier": "aggregate",
+      "status": "included",
+      "classification": "REQUIRED_ACTIVE",
+      "fast": false,
+      "hash": "ebc3682cc9a63c13c8345ff134fa0d4dcdb03eb2ca66d7a0f11d5603bee4291d",
+      "defect_id": null,
+      "reason": null
+    },
+    {
+      "file": "tests/y21-lost.test.js",
+      "tier": "long-world",
+      "status": "included",
+      "classification": "REQUIRED_ACTIVE",
+      "fast": false,
+      "hash": "5824fbca621df58dfda2e07c558495d1416d1bf71b4d5c296c48c34edf085ade",
+      "defect_id": null,
+      "reason": null
+    },
+    {
+      "file": "tests/y22-cross-mode.test.js",
+      "tier": "aggregate",
+      "status": "included",
+      "classification": "REQUIRED_ACTIVE",
+      "fast": true,
+      "hash": "077566b3b0c93eef31d3bac06c66465ccfc582bd4d90c0ee8ab6c42a67f619c2",
+      "defect_id": null,
+      "reason": null
+    },
+    {
+      "file": "tests/y22-persistence.test.js",
+      "tier": "aggregate",
+      "status": "included",
+      "classification": "REQUIRED_ACTIVE",
+      "fast": true,
+      "hash": "cba7a701d267d7ceb4121bd8e9e7ddc21a8d0f4009327b59d713864cf14bc007",
+      "defect_id": null,
+      "reason": null
+    },
+    {
+      "file": "tests/y22-v2-topology.test.js",
+      "tier": "aggregate",
+      "status": "included",
+      "classification": "REQUIRED_ACTIVE",
+      "fast": true,
+      "hash": "52016f55bd83bbc7f9415a6709d5a7ff96b8c2a4bc58fb0cce88644d416a48ec",
+      "defect_id": null,
+      "reason": null
+    },
+    {
+      "file": "tests/y23-behavior.test.js",
+      "tier": "aggregate",
+      "status": "included",
+      "classification": "REQUIRED_ACTIVE",
+      "fast": true,
+      "hash": "f07ccdaadae108c84509ae87807375b7105424af6d6cc17e5f89b299ecc2145c",
+      "defect_id": null,
+      "reason": null
+    },
+    {
+      "file": "tests/y23-encounter.test.js",
+      "tier": "aggregate",
+      "status": "included",
+      "classification": "REQUIRED_ACTIVE",
+      "fast": true,
+      "hash": "99f5e23a1f5396ae398bc2a1db15f8f0e7833f95cebab2a4d8b663390aa40d57",
+      "defect_id": null,
+      "reason": null
+    },
+    {
+      "file": "tests/y24-institution.test.js",
+      "tier": "aggregate",
+      "status": "included",
+      "classification": "REQUIRED_ACTIVE",
+      "fast": true,
+      "hash": "ff66efeb1e34883ca443eaeeade335aa55f1f9b776cf51c431600015573321f8",
+      "defect_id": null,
+      "reason": null
+    },
+    {
+      "file": "tests/y25-gameplay.test.js",
+      "tier": "aggregate",
+      "status": "included",
+      "classification": "REQUIRED_ACTIVE",
+      "fast": true,
+      "hash": "308a5005eaceab3d6fbfd19a39d6057ea131f7f5ad1486a7bb86db3c855885e2",
+      "defect_id": null,
+      "reason": null
+    },
+    {
+      "file": "tests/y26-desktop.test.js",
+      "tier": "aggregate",
+      "status": "included",
+      "classification": "REQUIRED_ACTIVE",
+      "fast": false,
+      "hash": "2956e4aab34e1cc4e00eee03284c46e2a5e530e2f55722c1436ebf76030c5eba",
+      "defect_id": null,
+      "reason": null
+    },
+    {
+      "file": "tests/y27-freeform-loop.test.js",
+      "tier": "aggregate",
+      "status": "included",
+      "classification": "REQUIRED_ACTIVE",
+      "fast": false,
+      "hash": "d6804e2cf54a6bed27df488bbca4ac33f26814ad0f8eff017454b5393e16c4f3",
+      "defect_id": null,
+      "reason": null
+    },
+    {
+      "file": "tests/y27-intent.test.js",
+      "tier": "aggregate",
+      "status": "included",
+      "classification": "REQUIRED_ACTIVE",
+      "fast": true,
+      "hash": "e8153ce4011a864a93d269549762be5bfb64d6a1043f1276a76273af8da01ce6",
+      "defect_id": null,
+      "reason": null
+    },
+    {
+      "file": "tests/y28-beck.test.js",
+      "tier": "aggregate",
+      "status": "included",
+      "classification": "REQUIRED_ACTIVE",
+      "fast": true,
+      "hash": "3442317cd7785311cc62d56f8d1ffcb475cabef52b23027f74bb379ae0017c23",
+      "defect_id": null,
+      "reason": null
+    },
+    {
+      "file": "tests/y28-immersive-convergence.test.js",
+      "tier": "aggregate",
+      "status": "included",
+      "classification": "REQUIRED_ACTIVE",
+      "fast": false,
+      "hash": "87386efbee37754397dd3208d277308ea45ecab42b27aef7c1187887f00a02a6",
+      "defect_id": null,
+      "reason": null
+    },
+    {
+      "file": "tests/y28-lost.test.js",
+      "tier": "aggregate",
+      "status": "included",
+      "classification": "REQUIRED_ACTIVE",
+      "fast": true,
+      "hash": "797f972ea1e9c1d82b80fcbf59bbe2fead456525192df640f8314adbef96353a",
+      "defect_id": null,
+      "reason": null
+    },
+    {
+      "file": "tests/y28-nullzone.test.js",
+      "tier": "aggregate",
+      "status": "included",
+      "classification": "REQUIRED_ACTIVE",
+      "fast": true,
+      "hash": "69cac9999fa6136f915d98431d40890ddcf338bad2c637b6ada36fab3e32fe32",
+      "defect_id": null,
+      "reason": null
+    },
+    {
+      "file": "tests/y28-phase.test.js",
+      "tier": "aggregate",
+      "status": "included",
+      "classification": "REQUIRED_ACTIVE",
+      "fast": true,
+      "hash": "f8ca8115176f292248f065c442f8d7d107925ffe1f444abe5ea6ea7ab57a2a01",
+      "defect_id": null,
+      "reason": null
+    },
+    {
+      "file": "tests/y28-q4.test.js",
+      "tier": "aggregate",
+      "status": "included",
+      "classification": "REQUIRED_ACTIVE",
+      "fast": true,
+      "hash": "86659afa8be304e0a048de096c50de3639b7cc83d34c1dee3ad657615e576fba",
+      "defect_id": null,
+      "reason": null
+    },
+    {
+      "file": "tests/y28-scene.test.js",
+      "tier": "aggregate",
+      "status": "included",
+      "classification": "REQUIRED_ACTIVE",
+      "fast": true,
+      "hash": "679c5429af898ed320ddceec7f2f52f54a4c8dd0c67330e1daa0b2c0005ac9f6",
+      "defect_id": null,
+      "reason": null
+    },
+    {
+      "file": "tests/y29-canon-convergence.test.js",
+      "tier": "aggregate",
+      "status": "included",
+      "classification": "REQUIRED_ACTIVE",
+      "fast": false,
+      "hash": "92f614e30a34ab1b5c2e7f937a6dfab4c659280ba89f795f05ce7978d6005bc3",
+      "defect_id": null,
+      "reason": null
+    },
+    {
+      "file": "tests/y29-canon-runtime.test.js",
+      "tier": "aggregate",
+      "status": "included",
+      "classification": "REQUIRED_ACTIVE",
+      "fast": false,
+      "hash": "a21e7019a9bf042b50f0c02b703d9d094ad231fbc4c9b29f10260bbab0755764",
+      "defect_id": null,
+      "reason": null
+    },
+    {
+      "file": "tests/y29-character-continuity.test.js",
+      "tier": "aggregate",
+      "status": "included",
+      "classification": "REQUIRED_ACTIVE",
+      "fast": false,
+      "hash": "8aee5033d9829b39cbdd58a59d76bbcea6853958f86d77b122066a083a8cca9a",
+      "defect_id": null,
+      "reason": null
+    },
+    {
+      "file": "tests/y29-environment-world.test.js",
+      "tier": "aggregate",
+      "status": "included",
+      "classification": "REQUIRED_ACTIVE",
+      "fast": false,
+      "hash": "18a28cff54430766b00ed3cc6d9c0ae38e752afea2901a0e20aeecd2d5276b1d",
+      "defect_id": null,
+      "reason": null
+    },
+    {
+      "file": "tests/y29-human-world.test.js",
+      "tier": "aggregate",
+      "status": "included",
+      "classification": "REQUIRED_ACTIVE",
+      "fast": false,
+      "hash": "b44a31387f41dc55b8e693de9ebeead7ac3f1db7f5359a3681158a2cd9039979",
+      "defect_id": null,
+      "reason": null
+    },
+    {
+      "file": "tests/y29-phenomena-world.test.js",
+      "tier": "aggregate",
+      "status": "included",
+      "classification": "REQUIRED_ACTIVE",
+      "fast": false,
+      "hash": "4e2f8b1ccdb0c37939ff26399b06fb74084db69917f9147c2fdc3ee629fdd194",
+      "defect_id": null,
+      "reason": null
+    },
+    {
+      "file": "tests/y29-story-threads.test.js",
+      "tier": "aggregate",
+      "status": "included",
+      "classification": "REQUIRED_ACTIVE",
+      "fast": false,
+      "hash": "dc78c39516baed2510a26c80d8767f2f663eadc89d1c85271a526084fa20fb19",
+      "defect_id": null,
+      "reason": null
+    },
+    {
+      "file": "tests/y30-accessibility.test.js",
+      "tier": "long-world",
+      "status": "included",
+      "classification": "REQUIRED_ACTIVE",
+      "fast": false,
+      "hash": "fdffb1a607c30d4d7a4a5151cf8b0e1844c74276617cca87bda81c26d601d573",
+      "defect_id": null,
+      "reason": null
+    },
+    {
+      "file": "tests/y30-interaction-feel.test.js",
+      "tier": "aggregate",
+      "status": "included",
+      "classification": "REQUIRED_ACTIVE",
+      "fast": false,
+      "hash": "252b29df3d7df004076e01c1ba7d229ccf87e3778a4985b26dac0ed72aee0387",
+      "defect_id": null,
+      "reason": null
+    },
+    {
+      "file": "tests/y30-navigation.test.js",
+      "tier": "aggregate",
+      "status": "included",
+      "classification": "REQUIRED_ACTIVE",
+      "fast": false,
+      "hash": "732bbe90924b4d829a5ffcec5ca3a768374d6dbf3ebce75416516c2525fc030d",
+      "defect_id": null,
+      "reason": null
+    },
+    {
+      "file": "tests/y30-qol.test.js",
+      "tier": "aggregate",
+      "status": "included",
+      "classification": "REQUIRED_ACTIVE",
+      "fast": false,
+      "hash": "febb9591907c79c6d679fab6fbcfa2e326212c1e80e5f785a4dacc3211d55efa",
+      "defect_id": null,
+      "reason": null
+    },
+    {
+      "file": "tests/y30-reactive-ui.test.js",
+      "tier": "aggregate",
+      "status": "included",
+      "classification": "REQUIRED_ACTIVE",
+      "fast": false,
+      "hash": "bc0a617bf0e5fce19e859210c794011149439745a7f2b13f315aa9b32281cd40",
+      "defect_id": null,
+      "reason": null
+    },
+    {
+      "file": "tests/y30-ux.test.js",
+      "tier": "aggregate",
+      "status": "included",
+      "classification": "REQUIRED_ACTIVE",
+      "fast": false,
+      "hash": "c20713f8c37bab626e9b57ea66b2400c06871cff6694d58622fc01bc03e132f5",
+      "defect_id": null,
+      "reason": null
+    },
+    {
+      "file": "tests/y31-authoring.test.js",
+      "tier": "long-world",
+      "status": "included",
+      "classification": "REQUIRED_ACTIVE",
+      "fast": false,
+      "hash": "b97d6b17d092d360e99020e2a8c853deea90afd61d0dc90bc4f682dbd1c48e3f",
+      "defect_id": null,
+      "reason": null
+    },
+    {
+      "file": "tests/y31-closure.test.js",
+      "tier": "aggregate",
+      "status": "included",
+      "classification": "REQUIRED_ACTIVE",
+      "fast": true,
+      "hash": "84b63960652d39c795675861d3f7291e51e027c931b4670d73a9bfc62ab2ad77",
+      "defect_id": null,
+      "reason": null
+    },
+    {
+      "file": "tests/y31-dev-commands.test.js",
+      "tier": "long-world",
+      "status": "included",
+      "classification": "REQUIRED_ACTIVE",
+      "fast": false,
+      "hash": "de27d0a3f5a7d1dbdb32f5516ea4cc4c8552f1787bd2a2be439408395914ce07",
+      "defect_id": null,
+      "reason": null
+    },
+    {
+      "file": "tests/y31-dev-console.test.js",
+      "tier": "long-world",
+      "status": "included",
+      "classification": "REQUIRED_ACTIVE",
+      "fast": false,
+      "hash": "235a75b7669013e65c4aa6707d8c5dd1cb3ad0f15892460d3b1fb7a8ee4f3436",
+      "defect_id": null,
+      "reason": null
+    },
+    {
+      "file": "tests/y31-dev-workflow.test.js",
+      "tier": "long-world",
+      "status": "included",
+      "classification": "REQUIRED_ACTIVE",
+      "fast": false,
+      "hash": "d198f182b47cf07f95739f25e0aee81d4fd2b472c410f6396ebb11d1b06bfac9",
+      "defect_id": null,
+      "reason": null
+    },
+    {
+      "file": "tests/y31-performance.test.js",
+      "tier": "aggregate",
+      "status": "included",
+      "classification": "REQUIRED_ACTIVE",
+      "fast": false,
+      "hash": "6da2347787af2c248a2fdfd6ea2a00f3d879e55b82d9e3967dd6389ab254afa1",
+      "defect_id": null,
+      "reason": null
+    },
+    {
+      "file": "tests/y32-consequence-echoes.test.js",
+      "tier": "long-world",
+      "status": "included",
+      "classification": "REQUIRED_ACTIVE",
+      "fast": false,
+      "hash": "9c5a92e051161c4fcbaf4e3bcb9ef770a13f318722899b6ebb9bd9f12b7d19ed",
+      "defect_id": null,
+      "reason": null
+    },
+    {
+      "file": "tests/y32-discovery-density.test.js",
+      "tier": "long-world",
+      "status": "included",
+      "classification": "REQUIRED_ACTIVE",
+      "fast": false,
+      "hash": "26d5f5d8444be2448bb0e9fd57e609bfe7fa20a92548f1b5f405be75c38f11c2",
+      "defect_id": null,
+      "reason": null
+    },
+    {
+      "file": "tests/y32-replayability.test.js",
+      "tier": "long-world",
+      "status": "included",
+      "classification": "REQUIRED_ACTIVE",
+      "fast": false,
+      "hash": "c558467f5777d5ac22088cbcad2fecf3f36b0d565992e12299b76f735723b61a",
+      "defect_id": null,
+      "reason": null
+    },
+    {
+      "file": "tests/y32-run-identity.test.js",
+      "tier": "aggregate",
+      "status": "included",
+      "classification": "REQUIRED_ACTIVE",
+      "fast": false,
+      "hash": "be83bdaf2d1c2086be0423a69d016672c17d0c9e2ee2d7b991addac8a4753b3c",
+      "defect_id": null,
+      "reason": null
+    },
+    {
+      "file": "tests/y32-unfinished-business.test.js",
+      "tier": "long-world",
+      "status": "included",
+      "classification": "REQUIRED_ACTIVE",
+      "fast": false,
+      "hash": "25e558cca7f369f0721da84ffab55db209df71313892b2ceadbc1fefe77956ec",
+      "defect_id": null,
+      "reason": null
+    },
+    {
+      "file": "tests/y33-long-world-torture.test.js",
+      "tier": "long-world",
+      "status": "quarantined",
+      "classification": "QUARANTINED_BLOCKING",
+      "fast": false,
+      "hash": "6560d16e2f387488d5702292792e08f890d4daa51d09ffd1a75ad3d0855a3c11",
+      "defect_id": "YB-V03-CANONICAL-EQUIVALENCE",
+      "reason": "Known product defect: first-load canonical save/reload equivalence is broken (save-time reconciliation mutates canonical state). Preserved as failing evidence; V03 owns the repair."
+    },
+    {
+      "file": "tests/y33-stranger-flow.test.js",
+      "tier": "long-world",
+      "status": "included",
+      "classification": "REQUIRED_ACTIVE",
+      "fast": false,
+      "hash": "da162df0c9454d6bacdb169243821f16bd6e1802c1cbfbc6769b6f8bcfe71395",
+      "defect_id": null,
+      "reason": null
+    },
+    {
+      "file": "tests/y34-beta-hotfix.test.js",
+      "tier": "manual",
+      "status": "quarantined",
+      "classification": "LEGACY_SUPERSEDED",
+      "fast": false,
+      "hash": "63812aad05b545a7e0ea04a468c046090f75dbf1f78e004218fc4c0285bc0fca",
+      "defect_id": "YB-V08-STALE-BETA-HOTFIX",
+      "reason": "Stale test expectations asserting pre-campaign UI structures with no current product counterpart (accepted 2026-08-11 full-suite audit). Assertions are not rewritten."
+    },
+    {
+      "file": "tests/y35-product-focus.test.js",
+      "tier": "manual",
+      "status": "quarantined",
+      "classification": "LEGACY_SUPERSEDED",
+      "fast": false,
+      "hash": "b0310f3c945b767451cd1c659c5bcbd2c09cbeff5904551d4281cd9ab44fcd3e",
+      "defect_id": "YB-V08-STALE-PRODUCT-FOCUS",
+      "reason": "Stale test expectations asserting pre-campaign UI structures with no current product counterpart (accepted 2026-08-11 full-suite audit). Assertions are not rewritten."
+    },
+    {
+      "file": "tests/y36-q4-channels.test.js",
+      "tier": "aggregate",
+      "status": "included",
+      "classification": "REQUIRED_ACTIVE",
+      "fast": false,
+      "hash": "572878a54b505b78973b7731fb60b0f24f3dc93059824d80f8c6bc098d4e07cd",
+      "defect_id": null,
+      "reason": null
+    },
+    {
+      "file": "tests/y37-q4-personnel.test.js",
+      "tier": "aggregate",
+      "status": "included",
+      "classification": "REQUIRED_ACTIVE",
+      "fast": false,
+      "hash": "d67c1894cb4d147cdd7dc545bf57b5a9e9ff1f2719e054ca8602018225c47201",
+      "defect_id": null,
+      "reason": null
+    },
+    {
+      "file": "tests/y38-q4-equipment.test.js",
+      "tier": "aggregate",
+      "status": "included",
+      "classification": "REQUIRED_ACTIVE",
+      "fast": false,
+      "hash": "1d2112eacad16766307afe267381dd0493a0ea2d31006a27b7c00e5efb3b2da6",
+      "defect_id": null,
+      "reason": null
+    },
+    {
+      "file": "tests/y39-q4-missions.test.js",
+      "tier": "aggregate",
+      "status": "included",
+      "classification": "REQUIRED_ACTIVE",
+      "fast": false,
+      "hash": "2989b8e4e8bbc6c045f02b3e24a3f8bb8f4a6af1476e0972fb5a4564745a56fb",
+      "defect_id": null,
+      "reason": null
+    },
+    {
+      "file": "tests/y40-q4-trajectories.test.js",
+      "tier": "aggregate",
+      "status": "included",
+      "classification": "REQUIRED_ACTIVE",
+      "fast": false,
+      "hash": "5ca1e4fd374462e122ded1b4837dc4168bf9b6ddc42ab2e7bb473791fe1c39c6",
+      "defect_id": null,
+      "reason": null
+    },
+    {
+      "file": "tests/y41-q4-continuity.test.js",
+      "tier": "aggregate",
+      "status": "included",
+      "classification": "REQUIRED_ACTIVE",
+      "fast": false,
+      "hash": "22ac820bd07111bbb4fb5745b8884b7db5cf9528dd9d983027bd313d46302c9f",
+      "defect_id": null,
+      "reason": null
+    },
+    {
+      "file": "tests/y42-q4-async-interface.test.js",
+      "tier": "aggregate",
+      "status": "included",
+      "classification": "REQUIRED_ACTIVE",
+      "fast": false,
+      "hash": "1e731cd369e837b953a3e4743a7113f6d6461753844ae87cf9588208114d19a7",
+      "defect_id": null,
+      "reason": null
+    },
+    {
+      "file": "tests/y43-q4-visual-assets.test.js",
+      "tier": "aggregate",
+      "status": "included",
+      "classification": "REQUIRED_ACTIVE",
+      "fast": false,
+      "hash": "eafc7454700ec15840d57cd7b4c48e3ee5d26edbb85eec1142c214702f656708",
+      "defect_id": null,
+      "reason": null
+    },
+    {
+      "file": "tests/y44-q4-replayability.test.js",
+      "tier": "aggregate",
+      "status": "included",
+      "classification": "REQUIRED_ACTIVE",
+      "fast": false,
+      "hash": "5643b81af5ae18ae402087e8b04dcb117442db160f34cc8d7f6ddcb16401700c",
+      "defect_id": null,
+      "reason": null
+    },
+    {
+      "file": "tests/y45-q4-beta-gate.test.js",
+      "tier": "aggregate",
+      "status": "included",
+      "classification": "REQUIRED_ACTIVE",
+      "fast": false,
+      "hash": "9e5e9a2ab656ef1febd028583fa5f97ecac204b2982fd01edb494f1682961932",
+      "defect_id": null,
+      "reason": null
+    },
+    {
+      "file": "tests/y46-q4-console-acceptance.test.js",
+      "tier": "aggregate",
+      "status": "included",
+      "classification": "REQUIRED_ACTIVE",
+      "fast": false,
+      "hash": "6859126de9a8cb3cd395b77e0a05f7851537fe049b861002c85a20402918e5cc",
+      "defect_id": null,
+      "reason": null
+    },
+    {
+      "file": "tests/y47-q4-player-identity.test.js",
+      "tier": "aggregate",
+      "status": "included",
+      "classification": "REQUIRED_ACTIVE",
+      "fast": false,
+      "hash": "d164ce2957c1596ea47edb8e8aa1eafb29bac52957fa708333cb3ed12129750e",
+      "defect_id": null,
+      "reason": null
+    },
+    {
+      "file": "tests/y48-q4-prefield-flow.test.js",
+      "tier": "aggregate",
+      "status": "included",
+      "classification": "REQUIRED_ACTIVE",
+      "fast": false,
+      "hash": "ccb0d203d682e2af722622a70d03d5c3aa799a52e888989e3dc65cf110d7393b",
+      "defect_id": null,
+      "reason": null
+    },
+    {
+      "file": "tests/y49-playable-spine-map.test.js",
+      "tier": "aggregate",
+      "status": "included",
+      "classification": "REQUIRED_ACTIVE",
+      "fast": false,
+      "hash": "f3e7f45eb54991cea648a40f849906aac525f9261827377a8323fe50a3e24545",
+      "defect_id": null,
+      "reason": null
+    },
+    {
+      "file": "tests/y50-structured-interactions.test.js",
+      "tier": "aggregate",
+      "status": "included",
+      "classification": "REQUIRED_ACTIVE",
+      "fast": false,
+      "hash": "3d62e3530b663e9f0f764ccb7368633f6ec459ede2eed7e54d026a417acfc5e8",
+      "defect_id": null,
+      "reason": null
+    },
+    {
+      "file": "tests/y51-mission-state.test.js",
+      "tier": "aggregate",
+      "status": "included",
+      "classification": "REQUIRED_ACTIVE",
+      "fast": false,
+      "hash": "b0ed05cdda49c50831b185186231384e3e1f7b946a4f99c2dd4e1d3775b87a51",
+      "defect_id": null,
+      "reason": null
+    },
+    {
+      "file": "tests/y52-operational-dynamics.test.js",
+      "tier": "aggregate",
+      "status": "included",
+      "classification": "REQUIRED_ACTIVE",
+      "fast": false,
+      "hash": "f502573eebceb01ac3f67518bfb791441b7bea091c34af9f87a7ab21518ebb3e",
+      "defect_id": null,
+      "reason": null
+    },
+    {
+      "file": "tests/y53-omnipass.test.js",
+      "tier": "aggregate",
+      "status": "included",
+      "classification": "REQUIRED_ACTIVE",
+      "fast": false,
+      "hash": "e3ff747736d4786e4178da7282766c3ddc0a8d3f1d85e74af72df8252675112a",
+      "defect_id": null,
+      "reason": null
+    },
+    {
+      "file": "tests/y54-settings-regression.test.js",
+      "tier": "native",
+      "status": "quarantined",
+      "classification": "QUARANTINED_BLOCKING",
+      "fast": false,
+      "hash": "25c0493a6bdaceab364a42f4134f181bd9532e552f404b25f4aab97365791586",
+      "defect_id": "YB-V23-NATIVE-SETTINGS-DISPLAY",
+      "reason": "Native Electron display regression; failure is environment-bound (display surface), actual configuration behavior is correct per accepted 2026-08-11 audit. Not CI-compatible in the aggregate gate."
+    },
+    {
+      "file": "tests/y55-survey-frontier.test.js",
+      "tier": "long-world",
+      "status": "included",
+      "classification": "REQUIRED_ACTIVE",
+      "fast": false,
+      "hash": "1e987435d118d498d42cf165dabd29286aa725b8dca6fd01dac4a513702d69e0",
+      "defect_id": null,
+      "reason": null
+    },
+    {
+      "file": "tests/y56-persistent-procedural-complex.test.js",
+      "tier": "long-world",
+      "status": "included",
+      "classification": "REQUIRED_ACTIVE",
+      "fast": false,
+      "hash": "fb1fc72748218c390bfa4699d2eace23c5d6cae5590da7b5fc35493cc885bcbd",
+      "defect_id": null,
+      "reason": null
+    },
+    {
+      "file": "tests/y57-desktop-prerequisite-repair.test.js",
+      "tier": "native",
+      "status": "included",
+      "classification": "REQUIRED_ACTIVE",
+      "fast": false,
+      "hash": "1b2a1da11ef426374fb0165b8a5971d1d16c07067e9006a30751b34c24c48d66",
+      "defect_id": null,
+      "reason": null
+    },
+    {
+      "file": "tests/y58-assignment-engine.test.js",
+      "tier": "long-world",
+      "status": "included",
+      "classification": "REQUIRED_ACTIVE",
+      "fast": false,
+      "hash": "39fcd9c5bb3e5bb6cc5827389646bc856e53ba32f931d6144a9b1363dddc3939",
+      "defect_id": null,
+      "reason": null
+    },
+    {
+      "file": "tests/y59-career-loop.test.js",
+      "tier": "long-world",
+      "status": "included",
+      "classification": "REQUIRED_ACTIVE",
+      "fast": false,
+      "hash": "3813182c93e1b980f0419829ed186ab424d8b281cd1d289096a83b2a5259c090",
+      "defect_id": null,
+      "reason": null
+    },
+    {
+      "file": "tests/y60-personnel-continuity.test.js",
+      "tier": "long-world",
+      "status": "included",
+      "classification": "REQUIRED_ACTIVE",
+      "fast": false,
+      "hash": "10dcff0ac1613b5ba7dd50523e81e6e0a78942957d414f7308c02d0e897857f4",
+      "defect_id": null,
+      "reason": null
+    },
+    {
+      "file": "tests/y61-local-standard.test.js",
+      "tier": "long-world",
+      "status": "included",
+      "classification": "REQUIRED_ACTIVE",
+      "fast": false,
+      "hash": "192d2b6c763328d41ebad3db8e787ac92d1b24caea1a95da3c859fb0bb9d8378",
+      "defect_id": null,
+      "reason": null
+    },
+    {
+      "file": "tests/y62-evidence-archive.test.js",
+      "tier": "long-world",
+      "status": "included",
+      "classification": "REQUIRED_ACTIVE",
+      "fast": false,
+      "hash": "eae7af799d752f7f607d46d7ae86cd6d1a2fa27b942235eaf7c7dce80e059d79",
+      "defect_id": null,
+      "reason": null
+    },
+    {
+      "file": "tests/y62-pass17-human-gate.test.js",
+      "tier": "long-world",
+      "status": "included",
+      "classification": "REQUIRED_ACTIVE",
+      "fast": false,
+      "hash": "bb06121623df64bd0aa4fa4c83e91599aa86ca9c97c3932fe321c3a7eb443a28",
+      "defect_id": null,
+      "reason": null
+    },
+    {
+      "file": "tests/y63-evidence-media.test.js",
+      "tier": "long-world",
+      "status": "included",
+      "classification": "REQUIRED_ACTIVE",
+      "fast": false,
+      "hash": "9b5295ba2b8d13573a7717c940261c539ebf45843dca0cfe288def1bb365c56a",
+      "defect_id": null,
+      "reason": null
+    },
+    {
+      "file": "tests/y63-pass17-state-machine.test.js",
+      "tier": "long-world",
+      "status": "included",
+      "classification": "REQUIRED_ACTIVE",
+      "fast": false,
+      "hash": "d0a49b199a78e274dd9dff09086f3f4806f403844d77eb386af569e425bce0d6",
+      "defect_id": null,
+      "reason": null
+    },
+    {
+      "file": "tests/y64-environment-simulation.test.js",
+      "tier": "long-world",
+      "status": "included",
+      "classification": "REQUIRED_ACTIVE",
+      "fast": false,
+      "hash": "1ed4c722d31b58a0edebbf8185d7e7f911fa210b737a4901adbd8fdc206d3ed5",
+      "defect_id": null,
+      "reason": null
+    },
+    {
+      "file": "tests/y64-pass17-authority.test.js",
+      "tier": "long-world",
+      "status": "included",
+      "classification": "REQUIRED_ACTIVE",
+      "fast": false,
+      "hash": "232e4f76602dae9289c5dff4c69ad533da4d9cbe40bfbdbb76426a079c304424",
+      "defect_id": null,
+      "reason": null
+    },
+    {
+      "file": "tests/y65-phenomenon-ecology.test.js",
+      "tier": "long-world",
+      "status": "included",
+      "classification": "REQUIRED_ACTIVE",
+      "fast": false,
+      "hash": "7fba329761d7ff35f978251d96e08ee0ef0839b3202cd9b7ab8dec84e351a363",
+      "defect_id": null,
+      "reason": null
+    },
+    {
+      "file": "tests/y66-outcomes-retirement.test.js",
+      "tier": "long-world",
+      "status": "included",
+      "classification": "REQUIRED_ACTIVE",
+      "fast": false,
+      "hash": "6e545ac997d1a3684b1a2aeed74827fbdd987b1f3ac4e5a035ba0f798989ba82",
+      "defect_id": null,
+      "reason": null
+    },
+    {
+      "file": "tests/y67-recovery-profile.test.js",
+      "tier": "aggregate",
+      "status": "included",
+      "classification": "REQUIRED_ACTIVE",
+      "fast": false,
+      "hash": "d495b4c6056f19be50cb12c3b0b20703dd86af75ad8fac3ec3fc8ceecc5c4c17",
+      "defect_id": null,
+      "reason": null
+    },
+    {
+      "file": "tests/y68-verification-gate.test.js",
+      "tier": "aggregate",
+      "status": "included",
+      "classification": "REQUIRED_ACTIVE",
+      "fast": true,
+      "hash": "f7efb4562cf204cc02b89397113f58a2fed352375a48a371eca69434b23515fd",
+      "defect_id": null,
+      "reason": null
+    },
+    {
+      "file": "tests/y68-long-world-known-failures.test.js",
+      "tier": "aggregate",
+      "status": "included",
+      "classification": "REQUIRED_ACTIVE",
+      "fast": false,
+      "hash": "f47ce74ec65ba0f238dea57244bee58664115988c7905c433cfaec062d60c19c",
+      "defect_id": null,
+      "reason": null
+    },
+    {
+      "file": "tests/y69-reference-expedition.test.js",
+      "tier": "long-world",
+      "status": "included",
+      "classification": "REQUIRED_ACTIVE",
+      "fast": false,
+      "hash": "23ef25180a2ff7654c4474e31875bd60ac02349d51fe41aefb1dc8f2b3b0b88f",
+      "defect_id": null,
+      "reason": null
+    },
+    {
+      "file": "tests/y70-coordinated-execution.test.js",
+      "tier": "long-world",
+      "status": "included",
+      "classification": "REQUIRED_ACTIVE",
+      "fast": false,
+      "hash": "7fdbb04d7dda67bf17835951eec0d3ae63391fb050af49ff834aac627f96c0ba",
+      "defect_id": null,
+      "reason": null
+    },
+    {
+      "file": "tests/y71-ai-interpreter-boundary.test.js",
+      "tier": "long-world",
+      "status": "included",
+      "classification": "REQUIRED_ACTIVE",
+      "fast": false,
+      "hash": "cc078839087a95c6ded84b22edd60596b9a991cae857f30e7587bf21ecb62f4c",
+      "defect_id": null,
+      "reason": null
+    },
+    {
+      "file": "tests/y72-live-scene-projection.test.js",
+      "tier": "long-world",
+      "status": "included",
+      "classification": "REQUIRED_ACTIVE",
+      "fast": false,
+      "hash": "cbbb6dfa75f5dd27498a2681f6130d94d6c602c0e6a6520315f78946bde2149c",
+      "defect_id": null,
+      "reason": null
+    },
+    {
+      "file": "tests/y73-ai-living-turn.test.js",
+      "tier": "long-world",
+      "status": "included",
+      "classification": "REQUIRED_ACTIVE",
+      "fast": false,
+      "hash": "6395438933eb266e9e7a5d3b77246402a2a7c3a443351b6978a40702d87cb09a",
+      "defect_id": null,
+      "reason": null
+    },
+    {
+      "file": "tests/y75-ui-audio-spec-compliance.test.js",
+      "tier": "aggregate",
+      "status": "included",
+      "classification": "REQUIRED_ACTIVE",
+      "fast": false,
+      "hash": "71c5ed29500d5862aea97cf492430d58d1412521949ed4e8d141bfa47fdc5246",
+      "defect_id": null,
+      "reason": null
+    },
+    {
+      "file": "tests/y76-provider-autoselect-fallback.test.js",
+      "tier": "aggregate",
+      "status": "included",
+      "classification": "REQUIRED_ACTIVE",
+      "fast": false,
+      "hash": "66c9f50329ce5c937590293bc04b3b7cb26e0cedd83334a300e2a56b1771ecab",
+      "defect_id": null,
+      "reason": null
+    },
+    {
+      "file": "tests/y77-cleanup-adjudication-invariants.test.js",
+      "tier": "aggregate",
+      "status": "included",
+      "classification": "REQUIRED_ACTIVE",
+      "fast": false,
+      "hash": "6647aefe6847c92c56360a9d09c2add0edf3d55f9fab8583f7d30ffad1625d43",
+      "defect_id": null,
+      "reason": null
+    },
+    {
+      "file": "tests/y78-reference-expedition-living-world.test.js",
+      "tier": "aggregate",
+      "status": "included",
+      "classification": "REQUIRED_ACTIVE",
+      "fast": false,
+      "hash": "ec50e65a3f8f992a995800df2b393d85963c48aa5a820fe3603991d4bd42dd77",
+      "defect_id": null,
+      "reason": null
+    },
+    {
+      "file": "tests/y79-clause-completeness-coordinated.test.js",
+      "tier": "aggregate",
+      "status": "included",
+      "classification": "REQUIRED_ACTIVE",
+      "fast": false,
+      "hash": "6b2356311dae200d22d7dc86cfdbd4018f742eae2cf47ee75725dbcea998ea76",
+      "defect_id": null,
+      "reason": null
+    },
+    {
+      "file": "tests/y80-canonical-ledger-observer-shell.test.js",
+      "tier": "aggregate",
+      "status": "included",
+      "classification": "REQUIRED_ACTIVE",
+      "fast": false,
+      "hash": "c0779d9730611b103287dd647b9845d6e71a25656749ecc1417bd5c1ea15c494",
+      "defect_id": null,
+      "reason": null
+    },
+    {
+      "file": "tests/y81-canonical-ledger-epistemic-hardening.test.js",
+      "tier": "aggregate",
+      "status": "included",
+      "classification": "REQUIRED_ACTIVE",
+      "fast": false,
+      "hash": "7fbf1fade5fcab6de54cde4b4cab95f997959b2d40aa919fb95365dcdc5d3f35",
+      "defect_id": null,
+      "reason": null
+    },
+    {
+      "file": "tests/y82-reference-expedition-vertical-blockers.test.js",
+      "tier": "aggregate",
+      "status": "included",
+      "classification": "REQUIRED_ACTIVE",
+      "fast": false,
+      "hash": "e68de04e4516d473bd2828057e57bbda547e891b5244ce29db89057c1e27825c",
+      "defect_id": null,
+      "reason": null
+    },
+    {
+      "file": "tests/y83-natural-command-transactions.test.js",
+      "tier": "aggregate",
+      "status": "included",
+      "classification": "REQUIRED_ACTIVE",
+      "fast": false,
+      "hash": "6c32165ac648da0055e15f4313daac463ad64cdbff5609416f7e18f8b7a35abc",
+      "defect_id": null,
+      "reason": null
+    },
+    {
+      "file": "tests/y84-live-provider-failure.test.js",
+      "tier": "aggregate",
+      "status": "included",
+      "classification": "REQUIRED_ACTIVE",
+      "fast": false,
+      "hash": "eb77ed4f65ba30c2c6a83a8c4736d7973653466d8ca6065489f71974e2070c91",
+      "defect_id": null,
+      "reason": null
+    },
+    {
+      "file": "tests/y83-ai-runtime-stability.test.js",
+      "tier": "aggregate",
+      "status": "included",
+      "classification": "REQUIRED_ACTIVE",
+      "fast": false,
+      "hash": "ff504a1e775fa2ffcce8423d38384c5ac0a238e8ad01f84455ce36b496ee3efc",
+      "defect_id": null,
+      "reason": null
+    },
+    {
+      "file": "tests/y84-hybrid-canon-hardening.test.js",
+      "tier": "aggregate",
+      "status": "included",
+      "classification": "REQUIRED_ACTIVE",
+      "fast": false,
+      "hash": "a3a15c3b7f8dc1247af754f53a51557c58caa036fb1eb45bf37885e11a13c4c3",
+      "defect_id": null,
+      "reason": null
+    },
+    {
+      "file": "tests/y79-canonical-world-ledger-invariants.test.js",
+      "tier": "aggregate",
+      "status": "included",
+      "classification": "REQUIRED_ACTIVE",
+      "fast": false,
+      "hash": "89d654ee5dc3ba641e4f4693aad33422826da44d7e1b3f8c94ddbf45e2648d43",
+      "defect_id": null,
+      "reason": null
+    },
+    {
+      "file": "tests/y85-negation-aware-onboarding.test.js",
+      "tier": "aggregate",
+      "status": "included",
+      "classification": "REQUIRED_ACTIVE",
+      "fast": false,
+      "hash": "fdda097e42805fa34580669b691cf90682f5c2b051df57eb952804a259a571c7",
+      "defect_id": null,
+      "reason": null
+    },
+    {
+      "file": "tests/y85-transactional-persistence-failpoints.test.js",
+      "tier": "aggregate",
+      "status": "included",
+      "classification": "REQUIRED_ACTIVE",
+      "fast": false,
+      "hash": "bfb29dcbe06cbe1c7278760cb887450236baac6edff7ccf312d9d304b02b333b",
+      "defect_id": null,
+      "reason": null
+    },
+    {
+      "file": "tests/y86-adversarial-semantic-commands.test.js",
+      "tier": "aggregate",
+      "status": "included",
+      "classification": "REQUIRED_ACTIVE",
+      "fast": false,
+      "hash": "f7cfab08b2c9e43224f516294627945399f080a47b6ffbb43f83d73a9509babf",
+      "defect_id": null,
+      "reason": null
+    },
+    {
+      "file": "tests/y87-live-scenarios-a-k.test.js",
+      "tier": "aggregate",
+      "status": "included",
+      "classification": "REQUIRED_ACTIVE",
+      "fast": false,
+      "hash": "53f9a5d7999a4864995f8ca013c8510cbf59402ba18d25e5d82dba2182149c36",
+      "defect_id": null,
+      "reason": null
+    }
+  ]
+}

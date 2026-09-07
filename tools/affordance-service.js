@@ -5,6 +5,50 @@ const perceptionService = require("./perception-service");
 
 const VERSION = "yellow-beast-affordance-service@v1";
 
+const PROPERTY_AFFORDANCES = Object.freeze({
+  portable: ["take", "pick_up", "drop", "give", "place"],
+  openable: ["open", "close"],
+  container: ["open", "close", "store", "retrieve", "empty"],
+  readable: ["read", "inspect", "examine"],
+  powered: ["activate", "deactivate", "switch_on", "switch_off"],
+  illuminates: ["turn_on", "turn_off", "aim_light"],
+  photographic: ["photograph", "record", "take_photo"],
+  radio_capable: ["radio", "transmit", "listen", "switch_channel"],
+  wearable: ["wear", "equip", "remove"],
+  surface: ["place_on", "examine_surface"],
+  barrier: ["climb_over", "breach", "inspect"],
+  movable: ["push", "pull", "drag", "move"],
+  consumable: ["use", "consume"],
+  inspectable: ["inspect", "look_at", "examine"]
+});
+
+function deriveAffordancesFromProperties(entity) {
+  if (!entity) return [];
+  const props = new Set(entity.properties ?? entity.traits ?? []);
+  if (entity.portable || entity.category === "field-equipment") props.add("portable");
+  if (entity.openable || entity.open !== undefined) props.add("openable");
+  if (entity.container || entity.capacity !== undefined) props.add("container");
+  if (entity.readable || entity.text || entity.document) props.add("readable");
+  if (entity.powered || entity.switched !== undefined) props.add("powered");
+  if (entity.illuminates || /lamp|light|torch/i.test(entity.id ?? entity.label ?? "")) props.add("illuminates");
+  if (entity.photographic || /camera|film/i.test(entity.id ?? entity.label ?? "") || entity.capability === "photographic documentation") props.add("photographic");
+  if (entity.radio_capable || /radio/i.test(entity.id ?? entity.label ?? "") || entity.category === "field-radio") props.add("radio_capable");
+  if (entity.wearable || entity.equipped !== undefined) props.add("wearable");
+  if (entity.surface || entity.kind === "surface") props.add("surface");
+  if (entity.barrier || entity.kind === "barrier" || entity.lock_state === "blocked") props.add("barrier");
+  if (entity.movable) props.add("movable");
+  if (entity.consumable || entity.charges !== undefined) props.add("consumable");
+  props.add("inspectable");
+
+  const derived = new Set();
+  for (const prop of props) {
+    for (const action of PROPERTY_AFFORDANCES[prop] ?? []) {
+      derived.add(action);
+    }
+  }
+  return [...derived];
+}
+
 function getEntityAffordances(entityId, actorId, run) {
   if (!entityId || !run) return { object: entityId, affordances: [], blocked: [] };
   const id = String(entityId).trim();
@@ -129,6 +173,8 @@ function validatePreconditions({ actor, action, target = null, equipment = null 
 
 module.exports = {
   VERSION,
+  PROPERTY_AFFORDANCES,
+  deriveAffordancesFromProperties,
   getEntityAffordances,
   validatePreconditions
 };

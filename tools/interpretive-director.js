@@ -62,7 +62,7 @@ function classifyInput(text, phaseId, run) {
     });
 
     if (matchesExpected) {
-      if (/\?|\b(?:not|never|no|don t|isn t|aren t|can t|won t|before|after|unless|if|but|while|and|then)\b/i.test(`${norm} ${text.includes("?") ? "?" : ""}`)) {
+      if (/\?|\b(?:not|never|no|don t|dont|isn t|isnt|aren t|arent|can t|cant|won t|wont|before|after|unless|if|but|while|and|then|wait|hold|stop|halt|pause)\b/i.test(`${norm} ${text.includes("?") ? "?" : ""}`)) {
         return { classification: "PREFIELD_CLARIFICATION", targetAction: null, targetPerson: null };
       }
       return {
@@ -74,7 +74,7 @@ function classifyInput(text, phaseId, run) {
   }
 
   // Check for minor deviations (routine procedural questions)
-  if (/\b(what room|where are we|what is this room|what is this place|where is this|what place is this|what are my orders|what are our orders|what is our assignment|what time is it)\b/i.test(norm)) {
+  if (/\b(what room|where are we|what is this room|what is this place|where is this|what place is this|where are we headed|what are my orders|what are our orders|what is our assignment|what time is it)\b/i.test(norm)) {
     return {
       classification: "MINOR_DEVIATION",
       targetAction: "QUESTION_PROCEDURAL",
@@ -82,11 +82,34 @@ function classifyInput(text, phaseId, run) {
     };
   }
 
-  // Check for major deviations (refusing orders, telling coworkers to stop/stay/wait)
-  if (/\b(wait here|stay here|do not follow|do not move|hold here|stop|refuse|do not want|don't want|go back|back upstairs|leave)\b/i.test(norm)) {
+  // Check if addressing a coworker in prefield
+  if (run?.expedition?.team?.members) {
+    const members = run.expedition.team.members.filter((m) => m.personnel_id !== run.session?.startup?.player?.observer_id);
+    const addressed = members.find((m) => new RegExp(`\\b${m.first_name}\\b`, "i").test(text));
+    if (addressed && /\b(wait|stay|hold|stop|do not follow|don t follow)\b/i.test(norm)) {
+      return {
+        classification: "MAJOR_DEVIATION",
+        targetAction: "DEVIATION_COMMAND",
+        targetPerson: addressed.first_name
+      };
+    }
+  }
+
+  // Check for equipment refusal
+  if (/\b(refuse|do not want|don t want|don't want)\b/i.test(norm) && /\b(camera|instrument|equipment|stores|loadout)\b/i.test(norm)) {
     return {
       classification: "MAJOR_DEVIATION",
       targetAction: "DEVIATION_COMMAND",
+      targetPerson: null
+    };
+  }
+
+  // Explicit prefield negation/refusal without alias match: NEVER advances
+  const isNegatedOrRefusal = /\b(?:not|never|no|nope|negative|don t|dont|isn t|isnt|aren t|arent|won t|wont|can t|cant|cannot|halt|pause|wait|hold on|hold up|not yet|unready|refuse|stop)\b/i.test(norm);
+  if (isNegatedOrRefusal) {
+    return {
+      classification: "PREFIELD_REFUSAL",
+      targetAction: null,
       targetPerson: null
     };
   }

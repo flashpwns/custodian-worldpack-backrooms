@@ -57,6 +57,9 @@ const environment = require("../tools/q4-environment");
 const phenomenonEcology = require("../tools/q4-phenomenon-ecology");
 const outcomes = require("../tools/q4-outcome-authority");
 const consequenceRuntime = require("../tools/consequence-runtime");
+const presentationBus = require("../tools/presentation-bus");
+const acousticDirector = require("../tools/acoustic-director");
+const decisionScheduler = require("../tools/decision-scheduler");
 const { event: expeditionEvent } = require("../tools/expedition");
 const beckExperience = require("../tools/beck-experience");
 const nullzoneExperience = require("../tools/nullzone-experience");
@@ -534,7 +537,10 @@ class DesktopService {
   decorateEvidenceMedia(projection, world) { if (!projection.q4?.archive) return projection; const safe = clone(projection); safe.q4.archive.records = safe.q4.archive.records.map((record) => { const presentation = record.render_presentation ?? evidenceAuthority.presentation(record); const available = presentation.status === "ready" && evidenceMedia.artifactAvailable(this.paths.media, presentation.artifact); const status = !available && presentation.status === "ready" ? "unavailable" : presentation.status; return { ...record, render_presentation:{ ...presentation, status, artifact_available:available, artifact_url:available ? `file:///${path.resolve(this.paths.media, presentation.artifact.relative_path).replace(/\\/g, "/")}` : null }, fallback:evidenceMedia.fallback(record, available ? "" : presentation.last_error?.message ?? "not generated") }; }); return safe; }
   projectionFor(world, mode, entry) { const descriptor = this.getMode(mode); const runId = entry.run_id ?? entry.run?.run_id ?? null; let surface;
     if (entry.kind === "bootstrap") surface = bootstrap.status(entry.run); else if (entry.kind === "lost") surface = lost.projection(entry.run); else if (entry.kind === "nullzone") surface = { ...nullzone.projection(world), local_observation: nullzone.observeRegion(world) }; else surface = desk.projection(world);
-    const phase = entry.phase ?? phases.createPhase({ mode, guided: this.settings().guided_introductions !== false }); const unfinished = consequenceEchoes.unfinishedBusiness(world, mode, { run_id: runId }); return this.decorateEvidenceMedia({ version: "yellow-beast-desktop-projection@v1", world: this.worldInfo(world, this.metadata().worlds[world.world_id] ?? {}), mode: clone(descriptor), gameplay: gameplay.projection(world, { mode: descriptor.gameplay_mode, run_id: runId }), institution: mode === "async-command" ? desk.projection(world) : null, consequence_echoes: consequenceEchoes.observerView(world, mode, { run_id: runId }), unfinished_business: unfinished, surface: clone(surface), phase: clone(phase), q4: entry.kind === "bootstrap" ? q4.presentation(entry.run, phase, unfinished, world) : null, beck: entry.kind === "beck" ? beckExperience.presentation(world, surface, phase, unfinished) : null, nullzone: entry.kind === "nullzone" ? nullzoneExperience.presentation(world, phase, unfinished) : null, lost: entry.kind === "lost" ? lostExperience.presentation(surface, phase, unfinished) : null, scene: this.sceneFor(entry, mode, {}, world), available_actions: this.availableFor(world, mode, entry), settings: this.settings() }, world);
+    const phase = entry.phase ?? phases.createPhase({ mode, guided: this.settings().guided_introductions !== false }); const unfinished = consequenceEchoes.unfinishedBusiness(world, mode, { run_id: runId });
+    const spatialDef = entry.run?.spatial_pack_id ? bootstrap.spatialDefinitionFor(entry.run.spatial_pack_id) : {};
+    const acousticScene = entry.run ? acousticDirector.evaluateAcousticScene(entry.run, spatialDef, world) : null;
+    return this.decorateEvidenceMedia({ version: "yellow-beast-desktop-projection@v1", world: this.worldInfo(world, this.metadata().worlds[world.world_id] ?? {}), mode: clone(descriptor), gameplay: gameplay.projection(world, { mode: descriptor.gameplay_mode, run_id: runId }), institution: mode === "async-command" ? desk.projection(world) : null, consequence_echoes: consequenceEchoes.observerView(world, mode, { run_id: runId }), unfinished_business: unfinished, surface: clone(surface), phase: clone(phase), q4: entry.kind === "bootstrap" ? q4.presentation(entry.run, phase, unfinished, world) : null, beck: entry.kind === "beck" ? beckExperience.presentation(world, surface, phase, unfinished) : null, nullzone: entry.kind === "nullzone" ? nullzoneExperience.presentation(world, phase, unfinished) : null, lost: entry.kind === "lost" ? lostExperience.presentation(surface, phase, unfinished) : null, scene: this.sceneFor(entry, mode, {}, world), available_actions: this.availableFor(world, mode, entry), acoustic_scene: acousticScene, settings: this.settings() }, world);
   }
   getGameplayProjection({ world_id, mode }) { try { const world = this.getWorld(world_id); const entry = this.session(world_id, mode) ?? this.restoreSession(world, mode, readJson(this.sessionFile(world_id, mode), null)); if (!entry) return publicError("SESSION_NOT_FOUND", "Start or continue a session first."); return { ok: true, projection: this.projectionFor(world, mode, entry) }; } catch { return publicError("PROJECTION_UNAVAILABLE", "Gameplay state is not available."); } }
   getRetiredWorldArchive({ world_id }) { try { const world = this.getWorld(world_id); if (!outcomes.isRetired(world)) return publicError("WORLD_ACTIVE", "This world is still an active simulation."); return { ok:true, archive:outcomes.archive(world), reviews:clone(world.q4_reviews ?? {}), evidence:evidenceAuthority.archive(world,{observer:"player"}) }; } catch { return publicError("ARCHIVE_UNAVAILABLE", "The historical record could not be opened safely."); } }
@@ -566,30 +572,96 @@ class DesktopService {
   }
   submitReferenceWrittenReport({ world_id, text }) {
     if (this.commandBusy(world_id)) return publicError("SESSION_BUSY", "Wait for the current action to finish before changing this operation.");
-    const world = this.getWorld(world_id);
-    const entry = this.session(world_id, "field-researcher") ?? this.restoreSession(world, "field-researcher", readJson(this.sessionFile(world_id, "field-researcher"), null));
-    if (!entry || entry.kind !== "bootstrap" || !referenceExpedition.isReference(entry.run.scenario) || entry.phase?.phase_id !== "REPORT") return publicError("REFERENCE_REPORT_UNAVAILABLE", "A written expedition report is not available from the current phase.");
-    const written = referenceExpedition.writeReport(entry.run, { author:entry.run.session.startup.player.observer_id, text, at:entry.run.expedition.clock?.interval ?? 0 });
-    if (!written.ok) return publicError(written.code, written.code === "REFERENCE_REPORT_EMPTY" ? "Enter the account you intend to submit to A-Sync." : written.code === "REFERENCE_REPORT_TOO_LONG" ? "The written report exceeds the 4,000-character field limit." : "The written report could not be accepted.");
-    const report = entry.run.expedition.written_report;
-    const records = evidenceAuthority.archive(world, { observer:"standard" }).records.filter((record) => record.operation_id === report.mission_id);
-    report.available_evidence_ids = records.map((record) => record.id);
-    const prior = entry.run.expedition.mission.prior_history.find((item) => item.id === referenceExpedition.definition.prior_record.id);
-    report.institutional_assessment = referenceExpedition.assessInstitutionalRecord({ report, prior_record:prior, evidence_records:records });
-    const institutionDefinition = bootstrap.institutionalDefinitionFor(entry.run.spatial_pack_id);
-    if (records.length) institutionalRuntime.ingest(world, null, institutionDefinition, { type:"evidence-report", state:"confirmed", quality:"recorded", summary:`${records.length} returned evidence record${records.length === 1 ? "" : "s"} entered Evidence Intake custody.`, facts:records.map((record) => ({ kind:"returned-evidence", id:record.id })), provenance:{ kind:"returned-evidence", id:`${report.id}:evidence-intake`, report_id:report.id } });
-    const assessment = report.institutional_assessment;
-    institutionalRuntime.ingest(world, null, institutionDefinition, { type:assessment.status === "no-spatial-discrepancy-entered" ? "normal-report" : "contradictory-report", state:"confirmed", quality:assessment.basis.evidence_ids.length ? "recorded" : "claim", summary:report.text, facts:[{ kind:"written-report-claim", id:report.id }, ...(assessment.status === "no-spatial-discrepancy-entered" ? [] : [{ kind:"spatial-discrepancy-assessment", id:assessment.status }])], provenance:{ kind:"written-report", id:report.id, author:report.author } });
-    history.event(world, entry.run.run_id, "q4.written-report.submitted", { report_id:report.id, mission_id:report.mission_id, author:report.author, available_evidence_ids:[...report.available_evidence_ids], assessment_status:assessment.status }, "q4-canonical-continuity");
-    const review = this.finalizeQ4Closure(world, entry);
-    this.persistSession(world, "field-researcher", entry);
-    const scene = this.sceneFor(entry, "field-researcher", { scene_type:"delta", accepted:true, public_reason:assessment.summary }, world);
-    return { ok:true, result:{ turn_status:"REPORT_SUBMITTED", executed:true, report_id:report.id, institutional_assessment:clone(assessment), summary:assessment.summary, scene }, projection:this.projectionFor(world, "field-researcher", entry), review };
+    let entry = null; let world = null; let beforeRun = null; let beforeWorld = null; let beforePhase = null;
+    try {
+      world = this.getWorld(world_id);
+      entry = this.session(world_id, "field-researcher") ?? this.restoreSession(world, "field-researcher", readJson(this.sessionFile(world_id, "field-researcher"), null));
+      if (!entry || entry.kind !== "bootstrap" || !referenceExpedition.isReference(entry.run.scenario) || entry.phase?.phase_id !== "REPORT") return publicError("REFERENCE_REPORT_UNAVAILABLE", "A written expedition report is not available from the current phase.");
+      beforeRun = clone(entry.run); beforeWorld = clone(world); beforePhase = clone(entry.phase);
+      const written = referenceExpedition.writeReport(entry.run, { author:entry.run.session.startup.player.observer_id, text, at:entry.run.expedition.clock?.interval ?? 0 });
+      if (!written.ok) return publicError(written.code, written.code === "REFERENCE_REPORT_EMPTY" ? "Enter the account you intend to submit to A-Sync." : written.code === "REFERENCE_REPORT_TOO_LONG" ? "The written report exceeds the 4,000-character field limit." : "The written report could not be accepted.");
+      const report = entry.run.expedition.written_report;
+      const records = evidenceAuthority.archive(world, { observer:"standard" }).records.filter((record) => record.operation_id === report.mission_id);
+      report.available_evidence_ids = records.map((record) => record.id);
+      const prior = entry.run.expedition.mission.prior_history.find((item) => item.id === referenceExpedition.definition.prior_record.id);
+      report.institutional_assessment = referenceExpedition.assessInstitutionalRecord({ report, prior_record:prior, evidence_records:records });
+      const institutionDefinition = bootstrap.institutionalDefinitionFor(entry.run.spatial_pack_id);
+      if (records.length) institutionalRuntime.ingest(world, null, institutionDefinition, { type:"evidence-report", state:"confirmed", quality:"recorded", summary:`${records.length} returned evidence record${records.length === 1 ? "" : "s"} entered Evidence Intake custody.`, facts:records.map((record) => ({ kind:"returned-evidence", id:record.id })), provenance:{ kind:"returned-evidence", id:`${report.id}:evidence-intake`, report_id:report.id } });
+      const assessment = report.institutional_assessment;
+      institutionalRuntime.ingest(world, null, institutionDefinition, { type:assessment.status === "no-spatial-discrepancy-entered" ? "normal-report" : "contradictory-report", state:"confirmed", quality:assessment.basis.evidence_ids.length ? "recorded" : "claim", summary:report.text, facts:[{ kind:"written-report-claim", id:report.id }, ...(assessment.status === "no-spatial-discrepancy-entered" ? [] : [{ kind:"spatial-discrepancy-assessment", id:assessment.status }])], provenance:{ kind:"written-report", id:report.id, author:report.author } });
+      history.event(world, entry.run.run_id, "q4.written-report.submitted", { report_id:report.id, mission_id:report.mission_id, author:report.author, available_evidence_ids:[...report.available_evidence_ids], assessment_status:assessment.status }, "q4-canonical-continuity");
+      const review = this.finalizeQ4Closure(world, entry);
+      try {
+        this.persistSession(world, "field-researcher", entry);
+      } catch (persistError) {
+        for (const k of Object.keys(world)) delete world[k]; Object.assign(world, beforeWorld);
+        for (const k of Object.keys(entry.run)) delete entry.run[k]; Object.assign(entry.run, beforeRun);
+        entry.run._world = world; entry.phase = beforePhase;
+        return publicError("PERSISTENCE_COMMIT_FAILED", "The action could not be saved and was not committed. Check the operation record storage before retrying.");
+      }
+      const scene = this.sceneFor(entry, "field-researcher", { scene_type:"delta", accepted:true, public_reason:assessment.summary }, world);
+      return { ok:true, result:{ turn_status:"REPORT_SUBMITTED", executed:true, report_id:report.id, institutional_assessment:clone(assessment), summary:assessment.summary, scene }, projection:this.projectionFor(world, "field-researcher", entry), review };
+    } catch (error) {
+      if (entry?.run && beforeRun) {
+        for (const k of Object.keys(world)) delete world[k]; Object.assign(world, beforeWorld);
+        for (const k of Object.keys(entry.run)) delete entry.run[k]; Object.assign(entry.run, beforeRun);
+        entry.run._world = world; entry.phase = beforePhase;
+      }
+      this.log(`reference report failed: ${error.message}`);
+      if (error.code === "PERSISTENCE_COMMIT_FAILED" || error.code?.includes("PERSISTENCE")) {
+        return publicError("PERSISTENCE_COMMIT_FAILED", "The action could not be saved and was not committed. Check the operation record storage before retrying.");
+      }
+      return publicError(error.code ?? "REPORT_SUBMISSION_FAILED", error.message ?? "The report could not be submitted.");
+    }
   }
   submitQ4Logistics({ world_id, action, item_id = null, container_id = null, target_holder = null, target_container = null, source_item_id = null, quantity = 1 }) {
     if (this.commandBusy(world_id)) return publicError("SESSION_BUSY", "Wait for the current action to finish before changing this operation.");
     if (outcomes.isRetired(this.getWorld(world_id))) return publicError("WORLD_RETIRED", "This world is a read-only historical record.");
-    try { const world = this.getWorld(world_id); const entry = this.session(world_id, "field-researcher") ?? this.restoreSession(world, "field-researcher", readJson(this.sessionFile(world_id, "field-researcher"), null)); if (!entry || entry.kind !== "bootstrap") return publicError("SESSION_NOT_FOUND", "Start or continue Clear-Q4 before managing equipment."); const context = this.q4LogisticsContext(entry, world); const definition = bootstrap.logisticsDefinitionFor(entry.run.spatial_pack_id); const resolveHolder = (value) => { if (!value) return null; if (value === "You") return context.actor; const member = context.team.find((candidate) => [candidate.personnel_id, candidate.id, candidate.display_name].includes(value)); return member?.personnel_id ?? member?.id ?? value; }; const request = { action, item_id, container_id, actor: context.actor, target_holder: resolveHolder(target_holder), target_container, source_item_id, quantity }; const result = container_id ? logisticsRuntime.transactContainer(entry.run.expedition, definition, request, context) : logisticsRuntime.transact(entry.run.expedition, definition, request, context); if (!result.ok) return publicError(result.code, result.public_reason); logisticsRuntime.syncSpatial(entry.run.expedition, entry.run.spatial); spatialRuntime.syncEquipment(entry.run.spatial, entry.run.expedition); const authoredCost = bootstrap.dynamicsDefinitionFor(entry.run.spatial_pack_id).action_costs[String(action).toUpperCase()] ?? (/^INSPECT|^VERIFY/.test(String(action).toUpperCase()) ? 0 : 1); const cycle = bootstrap.resolveOperationalCycle(entry.run, String(action).toUpperCase(), authoredCost, "logistics-transaction"); expeditionEvent(entry.run.expedition, "logistics.transaction.committed", { transaction_id: result.transaction.id, action: result.transaction.action, item_id: result.transaction.item_id ?? null, container_id: result.transaction.container_id ?? null }); this.persistSession(world, "field-researcher", entry); return { ok: true, result: { outcome: "succeeded", public_reason: result.public_reason, transaction: { action: result.transaction.action, summary: result.transaction.summary, at: result.transaction.at }, time_advanced: cycle.clock.cost, mission_updates: cycle.mission_updates }, projection: this.projectionFor(world, "field-researcher", entry) }; } catch (error) { this.log(`Q4 logistics failed: ${error.message}`); return publicError("LOGISTICS_RUNTIME_ERROR", "The logistics transaction could not be committed safely."); }
+    try {
+      const world = this.getWorld(world_id);
+      const entry = this.session(world_id, "field-researcher") ?? this.restoreSession(world, "field-researcher", readJson(this.sessionFile(world_id, "field-researcher"), null));
+      if (!entry || entry.kind !== "bootstrap") return publicError("SESSION_NOT_FOUND", "Start or continue Clear-Q4 before managing equipment.");
+      const beforeRun = clone(entry.run);
+      const beforeWorld = clone(world);
+      const beforePhase = clone(entry.phase);
+      const context = this.q4LogisticsContext(entry, world);
+      const definition = bootstrap.logisticsDefinitionFor(entry.run.spatial_pack_id);
+      const resolveHolder = (value) => {
+        if (!value) return null;
+        if (value === "You") return context.actor;
+        const member = context.team.find((candidate) => [candidate.personnel_id, candidate.id, candidate.display_name].includes(value));
+        return member?.personnel_id ?? member?.id ?? value;
+      };
+      const request = { action, item_id, container_id, actor: context.actor, target_holder: resolveHolder(target_holder), target_container, source_item_id, quantity };
+      const result = container_id ? logisticsRuntime.transactContainer(entry.run.expedition, definition, request, context) : logisticsRuntime.transact(entry.run.expedition, definition, request, context);
+      if (!result.ok) return publicError(result.code, result.public_reason);
+      logisticsRuntime.syncSpatial(entry.run.expedition, entry.run.spatial);
+      spatialRuntime.syncEquipment(entry.run.spatial, entry.run.expedition);
+      const authoredCost = bootstrap.dynamicsDefinitionFor(entry.run.spatial_pack_id).action_costs[String(action).toUpperCase()] ?? (/^INSPECT|^VERIFY/.test(String(action).toUpperCase()) ? 0 : 1);
+      const cycle = bootstrap.resolveOperationalCycle(entry.run, String(action).toUpperCase(), authoredCost, "logistics-transaction");
+      expeditionEvent(entry.run.expedition, "logistics.transaction.committed", { transaction_id: result.transaction.id, action: result.transaction.action, item_id: result.transaction.item_id ?? null, container_id: result.transaction.container_id ?? null });
+      try {
+        this.persistSession(world, "field-researcher", entry);
+      } catch (persistError) {
+        for (const key of Object.keys(world)) delete world[key]; Object.assign(world, beforeWorld);
+        for (const key of Object.keys(entry.run)) delete entry.run[key]; Object.assign(entry.run, beforeRun);
+        entry.run._world = world; entry.phase = beforePhase;
+        this.log(`Q4 logistics persistence failed: ${persistError.message}`);
+        return publicError("PERSISTENCE_COMMIT_FAILED", "The action could not be saved and was not committed. Check the operation record storage before retrying.");
+      }
+      return { ok: true, result: { outcome: "succeeded", public_reason: result.public_reason, transaction: { action: result.transaction.action, summary: result.transaction.summary, at: result.transaction.at }, time_advanced: cycle.clock.cost, mission_updates: cycle.mission_updates }, projection: this.projectionFor(world, "field-researcher", entry) };
+    } catch (error) {
+      if (entry?.run && beforeRun) {
+        for (const key of Object.keys(world)) delete world[key]; Object.assign(world, beforeWorld);
+        for (const key of Object.keys(entry.run)) delete entry.run[key]; Object.assign(entry.run, beforeRun);
+        entry.run._world = world; entry.phase = beforePhase;
+      }
+      this.log(`Q4 logistics failed: ${error.message}`);
+      if (error.code === "PERSISTENCE_COMMIT_FAILED" || error.code?.includes("PERSISTENCE")) {
+        return publicError("PERSISTENCE_COMMIT_FAILED", "The action could not be saved and was not committed. Check the operation record storage before retrying.");
+      }
+      return publicError("LOGISTICS_RUNTIME_ERROR", "The logistics transaction could not be committed safely.");
+    }
   }
   availableFor(world, mode, entry) {
     if (outcomes.isRetired(world)) return [];
@@ -661,6 +733,7 @@ class DesktopService {
       const world = this.getWorld(world_id); if (outcomes.isRetired(world)) return publicError("WORLD_RETIRED", "This world is a read-only historical record."); const entry = this.session(world_id, "field-researcher") ?? this.restoreSession(world, "field-researcher", readJson(this.sessionFile(world_id, "field-researcher"), null));
       if (!entry || entry.kind !== "bootstrap") return publicError("SESSION_NOT_FOUND", "Start or continue Clear-Q4 before issuing a LOCAL order.");
       if (!["FIELD_OPERATION", "RETURN"].includes(entry.phase?.phase_id)) return publicError("LOCAL_PHASE_INVALID", "Nearby field orders are available only during an active field operation or return.");
+      const beforeRun = clone(entry.run); const beforeWorld = clone(world); const beforePhase = clone(entry.phase);
       const run = entry.run; const expedition = run.expedition; const player = run.session.startup.player.observer_id;
       const requestId = request_id ?? `local-${crypto.createHash("sha256").update(`${run.run_id}|${expedition.clock.interval}|${text}`).digest("hex").slice(0, 18)}`;
       expedition.local_intent_requests ??= []; const duplicate = expedition.local_intent_requests.find((item) => item.id === requestId);
@@ -699,9 +772,29 @@ class DesktopService {
       q4Interactions.record(expedition, { channel: "local", speaker: "You", targets: [recipient.display_name], player_text: text, attempted_behavior: "issue a bounded nearby-worker order", eligibility: "eligible", delivery: "heard", canonical_effects: results.filter((item) => ["accepted", "completed"].includes(item.state)).map((item) => `local.${item.action.toLowerCase()}`), presentation: { result: results.map((item) => `${item.action}: ${item.state}`).join("; ") } });
       const cycle = bootstrap.resolveOperationalCycle(run, "LOCAL_ORDER", 0, "local-natural-order");
       const result = { outcome: results.some((item) => ["accepted", "completed"].includes(item.state)) ? "resolved" : "clarification-or-refusal", proposal: clone(validated.proposal), results: clone(results), public_reason: `${recipient.first_name}: ${results.map((item) => item.state.replace(/-/g, " ")).join(", ")}.`, time_advanced: cycle.clock.cost };
-      result.scene = this.sceneFor(entry, "field-researcher", { action:"LOCAL_ORDER", scene_type:"delta", accepted:true, public_reason:result.public_reason }, world); expedition.local_intent_requests.push({ id: requestId, result: clone(result) }); this.persistSession(world, "field-researcher", entry);
+      result.scene = this.sceneFor(entry, "field-researcher", { action:"LOCAL_ORDER", scene_type:"delta", accepted:true, public_reason:result.public_reason }, world); expedition.local_intent_requests.push({ id: requestId, result: clone(result) });
+      try {
+        this.persistSession(world, "field-researcher", entry);
+      } catch (persistError) {
+        for (const key of Object.keys(world)) delete world[key]; Object.assign(world, beforeWorld);
+        for (const key of Object.keys(entry.run)) delete entry.run[key]; Object.assign(entry.run, beforeRun);
+        entry.run._world = world; entry.phase = beforePhase;
+        this.log(`LOCAL intent persistence failed: ${persistError.message}`);
+        return publicError("PERSISTENCE_COMMIT_FAILED", "The action could not be saved and was not committed. Check the operation record storage before retrying.");
+      }
       return { ok: true, result, projection: this.projectionFor(world, "field-researcher", entry) };
-    } catch (error) { this.log(`LOCAL intent failed: ${error.message}`); return publicError("LOCAL_INTENT_RUNTIME_ERROR", "The nearby-worker request could not be resolved safely."); }
+    } catch (error) {
+      if (entry?.run && beforeRun) {
+        for (const key of Object.keys(world)) delete world[key]; Object.assign(world, beforeWorld);
+        for (const key of Object.keys(entry.run)) delete entry.run[key]; Object.assign(entry.run, beforeRun);
+        entry.run._world = world; entry.phase = beforePhase;
+      }
+      this.log(`LOCAL intent failed: ${error.message}`);
+      if (error.code === "PERSISTENCE_COMMIT_FAILED" || error.code?.includes("PERSISTENCE")) {
+        return publicError("PERSISTENCE_COMMIT_FAILED", "The action could not be saved and was not committed. Check the operation record storage before retrying.");
+      }
+      return publicError("LOCAL_INTENT_RUNTIME_ERROR", "The nearby-worker request could not be resolved safely.");
+    }
   }
   submitQ4Communication(input = {}) {
     const canonical = this.submitQ4CommunicationCanonical(input);
@@ -760,6 +853,7 @@ class DesktopService {
     try {
       const world = this.getWorld(world_id); const entry = this.session(world_id, "field-researcher") ?? this.restoreSession(world, "field-researcher", readJson(this.sessionFile(world_id, "field-researcher"), null));
       if (!entry || entry.kind !== "bootstrap") return publicError("SESSION_NOT_FOUND", "Start or continue Clear-Q4 before communicating.");
+      const beforeRun = clone(entry.run); const beforeWorld = clone(world); const beforePhase = clone(entry.phase);
       if (!q4Interactions.CHANNELS.includes(channel) || channel === "action") return publicError("CHANNEL_INVALID", "Choose a communication channel.");
       const message = typeof text === "string" ? text.trim().slice(0, 2000) : "";
       if (!message) return publicError("COMMUNICATION_EMPTY", "Say or transmit something before sending it.");
@@ -770,7 +864,14 @@ class DesktopService {
           const reason = peer?.condition === "Unresponsive" ? "The teammate is unresponsive." : `${peer.first_name || peer.display_name} is not within speaking range.`;
           communicationRuntime.local(expedition, { sender: playerId, recipients: [peer.personnel_id ?? peer.id], text: message, eligible: false, failure_reason: reason });
           q4Interactions.record(expedition, { channel, speaker: "You", targets: [peer.display_name], player_text: message, attempted_behavior: "speak with a nearby teammate", eligibility: "target-out-of-range", delivery: "not-delivered", presentation: { result: reason } });
-          this.persistSession(world, "field-researcher", entry);
+          try {
+            this.persistSession(world, "field-researcher", entry);
+          } catch (persistError) {
+            for (const key of Object.keys(world)) delete world[key]; Object.assign(world, beforeWorld);
+            for (const key of Object.keys(entry.run)) delete entry.run[key]; Object.assign(entry.run, beforeRun);
+            entry.run._world = world; entry.phase = beforePhase;
+            return publicError("PERSISTENCE_COMMIT_FAILED", "The action could not be saved and was not committed. Check the operation record storage before retrying.");
+          }
           return publicError("LOCAL_TARGET_UNAVAILABLE", reason);
         }
         const recipients = peer ? localPeers.filter((m) => (m.personnel_id ?? m.id) === (peer.personnel_id ?? peer.id)) : localPeers;
@@ -779,7 +880,14 @@ class DesktopService {
           const reason = peer?.condition === "Unresponsive" ? "The teammate is unresponsive." : observed?.contact_category === "LOCAL" ? "The local conversation could not be delivered." : `No nearby participating personnel can hear this transmission.`;
           communicationRuntime.local(expedition, { sender: playerId, recipients: [peer?.personnel_id ?? peer?.id ?? "unconfirmed teammate"], text: message, eligible: false, failure_reason: reason });
           q4Interactions.record(expedition, { channel, speaker: "You", targets: [peer?.display_name ?? "no nearby teammate"], player_text: message, attempted_behavior: "speak with a nearby teammate", eligibility: "target-out-of-range", delivery: "not-delivered", presentation: { result: reason } });
-          this.persistSession(world, "field-researcher", entry);
+          try {
+            this.persistSession(world, "field-researcher", entry);
+          } catch (persistError) {
+            for (const key of Object.keys(world)) delete world[key]; Object.assign(world, beforeWorld);
+            for (const key of Object.keys(entry.run)) delete entry.run[key]; Object.assign(entry.run, beforeRun);
+            entry.run._world = world; entry.phase = beforePhase;
+            return publicError("PERSISTENCE_COMMIT_FAILED", "The action could not be saved and was not committed. Check the operation record storage before retrying.");
+          }
           return publicError("LOCAL_TARGET_UNAVAILABLE", reason);
         }
          const deliveredLocal = communicationRuntime.local(expedition, { sender: playerId, recipients: recipients.map((member) => member.personnel_id ?? member.id), text: message, eligible: true });
@@ -807,7 +915,14 @@ class DesktopService {
         const interaction = q4Interactions.record(expedition, { channel, speaker: "You", targets: interactionTargets, player_text: message, attempted_behavior: "speak with nearby participating personnel", eligibility: "eligible", delivery: "heard", time_cost: 0, canonical_effects: ["communication.local.delivered"], response_speaker: chosen?.recipient?.first_name ?? chosen?.recipient?.display_name ?? null, presentation: { result: "heard", response:responseBody } });
         q4Trajectories.noteCommunication({ world, expedition, run_id: entry.run.run_id, channel: "local", delivered: true, text: message });
         const cycle = bootstrap.resolveOperationalCycle(entry.run, "LOCAL", 0, "local-communication");
-        this.persistSession(world, "field-researcher", entry);
+        try {
+          this.persistSession(world, "field-researcher", entry);
+        } catch (persistError) {
+          for (const key of Object.keys(world)) delete world[key]; Object.assign(world, beforeWorld);
+          for (const key of Object.keys(entry.run)) delete entry.run[key]; Object.assign(entry.run, beforeRun);
+          entry.run._world = world; entry.phase = beforePhase;
+          return publicError("PERSISTENCE_COMMIT_FAILED", "The action could not be saved and was not committed. Check the operation record storage before retrying.");
+        }
         const publicReason = response || "Your message is heard. No further response is required.";
         const scene = this.sceneFor(entry, "field-researcher", { scene_type: "delta", accepted: true, action: "LOCAL", public_reason: publicReason }, world);
         const output = { ok: true, result: { outcome: "delivered", public_reason: publicReason, message: { id: deliveredLocal.message.id, state: deliveredLocal.message.state }, mission_updates: cycle.mission_updates, scene }, projection: this.projectionFor(world, "field-researcher", entry) };
@@ -821,7 +936,14 @@ class DesktopService {
         const reason = entry.phase?.phase_id === "BRIEFING" ? "The field radio channel is not active during briefing." : entry.phase?.phase_id === "STAGING" ? "Standard remains unavailable until the radio-check phase." : entry.phase?.phase_id === "THRESHOLD" ? "Complete the approach before establishing radio contact." : "The Standard radio channel is not available from here.";
         communicationRuntime.failRadio(expedition, { sender: playerId, recipient: "Standard", text: message, reason });
         q4Interactions.record(expedition, { channel, speaker: "You", targets: ["Standard"], player_text: message, attempted_behavior: "transmit over the survey radio", eligibility: "radio-unavailable", delivery: "not-delivered", presentation: { result: "The radio channel is not available from this operational context." } });
-        this.persistSession(world, "field-researcher", entry);
+        try {
+          this.persistSession(world, "field-researcher", entry);
+        } catch (persistError) {
+          for (const key of Object.keys(world)) delete world[key]; Object.assign(world, beforeWorld);
+          for (const key of Object.keys(entry.run)) delete entry.run[key]; Object.assign(entry.run, beforeRun);
+          entry.run._world = world; entry.phase = beforePhase;
+          return publicError("PERSISTENCE_COMMIT_FAILED", "The action could not be saved and was not committed. Check the operation record storage before retrying.");
+        }
         return publicError("STANDARD_UNAVAILABLE", reason);
       }
       const used = q4Equipment.use(expedition, "survey-radio", playerId); if (!used.ok) return publicError("STANDARD_UNAVAILABLE", "The Standard radio channel could not begin the transmission.");
@@ -853,14 +975,32 @@ class DesktopService {
       }
       const delivery = actuallyDelivered ? "delivered" : resolvedMessage.state === "delayed" ? "delayed" : "queued";
       const interaction = q4Interactions.record(expedition, { channel, speaker: "You", targets: ["Standard"], player_text: message, attempted_behavior: "transmit over the survey radio", eligibility: "eligible", delivery, time_cost: 1, canonical_effects: ["communication.sent"], observer_knowledge: actuallyDelivered ? [{ observer: "Standard", kind: "reported-communication", text: message }] : [], presentation: { result: delivery } });
-      if (radioCheckPhase && resolvedMessage.state === "acknowledged") q4Interactions.record(expedition, { channel: "standard", speaker: "STANDARD", targets: ["Clear-Q4 team"], player_text: "Standard acknowledgment received for Radio check.", attempted_behavior: "scheduled radio-check acknowledgment", eligibility: "eligible", delivery: "received", canonical_effects: ["q4.radio.check.acknowledged"], presentation: { result: "received" } });
+      if (radioCheckPhase && resolvedMessage.state === "acknowledged") q4Interactions.record(expedition, { channel, speaker: "STANDARD", targets: ["Clear-Q4 team"], player_text: "Standard acknowledgment received for Radio check.", attempted_behavior: "scheduled radio-check acknowledgment", eligibility: "eligible", delivery: "received", canonical_effects: ["q4.radio.check.acknowledged"], presentation: { result: "received" } });
       if (!radioCheckPhase) q4Trajectories.noteCommunication({ world, expedition, run_id: entry.run.run_id, channel: "standard", delivered: actuallyDelivered, text: message });
       const missionUpdates = [...cycle.mission_updates, ...(acknowledgmentCycle?.mission_updates ?? [])];
-      this.persistSession(world, "field-researcher", entry);
+      try {
+        this.persistSession(world, "field-researcher", entry);
+      } catch (persistError) {
+        for (const key of Object.keys(world)) delete world[key]; Object.assign(world, beforeWorld);
+        for (const key of Object.keys(entry.run)) delete entry.run[key]; Object.assign(entry.run, beforeRun);
+        entry.run._world = world; entry.phase = beforePhase;
+        return publicError("PERSISTENCE_COMMIT_FAILED", "The action could not be saved and was not committed. Check the operation record storage before retrying.");
+      }
       const publicReason = resolvedMessage.state === "delayed" ? resolvedMessage.interference?.public_description ?? "The transmission is delayed; no delivery confirmation has been received." : actuallyDelivered ? "The transmission was delivered. Standard acknowledgment remains separately recorded." : "The transmission is queued; delivery has not been confirmed.";
       const scene = this.sceneFor(entry, "field-researcher", { scene_type: "delta", accepted: true, action: "STANDARD", public_reason: publicReason }, world);
       return { ok: true, result: { outcome: resolvedMessage.state, public_reason: publicReason, message: { id: resolvedMessage.id, state: resolvedMessage.state }, mission_updates: missionUpdates, operational_updates: cycle.public_updates, scene }, projection: this.projectionFor(world, "field-researcher", entry) };
-    } catch (error) { this.log(`Q4 communication failed: ${error.message}`); return publicError("COMMUNICATION_RUNTIME_ERROR", "The communication could not be resolved safely."); }
+    } catch (error) {
+      if (entry?.run && beforeRun) {
+        for (const key of Object.keys(world)) delete world[key]; Object.assign(world, beforeWorld);
+        for (const key of Object.keys(entry.run)) delete entry.run[key]; Object.assign(entry.run, beforeRun);
+        entry.run._world = world; entry.phase = beforePhase;
+      }
+      this.log(`Q4 communication failed: ${error.message}`);
+      if (error.code === "PERSISTENCE_COMMIT_FAILED" || error.code?.includes("PERSISTENCE")) {
+        return publicError("PERSISTENCE_COMMIT_FAILED", "The action could not be saved and was not committed. Check the operation record storage before retrying.");
+      }
+      return publicError("COMMUNICATION_RUNTIME_ERROR", "The communication could not be resolved safely.");
+    }
   }
   submitQ4Handoff({ world_id, item_id, target = null }) {
     if (this.commandBusy(world_id)) return publicError("SESSION_BUSY", "Wait for the current action to finish before changing this operation.");
@@ -868,6 +1008,7 @@ class DesktopService {
     try {
       const world = this.getWorld(world_id); const entry = this.session(world_id, "field-researcher") ?? this.restoreSession(world, "field-researcher", readJson(this.sessionFile(world_id, "field-researcher"), null));
       if (!entry || entry.kind !== "bootstrap") return publicError("SESSION_NOT_FOUND", "Start or continue Clear-Q4 before handing over equipment.");
+      const beforeRun = clone(entry.run); const beforeWorld = clone(world); const beforePhase = clone(entry.phase);
       const player = entry.run.session.startup.player.observer_id; const coworkers = entry.run.expedition.team.members.filter((member) => member.personnel_id !== player); const targetText = String(target ?? "").toLowerCase(); const key = entry.run.expedition.equipment[item_id] ? item_id : Object.entries(entry.run.expedition.equipment).find(([, item]) => item.id === item_id)?.[0]; const item = entry.run.expedition.equipment[key];
       if (["player", "you"].includes(targetText)) {
         if (entry.phase?.phase_id !== "STAGING") return publicError("HANDOFF_TARGET_UNAVAILABLE", "Coworker-to-player custody reassignment is available during accountable staging only.");
@@ -875,7 +1016,16 @@ class DesktopService {
         const transferred = logisticsRuntime.transact(entry.run.expedition, bootstrap.logisticsDefinitionFor(entry.run.spatial_pack_id), { action:"HAND_OVER", item_id:key, actor:source.personnel_id, target_holder:player }, this.q4LogisticsContext(entry, world));
         if (!transferred.ok) return publicError(transferred.code, transferred.public_reason);
         q4Interactions.record(entry.run.expedition, { channel:"action", speaker:"You", targets:[source.display_name], player_text:`accept custody of ${transferred.item.display_name} during staging`, attempted_behavior:"reassign staged equipment custody to the controlled worker", eligibility:"eligible", delivery:"transferred", time_cost:1, canonical_effects:["equipment.handoff"], presentation:{ result:"transferred" } });
-        history.event(world, entry.run.run_id, "q4.equipment.handed_over", { equipment_id:transferred.item.instance_id, from:source.personnel_id, to:player }); personnelContinuity.recordCustody(world, { run_id:entry.run.run_id, equipment_id:transferred.item.instance_id, from:source.personnel_id, to:player, at:entry.run.expedition.clock?.interval ?? 0 }); if (entry.run.spatial) spatialRuntime.syncEquipment(entry.run.spatial, entry.run.expedition); const cycle = bootstrap.resolveOperationalCycle(entry.run, "HANDOFF", 1, "staging-equipment-handoff"); this.persistSession(world, "field-researcher", entry); return { ok:true, result:{ outcome:"succeeded", public_reason:`You take accountable custody of the ${transferred.item.display_name} from ${source.first_name}.`, time_advanced:cycle.clock.cost, mission_updates:cycle.mission_updates }, projection:this.projectionFor(world, "field-researcher", entry) };
+        history.event(world, entry.run.run_id, "q4.equipment.handed_over", { equipment_id:transferred.item.instance_id, from:source.personnel_id, to:player }); personnelContinuity.recordCustody(world, { run_id:entry.run.run_id, equipment_id:transferred.item.instance_id, from:source.personnel_id, to:player, at:entry.run.expedition.clock?.interval ?? 0 }); if (entry.run.spatial) spatialRuntime.syncEquipment(entry.run.spatial, entry.run.expedition); const cycle = bootstrap.resolveOperationalCycle(entry.run, "HANDOFF", 1, "staging-equipment-handoff");
+        try {
+          this.persistSession(world, "field-researcher", entry);
+        } catch (persistError) {
+          for (const k of Object.keys(world)) delete world[k]; Object.assign(world, beforeWorld);
+          for (const k of Object.keys(entry.run)) delete entry.run[k]; Object.assign(entry.run, beforeRun);
+          entry.run._world = world; entry.phase = beforePhase;
+          return publicError("PERSISTENCE_COMMIT_FAILED", "The action could not be saved and was not committed. Check the operation record storage before retrying.");
+        }
+        return { ok:true, result:{ outcome:"succeeded", public_reason:`You take accountable custody of the ${transferred.item.display_name} from ${source.first_name}.`, time_advanced:cycle.clock.cost, mission_updates:cycle.mission_updates }, projection:this.projectionFor(world, "field-researcher", entry) };
       }
       const peer = coworkers.find((member) => [member.personnel_id, member.first_name, member.display_name].filter(Boolean).some((value) => String(value).toLowerCase() === targetText)) ?? coworkers[0]; const peerPerson = history.character(world, peer?.personnel_id ?? peer?.id); const observed = q4Personnel.observerStatus(peer, peerPerson, entry.phase?.phase_id, entry.run.spatial, player);
       const validTarget = observed.local_eligible && [peer?.personnel_id, peer?.first_name, peer?.display_name, "team", "teammate"].filter(Boolean).map((value) => String(value).toLowerCase()).includes(targetText || String(peer?.first_name ?? "").toLowerCase());
@@ -883,8 +1033,28 @@ class DesktopService {
       const transferred = logisticsRuntime.transact(entry.run.expedition, bootstrap.logisticsDefinitionFor(entry.run.spatial_pack_id), { action: "HAND_OVER", item_id: key, actor: player, target_holder: peer.personnel_id }, this.q4LogisticsContext(entry, world));
       if (!transferred.ok) return publicError(transferred.code, transferred.public_reason);
       q4Interactions.record(entry.run.expedition, { channel: "action", speaker: "You", targets: [peer.display_name], player_text: `hand over ${transferred.item.display_name}`, attempted_behavior: "physically hand equipment to a nearby teammate", eligibility: "eligible", delivery: "transferred", time_cost: 1, canonical_effects: ["equipment.handoff"], presentation: { result: "transferred" } });
-      history.event(world, entry.run.run_id, "q4.equipment.handed_over", { equipment_id: transferred.item.instance_id, from: player, to: peer.personnel_id }); personnelContinuity.recordCustody(world, { run_id: entry.run.run_id, equipment_id: transferred.item.instance_id, from: player, to: peer.personnel_id, at: entry.run.expedition.clock?.interval ?? 0 }); personnelContinuity.recordSharedHistory(world, { run_id: entry.run.run_id, participants: [player, peer.personnel_id], kind: "equipment-transferred", refs: { equipment_id: transferred.item.instance_id }, at: entry.run.expedition.clock?.interval ?? 0 }); if (entry.run.spatial) spatialRuntime.syncEquipment(entry.run.spatial, entry.run.expedition); const cycle = bootstrap.resolveOperationalCycle(entry.run, "HANDOFF", 1, "equipment-handoff"); this.persistSession(world, "field-researcher", entry); return { ok: true, result: { outcome: "succeeded", public_reason: `${peer.first_name} takes the ${transferred.item.display_name}.`, time_advanced: cycle.clock.cost, mission_updates: cycle.mission_updates }, projection: this.projectionFor(world, "field-researcher", entry) };
-    } catch (error) { this.log(`Q4 handoff failed: ${error.message}`); return publicError("HANDOFF_RUNTIME_ERROR", "The physical handoff could not be resolved safely."); }
+      history.event(world, entry.run.run_id, "q4.equipment.handed_over", { equipment_id: transferred.item.instance_id, from: player, to: peer.personnel_id }); personnelContinuity.recordCustody(world, { run_id: entry.run.run_id, equipment_id: transferred.item.instance_id, from: player, to: peer.personnel_id, at: entry.run.expedition.clock?.interval ?? 0 }); personnelContinuity.recordSharedHistory(world, { run_id: entry.run.run_id, participants: [player, peer.personnel_id], kind: "equipment-transferred", refs: { equipment_id: transferred.item.instance_id }, at: entry.run.expedition.clock?.interval ?? 0 }); if (entry.run.spatial) spatialRuntime.syncEquipment(entry.run.spatial, entry.run.expedition); const cycle = bootstrap.resolveOperationalCycle(entry.run, "HANDOFF", 1, "equipment-handoff");
+      try {
+        this.persistSession(world, "field-researcher", entry);
+      } catch (persistError) {
+        for (const k of Object.keys(world)) delete world[k]; Object.assign(world, beforeWorld);
+        for (const k of Object.keys(entry.run)) delete entry.run[k]; Object.assign(entry.run, beforeRun);
+        entry.run._world = world; entry.phase = beforePhase;
+        return publicError("PERSISTENCE_COMMIT_FAILED", "The action could not be saved and was not committed. Check the operation record storage before retrying.");
+      }
+      return { ok: true, result: { outcome: "succeeded", public_reason: `${peer.first_name} takes the ${transferred.item.display_name}.`, time_advanced: cycle.clock.cost, mission_updates: cycle.mission_updates }, projection: this.projectionFor(world, "field-researcher", entry) };
+    } catch (error) {
+      if (entry?.run && beforeRun) {
+        for (const k of Object.keys(world)) delete world[k]; Object.assign(world, beforeWorld);
+        for (const k of Object.keys(entry.run)) delete entry.run[k]; Object.assign(entry.run, beforeRun);
+        entry.run._world = world; entry.phase = beforePhase;
+      }
+      this.log(`Q4 handoff failed: ${error.message}`);
+      if (error.code === "PERSISTENCE_COMMIT_FAILED" || error.code?.includes("PERSISTENCE")) {
+        return publicError("PERSISTENCE_COMMIT_FAILED", "The action could not be saved and was not committed. Check the operation record storage before retrying.");
+      }
+      return publicError("HANDOFF_RUNTIME_ERROR", "The physical handoff could not be resolved safely.");
+    }
   }
   selectQ4OptionalStore({ world_id, item_id }) {
     if (this.commandBusy(world_id)) return publicError("SESSION_BUSY", "Wait for the current action to finish before changing this operation.");
@@ -892,18 +1062,40 @@ class DesktopService {
       const world = this.getWorld(world_id); const entry = this.session(world_id, "field-researcher") ?? this.restoreSession(world, "field-researcher", readJson(this.sessionFile(world_id, "field-researcher"), null));
       if (!entry || entry.kind !== "bootstrap") return publicError("SESSION_NOT_FOUND", "Start or continue Clear-Q4 before selecting stores.");
       if (entry.phase?.phase_id !== "STAGING") return publicError("STAGING_REQUIRED", "Optional stores can only be selected during staging.");
+      const beforeRun = clone(entry.run); const beforeWorld = clone(world); const beforePhase = clone(entry.phase);
       const selected = logisticsRuntime.transact(entry.run.expedition, bootstrap.logisticsDefinitionFor(entry.run.spatial_pack_id), { action: "RETRIEVE", item_id, actor: entry.run.session.startup.player.observer_id }, this.q4LogisticsContext(entry, world));
       if (!selected.ok) return publicError(selected.code, selected.public_reason);
       expeditionEvent(entry.run.expedition, "q4.loadout.optional_selected", { equipment_id: selected.item.instance_id, type: selected.item.category });
       bootstrap.evaluateMissionState(entry.run, entry.phase?.phase_id);
-      this.persistSession(world, "field-researcher", entry);
+      try {
+        this.persistSession(world, "field-researcher", entry);
+      } catch (persistError) {
+        for (const k of Object.keys(world)) delete world[k]; Object.assign(world, beforeWorld);
+        for (const k of Object.keys(entry.run)) delete entry.run[k]; Object.assign(entry.run, beforeRun);
+        entry.run._world = world; entry.phase = beforePhase;
+        return publicError("PERSISTENCE_COMMIT_FAILED", "The action could not be saved and was not committed. Check the operation record storage before retrying.");
+      }
       return { ok: true, result: { outcome: "succeeded", public_reason: `${selected.item.display_name} added to the field loadout.` }, projection: this.projectionFor(world, "field-researcher", entry) };
-    } catch (error) { this.log(`Q4 store selection failed: ${error.message}`); return publicError("STAGING_RUNTIME_ERROR", "The optional store could not be selected safely."); }
+    } catch (error) {
+      if (entry?.run && beforeRun) {
+        for (const k of Object.keys(world)) delete world[k]; Object.assign(world, beforeWorld);
+        for (const k of Object.keys(entry.run)) delete entry.run[k]; Object.assign(entry.run, beforeRun);
+        entry.run._world = world; entry.phase = beforePhase;
+      }
+      this.log(`Q4 store selection failed: ${error.message}`);
+      if (error.code === "PERSISTENCE_COMMIT_FAILED" || error.code?.includes("PERSISTENCE")) {
+        return publicError("PERSISTENCE_COMMIT_FAILED", "The action could not be saved and was not committed. Check the operation record storage before retrying.");
+      }
+      return publicError("STAGING_RUNTIME_ERROR", "The optional store could not be selected safely.");
+    }
   }
   submitAction({ world_id, mode, action, target = null }) {
     if (this.commandBusy(world_id)) return publicError("SESSION_BUSY", "Wait for the current action to finish before changing this operation.");
     if (this.recoveredWorlds.has(world_id)) return publicError("PERSISTENCE_RECOVERY_READ_ONLY", "This verified previous record is available for inspection only until it is explicitly restored.");
-    try { const world = this.getWorld(world_id); if (outcomes.isRetired(world)) return publicError("WORLD_RETIRED", "This world is a read-only historical record."); const entry = this.session(world_id, mode) ?? this.restoreSession(world, mode, readJson(this.sessionFile(world_id, mode), null)); if (!entry) return publicError("SESSION_NOT_FOUND", "Start or continue a session first."); const verb = String(action ?? "").toUpperCase(); let result; if (entry.kind === "bootstrap") { entry.run._last_mission_updates = []; entry.run._active_submission_id = `player-submission-${crypto.createHash("sha256").update(JSON.stringify([entry.run.run_id, entry.run.expedition.interaction_history?.length ?? 0, verb, target ?? null])).digest("hex").slice(0, 18)}`; }
+    try {
+      const world = this.getWorld(world_id); if (outcomes.isRetired(world)) return publicError("WORLD_RETIRED", "This world is a read-only historical record."); const entry = this.session(world_id, mode) ?? this.restoreSession(world, mode, readJson(this.sessionFile(world_id, mode), null)); if (!entry) return publicError("SESSION_NOT_FOUND", "Start or continue a session first.");
+      const beforeRun = clone(entry.run); const beforeWorld = clone(world); const beforePhase = clone(entry.phase);
+      const verb = String(action ?? "").toUpperCase(); let result; if (entry.kind === "bootstrap") { entry.run._last_mission_updates = []; entry.run._active_submission_id = `player-submission-${crypto.createHash("sha256").update(JSON.stringify([entry.run.run_id, entry.run.expedition.interaction_history?.length ?? 0, verb, target ?? null])).digest("hex").slice(0, 18)}`; }
       if (entry.kind === "bootstrap" && verb === "ADVANCE_OPERATIONS") return this.advanceQ4Operations({ world_id });
       if (entry.kind === "bootstrap" && verb === "COMMUNICATE") return publicError("PLAYER_TRANSMISSION_REQUIRED", "Type and deliberately submit your own message in the communication composer.");
       if (entry.kind === "bootstrap" && ["DEPLOY", "READY", "PROCEED", "APPROACH", "CROSS", "RADIO_CHECK", "BEGIN_FIELD_OPERATION"].includes(verb)) {
@@ -967,10 +1159,32 @@ class DesktopService {
       }
       const missionUpdates = result.result?.mission_updates ?? entry.run?._last_mission_updates ?? [];
       const mortality = entry.kind === "bootstrap" ? outcomes.resolve(world, entry.run, { cause: result.result?.consequence_id ?? result.outcome ?? verb }) : null;
-      if (mortality?.player_deceased) this.persistTerminalRetirement(world, mode, entry); else this.persistSession(world, mode, entry);
+      try {
+        if (mortality?.player_deceased) this.persistTerminalRetirement(world, mode, entry);
+        else this.persistSession(world, mode, entry);
+      } catch (persistError) {
+        if (entry?.run && beforeRun) {
+          for (const k of Object.keys(world)) delete world[k]; Object.assign(world, beforeWorld);
+          for (const k of Object.keys(entry.run)) delete entry.run[k]; Object.assign(entry.run, beforeRun);
+          entry.run._world = world; entry.phase = beforePhase;
+        }
+        this.log(`submitAction persistence failed: ${persistError.message}`);
+        return publicError("PERSISTENCE_COMMIT_FAILED", "The action could not be saved and was not committed. Check the operation record storage before retrying.");
+      }
       const scene = this.sceneFor(entry, mode, { action: verb, scene_type: verb === "LOOK" ? "observation" : "delta", accepted: true, public_reason: result.result?.public_reason ?? result.public_reason }, world);
       return { ok: true, result: { outcome: result.outcome ?? "succeeded", public_reason: result.result?.public_reason ?? result.public_reason ?? null, mission_updates: missionUpdates, scene }, projection: this.projectionFor(world, mode, entry) };
-    } catch (error) { this.log(`action failed: ${error.message}`); return publicError("ACTION_RUNTIME_ERROR", "Yellow Beast could not complete that action safely."); }
+    } catch (error) {
+      if (entry?.run && beforeRun) {
+        for (const k of Object.keys(world)) delete world[k]; Object.assign(world, beforeWorld);
+        for (const k of Object.keys(entry.run)) delete entry.run[k]; Object.assign(entry.run, beforeRun);
+        entry.run._world = world; entry.phase = beforePhase;
+      }
+      this.log(`action failed: ${error.message}`);
+      if (error.code === "PERSISTENCE_COMMIT_FAILED" || error.code === "SESSION_SAVE_INVALID" || error.code === "SESSION_VALUE_INVALID" || error.code?.includes("PERSISTENCE")) {
+        return publicError("PERSISTENCE_COMMIT_FAILED", "The action could not be saved and was not committed. Check the operation record storage before retrying.");
+      }
+      return publicError("ACTION_RUNTIME_ERROR", "Yellow Beast could not complete that action safely.");
+    }
   }
   naturalContext(world, mode, entry) {
     const projection = this.projectionFor(world, mode, entry); const actions = this.availableFor(world, mode, entry);
@@ -1080,11 +1294,13 @@ class DesktopService {
     try { return await promise; } finally { this.naturalTurnInflight.delete(world_id); }
   }
   async submitNaturalInternal({ world_id, mode, text, request_id, input_fingerprint }) {
+    let world = null; let entry = null; let beforeRun = null; let beforeWorld = null; let beforePhase = null;
     try {
       if (!this.authorityRegistry.healthy) return publicError("AUTHORITY_UNAVAILABLE", "Authoritative interpretation sources are unavailable. Continue with structured controls while the installation is repaired.");
-      const world = this.getWorld(world_id);
-      const entry = this.session(world_id, mode) ?? this.restoreSession(world, mode, readJson(this.sessionFile(world_id, mode), null));
+      world = this.getWorld(world_id);
+      entry = this.session(world_id, mode) ?? this.restoreSession(world, mode, readJson(this.sessionFile(world_id, mode), null));
       if (!entry) return publicError("SESSION_NOT_FOUND", "Start or continue this session first.");
+      beforeRun = clone(entry.run); beforeWorld = clone(world); beforePhase = clone(entry.phase);
       const recorded = entry.run?.expedition?.natural_action_receipts?.find(receipt => receipt.id === request_id);
       if (recorded) {
         if (recorded.input_fingerprint !== input_fingerprint) return publicError("REQUEST_ID_REUSED", "That action reference belongs to a different instruction.");
@@ -1095,7 +1311,7 @@ class DesktopService {
         const phaseId = entry.phase.phase_id;
         const inputClass = interpretiveDirector.classifyInput(text, phaseId, entry.run);
 
-        if (inputClass.classification === "PREFIELD_CLARIFICATION") {
+        if (inputClass.classification === "PREFIELD_CLARIFICATION" || inputClass.classification === "PREFIELD_REFUSAL") {
           const question = "Please confirm the intended action separately. Your procedure has not advanced.";
           const scene = { ...this.sceneFor(entry, mode, { scene_type: "observation", accepted: false, public_reason: question }, world), narration: question, narration_source: "DETERMINISTIC" };
           return { ok: true, result: { turn_status: "CLARIFICATION_REQUIRED", clarification_required: true, clarification_question: question, executed: false, summary: question, scene }, projection: this.projectionFor(world, mode, entry) };
@@ -1109,6 +1325,7 @@ class DesktopService {
             return { ok: true, result: { turn_status: "CLARIFICATION_REQUIRED", clarification_required: true, clarification_question: warning, executed: false, summary: warning, scene }, projection: this.projectionFor(world, mode, entry) };
           }
           const actResult = this.submitAction({ world_id, mode, action: inputClass.targetAction });
+          if (!actResult.ok) return actResult;
           if (actResult.ok) {
             const playerLoc = canonicalLedger.getPlayerLocation(entry.run);
             let authored = null;
@@ -1120,7 +1337,14 @@ class DesktopService {
             }
             const narration = authored ? authored.text : (actResult.result?.public_reason ?? "The expedition advances to the next operational phase.");
             const scene = { ...this.sceneFor(entry, mode, { scene_type: "delta", accepted: true, public_reason: narration }, world), narration, narration_source: authored ? authored.source : "DETERMINISTIC" };
-            this.persistSession(world, mode, entry);
+            try {
+              this.persistSession(world, mode, entry);
+            } catch (persistError) {
+              for (const k of Object.keys(world)) delete world[k]; Object.assign(world, beforeWorld);
+              for (const k of Object.keys(entry.run)) delete entry.run[k]; Object.assign(entry.run, beforeRun);
+              entry.run._world = world; entry.phase = beforePhase;
+              return publicError("PERSISTENCE_COMMIT_FAILED", "The action could not be saved and was not committed. Check the operation record storage before retrying.");
+            }
             return {
               ok: true,
               result: {
@@ -1143,7 +1367,14 @@ class DesktopService {
           if (radioRes.ok) {
             const summary = "Standard acknowledgment received for Radio check.";
             const scene = { ...this.sceneFor(entry, mode, { scene_type: "observation", accepted: true, public_reason: summary }, world), narration: summary, narration_source: "DETERMINISTIC" };
-            this.persistSession(world, mode, entry);
+            try {
+              this.persistSession(world, mode, entry);
+            } catch (persistError) {
+              for (const k of Object.keys(world)) delete world[k]; Object.assign(world, beforeWorld);
+              for (const k of Object.keys(entry.run)) delete entry.run[k]; Object.assign(entry.run, beforeRun);
+              entry.run._world = world; entry.phase = beforePhase;
+              return publicError("PERSISTENCE_COMMIT_FAILED", "The action could not be saved and was not committed. Check the operation record storage before retrying.");
+            }
             return {
               ok: true,
               result: {
@@ -1213,7 +1444,14 @@ class DesktopService {
               text: ack.text,
               timestamp: Date.now()
             });
-            this.persistSession(world, mode, entry);
+            try {
+              this.persistSession(world, mode, entry);
+            } catch (persistError) {
+              for (const k of Object.keys(world)) delete world[k]; Object.assign(world, beforeWorld);
+              for (const k of Object.keys(entry.run)) delete entry.run[k]; Object.assign(entry.run, beforeRun);
+              entry.run._world = world; entry.phase = beforePhase;
+              return publicError("PERSISTENCE_COMMIT_FAILED", "The action could not be saved and was not committed. Check the operation record storage before retrying.");
+            }
             const reply = `${addressed.first_name}: "${ack.text}"`;
             const scene = { ...this.sceneFor(entry, mode, { scene_type: "observation", accepted: true, public_reason: reply }, world), narration: reply, narration_source: "DETERMINISTIC" };
             return {
@@ -1316,7 +1554,14 @@ class DesktopService {
           const person = member ? history.character(world, member.personnel_id) : null;
           const reason = !member ? "That person is not part of the current assignment." : parsed.kind === "follow" && relationship.speaking_range ? `${member.first_name} is beside you and has not started down a route. The team remains together.` : relationship.speaking_range ? `${member.first_name} is beside you, appears ${String(member.observed_condition ?? person?.condition ?? "normal").replace(/-/g, " ")}, and remains within speaking range.` : `${member.first_name}'s last confirmed position is ${entry.run.spatial.last_confirmed_personnel_positions[member.personnel_id]?.location ?? "not currently visible"}.`;
           q4Interactions.record(entry.run.expedition, { channel: "action", speaker: "YOU", targets: member ? [member.display_name] : [], player_text: text, attempted_behavior: parsed.kind === "follow" ? "follow assigned coworker" : "check assigned coworker", eligibility: member ? "eligible" : "rejected", delivery: "not-applicable", presentation: { result: reason } });
-          this.persistSession(world, mode, entry);
+          try {
+            this.persistSession(world, mode, entry);
+          } catch (persistError) {
+            for (const k of Object.keys(world)) delete world[k]; Object.assign(world, beforeWorld);
+            for (const k of Object.keys(entry.run)) delete entry.run[k]; Object.assign(entry.run, beforeRun);
+            entry.run._world = world; entry.phase = beforePhase;
+            return publicError("PERSISTENCE_COMMIT_FAILED", "The action could not be saved and was not committed. Check the operation record storage before retrying.");
+          }
           const scene = this.sceneFor(entry, mode, { action: "LOOK", scene_type: "observation", accepted: Boolean(member), public_reason: reason }, world);
           return { ok: true, result: { outcome: member ? "succeeded" : "rejected", executed: Boolean(member), public_reason: reason, scene }, projection: this.projectionFor(world, mode, entry) };
         }
@@ -1335,11 +1580,30 @@ class DesktopService {
       this.recordInterpretationProvenance({ request_id: requestId, route: "submitNatural", event:"provider-selected", input: "player-supplied", provider: provider.name, model: provider.model ?? "deterministic", provider_invoked:false, response_classification:providerSetting === "offline" ? "deterministic" : "not-yet-observed", doctrine: interpretationContext.authority_contract?.doctrine_sha256 ?? null, context_sha256: contextHash, context_sections: Object.keys(interpretationContext), canonical_resolution: "executePlayerTurn -> consequenceResolver", observer_projection: nonBootstrap ? "naturalContext" : "q4InterpretationContext" });
       const turn = await executePlayerTurn({ run: adapterRun, mode, provider, player_text: text, request_id: requestId, context: interpretationContext, consequenceResolver: entry.kind === "bootstrap" ? ({ plan }) => this.resolveQ4Attempt({ world_id, mode, entry, plan }) : ({ plan }) => resolveModeAttempt({ service: this, world_id, mode, plan, available }), sceneBuilder: entry.kind === "bootstrap" ? ({ natural: resolved }) => this.sceneFor(entry, mode, { scene_type: resolved.consequence?.result?.accepted ? "delta" : "observation", accepted: resolved.consequence?.result?.accepted, public_reason: resolved.consequence?.result?.observer_safe_summary }, world) : ({ natural: resolved }) => this.modeScene(world, mode, entry, resolved) });
       if (entry.kind === "bootstrap" && turn.save_required && phaseBefore === entry.phase?.phase_id) this.recordQ4Action(entry, text, { ok: true, result: { time_advanced: turn.consequence?.result?.time_advanced ?? 0, canonical_event_ids: turn.consequence?.result?.canonical_event_ids ?? [] } }, world);
-      if (turn.save_required) this.persistSession(world, mode, entry);
+      if (turn.save_required) {
+        try {
+          this.persistSession(world, mode, entry);
+        } catch (persistError) {
+          for (const k of Object.keys(world)) delete world[k]; Object.assign(world, beforeWorld);
+          for (const k of Object.keys(entry.run)) delete entry.run[k]; Object.assign(entry.run, beforeRun);
+          entry.run._world = world; entry.phase = beforePhase;
+          return publicError("PERSISTENCE_COMMIT_FAILED", "The action could not be saved and was not committed. Check the operation record storage before retrying.");
+        }
+      }
       const scene = { ...turn.scene, narration: turn.narration.prose, narration_source: turn.narration.source };
       const hostedFailure = providerSetting !== "offline" && this.interpretationProvenance.some((record) => record.request_id === requestId && record.invocation_status === "failed");
       return { ok: true, result: { turn_status: turn.status, interpretation_error:turn.status === "INTERPRETATION_ERROR", provider_unavailable:hostedFailure, clarification_required: turn.status === "CLARIFICATION_REQUIRED", clarification_question: turn.clarification?.question ?? null, executed: turn.save_required, summary: scene.narration, scene }, projection: this.projectionFor(world, mode, entry) };
-    } catch (error) { this.log(`natural action failed: ${error.message}`); return error.code === "PERSISTENCE_COMMIT_FAILED" ? publicError(error.code, "The action could not be saved and was not committed. Check the operation record storage before retrying.") : publicError("PROVIDER_UNAVAILABLE", "Language assistance is unavailable. Continue using structured controls or retry this action reference."); }
+    } catch (error) {
+      if (entry?.run && beforeRun) {
+        for (const k of Object.keys(world)) delete world[k]; Object.assign(world, beforeWorld);
+        for (const k of Object.keys(entry.run)) delete entry.run[k]; Object.assign(entry.run, beforeRun);
+        entry.run._world = world; entry.phase = beforePhase;
+      }
+      this.log(`natural action failed: ${error.message}`);
+      return (error.code === "PERSISTENCE_COMMIT_FAILED" || error.code === "SESSION_SAVE_INVALID" || error.code === "SESSION_VALUE_INVALID" || error.code?.includes("PERSISTENCE"))
+        ? publicError("PERSISTENCE_COMMIT_FAILED", "The action could not be saved and was not committed. Check the operation record storage before retrying.")
+        : publicError("PROVIDER_UNAVAILABLE", "Language assistance is unavailable. Continue using structured controls or retry this action reference.");
+    }
   }
   shutdown() { for (const [key, entry] of this.sessions) { const [worldId, mode] = key.split(":"); if (this.recoveredWorlds.has(worldId)) continue; try { this.persistSession(this.getWorld(worldId), mode, entry); } catch (error) { this.log(`shutdown save failed: ${error.message}`); } } return { ok: true }; }
 }

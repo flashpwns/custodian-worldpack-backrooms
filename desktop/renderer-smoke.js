@@ -123,8 +123,13 @@ async function run(windowRef) {
   await click('.backend-menu > summary');
   await click('[data-action="settings"]');
   await click('#settings [name="provider"]');
-  await windowRef.webContents.sendInputEvent({ type:"keyDown", keyCode:"HOME" });
-  await windowRef.webContents.sendInputEvent({ type:"keyUp", keyCode:"HOME" });
+  for (let i = 0; i < 6; i++) {
+    await windowRef.webContents.sendInputEvent({ type:"keyDown", keyCode:"UP" });
+    await windowRef.webContents.sendInputEvent({ type:"keyUp", keyCode:"UP" });
+    await pause(20);
+  }
+  await windowRef.webContents.executeJavaScript("(() => { const sel = document.querySelector('#settings [name=\"provider\"]'); if (sel) { sel.value = 'offline'; sel.dispatchEvent(new Event('change', { bubbles: true })); sel.blur(); } })()");
+  await pause(50);
   await click('#settings button[type="submit"]');
   await waitForText('#settings-message', "saved and applied");
   await click('[data-action="close-settings"]');

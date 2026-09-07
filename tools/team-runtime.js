@@ -11,7 +11,10 @@ const clone = (value) => structuredClone(value);
 function playerId(run) { return run.session?.startup?.player?.observer_id ?? null; }
 function memberId(member) { return member.personnel_id ?? member.id; }
 function display(member) { return member.display_name ?? ([member.first_name, member.last_name].filter(Boolean).join(" ") || "Assigned teammate"); }
-function location(run, id) { return run.spatial?.personnel_locations?.[id] ?? null; }
+function location(run, id) {
+  if (id === playerId(run) || id === "player") return run.spatial?.player_location ?? run.spatial?.personnel_locations?.[id] ?? null;
+  return run.spatial?.personnel_locations?.[id] ?? null;
+}
 
 function ensure(run) {
   const expedition = run.expedition; if (!expedition) return null;
@@ -32,6 +35,24 @@ function ensure(run) {
     member.decision_history ??= [];
     member.movement_history ??= [];
     member.mission_authority ??= id === player ? "controlled field authority" : "assigned operational authority";
+    member.qualifications ??= member.role === "documentation specialist"
+      ? ["photography", "logging", "sample-collection"]
+      : member.role === "survey technician"
+      ? ["instrumentation", "measurement", "radio-operation"]
+      : member.role === "route specialist"
+      ? ["route-marking", "hazard-assessment", "pacing"]
+      : ["field-research", "observation", "equipment-operation"];
+    member.stress ??= 0;
+    member.fatigue ??= 0;
+    member.attention_focus ??= "surroundings";
+    member.behavioral_state ??= "routine";
+    member.beliefs_uncertainty ??= {};
+    member.task_progress ??= { step: 0, total_steps: 1, percent: 100 };
+    member.queued_tasks ??= [];
+    member.persistent_memory ??= [];
+    member.conversation_summary ??= "";
+    member.radio_state ??= "standby";
+    member.trust ??= 1.0;
     member.last_known_status ??= { location: location(run, id), condition: member.condition, health: member.health, at: run.expedition.clock?.interval ?? 0, source: "assignment" };
     runtime.observer_knowledge[player][id] ??= clone(member.last_known_status);
   }

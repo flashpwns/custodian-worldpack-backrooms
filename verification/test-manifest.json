@@ -675,6 +675,26 @@
       "file": "tests/y79-canonical-world-ledger-invariants.test.js",
       "status": "included",
       "tier": "aggregate"
+    },
+    {
+      "file": "tests/y85-negation-aware-onboarding.test.js",
+      "status": "included",
+      "tier": "aggregate"
+    },
+    {
+      "file": "tests/y85-transactional-persistence-failpoints.test.js",
+      "status": "included",
+      "tier": "aggregate"
+    },
+    {
+      "file": "tests/y86-adversarial-semantic-commands.test.js",
+      "status": "included",
+      "tier": "aggregate"
+    },
+    {
+      "file": "tests/y87-live-scenarios-a-k.test.js",
+      "status": "included",
+      "tier": "aggregate"
     }
   ],
   "report_tools": [
