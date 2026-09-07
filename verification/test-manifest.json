@@ -1,7 +1,7 @@
 {
   "version": "yellow-beast-verification-manifest@v2",
   "governance": "verification/verification-authority.json",
-  "authority": "V02 — Test Truth and Verification Gate (docs/YELLOW_BEAST_VISION_PASS_MAP.md §V02)",
+  "authority": "V02 \u2014 Test Truth and Verification Gate (docs/YELLOW_BEAST_VISION_PASS_MAP.md \u00a7V02)",
   "tiers": [
     "fast",
     "aggregate",
@@ -651,6 +651,12 @@
     },
     {
       "file": "tests/y83-natural-command-transactions.test.js",
+      "status": "included",
+      "tier": "aggregate",
+      "fast": false
+    },
+    {
+      "file": "tests/y84-live-provider-failure.test.js",
       "status": "included",
       "tier": "aggregate",
       "fast": false

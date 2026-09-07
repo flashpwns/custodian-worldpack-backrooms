@@ -189,6 +189,7 @@ async function executeLivingTurn({ run, player_text, interpreter, presentation_p
   trace.push("interpreter");
   const interpretation = await interpretPlayerLanguage({ run, player_text, interpreter, request_id });
   if (!isDeepStrictEqual(run, beforeInterpretation)) throw new Error("INTERPRETATION_MUTATED_CANON");
+  if (["INTERPRETER_FAILED", "INTERPRETER_UNAVAILABLE", "OBSERVER_PROJECTION_UNAVAILABLE"].includes(interpretation.code)) return deepFreeze({ version:VERSION, status:"interpretation_failed", player_input:player_text, interpretation, trace, canonical_mutation:false });
   if (interpretation.kind === "clarification") return deepFreeze({ version: VERSION, status: "clarification", player_input: player_text, interpretation, trace, canonical_mutation: false });
 
   trace.push("resolution");

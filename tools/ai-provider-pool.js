@@ -135,7 +135,7 @@ class ProviderPool {
       model,
       timeout: 15000,
       onInvocation: (event) => {
-        if (typeof onInvocation === "function") onInvocation(event);
+        if (typeof onInvocation === "function") event = onInvocation(event) ?? event;
         if (typeof this.onInvocation === "function") this.onInvocation(event);
       }
     });
@@ -166,11 +166,13 @@ class ProviderPool {
     requestId = `pool-${Date.now()}`,
     route = "unknown",
     executeFn,
-    preferredProvider = null
+    preferredProvider = null,
+    allowOffline = true,
+    onComplete = null
   }) {
     const settings = this.settingsGetter();
     const effectiveProvider = preferredProvider || settings.provider || "auto";
-    const candidates = this.getCandidates({ preferredProvider: effectiveProvider });
+    const candidates = this.getCandidates({ preferredProvider: effectiveProvider }).filter(id => allowOffline || id !== "offline");
     const attempts = [];
     let lastError = null;
     let selectedProvider = null;
@@ -198,9 +200,12 @@ class ProviderPool {
       try {
         const providerInstance = this.getProviderInstance(candidateId, {
           onInvocation: (event) => {
+            event = { ...event, request_id:requestId, route, attempt:attemptNumber };
+            attemptRecord.hosted_request = event.hosted_request === true;
             if (event.status === "failed") {
               attemptRecord.error_status = event.error_status ?? null;
             }
+            return event;
           }
         });
 
@@ -236,8 +241,18 @@ class ProviderPool {
     }
 
     this.lastAttemptChain = attempts;
+    // Keep the reason visible on immediate retries while a provider is cooling
+    // down. Skipping a failed provider is not a successful offline interpretation.
+    if (!selectedProvider && attempts.length === 0 && !allowOffline) {
+      const ids = effectiveProvider === "auto" ? DEFAULT_AUTO_PRIORITY.filter(id => id !== "offline") : [effectiveProvider];
+      for (const id of ids) {
+        const health = this.getHealth(id);
+        attempts.push({ provider:id, model:this.getModel(id), status:"skipped", failure_class:health.configured ? health.last_failure_class ?? FAILURE_CLASSES.UNKNOWN_PROVIDER_ERROR : FAILURE_CLASSES.AUTH_MISSING, error_status:null, duration_ms:0, hosted_request:false });
+      }
+    }
     const chainSummary = {
       request_id: requestId,
+      request_kind: requestKind,
       route,
       mode: effectiveProvider === "auto" ? "auto" : "manual",
       selected_provider: selectedProvider ?? "none",
@@ -248,6 +263,7 @@ class ProviderPool {
     if (typeof this.onProvenance === "function") {
       try { this.onProvenance(chainSummary); } catch {}
     }
+    if (typeof onComplete === "function") onComplete(structuredClone(chainSummary));
 
     if (!selectedProvider) {
       throw lastError || new Error("All eligible providers in pool failed.");
@@ -261,8 +277,10 @@ class ProviderPool {
     };
   }
 
-  createAutoProvider({ requestId = null, route = "auto-provider" } = {}) {
+  createAutoProvider({ requestId = null, route = "auto-provider", requireHostedInterpretation = false } = {}) {
     const pool = this;
+    const executions = [];
+    const onComplete = summary => executions.push(summary);
     return {
       name: "auto",
       model: "auto",
@@ -270,12 +288,15 @@ class ProviderPool {
       getAttempts() {
         return pool.lastAttemptChain;
       },
+      getExecutions() { return structuredClone(executions); },
       async interpret({ player_text, context }) {
         const reqId = requestId || `auto-intent-${Date.now()}`;
         const res = await pool.executeWithFallback({
           requestKind: "intent",
           requestId: reqId,
           route: `${route}/intent`,
+          allowOffline: !requireHostedInterpretation,
+          onComplete,
           executeFn: async (provider) => {
             if (typeof provider.interpret === "function") {
               return provider.interpret({ player_text, context });
@@ -292,6 +313,8 @@ class ProviderPool {
           requestKind: "living-interpretation",
           requestId: reqId,
           route: `${route}/living-interpretation`,
+          allowOffline: !requireHostedInterpretation,
+          onComplete,
           executeFn: async (provider) => {
             if (typeof provider.interpretLiving === "function") {
               return provider.interpretLiving({ player_text, context });
@@ -311,6 +334,7 @@ class ProviderPool {
           requestKind: "living-presentation",
           requestId: reqId,
           route: `${route}/living-presentation`,
+          onComplete,
           executeFn: async (provider) => {
             if (typeof provider.presentLiving === "function") {
               return provider.presentLiving(packet);
@@ -330,6 +354,7 @@ class ProviderPool {
           requestKind: "local-dialogue",
           requestId: reqId,
           route: `${route}/local-dialogue`,
+          onComplete,
           executeFn: async (provider) => {
             if (typeof provider.presentLocal === "function") {
               return provider.presentLocal(packet);

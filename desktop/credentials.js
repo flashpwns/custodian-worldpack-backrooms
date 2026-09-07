@@ -70,6 +70,13 @@ class CredentialStore {
     return Boolean(this.get(name));
   }
 
+  describe(name) {
+    const file = this.filePathFor(name);
+    const saved = Boolean(file && fs.existsSync(file));
+    const environment = Boolean(process.env[`${String(name).toUpperCase()}_API_KEY`]);
+    return { configured:this.configured(name), saved, persistent:saved && this.available(), environment, session_only:this.memory.has(name) && !saved };
+  }
+
   remove(name) {
     this.memory.delete(name);
     const targetFile = this.filePathFor(name);

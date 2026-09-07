@@ -81,7 +81,8 @@
       "tests/y80-canonical-ledger-observer-shell.test.js",
       "tests/y81-canonical-ledger-epistemic-hardening.test.js",
       "tests/y82-reference-expedition-vertical-blockers.test.js",
-      "tests/y83-natural-command-transactions.test.js"
+      "tests/y83-natural-command-transactions.test.js",
+      "tests/y84-live-provider-failure.test.js"
     ],
     "long-world": [
       "tests/profile-model.test.js",
@@ -267,14 +268,15 @@
     "tests/y72-live-scene-projection.test.js": "cbbb6dfa75f5dd27498a2681f6130d94d6c602c0e6a6520315f78946bde2149c",
     "tests/y73-ai-living-turn.test.js": "6395438933eb266e9e7a5d3b77246402a2a7c3a443351b6978a40702d87cb09a",
     "tests/y75-ui-audio-spec-compliance.test.js": "71c5ed29500d5862aea97cf492430d58d1412521949ed4e8d141bfa47fdc5246",
-    "tests/y76-provider-autoselect-fallback.test.js": "b45a135d07f5198240148b73a1006998f7485fa5e46c82fea078cc4b61069087",
+    "tests/y76-provider-autoselect-fallback.test.js": "66c9f50329ce5c937590293bc04b3b7cb26e0cedd83334a300e2a56b1771ecab",
     "tests/y77-cleanup-adjudication-invariants.test.js": "6647aefe6847c92c56360a9d09c2add0edf3d55f9fab8583f7d30ffad1625d43",
     "tests/y78-reference-expedition-living-world.test.js": "ec50e65a3f8f992a995800df2b393d85963c48aa5a820fe3603991d4bd42dd77",
-    "tests/y79-clause-completeness-coordinated.test.js": "f5a006653ec898ec3f74ec82b6156ab106a52981a1c9f812c112d7f8c9e43a56",
+    "tests/y79-clause-completeness-coordinated.test.js": "6b2356311dae200d22d7dc86cfdbd4018f742eae2cf47ee75725dbcea998ea76",
     "tests/y80-canonical-ledger-observer-shell.test.js": "c0779d9730611b103287dd647b9845d6e71a25656749ecc1417bd5c1ea15c494",
     "tests/y81-canonical-ledger-epistemic-hardening.test.js": "7fbf1fade5fcab6de54cde4b4cab95f997959b2d40aa919fb95365dcdc5d3f35",
     "tests/y82-reference-expedition-vertical-blockers.test.js": "e68de04e4516d473bd2828057e57bbda547e891b5244ce29db89057c1e27825c",
-    "tests/y83-natural-command-transactions.test.js": "6c32165ac648da0055e15f4313daac463ad64cdbff5609416f7e18f8b7a35abc"
+    "tests/y83-natural-command-transactions.test.js": "6c32165ac648da0055e15f4313daac463ad64cdbff5609416f7e18f8b7a35abc",
+    "tests/y84-live-provider-failure.test.js": "318e14c873d4756b678c653e36203d8a45be523bf80acd0e6cd1514d5f9a181c"
   },
   "verification_core_hashes": {
     "tools/verification-inventory.js": "0f27da4645f1d85e48b52133475371bbbce55072807b6900108c3a1afd344f3b",
