@@ -243,7 +243,8 @@ test("a resolved player action can be narrated without authorizing a second inve
   });
   const good = await f.service.submitNatural({ ...f.input, text:"Walk toward the open passage." });
   assert.equal(good.result.living_turn.validation.accepted, true);
-  assert.equal(good.result.scene.narration, "You move toward the open passage.");
+  assert.ok(good.result.scene.narration.endsWith("You move toward the open passage."));
+  assert.match(good.result.scene.narration, /^Open Passage survey line\./);
   malicious = true;
   const bad = await f.service.submitNatural({ ...f.input, text:"Walk toward the utility room." });
   assert.equal(bad.result.executed, true);

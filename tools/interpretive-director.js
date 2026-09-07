@@ -58,10 +58,13 @@ function classifyInput(text, phaseId, run) {
     // Check if input matches expected phase progression
     const matchesExpected = proc.action_aliases?.some((alias) => {
       const normAlias = normalize(alias);
-      return norm === normAlias || norm.startsWith(normAlias) || norm.includes(normAlias);
+      return (` ${norm} `).includes(` ${normAlias} `);
     });
 
     if (matchesExpected) {
+      if (/\?|\b(?:not|never|no|don t|isn t|aren t|can t|won t|before|after|unless|if|but|while|and|then)\b/i.test(`${norm} ${text.includes("?") ? "?" : ""}`)) {
+        return { classification: "PREFIELD_CLARIFICATION", targetAction: null, targetPerson: null };
+      }
       return {
         classification: "ON_SCRIPT",
         targetAction: proc.expected_action,

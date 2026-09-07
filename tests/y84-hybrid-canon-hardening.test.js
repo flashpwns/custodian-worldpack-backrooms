@@ -44,6 +44,24 @@ function createTestService(seed = "hybrid-hardening") {
   return { appDataPath, service, world, callCount };
 }
 
+test("negated, conditional, questioned, and compound readiness cannot advance onboarding", async () => {
+  for (const text of ["I am not ready.", "Don't proceed.", "Are we ready?", "Before we proceed, what is our assignment?", "Ready, but Santiago must wait here.", "Ready and Beverly photographs the fixture."]) {
+    const { appDataPath, service, world } = createTestService("consolidation-readiness");
+    try {
+      const entry = service.session(world.id, "field-researcher");
+      const before = bootstrap.saveRun(entry.run);
+      const result = await service.submitNatural({ world_id: world.id, mode: "field-researcher", text });
+      assert.equal(result.result?.executed, false, text);
+      assert.equal(result.result?.clarification_required, true, text);
+      assert.equal(entry.phase.phase_id, "BRIEFING", text);
+      assert.deepEqual(bootstrap.saveRun(entry.run), before, text);
+    } finally {
+      service.shutdown();
+      fs.rmSync(appDataPath, { recursive: true, force: true });
+    }
+  }
+});
+
 test("1 Gate 7: Routine onboarding completes entirely through authored/deterministic pipeline with 0 AI calls", async () => {
   const { service, world, callCount } = createTestService("gate-7-onboarding");
 

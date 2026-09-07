@@ -1095,6 +1095,12 @@ class DesktopService {
         const phaseId = entry.phase.phase_id;
         const inputClass = interpretiveDirector.classifyInput(text, phaseId, entry.run);
 
+        if (inputClass.classification === "PREFIELD_CLARIFICATION") {
+          const question = "Please confirm the intended action separately. Your procedure has not advanced.";
+          const scene = { ...this.sceneFor(entry, mode, { scene_type: "observation", accepted: false, public_reason: question }, world), narration: question, narration_source: "DETERMINISTIC" };
+          return { ok: true, result: { turn_status: "CLARIFICATION_REQUIRED", clarification_required: true, clarification_question: question, executed: false, summary: question, scene }, projection: this.projectionFor(world, mode, entry) };
+        }
+
         if (inputClass.classification === "ON_SCRIPT" && inputClass.targetAction) {
           const radioChecked = q4Radio.ensure(entry.run.expedition).check_completed;
           if (phaseId === "STANDARD_RADIO_CHECK" && inputClass.targetAction === "CROSS" && !radioChecked) {
@@ -1273,7 +1279,14 @@ class DesktopService {
             throw Object.assign(new Error("The action could not be committed to its operation record."), { code:"PERSISTENCE_COMMIT_FAILED", cause:error });
           }
         } });
-        const language_assistance = summarizeLanguageAssistance(selected, living);
+        let presentationPersisted = true;
+        if (living.status === "resolved") {
+          // Canonical consequences are already durable. Persist the completed
+          // presentation history separately without misreporting a lost action.
+          try { this.persistSession(world, mode, entry); }
+          catch (error) { presentationPersisted = false; this.log(`presentation history save failed after canonical commit: ${error.message}`); }
+        }
+        const language_assistance = { ...summarizeLanguageAssistance(selected, living), presentation_persisted: presentationPersisted };
         this.traceNaturalTurn("turn-result", { request_id:requestId, status:living.status, interpretation_code:living.interpretation?.code ?? null, canonical_mutation:living.canonical_mutation, trace:living.trace, language_assistance });
         if (living.status === "interpretation_failed") return { ok:false, error:{ code:"PROVIDER_UNAVAILABLE", message:language_assistance.message, provider_failure:true }, result:{ executed:false, language_assistance } };
         if (living.status === "clarification") {

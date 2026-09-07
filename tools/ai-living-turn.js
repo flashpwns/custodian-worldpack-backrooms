@@ -104,7 +104,8 @@ function fallbackPresentation(providerPacket, reason = null, authoredBeat = null
     scene_description: canonLinter.enforceCanonText(parts.join(" ")),
     npc_presentations: [],
     presentation_claims: [],
-    source: authoredBeat ? authoredBeat.source : "deterministic-fallback",
+    source: "deterministic-fallback",
+    authored_source: authoredBeat?.source ?? null,
     fallback_reason: reason
   });
 }
