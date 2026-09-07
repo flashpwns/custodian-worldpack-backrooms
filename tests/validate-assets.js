@@ -324,6 +324,7 @@ scripts.push("tools/omnipass-acceptance.js", "tests/y53-omnipass.test.js");
 scripts.push("tests/y54-settings-regression.test.js", "tests/y55-survey-frontier.test.js", "tools/survey-frontier.js");
 scripts.push("tests/y56-persistent-procedural-complex.test.js", "tools/procedural-geography.js");
 scripts.push("desktop/build-info.js", "desktop/renderer-smoke.js", "tools/write-build-info.js", "tests/y57-desktop-prerequisite-repair.test.js");
+scripts.push("desktop/language-assistance.js", "tests/y84-live-provider-failure.test.js");
 scripts.push("tests/y58-assignment-engine.test.js");
 scripts.push("tools/q4-career-loop.js", "tests/y59-career-loop.test.js");
 scripts.push("tools/q4-personnel-continuity.js", "tests/y60-personnel-continuity.test.js");

@@ -533,7 +533,7 @@ test("12. Provider and model metadata appears in diagnostics while secrets never
   assert.doesNotMatch(reportContent, new RegExp(groqSecret), "Secret key must NEVER appear in exported tester report");
 });
 
-test("13. Deterministic fallback operates when all hosted providers fail", async () => {
+test("13. Offline resilience remains available but hosted desktop interpretation fails visibly", async () => {
   const { service, credentials } = serviceFixture();
   credentials.set("groq", "gsk-failing");
   credentials.set("gemini", "gemini-failing");
@@ -563,13 +563,20 @@ test("13. Deterministic fallback operates when all hosted providers fail", async
   assert.equal(pool.lastAttemptChain[4].status, "completed");
 
   const world = setupWorldAndSession(service, "all-fail-fallback");
-  const result = await service.submitNatural({
+  const command = {
     world_id: world.id,
     mode: "field-researcher",
     text: "I keep walking toward the passage."
-  });
+  };
+  const before = JSON.stringify(service.session(world.id, "field-researcher").run);
+  const failed = await service.submitNatural(command);
+  assert.equal(failed.ok, false, "Hosted failure must not execute the offline interpretation silently");
+  assert.equal(failed.error.provider_failure, true);
+  assert.equal(JSON.stringify(service.session(world.id, "field-researcher").run), before);
+  service.updateSettings({ settings:{ provider:"offline" } });
+  const result = await service.submitNatural(command);
 
-  assert.equal(result.ok, true, "Turn must succeed via deterministic offline interpreter");
+  assert.equal(result.ok, true, "Explicit offline mode retains deterministic gameplay");
   assert.equal(result.result.executed, true);
   assert.ok(result.result.scene.narration);
 });
@@ -578,6 +585,7 @@ test("14. Manual provider mode does NOT silently use a different hosted provider
   const { service, credentials } = serviceFixture({ provider: "openai" });
   credentials.set("openai", "sk-openai-manual-fail");
   credentials.set("groq", "gsk-healthy-groq");
+  assert.equal(service.updateSettings({ settings:{ provider:"openai" } }).ok, true);
 
   let groqCalled = false;
   const pool = new ProviderPool({
@@ -605,7 +613,8 @@ test("14. Manual provider mode does NOT silently use a different hosted provider
   });
 
   assert.equal(groqCalled, false, "Manual OpenAI mode must NOT silently invoke Groq");
-  assert.equal(result.ok, true, "Offline fallback resolved the turn");
+  assert.equal(result.ok, false, "A failed selected provider must remain a visible failure");
+  assert.equal(result.error.provider_failure, true);
 });
 
 test("15. AUTO behavior is deterministic under mocked provider health", async () => {

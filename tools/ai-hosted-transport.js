@@ -379,6 +379,9 @@ function createHostedProvider({
       transport: transportType,
       hosted_request: hostedRequest,
       provider_call_attempted: true,
+      context_sha256: crypto.createHash("sha256").update(JSON.stringify(payload.context ?? payload)).digest("hex"),
+      context_sections: Object.keys(payload.context ?? payload),
+      context_version: payload.context?.version ?? payload.version ?? null,
       store: false
     };
 

@@ -654,6 +654,12 @@
       "status": "included",
       "tier": "aggregate",
       "fast": false
+    },
+    {
+      "file": "tests/y84-live-provider-failure.test.js",
+      "status": "included",
+      "tier": "aggregate",
+      "fast": false
     }
   ],
   "report_tools": [

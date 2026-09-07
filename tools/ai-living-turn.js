@@ -170,10 +170,10 @@ function validatePresentation(providerPacket, candidate) {
     if (visibleActivity.test(text) && !events.filter((event) => event.actor_id === person.observer_id).some((event) => text.includes(visibleActionText(packet, event)))) return { ok: false, code: "PRESENTATION_ACTION_IMPOSSIBLE" };
   }
 
-  const playerEvent = events.find((event) => event.actor_id === packet.observer_id);
-  const inventedPlayer = /\byou (?:say|speak|tell|ask|reply|answer|decide|realize|conclude|notice|walk|run|move|arrive|turn|reach|inspect|measure|photograph|pick up|take|use)\b/i.exec(text);
-  if (inventedPlayer) {
-    const action = String(playerEvent?.action ?? providerPacket.authoritative_resolution.action ?? "").toLowerCase();
+  // Only this resolved player attempt can authorize action narration. Older
+  // observable events are context, not permission to invent another action.
+  const action = String(providerPacket.authoritative_resolution.action ?? "").toUpperCase();
+  for (const inventedPlayer of text.matchAll(/\byou (?:say|speak|tell|ask|reply|answer|decide|realize|conclude|notice|walk|run|move|arrive|turn|reach|inspect|measure|photograph|pick up|take|use)\b/gi)) {
     const phrase = inventedPlayer[0].toLowerCase();
     const supported = (action === "USE" && /(?:measure|use)$/.test(phrase)) || (action === "MOVE" && /(?:walk|run|move|arrive)$/.test(phrase)) || (action === "INSPECT" && phrase.endsWith("inspect")) || (action === "PHOTOGRAPH" && phrase.endsWith("photograph"));
     if (!supported) return { ok: false, code: "PRESENTATION_PLAYER_AGENCY_INVENTED" };
@@ -189,6 +189,7 @@ async function executeLivingTurn({ run, player_text, interpreter, presentation_p
   trace.push("interpreter");
   const interpretation = await interpretPlayerLanguage({ run, player_text, interpreter, request_id });
   if (!isDeepStrictEqual(run, beforeInterpretation)) throw new Error("INTERPRETATION_MUTATED_CANON");
+  if (["INTERPRETER_FAILED", "INTERPRETER_UNAVAILABLE", "OBSERVER_PROJECTION_UNAVAILABLE"].includes(interpretation.code)) return deepFreeze({ version:VERSION, status:"interpretation_failed", player_input:player_text, interpretation, trace, canonical_mutation:false });
   if (interpretation.kind === "clarification") return deepFreeze({ version: VERSION, status: "clarification", player_input: player_text, interpretation, trace, canonical_mutation: false });
 
   trace.push("resolution");

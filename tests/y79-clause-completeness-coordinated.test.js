@@ -437,7 +437,7 @@ test("20 Hosted output with invented extra clause fails validation", async () =>
   assert.deepEqual(canonicalSnapshot(run), before);
 });
 
-test("21 Provider failure retains zero mutation before dispatch", async () => {
+test("21 Provider failure is distinct from ambiguity and retains zero mutation before dispatch", async () => {
   const { run } = createUtilityFixture("test-case-21");
   const before = canonicalSnapshot(run);
 
@@ -455,7 +455,7 @@ test("21 Provider failure retains zero mutation before dispatch", async () => {
     request_id: "provider-fail-test"
   });
 
-  assert.equal(res.status, "clarification");
+  assert.equal(res.status, "interpretation_failed");
   assert.deepEqual(canonicalSnapshot(run), before);
 });
 
@@ -553,4 +553,3 @@ test("25 No generated player speech, thought, realization, emotion, or unsubmitt
   };
   assert.equal(validatePresentation(providerPacket, invalid2).code, "PRESENTATION_PLAYER_AGENCY_INVENTED");
 });
-
