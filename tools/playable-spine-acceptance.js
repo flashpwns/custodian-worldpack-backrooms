@@ -100,7 +100,7 @@ async function main() {
       institutional_launch_copy: true,
       registry_driven_world_selection: true,
       briefing_hierarchy_rendered: true,
-      visible_radio_exchange: radio.q4.channels.standard.history.slice(-2).map((item) => item.speaker).join("/") === "YOU/STANDARD",
+      visible_radio_exchange: radio.q4.channels.standard.history.slice(-2).map((item) => item.speaker.toUpperCase()).join("/") === "YOU/STANDARD",
       concrete_initial_observation: /utility room/i.test(field.scene.narration) && !/nothing notable/i.test(field.scene.narration),
       truthful_operational_map: field.q4.map.nodes.some((node) => node.current) && !field.q4.map.nodes.some((node) => node.id === "columned-corridor"),
       valid_movement_mutated_state: beforeRestart.location === "Columned Corridor" && beforeRestart.map.route_history.length > 0,

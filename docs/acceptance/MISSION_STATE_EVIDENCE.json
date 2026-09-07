@@ -1,6 +1,6 @@
 {
   "version": "yellow-beast-mission-state-acceptance@v1",
-  "generated_at": "2026-08-01T11:45:27.581Z",
+  "generated_at": "2026-09-07T02:13:53.076Z",
   "evidence_kind": "deterministic renderer-backed and persisted authoritative-state capture",
   "actions": [
     "review briefing",
@@ -8,9 +8,9 @@
     "select route-marker kit",
     "PROCEED",
     "APPROACH",
-    "CROSS",
+    "READY",
     "RADIO_CHECK",
-    "BEGIN_FIELD_OPERATION",
+    "CROSS",
     "INSPECT and TEST fixture",
     "PHOTOGRAPH and MARK floor",
     "INSPECT panel",
@@ -26,7 +26,7 @@
   "stages": {
     "briefing": {
       "phase": "BRIEFING",
-      "mission": "CQ4-002",
+      "mission": "CQ4-WO-0001",
       "lifecycle": "briefing",
       "required": [
         {
@@ -218,7 +218,7 @@
           {
             "name": "ASYNC Briefing Room",
             "current": true,
-            "status": "confirmed"
+            "status": "OBSERVED"
           }
         ],
         "route_history": [],
@@ -226,9 +226,7 @@
           {
             "ref": "briefing-to-staging",
             "label": "FORWARD — Equipment Staging",
-            "direction": "forward",
-            "status": "unresolved",
-            "hazard": "clear"
+            "status": "unresolved"
           }
         ]
       },
@@ -236,7 +234,7 @@
     },
     "radio_check": {
       "phase": "STANDARD_RADIO_CHECK",
-      "mission": "CQ4-002",
+      "mission": "CQ4-WO-0001",
       "lifecycle": "authorized",
       "required": [
         {
@@ -360,7 +358,7 @@
         ]
       },
       "result": null,
-      "location": "Threshold-Side Entry",
+      "location": "Threshold Room",
       "evidence": [],
       "equipment": [
         {
@@ -404,25 +402,25 @@
           "display_name": "Jack Rocha · YOU",
           "contact_category": "SELF",
           "condition": "normal",
-          "location": "threshold-side-entry"
+          "location": "threshold-room"
         },
         {
           "display_name": "Sylvia Foley",
           "contact_category": "LOCAL",
           "condition": "normal",
-          "location": "threshold-side-entry"
+          "location": "threshold-room"
         },
         {
           "display_name": "Carmen Hardin",
           "contact_category": "LOCAL",
           "condition": "normal",
-          "location": "threshold-side-entry"
+          "location": "threshold-room"
         },
         {
           "display_name": "Orlando Simmons",
           "contact_category": "LOCAL",
           "condition": "normal",
-          "location": "threshold-side-entry"
+          "location": "threshold-room"
         }
       ],
       "radio": {
@@ -440,57 +438,35 @@
       },
       "time": "T+4 intervals",
       "map": {
-        "current_location": "threshold-side-entry",
+        "current_location": "threshold-room",
         "nodes": [
           {
             "name": "ASYNC Briefing Room",
             "current": false,
-            "status": "confirmed"
+            "status": "OBSERVED"
           },
           {
             "name": "Equipment Staging",
             "current": false,
-            "status": "confirmed"
+            "status": "OBSERVED"
           },
           {
             "name": "Threshold Approach",
             "current": false,
-            "status": "confirmed"
+            "status": "OBSERVED"
           },
           {
             "name": "Threshold Room",
-            "current": false,
-            "status": "confirmed"
-          },
-          {
-            "name": "Threshold-Side Entry",
             "current": true,
-            "status": "confirmed"
+            "status": "OBSERVED"
           }
         ],
-        "route_history": [
-          {
-            "sequence": 1,
-            "from": "threshold-room",
-            "to": "threshold-side-entry",
-            "connection_id": "threshold-crossing",
-            "at": 2
-          }
-        ],
+        "route_history": [],
         "unresolved_exits": [
           {
-            "ref": "entry-to-utility",
-            "label": "FORWARD — Utility Room",
-            "direction": "forward",
-            "status": "unresolved",
-            "hazard": "clear"
-          },
-          {
-            "ref": "bypass-to-entry",
-            "label": "SOUTHEAST — Service Bypass",
-            "direction": "southeast",
-            "status": "unresolved",
-            "hazard": "clear"
+            "ref": "threshold-crossing",
+            "label": "THROUGH — Threshold-Side Entry",
+            "status": "unresolved"
           }
         ]
       },
@@ -498,7 +474,7 @@
     },
     "field_entry_blocked": {
       "phase": "FIELD_OPERATION",
-      "mission": "CQ4-002",
+      "mission": "CQ4-WO-0001",
       "lifecycle": "return_available",
       "required": [
         {
@@ -729,32 +705,27 @@
           {
             "name": "ASYNC Briefing Room",
             "current": false,
-            "status": "confirmed"
+            "status": "OBSERVED"
           },
           {
             "name": "Equipment Staging",
             "current": false,
-            "status": "confirmed"
+            "status": "OBSERVED"
           },
           {
             "name": "Threshold Approach",
             "current": false,
-            "status": "confirmed"
+            "status": "OBSERVED"
           },
           {
             "name": "Threshold Room",
             "current": false,
-            "status": "confirmed"
-          },
-          {
-            "name": "Threshold-Side Entry",
-            "current": false,
-            "status": "confirmed"
+            "status": "OBSERVED"
           },
           {
             "name": "Utility Room",
             "current": true,
-            "status": "confirmed"
+            "status": "OBSERVED"
           }
         ],
         "route_history": [
@@ -763,7 +734,7 @@
             "from": "threshold-room",
             "to": "threshold-side-entry",
             "connection_id": "threshold-crossing",
-            "at": 2
+            "at": 5
           },
           {
             "sequence": 2,
@@ -775,18 +746,19 @@
         ],
         "unresolved_exits": [
           {
+            "ref": "entry-to-utility",
+            "label": "BACK — Threshold-Side Entry",
+            "status": "confirmed"
+          },
+          {
             "ref": "utility-to-corridor",
             "label": "WEST — Columned Corridor",
-            "direction": "west",
-            "status": "unresolved",
-            "hazard": "clear"
+            "status": "unresolved"
           },
           {
             "ref": "utility-to-passage",
             "label": "SOUTHEAST — Open Passage",
-            "direction": "southeast",
-            "status": "unresolved",
-            "hazard": "clear"
+            "status": "unresolved"
           }
         ]
       },
@@ -794,7 +766,7 @@
     },
     "condition_driven_update": {
       "phase": "FIELD_OPERATION",
-      "mission": "CQ4-002",
+      "mission": "CQ4-WO-0001",
       "lifecycle": "return_available",
       "required": [
         {
@@ -1007,32 +979,27 @@
           {
             "name": "ASYNC Briefing Room",
             "current": false,
-            "status": "confirmed"
+            "status": "OBSERVED"
           },
           {
             "name": "Equipment Staging",
             "current": false,
-            "status": "confirmed"
+            "status": "OBSERVED"
           },
           {
             "name": "Threshold Approach",
             "current": false,
-            "status": "confirmed"
+            "status": "OBSERVED"
           },
           {
             "name": "Threshold Room",
             "current": false,
-            "status": "confirmed"
-          },
-          {
-            "name": "Threshold-Side Entry",
-            "current": false,
-            "status": "confirmed"
+            "status": "OBSERVED"
           },
           {
             "name": "Utility Room",
             "current": true,
-            "status": "confirmed"
+            "status": "OBSERVED"
           }
         ],
         "route_history": [
@@ -1041,7 +1008,7 @@
             "from": "threshold-room",
             "to": "threshold-side-entry",
             "connection_id": "threshold-crossing",
-            "at": 2
+            "at": 5
           },
           {
             "sequence": 2,
@@ -1053,18 +1020,19 @@
         ],
         "unresolved_exits": [
           {
+            "ref": "entry-to-utility",
+            "label": "BACK — Threshold-Side Entry",
+            "status": "confirmed"
+          },
+          {
             "ref": "utility-to-corridor",
             "label": "WEST — Columned Corridor",
-            "direction": "west",
-            "status": "unresolved",
-            "hazard": "clear"
+            "status": "unresolved"
           },
           {
             "ref": "utility-to-passage",
             "label": "SOUTHEAST — Open Passage",
-            "direction": "southeast",
-            "status": "unresolved",
-            "hazard": "clear"
+            "status": "unresolved"
           }
         ]
       },
@@ -1072,7 +1040,7 @@
     },
     "optional_evidence": {
       "phase": "FIELD_OPERATION",
-      "mission": "CQ4-002",
+      "mission": "CQ4-WO-0001",
       "lifecycle": "return_available",
       "required": [
         {
@@ -1275,32 +1243,27 @@
           {
             "name": "ASYNC Briefing Room",
             "current": false,
-            "status": "confirmed"
+            "status": "OBSERVED"
           },
           {
             "name": "Equipment Staging",
             "current": false,
-            "status": "confirmed"
+            "status": "OBSERVED"
           },
           {
             "name": "Threshold Approach",
             "current": false,
-            "status": "confirmed"
+            "status": "OBSERVED"
           },
           {
             "name": "Threshold Room",
             "current": false,
-            "status": "confirmed"
-          },
-          {
-            "name": "Threshold-Side Entry",
-            "current": false,
-            "status": "confirmed"
+            "status": "OBSERVED"
           },
           {
             "name": "Utility Room",
             "current": true,
-            "status": "confirmed"
+            "status": "OBSERVED"
           }
         ],
         "route_history": [
@@ -1309,7 +1272,7 @@
             "from": "threshold-room",
             "to": "threshold-side-entry",
             "connection_id": "threshold-crossing",
-            "at": 2
+            "at": 5
           },
           {
             "sequence": 2,
@@ -1321,18 +1284,19 @@
         ],
         "unresolved_exits": [
           {
+            "ref": "entry-to-utility",
+            "label": "BACK — Threshold-Side Entry",
+            "status": "confirmed"
+          },
+          {
             "ref": "utility-to-corridor",
             "label": "WEST — Columned Corridor",
-            "direction": "west",
-            "status": "unresolved",
-            "hazard": "clear"
+            "status": "unresolved"
           },
           {
             "ref": "utility-to-passage",
             "label": "SOUTHEAST — Open Passage",
-            "direction": "southeast",
-            "status": "unresolved",
-            "hazard": "clear"
+            "status": "unresolved"
           }
         ]
       },
@@ -1340,7 +1304,7 @@
     },
     "survey_complete": {
       "phase": "FIELD_OPERATION",
-      "mission": "CQ4-002",
+      "mission": "CQ4-WO-0001",
       "lifecycle": "return_available",
       "required": [
         {
@@ -1538,32 +1502,27 @@
           {
             "name": "ASYNC Briefing Room",
             "current": false,
-            "status": "confirmed"
+            "status": "OBSERVED"
           },
           {
             "name": "Equipment Staging",
             "current": false,
-            "status": "confirmed"
+            "status": "OBSERVED"
           },
           {
             "name": "Threshold Approach",
             "current": false,
-            "status": "confirmed"
+            "status": "OBSERVED"
           },
           {
             "name": "Threshold Room",
             "current": false,
-            "status": "confirmed"
-          },
-          {
-            "name": "Threshold-Side Entry",
-            "current": false,
-            "status": "confirmed"
+            "status": "OBSERVED"
           },
           {
             "name": "Utility Room",
             "current": true,
-            "status": "confirmed"
+            "status": "OBSERVED"
           }
         ],
         "route_history": [
@@ -1572,7 +1531,7 @@
             "from": "threshold-room",
             "to": "threshold-side-entry",
             "connection_id": "threshold-crossing",
-            "at": 2
+            "at": 5
           },
           {
             "sequence": 2,
@@ -1584,18 +1543,19 @@
         ],
         "unresolved_exits": [
           {
+            "ref": "entry-to-utility",
+            "label": "BACK — Threshold-Side Entry",
+            "status": "confirmed"
+          },
+          {
             "ref": "utility-to-corridor",
             "label": "WEST — Columned Corridor",
-            "direction": "west",
-            "status": "unresolved",
-            "hazard": "clear"
+            "status": "unresolved"
           },
           {
             "ref": "utility-to-passage",
             "label": "SOUTHEAST — Open Passage",
-            "direction": "southeast",
-            "status": "unresolved",
-            "hazard": "clear"
+            "status": "unresolved"
           }
         ]
       },
@@ -1603,7 +1563,7 @@
     },
     "evidence_reported_and_check_in": {
       "phase": "FIELD_OPERATION",
-      "mission": "CQ4-002",
+      "mission": "CQ4-WO-0001",
       "lifecycle": "return_available",
       "required": [
         {
@@ -1797,32 +1757,27 @@
           {
             "name": "ASYNC Briefing Room",
             "current": false,
-            "status": "confirmed"
+            "status": "OBSERVED"
           },
           {
             "name": "Equipment Staging",
             "current": false,
-            "status": "confirmed"
+            "status": "OBSERVED"
           },
           {
             "name": "Threshold Approach",
             "current": false,
-            "status": "confirmed"
+            "status": "OBSERVED"
           },
           {
             "name": "Threshold Room",
             "current": false,
-            "status": "confirmed"
-          },
-          {
-            "name": "Threshold-Side Entry",
-            "current": false,
-            "status": "confirmed"
+            "status": "OBSERVED"
           },
           {
             "name": "Utility Room",
             "current": true,
-            "status": "confirmed"
+            "status": "OBSERVED"
           }
         ],
         "route_history": [
@@ -1831,7 +1786,7 @@
             "from": "threshold-room",
             "to": "threshold-side-entry",
             "connection_id": "threshold-crossing",
-            "at": 2
+            "at": 5
           },
           {
             "sequence": 2,
@@ -1843,18 +1798,19 @@
         ],
         "unresolved_exits": [
           {
+            "ref": "entry-to-utility",
+            "label": "BACK — Threshold-Side Entry",
+            "status": "confirmed"
+          },
+          {
             "ref": "utility-to-corridor",
             "label": "WEST — Columned Corridor",
-            "direction": "west",
-            "status": "unresolved",
-            "hazard": "clear"
+            "status": "unresolved"
           },
           {
             "ref": "utility-to-passage",
             "label": "SOUTHEAST — Open Passage",
-            "direction": "southeast",
-            "status": "unresolved",
-            "hazard": "clear"
+            "status": "unresolved"
           }
         ]
       },
@@ -1862,7 +1818,7 @@
     },
     "route_verified_and_return_ready": {
       "phase": "FIELD_OPERATION",
-      "mission": "CQ4-002",
+      "mission": "CQ4-WO-0001",
       "lifecycle": "return_available",
       "required": [
         {
@@ -2045,37 +2001,37 @@
           {
             "name": "ASYNC Briefing Room",
             "current": false,
-            "status": "confirmed"
+            "status": "OBSERVED"
           },
           {
             "name": "Equipment Staging",
             "current": false,
-            "status": "confirmed"
+            "status": "OBSERVED"
           },
           {
             "name": "Threshold Approach",
             "current": false,
-            "status": "confirmed"
+            "status": "OBSERVED"
           },
           {
             "name": "Threshold Room",
             "current": false,
-            "status": "confirmed"
-          },
-          {
-            "name": "Threshold-Side Entry",
-            "current": true,
-            "status": "confirmed"
+            "status": "OBSERVED"
           },
           {
             "name": "Utility Room",
             "current": false,
-            "status": "confirmed"
+            "status": "OBSERVED"
           },
           {
             "name": "Open Passage",
             "current": false,
-            "status": "confirmed"
+            "status": "OBSERVED"
+          },
+          {
+            "name": "Threshold-Side Entry",
+            "current": true,
+            "status": "OBSERVED"
           }
         ],
         "route_history": [
@@ -2084,7 +2040,7 @@
             "from": "threshold-room",
             "to": "threshold-side-entry",
             "connection_id": "threshold-crossing",
-            "at": 2
+            "at": 5
           },
           {
             "sequence": 2,
@@ -2119,9 +2075,7 @@
           {
             "ref": "bypass-to-entry",
             "label": "SOUTHEAST — Service Bypass",
-            "direction": "southeast",
-            "status": "unresolved",
-            "hazard": "clear"
+            "status": "unresolved"
           }
         ]
       },
@@ -2129,7 +2083,7 @@
     },
     "return_in_progress": {
       "phase": "RETURN",
-      "mission": "CQ4-002",
+      "mission": "CQ4-WO-0001",
       "lifecycle": "returning",
       "required": [
         {
@@ -2306,37 +2260,37 @@
           {
             "name": "ASYNC Briefing Room",
             "current": false,
-            "status": "confirmed"
+            "status": "OBSERVED"
           },
           {
             "name": "Equipment Staging",
             "current": false,
-            "status": "confirmed"
+            "status": "OBSERVED"
           },
           {
             "name": "Threshold Approach",
             "current": false,
-            "status": "confirmed"
+            "status": "OBSERVED"
           },
           {
             "name": "Threshold Room",
             "current": false,
-            "status": "confirmed"
-          },
-          {
-            "name": "Threshold-Side Entry",
-            "current": true,
-            "status": "confirmed"
+            "status": "OBSERVED"
           },
           {
             "name": "Utility Room",
             "current": false,
-            "status": "confirmed"
+            "status": "OBSERVED"
           },
           {
             "name": "Open Passage",
             "current": false,
-            "status": "confirmed"
+            "status": "OBSERVED"
+          },
+          {
+            "name": "Threshold-Side Entry",
+            "current": true,
+            "status": "OBSERVED"
           }
         ],
         "route_history": [
@@ -2345,7 +2299,7 @@
             "from": "threshold-room",
             "to": "threshold-side-entry",
             "connection_id": "threshold-crossing",
-            "at": 2
+            "at": 5
           },
           {
             "sequence": 2,
@@ -2380,9 +2334,7 @@
           {
             "ref": "bypass-to-entry",
             "label": "SOUTHEAST — Service Bypass",
-            "direction": "southeast",
-            "status": "unresolved",
-            "hazard": "clear"
+            "status": "unresolved"
           }
         ]
       },
@@ -2390,7 +2342,7 @@
     },
     "derived_debrief": {
       "phase": "DEBRIEF",
-      "mission": "CQ4-002",
+      "mission": "CQ4-WO-0001",
       "lifecycle": "completed",
       "required": [
         {
@@ -2461,7 +2413,7 @@
       },
       "result": {
         "version": "yellow-beast-mission-result@v1",
-        "mission_id": "CQ4-THRESHOLD-ACCESS-CONFIRMATION-002-4177",
+        "mission_id": "CQ4-WO-0001",
         "final_mission_state": "completed",
         "classification": "enhanced-completion",
         "required_objectives_satisfied": [
@@ -2612,15 +2564,15 @@
             {
               "purpose": "radio-check",
               "state": "acknowledged",
-              "sent_at": 3,
-              "delivered_at": 4,
+              "sent_at": 2,
+              "delivered_at": 3,
               "acknowledged_at": 4
             },
             {
               "purpose": "acknowledge-report",
               "state": "delivered",
-              "sent_at": 5,
-              "delivered_at": 5,
+              "sent_at": 4,
+              "delivered_at": 4,
               "acknowledged_at": null
             },
             {
@@ -2772,37 +2724,37 @@
           {
             "name": "ASYNC Briefing Room",
             "current": false,
-            "status": "confirmed"
+            "status": "OBSERVED"
           },
           {
             "name": "Equipment Staging",
             "current": false,
-            "status": "confirmed"
+            "status": "OBSERVED"
           },
           {
             "name": "Threshold Approach",
             "current": false,
-            "status": "confirmed"
+            "status": "OBSERVED"
           },
           {
             "name": "Threshold Room",
             "current": false,
-            "status": "confirmed"
-          },
-          {
-            "name": "Threshold-Side Entry",
-            "current": true,
-            "status": "confirmed"
+            "status": "OBSERVED"
           },
           {
             "name": "Utility Room",
             "current": false,
-            "status": "confirmed"
+            "status": "OBSERVED"
           },
           {
             "name": "Open Passage",
             "current": false,
-            "status": "confirmed"
+            "status": "OBSERVED"
+          },
+          {
+            "name": "Threshold-Side Entry",
+            "current": true,
+            "status": "OBSERVED"
           }
         ],
         "route_history": [
@@ -2811,7 +2763,7 @@
             "from": "threshold-room",
             "to": "threshold-side-entry",
             "connection_id": "threshold-crossing",
-            "at": 2
+            "at": 5
           },
           {
             "sequence": 2,
@@ -2846,20 +2798,18 @@
           {
             "ref": "bypass-to-entry",
             "label": "SOUTHEAST — Service Bypass",
-            "direction": "southeast",
-            "status": "unresolved",
-            "hazard": "clear"
+            "status": "unresolved"
           }
         ]
       },
       "review": {
         "version": "yellow-beast-q4-continuity@v3",
-        "mission_id": "CQ4-THRESHOLD-ACCESS-CONFIRMATION-002-4177",
+        "mission_id": "CQ4-WO-0001",
         "outcome": "enhanced-completion",
         "final_mission_state": "completed",
         "public_debrief_summary": "The team returned with the required survey, reporting, route, and accountability record plus an additional documented condition.",
         "assignment": {
-          "objective": "Confirm the accessibility of the recorded Threshold approach and return procedure.",
+          "objective": "Survey the declared frontier from the fixed Threshold approach and retain an accountable field record.",
           "completion_status": "completed",
           "deviations": [],
           "objective_outcomes": [
@@ -3105,7 +3055,7 @@
           ],
           "delivered": [
             {
-              "id": "message-8e8177ee02ebd68d7b",
+              "id": "message-ee6d3b94b2cafc55c5",
               "sender": "q4-player-35a5e8690a027e84",
               "intended_recipient": "Standard",
               "intended_recipients": [
@@ -3116,44 +3066,45 @@
               ],
               "channel": "FIELD_RADIO",
               "purpose": "radio-check",
-              "text": "Standard, Clear-Q4 team Complex-side. 4 personnel accounted for.",
+              "text": "Standard, Clear-Q4 team accounted for. Radio check.",
               "state": "acknowledged",
               "delivery_status": "delivered",
-              "sent_at": 3,
-              "interval": 3,
-              "delivered_at": 4,
+              "sent_at": 2,
+              "interval": 2,
+              "delivered_at": 3,
               "acknowledged_at": 4,
               "interference": null,
               "failure_reason": null,
               "evidence_ids": [],
+              "geography_report": false,
               "provenance": "authoritative-communication-runtime",
               "history": [
                 {
                   "sequence": 1,
                   "from": null,
                   "to": "composed",
-                  "at": 3,
+                  "at": 2,
                   "reason": "message composed"
                 },
                 {
                   "sequence": 2,
                   "from": "composed",
                   "to": "queued",
-                  "at": 3,
+                  "at": 2,
                   "reason": "accepted into the field-radio transmission queue"
                 },
                 {
                   "sequence": 3,
                   "from": "queued",
                   "to": "transmitting",
-                  "at": 4,
+                  "at": 3,
                   "reason": "field-radio transmission begun"
                 },
                 {
                   "sequence": 4,
                   "from": "transmitting",
                   "to": "delivered",
-                  "at": 4,
+                  "at": 3,
                   "reason": "the intended recipient received the radio message"
                 },
                 {
@@ -3164,10 +3115,10 @@
                   "reason": "Standard acknowledged the delivered message"
                 }
               ],
-              "institutional_recorded": "q4-delivered-communication-message-8e8177ee02ebd68d7b"
+              "institutional_recorded": "q4-delivered-communication-message-ee6d3b94b2cafc55c5"
             },
             {
-              "id": "standard-institution-decision-b68f946ca570cbc15e",
+              "id": "standard-institution-decision-60b343714d789e3da2",
               "sender": "Standard",
               "intended_recipient": "q4-player-35a5e8690a027e84",
               "intended_recipients": [
@@ -3181,27 +3132,28 @@
               "text": "Standard acknowledges the delivered status report.",
               "state": "delivered",
               "delivery_status": "delivered",
-              "sent_at": 5,
-              "interval": 5,
-              "delivered_at": 5,
+              "sent_at": 4,
+              "interval": 4,
+              "delivered_at": 4,
               "acknowledged_at": null,
               "interference": null,
               "failure_reason": null,
               "evidence_ids": [],
-              "provenance": "institutional-decision:institution-decision-b68f946ca570cbc15e",
+              "geography_report": false,
+              "provenance": "institutional-decision:institution-decision-60b343714d789e3da2",
               "history": [
                 {
                   "sequence": 1,
                   "from": null,
                   "to": "composed",
-                  "at": 5,
+                  "at": 4,
                   "reason": "message composed"
                 },
                 {
                   "sequence": 2,
                   "from": "composed",
                   "to": "delivered",
-                  "at": 5,
+                  "at": 4,
                   "reason": "scheduled Standard response resolved"
                 }
               ]
@@ -3231,6 +3183,7 @@
                 "object-evidence-367dca4953b1618dd273",
                 "object-evidence-d5840ed45d4a3a84ac37"
               ],
+              "geography_report": false,
               "provenance": "authoritative-communication-runtime",
               "history": [
                 {
@@ -3294,6 +3247,7 @@
               "interference": null,
               "failure_reason": null,
               "evidence_ids": [],
+              "geography_report": false,
               "provenance": "institutional-decision:institution-decision-ace03e3048cb205652",
               "history": [
                 {
@@ -3334,6 +3288,7 @@
               "interference": null,
               "failure_reason": null,
               "evidence_ids": [],
+              "geography_report": false,
               "provenance": "authoritative-communication-runtime",
               "history": [
                 {
@@ -3384,15 +3339,15 @@
               {
                 "purpose": "radio-check",
                 "state": "acknowledged",
-                "sent_at": 3,
-                "delivered_at": 4,
+                "sent_at": 2,
+                "delivered_at": 3,
                 "acknowledged_at": 4
               },
               {
                 "purpose": "acknowledge-report",
                 "state": "delivered",
-                "sent_at": 5,
-                "delivered_at": 5,
+                "sent_at": 4,
+                "delivered_at": 4,
                 "acknowledged_at": null
               },
               {
@@ -3459,34 +3414,17 @@
             "target_observation": "The active fixture held a steady output during the instrument test.",
             "provenance": "worldpack-authored-object-interaction",
             "valid": true,
-            "mission_id": "CQ4-THRESHOLD-ACCESS-CONFIRMATION-002-4177",
-            "render": {
-              "id": "render-fb2794ec14ce8219",
-              "evidence_id": "object-evidence-367dca4953b1618dd273",
-              "adapter": "fallback",
-              "workflow": "observer-safe-q4-evidence",
-              "status": "fallback-ready",
-              "attempts": 0,
-              "source_fact_digest": "1560367cdb27d6e6c2a0b124d121569a4fe8670ac1ec2d064dac2102afb14fac",
-              "created_at": "simulation-recorded",
-              "result": {
-                "status": "fallback",
-                "kind": "schematic-capture",
-                "label": "Observer-safe field capture",
-                "reason": "renderer-disabled",
-                "source_fact_digest": "1560367cdb27d6e6c2a0b124d121569a4fe8670ac1ec2d064dac2102afb14fac",
-                "asset_id": "fallback-object-evidence-367dca4953b1618dd273",
-                "provenance": "local-deterministic-fallback"
-              }
+            "mission_id": "CQ4-WO-0001",
+            "environmental_conditions": {
+              "lighting": "normal",
+              "communications": "nominal",
+              "structural": "stable",
+              "moisture": "dry",
+              "acoustic": "ordinary",
+              "visibility": "normal"
             },
-            "visual": {
-              "status": "fallback",
-              "kind": "schematic-capture",
-              "label": "Observer-safe field capture",
-              "reason": "renderer-disabled",
-              "source_fact_digest": "1560367cdb27d6e6c2a0b124d121569a4fe8670ac1ec2d064dac2102afb14fac",
-              "asset_id": "fallback-object-evidence-367dca4953b1618dd273",
-              "provenance": "local-deterministic-fallback"
+            "render": {
+              "status": "fallback-ready"
             }
           },
           {
@@ -3527,34 +3465,17 @@
             "target_observation": "The photograph records the floor pattern and whether a survey marker is present.",
             "provenance": "worldpack-authored-object-interaction",
             "valid": true,
-            "mission_id": "CQ4-THRESHOLD-ACCESS-CONFIRMATION-002-4177",
-            "render": {
-              "id": "render-c2fa994354fffa9c",
-              "evidence_id": "object-evidence-d5840ed45d4a3a84ac37",
-              "adapter": "fallback",
-              "workflow": "observer-safe-q4-evidence",
-              "status": "fallback-ready",
-              "attempts": 0,
-              "source_fact_digest": "f7f225f65da3e73360d31c04196d0f0d0d442b227de5e7da95a5a9ebfd01e765",
-              "created_at": "simulation-recorded",
-              "result": {
-                "status": "fallback",
-                "kind": "schematic-capture",
-                "label": "Observer-safe field capture",
-                "reason": "renderer-disabled",
-                "source_fact_digest": "f7f225f65da3e73360d31c04196d0f0d0d442b227de5e7da95a5a9ebfd01e765",
-                "asset_id": "fallback-object-evidence-d5840ed45d4a3a84ac37",
-                "provenance": "local-deterministic-fallback"
-              }
+            "mission_id": "CQ4-WO-0001",
+            "environmental_conditions": {
+              "lighting": "normal",
+              "communications": "nominal",
+              "structural": "stable",
+              "moisture": "dry",
+              "acoustic": "ordinary",
+              "visibility": "normal"
             },
-            "visual": {
-              "status": "fallback",
-              "kind": "schematic-capture",
-              "label": "Observer-safe field capture",
-              "reason": "renderer-disabled",
-              "source_fact_digest": "f7f225f65da3e73360d31c04196d0f0d0d442b227de5e7da95a5a9ebfd01e765",
-              "asset_id": "fallback-object-evidence-d5840ed45d4a3a84ac37",
-              "provenance": "local-deterministic-fallback"
+            "render": {
+              "status": "fallback-ready"
             }
           }
         ],
@@ -3581,6 +3502,7 @@
           },
           "team_decisions": 42
         },
+        "written_report": null,
         "institutional_consequence_hooks": [
           "clean_completion",
           "optional_success",
@@ -3589,16 +3511,17 @@
         "institutional_findings": {
           "reported": [
             {
-              "text": "Standard, Clear-Q4 team Complex-side. 4 personnel accounted for.",
+              "text": "Standard, Clear-Q4 team accounted for. Radio check.",
               "status": "reported",
               "provenance": "q4-interaction-5"
             },
             {
               "text": "Scheduled check-in: reporting the fixture and scuff evidence records.",
               "status": "reported",
-              "provenance": "q4-interaction-15"
+              "provenance": "q4-interaction-14"
             }
           ],
+          "reference_assessment": null,
           "unresolved": [],
           "recommendations": [
             "Review the recorded personnel, equipment, container, and evidence status before the next assignment."
@@ -3614,7 +3537,7 @@
     },
     "post_restart_final_record": {
       "phase": "DEBRIEF",
-      "mission": "CQ4-002",
+      "mission": "CQ4-WO-0001",
       "lifecycle": "completed",
       "required": [
         {
@@ -3685,7 +3608,7 @@
       },
       "result": {
         "version": "yellow-beast-mission-result@v1",
-        "mission_id": "CQ4-THRESHOLD-ACCESS-CONFIRMATION-002-4177",
+        "mission_id": "CQ4-WO-0001",
         "final_mission_state": "completed",
         "classification": "enhanced-completion",
         "required_objectives_satisfied": [
@@ -3836,15 +3759,15 @@
             {
               "purpose": "radio-check",
               "state": "acknowledged",
-              "sent_at": 3,
-              "delivered_at": 4,
+              "sent_at": 2,
+              "delivered_at": 3,
               "acknowledged_at": 4
             },
             {
               "purpose": "acknowledge-report",
               "state": "delivered",
-              "sent_at": 5,
-              "delivered_at": 5,
+              "sent_at": 4,
+              "delivered_at": 4,
               "acknowledged_at": null
             },
             {
@@ -3996,37 +3919,37 @@
           {
             "name": "ASYNC Briefing Room",
             "current": false,
-            "status": "confirmed"
+            "status": "OBSERVED"
           },
           {
             "name": "Equipment Staging",
             "current": false,
-            "status": "confirmed"
+            "status": "OBSERVED"
           },
           {
             "name": "Threshold Approach",
             "current": false,
-            "status": "confirmed"
+            "status": "OBSERVED"
           },
           {
             "name": "Threshold Room",
             "current": false,
-            "status": "confirmed"
-          },
-          {
-            "name": "Threshold-Side Entry",
-            "current": true,
-            "status": "confirmed"
+            "status": "OBSERVED"
           },
           {
             "name": "Utility Room",
             "current": false,
-            "status": "confirmed"
+            "status": "OBSERVED"
           },
           {
             "name": "Open Passage",
             "current": false,
-            "status": "confirmed"
+            "status": "OBSERVED"
+          },
+          {
+            "name": "Threshold-Side Entry",
+            "current": true,
+            "status": "OBSERVED"
           }
         ],
         "route_history": [
@@ -4035,7 +3958,7 @@
             "from": "threshold-room",
             "to": "threshold-side-entry",
             "connection_id": "threshold-crossing",
-            "at": 2
+            "at": 5
           },
           {
             "sequence": 2,
@@ -4070,20 +3993,18 @@
           {
             "ref": "bypass-to-entry",
             "label": "SOUTHEAST — Service Bypass",
-            "direction": "southeast",
-            "status": "unresolved",
-            "hazard": "clear"
+            "status": "unresolved"
           }
         ]
       },
       "review": {
         "version": "yellow-beast-q4-continuity@v3",
-        "mission_id": "CQ4-THRESHOLD-ACCESS-CONFIRMATION-002-4177",
+        "mission_id": "CQ4-WO-0001",
         "outcome": "enhanced-completion",
         "final_mission_state": "completed",
         "public_debrief_summary": "The team returned with the required survey, reporting, route, and accountability record plus an additional documented condition.",
         "assignment": {
-          "objective": "Confirm the accessibility of the recorded Threshold approach and return procedure.",
+          "objective": "Survey the declared frontier from the fixed Threshold approach and retain an accountable field record.",
           "completion_status": "completed",
           "deviations": [],
           "objective_outcomes": [
@@ -4329,7 +4250,7 @@
           ],
           "delivered": [
             {
-              "id": "message-8e8177ee02ebd68d7b",
+              "id": "message-ee6d3b94b2cafc55c5",
               "sender": "q4-player-35a5e8690a027e84",
               "intended_recipient": "Standard",
               "intended_recipients": [
@@ -4340,44 +4261,45 @@
               ],
               "channel": "FIELD_RADIO",
               "purpose": "radio-check",
-              "text": "Standard, Clear-Q4 team Complex-side. 4 personnel accounted for.",
+              "text": "Standard, Clear-Q4 team accounted for. Radio check.",
               "state": "acknowledged",
               "delivery_status": "delivered",
-              "sent_at": 3,
-              "interval": 3,
-              "delivered_at": 4,
+              "sent_at": 2,
+              "interval": 2,
+              "delivered_at": 3,
               "acknowledged_at": 4,
               "interference": null,
               "failure_reason": null,
               "evidence_ids": [],
+              "geography_report": false,
               "provenance": "authoritative-communication-runtime",
               "history": [
                 {
                   "sequence": 1,
                   "from": null,
                   "to": "composed",
-                  "at": 3,
+                  "at": 2,
                   "reason": "message composed"
                 },
                 {
                   "sequence": 2,
                   "from": "composed",
                   "to": "queued",
-                  "at": 3,
+                  "at": 2,
                   "reason": "accepted into the field-radio transmission queue"
                 },
                 {
                   "sequence": 3,
                   "from": "queued",
                   "to": "transmitting",
-                  "at": 4,
+                  "at": 3,
                   "reason": "field-radio transmission begun"
                 },
                 {
                   "sequence": 4,
                   "from": "transmitting",
                   "to": "delivered",
-                  "at": 4,
+                  "at": 3,
                   "reason": "the intended recipient received the radio message"
                 },
                 {
@@ -4388,10 +4310,10 @@
                   "reason": "Standard acknowledged the delivered message"
                 }
               ],
-              "institutional_recorded": "q4-delivered-communication-message-8e8177ee02ebd68d7b"
+              "institutional_recorded": "q4-delivered-communication-message-ee6d3b94b2cafc55c5"
             },
             {
-              "id": "standard-institution-decision-b68f946ca570cbc15e",
+              "id": "standard-institution-decision-60b343714d789e3da2",
               "sender": "Standard",
               "intended_recipient": "q4-player-35a5e8690a027e84",
               "intended_recipients": [
@@ -4405,27 +4327,28 @@
               "text": "Standard acknowledges the delivered status report.",
               "state": "delivered",
               "delivery_status": "delivered",
-              "sent_at": 5,
-              "interval": 5,
-              "delivered_at": 5,
+              "sent_at": 4,
+              "interval": 4,
+              "delivered_at": 4,
               "acknowledged_at": null,
               "interference": null,
               "failure_reason": null,
               "evidence_ids": [],
-              "provenance": "institutional-decision:institution-decision-b68f946ca570cbc15e",
+              "geography_report": false,
+              "provenance": "institutional-decision:institution-decision-60b343714d789e3da2",
               "history": [
                 {
                   "sequence": 1,
                   "from": null,
                   "to": "composed",
-                  "at": 5,
+                  "at": 4,
                   "reason": "message composed"
                 },
                 {
                   "sequence": 2,
                   "from": "composed",
                   "to": "delivered",
-                  "at": 5,
+                  "at": 4,
                   "reason": "scheduled Standard response resolved"
                 }
               ]
@@ -4455,6 +4378,7 @@
                 "object-evidence-367dca4953b1618dd273",
                 "object-evidence-d5840ed45d4a3a84ac37"
               ],
+              "geography_report": false,
               "provenance": "authoritative-communication-runtime",
               "history": [
                 {
@@ -4518,6 +4442,7 @@
               "interference": null,
               "failure_reason": null,
               "evidence_ids": [],
+              "geography_report": false,
               "provenance": "institutional-decision:institution-decision-ace03e3048cb205652",
               "history": [
                 {
@@ -4558,6 +4483,7 @@
               "interference": null,
               "failure_reason": null,
               "evidence_ids": [],
+              "geography_report": false,
               "provenance": "authoritative-communication-runtime",
               "history": [
                 {
@@ -4608,15 +4534,15 @@
               {
                 "purpose": "radio-check",
                 "state": "acknowledged",
-                "sent_at": 3,
-                "delivered_at": 4,
+                "sent_at": 2,
+                "delivered_at": 3,
                 "acknowledged_at": 4
               },
               {
                 "purpose": "acknowledge-report",
                 "state": "delivered",
-                "sent_at": 5,
-                "delivered_at": 5,
+                "sent_at": 4,
+                "delivered_at": 4,
                 "acknowledged_at": null
               },
               {
@@ -4683,34 +4609,17 @@
             "target_observation": "The active fixture held a steady output during the instrument test.",
             "provenance": "worldpack-authored-object-interaction",
             "valid": true,
-            "mission_id": "CQ4-THRESHOLD-ACCESS-CONFIRMATION-002-4177",
-            "render": {
-              "id": "render-fb2794ec14ce8219",
-              "evidence_id": "object-evidence-367dca4953b1618dd273",
-              "adapter": "fallback",
-              "workflow": "observer-safe-q4-evidence",
-              "status": "fallback-ready",
-              "attempts": 0,
-              "source_fact_digest": "1560367cdb27d6e6c2a0b124d121569a4fe8670ac1ec2d064dac2102afb14fac",
-              "created_at": "simulation-recorded",
-              "result": {
-                "status": "fallback",
-                "kind": "schematic-capture",
-                "label": "Observer-safe field capture",
-                "reason": "renderer-disabled",
-                "source_fact_digest": "1560367cdb27d6e6c2a0b124d121569a4fe8670ac1ec2d064dac2102afb14fac",
-                "asset_id": "fallback-object-evidence-367dca4953b1618dd273",
-                "provenance": "local-deterministic-fallback"
-              }
+            "mission_id": "CQ4-WO-0001",
+            "environmental_conditions": {
+              "lighting": "normal",
+              "communications": "nominal",
+              "structural": "stable",
+              "moisture": "dry",
+              "acoustic": "ordinary",
+              "visibility": "normal"
             },
-            "visual": {
-              "status": "fallback",
-              "kind": "schematic-capture",
-              "label": "Observer-safe field capture",
-              "reason": "renderer-disabled",
-              "source_fact_digest": "1560367cdb27d6e6c2a0b124d121569a4fe8670ac1ec2d064dac2102afb14fac",
-              "asset_id": "fallback-object-evidence-367dca4953b1618dd273",
-              "provenance": "local-deterministic-fallback"
+            "render": {
+              "status": "fallback-ready"
             }
           },
           {
@@ -4751,34 +4660,17 @@
             "target_observation": "The photograph records the floor pattern and whether a survey marker is present.",
             "provenance": "worldpack-authored-object-interaction",
             "valid": true,
-            "mission_id": "CQ4-THRESHOLD-ACCESS-CONFIRMATION-002-4177",
-            "render": {
-              "id": "render-c2fa994354fffa9c",
-              "evidence_id": "object-evidence-d5840ed45d4a3a84ac37",
-              "adapter": "fallback",
-              "workflow": "observer-safe-q4-evidence",
-              "status": "fallback-ready",
-              "attempts": 0,
-              "source_fact_digest": "f7f225f65da3e73360d31c04196d0f0d0d442b227de5e7da95a5a9ebfd01e765",
-              "created_at": "simulation-recorded",
-              "result": {
-                "status": "fallback",
-                "kind": "schematic-capture",
-                "label": "Observer-safe field capture",
-                "reason": "renderer-disabled",
-                "source_fact_digest": "f7f225f65da3e73360d31c04196d0f0d0d442b227de5e7da95a5a9ebfd01e765",
-                "asset_id": "fallback-object-evidence-d5840ed45d4a3a84ac37",
-                "provenance": "local-deterministic-fallback"
-              }
+            "mission_id": "CQ4-WO-0001",
+            "environmental_conditions": {
+              "lighting": "normal",
+              "communications": "nominal",
+              "structural": "stable",
+              "moisture": "dry",
+              "acoustic": "ordinary",
+              "visibility": "normal"
             },
-            "visual": {
-              "status": "fallback",
-              "kind": "schematic-capture",
-              "label": "Observer-safe field capture",
-              "reason": "renderer-disabled",
-              "source_fact_digest": "f7f225f65da3e73360d31c04196d0f0d0d442b227de5e7da95a5a9ebfd01e765",
-              "asset_id": "fallback-object-evidence-d5840ed45d4a3a84ac37",
-              "provenance": "local-deterministic-fallback"
+            "render": {
+              "status": "fallback-ready"
             }
           }
         ],
@@ -4805,6 +4697,7 @@
           },
           "team_decisions": 42
         },
+        "written_report": null,
         "institutional_consequence_hooks": [
           "clean_completion",
           "optional_success",
@@ -4813,16 +4706,17 @@
         "institutional_findings": {
           "reported": [
             {
-              "text": "Standard, Clear-Q4 team Complex-side. 4 personnel accounted for.",
+              "text": "Standard, Clear-Q4 team accounted for. Radio check.",
               "status": "reported",
               "provenance": "q4-interaction-5"
             },
             {
               "text": "Scheduled check-in: reporting the fixture and scuff evidence records.",
               "status": "reported",
-              "provenance": "q4-interaction-15"
+              "provenance": "q4-interaction-14"
             }
           ],
+          "reference_assessment": null,
           "unresolved": [],
           "recommendations": [
             "Review the recorded personnel, equipment, container, and evidence status before the next assignment."

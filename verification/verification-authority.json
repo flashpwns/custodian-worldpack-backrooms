@@ -81,7 +81,8 @@
       "tests/y80-canonical-ledger-observer-shell.test.js",
       "tests/y81-canonical-ledger-epistemic-hardening.test.js",
       "tests/y82-reference-expedition-vertical-blockers.test.js",
-      "tests/y83-ai-runtime-stability.test.js"
+      "tests/y83-ai-runtime-stability.test.js",
+      "tests/y84-hybrid-canon-hardening.test.js"
     ],
     "long-world": [
       "tests/profile-model.test.js",
@@ -274,7 +275,8 @@
     "tests/y80-canonical-ledger-observer-shell.test.js": "c0779d9730611b103287dd647b9845d6e71a25656749ecc1417bd5c1ea15c494",
     "tests/y81-canonical-ledger-epistemic-hardening.test.js": "7fbf1fade5fcab6de54cde4b4cab95f997959b2d40aa919fb95365dcdc5d3f35",
     "tests/y82-reference-expedition-vertical-blockers.test.js": "e68de04e4516d473bd2828057e57bbda547e891b5244ce29db89057c1e27825c",
-    "tests/y83-ai-runtime-stability.test.js": "ff504a1e775fa2ffcce8423d38384c5ac0a238e8ad01f84455ce36b496ee3efc"
+    "tests/y83-ai-runtime-stability.test.js": "ff504a1e775fa2ffcce8423d38384c5ac0a238e8ad01f84455ce36b496ee3efc",
+    "tests/y84-hybrid-canon-hardening.test.js": "20640a1e8b56d4ffa7a84a29950e91b1fa005c9c71fb0e483692352d08f27eec"
   },
   "verification_core_hashes": {
     "tools/verification-inventory.js": "0f27da4645f1d85e48b52133475371bbbce55072807b6900108c3a1afd344f3b",

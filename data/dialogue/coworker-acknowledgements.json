@@ -1,0 +1,98 @@
+{
+  "Santiago": {
+    "ACKNOWLEDGE_ORDER": [
+      "Understood. I will get to work on that.",
+      "Copy that. Starting the measurement procedure now.",
+      "On it. Setting up the survey line."
+    ],
+    "ACKNOWLEDGE_EQUIPMENT_TRANSFER": [
+      "Instrument received. Checking the calibration zero.",
+      "Got it. I will keep custody of the hardware.",
+      "Secured in hand."
+    ],
+    "ACKNOWLEDGE_RADIO_CHECK": [
+      "Radio check sounds clear from this position.",
+      "Signal looks solid on the meter.",
+      "Standard is coming through clearly."
+    ],
+    "ACKNOWLEDGE_MOVEMENT": [
+      "Moving up with you. Watching the line.",
+      "Following behind. Keeping pace.",
+      "Advancing to the new position."
+    ],
+    "ACKNOWLEDGE_WAIT": [
+      "Holding position here. Survey line anchored.",
+      "Copy, staying put. Do not go too far ahead.",
+      "Holding here. I have visual on the rear."
+    ],
+    "ACKNOWLEDGE_FOLLOW": [
+      "Right behind you.",
+      "Tightly grouped. Let us move.",
+      "Copy that, moving in formation."
+    ]
+  },
+  "Beverly": {
+    "ACKNOWLEDGE_ORDER": [
+      "Copy. Lining up the shot now.",
+      "Understood. Documenting the feature.",
+      "On it. Getting photographic record."
+    ],
+    "ACKNOWLEDGE_EQUIPMENT_TRANSFER": [
+      "Camera secured. Roll is fresh.",
+      "Received. I have custody of the unit.",
+      "Got it. Keeping the lens clean."
+    ],
+    "ACKNOWLEDGE_RADIO_CHECK": [
+      "Loud and clear on my end.",
+      "Audio is clean.",
+      "Copy Standard. Transmission confirmed."
+    ],
+    "ACKNOWLEDGE_MOVEMENT": [
+      "Moving with you. Keeping the camera ready.",
+      "Right with you.",
+      "Advancing. Marking our visual line."
+    ],
+    "ACKNOWLEDGE_WAIT": [
+      "Holding here. Keeping my lens on the entry.",
+      "Standing by. Watching the corridor.",
+      "Understood. I will stay here and watch our flank."
+    ],
+    "ACKNOWLEDGE_FOLLOW": [
+      "With you. Moving out.",
+      "Right behind you, eyes up.",
+      "Copy. Staying with the group."
+    ]
+  },
+  "Autumn": {
+    "ACKNOWLEDGE_ORDER": [
+      "Understood. Checking the guide line.",
+      "Copy that. Verifying our route alignment.",
+      "On it. Securing the pathway."
+    ],
+    "ACKNOWLEDGE_EQUIPMENT_TRANSFER": [
+      "Gear secured. Custody confirmed.",
+      "Received. Stowed and ready.",
+      "Got the supplies."
+    ],
+    "ACKNOWLEDGE_RADIO_CHECK": [
+      "Radio readable. Static is low.",
+      "Clear check. Threshold relay is up.",
+      "Copy Standard."
+    ],
+    "ACKNOWLEDGE_MOVEMENT": [
+      "Advancing. Checking the floor markers.",
+      "Moving forward with the team.",
+      "Route is clear. Stepping up."
+    ],
+    "ACKNOWLEDGE_WAIT": [
+      "Holding the line here.",
+      "Waiting here. I have our back-trail in sight.",
+      "Understood. Holding position at the anchor."
+    ],
+    "ACKNOWLEDGE_FOLLOW": [
+      "Following your lead.",
+      "Moving up. Route stays intact.",
+      "Right with you."
+    ]
+  }
+}

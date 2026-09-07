@@ -1,6 +1,6 @@
 {
   "version": "yellow-beast-operational-dynamics-acceptance@v1",
-  "generated_at": "2026-08-01T11:45:28.233Z",
+  "generated_at": "2026-09-07T02:13:44.598Z",
   "evidence_kind": "deterministic renderer-backed and machine-readable authoritative-state capture",
   "primary_seed": "operational-dynamics-acceptance",
   "second_seed": "operational-dynamics-second-seed",
@@ -247,7 +247,7 @@
     "scheduled_check_in": {
       "phase": "FIELD_OPERATION",
       "interval": 5,
-      "next_known_event": 12,
+      "next_known_event": 6,
       "mission_lifecycle": "return_available",
       "objectives": [
         {
@@ -467,9 +467,9 @@
           "recipient": "Standard",
           "channel": "FIELD_RADIO",
           "purpose": "radio-check",
-          "sent_at": 3,
+          "sent_at": 2,
           "state": "acknowledged",
-          "delivered_at": 4,
+          "delivered_at": 3,
           "acknowledged_at": 4,
           "known_reason": null
         },
@@ -478,9 +478,9 @@
           "recipient": "You",
           "channel": "FIELD_RADIO",
           "purpose": "acknowledge-report",
-          "sent_at": 5,
+          "sent_at": 4,
           "state": "delivered",
-          "delivered_at": 5,
+          "delivered_at": 4,
           "acknowledged_at": null,
           "known_reason": null
         }
@@ -530,13 +530,7 @@
       ],
       "evidence": [],
       "location": "Utility Room",
-      "operational_updates": [
-        {
-          "kind": "scheduled-event",
-          "summary": "institution response resolved.",
-          "at": 5
-        }
-      ],
+      "operational_updates": [],
       "review": null
     },
     "evidence_recorded": {
@@ -752,9 +746,9 @@
           "recipient": "Standard",
           "channel": "FIELD_RADIO",
           "purpose": "radio-check",
-          "sent_at": 3,
+          "sent_at": 2,
           "state": "acknowledged",
-          "delivered_at": 4,
+          "delivered_at": 3,
           "acknowledged_at": 4,
           "known_reason": null
         },
@@ -763,9 +757,9 @@
           "recipient": "You",
           "channel": "FIELD_RADIO",
           "purpose": "acknowledge-report",
-          "sent_at": 5,
+          "sent_at": 4,
           "state": "delivered",
-          "delivered_at": 5,
+          "delivered_at": 4,
           "acknowledged_at": null,
           "known_reason": null
         }
@@ -1039,9 +1033,9 @@
           "recipient": "Standard",
           "channel": "FIELD_RADIO",
           "purpose": "radio-check",
-          "sent_at": 3,
+          "sent_at": 2,
           "state": "acknowledged",
-          "delivered_at": 4,
+          "delivered_at": 3,
           "acknowledged_at": 4,
           "known_reason": null
         },
@@ -1050,9 +1044,9 @@
           "recipient": "You",
           "channel": "FIELD_RADIO",
           "purpose": "acknowledge-report",
-          "sent_at": 5,
+          "sent_at": 4,
           "state": "delivered",
-          "delivered_at": 5,
+          "delivered_at": 4,
           "acknowledged_at": null,
           "known_reason": null
         }
@@ -1326,9 +1320,9 @@
           "recipient": "Standard",
           "channel": "FIELD_RADIO",
           "purpose": "radio-check",
-          "sent_at": 3,
+          "sent_at": 2,
           "state": "acknowledged",
-          "delivered_at": 4,
+          "delivered_at": 3,
           "acknowledged_at": 4,
           "known_reason": null
         },
@@ -1337,9 +1331,9 @@
           "recipient": "You",
           "channel": "FIELD_RADIO",
           "purpose": "acknowledge-report",
-          "sent_at": 5,
+          "sent_at": 4,
           "state": "delivered",
-          "delivered_at": 5,
+          "delivered_at": 4,
           "acknowledged_at": null,
           "known_reason": null
         }
@@ -1636,9 +1630,9 @@
           "recipient": "Standard",
           "channel": "FIELD_RADIO",
           "purpose": "radio-check",
-          "sent_at": 3,
+          "sent_at": 2,
           "state": "acknowledged",
-          "delivered_at": 4,
+          "delivered_at": 3,
           "acknowledged_at": 4,
           "known_reason": null
         },
@@ -1647,9 +1641,9 @@
           "recipient": "You",
           "channel": "FIELD_RADIO",
           "purpose": "acknowledge-report",
-          "sent_at": 5,
+          "sent_at": 4,
           "state": "delivered",
-          "delivered_at": 5,
+          "delivered_at": 4,
           "acknowledged_at": null,
           "known_reason": null
         }
@@ -1932,9 +1926,9 @@
           "recipient": "Standard",
           "channel": "FIELD_RADIO",
           "purpose": "radio-check",
-          "sent_at": 3,
+          "sent_at": 2,
           "state": "acknowledged",
-          "delivered_at": 4,
+          "delivered_at": 3,
           "acknowledged_at": 4,
           "known_reason": null
         },
@@ -1943,9 +1937,9 @@
           "recipient": "You",
           "channel": "FIELD_RADIO",
           "purpose": "acknowledge-report",
-          "sent_at": 5,
+          "sent_at": 4,
           "state": "delivered",
-          "delivered_at": 5,
+          "delivered_at": 4,
           "acknowledged_at": null,
           "known_reason": null
         }
@@ -2228,9 +2222,9 @@
           "recipient": "Standard",
           "channel": "FIELD_RADIO",
           "purpose": "radio-check",
-          "sent_at": 3,
+          "sent_at": 2,
           "state": "acknowledged",
-          "delivered_at": 4,
+          "delivered_at": 3,
           "acknowledged_at": 4,
           "known_reason": null
         },
@@ -2239,9 +2233,9 @@
           "recipient": "You",
           "channel": "FIELD_RADIO",
           "purpose": "acknowledge-report",
-          "sent_at": 5,
+          "sent_at": 4,
           "state": "delivered",
-          "delivered_at": 5,
+          "delivered_at": 4,
           "acknowledged_at": null,
           "known_reason": null
         },
@@ -2536,9 +2530,9 @@
           "recipient": "Standard",
           "channel": "FIELD_RADIO",
           "purpose": "radio-check",
-          "sent_at": 3,
+          "sent_at": 2,
           "state": "acknowledged",
-          "delivered_at": 4,
+          "delivered_at": 3,
           "acknowledged_at": 4,
           "known_reason": null
         },
@@ -2547,9 +2541,9 @@
           "recipient": "You",
           "channel": "FIELD_RADIO",
           "purpose": "acknowledge-report",
-          "sent_at": 5,
+          "sent_at": 4,
           "state": "delivered",
-          "delivered_at": 5,
+          "delivered_at": 4,
           "acknowledged_at": null,
           "known_reason": null
         },
@@ -2840,9 +2834,9 @@
           "recipient": "Standard",
           "channel": "FIELD_RADIO",
           "purpose": "radio-check",
-          "sent_at": 3,
+          "sent_at": 2,
           "state": "acknowledged",
-          "delivered_at": 4,
+          "delivered_at": 3,
           "acknowledged_at": 4,
           "known_reason": null
         },
@@ -2851,9 +2845,9 @@
           "recipient": "You",
           "channel": "FIELD_RADIO",
           "purpose": "acknowledge-report",
-          "sent_at": 5,
+          "sent_at": 4,
           "state": "delivered",
-          "delivered_at": 5,
+          "delivered_at": 4,
           "acknowledged_at": null,
           "known_reason": null
         },
@@ -3154,9 +3148,9 @@
           "recipient": "Standard",
           "channel": "FIELD_RADIO",
           "purpose": "radio-check",
-          "sent_at": 3,
+          "sent_at": 2,
           "state": "acknowledged",
-          "delivered_at": 4,
+          "delivered_at": 3,
           "acknowledged_at": 4,
           "known_reason": null
         },
@@ -3165,9 +3159,9 @@
           "recipient": "You",
           "channel": "FIELD_RADIO",
           "purpose": "acknowledge-report",
-          "sent_at": 5,
+          "sent_at": 4,
           "state": "delivered",
-          "delivered_at": 5,
+          "delivered_at": 4,
           "acknowledged_at": null,
           "known_reason": null
         },
@@ -3299,12 +3293,12 @@
       ],
       "review": {
         "version": "yellow-beast-q4-continuity@v3",
-        "mission_id": "CQ4-INFRASTRUCTURE-MATERIAL-002-7679",
+        "mission_id": "CQ4-WO-0001",
         "outcome": "recovered-complication",
         "final_mission_state": "completed",
         "public_debrief_summary": "The team returned with its required record after recovering an operational complication; the complication remains part of the outcome record. A teammate returned with a recorded injury. A field complication was recovered before closure. The scheduled communication record includes a missed reporting window.",
         "assignment": {
-          "objective": "Inspect and document the declared lighting and material conditions within the survey boundary.",
+          "objective": "Survey the declared frontier from the fixed Threshold approach and retain an accountable field record.",
           "completion_status": "completed",
           "deviations": [
             "missed-declared-check-in"
@@ -3551,7 +3545,7 @@
           ],
           "delivered": [
             {
-              "id": "message-8e8177ee02ebd68d7b",
+              "id": "message-ee6d3b94b2cafc55c5",
               "sender": "q4-player-35a5e8690a027e84",
               "intended_recipient": "Standard",
               "intended_recipients": [
@@ -3562,44 +3556,45 @@
               ],
               "channel": "FIELD_RADIO",
               "purpose": "radio-check",
-              "text": "Standard, Clear-Q4 team Complex-side. 4 personnel accounted for.",
+              "text": "Standard, Clear-Q4 team accounted for. Radio check.",
               "state": "acknowledged",
               "delivery_status": "delivered",
-              "sent_at": 3,
-              "interval": 3,
-              "delivered_at": 4,
+              "sent_at": 2,
+              "interval": 2,
+              "delivered_at": 3,
               "acknowledged_at": 4,
               "interference": null,
               "failure_reason": null,
               "evidence_ids": [],
+              "geography_report": false,
               "provenance": "authoritative-communication-runtime",
               "history": [
                 {
                   "sequence": 1,
                   "from": null,
                   "to": "composed",
-                  "at": 3,
+                  "at": 2,
                   "reason": "message composed"
                 },
                 {
                   "sequence": 2,
                   "from": "composed",
                   "to": "queued",
-                  "at": 3,
+                  "at": 2,
                   "reason": "accepted into the field-radio transmission queue"
                 },
                 {
                   "sequence": 3,
                   "from": "queued",
                   "to": "transmitting",
-                  "at": 4,
+                  "at": 3,
                   "reason": "field-radio transmission begun"
                 },
                 {
                   "sequence": 4,
                   "from": "transmitting",
                   "to": "delivered",
-                  "at": 4,
+                  "at": 3,
                   "reason": "the intended recipient received the radio message"
                 },
                 {
@@ -3610,10 +3605,10 @@
                   "reason": "Standard acknowledged the delivered message"
                 }
               ],
-              "institutional_recorded": "q4-delivered-communication-message-8e8177ee02ebd68d7b"
+              "institutional_recorded": "q4-delivered-communication-message-ee6d3b94b2cafc55c5"
             },
             {
-              "id": "standard-institution-decision-b68f946ca570cbc15e",
+              "id": "standard-institution-decision-60b343714d789e3da2",
               "sender": "Standard",
               "intended_recipient": "q4-player-35a5e8690a027e84",
               "intended_recipients": [
@@ -3627,27 +3622,28 @@
               "text": "Standard acknowledges the delivered status report.",
               "state": "delivered",
               "delivery_status": "delivered",
-              "sent_at": 5,
-              "interval": 5,
-              "delivered_at": 5,
+              "sent_at": 4,
+              "interval": 4,
+              "delivered_at": 4,
               "acknowledged_at": null,
               "interference": null,
               "failure_reason": null,
               "evidence_ids": [],
-              "provenance": "institutional-decision:institution-decision-b68f946ca570cbc15e",
+              "geography_report": false,
+              "provenance": "institutional-decision:institution-decision-60b343714d789e3da2",
               "history": [
                 {
                   "sequence": 1,
                   "from": null,
                   "to": "composed",
-                  "at": 5,
+                  "at": 4,
                   "reason": "message composed"
                 },
                 {
                   "sequence": 2,
                   "from": "composed",
                   "to": "delivered",
-                  "at": 5,
+                  "at": 4,
                   "reason": "scheduled Standard response resolved"
                 }
               ]
@@ -3674,12 +3670,14 @@
               "interference": {
                 "id": "columned-corridor-radio-shadow",
                 "public_description": "The column line breaks the field-radio signal; delivery cannot yet be confirmed.",
-                "additional_delay": 9
+                "additional_delay": 9,
+                "unavailable": false
               },
               "failure_reason": null,
               "evidence_ids": [
                 "object-evidence-49785b4cef50a146aa7d"
               ],
+              "geography_report": false,
               "provenance": "authoritative-communication-runtime",
               "history": [
                 {
@@ -3743,6 +3741,7 @@
               "interference": null,
               "failure_reason": null,
               "evidence_ids": [],
+              "geography_report": false,
               "provenance": "institutional-decision:institution-decision-4572e00e17d3148d8d",
               "history": [
                 {
@@ -3783,6 +3782,7 @@
               "interference": null,
               "failure_reason": null,
               "evidence_ids": [],
+              "geography_report": false,
               "provenance": "institutional-decision:institution-decision-97eb73aa92abe8bc2c",
               "history": [
                 {
@@ -3823,6 +3823,7 @@
               "interference": null,
               "failure_reason": null,
               "evidence_ids": [],
+              "geography_report": false,
               "provenance": "authoritative-communication-runtime",
               "history": [
                 {
@@ -3875,15 +3876,15 @@
               {
                 "purpose": "radio-check",
                 "state": "acknowledged",
-                "sent_at": 3,
-                "delivered_at": 4,
+                "sent_at": 2,
+                "delivered_at": 3,
                 "acknowledged_at": 4
               },
               {
                 "purpose": "acknowledge-report",
                 "state": "delivered",
-                "sent_at": 5,
-                "delivered_at": 5,
+                "sent_at": 4,
+                "delivered_at": 4,
                 "acknowledged_at": null
               },
               {
@@ -3957,34 +3958,17 @@
             "target_observation": "The photograph records the floor pattern and whether a survey marker is present.",
             "provenance": "worldpack-authored-object-interaction",
             "valid": true,
-            "mission_id": "CQ4-INFRASTRUCTURE-MATERIAL-002-7679",
-            "render": {
-              "id": "render-874b80a668cf2b59",
-              "evidence_id": "object-evidence-49785b4cef50a146aa7d",
-              "adapter": "fallback",
-              "workflow": "observer-safe-q4-evidence",
-              "status": "fallback-ready",
-              "attempts": 0,
-              "source_fact_digest": "f7f225f65da3e73360d31c04196d0f0d0d442b227de5e7da95a5a9ebfd01e765",
-              "created_at": "simulation-recorded",
-              "result": {
-                "status": "fallback",
-                "kind": "schematic-capture",
-                "label": "Observer-safe field capture",
-                "reason": "renderer-disabled",
-                "source_fact_digest": "f7f225f65da3e73360d31c04196d0f0d0d442b227de5e7da95a5a9ebfd01e765",
-                "asset_id": "fallback-object-evidence-49785b4cef50a146aa7d",
-                "provenance": "local-deterministic-fallback"
-              }
+            "mission_id": "CQ4-WO-0001",
+            "environmental_conditions": {
+              "lighting": "normal",
+              "communications": "nominal",
+              "structural": "stable",
+              "moisture": "dry",
+              "acoustic": "ordinary",
+              "visibility": "normal"
             },
-            "visual": {
-              "status": "fallback",
-              "kind": "schematic-capture",
-              "label": "Observer-safe field capture",
-              "reason": "renderer-disabled",
-              "source_fact_digest": "f7f225f65da3e73360d31c04196d0f0d0d442b227de5e7da95a5a9ebfd01e765",
-              "asset_id": "fallback-object-evidence-49785b4cef50a146aa7d",
-              "provenance": "local-deterministic-fallback"
+            "render": {
+              "status": "fallback-ready"
             }
           },
           {
@@ -4025,34 +4009,17 @@
             "target_observation": "The active fixture held a steady output during the instrument test.",
             "provenance": "worldpack-authored-object-interaction",
             "valid": true,
-            "mission_id": "CQ4-INFRASTRUCTURE-MATERIAL-002-7679",
-            "render": {
-              "id": "render-556f9b2fb3671fb5",
-              "evidence_id": "object-evidence-79fb1514ade0224e4b71",
-              "adapter": "fallback",
-              "workflow": "observer-safe-q4-evidence",
-              "status": "fallback-ready",
-              "attempts": 0,
-              "source_fact_digest": "1560367cdb27d6e6c2a0b124d121569a4fe8670ac1ec2d064dac2102afb14fac",
-              "created_at": "simulation-recorded",
-              "result": {
-                "status": "fallback",
-                "kind": "schematic-capture",
-                "label": "Observer-safe field capture",
-                "reason": "renderer-disabled",
-                "source_fact_digest": "1560367cdb27d6e6c2a0b124d121569a4fe8670ac1ec2d064dac2102afb14fac",
-                "asset_id": "fallback-object-evidence-79fb1514ade0224e4b71",
-                "provenance": "local-deterministic-fallback"
-              }
+            "mission_id": "CQ4-WO-0001",
+            "environmental_conditions": {
+              "lighting": "normal",
+              "communications": "nominal",
+              "structural": "stable",
+              "moisture": "dry",
+              "acoustic": "ordinary",
+              "visibility": "normal"
             },
-            "visual": {
-              "status": "fallback",
-              "kind": "schematic-capture",
-              "label": "Observer-safe field capture",
-              "reason": "renderer-disabled",
-              "source_fact_digest": "1560367cdb27d6e6c2a0b124d121569a4fe8670ac1ec2d064dac2102afb14fac",
-              "asset_id": "fallback-object-evidence-79fb1514ade0224e4b71",
-              "provenance": "local-deterministic-fallback"
+            "render": {
+              "status": "fallback-ready"
             }
           }
         ],
@@ -4085,6 +4052,7 @@
           },
           "team_decisions": 87
         },
+        "written_report": null,
         "institutional_consequence_hooks": [
           "recovered_complication",
           "missed_check_in",
@@ -4093,11 +4061,12 @@
         "institutional_findings": {
           "reported": [
             {
-              "text": "Standard, Clear-Q4 team Complex-side. 4 personnel accounted for.",
+              "text": "Standard, Clear-Q4 team accounted for. Radio check.",
               "status": "reported",
               "provenance": "q4-interaction-5"
             }
           ],
+          "reference_assessment": null,
           "unresolved": [],
           "recommendations": [
             "Review the recorded personnel, equipment, container, and evidence status before the next assignment."
@@ -4302,9 +4271,9 @@
           "recipient": "Standard",
           "channel": "FIELD_RADIO",
           "purpose": "radio-check",
-          "sent_at": 3,
+          "sent_at": 2,
           "state": "acknowledged",
-          "delivered_at": 4,
+          "delivered_at": 3,
           "acknowledged_at": 4,
           "known_reason": null
         },
@@ -4313,9 +4282,9 @@
           "recipient": "You",
           "channel": "FIELD_RADIO",
           "purpose": "acknowledge-report",
-          "sent_at": 5,
+          "sent_at": 4,
           "state": "delivered",
-          "delivered_at": 5,
+          "delivered_at": 4,
           "acknowledged_at": null,
           "known_reason": null
         },
@@ -4447,12 +4416,12 @@
       ],
       "review": {
         "version": "yellow-beast-q4-continuity@v3",
-        "mission_id": "CQ4-INFRASTRUCTURE-MATERIAL-002-7679",
+        "mission_id": "CQ4-WO-0001",
         "outcome": "recovered-complication",
         "final_mission_state": "completed",
         "public_debrief_summary": "The team returned with its required record after recovering an operational complication; the complication remains part of the outcome record. A teammate returned with a recorded injury. A field complication was recovered before closure. The scheduled communication record includes a missed reporting window.",
         "assignment": {
-          "objective": "Inspect and document the declared lighting and material conditions within the survey boundary.",
+          "objective": "Survey the declared frontier from the fixed Threshold approach and retain an accountable field record.",
           "completion_status": "completed",
           "deviations": [
             "missed-declared-check-in"
@@ -4699,7 +4668,7 @@
           ],
           "delivered": [
             {
-              "id": "message-8e8177ee02ebd68d7b",
+              "id": "message-ee6d3b94b2cafc55c5",
               "sender": "q4-player-35a5e8690a027e84",
               "intended_recipient": "Standard",
               "intended_recipients": [
@@ -4710,44 +4679,45 @@
               ],
               "channel": "FIELD_RADIO",
               "purpose": "radio-check",
-              "text": "Standard, Clear-Q4 team Complex-side. 4 personnel accounted for.",
+              "text": "Standard, Clear-Q4 team accounted for. Radio check.",
               "state": "acknowledged",
               "delivery_status": "delivered",
-              "sent_at": 3,
-              "interval": 3,
-              "delivered_at": 4,
+              "sent_at": 2,
+              "interval": 2,
+              "delivered_at": 3,
               "acknowledged_at": 4,
               "interference": null,
               "failure_reason": null,
               "evidence_ids": [],
+              "geography_report": false,
               "provenance": "authoritative-communication-runtime",
               "history": [
                 {
                   "sequence": 1,
                   "from": null,
                   "to": "composed",
-                  "at": 3,
+                  "at": 2,
                   "reason": "message composed"
                 },
                 {
                   "sequence": 2,
                   "from": "composed",
                   "to": "queued",
-                  "at": 3,
+                  "at": 2,
                   "reason": "accepted into the field-radio transmission queue"
                 },
                 {
                   "sequence": 3,
                   "from": "queued",
                   "to": "transmitting",
-                  "at": 4,
+                  "at": 3,
                   "reason": "field-radio transmission begun"
                 },
                 {
                   "sequence": 4,
                   "from": "transmitting",
                   "to": "delivered",
-                  "at": 4,
+                  "at": 3,
                   "reason": "the intended recipient received the radio message"
                 },
                 {
@@ -4758,10 +4728,10 @@
                   "reason": "Standard acknowledged the delivered message"
                 }
               ],
-              "institutional_recorded": "q4-delivered-communication-message-8e8177ee02ebd68d7b"
+              "institutional_recorded": "q4-delivered-communication-message-ee6d3b94b2cafc55c5"
             },
             {
-              "id": "standard-institution-decision-b68f946ca570cbc15e",
+              "id": "standard-institution-decision-60b343714d789e3da2",
               "sender": "Standard",
               "intended_recipient": "q4-player-35a5e8690a027e84",
               "intended_recipients": [
@@ -4775,27 +4745,28 @@
               "text": "Standard acknowledges the delivered status report.",
               "state": "delivered",
               "delivery_status": "delivered",
-              "sent_at": 5,
-              "interval": 5,
-              "delivered_at": 5,
+              "sent_at": 4,
+              "interval": 4,
+              "delivered_at": 4,
               "acknowledged_at": null,
               "interference": null,
               "failure_reason": null,
               "evidence_ids": [],
-              "provenance": "institutional-decision:institution-decision-b68f946ca570cbc15e",
+              "geography_report": false,
+              "provenance": "institutional-decision:institution-decision-60b343714d789e3da2",
               "history": [
                 {
                   "sequence": 1,
                   "from": null,
                   "to": "composed",
-                  "at": 5,
+                  "at": 4,
                   "reason": "message composed"
                 },
                 {
                   "sequence": 2,
                   "from": "composed",
                   "to": "delivered",
-                  "at": 5,
+                  "at": 4,
                   "reason": "scheduled Standard response resolved"
                 }
               ]
@@ -4822,12 +4793,14 @@
               "interference": {
                 "id": "columned-corridor-radio-shadow",
                 "public_description": "The column line breaks the field-radio signal; delivery cannot yet be confirmed.",
-                "additional_delay": 9
+                "additional_delay": 9,
+                "unavailable": false
               },
               "failure_reason": null,
               "evidence_ids": [
                 "object-evidence-49785b4cef50a146aa7d"
               ],
+              "geography_report": false,
               "provenance": "authoritative-communication-runtime",
               "history": [
                 {
@@ -4891,6 +4864,7 @@
               "interference": null,
               "failure_reason": null,
               "evidence_ids": [],
+              "geography_report": false,
               "provenance": "institutional-decision:institution-decision-4572e00e17d3148d8d",
               "history": [
                 {
@@ -4931,6 +4905,7 @@
               "interference": null,
               "failure_reason": null,
               "evidence_ids": [],
+              "geography_report": false,
               "provenance": "institutional-decision:institution-decision-97eb73aa92abe8bc2c",
               "history": [
                 {
@@ -4971,6 +4946,7 @@
               "interference": null,
               "failure_reason": null,
               "evidence_ids": [],
+              "geography_report": false,
               "provenance": "authoritative-communication-runtime",
               "history": [
                 {
@@ -5023,15 +4999,15 @@
               {
                 "purpose": "radio-check",
                 "state": "acknowledged",
-                "sent_at": 3,
-                "delivered_at": 4,
+                "sent_at": 2,
+                "delivered_at": 3,
                 "acknowledged_at": 4
               },
               {
                 "purpose": "acknowledge-report",
                 "state": "delivered",
-                "sent_at": 5,
-                "delivered_at": 5,
+                "sent_at": 4,
+                "delivered_at": 4,
                 "acknowledged_at": null
               },
               {
@@ -5105,34 +5081,17 @@
             "target_observation": "The photograph records the floor pattern and whether a survey marker is present.",
             "provenance": "worldpack-authored-object-interaction",
             "valid": true,
-            "mission_id": "CQ4-INFRASTRUCTURE-MATERIAL-002-7679",
-            "render": {
-              "id": "render-874b80a668cf2b59",
-              "evidence_id": "object-evidence-49785b4cef50a146aa7d",
-              "adapter": "fallback",
-              "workflow": "observer-safe-q4-evidence",
-              "status": "fallback-ready",
-              "attempts": 0,
-              "source_fact_digest": "f7f225f65da3e73360d31c04196d0f0d0d442b227de5e7da95a5a9ebfd01e765",
-              "created_at": "simulation-recorded",
-              "result": {
-                "status": "fallback",
-                "kind": "schematic-capture",
-                "label": "Observer-safe field capture",
-                "reason": "renderer-disabled",
-                "source_fact_digest": "f7f225f65da3e73360d31c04196d0f0d0d442b227de5e7da95a5a9ebfd01e765",
-                "asset_id": "fallback-object-evidence-49785b4cef50a146aa7d",
-                "provenance": "local-deterministic-fallback"
-              }
+            "mission_id": "CQ4-WO-0001",
+            "environmental_conditions": {
+              "lighting": "normal",
+              "communications": "nominal",
+              "structural": "stable",
+              "moisture": "dry",
+              "acoustic": "ordinary",
+              "visibility": "normal"
             },
-            "visual": {
-              "status": "fallback",
-              "kind": "schematic-capture",
-              "label": "Observer-safe field capture",
-              "reason": "renderer-disabled",
-              "source_fact_digest": "f7f225f65da3e73360d31c04196d0f0d0d442b227de5e7da95a5a9ebfd01e765",
-              "asset_id": "fallback-object-evidence-49785b4cef50a146aa7d",
-              "provenance": "local-deterministic-fallback"
+            "render": {
+              "status": "fallback-ready"
             }
           },
           {
@@ -5173,34 +5132,17 @@
             "target_observation": "The active fixture held a steady output during the instrument test.",
             "provenance": "worldpack-authored-object-interaction",
             "valid": true,
-            "mission_id": "CQ4-INFRASTRUCTURE-MATERIAL-002-7679",
-            "render": {
-              "id": "render-556f9b2fb3671fb5",
-              "evidence_id": "object-evidence-79fb1514ade0224e4b71",
-              "adapter": "fallback",
-              "workflow": "observer-safe-q4-evidence",
-              "status": "fallback-ready",
-              "attempts": 0,
-              "source_fact_digest": "1560367cdb27d6e6c2a0b124d121569a4fe8670ac1ec2d064dac2102afb14fac",
-              "created_at": "simulation-recorded",
-              "result": {
-                "status": "fallback",
-                "kind": "schematic-capture",
-                "label": "Observer-safe field capture",
-                "reason": "renderer-disabled",
-                "source_fact_digest": "1560367cdb27d6e6c2a0b124d121569a4fe8670ac1ec2d064dac2102afb14fac",
-                "asset_id": "fallback-object-evidence-79fb1514ade0224e4b71",
-                "provenance": "local-deterministic-fallback"
-              }
+            "mission_id": "CQ4-WO-0001",
+            "environmental_conditions": {
+              "lighting": "normal",
+              "communications": "nominal",
+              "structural": "stable",
+              "moisture": "dry",
+              "acoustic": "ordinary",
+              "visibility": "normal"
             },
-            "visual": {
-              "status": "fallback",
-              "kind": "schematic-capture",
-              "label": "Observer-safe field capture",
-              "reason": "renderer-disabled",
-              "source_fact_digest": "1560367cdb27d6e6c2a0b124d121569a4fe8670ac1ec2d064dac2102afb14fac",
-              "asset_id": "fallback-object-evidence-79fb1514ade0224e4b71",
-              "provenance": "local-deterministic-fallback"
+            "render": {
+              "status": "fallback-ready"
             }
           }
         ],
@@ -5233,6 +5175,7 @@
           },
           "team_decisions": 87
         },
+        "written_report": null,
         "institutional_consequence_hooks": [
           "recovered_complication",
           "missed_check_in",
@@ -5241,11 +5184,12 @@
         "institutional_findings": {
           "reported": [
             {
-              "text": "Standard, Clear-Q4 team Complex-side. 4 personnel accounted for.",
+              "text": "Standard, Clear-Q4 team accounted for. Radio check.",
               "status": "reported",
               "provenance": "q4-interaction-5"
             }
           ],
+          "reference_assessment": null,
           "unresolved": [],
           "recommendations": [
             "Review the recorded personnel, equipment, container, and evidence status before the next assignment."

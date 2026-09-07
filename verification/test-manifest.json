@@ -653,6 +653,11 @@
       "file": "tests/y83-ai-runtime-stability.test.js",
       "status": "included",
       "tier": "aggregate"
+    },
+    {
+      "file": "tests/y84-hybrid-canon-hardening.test.js",
+      "status": "included",
+      "tier": "aggregate"
     }
   ],
   "report_tools": [

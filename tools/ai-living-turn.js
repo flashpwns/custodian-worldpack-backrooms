@@ -3,6 +3,8 @@
 const { isDeepStrictEqual } = require("node:util");
 const { interpretPlayerLanguage, dispatchCandidate } = require("./ai-interpreter-boundary");
 const { projectLiveScene } = require("./live-scene-projection");
+const interpretiveDirector = require("./interpretive-director");
+const canonLinter = require("./canon-linter");
 
 const VERSION = "yellow-beast-living-turn@v1";
 const PRESENTATION_VERSION = "yellow-beast-presentation-candidate@v1";
@@ -67,7 +69,7 @@ function safeResolution(resolution, action = null) {
   };
 }
 
-function buildProviderPacket(playerPacket, resolution, action = null) {
+function buildProviderPacket(playerPacket, resolution, action = null, alreadyPresented = []) {
   return deepFreeze({
     version: PROVIDER_PACKET_VERSION,
     audience: "controlled-player",
@@ -78,25 +80,31 @@ function buildProviderPacket(playerPacket, resolution, action = null) {
       hidden_state: "structurally-absent"
     },
     player_scene: structuredClone(playerPacket),
-    authoritative_resolution: safeResolution(resolution, action)
+    authoritative_resolution: safeResolution(resolution, action),
+    already_presented: alreadyPresented
   });
 }
 
-function fallbackPresentation(providerPacket, reason = null) {
+function fallbackPresentation(providerPacket, reason = null, authoredBeat = null) {
   const packet = providerPacket.player_scene;
   const parts = [];
-  if (packet.location.visible_description) parts.push(sentence(packet.location.visible_description));
-  else if (packet.location.known_name) parts.push(`You are at ${packet.location.known_name}.`);
+  if (authoredBeat) {
+    parts.push(sentence(authoredBeat.text));
+  } else if (packet.location.visible_description) {
+    parts.push(sentence(packet.location.visible_description));
+  } else if (packet.location.known_name) {
+    parts.push(`You are at ${packet.location.known_name}.`);
+  }
   for (const condition of packet.visible_environment.visible_conditions ?? []) parts.push(sentence(condition));
   if (providerPacket.authoritative_resolution.public_reason) parts.push(sentence(providerPacket.authoritative_resolution.public_reason));
   for (const event of packet.recent_observable_events ?? []) parts.push(visibleActionText(packet, event));
   if (!parts.length) parts.push("From your present position, the interval produces no further confirmed change.");
   return deepFreeze({
     version: PRESENTATION_VERSION,
-    scene_description: parts.join(" "),
+    scene_description: canonLinter.enforceCanonText(parts.join(" ")),
     npc_presentations: [],
     presentation_claims: [],
-    source: "deterministic-fallback",
+    source: authoredBeat ? authoredBeat.source : "deterministic-fallback",
     fallback_reason: reason
   });
 }
@@ -208,7 +216,17 @@ async function executeLivingTurn({ run, player_text, interpreter, presentation_p
   if (!playerPacket) throw new Error("PLAYER_LIVE_SCENE_UNAVAILABLE");
   if (!isDeepStrictEqual(run, afterResolution)) throw new Error("PROJECTION_MUTATED_CANON");
   const resolvedPlayerAction = interpretation.sink.kind === "custodian-action@v1" ? interpretation.sink.payload.action : interpretation.sink.payload.player_attempt?.action ?? null;
-  const providerPacket = buildProviderPacket(playerPacket, resolution, resolvedPlayerAction);
+
+  // Check for authored beat for newly entered location
+  const playerLoc = run.spatial?.player_location;
+  const recentCausal = (run.causal_ledger ?? []).filter((e) => e.interval === run.expedition?.clock?.interval);
+  const locationEntered = recentCausal.find((e) => e.kind === "location_entered" && (e.actor === "player" || e.actor === playerId));
+  let authoredBeat = null;
+  if (locationEntered && playerLoc) {
+    authoredBeat = interpretiveDirector.findAuthoredBeat("location_entered", { location: playerLoc }, run, { consume: false });
+  }
+  const alreadyPresented = authoredBeat ? [authoredBeat.text] : [];
+  const providerPacket = buildProviderPacket(playerPacket, resolution, resolvedPlayerAction, alreadyPresented);
 
   let candidate;
   trace.push("presentation");
@@ -221,8 +239,49 @@ async function executeLivingTurn({ run, player_text, interpreter, presentation_p
   if (!isDeepStrictEqual(run, afterResolution)) throw new Error("GENERATION_MUTATED_CANON");
   trace.push("validation");
   const validation = validatePresentation(providerPacket, candidate);
-  const presentation = validation.ok ? deepFreeze({ ...validation.candidate, source: "provider", fallback_reason: null }) : fallbackPresentation(providerPacket, validation.code);
+  let presentation;
+  if (validation.ok) {
+    let sceneDesc = validation.candidate.scene_description;
+    if (authoredBeat && !sceneDesc.includes(authoredBeat.text)) {
+      sceneDesc = `${authoredBeat.text} ${sceneDesc}`.trim();
+    }
+    presentation = deepFreeze({
+      ...validation.candidate,
+      scene_description: canonLinter.enforceCanonText(sceneDesc),
+      source: authoredBeat ? authoredBeat.source : "provider",
+      fallback_reason: null
+    });
+  } else {
+    presentation = fallbackPresentation(providerPacket, validation.code, authoredBeat);
+  }
   if (!isDeepStrictEqual(run, afterResolution)) throw new Error("VALIDATION_MUTATED_CANON");
+
+  if (authoredBeat) {
+    interpretiveDirector.consumeAuthoredBeat(run, authoredBeat);
+  }
+
+  // Emit presentation to dialogue event bus
+  interpretiveDirector.emitPresentationEvent(run, {
+    type: "interpretation",
+    speaker: null,
+    channel: "LOCAL",
+    source: presentation.source === "provider" ? "AI_PERFORMANCE" : (authoredBeat ? authoredBeat.source : "DETERMINISTIC"),
+    text: presentation.scene_description,
+    timestamp: Date.now()
+  });
+  for (const npc of presentation.npc_presentations ?? []) {
+    if (npc.speech) {
+      interpretiveDirector.emitPresentationEvent(run, {
+        type: "dialogue",
+        speaker: npc.observer_id,
+        channel: "LOCAL",
+        source: "AI_PERFORMANCE",
+        text: npc.speech,
+        timestamp: Date.now()
+      });
+    }
+  }
+
   return deepFreeze({
     version: VERSION,
     status: "resolved",

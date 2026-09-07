@@ -3,6 +3,7 @@
 const canonicalLedger = require("./canonical-world-ledger");
 const perceptionService = require("./perception-service");
 const affordanceService = require("./affordance-service");
+const canonLexicon = require("./canon-lexicon");
 
 const VERSION = "yellow-beast-observer-context-compiler@v1";
 
@@ -92,10 +93,15 @@ function compileObserverContext(run, observerId = null, currentInput = "", optio
     .slice(-2)
     .map((m) => `${m.sender.toUpperCase()}: "${m.text}"`);
 
+  const locDesc = canonLexicon.getLocationDescriptor(perceived.location_id);
+
   const packet = {
     version: VERSION,
     observer: obs === playerId ? "player" : obs,
     location: perceived.location_id,
+    location_name: locDesc?.display_name ?? perceived.location_id,
+    institutional_context: locDesc?.institutional_context ?? null,
+    destination: locDesc?.known_destination ?? null,
     time: formatTime(run.expedition?.clock?.interval ?? 0),
     perception: {
       visible: visibleList,

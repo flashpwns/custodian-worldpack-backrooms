@@ -13,31 +13,31 @@
   "errors": [
     {
       "code": "DYNAMICS_INVALID",
-      "file": "C:\\Users\\jroch\\AppData\\Local\\Temp\\yellow-beast-omnipass-H86hVj\\broken-pack\\dynamics.json",
+      "file": "/var/folders/mm/083xgnt13xz4tt6d2z7htr3c0000gn/T/yellow-beast-omnipass-S9a3Iy/broken-pack/dynamics.json",
       "message": "hazard connection does not resolve: fixture-worksite-bypass",
       "path": "dynamics"
     },
     {
       "code": "MISSION_INVALID",
-      "file": "C:\\Users\\jroch\\AppData\\Local\\Temp\\yellow-beast-omnipass-H86hVj\\broken-pack\\mission.json",
+      "file": "/var/folders/mm/083xgnt13xz4tt6d2z7htr3c0000gn/T/yellow-beast-omnipass-S9a3Iy/broken-pack/mission.json",
       "message": "mission.route_available_when.any[0] connection reference does not resolve: fixture-primary",
       "path": "mission"
     },
     {
       "code": "UNREACHABLE_LOCATION",
-      "file": "C:\\Users\\jroch\\AppData\\Local\\Temp\\yellow-beast-omnipass-H86hVj\\broken-pack\\spatial.json",
+      "file": "/var/folders/mm/083xgnt13xz4tt6d2z7htr3c0000gn/T/yellow-beast-omnipass-S9a3Iy/broken-pack/spatial.json",
       "message": "Location fixture-worksite is unreachable from the initial location.",
       "path": "locations.fixture-worksite"
     },
     {
       "code": "UNREACHABLE_LOCATION",
-      "file": "C:\\Users\\jroch\\AppData\\Local\\Temp\\yellow-beast-omnipass-H86hVj\\broken-pack\\spatial.json",
+      "file": "/var/folders/mm/083xgnt13xz4tt6d2z7htr3c0000gn/T/yellow-beast-omnipass-S9a3Iy/broken-pack/spatial.json",
       "message": "Location fixture-bypass is unreachable from the initial location.",
       "path": "locations.fixture-bypass"
     },
     {
       "code": "IMPOSSIBLE_RETURN_ROUTE",
-      "file": "C:\\Users\\jroch\\AppData\\Local\\Temp\\yellow-beast-omnipass-H86hVj\\broken-pack\\spatial.json",
+      "file": "/var/folders/mm/083xgnt13xz4tt6d2z7htr3c0000gn/T/yellow-beast-omnipass-S9a3Iy/broken-pack/spatial.json",
       "message": "No authored route returns from field entry to the declared return location.",
       "path": "connections"
     }

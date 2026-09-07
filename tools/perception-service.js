@@ -118,7 +118,8 @@ function reachable(actor, target, run) {
 
   const topology = getTopology(run);
   const directConnection = (topology.connections ?? []).find((c) =>
-    (c.id === target || c.to === target) && c.from === actorLoc
+    ((c.id === target || c.to === target) && c.from === actorLoc) ||
+    (c.bidirectional && (c.id === target || c.from === target) && c.to === actorLoc)
   );
   if (directConnection) {
     const isBlocked = directConnection.lock_state === "blocked" || directConnection.lock_state === "closed" || Boolean(run.spatial?.blocked_paths?.[directConnection.id]);
@@ -132,9 +133,14 @@ function directionFrom(observer, target, run) {
   const obsLoc = resolveEntityLocation(run, observer);
   const topology = getTopology(run);
   const conn = (topology.connections ?? []).find((c) =>
-    c.from === obsLoc && (c.to === target || c.id === target)
+    (c.from === obsLoc && (c.to === target || c.id === target)) ||
+    (c.bidirectional && c.to === obsLoc && (c.from === target || c.id === target))
   );
-  if (conn?.direction) return conn.direction;
+  if (conn) {
+    if (conn.from === obsLoc && conn.direction) return conn.direction;
+    if (conn.to === obsLoc && conn.reverse_direction) return conn.reverse_direction;
+    if (conn.direction) return conn.direction;
+  }
   return "ahead";
 }
 
@@ -146,7 +152,8 @@ function canSee(observer, entity, run) {
   if (obsLoc !== entLoc) {
     const topology = getTopology(run);
     const conn = (topology.connections ?? []).find((c) =>
-      c.from === obsLoc && c.to === entLoc && ["visible", "open"].includes(c.visibility ?? "visible")
+      (c.from === obsLoc && c.to === entLoc && ["visible", "open"].includes(c.visibility ?? "visible")) ||
+      (c.bidirectional && c.to === obsLoc && c.from === entLoc && ["visible", "open"].includes(c.visibility ?? "visible"))
     );
     if (!conn) return false;
   }

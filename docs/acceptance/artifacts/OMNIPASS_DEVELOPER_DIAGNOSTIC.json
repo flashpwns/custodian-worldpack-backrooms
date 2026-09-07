@@ -7,7 +7,7 @@
       "world": {
         "id": "world-207821e46075",
         "seed": "omnipass-world",
-        "clock": 70,
+        "clock": 44,
         "runs": [
           {
             "id": "run-281b76de5bb001e2",
@@ -32,40 +32,64 @@
               "run_id": "personnel-creation"
             },
             {
-              "id": "history-c3f422509a3ee6e3",
-              "sequence": 6,
+              "id": "history-a7105446f67cf4df",
+              "sequence": 2,
+              "type": "character.continuity.initialized",
+              "run_id": "personnel-creation"
+            },
+            {
+              "id": "history-af7a4ff64f0ea60c",
+              "sequence": 10,
               "type": "character.assignment.changed",
               "run_id": "run-281b76de5bb001e2"
             },
             {
-              "id": "history-47ea2684f6c8622b",
-              "sequence": 11,
-              "type": "q4.equipment.issued",
-              "run_id": "run-281b76de5bb001e2"
-            },
-            {
-              "id": "history-4bc34a6025e148dc",
-              "sequence": 12,
-              "type": "q4.equipment.issued",
-              "run_id": "run-281b76de5bb001e2"
-            },
-            {
-              "id": "history-f95cf36fd5bcf9e0",
-              "sequence": 13,
-              "type": "q4.equipment.issued",
-              "run_id": "run-281b76de5bb001e2"
-            },
-            {
-              "id": "history-0aee4bd2d667dd02",
+              "id": "history-b2d321891b7fe470",
               "sequence": 14,
+              "type": "character.shared-history.recorded",
+              "run_id": "run-281b76de5bb001e2"
+            },
+            {
+              "id": "history-db929fa45282304a",
+              "sequence": 16,
               "type": "q4.equipment.issued",
+              "run_id": "run-281b76de5bb001e2"
+            },
+            {
+              "id": "history-7f9b3b1f9347edbc",
+              "sequence": 17,
+              "type": "q4.equipment.issued",
+              "run_id": "run-281b76de5bb001e2"
+            },
+            {
+              "id": "history-f6ceb1621c0c51df",
+              "sequence": 18,
+              "type": "q4.equipment.issued",
+              "run_id": "run-281b76de5bb001e2"
+            },
+            {
+              "id": "history-b52f2e589eea9a53",
+              "sequence": 19,
+              "type": "q4.equipment.issued",
+              "run_id": "run-281b76de5bb001e2"
+            },
+            {
+              "id": "history-4241f3b8aceb4791",
+              "sequence": 24,
+              "type": "character.shared-history.recorded",
+              "run_id": "run-281b76de5bb001e2"
+            },
+            {
+              "id": "history-9f43bbf24337e0d6",
+              "sequence": 37,
+              "type": "character.shared-history.recorded",
               "run_id": "run-281b76de5bb001e2"
             }
           ],
           "last_event": {
-            "id": "history-0aee4bd2d667dd02",
-            "sequence": 14,
-            "type": "q4.equipment.issued",
+            "id": "history-9f43bbf24337e0d6",
+            "sequence": 37,
+            "type": "character.shared-history.recorded",
             "run_id": "run-281b76de5bb001e2"
           }
         },
@@ -76,262 +100,52 @@
           "status": "active",
           "appearances": [
             {
-              "id": "history-c36ef9da6c430e61",
-              "sequence": 3,
+              "id": "history-a74bc378ef2abe7e",
+              "sequence": 4,
               "type": "character.instantiated",
               "run_id": "run-281b76de5bb001e2"
             },
             {
-              "id": "history-f29b16abcd5244e9",
-              "sequence": 7,
+              "id": "history-d203d7c81aca247e",
+              "sequence": 5,
+              "type": "character.continuity.initialized",
+              "run_id": "run-281b76de5bb001e2"
+            },
+            {
+              "id": "history-0ab6e36312799e21",
+              "sequence": 11,
               "type": "character.assignment.changed",
               "run_id": "run-281b76de5bb001e2"
             },
             {
-              "id": "history-b8b7157982564f76",
-              "sequence": 18,
-              "type": "q4.personnel.condition.changed",
+              "id": "history-b2d321891b7fe470",
+              "sequence": 14,
+              "type": "character.shared-history.recorded",
               "run_id": "run-281b76de5bb001e2"
             },
             {
-              "id": "history-135a910377132836",
-              "sequence": 19,
-              "type": "q4.personnel.condition.changed",
-              "run_id": "run-281b76de5bb001e2"
-            },
-            {
-              "id": "history-7c01a399832c49dc",
-              "sequence": 20,
-              "type": "q4.personnel.condition.changed",
-              "run_id": "run-281b76de5bb001e2"
-            },
-            {
-              "id": "history-4c4bccb6c388f5d8",
-              "sequence": 21,
-              "type": "q4.personnel.condition.changed",
-              "run_id": "run-281b76de5bb001e2"
-            },
-            {
-              "id": "history-50f83d9c58efb644",
-              "sequence": 22,
-              "type": "q4.personnel.condition.changed",
-              "run_id": "run-281b76de5bb001e2"
-            },
-            {
-              "id": "history-4c467b895b60b09e",
-              "sequence": 23,
-              "type": "q4.personnel.condition.changed",
-              "run_id": "run-281b76de5bb001e2"
-            },
-            {
-              "id": "history-2b28cbfb4474706f",
-              "sequence": 24,
-              "type": "q4.personnel.condition.changed",
-              "run_id": "run-281b76de5bb001e2"
-            },
-            {
-              "id": "history-a98e5e38ce9040c8",
-              "sequence": 25,
-              "type": "q4.personnel.condition.changed",
-              "run_id": "run-281b76de5bb001e2"
-            },
-            {
-              "id": "history-9c54292f370c99e3",
-              "sequence": 26,
-              "type": "q4.personnel.condition.changed",
-              "run_id": "run-281b76de5bb001e2"
-            },
-            {
-              "id": "history-ff1925c9b94a33e0",
+              "id": "history-80b705d561ba5c05",
               "sequence": 27,
-              "type": "q4.personnel.condition.changed",
+              "type": "character.status.changed",
               "run_id": "run-281b76de5bb001e2"
             },
             {
-              "id": "history-eb698495c5883566",
+              "id": "history-51aacf793ca4b0ca",
               "sequence": 28,
-              "type": "q4.personnel.condition.changed",
+              "type": "character.status.changed",
               "run_id": "run-281b76de5bb001e2"
             },
             {
-              "id": "history-99d2f62119239874",
-              "sequence": 29,
-              "type": "q4.personnel.condition.changed",
-              "run_id": "run-281b76de5bb001e2"
-            },
-            {
-              "id": "history-570ea95435fba680",
-              "sequence": 30,
-              "type": "q4.personnel.condition.changed",
-              "run_id": "run-281b76de5bb001e2"
-            },
-            {
-              "id": "history-72233bc8e05547eb",
-              "sequence": 31,
-              "type": "q4.personnel.condition.changed",
-              "run_id": "run-281b76de5bb001e2"
-            },
-            {
-              "id": "history-7198565902d1c30b",
-              "sequence": 32,
-              "type": "q4.personnel.condition.changed",
-              "run_id": "run-281b76de5bb001e2"
-            },
-            {
-              "id": "history-a8cc62eb29e07c39",
-              "sequence": 33,
-              "type": "q4.personnel.condition.changed",
-              "run_id": "run-281b76de5bb001e2"
-            },
-            {
-              "id": "history-b576e13505b3d916",
-              "sequence": 34,
-              "type": "q4.personnel.condition.changed",
-              "run_id": "run-281b76de5bb001e2"
-            },
-            {
-              "id": "history-e17e8d6eea06e37f",
-              "sequence": 39,
-              "type": "q4.personnel.condition.changed",
-              "run_id": "run-281b76de5bb001e2"
-            },
-            {
-              "id": "history-eb36d18f70805609",
-              "sequence": 40,
-              "type": "q4.personnel.condition.changed",
-              "run_id": "run-281b76de5bb001e2"
-            },
-            {
-              "id": "history-f383161df86e2554",
-              "sequence": 41,
-              "type": "q4.personnel.condition.changed",
-              "run_id": "run-281b76de5bb001e2"
-            },
-            {
-              "id": "history-15c5522fab192d14",
-              "sequence": 42,
-              "type": "q4.personnel.condition.changed",
-              "run_id": "run-281b76de5bb001e2"
-            },
-            {
-              "id": "history-1337e6c32c0fcde9",
-              "sequence": 43,
-              "type": "q4.personnel.condition.changed",
-              "run_id": "run-281b76de5bb001e2"
-            },
-            {
-              "id": "history-2f1bf27bec3d9ced",
-              "sequence": 44,
-              "type": "q4.personnel.condition.changed",
-              "run_id": "run-281b76de5bb001e2"
-            },
-            {
-              "id": "history-0774b31ac1830c07",
-              "sequence": 45,
-              "type": "q4.personnel.condition.changed",
-              "run_id": "run-281b76de5bb001e2"
-            },
-            {
-              "id": "history-931a8f4b24facd30",
-              "sequence": 48,
-              "type": "q4.personnel.condition.changed",
-              "run_id": "run-281b76de5bb001e2"
-            },
-            {
-              "id": "history-d02d830a50531443",
-              "sequence": 49,
-              "type": "q4.personnel.condition.changed",
-              "run_id": "run-281b76de5bb001e2"
-            },
-            {
-              "id": "history-7694e1d34b911fda",
-              "sequence": 50,
-              "type": "q4.personnel.condition.changed",
-              "run_id": "run-281b76de5bb001e2"
-            },
-            {
-              "id": "history-91eac37889875135",
-              "sequence": 51,
-              "type": "q4.personnel.condition.changed",
-              "run_id": "run-281b76de5bb001e2"
-            },
-            {
-              "id": "history-30baa9878b74c51d",
-              "sequence": 52,
-              "type": "q4.personnel.condition.changed",
-              "run_id": "run-281b76de5bb001e2"
-            },
-            {
-              "id": "history-5a0abb97c9a70ec7",
-              "sequence": 53,
-              "type": "q4.personnel.condition.changed",
-              "run_id": "run-281b76de5bb001e2"
-            },
-            {
-              "id": "history-9934dfee4b44e660",
-              "sequence": 54,
-              "type": "q4.personnel.condition.changed",
-              "run_id": "run-281b76de5bb001e2"
-            },
-            {
-              "id": "history-89c3546a6077fac4",
-              "sequence": 55,
-              "type": "q4.personnel.condition.changed",
-              "run_id": "run-281b76de5bb001e2"
-            },
-            {
-              "id": "history-38afb432b079a38b",
-              "sequence": 56,
-              "type": "q4.personnel.condition.changed",
-              "run_id": "run-281b76de5bb001e2"
-            },
-            {
-              "id": "history-56e679815e7b8b8c",
-              "sequence": 57,
-              "type": "q4.personnel.condition.changed",
-              "run_id": "run-281b76de5bb001e2"
-            },
-            {
-              "id": "history-248ca853a7cf9753",
-              "sequence": 58,
-              "type": "q4.personnel.condition.changed",
-              "run_id": "run-281b76de5bb001e2"
-            },
-            {
-              "id": "history-80553118b8a1cf4e",
-              "sequence": 59,
-              "type": "q4.personnel.condition.changed",
-              "run_id": "run-281b76de5bb001e2"
-            },
-            {
-              "id": "history-069ab3985d97b437",
-              "sequence": 60,
-              "type": "q4.personnel.condition.changed",
-              "run_id": "run-281b76de5bb001e2"
-            },
-            {
-              "id": "history-2a1e33a94012f7f6",
-              "sequence": 61,
-              "type": "q4.personnel.condition.changed",
-              "run_id": "run-281b76de5bb001e2"
-            },
-            {
-              "id": "history-ed081557ed377b1b",
-              "sequence": 67,
-              "type": "q4.personnel.condition.changed",
-              "run_id": "run-281b76de5bb001e2"
-            },
-            {
-              "id": "history-73a9f968b4f7a0bf",
-              "sequence": 70,
-              "type": "q4.personnel.condition.changed",
+              "id": "history-9f43bbf24337e0d6",
+              "sequence": 37,
+              "type": "character.shared-history.recorded",
               "run_id": "run-281b76de5bb001e2"
             }
           ],
           "last_event": {
-            "id": "history-73a9f968b4f7a0bf",
-            "sequence": 70,
-            "type": "q4.personnel.condition.changed",
+            "id": "history-9f43bbf24337e0d6",
+            "sequence": 37,
+            "type": "character.shared-history.recorded",
             "run_id": "run-281b76de5bb001e2"
           }
         },
@@ -342,22 +156,40 @@
           "status": "active",
           "appearances": [
             {
-              "id": "history-5775f66cd4d0abea",
-              "sequence": 4,
+              "id": "history-65f3b5987cedbad5",
+              "sequence": 6,
               "type": "character.instantiated",
               "run_id": "run-281b76de5bb001e2"
             },
             {
-              "id": "history-d593e955f28db5fe",
-              "sequence": 8,
+              "id": "history-2e607ddb9fe6273f",
+              "sequence": 7,
+              "type": "character.continuity.initialized",
+              "run_id": "run-281b76de5bb001e2"
+            },
+            {
+              "id": "history-ce4470cf0d83a18c",
+              "sequence": 12,
               "type": "character.assignment.changed",
+              "run_id": "run-281b76de5bb001e2"
+            },
+            {
+              "id": "history-b2d321891b7fe470",
+              "sequence": 14,
+              "type": "character.shared-history.recorded",
+              "run_id": "run-281b76de5bb001e2"
+            },
+            {
+              "id": "history-9f43bbf24337e0d6",
+              "sequence": 37,
+              "type": "character.shared-history.recorded",
               "run_id": "run-281b76de5bb001e2"
             }
           ],
           "last_event": {
-            "id": "history-d593e955f28db5fe",
-            "sequence": 8,
-            "type": "character.assignment.changed",
+            "id": "history-9f43bbf24337e0d6",
+            "sequence": 37,
+            "type": "character.shared-history.recorded",
             "run_id": "run-281b76de5bb001e2"
           }
         },
@@ -368,22 +200,78 @@
           "status": "active",
           "appearances": [
             {
-              "id": "history-39a4f578049e4d61",
-              "sequence": 5,
+              "id": "history-1fec85f50ccdc1bf",
+              "sequence": 8,
               "type": "character.instantiated",
               "run_id": "run-281b76de5bb001e2"
             },
             {
-              "id": "history-04dd900d5b33403f",
+              "id": "history-32d4ba424fde1e5b",
               "sequence": 9,
+              "type": "character.continuity.initialized",
+              "run_id": "run-281b76de5bb001e2"
+            },
+            {
+              "id": "history-fac89302b147983d",
+              "sequence": 13,
               "type": "character.assignment.changed",
+              "run_id": "run-281b76de5bb001e2"
+            },
+            {
+              "id": "history-b2d321891b7fe470",
+              "sequence": 14,
+              "type": "character.shared-history.recorded",
+              "run_id": "run-281b76de5bb001e2"
+            },
+            {
+              "id": "history-9f43bbf24337e0d6",
+              "sequence": 37,
+              "type": "character.shared-history.recorded",
               "run_id": "run-281b76de5bb001e2"
             }
           ],
           "last_event": {
-            "id": "history-04dd900d5b33403f",
-            "sequence": 9,
-            "type": "character.assignment.changed",
+            "id": "history-9f43bbf24337e0d6",
+            "sequence": 37,
+            "type": "character.shared-history.recorded",
+            "run_id": "run-281b76de5bb001e2"
+          }
+        },
+        {
+          "identity": "q4-standard-680a54e1a55b942782",
+          "name": "Control Desk Operator",
+          "role": "operations desk operator",
+          "status": "active",
+          "appearances": [
+            {
+              "id": "history-2d86633d7903c30c",
+              "sequence": 20,
+              "type": "character.instantiated",
+              "run_id": "run-281b76de5bb001e2"
+            },
+            {
+              "id": "history-6761cc0439b1f388",
+              "sequence": 21,
+              "type": "character.continuity.initialized",
+              "run_id": "run-281b76de5bb001e2"
+            },
+            {
+              "id": "history-6819f99b9837118d",
+              "sequence": 23,
+              "type": "q4.standard.contact.recorded",
+              "run_id": "run-281b76de5bb001e2"
+            },
+            {
+              "id": "history-4241f3b8aceb4791",
+              "sequence": 24,
+              "type": "character.shared-history.recorded",
+              "run_id": "run-281b76de5bb001e2"
+            }
+          ],
+          "last_event": {
+            "id": "history-4241f3b8aceb4791",
+            "sequence": 24,
+            "type": "character.shared-history.recorded",
             "run_id": "run-281b76de5bb001e2"
           }
         }
@@ -402,15 +290,39 @@
         "index": {
           "version": "yellow-beast-story-thread-index@v1",
           "world_id": "world-207821e46075",
-          "history_digest": "33c598686ec09ed4",
-          "threads": []
+          "history_digest": "0e9f52f68d83cbbd",
+          "threads": [
+            {
+              "version": "yellow-beast-story-thread@v1",
+              "thread_id": "thread-08d605081899b2b2",
+              "type": "PERSONNEL_DISAPPEARANCE",
+              "anchor": "yb-personnel-a4a099751e6bacdc72e3",
+              "event_refs": [
+                "history-80b705d561ba5c05",
+                "history-51aacf793ca4b0ca"
+              ],
+              "first_seen_at": 27,
+              "last_updated_at": 28,
+              "status": "ACTIVE",
+              "significance": 2,
+              "provenance": "derived-from-canonical-history"
+            }
+          ]
         }
       }
     },
     "observer_views": {
       "field-researcher": {
         "profile": "field-researcher",
-        "threads": [],
+        "threads": [
+          {
+            "type": "PERSONNEL_DISAPPEARANCE",
+            "status": "ACTIVE",
+            "significance": 2,
+            "title": "Personnel status changed",
+            "latest_known_event_ref": "history-51aacf793ca4b0ca"
+          }
+        ],
         "implicit_continuity": false
       },
       "async-command": {
@@ -438,7 +350,7 @@
       "mode_id": "field-researcher",
       "phase_id": "DEBRIEF",
       "phase_type": "DEBRIEF",
-      "phase_index": 7,
+      "phase_index": 8,
       "completion_state": "active",
       "available_ui_surfaces": [
         "scene",
@@ -474,12 +386,12 @@
         {
           "type": "phase_entered",
           "phase_id": "STANDARD_RADIO_CHECK",
-          "reason": "CROSS"
+          "reason": "READY"
         },
         {
           "type": "phase_entered",
           "phase_id": "FIELD_OPERATION",
-          "reason": "BEGIN_FIELD_OPERATION"
+          "reason": "CROSS"
         },
         {
           "type": "phase_entered",
@@ -503,19 +415,45 @@
         "check_in_overdue": true,
         "check_in_missed": true,
         "check_in_completed_at": 27,
-        "communication_ticks": 43
+        "communication_ticks": 41
       },
       "event_queue": [
         {
-          "id": "transmit-message-567e6dfb453bd3ca2b",
+          "id": "transmit-message-cf39047624e40b0983",
           "event_type": "communication.transmit",
+          "scheduled_interval": 4,
+          "source": "q4-player-13d8ab53c573cac7",
+          "target": "Standard",
+          "payload": {
+            "message_id": "message-cf39047624e40b0983",
+            "acknowledgment": true,
+            "acknowledgment_delay": null
+          },
+          "visibility_policy": "known",
+          "status": "completed",
+          "repeating": null,
+          "created_at": 4,
+          "resolution_history": [
+            {
+              "sequence": 1,
+              "from": "scheduled",
+              "to": "completed",
+              "at": 5,
+              "reason": "transmission started"
+            }
+          ],
+          "cancellation_reason": null
+        },
+        {
+          "id": "deliver-message-cf39047624e40b0983",
+          "event_type": "communication.deliver",
           "scheduled_interval": 5,
           "source": "q4-player-13d8ab53c573cac7",
           "target": "Standard",
           "payload": {
-            "message_id": "message-567e6dfb453bd3ca2b",
+            "message_id": "message-cf39047624e40b0983",
             "acknowledgment": true,
-            "acknowledgment_delay": 0
+            "acknowledgment_delay": null
           },
           "visibility_policy": "known",
           "status": "completed",
@@ -526,25 +464,25 @@
               "sequence": 1,
               "from": "scheduled",
               "to": "completed",
-              "at": 6,
-              "reason": "transmission started"
+              "at": 5,
+              "reason": "message delivered"
             }
           ],
           "cancellation_reason": null
         },
         {
-          "id": "acknowledge-message-567e6dfb453bd3ca2b",
+          "id": "acknowledge-message-cf39047624e40b0983",
           "event_type": "communication.acknowledge",
           "scheduled_interval": 6,
           "source": "Standard",
           "target": "q4-player-13d8ab53c573cac7",
           "payload": {
-            "message_id": "message-567e6dfb453bd3ca2b"
+            "message_id": "message-cf39047624e40b0983"
           },
           "visibility_policy": "known",
           "status": "completed",
           "repeating": null,
-          "created_at": 6,
+          "created_at": 5,
           "resolution_history": [
             {
               "sequence": 1,
@@ -557,54 +495,52 @@
           "cancellation_reason": null
         },
         {
-          "id": "deliver-message-567e6dfb453bd3ca2b",
-          "event_type": "communication.deliver",
+          "id": "institution-response-institution-decision-ddb2b2ca0ef064856b",
+          "event_type": "institution.response",
           "scheduled_interval": 6,
-          "source": "q4-player-13d8ab53c573cac7",
-          "target": "Standard",
+          "source": "Standard",
+          "target": "clear-q4-field-survey-alpha",
           "payload": {
-            "message_id": "message-567e6dfb453bd3ca2b",
-            "acknowledgment": true,
-            "acknowledgment_delay": 0
+            "decision_id": "institution-decision-ddb2b2ca0ef064856b"
           },
-          "visibility_policy": "known",
+          "visibility_policy": "known-when-resolved",
           "status": "completed",
           "repeating": null,
-          "created_at": 6,
+          "created_at": 5,
           "resolution_history": [
             {
               "sequence": 1,
               "from": "scheduled",
               "to": "completed",
               "at": 6,
-              "reason": "message delivered"
+              "reason": "scheduled institutional response delivered"
             }
           ],
           "cancellation_reason": null
         },
         {
-          "id": "institution-response-institution-decision-2725dc75edcfcc319f",
-          "event_type": "institution.response",
-          "scheduled_interval": 7,
-          "source": "Standard",
-          "target": "clear-q4-field-survey-alpha",
+          "id": "timeout-message-cf39047624e40b0983",
+          "event_type": "communication.timeout",
+          "scheduled_interval": 8,
+          "source": "communication-authority",
+          "target": "q4-player-13d8ab53c573cac7",
           "payload": {
-            "decision_id": "institution-decision-2725dc75edcfcc319f"
+            "message_id": "message-cf39047624e40b0983"
           },
-          "visibility_policy": "known-when-resolved",
-          "status": "completed",
+          "visibility_policy": "known",
+          "status": "cancelled",
           "repeating": null,
-          "created_at": 6,
+          "created_at": 5,
           "resolution_history": [
             {
               "sequence": 1,
               "from": "scheduled",
-              "to": "completed",
-              "at": 7,
-              "reason": "scheduled institutional response delivered"
+              "to": "cancelled",
+              "at": 8,
+              "reason": "response already resolved"
             }
           ],
-          "cancellation_reason": null
+          "cancellation_reason": "response already resolved"
         },
         {
           "id": "check-in-due-field-status-check-in",
@@ -805,6 +741,30 @@
           "cancellation_reason": null
         },
         {
+          "id": "timeout-message-ca552726531caf9d38",
+          "event_type": "communication.timeout",
+          "scheduled_interval": 30,
+          "source": "communication-authority",
+          "target": "q4-player-13d8ab53c573cac7",
+          "payload": {
+            "message_id": "message-ca552726531caf9d38"
+          },
+          "visibility_policy": "known",
+          "status": "cancelled",
+          "repeating": null,
+          "created_at": 27,
+          "resolution_history": [
+            {
+              "sequence": 1,
+              "from": "scheduled",
+              "to": "cancelled",
+              "at": 30,
+              "reason": "response already resolved"
+            }
+          ],
+          "cancellation_reason": "response already resolved"
+        },
+        {
           "id": "deliver-message-27f5898726f66e2300",
           "event_type": "communication.deliver",
           "scheduled_interval": 37,
@@ -879,6 +839,30 @@
           "cancellation_reason": null
         },
         {
+          "id": "timeout-message-27f5898726f66e2300",
+          "event_type": "communication.timeout",
+          "scheduled_interval": 40,
+          "source": "communication-authority",
+          "target": "q4-player-13d8ab53c573cac7",
+          "payload": {
+            "message_id": "message-27f5898726f66e2300"
+          },
+          "visibility_policy": "known",
+          "status": "cancelled",
+          "repeating": null,
+          "created_at": 37,
+          "resolution_history": [
+            {
+              "sequence": 1,
+              "from": "scheduled",
+              "to": "cancelled",
+              "at": 40,
+              "reason": "response already resolved"
+            }
+          ],
+          "cancellation_reason": "response already resolved"
+        },
+        {
           "id": "transmit-message-79558a993ce2b29208",
           "event_type": "communication.transmit",
           "scheduled_interval": 46,
@@ -951,7 +935,7 @@
         "version": "yellow-beast-mission-state@v1",
         "definition_version": 1,
         "definition_id": "clear-q4-field-assignment",
-        "instance_id": "CQ4-INFRASTRUCTURE-MATERIAL-002-6692",
+        "instance_id": "CQ4-WO-0001",
         "lifecycle": "completed",
         "phase": "DEBRIEF",
         "objectives": {
@@ -1473,7 +1457,7 @@
         },
         "final_result": {
           "version": "yellow-beast-mission-result@v1",
-          "mission_id": "CQ4-INFRASTRUCTURE-MATERIAL-002-6692",
+          "mission_id": "CQ4-WO-0001",
           "final_mission_state": "completed",
           "classification": "recovered-complication",
           "required_objectives_satisfied": [
@@ -1642,15 +1626,15 @@
               {
                 "purpose": "radio-check",
                 "state": "acknowledged",
-                "sent_at": 5,
-                "delivered_at": 6,
+                "sent_at": 4,
+                "delivered_at": 5,
                 "acknowledged_at": 6
               },
               {
                 "purpose": "acknowledge-report",
                 "state": "delivered",
-                "sent_at": 7,
-                "delivered_at": 7,
+                "sent_at": 6,
+                "delivered_at": 6,
                 "acknowledged_at": null
               },
               {
@@ -3066,6 +3050,27 @@
         ],
         "revision": 4
       },
+      "phenomenon_state": {
+        "version": "yellow-beast-q4-phenomenon-ecology@v1",
+        "config_version": "yellow-beast-q4-phenomenon-config@v1",
+        "recent_errors": [],
+        "instantiated_count": 0,
+        "counts_by_family": {
+          "SPATIAL_INCONSISTENCY": 0,
+          "OBJECT_DISPLACEMENT": 0,
+          "ACOUSTIC_ANOMALY": 0,
+          "TRANSIENT_ARCHITECTURE": 0,
+          "ENVIRONMENTAL_DISCONTINUITY": 0,
+          "EVIDENCE_INCONSISTENCY": 0,
+          "STILL_LIFE": 0,
+          "BACTERIA": 0
+        },
+        "production_count": 0,
+        "fixture_count": 0,
+        "evaluated_location_count": 13,
+        "deterministic_test_seed": "pass-16b-controlled",
+        "controlled_fixture_status": "token-gated"
+      },
       "item_custody": {
         "field-light": {
           "id": "field-light",
@@ -3397,8 +3402,8 @@
               "actor": "q4-player-13d8ab53c573cac7",
               "target_holder": null,
               "target_container": null,
-              "location": "threshold-side-entry",
-              "at": 5
+              "location": "threshold-room",
+              "at": 4
             },
             {
               "sequence": 4,
@@ -4131,7 +4136,7 @@
           "confirmed_at": 16
         },
         {
-          "input_id": "institution-input-4efb3ae06a252c1ffe",
+          "input_id": "institution-input-74edefc1c1f8597379",
           "type": "recovered-complication",
           "summary": "The team returned with its required record after recovering an operational complication; the complication remains part of the outcome record. A teammate returned with a recorded injury. A field complication was recovered before closure. The equipment record includes damage or loss. The scheduled communication record includes a missed reporting window.",
           "facts": [
@@ -4154,13 +4159,13 @@
           ],
           "provenance": {
             "kind": "mission-closure",
-            "id": "closure-run-281b76de5bb001e2-CQ4-INFRASTRUCTURE-MATERIAL-002-6692",
-            "mission_id": "CQ4-INFRASTRUCTURE-MATERIAL-002-6692"
+            "id": "closure-run-281b76de5bb001e2-CQ4-WO-0001",
+            "mission_id": "CQ4-WO-0001"
           },
           "confirmed_at": 0
         },
         {
-          "input_id": "institution-input-0baa018af4afe41c7f",
+          "input_id": "institution-input-6bf808914dad5f7a8b",
           "type": "evidence-withholding",
           "summary": "Returned evidence was not reported during field operations.",
           "facts": [
@@ -4171,12 +4176,12 @@
           ],
           "provenance": {
             "kind": "returned-evidence",
-            "id": "closure-run-281b76de5bb001e2-CQ4-INFRASTRUCTURE-MATERIAL-002-6692:unreported-evidence"
+            "id": "closure-run-281b76de5bb001e2-CQ4-WO-0001:unreported-evidence"
           },
           "confirmed_at": 0
         },
         {
-          "input_id": "institution-input-de5b6eba353aea2f27",
+          "input_id": "institution-input-36ab2dd103b641e206",
           "type": "unapproved-deviation",
           "summary": "missed declared check in",
           "facts": [
@@ -4187,38 +4192,105 @@
           ],
           "provenance": {
             "kind": "mission-closure",
-            "id": "closure-run-281b76de5bb001e2-CQ4-INFRASTRUCTURE-MATERIAL-002-6692:deviation:0"
+            "id": "closure-run-281b76de5bb001e2-CQ4-WO-0001:deviation:0"
           },
           "confirmed_at": 0
         }
       ],
-      "standard_response_queue": [],
+      "standard_response_queue": [
+        {
+          "id": "institution-decision-f270a86e3699f17d5a",
+          "rule_id": "recovered-complication-review",
+          "decision": "recommend-review",
+          "status": "scheduled",
+          "scheduled_at": 0,
+          "due_at": 1,
+          "trigger_provenance": {
+            "kind": "mission-closure",
+            "id": "closure-run-281b76de5bb001e2-CQ4-WO-0001",
+            "mission_id": "CQ4-WO-0001"
+          },
+          "public_response": "Standard records the recovered complication and closes the immediate field response with follow-up review.",
+          "private_rationale": "The complication was recovered but remains relevant to procedures and equipment review.",
+          "state_changes": {
+            "operational_confidence": "stable",
+            "mission_review_status": "closed"
+          },
+          "follow_up_id": null,
+          "resolved_at": null
+        },
+        {
+          "id": "institution-decision-e28e2c2aa822856a58",
+          "rule_id": "withheld-evidence-review",
+          "decision": "request-additional-evidence",
+          "status": "scheduled",
+          "scheduled_at": 0,
+          "due_at": 1,
+          "trigger_provenance": {
+            "kind": "returned-evidence",
+            "id": "closure-run-281b76de5bb001e2-CQ4-WO-0001:unreported-evidence"
+          },
+          "public_response": "Standard requests the retained evidence or a documented reason it cannot be returned.",
+          "private_rationale": "Closure identifies a retained but unavailable record.",
+          "state_changes": {
+            "information_confidence": "uncertain",
+            "scrutiny_level": "concerned"
+          },
+          "follow_up_id": null,
+          "resolved_at": null
+        },
+        {
+          "id": "institution-decision-d0e775a193621adc20",
+          "rule_id": "unapproved-deviation-review",
+          "decision": "increase-oversight",
+          "status": "scheduled",
+          "scheduled_at": 0,
+          "due_at": 1,
+          "trigger_provenance": {
+            "kind": "mission-closure",
+            "id": "closure-run-281b76de5bb001e2-CQ4-WO-0001:deviation:0"
+          },
+          "public_response": "Standard records the unapproved route deviation and opens an operational review.",
+          "private_rationale": "The deviation entered institutional knowledge through the delivered or returned record.",
+          "state_changes": {
+            "scrutiny_level": "concerned",
+            "mission_review_status": "open"
+          },
+          "follow_up_id": null,
+          "resolved_at": null
+        }
+      ],
       "observer_safe_projection": {
         "version": "yellow-beast-clear-q4-experience@v3",
         "phase": "DEBRIEF",
+        "facility": {
+          "id": "biomedical-evidence",
+          "label": "Biomedical / Evidence",
+          "purpose": "returned material and records"
+        },
         "briefing": "Review the expedition record. What you report remains distinct from what occurred and what you observed.",
-        "mission": "Inspect and document the declared lighting and material conditions within the survey boundary.",
+        "mission": "Survey the declared frontier from the fixed Threshold approach and retain an accountable field record.",
         "mission_record": {
-          "id": "CQ4-INFRASTRUCTURE-MATERIAL-002-6692",
-          "display_id": "CQ4-002",
-          "family": "Infrastructure / Material",
-          "rationale": "ASYNC has assigned a bounded field record so the institution can maintain a field record of the site.",
+          "id": "CQ4-WO-0001",
+          "display_id": "CQ4-WO-0001",
+          "family": "Routine Survey",
+          "rationale": "The declared Survey Frontier requires an ordinary bounded field record from the fixed Threshold approach.",
           "site": {
-            "label": "the declared survey boundary",
-            "boundary": "survey boundary",
-            "knowledge_status": "institutional assignment; accessibility remains uncertain"
+            "kind": "known-area",
+            "location_id": "utility-room",
+            "location_label": "Utility Room"
           },
           "objective": {
-            "primary": "Inspect and document the declared lighting and material conditions within the survey boundary.",
+            "primary": "Survey the declared frontier from the fixed Threshold approach and retain an accountable field record.",
             "procedures": [
-              "Address the assigned boundary as far as access permits.",
-              "Record required observations and measurements.",
-              "Retain the field record and check in with Standard."
+              "Use only confirmed routes and recorded locations.",
+              "Record the condition actually observed at the assigned target.",
+              "Deliver a field report or record why delivery was unavailable."
             ],
             "completion_criteria": [
-              "The assigned boundary or recorded site has been addressed as far as access permits.",
-              "Required observations, measurements, or recovery findings are recorded.",
-              "A check-in and field record are delivered or the inability to deliver it is recorded."
+              "Address the recorded work where access permits.",
+              "Retain an accountable observation or recovery record.",
+              "Return or record an authorized abort."
             ]
           },
           "reporting": {
@@ -4231,27 +4303,34 @@
               "Retain recordings, measurements, and written field notes where available."
             ],
             "abort_conditions": [
-              "Return if personnel safety or equipment access prevents the assigned work."
+              "Return by the safest confirmed route if the recorded work cannot be completed."
             ],
-            "summary": "Report observations and personnel accountability to Standard."
+            "summary": "Report observed findings and personnel accountability to Standard."
           },
           "expected_duration": "within the declared operational window",
           "risks": [
             {
-              "text": "Access, lighting, equipment condition, and personnel contact may be uncertain.",
+              "text": "Access, equipment condition, and personnel contact may remain uncertain.",
               "knowledge_status": "known operational uncertainty"
             }
           ],
-          "prior_history": [],
+          "prior_history": [
+            {
+              "id": "routine-frontier:0:utility-room",
+              "kind": "work-producing-condition",
+              "status": "institutionally recorded",
+              "text": "The declared Survey Frontier requires an ordinary bounded field record from the fixed Threshold approach."
+            }
+          ],
           "status": "completed"
         },
-        "display_mission": "Inspect and document the declared lighting and material conditions within the survey boundary.",
+        "display_mission": "Survey the declared frontier from the fixed Threshold approach and retain an accountable field record.",
         "restrictions": [
-          "Address the assigned boundary as far as access permits.",
-          "Record required observations and measurements.",
-          "Retain the field record and check in with Standard."
+          "Use only confirmed routes and recorded locations.",
+          "Record the condition actually observed at the assigned target.",
+          "Deliver a field report or record why delivery was unavailable."
         ],
-        "reporting": "Report observations and personnel accountability to Standard.",
+        "reporting": "Report observed findings and personnel accountability to Standard.",
         "operational_time": "T+47 intervals",
         "operational_clock": {
           "version": "yellow-beast-operational-time@v1",
@@ -4271,6 +4350,29 @@
           "completed": true,
           "authorized": true,
           "state": "available"
+        },
+        "facility_operations": {
+          "version": "yellow-beast-facility-operations@v1",
+          "current": {
+            "threshold_crossing": "crossed",
+            "kv31_arrival": null,
+            "standard_side_barrier": null,
+            "east_blast_door": null,
+            "field_release": null
+          },
+          "events": [
+            {
+              "id": "facility-event-1",
+              "sequence": 1,
+              "type": "THRESHOLD_CROSSING",
+              "at": {
+                "interval": 6,
+                "spatial_time": 7
+              },
+              "source": "canonical-spatial-traversal",
+              "source_ref": "threshold-crossing:1"
+            }
+          ]
         },
         "objectives": [
           {
@@ -4548,7 +4650,7 @@
           },
           "result": {
             "version": "yellow-beast-mission-result@v1",
-            "mission_id": "CQ4-INFRASTRUCTURE-MATERIAL-002-6692",
+            "mission_id": "CQ4-WO-0001",
             "final_mission_state": "completed",
             "classification": "recovered-complication",
             "required_objectives_satisfied": [
@@ -4717,15 +4819,15 @@
                 {
                   "purpose": "radio-check",
                   "state": "acknowledged",
-                  "sent_at": 5,
-                  "delivered_at": 6,
+                  "sent_at": 4,
+                  "delivered_at": 5,
                   "acknowledged_at": 6
                 },
                 {
                   "purpose": "acknowledge-report",
                   "state": "delivered",
-                  "sent_at": 7,
-                  "delivered_at": 7,
+                  "sent_at": 6,
+                  "delivered_at": 6,
                   "acknowledged_at": null
                 },
                 {
@@ -4871,7 +4973,40 @@
               "field-light",
               "survey-radio"
             ],
-            "equipment_verification": "confirmed"
+            "equipment_verification": "confirmed",
+            "continuity": {
+              "role": "field researcher",
+              "qualifications": [
+                "field-operation",
+                "local-communication",
+                "survey"
+              ],
+              "status": "active",
+              "assignment_count": 1,
+              "shared_assignment_count": 1,
+              "relevant_history": [
+                {
+                  "kind": "served-together",
+                  "refs": {
+                    "assignment_id": "clear-q4-field-survey-alpha"
+                  }
+                },
+                {
+                  "kind": "standard-contact",
+                  "refs": {
+                    "message_id": "message-cf39047624e40b0983",
+                    "purpose": "radio-check"
+                  }
+                },
+                {
+                  "kind": "operation-returned",
+                  "refs": {
+                    "mission_id": "CQ4-WO-0001",
+                    "outcome": "recovered-complication"
+                  }
+                }
+              ]
+            }
           },
           {
             "display_name": "Autumn Odom",
@@ -4897,7 +5032,33 @@
             "assigned_equipment": [
               "survey-instrument"
             ],
-            "equipment_verification": "confirmed"
+            "equipment_verification": "confirmed",
+            "continuity": {
+              "role": "survey technician",
+              "qualifications": [
+                "field-operation",
+                "local-communication",
+                "survey"
+              ],
+              "status": "active",
+              "assignment_count": 1,
+              "shared_assignment_count": 1,
+              "relevant_history": [
+                {
+                  "kind": "served-together",
+                  "refs": {
+                    "assignment_id": "clear-q4-field-survey-alpha"
+                  }
+                },
+                {
+                  "kind": "operation-returned",
+                  "refs": {
+                    "mission_id": "CQ4-WO-0001",
+                    "outcome": "recovered-complication"
+                  }
+                }
+              ]
+            }
           },
           {
             "display_name": "Harold Savage",
@@ -4923,7 +5084,33 @@
             "assigned_equipment": [
               "recording-device"
             ],
-            "equipment_verification": "confirmed"
+            "equipment_verification": "confirmed",
+            "continuity": {
+              "role": "documentation specialist",
+              "qualifications": [
+                "documentation",
+                "field-operation",
+                "local-communication"
+              ],
+              "status": "active",
+              "assignment_count": 1,
+              "shared_assignment_count": 1,
+              "relevant_history": [
+                {
+                  "kind": "served-together",
+                  "refs": {
+                    "assignment_id": "clear-q4-field-survey-alpha"
+                  }
+                },
+                {
+                  "kind": "operation-returned",
+                  "refs": {
+                    "mission_id": "CQ4-WO-0001",
+                    "outcome": "recovered-complication"
+                  }
+                }
+              ]
+            }
           },
           {
             "display_name": "Claudette Olson",
@@ -4947,7 +5134,33 @@
             "current_task": "follow",
             "current_intent": "maintain team contact",
             "assigned_equipment": [],
-            "equipment_verification": "confirmed"
+            "equipment_verification": "confirmed",
+            "continuity": {
+              "role": "field safety specialist",
+              "qualifications": [
+                "field-operation",
+                "field-safety",
+                "local-communication"
+              ],
+              "status": "active",
+              "assignment_count": 1,
+              "shared_assignment_count": 1,
+              "relevant_history": [
+                {
+                  "kind": "served-together",
+                  "refs": {
+                    "assignment_id": "clear-q4-field-survey-alpha"
+                  }
+                },
+                {
+                  "kind": "operation-returned",
+                  "refs": {
+                    "mission_id": "CQ4-WO-0001",
+                    "outcome": "recovered-complication"
+                  }
+                }
+              ]
+            }
           }
         ],
         "equipment": {
@@ -7375,14 +7588,14 @@
           "version": "yellow-beast-institutional-projection@v1",
           "dimensions": {
             "support_posture": "available",
-            "scrutiny_level": "concerned",
-            "operational_confidence": "stable",
-            "information_confidence": "uncertain",
+            "scrutiny_level": "watch",
+            "operational_confidence": "provisional",
+            "information_confidence": "corroborated",
             "resource_posture": "standard",
             "staffing_posture": "standard",
             "equipment_restriction_level": "none",
             "communication_concern": "concerned",
-            "mission_review_status": "open"
+            "mission_review_status": "none"
           },
           "restrictions": {
             "equipment": [],
@@ -7414,7 +7627,7 @@
           "uncertainty": [
             {
               "status": "uncorroborated",
-              "summary": "Standard, Clear-Q4 team Complex-side. 4 personnel accounted for."
+              "summary": "Standard, Clear-Q4 team accounted for. Radio check."
             },
             {
               "status": "uncorroborated",
@@ -7425,8 +7638,31 @@
               "summary": "Request authorization for a bounded relay deviation supported by the recorded fixture evidence."
             }
           ],
-          "pending_reviews": [],
+          "pending_reviews": [
+            {
+              "decision": "recommend-review",
+              "due_at": 1
+            },
+            {
+              "decision": "request-additional-evidence",
+              "due_at": 1
+            },
+            {
+              "decision": "increase-oversight",
+              "due_at": 1
+            }
+          ],
           "recent_decisions": [
+            {
+              "decision": "acknowledge-report",
+              "public_response": "Standard acknowledges the delivered status report.",
+              "resolved_at": 6
+            },
+            {
+              "decision": "schedule-extra-check-in",
+              "public_response": "Standard records the missed reporting window and adds an accountability check to the next assignment.",
+              "resolved_at": 17
+            },
             {
               "decision": "prioritize-evidence",
               "public_response": "Standard acknowledges the evidence record and prioritizes it for return review.",
@@ -7436,21 +7672,6 @@
               "decision": "authorize-deviation",
               "public_response": "Standard authorizes the bounded route deviation. Maintain accountability and report before closure.",
               "resolved_at": 39
-            },
-            {
-              "decision": "recommend-review",
-              "public_response": "Standard records the recovered complication and closes the immediate field response with follow-up review.",
-              "resolved_at": 1
-            },
-            {
-              "decision": "request-additional-evidence",
-              "public_response": "Standard requests the retained evidence or a documented reason it cannot be returned.",
-              "resolved_at": 1
-            },
-            {
-              "decision": "increase-oversight",
-              "public_response": "Standard records the unapproved route deviation and opens an operational review.",
-              "resolved_at": 1
             }
           ],
           "follow_up_assignments": [
@@ -7461,6 +7682,17 @@
               "status": "available"
             }
           ]
+        },
+        "career": {
+          "completed_operations": 0,
+          "recent_updates": [],
+          "history": []
+        },
+        "world_lifecycle": {
+          "lifecycle": "ACTIVE",
+          "final_incident": null,
+          "personnel": [],
+          "read_only": false
         },
         "radio": [
           {
@@ -7544,28 +7776,28 @@
           ],
           "messages": [
             {
-              "id": "message-567e6dfb453bd3ca2b",
+              "id": "message-cf39047624e40b0983",
               "sender": "You",
               "recipient": "Standard",
               "channel": "FIELD_RADIO",
               "purpose": "radio-check",
-              "sent_at": 5,
+              "sent_at": 4,
               "state": "acknowledged",
               "state_label": "Acknowledged",
-              "delivered_at": 6,
+              "delivered_at": 5,
               "acknowledged_at": 6,
               "known_reason": null
             },
             {
-              "id": "standard-institution-decision-2725dc75edcfcc319f",
+              "id": "standard-institution-decision-ddb2b2ca0ef064856b",
               "sender": "Standard",
               "recipient": "You",
               "channel": "FIELD_RADIO",
               "purpose": "acknowledge-report",
-              "sent_at": 7,
+              "sent_at": 6,
               "state": "delivered",
               "state_label": "Delivered",
-              "delivered_at": 7,
+              "delivered_at": 6,
               "acknowledged_at": null,
               "known_reason": null
             },
@@ -7667,7 +7899,8 @@
                 "delivery": "not-applicable",
                 "time_cost": 0,
                 "result": "phase-advanced",
-                "response": null
+                "response": null,
+                "response_speaker": null
               },
               {
                 "channel": "action",
@@ -7679,7 +7912,8 @@
                 "delivery": "not-applicable",
                 "time_cost": 1,
                 "result": "phase-advanced",
-                "response": null
+                "response": null,
+                "response_speaker": null
               },
               {
                 "channel": "action",
@@ -7691,7 +7925,21 @@
                 "delivery": "not-applicable",
                 "time_cost": 1,
                 "result": "phase-advanced",
-                "response": null
+                "response": null,
+                "response_speaker": null
+              },
+              {
+                "channel": "action",
+                "speaker": "You",
+                "targets": [],
+                "text": "READY",
+                "attempted_behavior": "READY",
+                "eligibility": "eligible",
+                "delivery": "not-applicable",
+                "time_cost": 0,
+                "result": "phase-advanced",
+                "response": null,
+                "response_speaker": null
               },
               {
                 "channel": "action",
@@ -7703,31 +7951,8 @@
                 "delivery": "not-applicable",
                 "time_cost": 1,
                 "result": "succeeded",
-                "response": null
-              },
-              {
-                "channel": "action",
-                "speaker": "You",
-                "targets": [],
-                "text": "RADIO_CHECK",
-                "attempted_behavior": "RADIO_CHECK",
-                "eligibility": "eligible",
-                "delivery": "not-applicable",
-                "time_cost": 1,
-                "result": "radio-check-completed",
-                "response": null
-              },
-              {
-                "channel": "action",
-                "speaker": "You",
-                "targets": [],
-                "text": "BEGIN_FIELD_OPERATION",
-                "attempted_behavior": "BEGIN_FIELD_OPERATION",
-                "eligibility": "eligible",
-                "delivery": "not-applicable",
-                "time_cost": 1,
-                "result": "field-operation-entered",
-                "response": null
+                "response": null,
+                "response_speaker": null
               },
               {
                 "channel": "action",
@@ -7739,7 +7964,8 @@
                 "delivery": "not-applicable",
                 "time_cost": 0,
                 "result": "succeeded",
-                "response": null
+                "response": null,
+                "response_speaker": null
               },
               {
                 "channel": "action",
@@ -7751,7 +7977,8 @@
                 "delivery": "not-applicable",
                 "time_cost": 1,
                 "result": "succeeded",
-                "response": null
+                "response": null,
+                "response_speaker": null
               },
               {
                 "channel": "action",
@@ -7763,7 +7990,8 @@
                 "delivery": "not-applicable",
                 "time_cost": 0,
                 "result": "succeeded",
-                "response": null
+                "response": null,
+                "response_speaker": null
               },
               {
                 "channel": "action",
@@ -7775,7 +8003,8 @@
                 "delivery": "not-applicable",
                 "time_cost": 1,
                 "result": "succeeded",
-                "response": null
+                "response": null,
+                "response_speaker": null
               },
               {
                 "channel": "action",
@@ -7787,7 +8016,8 @@
                 "delivery": "not-applicable",
                 "time_cost": 1,
                 "result": "succeeded",
-                "response": null
+                "response": null,
+                "response_speaker": null
               },
               {
                 "channel": "action",
@@ -7799,7 +8029,8 @@
                 "delivery": "not-applicable",
                 "time_cost": 0,
                 "result": "succeeded",
-                "response": null
+                "response": null,
+                "response_speaker": null
               },
               {
                 "channel": "action",
@@ -7811,7 +8042,8 @@
                 "delivery": "not-applicable",
                 "time_cost": 1,
                 "result": "accepted",
-                "response": null
+                "response": null,
+                "response_speaker": null
               },
               {
                 "channel": "action",
@@ -7823,7 +8055,8 @@
                 "delivery": "not-applicable",
                 "time_cost": 1,
                 "result": "succeeded",
-                "response": null
+                "response": null,
+                "response_speaker": null
               },
               {
                 "channel": "action",
@@ -7835,7 +8068,8 @@
                 "delivery": "not-applicable",
                 "time_cost": 1,
                 "result": "delayed",
-                "response": null
+                "response": null,
+                "response_speaker": null
               },
               {
                 "channel": "action",
@@ -7847,7 +8081,8 @@
                 "delivery": "not-applicable",
                 "time_cost": 1,
                 "result": "recovered-complication",
-                "response": null
+                "response": null,
+                "response_speaker": null
               },
               {
                 "channel": "action",
@@ -7859,7 +8094,8 @@
                 "delivery": "not-applicable",
                 "time_cost": 1,
                 "result": "recovered-complication",
-                "response": null
+                "response": null,
+                "response_speaker": null
               },
               {
                 "channel": "action",
@@ -7871,7 +8107,8 @@
                 "delivery": "not-applicable",
                 "time_cost": 1,
                 "result": "mitigated",
-                "response": null
+                "response": null,
+                "response_speaker": null
               },
               {
                 "channel": "action",
@@ -7883,7 +8120,8 @@
                 "delivery": "not-applicable",
                 "time_cost": 1,
                 "result": "accepted",
-                "response": null
+                "response": null,
+                "response_speaker": null
               },
               {
                 "channel": "action",
@@ -7895,7 +8133,8 @@
                 "delivery": "not-applicable",
                 "time_cost": 1,
                 "result": "succeeded",
-                "response": null
+                "response": null,
+                "response_speaker": null
               },
               {
                 "channel": "action",
@@ -7907,7 +8146,8 @@
                 "delivery": "not-applicable",
                 "time_cost": 1,
                 "result": "succeeded",
-                "response": null
+                "response": null,
+                "response_speaker": null
               },
               {
                 "channel": "action",
@@ -7919,7 +8159,8 @@
                 "delivery": "not-applicable",
                 "time_cost": 1,
                 "result": "succeeded",
-                "response": null
+                "response": null,
+                "response_speaker": null
               },
               {
                 "channel": "action",
@@ -7931,7 +8172,8 @@
                 "delivery": "not-applicable",
                 "time_cost": 1,
                 "result": "succeeded",
-                "response": null
+                "response": null,
+                "response_speaker": null
               },
               {
                 "channel": "action",
@@ -7943,7 +8185,8 @@
                 "delivery": "not-applicable",
                 "time_cost": 1,
                 "result": "succeeded",
-                "response": null
+                "response": null,
+                "response_speaker": null
               },
               {
                 "channel": "action",
@@ -7955,7 +8198,8 @@
                 "delivery": "not-applicable",
                 "time_cost": 1,
                 "result": "succeeded",
-                "response": null
+                "response": null,
+                "response_speaker": null
               },
               {
                 "channel": "action",
@@ -7967,7 +8211,8 @@
                 "delivery": "not-applicable",
                 "time_cost": 1,
                 "result": "succeeded",
-                "response": null
+                "response": null,
+                "response_speaker": null
               },
               {
                 "channel": "action",
@@ -7979,7 +8224,8 @@
                 "delivery": "not-applicable",
                 "time_cost": 1,
                 "result": "succeeded",
-                "response": null
+                "response": null,
+                "response_speaker": null
               },
               {
                 "channel": "action",
@@ -7991,7 +8237,8 @@
                 "delivery": "not-applicable",
                 "time_cost": 1,
                 "result": "succeeded",
-                "response": null
+                "response": null,
+                "response_speaker": null
               },
               {
                 "channel": "action",
@@ -8003,7 +8250,8 @@
                 "delivery": "not-applicable",
                 "time_cost": 1,
                 "result": "succeeded",
-                "response": null
+                "response": null,
+                "response_speaker": null
               },
               {
                 "channel": "action",
@@ -8015,7 +8263,8 @@
                 "delivery": "not-applicable",
                 "time_cost": 1,
                 "result": "succeeded",
-                "response": null
+                "response": null,
+                "response_speaker": null
               },
               {
                 "channel": "action",
@@ -8027,7 +8276,8 @@
                 "delivery": "not-applicable",
                 "time_cost": 1,
                 "result": "succeeded",
-                "response": null
+                "response": null,
+                "response_speaker": null
               },
               {
                 "channel": "action",
@@ -8039,7 +8289,8 @@
                 "delivery": "not-applicable",
                 "time_cost": 3,
                 "result": "succeeded",
-                "response": null
+                "response": null,
+                "response_speaker": null
               },
               {
                 "channel": "action",
@@ -8051,7 +8302,8 @@
                 "delivery": "not-applicable",
                 "time_cost": 0,
                 "result": "succeeded",
-                "response": null
+                "response": null,
+                "response_speaker": null
               },
               {
                 "channel": "action",
@@ -8063,7 +8315,8 @@
                 "delivery": "not-applicable",
                 "time_cost": 1,
                 "result": "succeeded",
-                "response": null
+                "response": null,
+                "response_speaker": null
               },
               {
                 "channel": "action",
@@ -8075,7 +8328,8 @@
                 "delivery": "not-applicable",
                 "time_cost": 1,
                 "result": "succeeded",
-                "response": null
+                "response": null,
+                "response_speaker": null
               },
               {
                 "channel": "action",
@@ -8087,7 +8341,8 @@
                 "delivery": "not-applicable",
                 "time_cost": 1,
                 "result": "succeeded",
-                "response": null
+                "response": null,
+                "response_speaker": null
               },
               {
                 "channel": "action",
@@ -8099,7 +8354,8 @@
                 "delivery": "not-applicable",
                 "time_cost": 0,
                 "result": "succeeded",
-                "response": null
+                "response": null,
+                "response_speaker": null
               },
               {
                 "channel": "action",
@@ -8111,7 +8367,8 @@
                 "delivery": "not-applicable",
                 "time_cost": 1,
                 "result": "succeeded",
-                "response": null
+                "response": null,
+                "response_speaker": null
               },
               {
                 "channel": "action",
@@ -8123,7 +8380,8 @@
                 "delivery": "not-applicable",
                 "time_cost": 1,
                 "result": "succeeded",
-                "response": null
+                "response": null,
+                "response_speaker": null
               },
               {
                 "channel": "action",
@@ -8135,7 +8393,8 @@
                 "delivery": "not-applicable",
                 "time_cost": 1,
                 "result": "succeeded",
-                "response": null
+                "response": null,
+                "response_speaker": null
               },
               {
                 "channel": "action",
@@ -8147,7 +8406,8 @@
                 "delivery": "not-applicable",
                 "time_cost": 0,
                 "result": "succeeded",
-                "response": null
+                "response": null,
+                "response_speaker": null
               },
               {
                 "channel": "action",
@@ -8159,7 +8419,8 @@
                 "delivery": "not-applicable",
                 "time_cost": 1,
                 "result": "succeeded",
-                "response": null
+                "response": null,
+                "response_speaker": null
               },
               {
                 "channel": "action",
@@ -8171,7 +8432,8 @@
                 "delivery": "not-applicable",
                 "time_cost": 1,
                 "result": "succeeded",
-                "response": null
+                "response": null,
+                "response_speaker": null
               },
               {
                 "channel": "action",
@@ -8183,7 +8445,8 @@
                 "delivery": "not-applicable",
                 "time_cost": 0,
                 "result": "succeeded",
-                "response": null
+                "response": null,
+                "response_speaker": null
               },
               {
                 "channel": "action",
@@ -8195,7 +8458,8 @@
                 "delivery": "not-applicable",
                 "time_cost": 1,
                 "result": "succeeded",
-                "response": null
+                "response": null,
+                "response_speaker": null
               },
               {
                 "channel": "action",
@@ -8207,7 +8471,8 @@
                 "delivery": "not-applicable",
                 "time_cost": 0,
                 "result": "return-begun",
-                "response": null
+                "response": null,
+                "response_speaker": null
               },
               {
                 "channel": "action",
@@ -8219,7 +8484,8 @@
                 "delivery": "not-applicable",
                 "time_cost": 1,
                 "result": "mission-closed",
-                "response": null
+                "response": null,
+                "response_speaker": null
               }
             ]
           },
@@ -8249,7 +8515,40 @@
                 "field-light",
                 "survey-radio"
               ],
-              "equipment_verification": "confirmed"
+              "equipment_verification": "confirmed",
+              "continuity": {
+                "role": "field researcher",
+                "qualifications": [
+                  "field-operation",
+                  "local-communication",
+                  "survey"
+                ],
+                "status": "active",
+                "assignment_count": 1,
+                "shared_assignment_count": 1,
+                "relevant_history": [
+                  {
+                    "kind": "served-together",
+                    "refs": {
+                      "assignment_id": "clear-q4-field-survey-alpha"
+                    }
+                  },
+                  {
+                    "kind": "standard-contact",
+                    "refs": {
+                      "message_id": "message-cf39047624e40b0983",
+                      "purpose": "radio-check"
+                    }
+                  },
+                  {
+                    "kind": "operation-returned",
+                    "refs": {
+                      "mission_id": "CQ4-WO-0001",
+                      "outcome": "recovered-complication"
+                    }
+                  }
+                ]
+              }
             },
             {
               "display_name": "Autumn Odom",
@@ -8275,7 +8574,33 @@
               "assigned_equipment": [
                 "survey-instrument"
               ],
-              "equipment_verification": "confirmed"
+              "equipment_verification": "confirmed",
+              "continuity": {
+                "role": "survey technician",
+                "qualifications": [
+                  "field-operation",
+                  "local-communication",
+                  "survey"
+                ],
+                "status": "active",
+                "assignment_count": 1,
+                "shared_assignment_count": 1,
+                "relevant_history": [
+                  {
+                    "kind": "served-together",
+                    "refs": {
+                      "assignment_id": "clear-q4-field-survey-alpha"
+                    }
+                  },
+                  {
+                    "kind": "operation-returned",
+                    "refs": {
+                      "mission_id": "CQ4-WO-0001",
+                      "outcome": "recovered-complication"
+                    }
+                  }
+                ]
+              }
             },
             {
               "display_name": "Harold Savage",
@@ -8301,7 +8626,33 @@
               "assigned_equipment": [
                 "recording-device"
               ],
-              "equipment_verification": "confirmed"
+              "equipment_verification": "confirmed",
+              "continuity": {
+                "role": "documentation specialist",
+                "qualifications": [
+                  "documentation",
+                  "field-operation",
+                  "local-communication"
+                ],
+                "status": "active",
+                "assignment_count": 1,
+                "shared_assignment_count": 1,
+                "relevant_history": [
+                  {
+                    "kind": "served-together",
+                    "refs": {
+                      "assignment_id": "clear-q4-field-survey-alpha"
+                    }
+                  },
+                  {
+                    "kind": "operation-returned",
+                    "refs": {
+                      "mission_id": "CQ4-WO-0001",
+                      "outcome": "recovered-complication"
+                    }
+                  }
+                ]
+              }
             },
             {
               "display_name": "Claudette Olson",
@@ -8325,7 +8676,33 @@
               "current_task": "follow",
               "current_intent": "maintain team contact",
               "assigned_equipment": [],
-              "equipment_verification": "confirmed"
+              "equipment_verification": "confirmed",
+              "continuity": {
+                "role": "field safety specialist",
+                "qualifications": [
+                  "field-operation",
+                  "field-safety",
+                  "local-communication"
+                ],
+                "status": "active",
+                "assignment_count": 1,
+                "shared_assignment_count": 1,
+                "relevant_history": [
+                  {
+                    "kind": "served-together",
+                    "refs": {
+                      "assignment_id": "clear-q4-field-survey-alpha"
+                    }
+                  },
+                  {
+                    "kind": "operation-returned",
+                    "refs": {
+                      "mission_id": "CQ4-WO-0001",
+                      "outcome": "recovered-complication"
+                    }
+                  }
+                ]
+              }
             }
           ],
           "local": {
@@ -8344,21 +8721,29 @@
             "state": "available",
             "state_label": "CHANNEL READY",
             "endpoint": "Standard",
+            "operator": {
+              "designation": "STANDARD",
+              "call_sign": "CONTROL DESK",
+              "identity_revealed": false,
+              "operator": null,
+              "contact_count": 1
+            },
             "unavailable_reason": "CHANNEL READY",
             "history": [
               {
                 "channel": "standard",
-                "speaker": "YOU",
+                "speaker": "You",
                 "targets": [
                   "Standard"
                 ],
-                "text": "Standard, Clear-Q4 team Complex-side. 4 personnel accounted for.",
-                "attempted_behavior": "required radio check",
+                "text": "Standard, Clear-Q4 team accounted for. Radio check.",
+                "attempted_behavior": "transmit over the survey radio",
                 "eligibility": "eligible",
                 "delivery": "delivered",
                 "time_cost": 1,
-                "result": "acknowledged",
-                "response": null
+                "result": "delivered",
+                "response": null,
+                "response_speaker": null
               },
               {
                 "channel": "standard",
@@ -8366,13 +8751,14 @@
                 "targets": [
                   "Clear-Q4 team"
                 ],
-                "text": "Clear-Q4, contact established. Proceed with assigned survey.",
+                "text": "Standard acknowledgment received for Radio check.",
                 "attempted_behavior": "scheduled radio-check acknowledgment",
                 "eligibility": "eligible",
                 "delivery": "received",
                 "time_cost": 0,
                 "result": "received",
-                "response": null
+                "response": null,
+                "response_speaker": null
               },
               {
                 "channel": "standard",
@@ -8386,7 +8772,8 @@
                 "delivery": "delayed",
                 "time_cost": 1,
                 "result": "delayed",
-                "response": null
+                "response": null,
+                "response_speaker": null
               },
               {
                 "channel": "standard",
@@ -8400,7 +8787,8 @@
                 "delivery": "delayed",
                 "time_cost": 1,
                 "result": "delayed",
-                "response": null
+                "response": null,
+                "response_speaker": null
               }
             ]
           }
@@ -8412,71 +8800,71 @@
               "id": "async-briefing-room",
               "alias": "ASYNC Briefing Room",
               "family": "controlled-facility",
-              "status": "confirmed",
+              "status": "OBSERVED",
               "current": false
             },
             {
               "id": "equipment-staging",
               "alias": "Equipment Staging",
               "family": "controlled-facility",
-              "status": "confirmed",
+              "status": "OBSERVED",
               "current": false
             },
             {
               "id": "threshold-approach",
               "alias": "Threshold Approach",
               "family": "controlled-transit",
-              "status": "confirmed",
+              "status": "OBSERVED",
               "current": false
             },
             {
               "id": "threshold-room",
               "alias": "Threshold Room",
               "family": "controlled-transition",
-              "status": "confirmed",
+              "status": "OBSERVED",
               "current": false
-            },
-            {
-              "id": "threshold-side-entry",
-              "alias": "Threshold-Side Entry",
-              "family": "complex-entry",
-              "status": "confirmed",
-              "current": true
             },
             {
               "id": "utility-room",
               "alias": "Utility Room",
               "family": "service-room",
-              "status": "confirmed",
+              "status": "OBSERVED",
               "current": false
             },
             {
               "id": "columned-corridor",
               "alias": "Columned Corridor",
               "family": "corridor",
-              "status": "confirmed",
+              "status": "OBSERVED",
               "current": false
             },
             {
               "id": "relay-alcove",
               "alias": "Relay Alcove",
               "family": "service-alcove",
-              "status": "confirmed",
+              "status": "OBSERVED",
               "current": false
             },
             {
               "id": "service-bypass",
               "alias": "Service Bypass",
               "family": "alternate-return-route",
-              "status": "confirmed",
+              "status": "OBSERVED",
               "current": false
             },
             {
               "id": "records-annex",
               "alias": "Records Annex",
               "family": "secondary-evidence-site",
-              "status": "confirmed",
+              "status": "OBSERVED",
               "current": false
+            },
+            {
+              "id": "threshold-side-entry",
+              "alias": "Threshold-Side Entry",
+              "family": "complex-entry",
+              "status": "OBSERVED",
+              "current": true
             }
           ],
           "observed_connections": [
@@ -8484,61 +8872,61 @@
               "id": "briefing-to-staging",
               "from": "ASYNC Briefing Room",
               "to": "Equipment Staging",
-              "status": "observed"
+              "status": "PARTIALLY_OBSERVED"
             },
             {
               "id": "staging-to-approach",
               "from": "Equipment Staging",
               "to": "Threshold Approach",
-              "status": "observed"
+              "status": "PARTIALLY_OBSERVED"
             },
             {
               "id": "approach-to-threshold",
               "from": "Threshold Approach",
               "to": "Threshold Room",
-              "status": "observed"
+              "status": "PARTIALLY_OBSERVED"
             },
             {
               "id": "threshold-crossing",
               "from": "Threshold Room",
               "to": "Threshold-Side Entry",
-              "status": "observed"
+              "status": "PARTIALLY_OBSERVED"
             },
             {
               "id": "entry-to-utility",
               "from": "Threshold-Side Entry",
               "to": "Utility Room",
-              "status": "observed"
-            },
-            {
-              "id": "bypass-to-entry",
-              "from": "Service Bypass",
-              "to": "Threshold-Side Entry",
-              "status": "confirmed"
+              "status": "PARTIALLY_OBSERVED"
             },
             {
               "id": "utility-to-corridor",
               "from": "Utility Room",
               "to": "Columned Corridor",
-              "status": "confirmed"
+              "status": "PARTIALLY_OBSERVED"
             },
             {
               "id": "corridor-to-relay",
               "from": "Columned Corridor",
               "to": "Relay Alcove",
-              "status": "confirmed"
+              "status": "SURVEYED"
             },
             {
               "id": "relay-to-bypass",
               "from": "Relay Alcove",
               "to": "Service Bypass",
-              "status": "confirmed"
+              "status": "SURVEYED"
             },
             {
               "id": "annex-to-bypass",
               "from": "Records Annex",
               "to": "Service Bypass",
-              "status": "confirmed"
+              "status": "SURVEYED"
+            },
+            {
+              "id": "bypass-to-entry",
+              "from": "Service Bypass",
+              "to": "Threshold-Side Entry",
+              "status": "SURVEYED"
             }
           ],
           "unknown_continuations": [],
@@ -8546,188 +8934,146 @@
           "confidence": "confirmed current observation"
         },
         "map": {
-          "version": "yellow-beast-operational-map@v1",
-          "worldpack_id": "clear-q4",
-          "current_location": "threshold-side-entry",
+          "version": "yellow-beast-survey-frontier-map@v1",
           "nodes": [
             {
               "id": "async-briefing-room",
               "name": "ASYNC Briefing Room",
               "type": "controlled-facility",
-              "status": "confirmed",
-              "current": false,
               "coordinates": {
                 "x": 40,
                 "y": 130,
                 "level": 0
               },
-              "personnel": [],
-              "hazards": [],
+              "status": "OBSERVED",
+              "current": false,
+              "provenance": "direct-observation",
               "mission_markers": []
             },
             {
               "id": "equipment-staging",
               "name": "Equipment Staging",
               "type": "controlled-facility",
-              "status": "confirmed",
-              "current": false,
               "coordinates": {
                 "x": 120,
                 "y": 130,
                 "level": 0
               },
-              "personnel": [],
-              "hazards": [],
+              "status": "OBSERVED",
+              "current": false,
+              "provenance": "direct-observation",
               "mission_markers": []
             },
             {
               "id": "threshold-approach",
               "name": "Threshold Approach",
               "type": "controlled-transit",
-              "status": "confirmed",
-              "current": false,
               "coordinates": {
                 "x": 200,
                 "y": 130,
                 "level": 0
               },
-              "personnel": [],
-              "hazards": [],
+              "status": "OBSERVED",
+              "current": false,
+              "provenance": "direct-observation",
               "mission_markers": []
             },
             {
               "id": "threshold-room",
               "name": "Threshold Room",
               "type": "controlled-transition",
-              "status": "confirmed",
-              "current": false,
               "coordinates": {
                 "x": 280,
                 "y": 130,
                 "level": 0
               },
-              "personnel": [],
-              "hazards": [],
-              "mission_markers": []
-            },
-            {
-              "id": "threshold-side-entry",
-              "name": "Threshold-Side Entry",
-              "type": "complex-entry",
-              "status": "confirmed",
-              "current": true,
-              "coordinates": {
-                "x": 360,
-                "y": 130,
-                "level": 0
-              },
-              "personnel": [
-                {
-                  "name": "Taylor Morgan",
-                  "status": "present"
-                },
-                {
-                  "name": "Autumn Odom",
-                  "status": "present"
-                },
-                {
-                  "name": "Harold Savage",
-                  "status": "present"
-                },
-                {
-                  "name": "Claudette Olson",
-                  "status": "present"
-                }
-              ],
-              "hazards": [],
+              "status": "OBSERVED",
+              "current": false,
+              "provenance": "direct-observation",
               "mission_markers": []
             },
             {
               "id": "utility-room",
               "name": "Utility Room",
               "type": "service-room",
-              "status": "confirmed",
-              "current": false,
               "coordinates": {
                 "x": 450,
                 "y": 130,
                 "level": 0
               },
-              "personnel": [],
-              "hazards": [],
-              "mission_markers": [
-                {
-                  "id": "assigned-survey-area",
-                  "label": "Assigned survey area",
-                  "location": "utility-room"
-                }
-              ]
+              "status": "OBSERVED",
+              "current": false,
+              "provenance": "direct-observation",
+              "mission_markers": []
             },
             {
               "id": "columned-corridor",
               "name": "Columned Corridor",
               "type": "corridor",
-              "status": "confirmed",
-              "current": false,
               "coordinates": {
                 "x": 350,
                 "y": 55,
                 "level": 0
               },
-              "personnel": [],
-              "hazards": [],
+              "status": "OBSERVED",
+              "current": false,
+              "provenance": "direct-observation",
               "mission_markers": []
             },
             {
               "id": "relay-alcove",
               "name": "Relay Alcove",
               "type": "service-alcove",
-              "status": "confirmed",
-              "current": false,
               "coordinates": {
                 "x": 235,
                 "y": 40,
                 "level": 0
               },
-              "personnel": [],
-              "hazards": [
-                {
-                  "id": "relay-fault-signs",
-                  "label": "Electrical fault signs",
-                  "state": "detectable",
-                  "severity": "serious"
-                }
-              ],
+              "status": "OBSERVED",
+              "current": false,
+              "provenance": "direct-observation",
               "mission_markers": []
             },
             {
               "id": "service-bypass",
               "name": "Service Bypass",
               "type": "alternate-return-route",
-              "status": "confirmed",
-              "current": false,
               "coordinates": {
                 "x": 315,
                 "y": 220,
                 "level": 0
               },
-              "personnel": [],
-              "hazards": [],
+              "status": "OBSERVED",
+              "current": false,
+              "provenance": "direct-observation",
               "mission_markers": []
             },
             {
               "id": "records-annex",
               "name": "Records Annex",
               "type": "secondary-evidence-site",
-              "status": "confirmed",
-              "current": false,
               "coordinates": {
                 "x": 575,
                 "y": 115,
                 "level": 0
               },
-              "personnel": [],
-              "hazards": [],
+              "status": "OBSERVED",
+              "current": false,
+              "provenance": "direct-observation",
+              "mission_markers": []
+            },
+            {
+              "id": "threshold-side-entry",
+              "name": "Threshold-Side Entry",
+              "type": "complex-entry",
+              "coordinates": {
+                "x": 360,
+                "y": 130,
+                "level": 0
+              },
+              "status": "OBSERVED",
+              "current": true,
+              "provenance": "direct-observation",
               "mission_markers": []
             }
           ],
@@ -8736,131 +9082,96 @@
               "id": "briefing-to-staging",
               "from": "async-briefing-room",
               "to": "equipment-staging",
-              "status": "observed",
-              "direction": "forward",
-              "relationship": "controlled transit",
-              "hazard": "clear",
-              "blocked": false
+              "status": "PARTIALLY_OBSERVED",
+              "label": "controlled transit"
             },
             {
               "id": "staging-to-approach",
               "from": "equipment-staging",
               "to": "threshold-approach",
-              "status": "observed",
-              "direction": "forward",
-              "relationship": "controlled transit",
-              "hazard": "clear",
-              "blocked": false
+              "status": "PARTIALLY_OBSERVED",
+              "label": "controlled transit"
             },
             {
               "id": "approach-to-threshold",
               "from": "threshold-approach",
               "to": "threshold-room",
-              "status": "observed",
-              "direction": "forward",
-              "relationship": "controlled transit",
-              "hazard": "clear",
-              "blocked": false
+              "status": "PARTIALLY_OBSERVED",
+              "label": "controlled transit"
             },
             {
               "id": "threshold-crossing",
               "from": "threshold-room",
               "to": "threshold-side-entry",
-              "status": "observed",
-              "direction": "through",
-              "relationship": "Threshold crossing",
-              "hazard": "controlled",
-              "blocked": false
+              "status": "PARTIALLY_OBSERVED",
+              "label": "Threshold crossing"
             },
             {
               "id": "entry-to-utility",
               "from": "threshold-side-entry",
               "to": "utility-room",
-              "status": "observed",
-              "direction": "forward",
-              "relationship": "entry route",
-              "hazard": "clear",
-              "blocked": false
-            },
-            {
-              "id": "bypass-to-entry",
-              "from": "service-bypass",
-              "to": "threshold-side-entry",
-              "status": "confirmed",
-              "direction": "northwest",
-              "relationship": "alternate Threshold return",
-              "hazard": "clear",
-              "blocked": false
+              "status": "PARTIALLY_OBSERVED",
+              "label": "entry route"
             },
             {
               "id": "utility-to-corridor",
               "from": "utility-room",
               "to": "columned-corridor",
-              "status": "confirmed",
-              "direction": "west",
-              "relationship": "open corridor",
-              "hazard": "clear",
-              "blocked": false
+              "status": "PARTIALLY_OBSERVED",
+              "label": "open corridor"
             },
             {
               "id": "utility-to-passage",
               "from": "utility-room",
               "to": null,
-              "status": "observed",
-              "direction": "southeast",
-              "relationship": "open passage",
-              "hazard": "clear",
-              "blocked": false
+              "status": "PARTIALLY_OBSERVED",
+              "label": "open passage"
             },
             {
               "id": "corridor-to-relay",
               "from": "columned-corridor",
               "to": "relay-alcove",
-              "status": "confirmed",
-              "direction": "west",
-              "relationship": "service recess",
-              "hazard": "caution",
-              "blocked": false
+              "status": "SURVEYED",
+              "label": "service recess"
             },
             {
               "id": "relay-to-bypass",
               "from": "relay-alcove",
               "to": "service-bypass",
-              "status": "confirmed",
-              "direction": "south",
-              "relationship": "maintenance connection",
-              "hazard": "caution",
-              "blocked": false
+              "status": "SURVEYED",
+              "label": "maintenance connection"
             },
             {
               "id": "annex-to-bypass",
               "from": "records-annex",
               "to": "service-bypass",
-              "status": "confirmed",
-              "direction": "southwest",
-              "relationship": "service connector",
-              "hazard": "clear",
-              "blocked": false
+              "status": "SURVEYED",
+              "label": "service connector"
             },
             {
-              "id": "passage-to-annex",
-              "from": "records-annex",
-              "to": null,
-              "status": "observed",
-              "direction": "east",
-              "relationship": "records branch",
-              "hazard": "communications-shadow",
-              "blocked": false
+              "id": "bypass-to-entry",
+              "from": "service-bypass",
+              "to": "threshold-side-entry",
+              "status": "SURVEYED",
+              "label": "alternate Threshold return"
             }
           ],
-          "unresolved_exits": [],
+          "historical_claims": [
+            {
+              "id": "prior-lower-route",
+              "label": "Prior survey: lower continuation marked passable",
+              "status": "PRIOR_RECORD_ONLY",
+              "claim_state": "UNCONFIRMED"
+            }
+          ],
+          "current_location": "threshold-side-entry",
           "route_history": [
             {
               "sequence": 1,
               "from": "threshold-room",
               "to": "threshold-side-entry",
               "connection_id": "threshold-crossing",
-              "at": 4
+              "at": 7
             },
             {
               "sequence": 2,
@@ -8926,28 +9237,103 @@
               "at": 45
             }
           ],
-          "legend": [
+          "unresolved_exits": []
+        },
+        "standard_spatial_record": {
+          "version": "yellow-beast-survey-frontier-map@v1",
+          "nodes": [],
+          "edges": [],
+          "historical_claims": [
             {
-              "code": "YOU",
-              "meaning": "current player location"
-            },
-            {
-              "code": "TEAM",
-              "meaning": "visually confirmed personnel"
-            },
-            {
-              "code": "LAST",
-              "meaning": "last confirmed personnel position"
-            },
-            {
-              "code": "?",
-              "meaning": "observed unresolved route"
-            },
-            {
-              "code": "!",
-              "meaning": "known blocked or hazardous route"
+              "id": "prior-lower-route",
+              "label": "Prior survey: lower continuation marked passable",
+              "status": "PRIOR_RECORD_ONLY",
+              "claim_state": "UNCONFIRMED"
             }
-          ]
+          ],
+          "current_location": null
+        },
+        "survey_frontier": [
+          {
+            "location": "async-briefing-room",
+            "route": "controlled transit",
+            "state": "PARTIALLY_OBSERVED"
+          },
+          {
+            "location": "equipment-staging",
+            "route": "controlled transit",
+            "state": "PARTIALLY_OBSERVED"
+          },
+          {
+            "location": "equipment-staging",
+            "route": "controlled transit",
+            "state": "PARTIALLY_OBSERVED"
+          },
+          {
+            "location": "threshold-approach",
+            "route": "controlled transit",
+            "state": "PARTIALLY_OBSERVED"
+          },
+          {
+            "location": "threshold-approach",
+            "route": "controlled transit",
+            "state": "PARTIALLY_OBSERVED"
+          },
+          {
+            "location": "threshold-room",
+            "route": "controlled transit",
+            "state": "PARTIALLY_OBSERVED"
+          },
+          {
+            "location": "threshold-room",
+            "route": "Threshold crossing",
+            "state": "PARTIALLY_OBSERVED"
+          },
+          {
+            "location": "utility-room",
+            "route": "entry route",
+            "state": "PARTIALLY_OBSERVED"
+          },
+          {
+            "location": "utility-room",
+            "route": "open corridor",
+            "state": "PARTIALLY_OBSERVED"
+          },
+          {
+            "location": "utility-room",
+            "route": "open passage",
+            "state": "PARTIALLY_OBSERVED"
+          },
+          {
+            "location": "columned-corridor",
+            "route": "open corridor",
+            "state": "PARTIALLY_OBSERVED"
+          },
+          {
+            "location": "records-annex",
+            "route": "records branch",
+            "state": "UNKNOWN"
+          },
+          {
+            "location": "threshold-side-entry",
+            "route": "Threshold crossing",
+            "state": "PARTIALLY_OBSERVED"
+          },
+          {
+            "location": "threshold-side-entry",
+            "route": "entry route",
+            "state": "PARTIALLY_OBSERVED"
+          }
+        ],
+        "procedural_geography": {
+          "generation_version": "yellow-beast-complex-geography@v1",
+          "seed_strategy": "sha256(world-seed|geography-domain|version|request-id)",
+          "generated_location_count": 0,
+          "generated_connection_count": 0,
+          "expansion_count": 0,
+          "unresolved_frontier_count": 1,
+          "last_request_id": null,
+          "recent_errors": []
         },
         "current_location": {
           "id": "threshold-side-entry",
@@ -8955,11 +9341,28 @@
           "type": "complex-entry",
           "description": "The first controlled position on the Complex side of the Threshold.",
           "environment": {
-            "lighting": "mixed Threshold spill and fluorescent light",
-            "surface": "worn bare floor"
+            "power": "normal",
+            "lighting": "normal",
+            "communications": "nominal",
+            "structural": "stable",
+            "moisture": "dry",
+            "acoustic": "ordinary",
+            "visibility": "normal",
+            "summary": "Lighting: normal. Communications coverage: nominal. Structure: stable. Surface moisture: dry. Acoustic condition: ordinary."
           }
         },
-        "field_observation": "You take stock of the threshold-side entry. The return marker remains intact and secured beside the confirmed Threshold route. A threshold room lies back. A utility room lies forward. A service bypass lies southeast. Autumn, Harold, and Claudette remain within speaking range.",
+        "environment": {
+          "location_id": "threshold-side-entry",
+          "power": "normal",
+          "lighting": "normal",
+          "communications": "nominal",
+          "structural": "stable",
+          "moisture": "dry",
+          "acoustic": "ordinary",
+          "visibility": "normal",
+          "summary": "Lighting: normal. Communications coverage: nominal. Structure: stable. Surface moisture: dry. Acoustic condition: ordinary."
+        },
+        "field_observation": "You take stock of the threshold-side entry. The return marker remains intact and secured beside the confirmed Threshold route. A threshold room lies back. A utility room lies forward. A service bypass lies southeast. Autumn, Harold, and Claudette remain within speaking range. Lighting: normal. Communications coverage: nominal. Structure: stable. Surface moisture: dry. Acoustic condition: ordinary.",
         "interactables": [
           {
             "name": "return marker",
@@ -8988,10 +9391,11 @@
             ]
           }
         ],
+        "phenomena": [],
         "evidence": [
           {
             "id": "object-evidence-8e989eabbd097188e8e3",
-            "mission_id": "CQ4-INFRASTRUCTURE-MATERIAL-002-6692",
+            "mission_id": "CQ4-WO-0001",
             "type": "fixture-test",
             "capture_event": "object.evidence.captured",
             "method": "instrument test",
@@ -9007,23 +9411,7 @@
             "storage": "with the field survey record",
             "reporting_state": "reported-to-standard",
             "render": {
-              "id": "render-da52d9bfb84e0900",
-              "evidence_id": "object-evidence-8e989eabbd097188e8e3",
-              "adapter": "fallback",
-              "workflow": "observer-safe-q4-evidence",
-              "status": "fallback-ready",
-              "attempts": 0,
-              "source_fact_digest": "1560367cdb27d6e6c2a0b124d121569a4fe8670ac1ec2d064dac2102afb14fac",
-              "created_at": "simulation-recorded",
-              "result": {
-                "status": "fallback",
-                "kind": "schematic-capture",
-                "label": "Observer-safe field capture",
-                "reason": "renderer-disabled",
-                "source_fact_digest": "1560367cdb27d6e6c2a0b124d121569a4fe8670ac1ec2d064dac2102afb14fac",
-                "asset_id": "fallback-object-evidence-8e989eabbd097188e8e3",
-                "provenance": "local-deterministic-fallback"
-              }
+              "status": "fallback-ready"
             },
             "visual": {
               "asset_id": "evidence-visual-unavailable",
@@ -9038,7 +9426,7 @@
           },
           {
             "id": "object-evidence-13f265b5b915c6810e2b",
-            "mission_id": "CQ4-INFRASTRUCTURE-MATERIAL-002-6692",
+            "mission_id": "CQ4-WO-0001",
             "type": "surface-photograph",
             "capture_event": "object.evidence.captured",
             "method": "35mm photograph",
@@ -9054,23 +9442,7 @@
             "storage": "with the camera record",
             "reporting_state": "reported-to-standard",
             "render": {
-              "id": "render-3985521198b8286e",
-              "evidence_id": "object-evidence-13f265b5b915c6810e2b",
-              "adapter": "fallback",
-              "workflow": "observer-safe-q4-evidence",
-              "status": "fallback-ready",
-              "attempts": 0,
-              "source_fact_digest": "f7f225f65da3e73360d31c04196d0f0d0d442b227de5e7da95a5a9ebfd01e765",
-              "created_at": "simulation-recorded",
-              "result": {
-                "status": "fallback",
-                "kind": "schematic-capture",
-                "label": "Observer-safe field capture",
-                "reason": "renderer-disabled",
-                "source_fact_digest": "f7f225f65da3e73360d31c04196d0f0d0d442b227de5e7da95a5a9ebfd01e765",
-                "asset_id": "fallback-object-evidence-13f265b5b915c6810e2b",
-                "provenance": "local-deterministic-fallback"
-              }
+              "status": "fallback-ready"
             },
             "visual": {
               "asset_id": "evidence-photograph",
@@ -9085,7 +9457,7 @@
           },
           {
             "id": "object-evidence-5aef96d444923c882968",
-            "mission_id": "CQ4-INFRASTRUCTURE-MATERIAL-002-6692",
+            "mission_id": "CQ4-WO-0001",
             "type": "annex-document-record",
             "capture_event": "object.evidence.captured",
             "method": "35mm photograph and condition note",
@@ -9101,23 +9473,7 @@
             "storage": "evidence-case",
             "reporting_state": "unreported",
             "render": {
-              "id": "render-0b824af722a2d0b9",
-              "evidence_id": "object-evidence-5aef96d444923c882968",
-              "adapter": "fallback",
-              "workflow": "observer-safe-q4-evidence",
-              "status": "fallback-ready",
-              "attempts": 0,
-              "source_fact_digest": "fcf3db2e860baa25da3e9218245ae40636b295089c27d37c8f62b17f2ff877b4",
-              "created_at": "simulation-recorded",
-              "result": {
-                "status": "fallback",
-                "kind": "schematic-capture",
-                "label": "Observer-safe field capture",
-                "reason": "renderer-disabled",
-                "source_fact_digest": "fcf3db2e860baa25da3e9218245ae40636b295089c27d37c8f62b17f2ff877b4",
-                "asset_id": "fallback-object-evidence-5aef96d444923c882968",
-                "provenance": "local-deterministic-fallback"
-              }
+              "status": "fallback-ready"
             },
             "visual": {
               "asset_id": "evidence-visual-unavailable",
@@ -9131,6 +9487,369 @@
             "available_to_standard": false
           }
         ],
+        "archive": {
+          "version": "yellow-beast-q4-evidence-authority@v1",
+          "records": [
+            {
+              "version": "yellow-beast-q4-evidence-authority@v1",
+              "id": "object-evidence-8e989eabbd097188e8e3",
+              "type": "fixture-test",
+              "creator": "yb-personnel-a4a099751e6bacdc72e3",
+              "operation_id": "CQ4-WO-0001",
+              "run_id": "run-281b76de5bb001e2",
+              "timestamp": {
+                "interval": 8
+              },
+              "location": "utility-room",
+              "location_name": "Utility Room",
+              "method": "instrument test",
+              "measurement": null,
+              "equipment": {
+                "id": "q4-survey-instrument-01",
+                "label": "Portable survey instrument"
+              },
+              "source": {
+                "object_id": "utility-fluorescent-fixture",
+                "observation": "The active fixture held a steady output during the instrument test.",
+                "phenomenon_observation_ref": null
+              },
+              "provenance": {
+                "authority_event": "object.evidence.captured",
+                "creator": "yb-personnel-a4a099751e6bacdc72e3",
+                "conditions": {
+                  "condition": "steady-surveyed",
+                  "active": true,
+                  "intact": true,
+                  "custom.tested": true
+                },
+                "environment": {
+                  "lighting": "normal",
+                  "communications": "nominal",
+                  "structural": "stable",
+                  "moisture": "dry",
+                  "acoustic": "ordinary",
+                  "visibility": "normal"
+                },
+                "source": "worldpack-authored-object-interaction"
+              },
+              "condition": "The active fixture held a steady output during the instrument test.",
+              "environmental_conditions": {
+                "lighting": "normal",
+                "communications": "nominal",
+                "structural": "stable",
+                "moisture": "dry",
+                "acoustic": "ordinary",
+                "visibility": "normal"
+              },
+              "storage": "Facility archive",
+              "custody": {
+                "state": "archived",
+                "holder": "Standard",
+                "history": [
+                  {
+                    "state": "created",
+                    "holder": "yb-personnel-a4a099751e6bacdc72e3",
+                    "at": {
+                      "interval": 8
+                    }
+                  },
+                  {
+                    "state": "archived",
+                    "holder": "Standard",
+                    "at": {
+                      "interval": 47
+                    }
+                  }
+                ]
+              },
+              "reporting_state": "reported-to-standard",
+              "standard_available": true,
+              "institutional_confidence": "pending-review",
+              "analysis_state": "pending-analysis",
+              "linked_reports": [],
+              "linked_personnel": [
+                "yb-personnel-a4a099751e6bacdc72e3"
+              ],
+              "contradictions": [],
+              "render_spec": {
+                "version": "yellow-beast-q4-evidence-render-spec@v1",
+                "source": "canonical-evidence-record",
+                "facts": {
+                  "evidence_type": "fixture-test",
+                  "location": "Utility Room",
+                  "device": "Portable survey instrument",
+                  "captured_at": {
+                    "interval": 8
+                  },
+                  "visible_subjects": [
+                    "fluorescent fixture"
+                  ],
+                  "observation": "The active fixture held a steady output during the instrument test.",
+                  "lighting": "normal",
+                  "environment": {
+                    "lighting": "normal",
+                    "communications": "nominal",
+                    "structural": "stable",
+                    "moisture": "dry",
+                    "acoustic": "ordinary",
+                    "visibility": "normal"
+                  },
+                  "framing": "field record"
+                },
+                "status": "not-rendered"
+              },
+              "render_status": "not-rendered",
+              "render_presentation": {
+                "status": "not-rendered",
+                "pipeline_version": null,
+                "artifact": null,
+                "attempts": [],
+                "last_error": null
+              },
+              "player_access": true
+            },
+            {
+              "version": "yellow-beast-q4-evidence-authority@v1",
+              "id": "object-evidence-13f265b5b915c6810e2b",
+              "type": "surface-photograph",
+              "creator": "yb-personnel-db9a7dd1ee75f901eda8",
+              "operation_id": "CQ4-WO-0001",
+              "run_id": "run-281b76de5bb001e2",
+              "timestamp": {
+                "interval": 9
+              },
+              "location": "utility-room",
+              "location_name": "Utility Room",
+              "method": "35mm photograph",
+              "measurement": null,
+              "equipment": {
+                "id": "q4-recording-device-01",
+                "label": "35mm field camera"
+              },
+              "source": {
+                "object_id": "utility-route-surface",
+                "observation": "The photograph records the floor pattern and whether a survey marker is present.",
+                "phenomenon_observation_ref": null
+              },
+              "provenance": {
+                "authority_event": "object.evidence.captured",
+                "creator": "yb-personnel-db9a7dd1ee75f901eda8",
+                "conditions": {
+                  "condition": "ordinary-wear",
+                  "intact": true,
+                  "marked": false,
+                  "custom.marker_kind": null
+                },
+                "environment": {
+                  "lighting": "normal",
+                  "communications": "nominal",
+                  "structural": "stable",
+                  "moisture": "dry",
+                  "acoustic": "ordinary",
+                  "visibility": "normal"
+                },
+                "source": "worldpack-authored-object-interaction"
+              },
+              "condition": "The photograph records the floor pattern and whether a survey marker is present.",
+              "environmental_conditions": {
+                "lighting": "normal",
+                "communications": "nominal",
+                "structural": "stable",
+                "moisture": "dry",
+                "acoustic": "ordinary",
+                "visibility": "normal"
+              },
+              "storage": "Facility archive",
+              "custody": {
+                "state": "archived",
+                "holder": "Standard",
+                "history": [
+                  {
+                    "state": "created",
+                    "holder": "yb-personnel-db9a7dd1ee75f901eda8",
+                    "at": {
+                      "interval": 9
+                    }
+                  },
+                  {
+                    "state": "archived",
+                    "holder": "Standard",
+                    "at": {
+                      "interval": 47
+                    }
+                  }
+                ]
+              },
+              "reporting_state": "reported-to-standard",
+              "standard_available": true,
+              "institutional_confidence": "pending-review",
+              "analysis_state": "pending-analysis",
+              "linked_reports": [],
+              "linked_personnel": [
+                "yb-personnel-db9a7dd1ee75f901eda8"
+              ],
+              "contradictions": [],
+              "render_spec": {
+                "version": "yellow-beast-q4-evidence-render-spec@v1",
+                "source": "canonical-evidence-record",
+                "facts": {
+                  "evidence_type": "surface-photograph",
+                  "location": "Utility Room",
+                  "device": "35mm field camera",
+                  "captured_at": {
+                    "interval": 9
+                  },
+                  "visible_subjects": [
+                    "scuffed floor"
+                  ],
+                  "observation": "The photograph records the floor pattern and whether a survey marker is present.",
+                  "lighting": "normal",
+                  "environment": {
+                    "lighting": "normal",
+                    "communications": "nominal",
+                    "structural": "stable",
+                    "moisture": "dry",
+                    "acoustic": "ordinary",
+                    "visibility": "normal"
+                  },
+                  "framing": "field record"
+                },
+                "status": "not-rendered"
+              },
+              "render_status": "not-rendered",
+              "render_presentation": {
+                "status": "not-rendered",
+                "pipeline_version": null,
+                "artifact": null,
+                "attempts": [],
+                "last_error": null
+              },
+              "player_access": true
+            },
+            {
+              "version": "yellow-beast-q4-evidence-authority@v1",
+              "id": "object-evidence-5aef96d444923c882968",
+              "type": "annex-document-record",
+              "creator": "yb-personnel-db9a7dd1ee75f901eda8",
+              "operation_id": "CQ4-WO-0001",
+              "run_id": "run-281b76de5bb001e2",
+              "timestamp": {
+                "interval": 41
+              },
+              "location": "records-annex",
+              "location_name": "Records Annex",
+              "method": "35mm photograph and condition note",
+              "measurement": null,
+              "equipment": {
+                "id": "q4-recording-device-01",
+                "label": "35mm field camera"
+              },
+              "source": {
+                "object_id": "annex-record-fragment",
+                "observation": "The record preserves the fragment's water mark and faint route linework without assigning a destination.",
+                "phenomenon_observation_ref": null
+              },
+              "provenance": {
+                "authority_event": "object.evidence.captured",
+                "creator": "yb-personnel-db9a7dd1ee75f901eda8",
+                "conditions": {
+                  "condition": "water-marked-stable",
+                  "intact": true,
+                  "container": "wall-slot",
+                  "custom.documented": true,
+                  "custom.contained": false
+                },
+                "environment": {
+                  "lighting": "emergency",
+                  "communications": "weak",
+                  "structural": "stable",
+                  "moisture": "damp",
+                  "acoustic": "masked",
+                  "visibility": "normal"
+                },
+                "source": "worldpack-authored-object-interaction"
+              },
+              "condition": "The record preserves the fragment's water mark and faint route linework without assigning a destination.",
+              "environmental_conditions": {
+                "lighting": "emergency",
+                "communications": "weak",
+                "structural": "stable",
+                "moisture": "damp",
+                "acoustic": "masked",
+                "visibility": "normal"
+              },
+              "storage": "Facility archive",
+              "custody": {
+                "state": "archived",
+                "holder": "Standard",
+                "history": [
+                  {
+                    "state": "created",
+                    "holder": "q4-player-13d8ab53c573cac7",
+                    "at": {
+                      "interval": 41
+                    }
+                  },
+                  {
+                    "state": "archived",
+                    "holder": "Standard",
+                    "at": {
+                      "interval": 47
+                    }
+                  }
+                ]
+              },
+              "reporting_state": "submitted-on-return",
+              "standard_available": true,
+              "institutional_confidence": "pending-review",
+              "analysis_state": "pending-analysis",
+              "linked_reports": [],
+              "linked_personnel": [
+                "yb-personnel-db9a7dd1ee75f901eda8",
+                "q4-player-13d8ab53c573cac7"
+              ],
+              "contradictions": [],
+              "render_spec": {
+                "version": "yellow-beast-q4-evidence-render-spec@v1",
+                "source": "canonical-evidence-record",
+                "facts": {
+                  "evidence_type": "annex-document-record",
+                  "location": "Records Annex",
+                  "device": "35mm field camera",
+                  "captured_at": {
+                    "interval": 41
+                  },
+                  "visible_subjects": [
+                    "record fragment"
+                  ],
+                  "observation": "The record preserves the fragment's water mark and faint route linework without assigning a destination.",
+                  "lighting": "emergency",
+                  "environment": {
+                    "lighting": "emergency",
+                    "communications": "weak",
+                    "structural": "stable",
+                    "moisture": "damp",
+                    "acoustic": "masked",
+                    "visibility": "normal"
+                  },
+                  "framing": "field record"
+                },
+                "status": "not-rendered"
+              },
+              "render_status": "not-rendered",
+              "render_presentation": {
+                "status": "not-rendered",
+                "pipeline_version": null,
+                "artifact": null,
+                "attempts": [],
+                "last_error": null
+              },
+              "player_access": true
+            }
+          ],
+          "contradictions": []
+        },
+        "written_report": null,
         "hazards": [
           {
             "id": "overhead-service-bracket",
@@ -9157,7 +9876,18 @@
             "summary": "The spare battery holds the relay isolated from the field circuit."
           }
         ],
-        "operational_updates": [],
+        "operational_updates": [
+          {
+            "kind": "scheduled-event",
+            "summary": "communication transmit resolved.",
+            "at": 47
+          },
+          {
+            "kind": "scheduled-event",
+            "summary": "communication deliver resolved.",
+            "at": 47
+          }
+        ],
         "visuals": {
           "personnel": [
             {
@@ -9347,12 +10077,12 @@
         "field_conditions": null,
         "review": {
           "version": "yellow-beast-q4-continuity@v3",
-          "mission_id": "CQ4-INFRASTRUCTURE-MATERIAL-002-6692",
+          "mission_id": "CQ4-WO-0001",
           "outcome": "recovered-complication",
           "final_mission_state": "completed",
           "public_debrief_summary": "The team returned with its required record after recovering an operational complication; the complication remains part of the outcome record. A teammate returned with a recorded injury. A field complication was recovered before closure. The equipment record includes damage or loss. The scheduled communication record includes a missed reporting window.",
           "assignment": {
-            "objective": "Inspect and document the declared lighting and material conditions within the survey boundary.",
+            "objective": "Survey the declared frontier from the fixed Threshold approach and retain an accountable field record.",
             "completion_status": "completed",
             "deviations": [
               "missed-declared-check-in"
@@ -9625,7 +10355,7 @@
             ],
             "delivered": [
               {
-                "id": "message-567e6dfb453bd3ca2b",
+                "id": "message-cf39047624e40b0983",
                 "sender": "q4-player-13d8ab53c573cac7",
                 "intended_recipient": "Standard",
                 "intended_recipients": [
@@ -9636,44 +10366,45 @@
                 ],
                 "channel": "FIELD_RADIO",
                 "purpose": "radio-check",
-                "text": "Standard, Clear-Q4 team Complex-side. 4 personnel accounted for.",
+                "text": "Standard, Clear-Q4 team accounted for. Radio check.",
                 "state": "acknowledged",
                 "delivery_status": "delivered",
-                "sent_at": 5,
-                "interval": 5,
-                "delivered_at": 6,
+                "sent_at": 4,
+                "interval": 4,
+                "delivered_at": 5,
                 "acknowledged_at": 6,
                 "interference": null,
                 "failure_reason": null,
                 "evidence_ids": [],
+                "geography_report": false,
                 "provenance": "authoritative-communication-runtime",
                 "history": [
                   {
                     "sequence": 1,
                     "from": null,
                     "to": "composed",
-                    "at": 5,
+                    "at": 4,
                     "reason": "message composed"
                   },
                   {
                     "sequence": 2,
                     "from": "composed",
                     "to": "queued",
-                    "at": 5,
+                    "at": 4,
                     "reason": "accepted into the field-radio transmission queue"
                   },
                   {
                     "sequence": 3,
                     "from": "queued",
                     "to": "transmitting",
-                    "at": 6,
+                    "at": 5,
                     "reason": "field-radio transmission begun"
                   },
                   {
                     "sequence": 4,
                     "from": "transmitting",
                     "to": "delivered",
-                    "at": 6,
+                    "at": 5,
                     "reason": "the intended recipient received the radio message"
                   },
                   {
@@ -9684,10 +10415,10 @@
                     "reason": "Standard acknowledged the delivered message"
                   }
                 ],
-                "institutional_recorded": "q4-delivered-communication-message-567e6dfb453bd3ca2b"
+                "institutional_recorded": "q4-delivered-communication-message-cf39047624e40b0983"
               },
               {
-                "id": "standard-institution-decision-2725dc75edcfcc319f",
+                "id": "standard-institution-decision-ddb2b2ca0ef064856b",
                 "sender": "Standard",
                 "intended_recipient": "q4-player-13d8ab53c573cac7",
                 "intended_recipients": [
@@ -9701,27 +10432,28 @@
                 "text": "Standard acknowledges the delivered status report.",
                 "state": "delivered",
                 "delivery_status": "delivered",
-                "sent_at": 7,
-                "interval": 7,
-                "delivered_at": 7,
+                "sent_at": 6,
+                "interval": 6,
+                "delivered_at": 6,
                 "acknowledged_at": null,
                 "interference": null,
                 "failure_reason": null,
                 "evidence_ids": [],
-                "provenance": "institutional-decision:institution-decision-2725dc75edcfcc319f",
+                "geography_report": false,
+                "provenance": "institutional-decision:institution-decision-ddb2b2ca0ef064856b",
                 "history": [
                   {
                     "sequence": 1,
                     "from": null,
                     "to": "composed",
-                    "at": 7,
+                    "at": 6,
                     "reason": "message composed"
                   },
                   {
                     "sequence": 2,
                     "from": "composed",
                     "to": "delivered",
-                    "at": 7,
+                    "at": 6,
                     "reason": "scheduled Standard response resolved"
                   }
                 ]
@@ -9748,6 +10480,7 @@
                 "interference": null,
                 "failure_reason": null,
                 "evidence_ids": [],
+                "geography_report": false,
                 "provenance": "institutional-decision:institution-decision-055de18532a0fcf382",
                 "history": [
                   {
@@ -9788,13 +10521,15 @@
                 "interference": {
                   "id": "columned-corridor-radio-shadow",
                   "public_description": "The column line breaks the field-radio signal; delivery cannot yet be confirmed.",
-                  "additional_delay": 9
+                  "additional_delay": 9,
+                  "unavailable": false
                 },
                 "failure_reason": null,
                 "evidence_ids": [
                   "object-evidence-8e989eabbd097188e8e3",
                   "object-evidence-13f265b5b915c6810e2b"
                 ],
+                "geography_report": false,
                 "provenance": "authoritative-communication-runtime",
                 "history": [
                   {
@@ -9858,13 +10593,15 @@
                 "interference": {
                   "id": "columned-corridor-radio-shadow",
                   "public_description": "The column line breaks the field-radio signal; delivery cannot yet be confirmed.",
-                  "additional_delay": 9
+                  "additional_delay": 9,
+                  "unavailable": false
                 },
                 "failure_reason": null,
                 "evidence_ids": [
                   "object-evidence-8e989eabbd097188e8e3",
                   "object-evidence-13f265b5b915c6810e2b"
                 ],
+                "geography_report": false,
                 "provenance": "authoritative-communication-runtime",
                 "history": [
                   {
@@ -9927,6 +10664,7 @@
                 "interference": null,
                 "failure_reason": null,
                 "evidence_ids": [],
+                "geography_report": false,
                 "provenance": "institutional-decision:institution-decision-f9187663c29a352e4f",
                 "history": [
                   {
@@ -9967,6 +10705,7 @@
                 "interference": null,
                 "failure_reason": null,
                 "evidence_ids": [],
+                "geography_report": false,
                 "provenance": "institutional-decision:institution-decision-8a496788674cf73573",
                 "history": [
                   {
@@ -10007,6 +10746,7 @@
                 "interference": null,
                 "failure_reason": null,
                 "evidence_ids": [],
+                "geography_report": false,
                 "provenance": "authoritative-communication-runtime",
                 "history": [
                   {
@@ -10059,15 +10799,15 @@
                 {
                   "purpose": "radio-check",
                   "state": "acknowledged",
-                  "sent_at": 5,
-                  "delivered_at": 6,
+                  "sent_at": 4,
+                  "delivered_at": 5,
                   "acknowledged_at": 6
                 },
                 {
                   "purpose": "acknowledge-report",
                   "state": "delivered",
-                  "sent_at": 7,
-                  "delivered_at": 7,
+                  "sent_at": 6,
+                  "delivered_at": 6,
                   "acknowledged_at": null
                 },
                 {
@@ -10155,34 +10895,17 @@
               "target_observation": "The active fixture held a steady output during the instrument test.",
               "provenance": "worldpack-authored-object-interaction",
               "valid": true,
-              "mission_id": "CQ4-INFRASTRUCTURE-MATERIAL-002-6692",
-              "render": {
-                "id": "render-da52d9bfb84e0900",
-                "evidence_id": "object-evidence-8e989eabbd097188e8e3",
-                "adapter": "fallback",
-                "workflow": "observer-safe-q4-evidence",
-                "status": "fallback-ready",
-                "attempts": 0,
-                "source_fact_digest": "1560367cdb27d6e6c2a0b124d121569a4fe8670ac1ec2d064dac2102afb14fac",
-                "created_at": "simulation-recorded",
-                "result": {
-                  "status": "fallback",
-                  "kind": "schematic-capture",
-                  "label": "Observer-safe field capture",
-                  "reason": "renderer-disabled",
-                  "source_fact_digest": "1560367cdb27d6e6c2a0b124d121569a4fe8670ac1ec2d064dac2102afb14fac",
-                  "asset_id": "fallback-object-evidence-8e989eabbd097188e8e3",
-                  "provenance": "local-deterministic-fallback"
-                }
+              "mission_id": "CQ4-WO-0001",
+              "environmental_conditions": {
+                "lighting": "normal",
+                "communications": "nominal",
+                "structural": "stable",
+                "moisture": "dry",
+                "acoustic": "ordinary",
+                "visibility": "normal"
               },
-              "visual": {
-                "status": "fallback",
-                "kind": "schematic-capture",
-                "label": "Observer-safe field capture",
-                "reason": "renderer-disabled",
-                "source_fact_digest": "1560367cdb27d6e6c2a0b124d121569a4fe8670ac1ec2d064dac2102afb14fac",
-                "asset_id": "fallback-object-evidence-8e989eabbd097188e8e3",
-                "provenance": "local-deterministic-fallback"
+              "render": {
+                "status": "fallback-ready"
               }
             },
             {
@@ -10223,34 +10946,17 @@
               "target_observation": "The photograph records the floor pattern and whether a survey marker is present.",
               "provenance": "worldpack-authored-object-interaction",
               "valid": true,
-              "mission_id": "CQ4-INFRASTRUCTURE-MATERIAL-002-6692",
-              "render": {
-                "id": "render-3985521198b8286e",
-                "evidence_id": "object-evidence-13f265b5b915c6810e2b",
-                "adapter": "fallback",
-                "workflow": "observer-safe-q4-evidence",
-                "status": "fallback-ready",
-                "attempts": 0,
-                "source_fact_digest": "f7f225f65da3e73360d31c04196d0f0d0d442b227de5e7da95a5a9ebfd01e765",
-                "created_at": "simulation-recorded",
-                "result": {
-                  "status": "fallback",
-                  "kind": "schematic-capture",
-                  "label": "Observer-safe field capture",
-                  "reason": "renderer-disabled",
-                  "source_fact_digest": "f7f225f65da3e73360d31c04196d0f0d0d442b227de5e7da95a5a9ebfd01e765",
-                  "asset_id": "fallback-object-evidence-13f265b5b915c6810e2b",
-                  "provenance": "local-deterministic-fallback"
-                }
+              "mission_id": "CQ4-WO-0001",
+              "environmental_conditions": {
+                "lighting": "normal",
+                "communications": "nominal",
+                "structural": "stable",
+                "moisture": "dry",
+                "acoustic": "ordinary",
+                "visibility": "normal"
               },
-              "visual": {
-                "status": "fallback",
-                "kind": "schematic-capture",
-                "label": "Observer-safe field capture",
-                "reason": "renderer-disabled",
-                "source_fact_digest": "f7f225f65da3e73360d31c04196d0f0d0d442b227de5e7da95a5a9ebfd01e765",
-                "asset_id": "fallback-object-evidence-13f265b5b915c6810e2b",
-                "provenance": "local-deterministic-fallback"
+              "render": {
+                "status": "fallback-ready"
               }
             },
             {
@@ -10292,34 +10998,17 @@
               "target_observation": "The record preserves the fragment's water mark and faint route linework without assigning a destination.",
               "provenance": "worldpack-authored-object-interaction",
               "valid": true,
-              "mission_id": "CQ4-INFRASTRUCTURE-MATERIAL-002-6692",
-              "render": {
-                "id": "render-0b824af722a2d0b9",
-                "evidence_id": "object-evidence-5aef96d444923c882968",
-                "adapter": "fallback",
-                "workflow": "observer-safe-q4-evidence",
-                "status": "fallback-ready",
-                "attempts": 0,
-                "source_fact_digest": "fcf3db2e860baa25da3e9218245ae40636b295089c27d37c8f62b17f2ff877b4",
-                "created_at": "simulation-recorded",
-                "result": {
-                  "status": "fallback",
-                  "kind": "schematic-capture",
-                  "label": "Observer-safe field capture",
-                  "reason": "renderer-disabled",
-                  "source_fact_digest": "fcf3db2e860baa25da3e9218245ae40636b295089c27d37c8f62b17f2ff877b4",
-                  "asset_id": "fallback-object-evidence-5aef96d444923c882968",
-                  "provenance": "local-deterministic-fallback"
-                }
+              "mission_id": "CQ4-WO-0001",
+              "environmental_conditions": {
+                "lighting": "emergency",
+                "communications": "weak",
+                "structural": "stable",
+                "moisture": "damp",
+                "acoustic": "masked",
+                "visibility": "normal"
               },
-              "visual": {
-                "status": "fallback",
-                "kind": "schematic-capture",
-                "label": "Observer-safe field capture",
-                "reason": "renderer-disabled",
-                "source_fact_digest": "fcf3db2e860baa25da3e9218245ae40636b295089c27d37c8f62b17f2ff877b4",
-                "asset_id": "fallback-object-evidence-5aef96d444923c882968",
-                "provenance": "local-deterministic-fallback"
+              "render": {
+                "status": "fallback-ready"
               },
               "custody_state": "contained-returnable"
             }
@@ -10368,6 +11057,7 @@
             },
             "team_decisions": 129
           },
+          "written_report": null,
           "institutional_consequence_hooks": [
             "recovered_complication",
             "missed_check_in",
@@ -10377,11 +11067,12 @@
           "institutional_findings": {
             "reported": [
               {
-                "text": "Standard, Clear-Q4 team Complex-side. 4 personnel accounted for.",
+                "text": "Standard, Clear-Q4 team accounted for. Radio check.",
                 "status": "reported",
                 "provenance": "q4-interaction-5"
               }
             ],
+            "reference_assessment": null,
             "unresolved": [],
             "recommendations": [
               "Review the recorded personnel, equipment, container, and evidence status before the next assignment."
@@ -10394,6 +11085,7 @@
           },
           "provenance": "condition-driven Q4 mission result"
         },
+        "interlock": null,
         "operational_follow_up": [],
         "human_context": {
           "background_presence": "Facility staff are working around the Threshold apparatus.",
@@ -10414,6 +11106,24 @@
     "configured": false,
     "status": "offline"
   },
+  "doctrine": {
+    "source": "SIMULATION_DOCTRINE.md",
+    "source_path": "/Users/jacktr/Developer/custodian-worldpack-backrooms-pre-1.0-audit/SIMULATION_DOCTRINE.md",
+    "sha256": "d322e3b24fbe5c43d4933fe0b8c3bc06a50998f889209dd6bbeaa24203e73a07",
+    "priority": "constitutional",
+    "sections": {
+      "0.2 RUNTIME INTERPRETATION CONTRACT": "# 0.2 RUNTIME INTERPRETATION CONTRACT\n\nAny system that produces player-facing interpretation must conceptually obey the following pipeline:\n\n`CANONICAL REALITY`\n→ `AUTHORIZED STATE RESOLUTION`\n→ `OBSERVER-SAFE PROJECTION`\n→ `KNOWLEDGE / ACCESS CHECK`\n→ `WORLDPACK INTERPRETATION`\n→ `MEDIUM / SPEAKER CONTEXT`\n→ `PRESENTATION REQUEST`\n→ `CANDIDATE OUTPUT`\n→ `VALIDATION`\n→ `PLAYER-FACING OUTPUT`\n\nNo provider may bypass this sequence merely because it possesses sufficient intelligence to infer missing information.\n\nIntelligence does not grant authority.\n\nA model capable of correctly guessing hidden truth must still behave as though that truth is unknown when the current observer does not legitimately possess it.\n\nA correct guess produced from forbidden information is still an incorrect output.\n\n---\n",
+      "2.1 Reality Changes Through Causes": "## 2.1 Reality Changes Through Causes\n\nCanonical reality may change.\n\nIt may not change arbitrarily.\n\nEvery canonical mutation must have a legitimate causal origin.\n\nThe basic model is:\n\n`PRIOR CANONICAL STATE`\n→ `CAUSE`\n→ `AUTHORITY RESOLUTION`\n→ `NEW CANONICAL STATE`\n→ `PERSISTENT HISTORY`\n\nA state transition without a legitimate cause is invalid even if the resulting state would be plausible.\n\nCustodian therefore asks not merely:\n\n> Could this happen?\n\nIt asks:\n\n> Why did this happen now, in this world, to these objects, under these conditions?\n\nPlausibility alone does not establish causality.\n\n---\n",
+      "2.31 Causal UI": "## 2.31 Causal UI\n\nUI state must likewise derive from legitimate information.\n\nDo not display:\n\n`DANGER NEARBY`\n\nbecause hidden phenomenon state satisfies a condition.\n\nDo not label:\n\n`BACTERIA DETECTED`\n\nunless the institution legitimately possesses that designation and detection.\n\nDo not show:\n\n`MESSAGE DELIVERED`\n\nbefore communications authority resolves delivery.\n\nUI is an observer-facing instrument.\n\nIt does not inherit developer omniscience.\n\n---\n",
+      "3.17 Observer-Safe Projection": "## 3.17 Observer-Safe Projection\n\nBefore player-facing output is generated, canonical state should be reduced into an observer-safe projection.\n\nThis projection should include only information the observer may legitimately access.\n\nConceptually:\n\n`FULL CANONICAL STATE`\n\nbecomes:\n\n`OBSERVER-SAFE CONTEXT`.\n\nThe provider should receive the latter.\n\nNot the former.\n\nThe projection may contain:\n\n- current known location,\n- known personnel,\n- perceived environmental state,\n- delivered communications,\n- accessible records,\n- recognized objects,\n- uncertainty markers,\n- permitted aliases,\n- relevant memory.\n\nIt should omit hidden truth.\n\n---\n",
+      "4.32 Provider Context Must Be Knowledge-Bounded": "## 4.32 Provider Context Must Be Knowledge-Bounded\n\nWhen generating player-facing prose, AI context should contain only relevant observer-safe knowledge.\n\nDo not send:\n\n- full objective topology,\n- hidden entity records,\n- other personnel private knowledge,\n- undelivered communication,\n- future assignment candidates,\n- hidden outcome state.\n\nEven if system instructions say not to reveal it.\n\nThe safest hidden fact is one the provider never receives.\n\n---\n",
+      "6.37 Personnel Output Pipeline": "## 6.37 Personnel Output Pipeline\n\nConceptually:\n\n`CANONICAL PERSONNEL STATE`\n→ `OBSERVER-SAFE PERSONNEL CONTEXT`\n→ `SALIENCE`\n→ `DECISION / REACTION AUTHORITY`\n→ `ALLOWED COMMUNICATIVE INTENT`\n→ `PROVIDER PHRASING`\n→ `VALIDATION`\n→ `OUTPUT`.\n\nThe provider phrases the reaction.\n\nIt does not choose whether the reaction occurs.\n\n---\n",
+      "7.3 LOCAL": "## 7.3 LOCAL\n\nLOCAL represents communication with personnel physically or operationally nearby.\n\nLOCAL is not:\n\n- global party chat,\n- telepathy,\n- AI companion chat.\n\nEligibility depends on:\n\n- proximity,\n- hearing,\n- barriers where modeled,\n- environmental acoustics,\n- participant condition.\n\n---\n",
+      "7.5 Natural Language Does Not Bypass Authority": "## 7.5 Natural Language Does Not Bypass Authority\n\nThe pipeline is:\n\n`PLAYER LANGUAGE`\n→ `INTERPRETATION`\n→ `STRUCTURED INTENT`\n→ `AUTHORITY VALIDATION`\n→ `CANONICAL RESULT`.\n\nNever:\n\n`PLAYER LANGUAGE`\n→ `LLM ROLEPLAY RESPONSE`\n→ implied state mutation.\n\n---\n",
+      "7.9 STANDARD": "## 7.9 STANDARD\n\nSTANDARD represents communication with the operations-side institutional contact.\n\nSTANDARD obeys:\n\n- radio equipment,\n- coverage,\n- latency,\n- delivery,\n- operator availability,\n- institutional knowledge.\n\nIt is not instant global chat.\n\n---\n"
+    }
+  },
+  "interpretation_provenance": [],
   "provider_safe_context": {
     "version": "yellow-beast-interpretation-context@v1",
     "profile_title": "Async: Clear-Q4",
@@ -10441,153 +11151,181 @@
   },
   "recent_history": [
     {
-      "id": "history-91eac37889875135",
-      "sequence": 51,
-      "type": "q4.personnel.condition.changed",
+      "id": "history-8a9f369e0811543f",
+      "sequence": 25,
+      "type": "q4.communication.reported",
+      "run_id": "run-281b76de5bb001e2",
+      "payload": {
+        "message_id": "message-cf39047624e40b0983",
+        "endpoint": "Standard",
+        "purpose": "radio-check",
+        "status": "acknowledged",
+        "interval": 5
+      }
+    },
+    {
+      "id": "history-478ad1abe77a9702",
+      "sequence": 26,
+      "type": "institutional.record.archived",
+      "run_id": "run-281b76de5bb001e2",
+      "payload": {
+        "record_id": "q4-delivered-communication-message-cf39047624e40b0983"
+      }
+    },
+    {
+      "id": "history-80b705d561ba5c05",
+      "sequence": 27,
+      "type": "character.status.changed",
+      "run_id": "run-281b76de5bb001e2",
+      "payload": {
+        "identity": "yb-personnel-a4a099751e6bacdc72e3",
+        "status": "active",
+        "condition": "minor injury",
+        "reason": "accepted"
+      }
+    },
+    {
+      "id": "history-51aacf793ca4b0ca",
+      "sequence": 28,
+      "type": "character.status.changed",
       "run_id": "run-281b76de5bb001e2",
       "payload": {
         "identity": "yb-personnel-a4a099751e6bacdc72e3",
         "status": "active",
         "condition": "stabilized minor injury",
-        "interval": 40
+        "reason": "recovered-complication"
       }
     },
     {
-      "id": "history-30baa9878b74c51d",
-      "sequence": 52,
-      "type": "q4.personnel.condition.changed",
+      "id": "history-8df479a7f7024ae3",
+      "sequence": 29,
+      "type": "q4.communication.reported",
       "run_id": "run-281b76de5bb001e2",
       "payload": {
-        "identity": "yb-personnel-a4a099751e6bacdc72e3",
-        "status": "active",
-        "condition": "stabilized minor injury",
-        "interval": 40
+        "message_id": "message-ca552726531caf9d38",
+        "endpoint": "Standard",
+        "purpose": "evidence-report",
+        "status": "delivered",
+        "interval": 27
       }
     },
     {
-      "id": "history-5a0abb97c9a70ec7",
-      "sequence": 53,
-      "type": "q4.personnel.condition.changed",
+      "id": "history-1902895d1e2ac62c",
+      "sequence": 30,
+      "type": "institutional.record.archived",
       "run_id": "run-281b76de5bb001e2",
       "payload": {
-        "identity": "yb-personnel-a4a099751e6bacdc72e3",
-        "status": "active",
-        "condition": "stabilized minor injury",
-        "interval": 41
+        "record_id": "q4-delivered-communication-message-ca552726531caf9d38"
       }
     },
     {
-      "id": "history-9934dfee4b44e660",
-      "sequence": 54,
-      "type": "q4.personnel.condition.changed",
+      "id": "history-7bcdacdded0cdc34",
+      "sequence": 31,
+      "type": "institutional.record.archived",
       "run_id": "run-281b76de5bb001e2",
       "payload": {
-        "identity": "yb-personnel-a4a099751e6bacdc72e3",
-        "status": "active",
-        "condition": "stabilized minor injury",
-        "interval": 42
+        "record_id": "institutional-evidence-object-evidence-8e989eabbd097188e8e3"
       }
     },
     {
-      "id": "history-89c3546a6077fac4",
-      "sequence": 55,
-      "type": "q4.personnel.condition.changed",
+      "id": "history-835e73ab539f71a2",
+      "sequence": 32,
+      "type": "institutional.record.archived",
       "run_id": "run-281b76de5bb001e2",
       "payload": {
-        "identity": "yb-personnel-a4a099751e6bacdc72e3",
-        "status": "active",
-        "condition": "stabilized minor injury",
-        "interval": 43
+        "record_id": "institutional-evidence-object-evidence-13f265b5b915c6810e2b"
       }
     },
     {
-      "id": "history-38afb432b079a38b",
-      "sequence": 56,
-      "type": "q4.personnel.condition.changed",
+      "id": "history-0c8235ef3f95d72a",
+      "sequence": 33,
+      "type": "q4.environment.changed",
       "run_id": "run-281b76de5bb001e2",
       "payload": {
-        "identity": "yb-personnel-a4a099751e6bacdc72e3",
-        "status": "active",
-        "condition": "stabilized minor injury",
-        "interval": 43
+        "environment_event_id": "environment-b11febb218376a8e",
+        "kind": "infrastructure-power",
+        "target": "relay-circuit",
+        "from": "normal",
+        "to": "unavailable",
+        "condition_id": "environment-power:relay-circuit",
+        "interval": 34
       }
     },
     {
-      "id": "history-56e679815e7b8b8c",
-      "sequence": 57,
-      "type": "q4.personnel.condition.changed",
+      "id": "history-31dce09721e505f0",
+      "sequence": 34,
+      "type": "q4.environment.changed",
       "run_id": "run-281b76de5bb001e2",
       "payload": {
-        "identity": "yb-personnel-a4a099751e6bacdc72e3",
-        "status": "active",
-        "condition": "stabilized minor injury",
-        "interval": 44
+        "environment_event_id": "environment-c2469438d5dcc91b",
+        "kind": "structural-route",
+        "target": "corridor-to-relay",
+        "from": null,
+        "to": "blocked",
+        "condition_id": "environment-route:corridor-to-relay",
+        "interval": 34
       }
     },
     {
-      "id": "history-248ca853a7cf9753",
-      "sequence": 58,
-      "type": "q4.personnel.condition.changed",
+      "id": "history-0cb87000129e2409",
+      "sequence": 35,
+      "type": "q4.communication.reported",
       "run_id": "run-281b76de5bb001e2",
       "payload": {
-        "identity": "yb-personnel-a4a099751e6bacdc72e3",
-        "status": "active",
-        "condition": "stabilized minor injury",
-        "interval": 45
+        "message_id": "message-27f5898726f66e2300",
+        "endpoint": "Standard",
+        "purpose": "deviation-request",
+        "status": "delivered",
+        "interval": 37
       }
     },
     {
-      "id": "history-80553118b8a1cf4e",
-      "sequence": 59,
-      "type": "q4.personnel.condition.changed",
+      "id": "history-e43b49eb7ae3e56d",
+      "sequence": 36,
+      "type": "institutional.record.archived",
       "run_id": "run-281b76de5bb001e2",
       "payload": {
-        "identity": "yb-personnel-a4a099751e6bacdc72e3",
-        "status": "active",
-        "condition": "stabilized minor injury",
-        "interval": 45
+        "record_id": "q4-delivered-communication-message-27f5898726f66e2300"
       }
     },
     {
-      "id": "history-069ab3985d97b437",
-      "sequence": 60,
-      "type": "q4.personnel.condition.changed",
+      "id": "history-9f43bbf24337e0d6",
+      "sequence": 37,
+      "type": "character.shared-history.recorded",
       "run_id": "run-281b76de5bb001e2",
       "payload": {
-        "identity": "yb-personnel-a4a099751e6bacdc72e3",
-        "status": "active",
-        "condition": "stabilized minor injury",
-        "interval": 46
+        "id": "q4-shared-07ea5d2295092515bc",
+        "run_id": "run-281b76de5bb001e2",
+        "kind": "operation-returned",
+        "participants": [
+          "q4-player-13d8ab53c573cac7",
+          "yb-personnel-44467e0790d995f6ba95",
+          "yb-personnel-a4a099751e6bacdc72e3",
+          "yb-personnel-db9a7dd1ee75f901eda8"
+        ],
+        "refs": {
+          "mission_id": "CQ4-WO-0001",
+          "outcome": "recovered-complication"
+        },
+        "at": 1
       }
     },
     {
-      "id": "history-2a1e33a94012f7f6",
-      "sequence": 61,
-      "type": "q4.personnel.condition.changed",
-      "run_id": "run-281b76de5bb001e2",
-      "payload": {
-        "identity": "yb-personnel-a4a099751e6bacdc72e3",
-        "status": "active",
-        "condition": "stabilized minor injury",
-        "interval": 46
-      }
-    },
-    {
-      "id": "history-b69aeb0d6d045202",
-      "sequence": 62,
+      "id": "history-950b5c77eeeed144",
+      "sequence": 38,
       "type": "q4.expedition.concluded",
       "run_id": "run-281b76de5bb001e2",
       "payload": {
-        "mission_id": "CQ4-INFRASTRUCTURE-MATERIAL-002-6692",
+        "mission_id": "CQ4-WO-0001",
         "outcome": "recovered-complication",
-        "review_id": "CQ4-INFRASTRUCTURE-MATERIAL-002-6692",
+        "review_id": "CQ4-WO-0001",
         "personnel_count": 4,
         "equipment_count": 8
       }
     },
     {
-      "id": "history-8880e8d9257c6706",
-      "sequence": 63,
+      "id": "history-1f1f410a083182d6",
+      "sequence": 39,
       "type": "q4.scar.persisted",
       "run_id": "run-281b76de5bb001e2",
       "payload": {
@@ -10598,8 +11336,8 @@
       }
     },
     {
-      "id": "history-113a292c1b721f94",
-      "sequence": 64,
+      "id": "history-837c1985363655dd",
+      "sequence": 40,
       "type": "q4.scar.persisted",
       "run_id": "run-281b76de5bb001e2",
       "payload": {
@@ -10610,8 +11348,8 @@
       }
     },
     {
-      "id": "history-0610c07a79ed6fd6",
-      "sequence": 65,
+      "id": "history-20040a0cffab8b1a",
+      "sequence": 41,
       "type": "q4.scar.persisted",
       "run_id": "run-281b76de5bb001e2",
       "payload": {
@@ -10622,30 +11360,18 @@
       }
     },
     {
-      "id": "history-884ae0f18874913b",
-      "sequence": 66,
+      "id": "history-60a372e2afeca631",
+      "sequence": 42,
       "type": "q4.mission.updated",
       "run_id": "run-281b76de5bb001e2",
       "payload": {
-        "mission_id": "CQ4-INFRASTRUCTURE-MATERIAL-002-6692",
+        "mission_id": "CQ4-WO-0001",
         "status": "completed"
       }
     },
     {
-      "id": "history-ed081557ed377b1b",
-      "sequence": 67,
-      "type": "q4.personnel.condition.changed",
-      "run_id": "run-281b76de5bb001e2",
-      "payload": {
-        "identity": "yb-personnel-a4a099751e6bacdc72e3",
-        "status": "active",
-        "condition": "stabilized minor injury",
-        "interval": 47
-      }
-    },
-    {
-      "id": "history-6aa6d99d4e6619e0",
-      "sequence": 68,
+      "id": "history-3da0e4d5bde88c39",
+      "sequence": 43,
       "type": "q4.communication.reported",
       "run_id": "run-281b76de5bb001e2",
       "payload": {
@@ -10657,24 +11383,12 @@
       }
     },
     {
-      "id": "history-0ebf35b4813da08a",
-      "sequence": 69,
+      "id": "history-109531d7e98a09ec",
+      "sequence": 44,
       "type": "institutional.record.archived",
       "run_id": "run-281b76de5bb001e2",
       "payload": {
         "record_id": "q4-delivered-communication-message-79558a993ce2b29208"
-      }
-    },
-    {
-      "id": "history-73a9f968b4f7a0bf",
-      "sequence": 70,
-      "type": "q4.personnel.condition.changed",
-      "run_id": "run-281b76de5bb001e2",
-      "payload": {
-        "identity": "yb-personnel-a4a099751e6bacdc72e3",
-        "status": "active",
-        "condition": "stabilized minor injury",
-        "interval": 47
       }
     }
   ]

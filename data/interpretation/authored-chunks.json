@@ -1,0 +1,134 @@
+[
+  {
+    "id": "briefing_review",
+    "phase": "BRIEFING",
+    "trigger": "location_entered",
+    "location": "async-briefing-room",
+    "priority": "canonical",
+    "repeat_policy": "once_per_expedition",
+    "text": "ASYNC administrative briefing room. The Clear-Q4 preliminary layout and condition survey order is stamped and laid out on the laminate table. Your three assigned field coworkers are present and ready for assignment confirmation.",
+    "variants": [
+      "ASYNC administrative briefing room. Survey order Clear-Q4 lies on the table under the overhead fluorescent light. Stokes, Bell, and Tucker have their assignment dossiers open."
+    ]
+  },
+  {
+    "id": "staging_equipment_review",
+    "phase": "STAGING",
+    "trigger": "location_entered",
+    "location": "equipment-staging",
+    "priority": "canonical",
+    "repeat_policy": "once_per_expedition",
+    "text": "Equipment Staging. The team issued gear rests in marked lockers and on the steel benches: Model 17 survey instrument, 16mm field camera, portable worklight, guide paint markers, and standard field transceiver.",
+    "variants": [
+      "Equipment Staging. Standard hazard gear and survey kit are arranged for departure inspection. The lockers stand open, labeled with the Clear-Q4 inventory checklist."
+    ]
+  },
+  {
+    "id": "facility_transit_corridor",
+    "phase": "FACILITY_TRANSIT",
+    "trigger": "location_entered",
+    "location": "threshold-approach",
+    "priority": "canonical",
+    "repeat_policy": "once_per_expedition",
+    "text": "Maintenance Wing access corridor. Heavy cable trays run overhead along the ceiling toward Project KV31. The security checkpoint and sealed acoustic doors lie ahead.",
+    "variants": [
+      "Maintenance Wing access corridor. Overhead cable trunks hum faintly as the accounted team moves down the concrete corridor toward the Project KV31 sector."
+    ]
+  },
+  {
+    "id": "kv31_threshold_room_first_entry",
+    "phase": "THRESHOLD",
+    "trigger": "location_entered",
+    "location": "threshold-room",
+    "priority": "canonical",
+    "repeat_policy": "once_per_expedition",
+    "text": "KV31 Threshold Room. The massive rectangular Threshold apparatus hums steadily in the reinforced concrete chamber. Facility technicians monitor console readouts across the barrier.",
+    "variants": [
+      "KV31 Threshold Room. The low-frequency rumble of the Threshold apparatus resonates through the reinforced deck. Console operators acknowledge your team approach from behind the safety rail."
+    ]
+  },
+  {
+    "id": "standard_radio_check_readiness",
+    "phase": "STANDARD_RADIO_CHECK",
+    "trigger": "phase_entered",
+    "location": "threshold-room",
+    "priority": "canonical",
+    "repeat_policy": "once_per_expedition",
+    "text": "Threshold Chamber departure readiness. Establish contact with Standard via field transceiver before stepping through the frame.",
+    "variants": [
+      "Threshold Chamber. The departure procedure requires an authorized radio check with Standard dispatch before the team enters the aperture."
+    ]
+  },
+  {
+    "id": "threshold_crossing_aperture",
+    "phase": "FIELD_OPERATION",
+    "trigger": "threshold_crossed",
+    "location": "threshold-side-entry",
+    "priority": "canonical",
+    "repeat_policy": "once_per_expedition",
+    "text": "The accounted team steps through the Project KV31 Threshold apparatus. The facility hum cuts out behind you, replaced by the faint, dry odor of aged cellulose and the low buzz of distant fluorescent fixtures. You are in the Threshold-Side Entry.",
+    "variants": [
+      "Passing the Threshold boundary, the air changes abruptly from chilled facility air to dry, static stillness. Behind you is the framed return portal; ahead lies the Threshold-Side Entry."
+    ]
+  },
+  {
+    "id": "utility_room_entry",
+    "phase": "FIELD_OPERATION",
+    "trigger": "location_entered",
+    "location": "utility-room",
+    "priority": "canonical",
+    "repeat_policy": "once_per_expedition",
+    "text": "Utility Room. Steady, unblinking fluorescent tubes illuminate the bare walls and scuffed vinyl flooring. The initial surveyed boundary and return route marker are established here.",
+    "variants": [
+      "Utility Room. The yellow wallpaper and bare floor extend under humming fluorescent light. The established route to the Open Passage begins here."
+    ]
+  },
+  {
+    "id": "open_passage_entry",
+    "phase": "FIELD_OPERATION",
+    "trigger": "location_entered",
+    "location": "open-passage",
+    "priority": "canonical",
+    "repeat_policy": "once_per_expedition",
+    "text": "Open Passage survey line. The floor slopes gently downward away from the south-wall datum. Fluorescent illumination dims gradually into the distance.",
+    "variants": [
+      "Open Passage. The descent begins immediately past the opening, slanting downward into the unverified survey corridor."
+    ]
+  },
+  {
+    "id": "columned_corridor_entry",
+    "phase": "FIELD_OPERATION",
+    "trigger": "location_entered",
+    "location": "columned-corridor",
+    "priority": "canonical",
+    "repeat_policy": "once_per_expedition",
+    "text": "Columned Corridor. Massive, evenly spaced square columns break the long hallway into repetitive intervals. Fixture hum reverberates subtly between the pillars.",
+    "variants": [
+      "Columned Corridor. Square columns march into the distance, fragmenting lines of sight across the worn floor."
+    ]
+  },
+  {
+    "id": "return_threshold_crossing",
+    "phase": "RETURN",
+    "trigger": "threshold_returned",
+    "location": "threshold-room",
+    "priority": "canonical",
+    "repeat_policy": "once_per_expedition",
+    "text": "The team crosses back through the Threshold into the KV31 chamber. Facility technicians immediately verify personnel count and begin equipment reconciliation.",
+    "variants": [
+      "Crossing back through the aperture into the facility, the chill and ventilation noise of the KV31 chamber return. The entry gate closes behind the team."
+    ]
+  },
+  {
+    "id": "debrief_review",
+    "phase": "DEBRIEF",
+    "trigger": "phase_entered",
+    "location": "async-briefing-room",
+    "priority": "canonical",
+    "repeat_policy": "once_per_expedition",
+    "text": "Administrative debrief. The physical expedition record, returned instrument measurements, and written operational claims are preserved for institutional archiving.",
+    "variants": [
+      "Lower Offices debrief. Mission documentation and returned evidence logs are compiled for A-Sync administrative evaluation."
+    ]
+  }
+]

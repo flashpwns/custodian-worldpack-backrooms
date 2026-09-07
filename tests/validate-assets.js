@@ -337,6 +337,22 @@ scripts.push("tools/doctrine-runtime.js", "tests/y62-pass17-human-gate.test.js")
 scripts.push("tests/y63-pass17-state-machine.test.js");
 scripts.push("tools/authority-registry.js", "tests/y64-pass17-authority.test.js");
 scripts.push("desktop/first-run-smoke.js", "desktop/profile-resolver.js", "tools/verify-first-run-artifact.js", "tests/y67-recovery-profile.test.js", "tests/y68-verification-gate.test.js", "tests/y68-long-world-known-failures.test.js", "tools/verification-inventory.js", "tools/verification-runner.js");
+scripts.push("desktop/hosted-ai-smoke.js", "tests/v03-persistence-foundation.js", "tests/y69-reference-expedition.test.js", "tools/reference-expedition.js");
+scripts.push("tests/y70-coordinated-execution.test.js", "tools/custodian-ai-host-adapter.js");
+scripts.push("tests/y71-ai-interpreter-boundary.test.js", "tools/ai-interpreter-boundary.js", "tools/referent-resolution.js");
+scripts.push("tests/y72-live-scene-projection.test.js", "tools/live-scene-projection.js", "tools/observer-context-compiler.js");
+scripts.push("tests/y73-ai-living-turn.test.js", "tools/ai-living-turn.js", "tools/ai-living-provider.js");
+scripts.push("tests/y75-ui-audio-spec-compliance.test.js");
+scripts.push("tests/y76-provider-autoselect-fallback.test.js", "tools/ai-provider-pool.js");
+scripts.push("tests/y77-cleanup-adjudication-invariants.test.js");
+scripts.push("tests/y78-reference-expedition-living-world.test.js");
+scripts.push("tests/y79-clause-completeness-coordinated.test.js");
+scripts.push("tests/y80-canonical-ledger-observer-shell.test.js", "tools/canonical-world-ledger.js");
+scripts.push("tests/y81-canonical-ledger-epistemic-hardening.test.js");
+scripts.push("tests/y82-reference-expedition-vertical-blockers.test.js");
+scripts.push("tests/y83-ai-runtime-stability.test.js");
+scripts.push("tests/y84-hybrid-canon-hardening.test.js");
+scripts.push("tools/affordance-service.js", "tools/ai-hosted-transport.js", "tools/ai-local-dialogue.js", "tools/canon-lexicon.js", "tools/canon-linter.js", "tools/communication-routing.js", "tools/field-notes.js", "tools/interpretive-director.js", "tools/perception-service.js");
 for (const relative of scripts) {
   const content = fs.readFileSync(path.join(root, relative), "utf8");
   assert.doesNotMatch(content, /custodian\/(runtime|state|tools)/, `${relative} uses only public Custodian imports`);

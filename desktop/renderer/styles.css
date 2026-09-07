@@ -181,7 +181,7 @@
 .epistemic-time{color:var(--muted);font-size:.6rem}
 
 /* Expedition Tracing Interface: single playable cockpit chassis */
-.eti-shell{display:grid!important;grid-template-rows:auto auto minmax(0,1fr)!important;gap:7px!important;height:100vh;max-height:100vh;padding:10px 14px!important;overflow:hidden}
+.eti-shell{display:flex!important;flex-direction:column!important;gap:7px!important;height:100vh;max-height:100vh;padding:10px 14px!important;overflow:hidden}
 .eti-top-bar{min-height:58px;display:grid;grid-template-columns:minmax(300px,1fr) auto minmax(220px,1fr);align-items:stretch;gap:0;padding:0;border:1px solid var(--async-line);background:var(--aeot-midnight-desaturated,#0b1320)}
 .eti-title,.eti-clocks>span,.backend-menu>summary{padding:8px 12px}
 .eti-title{display:grid;align-content:center;border-right:1px solid var(--async-line)}
@@ -197,10 +197,11 @@
 .backend-menu>summary::-webkit-details-marker{display:none}
 .backend-menu[open]>div{position:absolute;right:0;top:calc(100% + 4px);width:220px;padding:6px;border:1px solid var(--async-amber);background:var(--async-black);box-shadow:0 12px 30px #000}
 .backend-menu button{display:block;width:100%;margin:3px 0;text-align:left}
-.eti-shell>.interaction-feedback{grid-row:2;margin:0;padding:0 5px;min-height:20px;font-size:.72rem;line-height:1.35;color:var(--async-phosphor);white-space:normal}
+.eti-shell>.interaction-feedback{flex:0 0 auto;margin:0;padding:0 5px;min-height:20px;font-size:.72rem;line-height:1.35;color:var(--async-phosphor);white-space:normal}
 .eti-shell>.interaction-feedback:empty{display:none}
 .eti-shell>.interaction-feedback[data-state="provider-error"],.eti-shell>.interaction-feedback[data-state="application-error"]{display:block;padding:7px 10px;border-left:4px solid var(--async-alert);background:#211714;color:#ffd5ca}
-.eti-cockpit{grid-row:3;min-height:0;display:grid;grid-template-columns:minmax(245px,19%) minmax(480px,1fr) minmax(300px,24%);grid-template-rows:minmax(0,1fr) auto;gap:8px;overflow:hidden}
+.eti-shell>.guided-introduction{flex:0 0 auto;max-height:58px;overflow:auto;margin:0}
+.eti-cockpit{flex:1 1 0;min-height:0;display:grid;grid-template-columns:minmax(245px,19%) minmax(480px,1fr) minmax(300px,24%);grid-template-rows:minmax(0,1fr) auto;gap:8px;overflow:hidden}
 .eti-left-rail,.eti-center,.eti-comms,.eti-evidence,.eti-turn-controls{min-width:0;border:1px solid var(--async-line);background:var(--aeot-midnight-desaturated,#0b1320)}
 .eti-left-rail{grid-column:1;grid-row:1 / span 2;display:flex;flex-direction:column;min-height:0;padding:9px;overflow:hidden}
 .eti-left-rail h2,.eti-evidence h2{margin:0;color:var(--async-amber);font-size:.68rem;text-transform:uppercase;letter-spacing:.08em}
