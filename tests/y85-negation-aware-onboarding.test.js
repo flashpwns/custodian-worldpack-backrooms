@@ -105,3 +105,63 @@ test("Blocker 3: Genuine readiness after refusal advances procedure to next phas
     fs.rmSync(appDataPath, { recursive: true, force: true });
   }
 });
+
+test("Priority 5: All 12 required negative/hesitation forms reject advancement", async () => {
+  const exactNegativeForms = [
+    "I'm ready, but don't send us yet.",
+    "Yeah no, I'm not ready.",
+    "I don't think we're ready.",
+    "We're definitely not ready.",
+    "Don't proceed.",
+    "Do not open it yet.",
+    "I said I'm NOT ready.",
+    "I'm not ready, are you?",
+    "Ready? No.",
+    "No, wait.",
+    "Hold on.",
+    "Give me a second."
+  ];
+
+  for (const text of exactNegativeForms) {
+    const { appDataPath, service, world } = createTestService("exact-neg-check");
+    try {
+      const entry = service.session(world.id, "field-researcher");
+      const res = await service.submitNatural({ world_id: world.id, mode: "field-researcher", text });
+      assert.equal(res.ok, true, `Call failed for '${text}'`);
+      assert.equal(res.result.executed, false, `Executed must be false for '${text}'`);
+      assert.equal(res.result.clarification_required, true, `Clarification must be required for '${text}'`);
+      assert.equal(entry.phase.phase_id, "BRIEFING", `Phase must remain BRIEFING for '${text}'`);
+    } finally {
+      service.shutdown();
+      fs.rmSync(appDataPath, { recursive: true, force: true });
+    }
+  }
+});
+
+test("Priority 5: All 7 required positive forms advance procedure", async () => {
+  const exactPositiveForms = [
+    "I'm ready.",
+    "We're good.",
+    "Go ahead.",
+    "Proceed.",
+    "Let's do it.",
+    "Open it.",
+    "Send us through."
+  ];
+
+  for (const text of exactPositiveForms) {
+    const { appDataPath, service, world } = createTestService("exact-pos-check");
+    try {
+      const entry = service.session(world.id, "field-researcher");
+      assert.equal(entry.phase.phase_id, "BRIEFING");
+      const res = await service.submitNatural({ world_id: world.id, mode: "field-researcher", text });
+      assert.equal(res.ok, true, `Call failed for positive form '${text}'`);
+      assert.equal(res.result.executed, true, `Executed must be true for positive form '${text}'`);
+      assert.equal(res.result.classification, "ON_SCRIPT", `Classification must be ON_SCRIPT for '${text}'`);
+      assert.equal(entry.phase.phase_id, "STAGING", `Phase must advance to STAGING for '${text}'`);
+    } finally {
+      service.shutdown();
+      fs.rmSync(appDataPath, { recursive: true, force: true });
+    }
+  }
+});

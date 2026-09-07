@@ -196,6 +196,63 @@ test("Adversarial 10: 'Radio Standard and tell them we're hearing something weir
   }
 });
 
+test("Priority 6 & 7: Real human corrective, compound, and referent commands", async () => {
+  const { appDataPath, service, world } = createTestService("adv-human-cmds");
+  try {
+    await service.submitAction({ world_id: world.id, mode: "field-researcher", action: "READY" });
+    service.submitQ4Handoff({ world_id: world.id, item_id: "recording-device", target: "player" });
+    await service.submitAction({ world_id: world.id, mode: "field-researcher", action: "PROCEED" });
+    await service.submitAction({ world_id: world.id, mode: "field-researcher", action: "APPROACH" });
+    await service.submitAction({ world_id: world.id, mode: "field-researcher", action: "READY" });
+    await service.submitQ4Communication({ world_id: world.id, channel: "standard", text: "Radio check Standard." });
+    await service.submitAction({ world_id: world.id, mode: "field-researcher", action: "CROSS" });
+
+    // 1. Team commands: "Stay put", "Follow me"
+    const stayPut = await service.submitNatural({ world_id: world.id, mode: "field-researcher", text: "Santiago, stay put." });
+    assert.equal(stayPut.ok, true);
+
+    const followMe = await service.submitNatural({ world_id: world.id, mode: "field-researcher", text: "Beverly, follow me." });
+    assert.equal(followMe.ok, true);
+
+    // 2. Corrective command: "No, don't give it to her, give it to Santiago."
+    const corrective = await service.submitNatural({
+      world_id: world.id,
+      mode: "field-researcher",
+      text: "No, don't give it to her, give it to Santiago."
+    });
+    assert.ok(corrective.ok === true || corrective.result?.clarification_required === true);
+
+    // 3. Referent resolution: ambiguous "the other one" vs explicit
+    const ambigOther = await service.submitNatural({
+      world_id: world.id,
+      mode: "field-researcher",
+      text: "Take the other one."
+    });
+    // Ambiguous referent must require clarification, never invent random target
+    assert.ok(ambigOther.result?.clarification_required === true || ambigOther.result?.executed === false);
+
+    // 4. Sensory instruction: "Listen for a second."
+    const listen = await service.submitNatural({
+      world_id: world.id,
+      mode: "field-researcher",
+      text: "Listen for a second."
+    });
+    assert.equal(listen.ok, true);
+
+    // 5. Photographic instruction: "Take a picture of the fixture."
+    const photo = await service.submitNatural({
+      world_id: world.id,
+      mode: "field-researcher",
+      text: "Take a picture of the fixture."
+    });
+    assert.equal(photo.ok, true);
+  } finally {
+    service.shutdown();
+    fs.rmSync(appDataPath, { recursive: true, force: true });
+  }
+});
+
 function cloneRun(run) {
   return structuredClone(run);
 }
+
