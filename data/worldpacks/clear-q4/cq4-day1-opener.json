@@ -1,0 +1,125 @@
+{
+  "version": "yellow-beast-cq4-opener@v1",
+  "id": "clear-q4-day1-opener",
+  "scenario": "day1-opener",
+  "runtime_scenario": "async-clear-q4-day1-opener",
+  "staffing": {
+    "total": 4,
+    "minimum_total": 4,
+    "maximum_total": 4,
+    "clearance": "field",
+    "coworker_roles": [
+      "field researcher",
+      "field technician",
+      "field medical doctor"
+    ],
+    "coworker_archetypes": [
+      {
+        "slot": 0,
+        "role": "field researcher",
+        "archetype": "first-day-observer",
+        "personality": "nervous-first-day",
+        "primary_task": "verbal-recall",
+        "required_equipment": null
+      },
+      {
+        "slot": 1,
+        "role": "field technician",
+        "archetype": "intern-courier",
+        "personality": "intern",
+        "primary_task": "material-delivery",
+        "required_equipment": "startup-materials-duffle"
+      },
+      {
+        "slot": 2,
+        "role": "field medical doctor",
+        "archetype": "doctor-veteran",
+        "personality": "veteran-doctor",
+        "primary_task": "layout-compilation",
+        "required_equipment": "layout-record"
+      }
+    ]
+  },
+  "operational_window": {
+    "deployment_time": "10:00 AM",
+    "expected_return_time": "12:00 noon",
+    "standard_duration_hours": 2,
+    "check_in_interval_standard_hours": 1
+  },
+  "briefing_authority": {
+    "name": "Dr. Kirk Maxwell",
+    "identity": "dr-kirk-maxwell",
+    "role": "Chief Expedition Briefing Authority",
+    "date_rule": "1994",
+    "title_template": "[DATE], 1994 BRIEFING",
+    "dialogue": {
+      "greeting": "Good morning, Q4 assignees.",
+      "intro": "My name is Dr. Kirk Maxwell. Should any of you become recurring expedition personnel, we'll be seeing quite a bit of one another.",
+      "mission_statement": "Today's assignment is straightforward. Delivery and introductory reconnaissance.",
+      "roster_call": "{coworker2_name} has custody of the startup material scheduled for Outpost A, Bermuda branch. {player_name}, you're on camera. {coworker3_name}, layout record. {coworker1_name}, observation and verbal recall.",
+      "dismissal": "There isn't time for questions here. Get acquainted, then report to Equipment Staging."
+    },
+    "threshold_sendoff": "Proceed with a radio check upstairs, and they'll clear you. Nothing you haven't done before. Enter, remember what you see, drop the bag, be home before the streetlights come on. Godspeed, kids."
+  },
+  "mission": {
+    "family": "material-delivery-reconnaissance",
+    "family_label": "Introductory Delivery and Reconnaissance",
+    "rationale": "ASYNC requires delivery of startup prerequisite materials to Outpost A (Bermuda branch) and introductory field reconnaissance with return by 12:00 noon.",
+    "site": {
+      "label": "Outpost A, Bermuda branch via the KV31 Threshold route",
+      "boundary": "outpost-a",
+      "knowledge_status": "Outpost A established as a forward bastion along the guidance path; layout requires physical delivery"
+    },
+    "primary": "Enter the Complex, reach Outpost A (Bermuda branch), deliver the assigned startup prerequisite materials, and return through KV31 by 12:00.",
+    "procedures": [
+      "Report to Equipment Staging and verify manifest.",
+      "Proceed to KV31 Threshold Chamber and perform Standard radio check.",
+      "Cross the Threshold following clearance.",
+      "Follow the physical neon-green guidance tape to Outpost A.",
+      "Deliver the startup prerequisite materials at Outpost A.",
+      "Return to KV31, verify return with Control Room surveillance, and cross back to Standard before 12:00."
+    ]
+  },
+  "safety_constraints": {
+    "entity_spawns_allowed": false,
+    "unavoidable_lethal_topology": false,
+    "route_traversability_required": true,
+    "no_arcade_retry": true
+  },
+  "assigned_manifest": {
+    "hard_capacity_per_person": 2,
+    "default_assignments": {
+      "player": [
+        "recording-device",
+        "field-light"
+      ],
+      "coworker1": [],
+      "coworker2": [
+        "startup-materials-duffle"
+      ],
+      "coworker3": [
+        "layout-record"
+      ]
+    }
+  },
+  "guidance": {
+    "type": "physical-object",
+    "item_id": "green-guidance-tape",
+    "description": "thick neon-green tape with directional arrows",
+    "direction_forward": "toward Outpost A",
+    "direction_reverse": "toward KV31"
+  },
+  "outpost_a_props": [
+    "two folding tables",
+    "one radio interface or station",
+    "emptied boxes",
+    "wooden slats",
+    "screwdrivers"
+  ],
+  "control_room_surveillance": {
+    "operator_message": "I've got you from here. I'm logging the return this time. Don't count on somebody having eyes on you next time."
+  },
+  "demo_termination": {
+    "status_text": "NO FURTHER ASSIGNMENTS AVAILABLE"
+  }
+}
