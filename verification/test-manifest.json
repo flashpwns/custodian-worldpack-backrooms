@@ -695,6 +695,31 @@
       "file": "tests/y87-live-scenarios-a-k.test.js",
       "status": "included",
       "tier": "aggregate"
+    },
+    {
+      "file": "tests/y88-actor-behavioral-state.test.js",
+      "status": "included",
+      "tier": "aggregate"
+    },
+    {
+      "file": "tests/y88-actor-multi-turn-behavioral.test.js",
+      "status": "included",
+      "tier": "aggregate"
+    },
+    {
+      "file": "tests/y89-consequence-cascade-proof.test.js",
+      "status": "included",
+      "tier": "aggregate"
+    },
+    {
+      "file": "tests/y89-presentation-bus-wiring.test.js",
+      "status": "included",
+      "tier": "aggregate"
+    },
+    {
+      "file": "tests/y90-expedition-script-30turn.test.js",
+      "status": "included",
+      "tier": "aggregate"
     }
   ],
   "report_tools": [

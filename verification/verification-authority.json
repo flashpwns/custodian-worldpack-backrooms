@@ -89,7 +89,12 @@
       "tests/y85-negation-aware-onboarding.test.js",
       "tests/y85-transactional-persistence-failpoints.test.js",
       "tests/y86-adversarial-semantic-commands.test.js",
-      "tests/y87-live-scenarios-a-k.test.js"
+      "tests/y87-live-scenarios-a-k.test.js",
+      "tests/y88-actor-behavioral-state.test.js",
+      "tests/y88-actor-multi-turn-behavioral.test.js",
+      "tests/y89-consequence-cascade-proof.test.js",
+      "tests/y89-presentation-bus-wiring.test.js",
+      "tests/y90-expedition-script-30turn.test.js"
     ],
     "long-world": [
       "tests/profile-model.test.js",
@@ -287,10 +292,15 @@
     "tests/y83-ai-runtime-stability.test.js": "ff504a1e775fa2ffcce8423d38384c5ac0a238e8ad01f84455ce36b496ee3efc",
     "tests/y84-hybrid-canon-hardening.test.js": "a3a15c3b7f8dc1247af754f53a51557c58caa036fb1eb45bf37885e11a13c4c3",
     "tests/y79-canonical-world-ledger-invariants.test.js": "89d654ee5dc3ba641e4f4693aad33422826da44d7e1b3f8c94ddbf45e2648d43",
-    "tests/y85-negation-aware-onboarding.test.js": "fdda097e42805fa34580669b691cf90682f5c2b051df57eb952804a259a571c7",
+    "tests/y85-negation-aware-onboarding.test.js": "d39aa4eefd54e292f5a2c6c530177130f9893841a93e3cc0b68b9fecbfb8c350",
     "tests/y85-transactional-persistence-failpoints.test.js": "bfb29dcbe06cbe1c7278760cb887450236baac6edff7ccf312d9d304b02b333b",
-    "tests/y86-adversarial-semantic-commands.test.js": "f7cfab08b2c9e43224f516294627945399f080a47b6ffbb43f83d73a9509babf",
-    "tests/y87-live-scenarios-a-k.test.js": "53f9a5d7999a4864995f8ca013c8510cbf59402ba18d25e5d82dba2182149c36"
+    "tests/y86-adversarial-semantic-commands.test.js": "6093bad66aa0c650debe4bc2991ae9ebc24b6dc550285cb49eae7b3cb5a672bf",
+    "tests/y87-live-scenarios-a-k.test.js": "53f9a5d7999a4864995f8ca013c8510cbf59402ba18d25e5d82dba2182149c36",
+    "tests/y88-actor-behavioral-state.test.js": "6759d2b0906dbe1efdd688877cc2cd735102eb0536dea23c9f5d7c859f53ea0f",
+    "tests/y88-actor-multi-turn-behavioral.test.js": "440c112b89e71f9583d6cb8ab59a3ddb3c4c151894603af8498246b864bed6f1",
+    "tests/y89-consequence-cascade-proof.test.js": "8b35e98802b100fde78ffc8be5ba57c033d497e649d967ac9d246071bd3c7c2d",
+    "tests/y89-presentation-bus-wiring.test.js": "1764b1b0958c322215eaed56af3d386f972ad2bd8427f09bae2fbb6ce7693b85",
+    "tests/y90-expedition-script-30turn.test.js": "916bdbda2ebceea946d6c43c3283d52abbe1f6ec96fd8891a8477e48b5b0ad41"
   },
   "verification_core_hashes": {
     "tools/verification-inventory.js": "0f27da4645f1d85e48b52133475371bbbce55072807b6900108c3a1afd344f3b",

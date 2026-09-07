@@ -1,0 +1,107 @@
+{
+  "version": "yellow-beast-audit-record@v1",
+  "audit_timestamp": "2026-09-07T05:38:00.000Z",
+  "certification_level": "ALPHA_SUBSTRATE_STABLE",
+  "milestone": "POST_CONVERGENCE_ADVERSARIAL_HARDENING",
+  "repository": {
+    "path": "/Users/jacktr/Developer/custodian-worldpack-backrooms",
+    "branch": "main",
+    "baseline_commit": "16f6666237a598ca802d24fc7fa7afbe45b6ab71"
+  },
+  "subsystem_repairs": [
+    {
+      "id": "R1_PRESENTATION_BUS_WIRING",
+      "component": "tools/presentation-bus.js",
+      "issue": "hasPresented boolean bug (0 interval evaluated falsy) and unimplemented flush/consumePending stubs",
+      "status": "REPAIRED_AND_VERIFIED",
+      "tests": ["tests/y89-presentation-bus-wiring.test.js"]
+    },
+    {
+      "id": "R2_DECISION_SCHEDULER_RUNTIME_INTEGRATION",
+      "component": "desktop/service.js",
+      "issue": "Autonomous decision scheduler was unwired from active field operation turn processing",
+      "status": "REPAIRED_AND_VERIFIED",
+      "tests": ["tests/y88-actor-behavioral-state.test.js", "tests/y89-presentation-bus-wiring.test.js"]
+    },
+    {
+      "id": "R3_ACTOR_BEHAVIORAL_STATE_ADVANCEMENT",
+      "component": "tools/decision-scheduler.js",
+      "issue": "Coworker fatigue, stress, attention_focus, and behavioral_state had no deterministic turn progression",
+      "status": "REPAIRED_AND_VERIFIED",
+      "tests": ["tests/y88-actor-behavioral-state.test.js"]
+    },
+    {
+      "id": "R4_PRESENTATION_EVENT_ROUTING",
+      "component": "tools/interpretive-director.js, tools/field-notes.js",
+      "issue": "Narrative beats, action narration, and causal field notes were not unified on presentation event bus",
+      "status": "REPAIRED_AND_VERIFIED",
+      "tests": ["tests/y89-presentation-bus-wiring.test.js"]
+    },
+    {
+      "id": "R5_RENDERER_AUDIO_SCENE",
+      "component": "desktop/renderer/renderer.js",
+      "issue": "submitTurn in renderer did not apply updated acoustic scenes to audio director",
+      "status": "REPAIRED_AND_VERIFIED",
+      "tests": ["tests/y89-presentation-bus-wiring.test.js"]
+    },
+    {
+      "id": "R6_ONBOARDING_NEGATION_AND_ALIASES",
+      "component": "data/procedures/onboarding-procedures.json, data/interpretation/authored-chunks.json",
+      "issue": "Missing natural positive affirmation aliases and minor lexicon discrepancy",
+      "status": "REPAIRED_AND_VERIFIED",
+      "tests": ["tests/y85-negation-aware-onboarding.test.js"]
+    },
+    {
+      "id": "R7_TEAM_ORDER_RECIPIENT_RESOLUTION",
+      "component": "tools/run-bootstrap.js",
+      "issue": "ORDER_* did not resolve coworker name or display name to personnel_id",
+      "status": "REPAIRED_AND_VERIFIED",
+      "tests": ["tests/y90-expedition-script-30turn.test.js"]
+    }
+  ],
+  "consequence_cascades": [
+    {
+      "id": "CASCADE_1_POWER_LIGHTING_PERCEPTION_EQUIPMENT_COMMS",
+      "description": "Severed circuit -> darkness -> perception impeded -> survey camera unusable -> field radio unacknowledged -> autonomous hazard alert",
+      "verified": true,
+      "test": "tests/y89-consequence-cascade-proof.test.js"
+    },
+    {
+      "id": "CASCADE_2_ENVIRONMENT_COVERAGE_DELIVERY_STANDARD_KNOWLEDGE",
+      "description": "Dead zone coverage -> transmission failure -> Standard operator denied field secret -> personnel contact lost",
+      "verified": true,
+      "test": "tests/y89-consequence-cascade-proof.test.js"
+    },
+    {
+      "id": "CASCADE_3_BATTERY_AFFORDANCE_TASK_ACTOR_DECISION_FIELD_NOTES",
+      "description": "Battery depletion -> affordance unusable -> task rejected -> coworker impeded state -> causal field note recorded",
+      "verified": true,
+      "test": "tests/y89-consequence-cascade-proof.test.js"
+    }
+  ],
+  "continuous_alpha_regression": {
+    "suite": "tests/y90-expedition-script-30turn.test.js",
+    "total_turns": 30,
+    "executed_turns": 30,
+    "phases_covered": [
+      "BRIEFING",
+      "STAGING",
+      "FACILITY_TRANSIT",
+      "THRESHOLD",
+      "STANDARD_RADIO_CHECK",
+      "FIELD_OPERATION",
+      "RETURN"
+    ],
+    "cold_boot_persistence_verified": true,
+    "epistemic_boundary_leakage": false
+  },
+  "inventory_status": {
+    "included_tests": 126,
+    "quarantined_tests": 4,
+    "retired_tests": 0,
+    "unexplained_on_disk": 0,
+    "manifest_ref_missing": 0,
+    "inventory_consistent": true
+  },
+  "verification_status": "CERTIFIED_PASSING"
+}
