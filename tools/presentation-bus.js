@@ -54,7 +54,7 @@ function hasPresented(run, keyOrText) {
   const bus = ensure(run);
   if (!bus || !keyOrText) return false;
   const k = normalizeKey(keyOrText);
-  return Boolean(bus.presented_keys[k]);
+  return bus.presented_keys[k] !== undefined;
 }
 
 /**
@@ -144,6 +144,28 @@ function getEvents(run, { type = null, source = null, speaker = null, since_inte
     .map(clone);
 }
 
+/**
+ * Flushes pending unconsumed events by advancing the cursor to the end of events.
+ */
+function flush(run) {
+  const bus = ensure(run);
+  if (!bus) return;
+  bus.cursor = bus.events.length;
+}
+
+/**
+ * Returns presentation events that have not yet been delivered to the renderer.
+ * Read-only: does not mutate the event queue. Cursor is advanced in-memory only.
+ */
+function consumePending(run) {
+  const bus = ensure(run);
+  if (!bus) return [];
+  const cursor = bus.cursor ?? 0;
+  const pending = bus.events.slice(cursor, cursor + 50);
+  bus.cursor = cursor + pending.length;
+  return pending.map((evt) => ({ ...evt }));
+}
+
 module.exports = {
   VERSION,
   SOURCES,
@@ -153,5 +175,7 @@ module.exports = {
   trackPresented,
   emit,
   drain,
-  getEvents
+  flush,
+  getEvents,
+  consumePending
 };

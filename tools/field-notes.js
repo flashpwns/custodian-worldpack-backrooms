@@ -1,6 +1,7 @@
 "use strict";
 
 const canonicalLedger = require("./canonical-world-ledger");
+const presentationBus = require("./presentation-bus");
 
 const VERSION = "yellow-beast-field-notes@v1";
 
@@ -85,6 +86,13 @@ function processCausalEventsForFieldNotes(run) {
 
   for (const n of newNotes) {
     run.expedition.field_notes.push(n);
+    presentationBus.emit(run, {
+      type: presentationBus.EVENT_TYPES.FIELD_NOTES,
+      source: presentationBus.SOURCES.DETERMINISTIC,
+      speaker: n.author,
+      text: n.text,
+      metadata: { note_id: n.id, note_type: n.type }
+    });
   }
 
   return newNotes;

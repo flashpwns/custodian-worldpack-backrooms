@@ -633,7 +633,15 @@ function act(runValue, verb, target) {
     const isAll = !recipientArg || ["all", "everyone", "team"].includes(recipientArg.toLowerCase());
     const recipients = isAll
       ? (run.expedition?.team?.members ?? []).filter((m) => (m.personnel_id ?? m.id) !== player && run.spatial.personnel_locations[m.personnel_id ?? m.id] === run.spatial.player_location).map((m) => m.personnel_id ?? m.id)
-      : [recipientArg];
+      : (() => {
+          const match = (run.expedition?.team?.members ?? []).find((m) =>
+            (m.personnel_id ?? m.id) === recipientArg ||
+            m.first_name?.toLowerCase() === recipientArg?.toLowerCase() ||
+            m.display_name?.toLowerCase() === recipientArg?.toLowerCase() ||
+            (recipientArg && m.display_name?.toLowerCase().includes(recipientArg.toLowerCase()))
+          );
+          return match ? [match.personnel_id ?? match.id] : [recipientArg];
+        })();
     if (recipients.length === 0) return { ok: false, error: { code: "PERSONNEL_NOT_AVAILABLE" }, result: { public_reason: "No eligible teammates are present to receive that order." }, run };
     let lastOrdered = null;
     for (const recipient of recipients) {

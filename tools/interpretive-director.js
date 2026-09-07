@@ -6,6 +6,7 @@ const canonLexicon = require("./canon-lexicon");
 const canonLinter = require("./canon-linter");
 const canonicalLedger = require("./canonical-world-ledger");
 const perceptionService = require("./perception-service");
+const presentationBus = require("./presentation-bus");
 
 const VERSION = "yellow-beast-interpretive-director@v1";
 
@@ -105,7 +106,7 @@ function classifyInput(text, phaseId, run) {
   }
 
   // Explicit prefield negation/refusal without alias match: NEVER advances
-  const isNegatedOrRefusal = /\b(?:not|never|no|nope|negative|don t|dont|isn t|isnt|aren t|arent|won t|wont|can t|cant|cannot|halt|pause|wait|hold on|hold up|not yet|unready|refuse|stop)\b/i.test(norm);
+  const isNegatedOrRefusal = /\b(?:not|never|no|nope|negative|don t|dont|isn t|isnt|aren t|arent|won t|wont|can t|cant|cannot|halt|pause|wait|hold on|hold up|not yet|unready|refuse|stop|give me a (?:second|sec|minute)|hang on)\b/i.test(norm);
   if (isNegatedOrRefusal) {
     return {
       classification: "PREFIELD_REFUSAL",
@@ -252,20 +253,17 @@ function ensureDirectorState(run) {
 function emitPresentationEvent(run, event) {
   ensureDirectorState(run);
   const cleanedText = canonLinter.enforceCanonText(event.text);
-  const enriched = {
-    id: `evt-${run.expedition.presentation_events.length + 1}`,
-    type: event.type ?? "dialogue",
+  return presentationBus.emit(run, {
+    type: event.type ?? presentationBus.EVENT_TYPES.DIALOGUE,
     speaker: event.speaker ?? null,
+    recipient: event.recipient ?? null,
     channel: event.channel ?? "LOCAL",
-    source: event.source ?? "DETERMINISTIC",
+    source: event.source ?? presentationBus.SOURCES.DETERMINISTIC,
     text: cleanedText,
     chunk_id: event.chunk_id ?? null,
+    metadata: event.metadata ?? null,
     timestamp: event.timestamp ?? Date.now()
-  };
-
-  run.expedition.presentation_events.push(enriched);
-  run.expedition.dialogue_bus.push(enriched);
-  return enriched;
+  });
 }
 
 module.exports = {

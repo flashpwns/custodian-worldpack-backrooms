@@ -332,12 +332,24 @@ async function submitTurn(kind, request) {
   if (prevPhase && nextPhase && prevPhase !== nextPhase) {
     playCeremonialPhaseAudio(prevPhase, nextPhase);
   }
+  // Apply acoustic scene derived from canonical simulation state
+  applyAcousticScene(current.projection?.acoustic_scene);
   const message = renderMessage(result, kind === "natural");
   const saved = kind === "structured" || result.result?.executed ? " Saved." : "";
   if (kind === "structured" || result.result?.executed) presentation.clearDraft(context);
   const assistance = result.result?.language_assistance?.message;
   play(`${message}${saved}${assistance ? ` ${assistance}` : ""}`, "result");
 }
+function applyAcousticScene(scene) {
+  if (typeof YBAudio === "undefined" || !scene) return;
+  // Fire active cues derived from canonical state (phenomenon proximity, phase, environment)
+  for (const cue of scene.active_cues ?? []) {
+    if (cue && typeof cue === "string") YBAudio.emitHook(cue);
+  }
+  // Apply music cue if one is scheduled this turn
+  if (scene.music_cue) YBAudio.emitHook(scene.music_cue);
+}
+
 function playCeremonialPhaseAudio(fromPhase, toPhase) {
   if (typeof YBAudio === "undefined") return;
   if (!toPhase || fromPhase === toPhase) return;

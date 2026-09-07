@@ -3,6 +3,7 @@
 const crypto = require("node:crypto");
 const teamRuntime = require("./team-runtime");
 const canonicalLedger = require("./canonical-world-ledger");
+const presentationBus = require("./presentation-bus");
 
 const VERSION = "yellow-beast-decision-scheduler@v1";
 
@@ -242,10 +243,75 @@ function evaluateOpportunities(run, spatialDefinition = {}, world = null) {
 }
 
 /**
+ * Deterministically advances actor behavioral state fields based on observable
+ * canonical simulation state. Called once per gameplay turn during field operations.
+ * Updates stress, fatigue, attention_focus, and behavioral_state without AI.
+ */
+function advanceActorState(run, world = null) {
+  if (!run?.expedition?.team?.members) return;
+  teamRuntime.ensure(run);
+  const player = playerId(run);
+  const interval = run.expedition.clock?.interval ?? 0;
+
+  for (const member of run.expedition.team.members) {
+    const id = memberId(member);
+    if (id === player) continue;
+    if (["dead", "missing", "incapacitated"].includes(String(member.status).toLowerCase())) continue;
+
+    // Fatigue: +1 per interval of active non-wait task, cap at 10
+    const activeTask = member.current_task?.type;
+    const isActiveTask = activeTask && !["wait", "hold", "follow"].includes(activeTask);
+    if (isActiveTask) member.fatigue = Math.min(10, (member.fatigue ?? 0) + 1);
+    // Slight fatigue recovery during wait/hold
+    else if (member.fatigue > 0) member.fatigue = Math.max(0, member.fatigue - 0.5);
+
+    // Stress: decay slowly from hazard elevation; floor at 0
+    if (member.stress > 0) member.stress = Math.max(0, (member.stress ?? 0) - 0.5);
+
+    // Attention focus from task type
+    const focusMap = {
+      "investigate": "assigned-objective",
+      "move-to": "route",
+      "return": "route",
+      "assist": "injured-teammate",
+      "communicate-local": "player",
+      "transmit-radio": "communications",
+      "restore-contact": "player",
+      "operate": "assigned-equipment",
+      "follow": "player",
+      "hold": "surroundings",
+      "wait": "surroundings"
+    };
+    if (activeTask && focusMap[activeTask]) member.attention_focus = focusMap[activeTask];
+
+    // Behavioral state from aggregated stress/fatigue
+    const total = (member.stress ?? 0) + (member.fatigue ?? 0);
+    if (total >= 15) member.behavioral_state = "impeded";
+    else if (total >= 8) member.behavioral_state = "cautious";
+    else if (member.behavioral_state === "cautious" && total < 4) member.behavioral_state = "routine";
+    // Note: "impeded" only clears on task completion (handled in scheduleDecisions)
+
+    // Contact category from spatial observation (already done by teamRuntime.ensure → observe)
+    // Update task_progress based on observable state
+    if (member.current_task?.state === "completed") {
+      member.task_progress = { step: 1, total_steps: 1, percent: 100 };
+    } else if (member.current_task?.state === "active" || member.current_task?.state === "pending") {
+      // Interval-based proxy: percent increases from 0 toward 80 over 5 intervals
+      const taskStart = member.decision_history?.slice().reverse().find((d) => d.task === activeTask)?.at ?? interval;
+      const elapsed = Math.min(interval - taskStart, 5);
+      member.task_progress = { step: elapsed, total_steps: 5, percent: Math.floor((elapsed / 5) * 80) };
+    }
+  }
+}
+
+/**
  * Schedules and executes autonomous coworker decisions deterministically.
  * Updates actor state, records decisions, and returns scheduled events.
  */
 function scheduleDecisions(run, spatialDefinition = {}, world = null) {
+  // Advance per-interval actor state before opportunity evaluation
+  advanceActorState(run, world);
+
   const opportunities = evaluateOpportunities(run, spatialDefinition, world);
   const scheduled = [];
   const interval = run.expedition?.clock?.interval ?? 0;
@@ -272,6 +338,7 @@ function scheduleDecisions(run, spatialDefinition = {}, world = null) {
       const next = member.queued_tasks.shift();
       member.current_task = { ...next, state: "active" };
       member.current_intent = `perform queued task: ${next.type}`;
+      member.behavioral_state = "routine";
       decision = {
         member_id: opp.member_id,
         trigger: opp.trigger,
@@ -295,6 +362,7 @@ function scheduleDecisions(run, spatialDefinition = {}, world = null) {
     } else if (opp.trigger === TRIGGERS.HAZARD_DETECTED) {
       member.behavioral_state = "cautious";
       member.stress = Math.min(10, (member.stress ?? 0) + 2);
+      member.attention_focus = "hazard";
       decision = {
         member_id: opp.member_id,
         trigger: opp.trigger,
@@ -305,6 +373,7 @@ function scheduleDecisions(run, spatialDefinition = {}, world = null) {
       };
     } else if (opp.trigger === TRIGGERS.EQUIPMENT_ISSUE) {
       member.behavioral_state = "impeded";
+      member.attention_focus = "assigned-equipment";
       decision = {
         member_id: opp.member_id,
         trigger: opp.trigger,
@@ -319,6 +388,25 @@ function scheduleDecisions(run, spatialDefinition = {}, world = null) {
       member.decision_history ??= [];
       member.decision_history.push(decision);
       scheduled.push(decision);
+
+      let eventType = presentationBus.EVENT_TYPES.PERSONNEL_STATUS;
+      let eventText = `${member.display_name ?? member.personnel_id}: ${decision.action}`;
+      if (decision.trigger === TRIGGERS.HAZARD_DETECTED) {
+        eventType = presentationBus.EVENT_TYPES.WARNING;
+        eventText = `Hazard alert: ${opp.reason}`;
+      } else if (decision.trigger === TRIGGERS.EQUIPMENT_ISSUE) {
+        eventType = presentationBus.EVENT_TYPES.EQUIPMENT_STATUS;
+        eventText = `Equipment status: ${opp.reason}`;
+      } else if (decision.trigger === TRIGGERS.LOST_CONTACT) {
+        eventType = presentationBus.EVENT_TYPES.PERSONNEL_STATUS;
+        eventText = `${member.display_name ?? member.personnel_id} attempting to restore contact: ${opp.reason}`;
+      }
+      presentationBus.emit(run, {
+        type: eventType,
+        source: presentationBus.SOURCES.DETERMINISTIC,
+        speaker: member.display_name ?? member.personnel_id,
+        text: eventText
+      });
     }
   }
 
@@ -334,5 +422,6 @@ module.exports = {
   TRIGGERS,
   TRIGGER_PRIORITIES,
   evaluateOpportunities,
+  advanceActorState,
   scheduleDecisions
 };

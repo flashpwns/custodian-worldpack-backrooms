@@ -12,7 +12,15 @@
         "proceed",
         "stage",
         "review",
-        "review assignment"
+        "review assignment",
+        "we re good",
+        "were good",
+        "we are good",
+        "go ahead",
+        "lets do it",
+        "let s do it",
+        "open it",
+        "send us through"
       ],
       "transition_target": "STAGING",
       "institutional_dialogue": "Survey assignment confirmed for Clear-Q4. Team dispatched to Equipment Staging."

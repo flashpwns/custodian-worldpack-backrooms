@@ -540,7 +540,8 @@ class DesktopService {
     const phase = entry.phase ?? phases.createPhase({ mode, guided: this.settings().guided_introductions !== false }); const unfinished = consequenceEchoes.unfinishedBusiness(world, mode, { run_id: runId });
     const spatialDef = entry.run?.spatial_pack_id ? bootstrap.spatialDefinitionFor(entry.run.spatial_pack_id) : {};
     const acousticScene = entry.run ? acousticDirector.evaluateAcousticScene(entry.run, spatialDef, world) : null;
-    return this.decorateEvidenceMedia({ version: "yellow-beast-desktop-projection@v1", world: this.worldInfo(world, this.metadata().worlds[world.world_id] ?? {}), mode: clone(descriptor), gameplay: gameplay.projection(world, { mode: descriptor.gameplay_mode, run_id: runId }), institution: mode === "async-command" ? desk.projection(world) : null, consequence_echoes: consequenceEchoes.observerView(world, mode, { run_id: runId }), unfinished_business: unfinished, surface: clone(surface), phase: clone(phase), q4: entry.kind === "bootstrap" ? q4.presentation(entry.run, phase, unfinished, world) : null, beck: entry.kind === "beck" ? beckExperience.presentation(world, surface, phase, unfinished) : null, nullzone: entry.kind === "nullzone" ? nullzoneExperience.presentation(world, phase, unfinished) : null, lost: entry.kind === "lost" ? lostExperience.presentation(surface, phase, unfinished) : null, scene: this.sceneFor(entry, mode, {}, world), available_actions: this.availableFor(world, mode, entry), acoustic_scene: acousticScene, settings: this.settings() }, world);
+    const pendingPresentationEvents = entry.run ? presentationBus.consumePending(entry.run) : [];
+    return this.decorateEvidenceMedia({ version: "yellow-beast-desktop-projection@v1", world: this.worldInfo(world, this.metadata().worlds[world.world_id] ?? {}), mode: clone(descriptor), gameplay: gameplay.projection(world, { mode: descriptor.gameplay_mode, run_id: runId }), institution: mode === "async-command" ? desk.projection(world) : null, consequence_echoes: consequenceEchoes.observerView(world, mode, { run_id: runId }), unfinished_business: unfinished, surface: clone(surface), phase: clone(phase), q4: entry.kind === "bootstrap" ? q4.presentation(entry.run, phase, unfinished, world) : null, beck: entry.kind === "beck" ? beckExperience.presentation(world, surface, phase, unfinished) : null, nullzone: entry.kind === "nullzone" ? nullzoneExperience.presentation(world, phase, unfinished) : null, lost: entry.kind === "lost" ? lostExperience.presentation(surface, phase, unfinished) : null, scene: this.sceneFor(entry, mode, {}, world), available_actions: this.availableFor(world, mode, entry), acoustic_scene: acousticScene, presentation_events: pendingPresentationEvents, settings: this.settings() }, world);
   }
   getGameplayProjection({ world_id, mode }) { try { const world = this.getWorld(world_id); const entry = this.session(world_id, mode) ?? this.restoreSession(world, mode, readJson(this.sessionFile(world_id, mode), null)); if (!entry) return publicError("SESSION_NOT_FOUND", "Start or continue a session first."); return { ok: true, projection: this.projectionFor(world, mode, entry) }; } catch { return publicError("PROJECTION_UNAVAILABLE", "Gameplay state is not available."); } }
   getRetiredWorldArchive({ world_id }) { try { const world = this.getWorld(world_id); if (!outcomes.isRetired(world)) return publicError("WORLD_ACTIVE", "This world is still an active simulation."); return { ok:true, archive:outcomes.archive(world), reviews:clone(world.q4_reviews ?? {}), evidence:evidenceAuthority.archive(world,{observer:"player"}) }; } catch { return publicError("ARCHIVE_UNAVAILABLE", "The historical record could not be opened safely."); } }
@@ -773,6 +774,9 @@ class DesktopService {
       const cycle = bootstrap.resolveOperationalCycle(run, "LOCAL_ORDER", 0, "local-natural-order");
       const result = { outcome: results.some((item) => ["accepted", "completed"].includes(item.state)) ? "resolved" : "clarification-or-refusal", proposal: clone(validated.proposal), results: clone(results), public_reason: `${recipient.first_name}: ${results.map((item) => item.state.replace(/-/g, " ")).join(", ")}.`, time_advanced: cycle.clock.cost };
       result.scene = this.sceneFor(entry, "field-researcher", { action:"LOCAL_ORDER", scene_type:"delta", accepted:true, public_reason:result.public_reason }, world); expedition.local_intent_requests.push({ id: requestId, result: clone(result) });
+      // Advance deterministic actor decision scheduler before persistence
+      const spatialDefLocal = bootstrap.spatialDefinitionFor(run.spatial_pack_id);
+      try { decisionScheduler.scheduleDecisions(run, spatialDefLocal, world); } catch (schedulerError) { this.log(`decision scheduler non-fatal: ${schedulerError.message}`); }
       try {
         this.persistSession(world, "field-researcher", entry);
       } catch (persistError) {
@@ -915,6 +919,26 @@ class DesktopService {
         const interaction = q4Interactions.record(expedition, { channel, speaker: "You", targets: interactionTargets, player_text: message, attempted_behavior: "speak with nearby participating personnel", eligibility: "eligible", delivery: "heard", time_cost: 0, canonical_effects: ["communication.local.delivered"], response_speaker: chosen?.recipient?.first_name ?? chosen?.recipient?.display_name ?? null, presentation: { result: "heard", response:responseBody } });
         q4Trajectories.noteCommunication({ world, expedition, run_id: entry.run.run_id, channel: "local", delivered: true, text: message });
         const cycle = bootstrap.resolveOperationalCycle(entry.run, "LOCAL", 0, "local-communication");
+        presentationBus.emit(entry.run, {
+          type: presentationBus.EVENT_TYPES.DIALOGUE,
+          source: presentationBus.SOURCES.DETERMINISTIC,
+          speaker: "You",
+          channel: "LOCAL",
+          text: message
+        });
+        if (response) {
+          presentationBus.emit(entry.run, {
+            type: presentationBus.EVENT_TYPES.DIALOGUE,
+            source: presentationBus.SOURCES.DETERMINISTIC,
+            speaker: chosen?.recipient?.first_name ?? chosen?.recipient?.display_name ?? "Teammate",
+            channel: "LOCAL",
+            text: responseBody
+          });
+        }
+        if (entry.run?.spatial && ["FIELD_OPERATION", "RETURN"].includes(entry.phase?.phase_id)) {
+          const spatialDefLocal = bootstrap.spatialDefinitionFor(entry.run.spatial_pack_id);
+          try { decisionScheduler.scheduleDecisions(entry.run, spatialDefLocal, world); } catch (schedulerError) { this.log(`decision scheduler non-fatal: ${schedulerError.message}`); }
+        }
         try {
           this.persistSession(world, "field-researcher", entry);
         } catch (persistError) {
@@ -978,6 +1002,28 @@ class DesktopService {
       if (radioCheckPhase && resolvedMessage.state === "acknowledged") q4Interactions.record(expedition, { channel, speaker: "STANDARD", targets: ["Clear-Q4 team"], player_text: "Standard acknowledgment received for Radio check.", attempted_behavior: "scheduled radio-check acknowledgment", eligibility: "eligible", delivery: "received", canonical_effects: ["q4.radio.check.acknowledged"], presentation: { result: "received" } });
       if (!radioCheckPhase) q4Trajectories.noteCommunication({ world, expedition, run_id: entry.run.run_id, channel: "standard", delivered: actuallyDelivered, text: message });
       const missionUpdates = [...cycle.mission_updates, ...(acknowledgmentCycle?.mission_updates ?? [])];
+      presentationBus.emit(entry.run, {
+        type: presentationBus.EVENT_TYPES.RADIO,
+        source: presentationBus.SOURCES.DETERMINISTIC,
+        speaker: "You",
+        recipient: "Standard",
+        channel: "STANDARD",
+        text: message
+      });
+      if (radioCheckPhase && resolvedMessage.state === "acknowledged") {
+        presentationBus.emit(entry.run, {
+          type: presentationBus.EVENT_TYPES.RADIO,
+          source: presentationBus.SOURCES.DETERMINISTIC,
+          speaker: "STANDARD",
+          recipient: "Clear-Q4 team",
+          channel: "STANDARD",
+          text: "Standard acknowledgment received for Radio check."
+        });
+      }
+      if (entry.run?.spatial && ["FIELD_OPERATION", "RETURN"].includes(entry.phase?.phase_id)) {
+        const spatialDefRadio = bootstrap.spatialDefinitionFor(entry.run.spatial_pack_id);
+        try { decisionScheduler.scheduleDecisions(entry.run, spatialDefRadio, world); } catch (schedulerError) { this.log(`decision scheduler non-fatal: ${schedulerError.message}`); }
+      }
       try {
         this.persistSession(world, "field-researcher", entry);
       } catch (persistError) {
@@ -1156,9 +1202,22 @@ class DesktopService {
       if (entry.kind === "bootstrap") {
         this.recordQ4Action(entry, `${verb}${target ? ` ${target}` : ""}`, result, world, entry.run._active_submission_id);
         this.finishQ4Action(world, entry, verb, result);
+        const actionNarration = result.result?.public_reason ?? result.public_reason ?? null;
+        if (actionNarration) {
+          presentationBus.emit(entry.run, {
+            type: presentationBus.EVENT_TYPES.INTERPRETATION,
+            source: presentationBus.SOURCES.DETERMINISTIC,
+            text: actionNarration
+          });
+        }
       }
       const missionUpdates = result.result?.mission_updates ?? entry.run?._last_mission_updates ?? [];
       const mortality = entry.kind === "bootstrap" ? outcomes.resolve(world, entry.run, { cause: result.result?.consequence_id ?? result.outcome ?? verb }) : null;
+      // Advance deterministic actor decision scheduler before persistence so coworker state is committed atomically
+      if (entry.kind === "bootstrap" && entry.run.spatial && ["FIELD_OPERATION", "RETURN"].includes(entry.phase?.phase_id)) {
+        const spatialDef = bootstrap.spatialDefinitionFor(entry.run.spatial_pack_id);
+        try { decisionScheduler.scheduleDecisions(entry.run, spatialDef, world); } catch (schedulerError) { this.log(`decision scheduler non-fatal: ${schedulerError.message}`); }
+      }
       try {
         if (mortality?.player_deceased) this.persistTerminalRetirement(world, mode, entry);
         else this.persistSession(world, mode, entry);
@@ -1336,6 +1395,12 @@ class DesktopService {
                 ?? interpretiveDirector.findAuthoredBeat("phase_entered", { location: playerLoc, phase: entry.phase.phase_id }, entry.run);
             }
             const narration = authored ? authored.text : (actResult.result?.public_reason ?? "The expedition advances to the next operational phase.");
+            presentationBus.emit(entry.run, {
+              type: presentationBus.EVENT_TYPES.INTERPRETATION,
+              source: authored ? authored.source : presentationBus.SOURCES.DETERMINISTIC,
+              text: narration,
+              chunk_id: authored?.chunk_id ?? null
+            });
             const scene = { ...this.sceneFor(entry, mode, { scene_type: "delta", accepted: true, public_reason: narration }, world), narration, narration_source: authored ? authored.source : "DETERMINISTIC" };
             try {
               this.persistSession(world, mode, entry);
@@ -1507,6 +1572,11 @@ class DesktopService {
           this.finishQ4Action(world, entry, verb, resolution);
           entry.run.expedition.natural_action_receipts ??= [];
           entry.run.expedition.natural_action_receipts.push({ id:requestId, input_fingerprint, interval:entry.run.expedition.clock.interval, action:verb, outcome:resolution.outcome, public_reason:resolution.result?.public_reason ?? "The action is recorded." });
+          // Advance deterministic actor decision scheduler before canonical commit
+          if (entry.run?.spatial && ["FIELD_OPERATION", "RETURN"].includes(entry.phase?.phase_id)) {
+            const spatialDefNat = bootstrap.spatialDefinitionFor(entry.run.spatial_pack_id);
+            try { decisionScheduler.scheduleDecisions(entry.run, spatialDefNat, world); } catch (schedulerError) { this.log(`decision scheduler non-fatal: ${schedulerError.message}`); }
+          }
           try {
             this.persistSession(world, mode, entry);
             this.traceNaturalTurn("canonical-commit", { request_id:requestId, interval:entry.run.expedition.clock.interval });
