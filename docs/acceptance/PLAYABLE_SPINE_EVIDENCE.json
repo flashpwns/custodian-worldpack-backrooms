@@ -1,15 +1,15 @@
 {
   "version": "yellow-beast-playable-spine-acceptance@v1",
-  "generated_at": "2026-08-01T11:44:46.231Z",
+  "generated_at": "2026-09-07T02:15:04.504Z",
   "evidence_kind": "deterministic rendered-surface and persisted-state capture",
   "world_name": "ClearQ4est",
   "opening_controls": [
     "READY",
     "PROCEED",
     "APPROACH",
-    "CROSS",
+    "READY",
     "RADIO_CHECK",
-    "BEGIN_FIELD_OPERATION"
+    "CROSS"
   ],
   "natural_actions": [
     "Orient myself.",
@@ -26,7 +26,7 @@
         "Margaret McKee",
         "Victoria Swanson"
       ],
-      "mission": "CQ4-LAYOUT-EXTENSION-002-1673",
+      "mission": "CQ4-WO-0001",
       "equipment": [
         {
           "id": "q4-field-light-01",
@@ -65,44 +65,20 @@
         "remaining": null
       },
       "location": "ASYNC Briefing Room",
-      "observation": null,
+      "observation": "Lighting: normal. Communications coverage: nominal. Structure: stable. Surface moisture: dry. Acoustic condition: ordinary.",
       "map": {
         "nodes": [
           {
             "id": "async-briefing-room",
             "name": "ASYNC Briefing Room",
-            "current": true,
-            "personnel": [
-              {
-                "name": "Jack Rocha",
-                "status": "present"
-              },
-              {
-                "name": "Jennifer Dorsey",
-                "status": "present"
-              },
-              {
-                "name": "Esther Henderson",
-                "status": "present"
-              },
-              {
-                "name": "Margaret McKee",
-                "status": "present"
-              },
-              {
-                "name": "Victoria Swanson",
-                "status": "present"
-              }
-            ]
+            "current": true
           }
         ],
         "unresolved_exits": [
           {
             "ref": "briefing-to-staging",
             "label": "FORWARD — Equipment Staging",
-            "direction": "forward",
-            "status": "unresolved",
-            "hazard": "clear"
+            "status": "unresolved"
           }
         ],
         "route_history": []
@@ -118,7 +94,7 @@
         "Margaret McKee",
         "Victoria Swanson"
       ],
-      "mission": "CQ4-LAYOUT-EXTENSION-002-1673",
+      "mission": "CQ4-WO-0001",
       "equipment": [
         {
           "id": "q4-field-light-01",
@@ -151,13 +127,13 @@
       "radio_check_completed": true,
       "standard_history": [
         {
-          "speaker": "YOU",
-          "text": "Standard, Clear-Q4 team Complex-side. 5 personnel accounted for.",
+          "speaker": "You",
+          "text": "Standard, Clear-Q4 team accounted for. Radio check.",
           "delivery": "delivered"
         },
         {
           "speaker": "STANDARD",
-          "text": "Clear-Q4, contact established. Proceed with assigned survey.",
+          "text": "Standard acknowledgment received for Radio check.",
           "delivery": "received"
         }
       ],
@@ -169,87 +145,39 @@
         "completed_at": null,
         "summary": "Due at operational interval 12."
       },
-      "location": "Threshold-Side Entry",
-      "observation": null,
+      "location": "Threshold Room",
+      "observation": "Lighting: normal. Communications coverage: nominal. Structure: stable. Surface moisture: dry. Acoustic condition: ordinary.",
       "map": {
         "nodes": [
           {
             "id": "async-briefing-room",
             "name": "ASYNC Briefing Room",
-            "current": false,
-            "personnel": []
+            "current": false
           },
           {
             "id": "equipment-staging",
             "name": "Equipment Staging",
-            "current": false,
-            "personnel": []
+            "current": false
           },
           {
             "id": "threshold-approach",
             "name": "Threshold Approach",
-            "current": false,
-            "personnel": []
+            "current": false
           },
           {
             "id": "threshold-room",
             "name": "Threshold Room",
-            "current": false,
-            "personnel": []
-          },
-          {
-            "id": "threshold-side-entry",
-            "name": "Threshold-Side Entry",
-            "current": true,
-            "personnel": [
-              {
-                "name": "Jack Rocha",
-                "status": "present"
-              },
-              {
-                "name": "Jennifer Dorsey",
-                "status": "present"
-              },
-              {
-                "name": "Esther Henderson",
-                "status": "present"
-              },
-              {
-                "name": "Margaret McKee",
-                "status": "present"
-              },
-              {
-                "name": "Victoria Swanson",
-                "status": "present"
-              }
-            ]
+            "current": true
           }
         ],
         "unresolved_exits": [
           {
-            "ref": "entry-to-utility",
-            "label": "FORWARD — Utility Room",
-            "direction": "forward",
-            "status": "unresolved",
-            "hazard": "clear"
-          },
-          {
-            "ref": "bypass-to-entry",
-            "label": "SOUTHEAST — Service Bypass",
-            "direction": "southeast",
-            "status": "unresolved",
-            "hazard": "clear"
+            "ref": "threshold-crossing",
+            "label": "THROUGH — Threshold-Side Entry",
+            "status": "unresolved"
           }
         ],
-        "route_history": [
-          {
-            "sequence": 1,
-            "from": "threshold-room",
-            "to": "threshold-side-entry",
-            "connection_id": "threshold-crossing",
-            "at": 2
-          }
-        ]
+        "route_history": []
       }
     },
     "field_entry": {
@@ -262,7 +190,7 @@
         "Margaret McKee",
         "Victoria Swanson"
       ],
-      "mission": "CQ4-LAYOUT-EXTENSION-002-1673",
+      "mission": "CQ4-WO-0001",
       "equipment": [
         {
           "id": "q4-field-light-01",
@@ -295,13 +223,13 @@
       "radio_check_completed": true,
       "standard_history": [
         {
-          "speaker": "YOU",
-          "text": "Standard, Clear-Q4 team Complex-side. 5 personnel accounted for.",
+          "speaker": "You",
+          "text": "Standard, Clear-Q4 team accounted for. Radio check.",
           "delivery": "delivered"
         },
         {
           "speaker": "STANDARD",
-          "text": "Clear-Q4, contact established. Proceed with assigned survey.",
+          "text": "Standard acknowledgment received for Radio check.",
           "delivery": "received"
         }
       ],
@@ -314,81 +242,50 @@
         "summary": "Due at operational interval 12."
       },
       "location": "Utility Room",
-      "observation": "You take stock of the utility room. A fluorescent fixture hums steadily overhead. Shallow scuffs cross the bare floor without forming a confirmed route marker. A shallow metal service panel sits flush with the east wall. A threshold-side entry leads back. A columned corridor continues west. An open passage leads southeast. Jennifer, Esther, Margaret, and Victoria remain within speaking range.",
+      "observation": "You take stock of the utility room. A fluorescent fixture hums steadily overhead. Shallow scuffs cross the bare floor without forming a confirmed route marker. A shallow metal service panel sits flush with the east wall. A threshold-side entry leads back. A columned corridor continues west. An open passage leads southeast. Jennifer, Esther, Margaret, and Victoria remain within speaking range. Lighting: normal. Communications coverage: nominal. Structure: stable. Surface moisture: dry. Acoustic condition: ordinary.",
       "map": {
         "nodes": [
           {
             "id": "async-briefing-room",
             "name": "ASYNC Briefing Room",
-            "current": false,
-            "personnel": []
+            "current": false
           },
           {
             "id": "equipment-staging",
             "name": "Equipment Staging",
-            "current": false,
-            "personnel": []
+            "current": false
           },
           {
             "id": "threshold-approach",
             "name": "Threshold Approach",
-            "current": false,
-            "personnel": []
+            "current": false
           },
           {
             "id": "threshold-room",
             "name": "Threshold Room",
-            "current": false,
-            "personnel": []
-          },
-          {
-            "id": "threshold-side-entry",
-            "name": "Threshold-Side Entry",
-            "current": false,
-            "personnel": []
+            "current": false
           },
           {
             "id": "utility-room",
             "name": "Utility Room",
-            "current": true,
-            "personnel": [
-              {
-                "name": "Jack Rocha",
-                "status": "present"
-              },
-              {
-                "name": "Jennifer Dorsey",
-                "status": "present"
-              },
-              {
-                "name": "Esther Henderson",
-                "status": "present"
-              },
-              {
-                "name": "Margaret McKee",
-                "status": "present"
-              },
-              {
-                "name": "Victoria Swanson",
-                "status": "present"
-              }
-            ]
+            "current": true
           }
         ],
         "unresolved_exits": [
           {
+            "ref": "entry-to-utility",
+            "label": "BACK — Threshold-Side Entry",
+            "status": "confirmed"
+          },
+          {
             "ref": "utility-to-corridor",
             "label": "WEST — Columned Corridor",
-            "direction": "west",
-            "status": "unresolved",
-            "hazard": "clear"
+            "status": "unresolved"
           },
           {
             "ref": "utility-to-passage",
             "label": "SOUTHEAST — Open Passage",
-            "direction": "southeast",
-            "status": "unresolved",
-            "hazard": "clear"
+            "status": "unresolved"
           }
         ],
         "route_history": [
@@ -397,7 +294,7 @@
             "from": "threshold-room",
             "to": "threshold-side-entry",
             "connection_id": "threshold-crossing",
-            "at": 2
+            "at": 5
           },
           {
             "sequence": 2,
@@ -422,7 +319,7 @@
         "Margaret McKee",
         "Victoria Swanson"
       ],
-      "mission": "CQ4-LAYOUT-EXTENSION-002-1673",
+      "mission": "CQ4-WO-0001",
       "equipment": [
         {
           "id": "q4-field-light-01",
@@ -455,13 +352,13 @@
       "radio_check_completed": true,
       "standard_history": [
         {
-          "speaker": "YOU",
-          "text": "Standard, Clear-Q4 team Complex-side. 5 personnel accounted for.",
+          "speaker": "You",
+          "text": "Standard, Clear-Q4 team accounted for. Radio check.",
           "delivery": "delivered"
         },
         {
           "speaker": "STANDARD",
-          "text": "Clear-Q4, contact established. Proceed with assigned survey.",
+          "text": "Standard acknowledgment received for Radio check.",
           "delivery": "received"
         }
       ],
@@ -474,80 +371,45 @@
         "summary": "Due at operational interval 12."
       },
       "location": "Columned Corridor",
-      "observation": "You take stock of the columned corridor. Square columns break the westward sightline into regular intervals. A utility room lies east. A relay alcove lies west. Jennifer, Esther, Margaret, and Victoria remain within speaking range.",
+      "observation": "You take stock of the columned corridor. Square columns break the westward sightline into regular intervals. A utility room lies east. A relay alcove lies west. Jennifer, Esther, Margaret, and Victoria remain within speaking range. Lighting: normal. Communications coverage: nominal. Structure: stable. Surface moisture: dry. Acoustic condition: ordinary.",
       "map": {
         "nodes": [
           {
             "id": "async-briefing-room",
             "name": "ASYNC Briefing Room",
-            "current": false,
-            "personnel": []
+            "current": false
           },
           {
             "id": "equipment-staging",
             "name": "Equipment Staging",
-            "current": false,
-            "personnel": []
+            "current": false
           },
           {
             "id": "threshold-approach",
             "name": "Threshold Approach",
-            "current": false,
-            "personnel": []
+            "current": false
           },
           {
             "id": "threshold-room",
             "name": "Threshold Room",
-            "current": false,
-            "personnel": []
-          },
-          {
-            "id": "threshold-side-entry",
-            "name": "Threshold-Side Entry",
-            "current": false,
-            "personnel": []
+            "current": false
           },
           {
             "id": "utility-room",
             "name": "Utility Room",
-            "current": false,
-            "personnel": []
+            "current": false
           },
           {
             "id": "columned-corridor",
             "name": "Columned Corridor",
-            "current": true,
-            "personnel": [
-              {
-                "name": "Jack Rocha",
-                "status": "present"
-              },
-              {
-                "name": "Jennifer Dorsey",
-                "status": "present"
-              },
-              {
-                "name": "Esther Henderson",
-                "status": "present"
-              },
-              {
-                "name": "Margaret McKee",
-                "status": "present"
-              },
-              {
-                "name": "Victoria Swanson",
-                "status": "present"
-              }
-            ]
+            "current": true
           }
         ],
         "unresolved_exits": [
           {
             "ref": "corridor-to-relay",
             "label": "WEST — Relay Alcove",
-            "direction": "west",
-            "status": "unresolved",
-            "hazard": "caution"
+            "status": "unresolved"
           }
         ],
         "route_history": [
@@ -556,7 +418,7 @@
             "from": "threshold-room",
             "to": "threshold-side-entry",
             "connection_id": "threshold-crossing",
-            "at": 2
+            "at": 5
           },
           {
             "sequence": 2,
@@ -585,7 +447,7 @@
         "Margaret McKee",
         "Victoria Swanson"
       ],
-      "mission": "CQ4-LAYOUT-EXTENSION-002-1673",
+      "mission": "CQ4-WO-0001",
       "equipment": [
         {
           "id": "q4-field-light-01",
@@ -618,13 +480,13 @@
       "radio_check_completed": true,
       "standard_history": [
         {
-          "speaker": "YOU",
-          "text": "Standard, Clear-Q4 team Complex-side. 5 personnel accounted for.",
+          "speaker": "You",
+          "text": "Standard, Clear-Q4 team accounted for. Radio check.",
           "delivery": "delivered"
         },
         {
           "speaker": "STANDARD",
-          "text": "Clear-Q4, contact established. Proceed with assigned survey.",
+          "text": "Standard acknowledgment received for Radio check.",
           "delivery": "received"
         }
       ],
@@ -637,80 +499,45 @@
         "summary": "Due at operational interval 12."
       },
       "location": "Columned Corridor",
-      "observation": "You take stock of the columned corridor. Square columns break the westward sightline into regular intervals. A utility room lies east. A relay alcove lies west. Jennifer, Esther, Margaret, and Victoria remain within speaking range.",
+      "observation": "You take stock of the columned corridor. Square columns break the westward sightline into regular intervals. A utility room lies east. A relay alcove lies west. Jennifer, Esther, Margaret, and Victoria remain within speaking range. Lighting: normal. Communications coverage: nominal. Structure: stable. Surface moisture: dry. Acoustic condition: ordinary.",
       "map": {
         "nodes": [
           {
             "id": "async-briefing-room",
             "name": "ASYNC Briefing Room",
-            "current": false,
-            "personnel": []
+            "current": false
           },
           {
             "id": "equipment-staging",
             "name": "Equipment Staging",
-            "current": false,
-            "personnel": []
+            "current": false
           },
           {
             "id": "threshold-approach",
             "name": "Threshold Approach",
-            "current": false,
-            "personnel": []
+            "current": false
           },
           {
             "id": "threshold-room",
             "name": "Threshold Room",
-            "current": false,
-            "personnel": []
-          },
-          {
-            "id": "threshold-side-entry",
-            "name": "Threshold-Side Entry",
-            "current": false,
-            "personnel": []
+            "current": false
           },
           {
             "id": "utility-room",
             "name": "Utility Room",
-            "current": false,
-            "personnel": []
+            "current": false
           },
           {
             "id": "columned-corridor",
             "name": "Columned Corridor",
-            "current": true,
-            "personnel": [
-              {
-                "name": "Jack Rocha",
-                "status": "present"
-              },
-              {
-                "name": "Jennifer Dorsey",
-                "status": "present"
-              },
-              {
-                "name": "Esther Henderson",
-                "status": "present"
-              },
-              {
-                "name": "Margaret McKee",
-                "status": "present"
-              },
-              {
-                "name": "Victoria Swanson",
-                "status": "present"
-              }
-            ]
+            "current": true
           }
         ],
         "unresolved_exits": [
           {
             "ref": "corridor-to-relay",
             "label": "WEST — Relay Alcove",
-            "direction": "west",
-            "status": "unresolved",
-            "hazard": "caution"
+            "status": "unresolved"
           }
         ],
         "route_history": [
@@ -719,7 +546,7 @@
             "from": "threshold-room",
             "to": "threshold-side-entry",
             "connection_id": "threshold-crossing",
-            "at": 2
+            "at": 5
           },
           {
             "sequence": 2,

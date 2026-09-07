@@ -6,7 +6,7 @@
     "id": "logistics-64e7b0cae7892622d7",
     "item_id": "fixture-meter",
     "sequence": 1,
-    "summary": "Fixture meter transferred from fixture-player to fixture-coworker-1."
+    "summary": "Fixture meter transferred from You to Generated Coworker 1."
   },
   "authoritative_truth": {
     "clock": 1,
@@ -80,7 +80,7 @@
       "id": "logistics-64e7b0cae7892622d7",
       "item_id": "fixture-meter",
       "sequence": 1,
-      "summary": "Fixture meter transferred from fixture-player to fixture-coworker-1."
+      "summary": "Fixture meter transferred from You to Generated Coworker 1."
     }
   ],
   "mission_transitions": [

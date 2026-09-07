@@ -1,6 +1,6 @@
 {
   "version": "yellow-beast-structured-interaction-acceptance@v1",
-  "generated_at": "2026-08-01T11:44:46.496Z",
+  "generated_at": "2026-09-07T02:14:00.023Z",
   "evidence_kind": "deterministic rendered-surface and persisted-state capture",
   "actions": [
     "INSPECT fluorescent fixture",
@@ -18,7 +18,7 @@
     "initial_object_observation": {
       "phase": "FIELD_OPERATION",
       "location": "Utility Room",
-      "observation": "You take stock of the utility room. A fluorescent fixture hums steadily overhead. Shallow scuffs cross the bare floor without forming a confirmed route marker. A shallow metal service panel sits flush with the east wall. A threshold-side entry leads back. A columned corridor continues west. An open passage leads southeast. Deborah, Judith, and Alana remain within speaking range.",
+      "observation": "You take stock of the utility room. A fluorescent fixture hums steadily overhead. Shallow scuffs cross the bare floor without forming a confirmed route marker. A shallow metal service panel sits flush with the east wall. A threshold-side entry leads back. A columned corridor continues west. An open passage leads southeast. Deborah, Judith, and Alana remain within speaking range. Lighting: normal. Communications coverage: nominal. Structure: stable. Surface moisture: dry. Acoustic condition: ordinary.",
       "interactables": [
         {
           "name": "fluorescent fixture",
@@ -190,50 +190,23 @@
         "nodes": [
           {
             "name": "ASYNC Briefing Room",
-            "current": false,
-            "personnel": []
+            "current": false
           },
           {
             "name": "Equipment Staging",
-            "current": false,
-            "personnel": []
+            "current": false
           },
           {
             "name": "Threshold Approach",
-            "current": false,
-            "personnel": []
+            "current": false
           },
           {
             "name": "Threshold Room",
-            "current": false,
-            "personnel": []
-          },
-          {
-            "name": "Threshold-Side Entry",
-            "current": false,
-            "personnel": []
+            "current": false
           },
           {
             "name": "Utility Room",
-            "current": true,
-            "personnel": [
-              {
-                "name": "Jack Rocha",
-                "status": "present"
-              },
-              {
-                "name": "Deborah Cantrell",
-                "status": "present"
-              },
-              {
-                "name": "Judith Newman",
-                "status": "present"
-              },
-              {
-                "name": "Alana Roman",
-                "status": "present"
-              }
-            ]
+            "current": true
           }
         ],
         "route_history": [
@@ -242,7 +215,7 @@
             "from": "threshold-room",
             "to": "threshold-side-entry",
             "connection_id": "threshold-crossing",
-            "at": 2
+            "at": 5
           },
           {
             "sequence": 2,
@@ -257,7 +230,7 @@
     "inspection_result": {
       "phase": "FIELD_OPERATION",
       "location": "Utility Room",
-      "observation": "You take stock of the utility room. A fluorescent fixture hums steadily overhead. Shallow scuffs cross the bare floor without forming a confirmed route marker. A shallow metal service panel sits flush with the east wall. A threshold-side entry leads back. A columned corridor continues west. An open passage leads southeast. Deborah, Judith, and Alana remain within speaking range.",
+      "observation": "You take stock of the utility room. A fluorescent fixture hums steadily overhead. Shallow scuffs cross the bare floor without forming a confirmed route marker. A shallow metal service panel sits flush with the east wall. A threshold-side entry leads back. A columned corridor continues west. An open passage leads southeast. Deborah, Judith, and Alana remain within speaking range. Lighting: normal. Communications coverage: nominal. Structure: stable. Surface moisture: dry. Acoustic condition: ordinary.",
       "interactables": [
         {
           "name": "fluorescent fixture",
@@ -435,50 +408,23 @@
         "nodes": [
           {
             "name": "ASYNC Briefing Room",
-            "current": false,
-            "personnel": []
+            "current": false
           },
           {
             "name": "Equipment Staging",
-            "current": false,
-            "personnel": []
+            "current": false
           },
           {
             "name": "Threshold Approach",
-            "current": false,
-            "personnel": []
+            "current": false
           },
           {
             "name": "Threshold Room",
-            "current": false,
-            "personnel": []
-          },
-          {
-            "name": "Threshold-Side Entry",
-            "current": false,
-            "personnel": []
+            "current": false
           },
           {
             "name": "Utility Room",
-            "current": true,
-            "personnel": [
-              {
-                "name": "Jack Rocha",
-                "status": "present"
-              },
-              {
-                "name": "Deborah Cantrell",
-                "status": "present"
-              },
-              {
-                "name": "Judith Newman",
-                "status": "present"
-              },
-              {
-                "name": "Alana Roman",
-                "status": "present"
-              }
-            ]
+            "current": true
           }
         ],
         "route_history": [
@@ -487,7 +433,7 @@
             "from": "threshold-room",
             "to": "threshold-side-entry",
             "connection_id": "threshold-crossing",
-            "at": 2
+            "at": 5
           },
           {
             "sequence": 2,
@@ -502,7 +448,7 @@
     "successful_state_mutation": {
       "phase": "FIELD_OPERATION",
       "location": "Utility Room",
-      "observation": "You take stock of the utility room. The fluorescent fixture remains steady overhead and is now tagged in the survey record. Shallow scuffs cross the bare floor without forming a confirmed route marker. A shallow metal service panel sits flush with the east wall. A threshold-side entry leads back. A columned corridor continues west. An open passage leads southeast. Deborah, Judith, and Alana remain within speaking range.",
+      "observation": "You take stock of the utility room. The fluorescent fixture remains steady overhead and is now tagged in the survey record. Shallow scuffs cross the bare floor without forming a confirmed route marker. A shallow metal service panel sits flush with the east wall. A threshold-side entry leads back. A columned corridor continues west. An open passage leads southeast. Deborah, Judith, and Alana remain within speaking range. Lighting: normal. Communications coverage: nominal. Structure: stable. Surface moisture: dry. Acoustic condition: ordinary.",
       "interactables": [
         {
           "name": "fluorescent fixture",
@@ -694,50 +640,23 @@
         "nodes": [
           {
             "name": "ASYNC Briefing Room",
-            "current": false,
-            "personnel": []
+            "current": false
           },
           {
             "name": "Equipment Staging",
-            "current": false,
-            "personnel": []
+            "current": false
           },
           {
             "name": "Threshold Approach",
-            "current": false,
-            "personnel": []
+            "current": false
           },
           {
             "name": "Threshold Room",
-            "current": false,
-            "personnel": []
-          },
-          {
-            "name": "Threshold-Side Entry",
-            "current": false,
-            "personnel": []
+            "current": false
           },
           {
             "name": "Utility Room",
-            "current": true,
-            "personnel": [
-              {
-                "name": "Jack Rocha",
-                "status": "present"
-              },
-              {
-                "name": "Deborah Cantrell",
-                "status": "present"
-              },
-              {
-                "name": "Judith Newman",
-                "status": "present"
-              },
-              {
-                "name": "Alana Roman",
-                "status": "present"
-              }
-            ]
+            "current": true
           }
         ],
         "route_history": [
@@ -746,7 +665,7 @@
             "from": "threshold-room",
             "to": "threshold-side-entry",
             "connection_id": "threshold-crossing",
-            "at": 2
+            "at": 5
           },
           {
             "sequence": 2,
@@ -761,7 +680,7 @@
     "route_marker_placed": {
       "phase": "FIELD_OPERATION",
       "location": "Utility Room",
-      "observation": "You take stock of the utility room. The fluorescent fixture remains steady overhead and is now tagged in the survey record. The numbered route marker you placed remains visible beside the west-wall scuffs. A shallow metal service panel sits flush with the east wall. A threshold-side entry leads back. A columned corridor continues west. An open passage leads southeast. Deborah, Judith, and Alana remain within speaking range.",
+      "observation": "You take stock of the utility room. The fluorescent fixture remains steady overhead and is now tagged in the survey record. The numbered route marker you placed remains visible beside the west-wall scuffs. A shallow metal service panel sits flush with the east wall. A threshold-side entry leads back. A columned corridor continues west. An open passage leads southeast. Deborah, Judith, and Alana remain within speaking range. Lighting: normal. Communications coverage: nominal. Structure: stable. Surface moisture: dry. Acoustic condition: ordinary.",
       "interactables": [
         {
           "name": "fluorescent fixture",
@@ -959,50 +878,23 @@
         "nodes": [
           {
             "name": "ASYNC Briefing Room",
-            "current": false,
-            "personnel": []
+            "current": false
           },
           {
             "name": "Equipment Staging",
-            "current": false,
-            "personnel": []
+            "current": false
           },
           {
             "name": "Threshold Approach",
-            "current": false,
-            "personnel": []
+            "current": false
           },
           {
             "name": "Threshold Room",
-            "current": false,
-            "personnel": []
-          },
-          {
-            "name": "Threshold-Side Entry",
-            "current": false,
-            "personnel": []
+            "current": false
           },
           {
             "name": "Utility Room",
-            "current": true,
-            "personnel": [
-              {
-                "name": "Jack Rocha",
-                "status": "present"
-              },
-              {
-                "name": "Deborah Cantrell",
-                "status": "present"
-              },
-              {
-                "name": "Judith Newman",
-                "status": "present"
-              },
-              {
-                "name": "Alana Roman",
-                "status": "present"
-              }
-            ]
+            "current": true
           }
         ],
         "route_history": [
@@ -1011,7 +903,7 @@
             "from": "threshold-room",
             "to": "threshold-side-entry",
             "connection_id": "threshold-crossing",
-            "at": 2
+            "at": 5
           },
           {
             "sequence": 2,
@@ -1026,7 +918,7 @@
     "panel_opened": {
       "phase": "FIELD_OPERATION",
       "location": "Utility Room",
-      "observation": "You take stock of the utility room. The fluorescent fixture remains steady overhead and is now tagged in the survey record. The numbered route marker you placed remains visible beside the west-wall scuffs. The service panel stands open on the east wall, its shallow intact interior visible. A threshold-side entry leads back. A columned corridor continues west. An open passage leads southeast. Deborah, Judith, and Alana remain within speaking range.",
+      "observation": "You take stock of the utility room. The fluorescent fixture remains steady overhead and is now tagged in the survey record. The numbered route marker you placed remains visible beside the west-wall scuffs. The service panel stands open on the east wall, its shallow intact interior visible. A threshold-side entry leads back. A columned corridor continues west. An open passage leads southeast. Deborah, Judith, and Alana remain within speaking range. Lighting: normal. Communications coverage: nominal. Structure: stable. Surface moisture: dry. Acoustic condition: ordinary.",
       "interactables": [
         {
           "name": "fluorescent fixture",
@@ -1230,50 +1122,23 @@
         "nodes": [
           {
             "name": "ASYNC Briefing Room",
-            "current": false,
-            "personnel": []
+            "current": false
           },
           {
             "name": "Equipment Staging",
-            "current": false,
-            "personnel": []
+            "current": false
           },
           {
             "name": "Threshold Approach",
-            "current": false,
-            "personnel": []
+            "current": false
           },
           {
             "name": "Threshold Room",
-            "current": false,
-            "personnel": []
-          },
-          {
-            "name": "Threshold-Side Entry",
-            "current": false,
-            "personnel": []
+            "current": false
           },
           {
             "name": "Utility Room",
-            "current": true,
-            "personnel": [
-              {
-                "name": "Jack Rocha",
-                "status": "present"
-              },
-              {
-                "name": "Deborah Cantrell",
-                "status": "present"
-              },
-              {
-                "name": "Judith Newman",
-                "status": "present"
-              },
-              {
-                "name": "Alana Roman",
-                "status": "present"
-              }
-            ]
+            "current": true
           }
         ],
         "route_history": [
@@ -1282,7 +1147,7 @@
             "from": "threshold-room",
             "to": "threshold-side-entry",
             "connection_id": "threshold-crossing",
-            "at": 2
+            "at": 5
           },
           {
             "sequence": 2,
@@ -1297,7 +1162,7 @@
     "moved_away": {
       "phase": "FIELD_OPERATION",
       "location": "Columned Corridor",
-      "observation": "You take stock of the columned corridor. Square columns break the westward sightline into regular intervals. A utility room lies east. A relay alcove lies west. Deborah, Judith, and Alana remain within speaking range.",
+      "observation": "You take stock of the columned corridor. Square columns break the westward sightline into regular intervals. A utility room lies east. A relay alcove lies west. Deborah, Judith, and Alana remain within speaking range. Lighting: normal. Communications coverage: nominal. Structure: stable. Surface moisture: dry. Acoustic condition: ordinary.",
       "interactables": [],
       "objectives": [
         {
@@ -1440,55 +1305,27 @@
         "nodes": [
           {
             "name": "ASYNC Briefing Room",
-            "current": false,
-            "personnel": []
+            "current": false
           },
           {
             "name": "Equipment Staging",
-            "current": false,
-            "personnel": []
+            "current": false
           },
           {
             "name": "Threshold Approach",
-            "current": false,
-            "personnel": []
+            "current": false
           },
           {
             "name": "Threshold Room",
-            "current": false,
-            "personnel": []
-          },
-          {
-            "name": "Threshold-Side Entry",
-            "current": false,
-            "personnel": []
+            "current": false
           },
           {
             "name": "Utility Room",
-            "current": false,
-            "personnel": []
+            "current": false
           },
           {
             "name": "Columned Corridor",
-            "current": true,
-            "personnel": [
-              {
-                "name": "Jack Rocha",
-                "status": "present"
-              },
-              {
-                "name": "Deborah Cantrell",
-                "status": "present"
-              },
-              {
-                "name": "Judith Newman",
-                "status": "present"
-              },
-              {
-                "name": "Alana Roman",
-                "status": "present"
-              }
-            ]
+            "current": true
           }
         ],
         "route_history": [
@@ -1497,7 +1334,7 @@
             "from": "threshold-room",
             "to": "threshold-side-entry",
             "connection_id": "threshold-crossing",
-            "at": 2
+            "at": 5
           },
           {
             "sequence": 2,
@@ -1519,7 +1356,7 @@
     "returned_to_changed_room": {
       "phase": "FIELD_OPERATION",
       "location": "Utility Room",
-      "observation": "You take stock of the utility room. The fluorescent fixture remains steady overhead and is now tagged in the survey record. The numbered route marker you placed remains visible beside the west-wall scuffs. The service panel stands open on the east wall, its shallow intact interior visible. A threshold-side entry leads back. A columned corridor continues west. An open passage leads southeast. Deborah, Judith, and Alana remain within speaking range.",
+      "observation": "You take stock of the utility room. The fluorescent fixture remains steady overhead and is now tagged in the survey record. The numbered route marker you placed remains visible beside the west-wall scuffs. The service panel stands open on the east wall, its shallow intact interior visible. A threshold-side entry leads back. A columned corridor continues west. An open passage leads southeast. Deborah, Judith, and Alana remain within speaking range. Lighting: normal. Communications coverage: nominal. Structure: stable. Surface moisture: dry. Acoustic condition: ordinary.",
       "interactables": [
         {
           "name": "fluorescent fixture",
@@ -1723,55 +1560,27 @@
         "nodes": [
           {
             "name": "ASYNC Briefing Room",
-            "current": false,
-            "personnel": []
+            "current": false
           },
           {
             "name": "Equipment Staging",
-            "current": false,
-            "personnel": []
+            "current": false
           },
           {
             "name": "Threshold Approach",
-            "current": false,
-            "personnel": []
+            "current": false
           },
           {
             "name": "Threshold Room",
-            "current": false,
-            "personnel": []
-          },
-          {
-            "name": "Threshold-Side Entry",
-            "current": false,
-            "personnel": []
+            "current": false
           },
           {
             "name": "Utility Room",
-            "current": true,
-            "personnel": [
-              {
-                "name": "Jack Rocha",
-                "status": "present"
-              },
-              {
-                "name": "Deborah Cantrell",
-                "status": "present"
-              },
-              {
-                "name": "Judith Newman",
-                "status": "present"
-              },
-              {
-                "name": "Alana Roman",
-                "status": "present"
-              }
-            ]
+            "current": true
           },
           {
             "name": "Columned Corridor",
-            "current": false,
-            "personnel": []
+            "current": false
           }
         ],
         "route_history": [
@@ -1780,7 +1589,7 @@
             "from": "threshold-room",
             "to": "threshold-side-entry",
             "connection_id": "threshold-crossing",
-            "at": 2
+            "at": 5
           },
           {
             "sequence": 2,
@@ -1809,7 +1618,7 @@
     "post_restart_resume": {
       "phase": "FIELD_OPERATION",
       "location": "Utility Room",
-      "observation": "You take stock of the utility room. The fluorescent fixture remains steady overhead and is now tagged in the survey record. The numbered route marker you placed remains visible beside the west-wall scuffs. The service panel stands open on the east wall, its shallow intact interior visible. A threshold-side entry leads back. A columned corridor continues west. An open passage leads southeast. Deborah, Judith, and Alana remain within speaking range.",
+      "observation": "You take stock of the utility room. The fluorescent fixture remains steady overhead and is now tagged in the survey record. The numbered route marker you placed remains visible beside the west-wall scuffs. The service panel stands open on the east wall, its shallow intact interior visible. A threshold-side entry leads back. A columned corridor continues west. An open passage leads southeast. Deborah, Judith, and Alana remain within speaking range. Lighting: normal. Communications coverage: nominal. Structure: stable. Surface moisture: dry. Acoustic condition: ordinary.",
       "interactables": [
         {
           "name": "fluorescent fixture",
@@ -2013,55 +1822,27 @@
         "nodes": [
           {
             "name": "ASYNC Briefing Room",
-            "current": false,
-            "personnel": []
+            "current": false
           },
           {
             "name": "Equipment Staging",
-            "current": false,
-            "personnel": []
+            "current": false
           },
           {
             "name": "Threshold Approach",
-            "current": false,
-            "personnel": []
+            "current": false
           },
           {
             "name": "Threshold Room",
-            "current": false,
-            "personnel": []
-          },
-          {
-            "name": "Threshold-Side Entry",
-            "current": false,
-            "personnel": []
+            "current": false
           },
           {
             "name": "Utility Room",
-            "current": true,
-            "personnel": [
-              {
-                "name": "Jack Rocha",
-                "status": "present"
-              },
-              {
-                "name": "Deborah Cantrell",
-                "status": "present"
-              },
-              {
-                "name": "Judith Newman",
-                "status": "present"
-              },
-              {
-                "name": "Alana Roman",
-                "status": "present"
-              }
-            ]
+            "current": true
           },
           {
             "name": "Columned Corridor",
-            "current": false,
-            "personnel": []
+            "current": false
           }
         ],
         "route_history": [
@@ -2070,7 +1851,7 @@
             "from": "threshold-room",
             "to": "threshold-side-entry",
             "connection_id": "threshold-crossing",
-            "at": 2
+            "at": 5
           },
           {
             "sequence": 2,

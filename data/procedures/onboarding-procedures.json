@@ -1,0 +1,82 @@
+{
+  "version": "yellow-beast-procedures@v1",
+  "phases": {
+    "BRIEFING": {
+      "phase_id": "BRIEFING",
+      "location_id": "async-briefing-room",
+      "canonical_name": "Administrative Briefing",
+      "expected_action": "READY",
+      "action_aliases": [
+        "ready",
+        "confirm",
+        "proceed",
+        "stage",
+        "review",
+        "review assignment"
+      ],
+      "transition_target": "STAGING",
+      "institutional_dialogue": "Survey assignment confirmed for Clear-Q4. Team dispatched to Equipment Staging."
+    },
+    "STAGING": {
+      "phase_id": "STAGING",
+      "location_id": "equipment-staging",
+      "canonical_name": "Equipment Staging & Stores",
+      "expected_action": "PROCEED",
+      "action_aliases": [
+        "proceed",
+        "depart",
+        "move",
+        "go to corridor",
+        "approach threshold"
+      ],
+      "transition_target": "FACILITY_TRANSIT",
+      "institutional_dialogue": "Equipment custody logged. Team departing staging lockers for Maintenance Wing corridor."
+    },
+    "FACILITY_TRANSIT": {
+      "phase_id": "FACILITY_TRANSIT",
+      "location_id": "threshold-approach",
+      "canonical_name": "Maintenance Wing Transit",
+      "expected_action": "APPROACH",
+      "action_aliases": [
+        "approach",
+        "continue",
+        "advance",
+        "enter threshold room",
+        "proceed to kv31"
+      ],
+      "transition_target": "THRESHOLD",
+      "institutional_dialogue": "Acoustic doors cleared. Expedition arriving at KV31 Threshold Chamber."
+    },
+    "THRESHOLD": {
+      "phase_id": "THRESHOLD",
+      "location_id": "threshold-room",
+      "canonical_name": "KV31 Threshold Chamber Accountability",
+      "expected_action": "READY",
+      "action_aliases": [
+        "ready",
+        "confirm",
+        "prepare",
+        "radio check",
+        "start radio check"
+      ],
+      "transition_target": "STANDARD_RADIO_CHECK",
+      "institutional_dialogue": "Personnel count verified at barrier rail. Radio check required prior to entry."
+    },
+    "STANDARD_RADIO_CHECK": {
+      "phase_id": "STANDARD_RADIO_CHECK",
+      "location_id": "threshold-room",
+      "canonical_name": "Standard Dispatch Radio Procedure",
+      "expected_action": "CROSS",
+      "action_aliases": [
+        "cross",
+        "enter",
+        "step through",
+        "deploy",
+        "begin field operation"
+      ],
+      "transition_target": "FIELD_OPERATION",
+      "requires_radio_check": true,
+      "institutional_dialogue": "Standard dispatch acknowledges transmission. Clearance granted for aperture crossing."
+    }
+  }
+}

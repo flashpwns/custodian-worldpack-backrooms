@@ -6,7 +6,7 @@
     "id": "logistics-4e6ad03f59d885494e",
     "item_id": "field-light",
     "sequence": 1,
-    "summary": "Battery field lamp transferred from fixture-player to fixture-coworker-1."
+    "summary": "Battery field lamp transferred from You to Generated Coworker 1."
   },
   "authoritative_truth": {
     "clock": 1,
@@ -216,7 +216,7 @@
       "id": "logistics-4e6ad03f59d885494e",
       "item_id": "field-light",
       "sequence": 1,
-      "summary": "Battery field lamp transferred from fixture-player to fixture-coworker-1."
+      "summary": "Battery field lamp transferred from You to Generated Coworker 1."
     }
   ],
   "mission_transitions": [

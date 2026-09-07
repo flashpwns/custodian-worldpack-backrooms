@@ -1,6 +1,6 @@
 {
   "version": "yellow-beast-omnipass-7-9-acceptance@v1",
-  "generated_at": "2026-08-01T11:44:48.282Z",
+  "generated_at": "2026-09-07T02:13:39.137Z",
   "evidence_kind": "deterministic renderer-backed, authoring-backed, and persisted authoritative-state capture",
   "seed": "omnipass-primary",
   "roster": [
@@ -1701,28 +1701,28 @@
         ],
         "messages": [
           {
-            "id": "message-567e6dfb453bd3ca2b",
+            "id": "message-cf39047624e40b0983",
             "sender": "You",
             "recipient": "Standard",
             "channel": "FIELD_RADIO",
             "purpose": "radio-check",
-            "sent_at": 5,
+            "sent_at": 4,
             "state": "acknowledged",
             "state_label": "Acknowledged",
-            "delivered_at": 6,
+            "delivered_at": 5,
             "acknowledged_at": 6,
             "known_reason": null
           },
           {
-            "id": "standard-institution-decision-2725dc75edcfcc319f",
+            "id": "standard-institution-decision-ddb2b2ca0ef064856b",
             "sender": "Standard",
             "recipient": "You",
             "channel": "FIELD_RADIO",
             "purpose": "acknowledge-report",
-            "sent_at": 7,
+            "sent_at": 6,
             "state": "delivered",
             "state_label": "Delivered",
-            "delivered_at": 7,
+            "delivered_at": 6,
             "acknowledged_at": null,
             "known_reason": null
           }
@@ -1730,14 +1730,14 @@
         "last_successful_contact": {
           "channel": "FIELD_RADIO",
           "recipient": "Standard",
-          "at": 6
+          "at": 5
         }
       },
       "hazards": [],
       "evidence": [
         {
           "id": "object-evidence-8e989eabbd097188e8e3",
-          "mission_id": "CQ4-INFRASTRUCTURE-MATERIAL-002-6692",
+          "mission_id": "CQ4-WO-0001",
           "type": "fixture-test",
           "capture_event": "object.evidence.captured",
           "method": "instrument test",
@@ -1753,23 +1753,7 @@
           "storage": "with the field survey record",
           "reporting_state": "unreported",
           "render": {
-            "id": "render-da52d9bfb84e0900",
-            "evidence_id": "object-evidence-8e989eabbd097188e8e3",
-            "adapter": "fallback",
-            "workflow": "observer-safe-q4-evidence",
-            "status": "fallback-ready",
-            "attempts": 0,
-            "source_fact_digest": "1560367cdb27d6e6c2a0b124d121569a4fe8670ac1ec2d064dac2102afb14fac",
-            "created_at": "simulation-recorded",
-            "result": {
-              "status": "fallback",
-              "kind": "schematic-capture",
-              "label": "Observer-safe field capture",
-              "reason": "renderer-disabled",
-              "source_fact_digest": "1560367cdb27d6e6c2a0b124d121569a4fe8670ac1ec2d064dac2102afb14fac",
-              "asset_id": "fallback-object-evidence-8e989eabbd097188e8e3",
-              "provenance": "local-deterministic-fallback"
-            }
+            "status": "fallback-ready"
           },
           "visual": {
             "asset_id": "evidence-visual-unavailable",
@@ -1784,7 +1768,7 @@
         },
         {
           "id": "object-evidence-13f265b5b915c6810e2b",
-          "mission_id": "CQ4-INFRASTRUCTURE-MATERIAL-002-6692",
+          "mission_id": "CQ4-WO-0001",
           "type": "surface-photograph",
           "capture_event": "object.evidence.captured",
           "method": "35mm photograph",
@@ -1800,23 +1784,7 @@
           "storage": "with the camera record",
           "reporting_state": "unreported",
           "render": {
-            "id": "render-3985521198b8286e",
-            "evidence_id": "object-evidence-13f265b5b915c6810e2b",
-            "adapter": "fallback",
-            "workflow": "observer-safe-q4-evidence",
-            "status": "fallback-ready",
-            "attempts": 0,
-            "source_fact_digest": "f7f225f65da3e73360d31c04196d0f0d0d442b227de5e7da95a5a9ebfd01e765",
-            "created_at": "simulation-recorded",
-            "result": {
-              "status": "fallback",
-              "kind": "schematic-capture",
-              "label": "Observer-safe field capture",
-              "reason": "renderer-disabled",
-              "source_fact_digest": "f7f225f65da3e73360d31c04196d0f0d0d442b227de5e7da95a5a9ebfd01e765",
-              "asset_id": "fallback-object-evidence-13f265b5b915c6810e2b",
-              "provenance": "local-deterministic-fallback"
-            }
+            "status": "fallback-ready"
           },
           "visual": {
             "asset_id": "evidence-photograph",
@@ -1852,7 +1820,7 @@
         "uncertainty": [
           {
             "status": "uncorroborated",
-            "summary": "Standard, Clear-Q4 team Complex-side. 4 personnel accounted for."
+            "summary": "Standard, Clear-Q4 team accounted for. Radio check."
           }
         ],
         "pending_reviews": [],
@@ -1860,7 +1828,7 @@
           {
             "decision": "acknowledge-report",
             "public_response": "Standard acknowledges the delivered status report.",
-            "resolved_at": 7
+            "resolved_at": 6
           }
         ],
         "follow_up_assignments": []
@@ -2255,28 +2223,28 @@
         ],
         "messages": [
           {
-            "id": "message-567e6dfb453bd3ca2b",
+            "id": "message-cf39047624e40b0983",
             "sender": "You",
             "recipient": "Standard",
             "channel": "FIELD_RADIO",
             "purpose": "radio-check",
-            "sent_at": 5,
+            "sent_at": 4,
             "state": "acknowledged",
             "state_label": "Acknowledged",
-            "delivered_at": 6,
+            "delivered_at": 5,
             "acknowledged_at": 6,
             "known_reason": null
           },
           {
-            "id": "standard-institution-decision-2725dc75edcfcc319f",
+            "id": "standard-institution-decision-ddb2b2ca0ef064856b",
             "sender": "Standard",
             "recipient": "You",
             "channel": "FIELD_RADIO",
             "purpose": "acknowledge-report",
-            "sent_at": 7,
+            "sent_at": 6,
             "state": "delivered",
             "state_label": "Delivered",
-            "delivered_at": 7,
+            "delivered_at": 6,
             "acknowledged_at": null,
             "known_reason": null
           }
@@ -2284,14 +2252,14 @@
         "last_successful_contact": {
           "channel": "FIELD_RADIO",
           "recipient": "Standard",
-          "at": 6
+          "at": 5
         }
       },
       "hazards": [],
       "evidence": [
         {
           "id": "object-evidence-8e989eabbd097188e8e3",
-          "mission_id": "CQ4-INFRASTRUCTURE-MATERIAL-002-6692",
+          "mission_id": "CQ4-WO-0001",
           "type": "fixture-test",
           "capture_event": "object.evidence.captured",
           "method": "instrument test",
@@ -2307,23 +2275,7 @@
           "storage": "with the field survey record",
           "reporting_state": "unreported",
           "render": {
-            "id": "render-da52d9bfb84e0900",
-            "evidence_id": "object-evidence-8e989eabbd097188e8e3",
-            "adapter": "fallback",
-            "workflow": "observer-safe-q4-evidence",
-            "status": "fallback-ready",
-            "attempts": 0,
-            "source_fact_digest": "1560367cdb27d6e6c2a0b124d121569a4fe8670ac1ec2d064dac2102afb14fac",
-            "created_at": "simulation-recorded",
-            "result": {
-              "status": "fallback",
-              "kind": "schematic-capture",
-              "label": "Observer-safe field capture",
-              "reason": "renderer-disabled",
-              "source_fact_digest": "1560367cdb27d6e6c2a0b124d121569a4fe8670ac1ec2d064dac2102afb14fac",
-              "asset_id": "fallback-object-evidence-8e989eabbd097188e8e3",
-              "provenance": "local-deterministic-fallback"
-            }
+            "status": "fallback-ready"
           },
           "visual": {
             "asset_id": "evidence-visual-unavailable",
@@ -2338,7 +2290,7 @@
         },
         {
           "id": "object-evidence-13f265b5b915c6810e2b",
-          "mission_id": "CQ4-INFRASTRUCTURE-MATERIAL-002-6692",
+          "mission_id": "CQ4-WO-0001",
           "type": "surface-photograph",
           "capture_event": "object.evidence.captured",
           "method": "35mm photograph",
@@ -2354,23 +2306,7 @@
           "storage": "with the camera record",
           "reporting_state": "unreported",
           "render": {
-            "id": "render-3985521198b8286e",
-            "evidence_id": "object-evidence-13f265b5b915c6810e2b",
-            "adapter": "fallback",
-            "workflow": "observer-safe-q4-evidence",
-            "status": "fallback-ready",
-            "attempts": 0,
-            "source_fact_digest": "f7f225f65da3e73360d31c04196d0f0d0d442b227de5e7da95a5a9ebfd01e765",
-            "created_at": "simulation-recorded",
-            "result": {
-              "status": "fallback",
-              "kind": "schematic-capture",
-              "label": "Observer-safe field capture",
-              "reason": "renderer-disabled",
-              "source_fact_digest": "f7f225f65da3e73360d31c04196d0f0d0d442b227de5e7da95a5a9ebfd01e765",
-              "asset_id": "fallback-object-evidence-13f265b5b915c6810e2b",
-              "provenance": "local-deterministic-fallback"
-            }
+            "status": "fallback-ready"
           },
           "visual": {
             "asset_id": "evidence-photograph",
@@ -2406,7 +2342,7 @@
         "uncertainty": [
           {
             "status": "uncorroborated",
-            "summary": "Standard, Clear-Q4 team Complex-side. 4 personnel accounted for."
+            "summary": "Standard, Clear-Q4 team accounted for. Radio check."
           }
         ],
         "pending_reviews": [],
@@ -2414,7 +2350,7 @@
           {
             "decision": "acknowledge-report",
             "public_response": "Standard acknowledges the delivered status report.",
-            "resolved_at": 7
+            "resolved_at": 6
           }
         ],
         "follow_up_assignments": []
@@ -2811,28 +2747,28 @@
         ],
         "messages": [
           {
-            "id": "message-567e6dfb453bd3ca2b",
+            "id": "message-cf39047624e40b0983",
             "sender": "You",
             "recipient": "Standard",
             "channel": "FIELD_RADIO",
             "purpose": "radio-check",
-            "sent_at": 5,
+            "sent_at": 4,
             "state": "acknowledged",
             "state_label": "Acknowledged",
-            "delivered_at": 6,
+            "delivered_at": 5,
             "acknowledged_at": 6,
             "known_reason": null
           },
           {
-            "id": "standard-institution-decision-2725dc75edcfcc319f",
+            "id": "standard-institution-decision-ddb2b2ca0ef064856b",
             "sender": "Standard",
             "recipient": "You",
             "channel": "FIELD_RADIO",
             "purpose": "acknowledge-report",
-            "sent_at": 7,
+            "sent_at": 6,
             "state": "delivered",
             "state_label": "Delivered",
-            "delivered_at": 7,
+            "delivered_at": 6,
             "acknowledged_at": null,
             "known_reason": null
           }
@@ -2840,7 +2776,7 @@
         "last_successful_contact": {
           "channel": "FIELD_RADIO",
           "recipient": "Standard",
-          "at": 6
+          "at": 5
         }
       },
       "hazards": [
@@ -2860,7 +2796,7 @@
       "evidence": [
         {
           "id": "object-evidence-8e989eabbd097188e8e3",
-          "mission_id": "CQ4-INFRASTRUCTURE-MATERIAL-002-6692",
+          "mission_id": "CQ4-WO-0001",
           "type": "fixture-test",
           "capture_event": "object.evidence.captured",
           "method": "instrument test",
@@ -2876,23 +2812,7 @@
           "storage": "with the field survey record",
           "reporting_state": "unreported",
           "render": {
-            "id": "render-da52d9bfb84e0900",
-            "evidence_id": "object-evidence-8e989eabbd097188e8e3",
-            "adapter": "fallback",
-            "workflow": "observer-safe-q4-evidence",
-            "status": "fallback-ready",
-            "attempts": 0,
-            "source_fact_digest": "1560367cdb27d6e6c2a0b124d121569a4fe8670ac1ec2d064dac2102afb14fac",
-            "created_at": "simulation-recorded",
-            "result": {
-              "status": "fallback",
-              "kind": "schematic-capture",
-              "label": "Observer-safe field capture",
-              "reason": "renderer-disabled",
-              "source_fact_digest": "1560367cdb27d6e6c2a0b124d121569a4fe8670ac1ec2d064dac2102afb14fac",
-              "asset_id": "fallback-object-evidence-8e989eabbd097188e8e3",
-              "provenance": "local-deterministic-fallback"
-            }
+            "status": "fallback-ready"
           },
           "visual": {
             "asset_id": "evidence-visual-unavailable",
@@ -2907,7 +2827,7 @@
         },
         {
           "id": "object-evidence-13f265b5b915c6810e2b",
-          "mission_id": "CQ4-INFRASTRUCTURE-MATERIAL-002-6692",
+          "mission_id": "CQ4-WO-0001",
           "type": "surface-photograph",
           "capture_event": "object.evidence.captured",
           "method": "35mm photograph",
@@ -2923,23 +2843,7 @@
           "storage": "with the camera record",
           "reporting_state": "unreported",
           "render": {
-            "id": "render-3985521198b8286e",
-            "evidence_id": "object-evidence-13f265b5b915c6810e2b",
-            "adapter": "fallback",
-            "workflow": "observer-safe-q4-evidence",
-            "status": "fallback-ready",
-            "attempts": 0,
-            "source_fact_digest": "f7f225f65da3e73360d31c04196d0f0d0d442b227de5e7da95a5a9ebfd01e765",
-            "created_at": "simulation-recorded",
-            "result": {
-              "status": "fallback",
-              "kind": "schematic-capture",
-              "label": "Observer-safe field capture",
-              "reason": "renderer-disabled",
-              "source_fact_digest": "f7f225f65da3e73360d31c04196d0f0d0d442b227de5e7da95a5a9ebfd01e765",
-              "asset_id": "fallback-object-evidence-13f265b5b915c6810e2b",
-              "provenance": "local-deterministic-fallback"
-            }
+            "status": "fallback-ready"
           },
           "visual": {
             "asset_id": "evidence-photograph",
@@ -2975,7 +2879,7 @@
         "uncertainty": [
           {
             "status": "uncorroborated",
-            "summary": "Standard, Clear-Q4 team Complex-side. 4 personnel accounted for."
+            "summary": "Standard, Clear-Q4 team accounted for. Radio check."
           }
         ],
         "pending_reviews": [],
@@ -2983,7 +2887,7 @@
           {
             "decision": "acknowledge-report",
             "public_response": "Standard acknowledges the delivered status report.",
-            "resolved_at": 7
+            "resolved_at": 6
           }
         ],
         "follow_up_assignments": []
@@ -3381,28 +3285,28 @@
         ],
         "messages": [
           {
-            "id": "message-567e6dfb453bd3ca2b",
+            "id": "message-cf39047624e40b0983",
             "sender": "You",
             "recipient": "Standard",
             "channel": "FIELD_RADIO",
             "purpose": "radio-check",
-            "sent_at": 5,
+            "sent_at": 4,
             "state": "acknowledged",
             "state_label": "Acknowledged",
-            "delivered_at": 6,
+            "delivered_at": 5,
             "acknowledged_at": 6,
             "known_reason": null
           },
           {
-            "id": "standard-institution-decision-2725dc75edcfcc319f",
+            "id": "standard-institution-decision-ddb2b2ca0ef064856b",
             "sender": "Standard",
             "recipient": "You",
             "channel": "FIELD_RADIO",
             "purpose": "acknowledge-report",
-            "sent_at": 7,
+            "sent_at": 6,
             "state": "delivered",
             "state_label": "Delivered",
-            "delivered_at": 7,
+            "delivered_at": 6,
             "acknowledged_at": null,
             "known_reason": null
           },
@@ -3423,7 +3327,7 @@
         "last_successful_contact": {
           "channel": "FIELD_RADIO",
           "recipient": "Standard",
-          "at": 6
+          "at": 5
         }
       },
       "hazards": [
@@ -3443,7 +3347,7 @@
       "evidence": [
         {
           "id": "object-evidence-8e989eabbd097188e8e3",
-          "mission_id": "CQ4-INFRASTRUCTURE-MATERIAL-002-6692",
+          "mission_id": "CQ4-WO-0001",
           "type": "fixture-test",
           "capture_event": "object.evidence.captured",
           "method": "instrument test",
@@ -3459,23 +3363,7 @@
           "storage": "with the field survey record",
           "reporting_state": "unreported",
           "render": {
-            "id": "render-da52d9bfb84e0900",
-            "evidence_id": "object-evidence-8e989eabbd097188e8e3",
-            "adapter": "fallback",
-            "workflow": "observer-safe-q4-evidence",
-            "status": "fallback-ready",
-            "attempts": 0,
-            "source_fact_digest": "1560367cdb27d6e6c2a0b124d121569a4fe8670ac1ec2d064dac2102afb14fac",
-            "created_at": "simulation-recorded",
-            "result": {
-              "status": "fallback",
-              "kind": "schematic-capture",
-              "label": "Observer-safe field capture",
-              "reason": "renderer-disabled",
-              "source_fact_digest": "1560367cdb27d6e6c2a0b124d121569a4fe8670ac1ec2d064dac2102afb14fac",
-              "asset_id": "fallback-object-evidence-8e989eabbd097188e8e3",
-              "provenance": "local-deterministic-fallback"
-            }
+            "status": "fallback-ready"
           },
           "visual": {
             "asset_id": "evidence-visual-unavailable",
@@ -3490,7 +3378,7 @@
         },
         {
           "id": "object-evidence-13f265b5b915c6810e2b",
-          "mission_id": "CQ4-INFRASTRUCTURE-MATERIAL-002-6692",
+          "mission_id": "CQ4-WO-0001",
           "type": "surface-photograph",
           "capture_event": "object.evidence.captured",
           "method": "35mm photograph",
@@ -3506,23 +3394,7 @@
           "storage": "with the camera record",
           "reporting_state": "unreported",
           "render": {
-            "id": "render-3985521198b8286e",
-            "evidence_id": "object-evidence-13f265b5b915c6810e2b",
-            "adapter": "fallback",
-            "workflow": "observer-safe-q4-evidence",
-            "status": "fallback-ready",
-            "attempts": 0,
-            "source_fact_digest": "f7f225f65da3e73360d31c04196d0f0d0d442b227de5e7da95a5a9ebfd01e765",
-            "created_at": "simulation-recorded",
-            "result": {
-              "status": "fallback",
-              "kind": "schematic-capture",
-              "label": "Observer-safe field capture",
-              "reason": "renderer-disabled",
-              "source_fact_digest": "f7f225f65da3e73360d31c04196d0f0d0d442b227de5e7da95a5a9ebfd01e765",
-              "asset_id": "fallback-object-evidence-13f265b5b915c6810e2b",
-              "provenance": "local-deterministic-fallback"
-            }
+            "status": "fallback-ready"
           },
           "visual": {
             "asset_id": "evidence-photograph",
@@ -3564,7 +3436,7 @@
         "uncertainty": [
           {
             "status": "uncorroborated",
-            "summary": "Standard, Clear-Q4 team Complex-side. 4 personnel accounted for."
+            "summary": "Standard, Clear-Q4 team accounted for. Radio check."
           }
         ],
         "pending_reviews": [],
@@ -3572,7 +3444,7 @@
           {
             "decision": "acknowledge-report",
             "public_response": "Standard acknowledges the delivered status report.",
-            "resolved_at": 7
+            "resolved_at": 6
           },
           {
             "decision": "schedule-extra-check-in",
@@ -3975,28 +3847,28 @@
         ],
         "messages": [
           {
-            "id": "message-567e6dfb453bd3ca2b",
+            "id": "message-cf39047624e40b0983",
             "sender": "You",
             "recipient": "Standard",
             "channel": "FIELD_RADIO",
             "purpose": "radio-check",
-            "sent_at": 5,
+            "sent_at": 4,
             "state": "acknowledged",
             "state_label": "Acknowledged",
-            "delivered_at": 6,
+            "delivered_at": 5,
             "acknowledged_at": 6,
             "known_reason": null
           },
           {
-            "id": "standard-institution-decision-2725dc75edcfcc319f",
+            "id": "standard-institution-decision-ddb2b2ca0ef064856b",
             "sender": "Standard",
             "recipient": "You",
             "channel": "FIELD_RADIO",
             "purpose": "acknowledge-report",
-            "sent_at": 7,
+            "sent_at": 6,
             "state": "delivered",
             "state_label": "Delivered",
-            "delivered_at": 7,
+            "delivered_at": 6,
             "acknowledged_at": null,
             "known_reason": null
           },
@@ -4030,7 +3902,7 @@
         "last_successful_contact": {
           "channel": "FIELD_RADIO",
           "recipient": "Standard",
-          "at": 6
+          "at": 5
         }
       },
       "hazards": [
@@ -4050,7 +3922,7 @@
       "evidence": [
         {
           "id": "object-evidence-8e989eabbd097188e8e3",
-          "mission_id": "CQ4-INFRASTRUCTURE-MATERIAL-002-6692",
+          "mission_id": "CQ4-WO-0001",
           "type": "fixture-test",
           "capture_event": "object.evidence.captured",
           "method": "instrument test",
@@ -4066,23 +3938,7 @@
           "storage": "with the field survey record",
           "reporting_state": "unreported",
           "render": {
-            "id": "render-da52d9bfb84e0900",
-            "evidence_id": "object-evidence-8e989eabbd097188e8e3",
-            "adapter": "fallback",
-            "workflow": "observer-safe-q4-evidence",
-            "status": "fallback-ready",
-            "attempts": 0,
-            "source_fact_digest": "1560367cdb27d6e6c2a0b124d121569a4fe8670ac1ec2d064dac2102afb14fac",
-            "created_at": "simulation-recorded",
-            "result": {
-              "status": "fallback",
-              "kind": "schematic-capture",
-              "label": "Observer-safe field capture",
-              "reason": "renderer-disabled",
-              "source_fact_digest": "1560367cdb27d6e6c2a0b124d121569a4fe8670ac1ec2d064dac2102afb14fac",
-              "asset_id": "fallback-object-evidence-8e989eabbd097188e8e3",
-              "provenance": "local-deterministic-fallback"
-            }
+            "status": "fallback-ready"
           },
           "visual": {
             "asset_id": "evidence-visual-unavailable",
@@ -4097,7 +3953,7 @@
         },
         {
           "id": "object-evidence-13f265b5b915c6810e2b",
-          "mission_id": "CQ4-INFRASTRUCTURE-MATERIAL-002-6692",
+          "mission_id": "CQ4-WO-0001",
           "type": "surface-photograph",
           "capture_event": "object.evidence.captured",
           "method": "35mm photograph",
@@ -4113,23 +3969,7 @@
           "storage": "with the camera record",
           "reporting_state": "unreported",
           "render": {
-            "id": "render-3985521198b8286e",
-            "evidence_id": "object-evidence-13f265b5b915c6810e2b",
-            "adapter": "fallback",
-            "workflow": "observer-safe-q4-evidence",
-            "status": "fallback-ready",
-            "attempts": 0,
-            "source_fact_digest": "f7f225f65da3e73360d31c04196d0f0d0d442b227de5e7da95a5a9ebfd01e765",
-            "created_at": "simulation-recorded",
-            "result": {
-              "status": "fallback",
-              "kind": "schematic-capture",
-              "label": "Observer-safe field capture",
-              "reason": "renderer-disabled",
-              "source_fact_digest": "f7f225f65da3e73360d31c04196d0f0d0d442b227de5e7da95a5a9ebfd01e765",
-              "asset_id": "fallback-object-evidence-13f265b5b915c6810e2b",
-              "provenance": "local-deterministic-fallback"
-            }
+            "status": "fallback-ready"
           },
           "visual": {
             "asset_id": "evidence-photograph",
@@ -4171,7 +4011,7 @@
         "uncertainty": [
           {
             "status": "uncorroborated",
-            "summary": "Standard, Clear-Q4 team Complex-side. 4 personnel accounted for."
+            "summary": "Standard, Clear-Q4 team accounted for. Radio check."
           }
         ],
         "pending_reviews": [],
@@ -4179,7 +4019,7 @@
           {
             "decision": "acknowledge-report",
             "public_response": "Standard acknowledges the delivered status report.",
-            "resolved_at": 7
+            "resolved_at": 6
           },
           {
             "decision": "schedule-extra-check-in",
@@ -4572,28 +4412,28 @@
         ],
         "messages": [
           {
-            "id": "message-567e6dfb453bd3ca2b",
+            "id": "message-cf39047624e40b0983",
             "sender": "You",
             "recipient": "Standard",
             "channel": "FIELD_RADIO",
             "purpose": "radio-check",
-            "sent_at": 5,
+            "sent_at": 4,
             "state": "acknowledged",
             "state_label": "Acknowledged",
-            "delivered_at": 6,
+            "delivered_at": 5,
             "acknowledged_at": 6,
             "known_reason": null
           },
           {
-            "id": "standard-institution-decision-2725dc75edcfcc319f",
+            "id": "standard-institution-decision-ddb2b2ca0ef064856b",
             "sender": "Standard",
             "recipient": "You",
             "channel": "FIELD_RADIO",
             "purpose": "acknowledge-report",
-            "sent_at": 7,
+            "sent_at": 6,
             "state": "delivered",
             "state_label": "Delivered",
-            "delivered_at": 7,
+            "delivered_at": 6,
             "acknowledged_at": null,
             "known_reason": null
           },
@@ -4685,7 +4525,7 @@
       "evidence": [
         {
           "id": "object-evidence-8e989eabbd097188e8e3",
-          "mission_id": "CQ4-INFRASTRUCTURE-MATERIAL-002-6692",
+          "mission_id": "CQ4-WO-0001",
           "type": "fixture-test",
           "capture_event": "object.evidence.captured",
           "method": "instrument test",
@@ -4701,23 +4541,7 @@
           "storage": "with the field survey record",
           "reporting_state": "reported-to-standard",
           "render": {
-            "id": "render-da52d9bfb84e0900",
-            "evidence_id": "object-evidence-8e989eabbd097188e8e3",
-            "adapter": "fallback",
-            "workflow": "observer-safe-q4-evidence",
-            "status": "fallback-ready",
-            "attempts": 0,
-            "source_fact_digest": "1560367cdb27d6e6c2a0b124d121569a4fe8670ac1ec2d064dac2102afb14fac",
-            "created_at": "simulation-recorded",
-            "result": {
-              "status": "fallback",
-              "kind": "schematic-capture",
-              "label": "Observer-safe field capture",
-              "reason": "renderer-disabled",
-              "source_fact_digest": "1560367cdb27d6e6c2a0b124d121569a4fe8670ac1ec2d064dac2102afb14fac",
-              "asset_id": "fallback-object-evidence-8e989eabbd097188e8e3",
-              "provenance": "local-deterministic-fallback"
-            }
+            "status": "fallback-ready"
           },
           "visual": {
             "asset_id": "evidence-visual-unavailable",
@@ -4732,7 +4556,7 @@
         },
         {
           "id": "object-evidence-13f265b5b915c6810e2b",
-          "mission_id": "CQ4-INFRASTRUCTURE-MATERIAL-002-6692",
+          "mission_id": "CQ4-WO-0001",
           "type": "surface-photograph",
           "capture_event": "object.evidence.captured",
           "method": "35mm photograph",
@@ -4748,23 +4572,7 @@
           "storage": "with the camera record",
           "reporting_state": "reported-to-standard",
           "render": {
-            "id": "render-3985521198b8286e",
-            "evidence_id": "object-evidence-13f265b5b915c6810e2b",
-            "adapter": "fallback",
-            "workflow": "observer-safe-q4-evidence",
-            "status": "fallback-ready",
-            "attempts": 0,
-            "source_fact_digest": "f7f225f65da3e73360d31c04196d0f0d0d442b227de5e7da95a5a9ebfd01e765",
-            "created_at": "simulation-recorded",
-            "result": {
-              "status": "fallback",
-              "kind": "schematic-capture",
-              "label": "Observer-safe field capture",
-              "reason": "renderer-disabled",
-              "source_fact_digest": "f7f225f65da3e73360d31c04196d0f0d0d442b227de5e7da95a5a9ebfd01e765",
-              "asset_id": "fallback-object-evidence-13f265b5b915c6810e2b",
-              "provenance": "local-deterministic-fallback"
-            }
+            "status": "fallback-ready"
           },
           "visual": {
             "asset_id": "evidence-photograph",
@@ -4806,7 +4614,7 @@
         "uncertainty": [
           {
             "status": "uncorroborated",
-            "summary": "Standard, Clear-Q4 team Complex-side. 4 personnel accounted for."
+            "summary": "Standard, Clear-Q4 team accounted for. Radio check."
           },
           {
             "status": "uncorroborated",
@@ -4818,7 +4626,7 @@
           {
             "decision": "acknowledge-report",
             "public_response": "Standard acknowledges the delivered status report.",
-            "resolved_at": 7
+            "resolved_at": 6
           },
           {
             "decision": "schedule-extra-check-in",
@@ -5218,28 +5026,28 @@
         ],
         "messages": [
           {
-            "id": "message-567e6dfb453bd3ca2b",
+            "id": "message-cf39047624e40b0983",
             "sender": "You",
             "recipient": "Standard",
             "channel": "FIELD_RADIO",
             "purpose": "radio-check",
-            "sent_at": 5,
+            "sent_at": 4,
             "state": "acknowledged",
             "state_label": "Acknowledged",
-            "delivered_at": 6,
+            "delivered_at": 5,
             "acknowledged_at": 6,
             "known_reason": null
           },
           {
-            "id": "standard-institution-decision-2725dc75edcfcc319f",
+            "id": "standard-institution-decision-ddb2b2ca0ef064856b",
             "sender": "Standard",
             "recipient": "You",
             "channel": "FIELD_RADIO",
             "purpose": "acknowledge-report",
-            "sent_at": 7,
+            "sent_at": 6,
             "state": "delivered",
             "state_label": "Delivered",
-            "delivered_at": 7,
+            "delivered_at": 6,
             "acknowledged_at": null,
             "known_reason": null
           },
@@ -5331,7 +5139,7 @@
       "evidence": [
         {
           "id": "object-evidence-8e989eabbd097188e8e3",
-          "mission_id": "CQ4-INFRASTRUCTURE-MATERIAL-002-6692",
+          "mission_id": "CQ4-WO-0001",
           "type": "fixture-test",
           "capture_event": "object.evidence.captured",
           "method": "instrument test",
@@ -5347,23 +5155,7 @@
           "storage": "with the field survey record",
           "reporting_state": "reported-to-standard",
           "render": {
-            "id": "render-da52d9bfb84e0900",
-            "evidence_id": "object-evidence-8e989eabbd097188e8e3",
-            "adapter": "fallback",
-            "workflow": "observer-safe-q4-evidence",
-            "status": "fallback-ready",
-            "attempts": 0,
-            "source_fact_digest": "1560367cdb27d6e6c2a0b124d121569a4fe8670ac1ec2d064dac2102afb14fac",
-            "created_at": "simulation-recorded",
-            "result": {
-              "status": "fallback",
-              "kind": "schematic-capture",
-              "label": "Observer-safe field capture",
-              "reason": "renderer-disabled",
-              "source_fact_digest": "1560367cdb27d6e6c2a0b124d121569a4fe8670ac1ec2d064dac2102afb14fac",
-              "asset_id": "fallback-object-evidence-8e989eabbd097188e8e3",
-              "provenance": "local-deterministic-fallback"
-            }
+            "status": "fallback-ready"
           },
           "visual": {
             "asset_id": "evidence-visual-unavailable",
@@ -5378,7 +5170,7 @@
         },
         {
           "id": "object-evidence-13f265b5b915c6810e2b",
-          "mission_id": "CQ4-INFRASTRUCTURE-MATERIAL-002-6692",
+          "mission_id": "CQ4-WO-0001",
           "type": "surface-photograph",
           "capture_event": "object.evidence.captured",
           "method": "35mm photograph",
@@ -5394,23 +5186,7 @@
           "storage": "with the camera record",
           "reporting_state": "reported-to-standard",
           "render": {
-            "id": "render-3985521198b8286e",
-            "evidence_id": "object-evidence-13f265b5b915c6810e2b",
-            "adapter": "fallback",
-            "workflow": "observer-safe-q4-evidence",
-            "status": "fallback-ready",
-            "attempts": 0,
-            "source_fact_digest": "f7f225f65da3e73360d31c04196d0f0d0d442b227de5e7da95a5a9ebfd01e765",
-            "created_at": "simulation-recorded",
-            "result": {
-              "status": "fallback",
-              "kind": "schematic-capture",
-              "label": "Observer-safe field capture",
-              "reason": "renderer-disabled",
-              "source_fact_digest": "f7f225f65da3e73360d31c04196d0f0d0d442b227de5e7da95a5a9ebfd01e765",
-              "asset_id": "fallback-object-evidence-13f265b5b915c6810e2b",
-              "provenance": "local-deterministic-fallback"
-            }
+            "status": "fallback-ready"
           },
           "visual": {
             "asset_id": "evidence-photograph",
@@ -5452,7 +5228,7 @@
         "uncertainty": [
           {
             "status": "uncorroborated",
-            "summary": "Standard, Clear-Q4 team Complex-side. 4 personnel accounted for."
+            "summary": "Standard, Clear-Q4 team accounted for. Radio check."
           },
           {
             "status": "uncorroborated",
@@ -5473,7 +5249,7 @@
           {
             "decision": "acknowledge-report",
             "public_response": "Standard acknowledges the delivered status report.",
-            "resolved_at": 7
+            "resolved_at": 6
           },
           {
             "decision": "schedule-extra-check-in",
@@ -5873,28 +5649,28 @@
         ],
         "messages": [
           {
-            "id": "message-567e6dfb453bd3ca2b",
+            "id": "message-cf39047624e40b0983",
             "sender": "You",
             "recipient": "Standard",
             "channel": "FIELD_RADIO",
             "purpose": "radio-check",
-            "sent_at": 5,
+            "sent_at": 4,
             "state": "acknowledged",
             "state_label": "Acknowledged",
-            "delivered_at": 6,
+            "delivered_at": 5,
             "acknowledged_at": 6,
             "known_reason": null
           },
           {
-            "id": "standard-institution-decision-2725dc75edcfcc319f",
+            "id": "standard-institution-decision-ddb2b2ca0ef064856b",
             "sender": "Standard",
             "recipient": "You",
             "channel": "FIELD_RADIO",
             "purpose": "acknowledge-report",
-            "sent_at": 7,
+            "sent_at": 6,
             "state": "delivered",
             "state_label": "Delivered",
-            "delivered_at": 7,
+            "delivered_at": 6,
             "acknowledged_at": null,
             "known_reason": null
           },
@@ -5999,7 +5775,7 @@
       "evidence": [
         {
           "id": "object-evidence-8e989eabbd097188e8e3",
-          "mission_id": "CQ4-INFRASTRUCTURE-MATERIAL-002-6692",
+          "mission_id": "CQ4-WO-0001",
           "type": "fixture-test",
           "capture_event": "object.evidence.captured",
           "method": "instrument test",
@@ -6015,23 +5791,7 @@
           "storage": "with the field survey record",
           "reporting_state": "reported-to-standard",
           "render": {
-            "id": "render-da52d9bfb84e0900",
-            "evidence_id": "object-evidence-8e989eabbd097188e8e3",
-            "adapter": "fallback",
-            "workflow": "observer-safe-q4-evidence",
-            "status": "fallback-ready",
-            "attempts": 0,
-            "source_fact_digest": "1560367cdb27d6e6c2a0b124d121569a4fe8670ac1ec2d064dac2102afb14fac",
-            "created_at": "simulation-recorded",
-            "result": {
-              "status": "fallback",
-              "kind": "schematic-capture",
-              "label": "Observer-safe field capture",
-              "reason": "renderer-disabled",
-              "source_fact_digest": "1560367cdb27d6e6c2a0b124d121569a4fe8670ac1ec2d064dac2102afb14fac",
-              "asset_id": "fallback-object-evidence-8e989eabbd097188e8e3",
-              "provenance": "local-deterministic-fallback"
-            }
+            "status": "fallback-ready"
           },
           "visual": {
             "asset_id": "evidence-visual-unavailable",
@@ -6046,7 +5806,7 @@
         },
         {
           "id": "object-evidence-13f265b5b915c6810e2b",
-          "mission_id": "CQ4-INFRASTRUCTURE-MATERIAL-002-6692",
+          "mission_id": "CQ4-WO-0001",
           "type": "surface-photograph",
           "capture_event": "object.evidence.captured",
           "method": "35mm photograph",
@@ -6062,23 +5822,7 @@
           "storage": "with the camera record",
           "reporting_state": "reported-to-standard",
           "render": {
-            "id": "render-3985521198b8286e",
-            "evidence_id": "object-evidence-13f265b5b915c6810e2b",
-            "adapter": "fallback",
-            "workflow": "observer-safe-q4-evidence",
-            "status": "fallback-ready",
-            "attempts": 0,
-            "source_fact_digest": "f7f225f65da3e73360d31c04196d0f0d0d442b227de5e7da95a5a9ebfd01e765",
-            "created_at": "simulation-recorded",
-            "result": {
-              "status": "fallback",
-              "kind": "schematic-capture",
-              "label": "Observer-safe field capture",
-              "reason": "renderer-disabled",
-              "source_fact_digest": "f7f225f65da3e73360d31c04196d0f0d0d442b227de5e7da95a5a9ebfd01e765",
-              "asset_id": "fallback-object-evidence-13f265b5b915c6810e2b",
-              "provenance": "local-deterministic-fallback"
-            }
+            "status": "fallback-ready"
           },
           "visual": {
             "asset_id": "evidence-photograph",
@@ -6093,7 +5837,7 @@
         },
         {
           "id": "object-evidence-5aef96d444923c882968",
-          "mission_id": "CQ4-INFRASTRUCTURE-MATERIAL-002-6692",
+          "mission_id": "CQ4-WO-0001",
           "type": "annex-document-record",
           "capture_event": "object.evidence.captured",
           "method": "35mm photograph and condition note",
@@ -6109,23 +5853,7 @@
           "storage": "evidence-case",
           "reporting_state": "unreported",
           "render": {
-            "id": "render-0b824af722a2d0b9",
-            "evidence_id": "object-evidence-5aef96d444923c882968",
-            "adapter": "fallback",
-            "workflow": "observer-safe-q4-evidence",
-            "status": "fallback-ready",
-            "attempts": 0,
-            "source_fact_digest": "fcf3db2e860baa25da3e9218245ae40636b295089c27d37c8f62b17f2ff877b4",
-            "created_at": "simulation-recorded",
-            "result": {
-              "status": "fallback",
-              "kind": "schematic-capture",
-              "label": "Observer-safe field capture",
-              "reason": "renderer-disabled",
-              "source_fact_digest": "fcf3db2e860baa25da3e9218245ae40636b295089c27d37c8f62b17f2ff877b4",
-              "asset_id": "fallback-object-evidence-5aef96d444923c882968",
-              "provenance": "local-deterministic-fallback"
-            }
+            "status": "fallback-ready"
           },
           "visual": {
             "asset_id": "evidence-visual-unavailable",
@@ -6167,7 +5895,7 @@
         "uncertainty": [
           {
             "status": "uncorroborated",
-            "summary": "Standard, Clear-Q4 team Complex-side. 4 personnel accounted for."
+            "summary": "Standard, Clear-Q4 team accounted for. Radio check."
           },
           {
             "status": "uncorroborated",
@@ -6183,7 +5911,7 @@
           {
             "decision": "acknowledge-report",
             "public_response": "Standard acknowledges the delivered status report.",
-            "resolved_at": 7
+            "resolved_at": 6
           },
           {
             "decision": "schedule-extra-check-in",
@@ -6588,28 +6316,28 @@
         ],
         "messages": [
           {
-            "id": "message-567e6dfb453bd3ca2b",
+            "id": "message-cf39047624e40b0983",
             "sender": "You",
             "recipient": "Standard",
             "channel": "FIELD_RADIO",
             "purpose": "radio-check",
-            "sent_at": 5,
+            "sent_at": 4,
             "state": "acknowledged",
             "state_label": "Acknowledged",
-            "delivered_at": 6,
+            "delivered_at": 5,
             "acknowledged_at": 6,
             "known_reason": null
           },
           {
-            "id": "standard-institution-decision-2725dc75edcfcc319f",
+            "id": "standard-institution-decision-ddb2b2ca0ef064856b",
             "sender": "Standard",
             "recipient": "You",
             "channel": "FIELD_RADIO",
             "purpose": "acknowledge-report",
-            "sent_at": 7,
+            "sent_at": 6,
             "state": "delivered",
             "state_label": "Delivered",
-            "delivered_at": 7,
+            "delivered_at": 6,
             "acknowledged_at": null,
             "known_reason": null
           },
@@ -6714,7 +6442,7 @@
       "evidence": [
         {
           "id": "object-evidence-8e989eabbd097188e8e3",
-          "mission_id": "CQ4-INFRASTRUCTURE-MATERIAL-002-6692",
+          "mission_id": "CQ4-WO-0001",
           "type": "fixture-test",
           "capture_event": "object.evidence.captured",
           "method": "instrument test",
@@ -6730,23 +6458,7 @@
           "storage": "with the field survey record",
           "reporting_state": "reported-to-standard",
           "render": {
-            "id": "render-da52d9bfb84e0900",
-            "evidence_id": "object-evidence-8e989eabbd097188e8e3",
-            "adapter": "fallback",
-            "workflow": "observer-safe-q4-evidence",
-            "status": "fallback-ready",
-            "attempts": 0,
-            "source_fact_digest": "1560367cdb27d6e6c2a0b124d121569a4fe8670ac1ec2d064dac2102afb14fac",
-            "created_at": "simulation-recorded",
-            "result": {
-              "status": "fallback",
-              "kind": "schematic-capture",
-              "label": "Observer-safe field capture",
-              "reason": "renderer-disabled",
-              "source_fact_digest": "1560367cdb27d6e6c2a0b124d121569a4fe8670ac1ec2d064dac2102afb14fac",
-              "asset_id": "fallback-object-evidence-8e989eabbd097188e8e3",
-              "provenance": "local-deterministic-fallback"
-            }
+            "status": "fallback-ready"
           },
           "visual": {
             "asset_id": "evidence-visual-unavailable",
@@ -6761,7 +6473,7 @@
         },
         {
           "id": "object-evidence-13f265b5b915c6810e2b",
-          "mission_id": "CQ4-INFRASTRUCTURE-MATERIAL-002-6692",
+          "mission_id": "CQ4-WO-0001",
           "type": "surface-photograph",
           "capture_event": "object.evidence.captured",
           "method": "35mm photograph",
@@ -6777,23 +6489,7 @@
           "storage": "with the camera record",
           "reporting_state": "reported-to-standard",
           "render": {
-            "id": "render-3985521198b8286e",
-            "evidence_id": "object-evidence-13f265b5b915c6810e2b",
-            "adapter": "fallback",
-            "workflow": "observer-safe-q4-evidence",
-            "status": "fallback-ready",
-            "attempts": 0,
-            "source_fact_digest": "f7f225f65da3e73360d31c04196d0f0d0d442b227de5e7da95a5a9ebfd01e765",
-            "created_at": "simulation-recorded",
-            "result": {
-              "status": "fallback",
-              "kind": "schematic-capture",
-              "label": "Observer-safe field capture",
-              "reason": "renderer-disabled",
-              "source_fact_digest": "f7f225f65da3e73360d31c04196d0f0d0d442b227de5e7da95a5a9ebfd01e765",
-              "asset_id": "fallback-object-evidence-13f265b5b915c6810e2b",
-              "provenance": "local-deterministic-fallback"
-            }
+            "status": "fallback-ready"
           },
           "visual": {
             "asset_id": "evidence-photograph",
@@ -6808,7 +6504,7 @@
         },
         {
           "id": "object-evidence-5aef96d444923c882968",
-          "mission_id": "CQ4-INFRASTRUCTURE-MATERIAL-002-6692",
+          "mission_id": "CQ4-WO-0001",
           "type": "annex-document-record",
           "capture_event": "object.evidence.captured",
           "method": "35mm photograph and condition note",
@@ -6824,23 +6520,7 @@
           "storage": "evidence-case",
           "reporting_state": "unreported",
           "render": {
-            "id": "render-0b824af722a2d0b9",
-            "evidence_id": "object-evidence-5aef96d444923c882968",
-            "adapter": "fallback",
-            "workflow": "observer-safe-q4-evidence",
-            "status": "fallback-ready",
-            "attempts": 0,
-            "source_fact_digest": "fcf3db2e860baa25da3e9218245ae40636b295089c27d37c8f62b17f2ff877b4",
-            "created_at": "simulation-recorded",
-            "result": {
-              "status": "fallback",
-              "kind": "schematic-capture",
-              "label": "Observer-safe field capture",
-              "reason": "renderer-disabled",
-              "source_fact_digest": "fcf3db2e860baa25da3e9218245ae40636b295089c27d37c8f62b17f2ff877b4",
-              "asset_id": "fallback-object-evidence-5aef96d444923c882968",
-              "provenance": "local-deterministic-fallback"
-            }
+            "status": "fallback-ready"
           },
           "visual": {
             "asset_id": "evidence-visual-unavailable",
@@ -6882,7 +6562,7 @@
         "uncertainty": [
           {
             "status": "uncorroborated",
-            "summary": "Standard, Clear-Q4 team Complex-side. 4 personnel accounted for."
+            "summary": "Standard, Clear-Q4 team accounted for. Radio check."
           },
           {
             "status": "uncorroborated",
@@ -6898,7 +6578,7 @@
           {
             "decision": "acknowledge-report",
             "public_response": "Standard acknowledges the delivered status report.",
-            "resolved_at": 7
+            "resolved_at": 6
           },
           {
             "decision": "schedule-extra-check-in",
@@ -7298,28 +6978,28 @@
         ],
         "messages": [
           {
-            "id": "message-567e6dfb453bd3ca2b",
+            "id": "message-cf39047624e40b0983",
             "sender": "You",
             "recipient": "Standard",
             "channel": "FIELD_RADIO",
             "purpose": "radio-check",
-            "sent_at": 5,
+            "sent_at": 4,
             "state": "acknowledged",
             "state_label": "Acknowledged",
-            "delivered_at": 6,
+            "delivered_at": 5,
             "acknowledged_at": 6,
             "known_reason": null
           },
           {
-            "id": "standard-institution-decision-2725dc75edcfcc319f",
+            "id": "standard-institution-decision-ddb2b2ca0ef064856b",
             "sender": "Standard",
             "recipient": "You",
             "channel": "FIELD_RADIO",
             "purpose": "acknowledge-report",
-            "sent_at": 7,
+            "sent_at": 6,
             "state": "delivered",
             "state_label": "Delivered",
-            "delivered_at": 7,
+            "delivered_at": 6,
             "acknowledged_at": null,
             "known_reason": null
           },
@@ -7424,7 +7104,7 @@
       "evidence": [
         {
           "id": "object-evidence-8e989eabbd097188e8e3",
-          "mission_id": "CQ4-INFRASTRUCTURE-MATERIAL-002-6692",
+          "mission_id": "CQ4-WO-0001",
           "type": "fixture-test",
           "capture_event": "object.evidence.captured",
           "method": "instrument test",
@@ -7440,23 +7120,7 @@
           "storage": "with the field survey record",
           "reporting_state": "reported-to-standard",
           "render": {
-            "id": "render-da52d9bfb84e0900",
-            "evidence_id": "object-evidence-8e989eabbd097188e8e3",
-            "adapter": "fallback",
-            "workflow": "observer-safe-q4-evidence",
-            "status": "fallback-ready",
-            "attempts": 0,
-            "source_fact_digest": "1560367cdb27d6e6c2a0b124d121569a4fe8670ac1ec2d064dac2102afb14fac",
-            "created_at": "simulation-recorded",
-            "result": {
-              "status": "fallback",
-              "kind": "schematic-capture",
-              "label": "Observer-safe field capture",
-              "reason": "renderer-disabled",
-              "source_fact_digest": "1560367cdb27d6e6c2a0b124d121569a4fe8670ac1ec2d064dac2102afb14fac",
-              "asset_id": "fallback-object-evidence-8e989eabbd097188e8e3",
-              "provenance": "local-deterministic-fallback"
-            }
+            "status": "fallback-ready"
           },
           "visual": {
             "asset_id": "evidence-visual-unavailable",
@@ -7471,7 +7135,7 @@
         },
         {
           "id": "object-evidence-13f265b5b915c6810e2b",
-          "mission_id": "CQ4-INFRASTRUCTURE-MATERIAL-002-6692",
+          "mission_id": "CQ4-WO-0001",
           "type": "surface-photograph",
           "capture_event": "object.evidence.captured",
           "method": "35mm photograph",
@@ -7487,23 +7151,7 @@
           "storage": "with the camera record",
           "reporting_state": "reported-to-standard",
           "render": {
-            "id": "render-3985521198b8286e",
-            "evidence_id": "object-evidence-13f265b5b915c6810e2b",
-            "adapter": "fallback",
-            "workflow": "observer-safe-q4-evidence",
-            "status": "fallback-ready",
-            "attempts": 0,
-            "source_fact_digest": "f7f225f65da3e73360d31c04196d0f0d0d442b227de5e7da95a5a9ebfd01e765",
-            "created_at": "simulation-recorded",
-            "result": {
-              "status": "fallback",
-              "kind": "schematic-capture",
-              "label": "Observer-safe field capture",
-              "reason": "renderer-disabled",
-              "source_fact_digest": "f7f225f65da3e73360d31c04196d0f0d0d442b227de5e7da95a5a9ebfd01e765",
-              "asset_id": "fallback-object-evidence-13f265b5b915c6810e2b",
-              "provenance": "local-deterministic-fallback"
-            }
+            "status": "fallback-ready"
           },
           "visual": {
             "asset_id": "evidence-photograph",
@@ -7518,7 +7166,7 @@
         },
         {
           "id": "object-evidence-5aef96d444923c882968",
-          "mission_id": "CQ4-INFRASTRUCTURE-MATERIAL-002-6692",
+          "mission_id": "CQ4-WO-0001",
           "type": "annex-document-record",
           "capture_event": "object.evidence.captured",
           "method": "35mm photograph and condition note",
@@ -7534,23 +7182,7 @@
           "storage": "evidence-case",
           "reporting_state": "unreported",
           "render": {
-            "id": "render-0b824af722a2d0b9",
-            "evidence_id": "object-evidence-5aef96d444923c882968",
-            "adapter": "fallback",
-            "workflow": "observer-safe-q4-evidence",
-            "status": "fallback-ready",
-            "attempts": 0,
-            "source_fact_digest": "fcf3db2e860baa25da3e9218245ae40636b295089c27d37c8f62b17f2ff877b4",
-            "created_at": "simulation-recorded",
-            "result": {
-              "status": "fallback",
-              "kind": "schematic-capture",
-              "label": "Observer-safe field capture",
-              "reason": "renderer-disabled",
-              "source_fact_digest": "fcf3db2e860baa25da3e9218245ae40636b295089c27d37c8f62b17f2ff877b4",
-              "asset_id": "fallback-object-evidence-5aef96d444923c882968",
-              "provenance": "local-deterministic-fallback"
-            }
+            "status": "fallback-ready"
           },
           "visual": {
             "asset_id": "evidence-visual-unavailable",
@@ -7592,7 +7224,7 @@
         "uncertainty": [
           {
             "status": "uncorroborated",
-            "summary": "Standard, Clear-Q4 team Complex-side. 4 personnel accounted for."
+            "summary": "Standard, Clear-Q4 team accounted for. Radio check."
           },
           {
             "status": "uncorroborated",
@@ -7608,7 +7240,7 @@
           {
             "decision": "acknowledge-report",
             "public_response": "Standard acknowledges the delivered status report.",
-            "resolved_at": 7
+            "resolved_at": 6
           },
           {
             "decision": "schedule-extra-check-in",
@@ -7695,7 +7327,7 @@
         },
         "result": {
           "version": "yellow-beast-mission-result@v1",
-          "mission_id": "CQ4-INFRASTRUCTURE-MATERIAL-002-6692",
+          "mission_id": "CQ4-WO-0001",
           "final_mission_state": "completed",
           "classification": "recovered-complication",
           "required_objectives_satisfied": [
@@ -7864,15 +7496,15 @@
               {
                 "purpose": "radio-check",
                 "state": "acknowledged",
-                "sent_at": 5,
-                "delivered_at": 6,
+                "sent_at": 4,
+                "delivered_at": 5,
                 "acknowledged_at": 6
               },
               {
                 "purpose": "acknowledge-report",
                 "state": "delivered",
-                "sent_at": 7,
-                "delivered_at": 7,
+                "sent_at": 6,
+                "delivered_at": 6,
                 "acknowledged_at": null
               },
               {
@@ -8275,28 +7907,28 @@
         ],
         "messages": [
           {
-            "id": "message-567e6dfb453bd3ca2b",
+            "id": "message-cf39047624e40b0983",
             "sender": "You",
             "recipient": "Standard",
             "channel": "FIELD_RADIO",
             "purpose": "radio-check",
-            "sent_at": 5,
+            "sent_at": 4,
             "state": "acknowledged",
             "state_label": "Acknowledged",
-            "delivered_at": 6,
+            "delivered_at": 5,
             "acknowledged_at": 6,
             "known_reason": null
           },
           {
-            "id": "standard-institution-decision-2725dc75edcfcc319f",
+            "id": "standard-institution-decision-ddb2b2ca0ef064856b",
             "sender": "Standard",
             "recipient": "You",
             "channel": "FIELD_RADIO",
             "purpose": "acknowledge-report",
-            "sent_at": 7,
+            "sent_at": 6,
             "state": "delivered",
             "state_label": "Delivered",
-            "delivered_at": 7,
+            "delivered_at": 6,
             "acknowledged_at": null,
             "known_reason": null
           },
@@ -8414,7 +8046,7 @@
       "evidence": [
         {
           "id": "object-evidence-8e989eabbd097188e8e3",
-          "mission_id": "CQ4-INFRASTRUCTURE-MATERIAL-002-6692",
+          "mission_id": "CQ4-WO-0001",
           "type": "fixture-test",
           "capture_event": "object.evidence.captured",
           "method": "instrument test",
@@ -8430,23 +8062,7 @@
           "storage": "with the field survey record",
           "reporting_state": "reported-to-standard",
           "render": {
-            "id": "render-da52d9bfb84e0900",
-            "evidence_id": "object-evidence-8e989eabbd097188e8e3",
-            "adapter": "fallback",
-            "workflow": "observer-safe-q4-evidence",
-            "status": "fallback-ready",
-            "attempts": 0,
-            "source_fact_digest": "1560367cdb27d6e6c2a0b124d121569a4fe8670ac1ec2d064dac2102afb14fac",
-            "created_at": "simulation-recorded",
-            "result": {
-              "status": "fallback",
-              "kind": "schematic-capture",
-              "label": "Observer-safe field capture",
-              "reason": "renderer-disabled",
-              "source_fact_digest": "1560367cdb27d6e6c2a0b124d121569a4fe8670ac1ec2d064dac2102afb14fac",
-              "asset_id": "fallback-object-evidence-8e989eabbd097188e8e3",
-              "provenance": "local-deterministic-fallback"
-            }
+            "status": "fallback-ready"
           },
           "visual": {
             "asset_id": "evidence-visual-unavailable",
@@ -8461,7 +8077,7 @@
         },
         {
           "id": "object-evidence-13f265b5b915c6810e2b",
-          "mission_id": "CQ4-INFRASTRUCTURE-MATERIAL-002-6692",
+          "mission_id": "CQ4-WO-0001",
           "type": "surface-photograph",
           "capture_event": "object.evidence.captured",
           "method": "35mm photograph",
@@ -8477,23 +8093,7 @@
           "storage": "with the camera record",
           "reporting_state": "reported-to-standard",
           "render": {
-            "id": "render-3985521198b8286e",
-            "evidence_id": "object-evidence-13f265b5b915c6810e2b",
-            "adapter": "fallback",
-            "workflow": "observer-safe-q4-evidence",
-            "status": "fallback-ready",
-            "attempts": 0,
-            "source_fact_digest": "f7f225f65da3e73360d31c04196d0f0d0d442b227de5e7da95a5a9ebfd01e765",
-            "created_at": "simulation-recorded",
-            "result": {
-              "status": "fallback",
-              "kind": "schematic-capture",
-              "label": "Observer-safe field capture",
-              "reason": "renderer-disabled",
-              "source_fact_digest": "f7f225f65da3e73360d31c04196d0f0d0d442b227de5e7da95a5a9ebfd01e765",
-              "asset_id": "fallback-object-evidence-13f265b5b915c6810e2b",
-              "provenance": "local-deterministic-fallback"
-            }
+            "status": "fallback-ready"
           },
           "visual": {
             "asset_id": "evidence-photograph",
@@ -8508,7 +8108,7 @@
         },
         {
           "id": "object-evidence-5aef96d444923c882968",
-          "mission_id": "CQ4-INFRASTRUCTURE-MATERIAL-002-6692",
+          "mission_id": "CQ4-WO-0001",
           "type": "annex-document-record",
           "capture_event": "object.evidence.captured",
           "method": "35mm photograph and condition note",
@@ -8524,23 +8124,7 @@
           "storage": "evidence-case",
           "reporting_state": "unreported",
           "render": {
-            "id": "render-0b824af722a2d0b9",
-            "evidence_id": "object-evidence-5aef96d444923c882968",
-            "adapter": "fallback",
-            "workflow": "observer-safe-q4-evidence",
-            "status": "fallback-ready",
-            "attempts": 0,
-            "source_fact_digest": "fcf3db2e860baa25da3e9218245ae40636b295089c27d37c8f62b17f2ff877b4",
-            "created_at": "simulation-recorded",
-            "result": {
-              "status": "fallback",
-              "kind": "schematic-capture",
-              "label": "Observer-safe field capture",
-              "reason": "renderer-disabled",
-              "source_fact_digest": "fcf3db2e860baa25da3e9218245ae40636b295089c27d37c8f62b17f2ff877b4",
-              "asset_id": "fallback-object-evidence-5aef96d444923c882968",
-              "provenance": "local-deterministic-fallback"
-            }
+            "status": "fallback-ready"
           },
           "visual": {
             "asset_id": "evidence-visual-unavailable",
@@ -8558,14 +8142,14 @@
         "version": "yellow-beast-institutional-projection@v1",
         "dimensions": {
           "support_posture": "available",
-          "scrutiny_level": "concerned",
-          "operational_confidence": "stable",
-          "information_confidence": "uncertain",
+          "scrutiny_level": "watch",
+          "operational_confidence": "provisional",
+          "information_confidence": "corroborated",
           "resource_posture": "standard",
           "staffing_posture": "standard",
           "equipment_restriction_level": "none",
           "communication_concern": "concerned",
-          "mission_review_status": "open"
+          "mission_review_status": "none"
         },
         "restrictions": {
           "equipment": [],
@@ -8597,7 +8181,7 @@
         "uncertainty": [
           {
             "status": "uncorroborated",
-            "summary": "Standard, Clear-Q4 team Complex-side. 4 personnel accounted for."
+            "summary": "Standard, Clear-Q4 team accounted for. Radio check."
           },
           {
             "status": "uncorroborated",
@@ -8608,8 +8192,31 @@
             "summary": "Request authorization for a bounded relay deviation supported by the recorded fixture evidence."
           }
         ],
-        "pending_reviews": [],
+        "pending_reviews": [
+          {
+            "decision": "recommend-review",
+            "due_at": 1
+          },
+          {
+            "decision": "request-additional-evidence",
+            "due_at": 1
+          },
+          {
+            "decision": "increase-oversight",
+            "due_at": 1
+          }
+        ],
         "recent_decisions": [
+          {
+            "decision": "acknowledge-report",
+            "public_response": "Standard acknowledges the delivered status report.",
+            "resolved_at": 6
+          },
+          {
+            "decision": "schedule-extra-check-in",
+            "public_response": "Standard records the missed reporting window and adds an accountability check to the next assignment.",
+            "resolved_at": 17
+          },
           {
             "decision": "prioritize-evidence",
             "public_response": "Standard acknowledges the evidence record and prioritizes it for return review.",
@@ -8619,21 +8226,6 @@
             "decision": "authorize-deviation",
             "public_response": "Standard authorizes the bounded route deviation. Maintain accountability and report before closure.",
             "resolved_at": 39
-          },
-          {
-            "decision": "recommend-review",
-            "public_response": "Standard records the recovered complication and closes the immediate field response with follow-up review.",
-            "resolved_at": 1
-          },
-          {
-            "decision": "request-additional-evidence",
-            "public_response": "Standard requests the retained evidence or a documented reason it cannot be returned.",
-            "resolved_at": 1
-          },
-          {
-            "decision": "increase-oversight",
-            "public_response": "Standard records the unapproved route deviation and opens an operational review.",
-            "resolved_at": 1
           }
         ],
         "follow_up_assignments": [
@@ -8647,12 +8239,12 @@
       },
       "review": {
         "version": "yellow-beast-q4-continuity@v3",
-        "mission_id": "CQ4-INFRASTRUCTURE-MATERIAL-002-6692",
+        "mission_id": "CQ4-WO-0001",
         "outcome": "recovered-complication",
         "final_mission_state": "completed",
         "public_debrief_summary": "The team returned with its required record after recovering an operational complication; the complication remains part of the outcome record. A teammate returned with a recorded injury. A field complication was recovered before closure. The equipment record includes damage or loss. The scheduled communication record includes a missed reporting window.",
         "assignment": {
-          "objective": "Inspect and document the declared lighting and material conditions within the survey boundary.",
+          "objective": "Survey the declared frontier from the fixed Threshold approach and retain an accountable field record.",
           "completion_status": "completed",
           "deviations": [
             "missed-declared-check-in"
@@ -8925,7 +8517,7 @@
           ],
           "delivered": [
             {
-              "id": "message-567e6dfb453bd3ca2b",
+              "id": "message-cf39047624e40b0983",
               "sender": "q4-player-13d8ab53c573cac7",
               "intended_recipient": "Standard",
               "intended_recipients": [
@@ -8936,44 +8528,45 @@
               ],
               "channel": "FIELD_RADIO",
               "purpose": "radio-check",
-              "text": "Standard, Clear-Q4 team Complex-side. 4 personnel accounted for.",
+              "text": "Standard, Clear-Q4 team accounted for. Radio check.",
               "state": "acknowledged",
               "delivery_status": "delivered",
-              "sent_at": 5,
-              "interval": 5,
-              "delivered_at": 6,
+              "sent_at": 4,
+              "interval": 4,
+              "delivered_at": 5,
               "acknowledged_at": 6,
               "interference": null,
               "failure_reason": null,
               "evidence_ids": [],
+              "geography_report": false,
               "provenance": "authoritative-communication-runtime",
               "history": [
                 {
                   "sequence": 1,
                   "from": null,
                   "to": "composed",
-                  "at": 5,
+                  "at": 4,
                   "reason": "message composed"
                 },
                 {
                   "sequence": 2,
                   "from": "composed",
                   "to": "queued",
-                  "at": 5,
+                  "at": 4,
                   "reason": "accepted into the field-radio transmission queue"
                 },
                 {
                   "sequence": 3,
                   "from": "queued",
                   "to": "transmitting",
-                  "at": 6,
+                  "at": 5,
                   "reason": "field-radio transmission begun"
                 },
                 {
                   "sequence": 4,
                   "from": "transmitting",
                   "to": "delivered",
-                  "at": 6,
+                  "at": 5,
                   "reason": "the intended recipient received the radio message"
                 },
                 {
@@ -8984,10 +8577,10 @@
                   "reason": "Standard acknowledged the delivered message"
                 }
               ],
-              "institutional_recorded": "q4-delivered-communication-message-567e6dfb453bd3ca2b"
+              "institutional_recorded": "q4-delivered-communication-message-cf39047624e40b0983"
             },
             {
-              "id": "standard-institution-decision-2725dc75edcfcc319f",
+              "id": "standard-institution-decision-ddb2b2ca0ef064856b",
               "sender": "Standard",
               "intended_recipient": "q4-player-13d8ab53c573cac7",
               "intended_recipients": [
@@ -9001,27 +8594,28 @@
               "text": "Standard acknowledges the delivered status report.",
               "state": "delivered",
               "delivery_status": "delivered",
-              "sent_at": 7,
-              "interval": 7,
-              "delivered_at": 7,
+              "sent_at": 6,
+              "interval": 6,
+              "delivered_at": 6,
               "acknowledged_at": null,
               "interference": null,
               "failure_reason": null,
               "evidence_ids": [],
-              "provenance": "institutional-decision:institution-decision-2725dc75edcfcc319f",
+              "geography_report": false,
+              "provenance": "institutional-decision:institution-decision-ddb2b2ca0ef064856b",
               "history": [
                 {
                   "sequence": 1,
                   "from": null,
                   "to": "composed",
-                  "at": 7,
+                  "at": 6,
                   "reason": "message composed"
                 },
                 {
                   "sequence": 2,
                   "from": "composed",
                   "to": "delivered",
-                  "at": 7,
+                  "at": 6,
                   "reason": "scheduled Standard response resolved"
                 }
               ]
@@ -9048,6 +8642,7 @@
               "interference": null,
               "failure_reason": null,
               "evidence_ids": [],
+              "geography_report": false,
               "provenance": "institutional-decision:institution-decision-055de18532a0fcf382",
               "history": [
                 {
@@ -9088,13 +8683,15 @@
               "interference": {
                 "id": "columned-corridor-radio-shadow",
                 "public_description": "The column line breaks the field-radio signal; delivery cannot yet be confirmed.",
-                "additional_delay": 9
+                "additional_delay": 9,
+                "unavailable": false
               },
               "failure_reason": null,
               "evidence_ids": [
                 "object-evidence-8e989eabbd097188e8e3",
                 "object-evidence-13f265b5b915c6810e2b"
               ],
+              "geography_report": false,
               "provenance": "authoritative-communication-runtime",
               "history": [
                 {
@@ -9158,13 +8755,15 @@
               "interference": {
                 "id": "columned-corridor-radio-shadow",
                 "public_description": "The column line breaks the field-radio signal; delivery cannot yet be confirmed.",
-                "additional_delay": 9
+                "additional_delay": 9,
+                "unavailable": false
               },
               "failure_reason": null,
               "evidence_ids": [
                 "object-evidence-8e989eabbd097188e8e3",
                 "object-evidence-13f265b5b915c6810e2b"
               ],
+              "geography_report": false,
               "provenance": "authoritative-communication-runtime",
               "history": [
                 {
@@ -9227,6 +8826,7 @@
               "interference": null,
               "failure_reason": null,
               "evidence_ids": [],
+              "geography_report": false,
               "provenance": "institutional-decision:institution-decision-f9187663c29a352e4f",
               "history": [
                 {
@@ -9267,6 +8867,7 @@
               "interference": null,
               "failure_reason": null,
               "evidence_ids": [],
+              "geography_report": false,
               "provenance": "institutional-decision:institution-decision-8a496788674cf73573",
               "history": [
                 {
@@ -9307,6 +8908,7 @@
               "interference": null,
               "failure_reason": null,
               "evidence_ids": [],
+              "geography_report": false,
               "provenance": "authoritative-communication-runtime",
               "history": [
                 {
@@ -9359,15 +8961,15 @@
               {
                 "purpose": "radio-check",
                 "state": "acknowledged",
-                "sent_at": 5,
-                "delivered_at": 6,
+                "sent_at": 4,
+                "delivered_at": 5,
                 "acknowledged_at": 6
               },
               {
                 "purpose": "acknowledge-report",
                 "state": "delivered",
-                "sent_at": 7,
-                "delivered_at": 7,
+                "sent_at": 6,
+                "delivered_at": 6,
                 "acknowledged_at": null
               },
               {
@@ -9455,34 +9057,17 @@
             "target_observation": "The active fixture held a steady output during the instrument test.",
             "provenance": "worldpack-authored-object-interaction",
             "valid": true,
-            "mission_id": "CQ4-INFRASTRUCTURE-MATERIAL-002-6692",
-            "render": {
-              "id": "render-da52d9bfb84e0900",
-              "evidence_id": "object-evidence-8e989eabbd097188e8e3",
-              "adapter": "fallback",
-              "workflow": "observer-safe-q4-evidence",
-              "status": "fallback-ready",
-              "attempts": 0,
-              "source_fact_digest": "1560367cdb27d6e6c2a0b124d121569a4fe8670ac1ec2d064dac2102afb14fac",
-              "created_at": "simulation-recorded",
-              "result": {
-                "status": "fallback",
-                "kind": "schematic-capture",
-                "label": "Observer-safe field capture",
-                "reason": "renderer-disabled",
-                "source_fact_digest": "1560367cdb27d6e6c2a0b124d121569a4fe8670ac1ec2d064dac2102afb14fac",
-                "asset_id": "fallback-object-evidence-8e989eabbd097188e8e3",
-                "provenance": "local-deterministic-fallback"
-              }
+            "mission_id": "CQ4-WO-0001",
+            "environmental_conditions": {
+              "lighting": "normal",
+              "communications": "nominal",
+              "structural": "stable",
+              "moisture": "dry",
+              "acoustic": "ordinary",
+              "visibility": "normal"
             },
-            "visual": {
-              "status": "fallback",
-              "kind": "schematic-capture",
-              "label": "Observer-safe field capture",
-              "reason": "renderer-disabled",
-              "source_fact_digest": "1560367cdb27d6e6c2a0b124d121569a4fe8670ac1ec2d064dac2102afb14fac",
-              "asset_id": "fallback-object-evidence-8e989eabbd097188e8e3",
-              "provenance": "local-deterministic-fallback"
+            "render": {
+              "status": "fallback-ready"
             }
           },
           {
@@ -9523,34 +9108,17 @@
             "target_observation": "The photograph records the floor pattern and whether a survey marker is present.",
             "provenance": "worldpack-authored-object-interaction",
             "valid": true,
-            "mission_id": "CQ4-INFRASTRUCTURE-MATERIAL-002-6692",
-            "render": {
-              "id": "render-3985521198b8286e",
-              "evidence_id": "object-evidence-13f265b5b915c6810e2b",
-              "adapter": "fallback",
-              "workflow": "observer-safe-q4-evidence",
-              "status": "fallback-ready",
-              "attempts": 0,
-              "source_fact_digest": "f7f225f65da3e73360d31c04196d0f0d0d442b227de5e7da95a5a9ebfd01e765",
-              "created_at": "simulation-recorded",
-              "result": {
-                "status": "fallback",
-                "kind": "schematic-capture",
-                "label": "Observer-safe field capture",
-                "reason": "renderer-disabled",
-                "source_fact_digest": "f7f225f65da3e73360d31c04196d0f0d0d442b227de5e7da95a5a9ebfd01e765",
-                "asset_id": "fallback-object-evidence-13f265b5b915c6810e2b",
-                "provenance": "local-deterministic-fallback"
-              }
+            "mission_id": "CQ4-WO-0001",
+            "environmental_conditions": {
+              "lighting": "normal",
+              "communications": "nominal",
+              "structural": "stable",
+              "moisture": "dry",
+              "acoustic": "ordinary",
+              "visibility": "normal"
             },
-            "visual": {
-              "status": "fallback",
-              "kind": "schematic-capture",
-              "label": "Observer-safe field capture",
-              "reason": "renderer-disabled",
-              "source_fact_digest": "f7f225f65da3e73360d31c04196d0f0d0d442b227de5e7da95a5a9ebfd01e765",
-              "asset_id": "fallback-object-evidence-13f265b5b915c6810e2b",
-              "provenance": "local-deterministic-fallback"
+            "render": {
+              "status": "fallback-ready"
             }
           },
           {
@@ -9592,34 +9160,17 @@
             "target_observation": "The record preserves the fragment's water mark and faint route linework without assigning a destination.",
             "provenance": "worldpack-authored-object-interaction",
             "valid": true,
-            "mission_id": "CQ4-INFRASTRUCTURE-MATERIAL-002-6692",
-            "render": {
-              "id": "render-0b824af722a2d0b9",
-              "evidence_id": "object-evidence-5aef96d444923c882968",
-              "adapter": "fallback",
-              "workflow": "observer-safe-q4-evidence",
-              "status": "fallback-ready",
-              "attempts": 0,
-              "source_fact_digest": "fcf3db2e860baa25da3e9218245ae40636b295089c27d37c8f62b17f2ff877b4",
-              "created_at": "simulation-recorded",
-              "result": {
-                "status": "fallback",
-                "kind": "schematic-capture",
-                "label": "Observer-safe field capture",
-                "reason": "renderer-disabled",
-                "source_fact_digest": "fcf3db2e860baa25da3e9218245ae40636b295089c27d37c8f62b17f2ff877b4",
-                "asset_id": "fallback-object-evidence-5aef96d444923c882968",
-                "provenance": "local-deterministic-fallback"
-              }
+            "mission_id": "CQ4-WO-0001",
+            "environmental_conditions": {
+              "lighting": "emergency",
+              "communications": "weak",
+              "structural": "stable",
+              "moisture": "damp",
+              "acoustic": "masked",
+              "visibility": "normal"
             },
-            "visual": {
-              "status": "fallback",
-              "kind": "schematic-capture",
-              "label": "Observer-safe field capture",
-              "reason": "renderer-disabled",
-              "source_fact_digest": "fcf3db2e860baa25da3e9218245ae40636b295089c27d37c8f62b17f2ff877b4",
-              "asset_id": "fallback-object-evidence-5aef96d444923c882968",
-              "provenance": "local-deterministic-fallback"
+            "render": {
+              "status": "fallback-ready"
             },
             "custody_state": "contained-returnable"
           }
@@ -9668,6 +9219,7 @@
           },
           "team_decisions": 129
         },
+        "written_report": null,
         "institutional_consequence_hooks": [
           "recovered_complication",
           "missed_check_in",
@@ -9677,11 +9229,12 @@
         "institutional_findings": {
           "reported": [
             {
-              "text": "Standard, Clear-Q4 team Complex-side. 4 personnel accounted for.",
+              "text": "Standard, Clear-Q4 team accounted for. Radio check.",
               "status": "reported",
               "provenance": "q4-interaction-5"
             }
           ],
+          "reference_assessment": null,
           "unresolved": [],
           "recommendations": [
             "Review the recorded personnel, equipment, container, and evidence status before the next assignment."
@@ -9760,7 +9313,7 @@
         },
         "result": {
           "version": "yellow-beast-mission-result@v1",
-          "mission_id": "CQ4-INFRASTRUCTURE-MATERIAL-002-6692",
+          "mission_id": "CQ4-WO-0001",
           "final_mission_state": "completed",
           "classification": "recovered-complication",
           "required_objectives_satisfied": [
@@ -9929,15 +9482,15 @@
               {
                 "purpose": "radio-check",
                 "state": "acknowledged",
-                "sent_at": 5,
-                "delivered_at": 6,
+                "sent_at": 4,
+                "delivered_at": 5,
                 "acknowledged_at": 6
               },
               {
                 "purpose": "acknowledge-report",
                 "state": "delivered",
-                "sent_at": 7,
-                "delivered_at": 7,
+                "sent_at": 6,
+                "delivered_at": 6,
                 "acknowledged_at": null
               },
               {
@@ -10340,28 +9893,28 @@
         ],
         "messages": [
           {
-            "id": "message-567e6dfb453bd3ca2b",
+            "id": "message-cf39047624e40b0983",
             "sender": "You",
             "recipient": "Standard",
             "channel": "FIELD_RADIO",
             "purpose": "radio-check",
-            "sent_at": 5,
+            "sent_at": 4,
             "state": "acknowledged",
             "state_label": "Acknowledged",
-            "delivered_at": 6,
+            "delivered_at": 5,
             "acknowledged_at": 6,
             "known_reason": null
           },
           {
-            "id": "standard-institution-decision-2725dc75edcfcc319f",
+            "id": "standard-institution-decision-ddb2b2ca0ef064856b",
             "sender": "Standard",
             "recipient": "You",
             "channel": "FIELD_RADIO",
             "purpose": "acknowledge-report",
-            "sent_at": 7,
+            "sent_at": 6,
             "state": "delivered",
             "state_label": "Delivered",
-            "delivered_at": 7,
+            "delivered_at": 6,
             "acknowledged_at": null,
             "known_reason": null
           },
@@ -10479,7 +10032,7 @@
       "evidence": [
         {
           "id": "object-evidence-8e989eabbd097188e8e3",
-          "mission_id": "CQ4-INFRASTRUCTURE-MATERIAL-002-6692",
+          "mission_id": "CQ4-WO-0001",
           "type": "fixture-test",
           "capture_event": "object.evidence.captured",
           "method": "instrument test",
@@ -10495,23 +10048,7 @@
           "storage": "with the field survey record",
           "reporting_state": "reported-to-standard",
           "render": {
-            "id": "render-da52d9bfb84e0900",
-            "evidence_id": "object-evidence-8e989eabbd097188e8e3",
-            "adapter": "fallback",
-            "workflow": "observer-safe-q4-evidence",
-            "status": "fallback-ready",
-            "attempts": 0,
-            "source_fact_digest": "1560367cdb27d6e6c2a0b124d121569a4fe8670ac1ec2d064dac2102afb14fac",
-            "created_at": "simulation-recorded",
-            "result": {
-              "status": "fallback",
-              "kind": "schematic-capture",
-              "label": "Observer-safe field capture",
-              "reason": "renderer-disabled",
-              "source_fact_digest": "1560367cdb27d6e6c2a0b124d121569a4fe8670ac1ec2d064dac2102afb14fac",
-              "asset_id": "fallback-object-evidence-8e989eabbd097188e8e3",
-              "provenance": "local-deterministic-fallback"
-            }
+            "status": "fallback-ready"
           },
           "visual": {
             "asset_id": "evidence-visual-unavailable",
@@ -10526,7 +10063,7 @@
         },
         {
           "id": "object-evidence-13f265b5b915c6810e2b",
-          "mission_id": "CQ4-INFRASTRUCTURE-MATERIAL-002-6692",
+          "mission_id": "CQ4-WO-0001",
           "type": "surface-photograph",
           "capture_event": "object.evidence.captured",
           "method": "35mm photograph",
@@ -10542,23 +10079,7 @@
           "storage": "with the camera record",
           "reporting_state": "reported-to-standard",
           "render": {
-            "id": "render-3985521198b8286e",
-            "evidence_id": "object-evidence-13f265b5b915c6810e2b",
-            "adapter": "fallback",
-            "workflow": "observer-safe-q4-evidence",
-            "status": "fallback-ready",
-            "attempts": 0,
-            "source_fact_digest": "f7f225f65da3e73360d31c04196d0f0d0d442b227de5e7da95a5a9ebfd01e765",
-            "created_at": "simulation-recorded",
-            "result": {
-              "status": "fallback",
-              "kind": "schematic-capture",
-              "label": "Observer-safe field capture",
-              "reason": "renderer-disabled",
-              "source_fact_digest": "f7f225f65da3e73360d31c04196d0f0d0d442b227de5e7da95a5a9ebfd01e765",
-              "asset_id": "fallback-object-evidence-13f265b5b915c6810e2b",
-              "provenance": "local-deterministic-fallback"
-            }
+            "status": "fallback-ready"
           },
           "visual": {
             "asset_id": "evidence-photograph",
@@ -10573,7 +10094,7 @@
         },
         {
           "id": "object-evidence-5aef96d444923c882968",
-          "mission_id": "CQ4-INFRASTRUCTURE-MATERIAL-002-6692",
+          "mission_id": "CQ4-WO-0001",
           "type": "annex-document-record",
           "capture_event": "object.evidence.captured",
           "method": "35mm photograph and condition note",
@@ -10589,23 +10110,7 @@
           "storage": "evidence-case",
           "reporting_state": "unreported",
           "render": {
-            "id": "render-0b824af722a2d0b9",
-            "evidence_id": "object-evidence-5aef96d444923c882968",
-            "adapter": "fallback",
-            "workflow": "observer-safe-q4-evidence",
-            "status": "fallback-ready",
-            "attempts": 0,
-            "source_fact_digest": "fcf3db2e860baa25da3e9218245ae40636b295089c27d37c8f62b17f2ff877b4",
-            "created_at": "simulation-recorded",
-            "result": {
-              "status": "fallback",
-              "kind": "schematic-capture",
-              "label": "Observer-safe field capture",
-              "reason": "renderer-disabled",
-              "source_fact_digest": "fcf3db2e860baa25da3e9218245ae40636b295089c27d37c8f62b17f2ff877b4",
-              "asset_id": "fallback-object-evidence-5aef96d444923c882968",
-              "provenance": "local-deterministic-fallback"
-            }
+            "status": "fallback-ready"
           },
           "visual": {
             "asset_id": "evidence-visual-unavailable",
@@ -10623,14 +10128,14 @@
         "version": "yellow-beast-institutional-projection@v1",
         "dimensions": {
           "support_posture": "available",
-          "scrutiny_level": "concerned",
-          "operational_confidence": "stable",
-          "information_confidence": "uncertain",
+          "scrutiny_level": "watch",
+          "operational_confidence": "provisional",
+          "information_confidence": "corroborated",
           "resource_posture": "standard",
           "staffing_posture": "standard",
           "equipment_restriction_level": "none",
           "communication_concern": "concerned",
-          "mission_review_status": "open"
+          "mission_review_status": "none"
         },
         "restrictions": {
           "equipment": [],
@@ -10662,7 +10167,7 @@
         "uncertainty": [
           {
             "status": "uncorroborated",
-            "summary": "Standard, Clear-Q4 team Complex-side. 4 personnel accounted for."
+            "summary": "Standard, Clear-Q4 team accounted for. Radio check."
           },
           {
             "status": "uncorroborated",
@@ -10673,8 +10178,31 @@
             "summary": "Request authorization for a bounded relay deviation supported by the recorded fixture evidence."
           }
         ],
-        "pending_reviews": [],
+        "pending_reviews": [
+          {
+            "decision": "recommend-review",
+            "due_at": 1
+          },
+          {
+            "decision": "request-additional-evidence",
+            "due_at": 1
+          },
+          {
+            "decision": "increase-oversight",
+            "due_at": 1
+          }
+        ],
         "recent_decisions": [
+          {
+            "decision": "acknowledge-report",
+            "public_response": "Standard acknowledges the delivered status report.",
+            "resolved_at": 6
+          },
+          {
+            "decision": "schedule-extra-check-in",
+            "public_response": "Standard records the missed reporting window and adds an accountability check to the next assignment.",
+            "resolved_at": 17
+          },
           {
             "decision": "prioritize-evidence",
             "public_response": "Standard acknowledges the evidence record and prioritizes it for return review.",
@@ -10684,21 +10212,6 @@
             "decision": "authorize-deviation",
             "public_response": "Standard authorizes the bounded route deviation. Maintain accountability and report before closure.",
             "resolved_at": 39
-          },
-          {
-            "decision": "recommend-review",
-            "public_response": "Standard records the recovered complication and closes the immediate field response with follow-up review.",
-            "resolved_at": 1
-          },
-          {
-            "decision": "request-additional-evidence",
-            "public_response": "Standard requests the retained evidence or a documented reason it cannot be returned.",
-            "resolved_at": 1
-          },
-          {
-            "decision": "increase-oversight",
-            "public_response": "Standard records the unapproved route deviation and opens an operational review.",
-            "resolved_at": 1
           }
         ],
         "follow_up_assignments": [
@@ -10712,12 +10225,12 @@
       },
       "review": {
         "version": "yellow-beast-q4-continuity@v3",
-        "mission_id": "CQ4-INFRASTRUCTURE-MATERIAL-002-6692",
+        "mission_id": "CQ4-WO-0001",
         "outcome": "recovered-complication",
         "final_mission_state": "completed",
         "public_debrief_summary": "The team returned with its required record after recovering an operational complication; the complication remains part of the outcome record. A teammate returned with a recorded injury. A field complication was recovered before closure. The equipment record includes damage or loss. The scheduled communication record includes a missed reporting window.",
         "assignment": {
-          "objective": "Inspect and document the declared lighting and material conditions within the survey boundary.",
+          "objective": "Survey the declared frontier from the fixed Threshold approach and retain an accountable field record.",
           "completion_status": "completed",
           "deviations": [
             "missed-declared-check-in"
@@ -10990,7 +10503,7 @@
           ],
           "delivered": [
             {
-              "id": "message-567e6dfb453bd3ca2b",
+              "id": "message-cf39047624e40b0983",
               "sender": "q4-player-13d8ab53c573cac7",
               "intended_recipient": "Standard",
               "intended_recipients": [
@@ -11001,44 +10514,45 @@
               ],
               "channel": "FIELD_RADIO",
               "purpose": "radio-check",
-              "text": "Standard, Clear-Q4 team Complex-side. 4 personnel accounted for.",
+              "text": "Standard, Clear-Q4 team accounted for. Radio check.",
               "state": "acknowledged",
               "delivery_status": "delivered",
-              "sent_at": 5,
-              "interval": 5,
-              "delivered_at": 6,
+              "sent_at": 4,
+              "interval": 4,
+              "delivered_at": 5,
               "acknowledged_at": 6,
               "interference": null,
               "failure_reason": null,
               "evidence_ids": [],
+              "geography_report": false,
               "provenance": "authoritative-communication-runtime",
               "history": [
                 {
                   "sequence": 1,
                   "from": null,
                   "to": "composed",
-                  "at": 5,
+                  "at": 4,
                   "reason": "message composed"
                 },
                 {
                   "sequence": 2,
                   "from": "composed",
                   "to": "queued",
-                  "at": 5,
+                  "at": 4,
                   "reason": "accepted into the field-radio transmission queue"
                 },
                 {
                   "sequence": 3,
                   "from": "queued",
                   "to": "transmitting",
-                  "at": 6,
+                  "at": 5,
                   "reason": "field-radio transmission begun"
                 },
                 {
                   "sequence": 4,
                   "from": "transmitting",
                   "to": "delivered",
-                  "at": 6,
+                  "at": 5,
                   "reason": "the intended recipient received the radio message"
                 },
                 {
@@ -11049,10 +10563,10 @@
                   "reason": "Standard acknowledged the delivered message"
                 }
               ],
-              "institutional_recorded": "q4-delivered-communication-message-567e6dfb453bd3ca2b"
+              "institutional_recorded": "q4-delivered-communication-message-cf39047624e40b0983"
             },
             {
-              "id": "standard-institution-decision-2725dc75edcfcc319f",
+              "id": "standard-institution-decision-ddb2b2ca0ef064856b",
               "sender": "Standard",
               "intended_recipient": "q4-player-13d8ab53c573cac7",
               "intended_recipients": [
@@ -11066,27 +10580,28 @@
               "text": "Standard acknowledges the delivered status report.",
               "state": "delivered",
               "delivery_status": "delivered",
-              "sent_at": 7,
-              "interval": 7,
-              "delivered_at": 7,
+              "sent_at": 6,
+              "interval": 6,
+              "delivered_at": 6,
               "acknowledged_at": null,
               "interference": null,
               "failure_reason": null,
               "evidence_ids": [],
-              "provenance": "institutional-decision:institution-decision-2725dc75edcfcc319f",
+              "geography_report": false,
+              "provenance": "institutional-decision:institution-decision-ddb2b2ca0ef064856b",
               "history": [
                 {
                   "sequence": 1,
                   "from": null,
                   "to": "composed",
-                  "at": 7,
+                  "at": 6,
                   "reason": "message composed"
                 },
                 {
                   "sequence": 2,
                   "from": "composed",
                   "to": "delivered",
-                  "at": 7,
+                  "at": 6,
                   "reason": "scheduled Standard response resolved"
                 }
               ]
@@ -11113,6 +10628,7 @@
               "interference": null,
               "failure_reason": null,
               "evidence_ids": [],
+              "geography_report": false,
               "provenance": "institutional-decision:institution-decision-055de18532a0fcf382",
               "history": [
                 {
@@ -11153,13 +10669,15 @@
               "interference": {
                 "id": "columned-corridor-radio-shadow",
                 "public_description": "The column line breaks the field-radio signal; delivery cannot yet be confirmed.",
-                "additional_delay": 9
+                "additional_delay": 9,
+                "unavailable": false
               },
               "failure_reason": null,
               "evidence_ids": [
                 "object-evidence-8e989eabbd097188e8e3",
                 "object-evidence-13f265b5b915c6810e2b"
               ],
+              "geography_report": false,
               "provenance": "authoritative-communication-runtime",
               "history": [
                 {
@@ -11223,13 +10741,15 @@
               "interference": {
                 "id": "columned-corridor-radio-shadow",
                 "public_description": "The column line breaks the field-radio signal; delivery cannot yet be confirmed.",
-                "additional_delay": 9
+                "additional_delay": 9,
+                "unavailable": false
               },
               "failure_reason": null,
               "evidence_ids": [
                 "object-evidence-8e989eabbd097188e8e3",
                 "object-evidence-13f265b5b915c6810e2b"
               ],
+              "geography_report": false,
               "provenance": "authoritative-communication-runtime",
               "history": [
                 {
@@ -11292,6 +10812,7 @@
               "interference": null,
               "failure_reason": null,
               "evidence_ids": [],
+              "geography_report": false,
               "provenance": "institutional-decision:institution-decision-f9187663c29a352e4f",
               "history": [
                 {
@@ -11332,6 +10853,7 @@
               "interference": null,
               "failure_reason": null,
               "evidence_ids": [],
+              "geography_report": false,
               "provenance": "institutional-decision:institution-decision-8a496788674cf73573",
               "history": [
                 {
@@ -11372,6 +10894,7 @@
               "interference": null,
               "failure_reason": null,
               "evidence_ids": [],
+              "geography_report": false,
               "provenance": "authoritative-communication-runtime",
               "history": [
                 {
@@ -11424,15 +10947,15 @@
               {
                 "purpose": "radio-check",
                 "state": "acknowledged",
-                "sent_at": 5,
-                "delivered_at": 6,
+                "sent_at": 4,
+                "delivered_at": 5,
                 "acknowledged_at": 6
               },
               {
                 "purpose": "acknowledge-report",
                 "state": "delivered",
-                "sent_at": 7,
-                "delivered_at": 7,
+                "sent_at": 6,
+                "delivered_at": 6,
                 "acknowledged_at": null
               },
               {
@@ -11520,34 +11043,17 @@
             "target_observation": "The active fixture held a steady output during the instrument test.",
             "provenance": "worldpack-authored-object-interaction",
             "valid": true,
-            "mission_id": "CQ4-INFRASTRUCTURE-MATERIAL-002-6692",
-            "render": {
-              "id": "render-da52d9bfb84e0900",
-              "evidence_id": "object-evidence-8e989eabbd097188e8e3",
-              "adapter": "fallback",
-              "workflow": "observer-safe-q4-evidence",
-              "status": "fallback-ready",
-              "attempts": 0,
-              "source_fact_digest": "1560367cdb27d6e6c2a0b124d121569a4fe8670ac1ec2d064dac2102afb14fac",
-              "created_at": "simulation-recorded",
-              "result": {
-                "status": "fallback",
-                "kind": "schematic-capture",
-                "label": "Observer-safe field capture",
-                "reason": "renderer-disabled",
-                "source_fact_digest": "1560367cdb27d6e6c2a0b124d121569a4fe8670ac1ec2d064dac2102afb14fac",
-                "asset_id": "fallback-object-evidence-8e989eabbd097188e8e3",
-                "provenance": "local-deterministic-fallback"
-              }
+            "mission_id": "CQ4-WO-0001",
+            "environmental_conditions": {
+              "lighting": "normal",
+              "communications": "nominal",
+              "structural": "stable",
+              "moisture": "dry",
+              "acoustic": "ordinary",
+              "visibility": "normal"
             },
-            "visual": {
-              "status": "fallback",
-              "kind": "schematic-capture",
-              "label": "Observer-safe field capture",
-              "reason": "renderer-disabled",
-              "source_fact_digest": "1560367cdb27d6e6c2a0b124d121569a4fe8670ac1ec2d064dac2102afb14fac",
-              "asset_id": "fallback-object-evidence-8e989eabbd097188e8e3",
-              "provenance": "local-deterministic-fallback"
+            "render": {
+              "status": "fallback-ready"
             }
           },
           {
@@ -11588,34 +11094,17 @@
             "target_observation": "The photograph records the floor pattern and whether a survey marker is present.",
             "provenance": "worldpack-authored-object-interaction",
             "valid": true,
-            "mission_id": "CQ4-INFRASTRUCTURE-MATERIAL-002-6692",
-            "render": {
-              "id": "render-3985521198b8286e",
-              "evidence_id": "object-evidence-13f265b5b915c6810e2b",
-              "adapter": "fallback",
-              "workflow": "observer-safe-q4-evidence",
-              "status": "fallback-ready",
-              "attempts": 0,
-              "source_fact_digest": "f7f225f65da3e73360d31c04196d0f0d0d442b227de5e7da95a5a9ebfd01e765",
-              "created_at": "simulation-recorded",
-              "result": {
-                "status": "fallback",
-                "kind": "schematic-capture",
-                "label": "Observer-safe field capture",
-                "reason": "renderer-disabled",
-                "source_fact_digest": "f7f225f65da3e73360d31c04196d0f0d0d442b227de5e7da95a5a9ebfd01e765",
-                "asset_id": "fallback-object-evidence-13f265b5b915c6810e2b",
-                "provenance": "local-deterministic-fallback"
-              }
+            "mission_id": "CQ4-WO-0001",
+            "environmental_conditions": {
+              "lighting": "normal",
+              "communications": "nominal",
+              "structural": "stable",
+              "moisture": "dry",
+              "acoustic": "ordinary",
+              "visibility": "normal"
             },
-            "visual": {
-              "status": "fallback",
-              "kind": "schematic-capture",
-              "label": "Observer-safe field capture",
-              "reason": "renderer-disabled",
-              "source_fact_digest": "f7f225f65da3e73360d31c04196d0f0d0d442b227de5e7da95a5a9ebfd01e765",
-              "asset_id": "fallback-object-evidence-13f265b5b915c6810e2b",
-              "provenance": "local-deterministic-fallback"
+            "render": {
+              "status": "fallback-ready"
             }
           },
           {
@@ -11657,34 +11146,17 @@
             "target_observation": "The record preserves the fragment's water mark and faint route linework without assigning a destination.",
             "provenance": "worldpack-authored-object-interaction",
             "valid": true,
-            "mission_id": "CQ4-INFRASTRUCTURE-MATERIAL-002-6692",
-            "render": {
-              "id": "render-0b824af722a2d0b9",
-              "evidence_id": "object-evidence-5aef96d444923c882968",
-              "adapter": "fallback",
-              "workflow": "observer-safe-q4-evidence",
-              "status": "fallback-ready",
-              "attempts": 0,
-              "source_fact_digest": "fcf3db2e860baa25da3e9218245ae40636b295089c27d37c8f62b17f2ff877b4",
-              "created_at": "simulation-recorded",
-              "result": {
-                "status": "fallback",
-                "kind": "schematic-capture",
-                "label": "Observer-safe field capture",
-                "reason": "renderer-disabled",
-                "source_fact_digest": "fcf3db2e860baa25da3e9218245ae40636b295089c27d37c8f62b17f2ff877b4",
-                "asset_id": "fallback-object-evidence-5aef96d444923c882968",
-                "provenance": "local-deterministic-fallback"
-              }
+            "mission_id": "CQ4-WO-0001",
+            "environmental_conditions": {
+              "lighting": "emergency",
+              "communications": "weak",
+              "structural": "stable",
+              "moisture": "damp",
+              "acoustic": "masked",
+              "visibility": "normal"
             },
-            "visual": {
-              "status": "fallback",
-              "kind": "schematic-capture",
-              "label": "Observer-safe field capture",
-              "reason": "renderer-disabled",
-              "source_fact_digest": "fcf3db2e860baa25da3e9218245ae40636b295089c27d37c8f62b17f2ff877b4",
-              "asset_id": "fallback-object-evidence-5aef96d444923c882968",
-              "provenance": "local-deterministic-fallback"
+            "render": {
+              "status": "fallback-ready"
             },
             "custody_state": "contained-returnable"
           }
@@ -11733,6 +11205,7 @@
           },
           "team_decisions": 129
         },
+        "written_report": null,
         "institutional_consequence_hooks": [
           "recovered_complication",
           "missed_check_in",
@@ -11742,11 +11215,12 @@
         "institutional_findings": {
           "reported": [
             {
-              "text": "Standard, Clear-Q4 team Complex-side. 4 personnel accounted for.",
+              "text": "Standard, Clear-Q4 team accounted for. Radio check.",
               "status": "reported",
               "provenance": "q4-interaction-5"
             }
           ],
+          "reference_assessment": null,
           "unresolved": [],
           "recommendations": [
             "Review the recorded personnel, equipment, container, and evidence status before the next assignment."
@@ -12007,9 +11481,9 @@
       "version": "yellow-beast-worldpack-authoring@v1",
       "worldpack_id": "clear-q4"
     },
-    "preview": "docs\\acceptance\\artifacts\\OMNIPASS_CLEAR_Q4_PREVIEW.html",
-    "trace": "docs\\acceptance\\artifacts\\OMNIPASS_CLEAR_Q4_TRACE.json",
-    "fixture_trace": "docs\\acceptance\\artifacts\\OMNIPASS_FIXTURE_TRACE.json",
+    "preview": "docs/acceptance/artifacts/OMNIPASS_CLEAR_Q4_PREVIEW.html",
+    "trace": "docs/acceptance/artifacts/OMNIPASS_CLEAR_Q4_TRACE.json",
+    "fixture_trace": "docs/acceptance/artifacts/OMNIPASS_FIXTURE_TRACE.json",
     "broken_pack_rejected": [
       {
         "code": "DYNAMICS_INVALID",

@@ -23,6 +23,10 @@ const { summarizeLanguageAssistance, failureReason } = require("./language-assis
 const { PROVIDER_SPECS } = require("../tools/ai-hosted-transport");
 const { buildLocalDialoguePacket, validateLocalDialogue } = require("../tools/ai-local-dialogue");
 const referenceExpedition = require("../tools/reference-expedition");
+const interpretiveDirector = require("../tools/interpretive-director");
+const canonLexicon = require("../tools/canon-lexicon");
+const canonLinter = require("../tools/canon-linter");
+const canonicalLedger = require("../tools/canonical-world-ledger");
 const { buildSafeScene, fallbackNarration } = require("../tools/scene-presentation");
 const phases = require("../tools/mode-phases");
 const q4 = require("../tools/q4-experience");
@@ -1087,6 +1091,160 @@ class DesktopService {
         return { ok:true, result:{ turn_status:"RESOLVED", executed:false, duplicate:true, summary:recorded.public_reason ?? "This action has already been recorded." }, projection:this.projectionFor(world, mode, entry) };
       }
       if (entry.kind === "bootstrap" && mode === "field-researcher" && entry.phase?.phase_id === "REPORT") return this.submitReferenceWrittenReport({ world_id, text });
+      if (entry.kind === "bootstrap" && mode === "field-researcher" && ["BRIEFING", "STAGING", "FACILITY_TRANSIT", "THRESHOLD", "STANDARD_RADIO_CHECK"].includes(entry.phase?.phase_id)) {
+        const phaseId = entry.phase.phase_id;
+        const inputClass = interpretiveDirector.classifyInput(text, phaseId, entry.run);
+
+        if (inputClass.classification === "ON_SCRIPT" && inputClass.targetAction) {
+          const radioChecked = q4Radio.ensure(entry.run.expedition).check_completed;
+          if (phaseId === "STANDARD_RADIO_CHECK" && inputClass.targetAction === "CROSS" && !radioChecked) {
+            const warning = "Standard dispatch requires a completed radio check before Threshold crossing.";
+            const scene = { ...this.sceneFor(entry, mode, { scene_type: "observation", accepted: false, public_reason: warning }, world), narration: warning, narration_source: "DETERMINISTIC" };
+            return { ok: true, result: { turn_status: "CLARIFICATION_REQUIRED", clarification_required: true, clarification_question: warning, executed: false, summary: warning, scene }, projection: this.projectionFor(world, mode, entry) };
+          }
+          const actResult = this.submitAction({ world_id, mode, action: inputClass.targetAction });
+          if (actResult.ok) {
+            const playerLoc = canonicalLedger.getPlayerLocation(entry.run);
+            let authored = null;
+            if (entry.phase.phase_id === "FIELD_OPERATION") {
+              authored = interpretiveDirector.findAuthoredBeat("threshold_crossed", { location: "threshold-side-entry" }, entry.run);
+            } else {
+              authored = interpretiveDirector.findAuthoredBeat("location_entered", { location: playerLoc, phase: entry.phase.phase_id }, entry.run)
+                ?? interpretiveDirector.findAuthoredBeat("phase_entered", { location: playerLoc, phase: entry.phase.phase_id }, entry.run);
+            }
+            const narration = authored ? authored.text : (actResult.result?.public_reason ?? "The expedition advances to the next operational phase.");
+            const scene = { ...this.sceneFor(entry, mode, { scene_type: "delta", accepted: true, public_reason: narration }, world), narration, narration_source: authored ? authored.source : "DETERMINISTIC" };
+            this.persistSession(world, mode, entry);
+            return {
+              ok: true,
+              result: {
+                turn_status: "RESOLVED",
+                classification: "ON_SCRIPT",
+                clarification_required: false,
+                clarification_question: null,
+                executed: true,
+                summary: narration,
+                scene,
+                source: authored ? authored.source : "DETERMINISTIC"
+              },
+              projection: this.projectionFor(world, mode, entry)
+            };
+          }
+        }
+
+        if (phaseId === "STANDARD_RADIO_CHECK" && /radio\s*check/i.test(text)) {
+          const radioRes = this.submitQ4Communication({ world_id, channel: "standard", text });
+          if (radioRes.ok) {
+            const summary = "Standard acknowledgment received for Radio check.";
+            const scene = { ...this.sceneFor(entry, mode, { scene_type: "observation", accepted: true, public_reason: summary }, world), narration: summary, narration_source: "DETERMINISTIC" };
+            this.persistSession(world, mode, entry);
+            return {
+              ok: true,
+              result: {
+                turn_status: "RESOLVED",
+                classification: "ON_SCRIPT",
+                clarification_required: false,
+                clarification_question: null,
+                executed: true,
+                summary,
+                scene,
+                source: "DETERMINISTIC"
+              },
+              projection: this.projectionFor(world, mode, entry)
+            };
+          }
+        }
+
+        if (inputClass.classification === "MINOR_DEVIATION" && inputClass.targetAction === "QUESTION_PROCEDURAL") {
+          const playerLoc = canonicalLedger.getPlayerLocation(entry.run);
+          const locDesc = canonLexicon.getLocationDescriptor(playerLoc);
+          let answer;
+          if (/assignment|order|mission/i.test(text)) {
+            answer = "Mission: Clear-Q4 Preliminary Layout and Condition Survey. Primary procedure: Verify established route through Utility Room to Open Passage survey line.";
+          } else {
+            answer = `Current location: ${locDesc.display_name}. Institutional context: ${locDesc.institutional_context}. Destination: ${locDesc.known_destination ?? "KV31 Outpost"}.`;
+          }
+          interpretiveDirector.emitPresentationEvent(entry.run, {
+            type: "interpretation",
+            speaker: null,
+            channel: "LOCAL",
+            source: "DETERMINISTIC",
+            text: answer,
+            timestamp: Date.now()
+          });
+          const scene = { ...this.sceneFor(entry, mode, { scene_type: "observation", accepted: true, public_reason: answer }, world), narration: answer, narration_source: "DETERMINISTIC" };
+          return {
+            ok: true,
+            result: {
+              turn_status: "RESOLVED",
+              classification: "MINOR_DEVIATION",
+              clarification_required: false,
+              clarification_question: null,
+              executed: false,
+              summary: answer,
+              scene,
+              source: "DETERMINISTIC"
+            },
+            projection: this.projectionFor(world, mode, entry)
+          };
+        }
+
+        if (inputClass.classification === "MAJOR_DEVIATION" && inputClass.targetAction === "DEVIATION_COMMAND") {
+          const members = entry.run.expedition.team.members.filter((m) => m.personnel_id !== entry.run.session.startup.player.observer_id);
+          const addressed = members.find((m) => new RegExp(`\\b${m.first_name}\\b`, "i").test(text));
+          if (addressed && /wait|hold|stay/i.test(text)) {
+            canonicalLedger.setCoworkerTask(entry.run, addressed.personnel_id, {
+              task: "hold",
+              target: canonicalLedger.getPlayerLocation(entry.run),
+              status: "holding"
+            });
+            const ack = interpretiveDirector.getCoworkerAcknowledgement(addressed.first_name, "ACKNOWLEDGE_WAIT");
+            interpretiveDirector.emitPresentationEvent(entry.run, {
+              type: "dialogue",
+              speaker: addressed.first_name,
+              channel: "LOCAL",
+              source: "DETERMINISTIC",
+              text: ack.text,
+              timestamp: Date.now()
+            });
+            this.persistSession(world, mode, entry);
+            const reply = `${addressed.first_name}: "${ack.text}"`;
+            const scene = { ...this.sceneFor(entry, mode, { scene_type: "observation", accepted: true, public_reason: reply }, world), narration: reply, narration_source: "DETERMINISTIC" };
+            return {
+              ok: true,
+              result: {
+                turn_status: "RESOLVED",
+                classification: "MAJOR_DEVIATION",
+                clarification_required: false,
+                clarification_question: null,
+                executed: true,
+                summary: reply,
+                scene,
+                source: "DETERMINISTIC"
+              },
+              projection: this.projectionFor(world, mode, entry)
+            };
+          }
+          if (/don't want|do not want|refuse/i.test(text) && /camera|instrument|equipment|stores/i.test(text)) {
+            const reply = "Clear-Q4 operational protocol requires all assigned documentation equipment to be accounted for during deployment. Equipment custody remains assigned.";
+            const scene = { ...this.sceneFor(entry, mode, { scene_type: "observation", accepted: false, public_reason: reply }, world), narration: reply, narration_source: "DETERMINISTIC" };
+            return {
+              ok: true,
+              result: {
+                turn_status: "RESOLVED",
+                classification: "MAJOR_DEVIATION",
+                clarification_required: false,
+                clarification_question: null,
+                executed: false,
+                summary: reply,
+                scene,
+                source: "DETERMINISTIC"
+              },
+              projection: this.projectionFor(world, mode, entry)
+            };
+          }
+        }
+      }
       if (entry.kind === "bootstrap" && referenceExpedition.isReference(entry.run.scenario) && ["FIELD_OPERATION", "RETURN"].includes(entry.phase?.phase_id) && entry.run.spatial) {
         const requestId = request_id;
         const selected = this.livingTurnProvider ?? this.providerPool.createAutoProvider({ requestId, route: "submitNatural/living-turn", requireHostedInterpretation:this.settings().provider !== "offline" });

@@ -323,6 +323,193 @@ function validateInvariants(run) {
   return { ok, status, violations, unverifiable };
 }
 
+// Structured Task Management
+function getCoworkerTask(run, memberId) {
+  const member = getObserverMember(run, memberId);
+  if (!member?.task) return null;
+  const t = clone(member.task);
+  t.action = t.action ?? t.task?.toUpperCase() ?? null;
+  return t;
+}
+
+function setCoworkerTask(run, memberId, taskArg, targetArg = null, options = {}) {
+  const member = getObserverMember(run, memberId);
+  if (!member) return null;
+  const norm = normalizePersonnelId(run, memberId);
+
+  let task, target, status, assigned_by, equipment, priority;
+  if (typeof taskArg === "object" && taskArg !== null) {
+    task = taskArg.task ?? taskArg.action;
+    target = taskArg.target ?? null;
+    status = taskArg.status ?? "assigned";
+    assigned_by = taskArg.assigned_by ?? "player";
+    equipment = taskArg.equipment ?? null;
+    priority = taskArg.priority ?? 1;
+  } else {
+    task = taskArg;
+    target = targetArg;
+    status = options?.status ?? "assigned";
+    assigned_by = options?.assigned_by ?? "player";
+    equipment = options?.equipment ?? null;
+    priority = options?.priority ?? 1;
+  }
+
+  const taskObj = {
+    id: `task-${norm}-${task}-${Date.now()}`,
+    actor: norm,
+    task: String(task).toLowerCase(),
+    action: String(task).toUpperCase(),
+    target: target ? String(target) : null,
+    status: String(status).toLowerCase(),
+    progress: 0.0,
+    priority: Number(priority ?? 1),
+    assigned_by: String(assigned_by),
+    assigned_at: run.expedition?.clock?.interval ?? 0,
+    equipment: equipment ? String(equipment) : null
+  };
+  const priorTask = member.task ? clone(member.task) : null;
+  member.task = taskObj;
+  member.task_history ??= [];
+  member.task_history.push(clone(taskObj));
+
+  recordCausalTransition(run, {
+    kind: "task_assigned",
+    actor: norm,
+    target: taskObj.target,
+    prior_state: priorTask,
+    resulting_state: taskObj,
+    details: { task: taskObj.task, assigned_by: taskObj.assigned_by, equipment: taskObj.equipment }
+  });
+
+  return clone(taskObj);
+}
+
+function progressCoworkerTask(run, memberId, statusArg, details = null) {
+  const member = getObserverMember(run, memberId);
+  if (!member || !member.task) return null;
+  const norm = normalizePersonnelId(run, memberId);
+  const priorStatus = member.task.status;
+
+  if (typeof statusArg === "object" && statusArg !== null) {
+    if (statusArg.status) member.task.status = String(statusArg.status).toLowerCase();
+    if (statusArg.progress !== undefined) member.task.progress = Number(statusArg.progress);
+  } else {
+    member.task.status = String(statusArg).toLowerCase();
+    if (details?.progress !== undefined) member.task.progress = Number(details.progress);
+  }
+  member.task.updated_at = run.expedition?.clock?.interval ?? 0;
+
+  recordCausalTransition(run, {
+    kind: "task_progressed",
+    actor: norm,
+    target: member.task.target,
+    prior_state: { status: priorStatus },
+    resulting_state: { status: member.task.status, progress: member.task.progress },
+    details: { task: member.task.task, ...(details ?? {}) }
+  });
+
+  return clone(member.task);
+}
+
+// Structured Emotional / Behavioral State
+const DEFAULT_EMOTIONAL_STATE = Object.freeze({
+  stress: 0.25,
+  trust_player: 0.75,
+  fatigue: 0.15,
+  curiosity: 0.70,
+  urgency: 0.20
+});
+
+function clamp01(v) {
+  return Math.max(0.0, Math.min(1.0, Math.round(Number(v) * 100) / 100));
+}
+
+function getCoworkerEmotionalState(run, memberId) {
+  const member = getObserverMember(run, memberId);
+  if (!member) return null;
+  member.emotional_state ??= { ...DEFAULT_EMOTIONAL_STATE };
+  return clone(member.emotional_state);
+}
+
+function updateCoworkerEmotionalState(run, memberId, updates = {}) {
+  const member = getObserverMember(run, memberId);
+  if (!member) return null;
+  member.emotional_state ??= { ...DEFAULT_EMOTIONAL_STATE };
+  for (const [key, val] of Object.entries(updates)) {
+    if (key in DEFAULT_EMOTIONAL_STATE && typeof val === "number") {
+      member.emotional_state[key] = clamp01(val);
+    }
+  }
+  return clone(member.emotional_state);
+}
+
+function formatCoworkerEmotionalSummary(emotionalState) {
+  if (!emotionalState) return "calm, attentive";
+  const parts = [];
+  const { stress = 0.25, curiosity = 0.7, trust_player = 0.75, urgency = 0.2 } = emotionalState;
+  if (stress > 0.6) parts.push("stressed");
+  else if (stress > 0.35) parts.push("mildly stressed");
+  else parts.push("calm");
+
+  if (curiosity > 0.6) parts.push("highly curious");
+  else if (curiosity > 0.35) parts.push("observant");
+
+  if (trust_player > 0.6) parts.push("trusts the player");
+  else if (trust_player < 0.4) parts.push("hesitant");
+
+  if (urgency > 0.6) parts.push("high urgency");
+  else if (urgency < 0.3) parts.push("low urgency");
+
+  return parts.join(", ");
+}
+
+// Causal Event Helpers
+function recordEquipmentTransfer(run, { from, to, item, interval = null, cause_action_id = null }) {
+  return recordCausalTransition(run, {
+    kind: "equipment_transfer",
+    actor: from,
+    target: to,
+    resulting_state: { holder: to, item },
+    interval,
+    cause_action_id,
+    details: { item, from, to }
+  });
+}
+
+function recordLocationEntered(run, { actor, location, prior_location = null, interval = null }) {
+  return recordCausalTransition(run, {
+    kind: "location_entered",
+    actor,
+    target: location,
+    prior_state: prior_location ? { location: prior_location } : null,
+    resulting_state: { location },
+    interval,
+    details: { actor, location, prior_location }
+  });
+}
+
+function recordObservationMade(run, { observer, target, location, interval = null, observation = null }) {
+  return recordCausalTransition(run, {
+    kind: "observation_made",
+    actor: observer,
+    target,
+    resulting_state: { target, location, observation },
+    interval,
+    details: { observer, target, location, observation }
+  });
+}
+
+function recordRadioTransmission(run, { channel, sender, recipients = [], listeners = [], text = null, interval = null }) {
+  return recordCausalTransition(run, {
+    kind: "radio_transmission",
+    actor: sender,
+    target: recipients.join(","),
+    resulting_state: { channel, sender, recipients, listeners, text },
+    interval,
+    details: { channel, sender, recipients, listeners, text }
+  });
+}
+
 module.exports = {
   VERSION,
   normalizePersonnelId,
@@ -344,5 +531,16 @@ module.exports = {
   recordCausalTransition,
   createDirectObservation,
   createReportedKnowledge,
-  validateInvariants
+  validateInvariants,
+  getCoworkerTask,
+  setCoworkerTask,
+  progressCoworkerTask,
+  getCoworkerEmotionalState,
+  updateCoworkerEmotionalState,
+  formatCoworkerEmotionalSummary,
+  recordEquipmentTransfer,
+  recordLocationEntered,
+  recordObservationMade,
+  recordRadioTransmission
 };
+
