@@ -394,9 +394,11 @@ function formatHumanOutput(summary) {
   const known = summary.knownFailuresExpected
     ? ` knownFailuresExpected=true (${summary.known_failures.map((failure) => failure.file).join(", ")})`
     : " knownFailuresExpected=false";
+  const inventoryCount = summary.inventoryPassed ? `inventory=${summary.inventoryPassed}` : `inventory=${summary.inventoryPassed} errors=${summary.inventoryErrors.length}`;
   lines.push(
-    `${summary.passed ? "PASSED" : "FAILED"} tier=${summary.tier} inventory=${summary.inventoryPassed} ` +
-    `tests=${summary.testsPassed} reports=${summary.reportsPassed} commands=${summary.commandsPassed}${known}`
+    `${summary.passed ? "PASSED" : "FAILED"} tier=${summary.tier} ${inventoryCount} ` +
+    `tests=${summary.testsPassed} reports=${summary.reportsPassed} commands=${summary.commandsPassed} ` +
+    `testFiles=${summary.testFiles}${known}`
   );
   return lines.join("\n") + "\n";
 }

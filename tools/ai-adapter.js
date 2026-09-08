@@ -7,6 +7,10 @@ const { createRegistry: createAuthorityRegistry } = require("./authority-registr
 const STEP_RELATIONS = new Set(["sequence", "parallel"]);
 const REFERENCE_SCOPES = new Set(["entity", "location", "person", "inventory", "phenomenon"]);
 const REFERENCE_STATES = new Set(["unresolved", "contextual"]);
+const FORBIDDEN_METADATA = /\b(?:canonical[_ -]?geometry|euclidean[_ -]?relation|overlap[_ -]?depth|future[_ -]?(?:event|schedule)|random[_ -]?seed|provider[_ -]?(?:model|metadata|prompt)|migration|debug|semantic[_ -]?(?:id|identifier)|canonical[_ -]?(?:family|type))\b/i;
+const FORBIDDEN_INTERNAL_ID = /\b(?:q4|yb-personnel|coordinated|open-passage|utility-room|clear-q4|actor|object|node|edge|fixture|entity)-[a-z0-9][a-z0-9:-]{3,}\b/i;
+const FORBIDDEN_ENTITY_TAXONOMY = /\b(?:still[- ]?life|bacteria)\b/i;
+function containsForbiddenTerminology(text) { if (typeof text !== "string") return false; return FORBIDDEN_METADATA.test(text) || FORBIDDEN_INTERNAL_ID.test(text) || FORBIDDEN_ENTITY_TAXONOMY.test(text); }
 
 function plain(value) { return Boolean(value) && typeof value === "object" && !Array.isArray(value) && Object.getPrototypeOf(value) === Object.prototype; }
 function only(value, keys) { return plain(value) && Object.keys(value).every((key) => keys.has(key)); }
@@ -53,6 +57,8 @@ function validateIntent(value, { raw_input, provider = "unknown", request_id = n
   if (!textObjects(value.temporal_order, new Set(["before", "after"])) || !value.temporal_order.every((item) => typeof item.before === "string" && typeof item.after === "string")) return bad(raw_input, provider, "MALFORMED_INTERPRETATION", "The interpreter returned invalid temporal ordering.");
   if (value.clarification_required) {
     if (!only(value.clarification, new Set(["question", "candidate_reference_labels"])) || typeof value.clarification.question !== "string" || !strings(value.clarification.candidate_reference_labels)) return bad(raw_input, provider, "MALFORMED_INTERPRETATION", "The interpreter returned an unsafe clarification.");
+    if (containsForbiddenTerminology(value.clarification.question)) return bad(raw_input, provider, "CLARIFICATION_FORBIDDEN_TERMINOLOGY", "The interpreter returned a clarification containing internal terminology.");
+    for (const label of value.clarification.candidate_reference_labels ?? []) { if (containsForbiddenTerminology(label)) return bad(raw_input, provider, "CLARIFICATION_FORBIDDEN_TERMINOLOGY", "The interpreter returned a clarification containing internal terminology."); }
   } else if (value.clarification !== null) return bad(raw_input, provider, "MALFORMED_INTERPRETATION", "The interpreter returned an invalid clarification.");
   return { ...value, raw_input, provenance: { provider, request_id, schema_version: INTENT_VERSION } };
 }

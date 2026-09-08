@@ -333,6 +333,15 @@ function inspect(state, definition, target) {
   if (!query || /room|area|around|orient|location/.test(query)) return { ok: true, narration: locationObservation(state, definition) };
   const matches = (location.landmarks ?? []).filter((item) => [item.id, item.name, ...(item.aliases ?? [])].some((alias) => query === String(alias).toLowerCase() || query.includes(String(alias).toLowerCase())));
   if (matches.length === 1) return { ok: true, narration: matches[0].inspection ?? matches[0].observation };
+  if (matches.length > 1) {
+    const exact = matches.find((item) => [item.id, item.name, ...(item.aliases ?? [])].some((alias) => query === String(alias).toLowerCase()));
+    if (exact) return { ok: true, narration: exact.inspection ?? exact.observation };
+  }
+  const markerMatches = (state.route_markers ?? []).filter((m) => m.location === location.id && [m.id, m.label, ...(m.aliases ?? [])].some((alias) => query === String(alias).toLowerCase() || query.includes(String(alias).toLowerCase()) || String(alias).toLowerCase().includes(query)));
+  if (markerMatches.length >= 1) {
+    const exactMarker = markerMatches.find((m) => [m.id, m.label, ...(m.aliases ?? [])].some((alias) => query === String(alias).toLowerCase())) ?? markerMatches[0];
+    return { ok: true, narration: exactMarker.description ?? `${exactMarker.label}. It indicates: ${exactMarker.direction}.` };
+  }
   const exit = visibleExits(state, definition).find((item) => item.aliases.some((alias) => query.includes(alias)));
   if (exit) return { ok: true, narration: `${exitSentence(exit)} ${exit.hazard && exit.hazard !== "clear" ? `Its recorded route condition is ${exit.hazard}.` : "No obstruction is visible from here."}` };
   return { ok: false, reason: `Nothing matching that description is visible in the ${location.name.toLowerCase()}.` };

@@ -20,12 +20,14 @@ const TRIGGERS = Object.freeze({
   COWORKER_REQUEST: "COWORKER_REQUEST",
   BLOCKED_ROUTE: "BLOCKED_ROUTE",
   PROLONGED_IDLE: "PROLONGED_IDLE",
-  REMEMBERED_COMMITMENT: "REMEMBERED_COMMITMENT"
+  REMEMBERED_COMMITMENT: "REMEMBERED_COMMITMENT",
+  OUTPOST_DELIVERY_FEASIBLE: "OUTPOST_DELIVERY_FEASIBLE"
 });
 
 const TRIGGER_PRIORITIES = Object.freeze({
   [TRIGGERS.HAZARD_DETECTED]: 10,
   [TRIGGERS.EQUIPMENT_ISSUE]: 9,
+  [TRIGGERS.OUTPOST_DELIVERY_FEASIBLE]: 8,
   [TRIGGERS.TASK_BLOCKED]: 8,
   [TRIGGERS.LOST_CONTACT]: 7,
   [TRIGGERS.CLARIFICATION_NEED]: 6,
@@ -236,6 +238,27 @@ function evaluateOpportunities(run, spatialDefinition = {}, world = null) {
         at: interval
       });
     }
+
+    // 10. OUTPOST_DELIVERY_FEASIBLE
+    if (memberLoc === "outpost-a" && !run.expedition?.day1_opener?.delivery_completed) {
+      const heldDuffle = held.find((item) => item.id === "startup-materials-duffle" || item.definition_id === "startup-materials-duffle" || item.type === "startup-materials-duffle");
+      if (heldDuffle) {
+        const isFirstArrival = !member.delivery_opportunity_noted;
+        opportunities.push({
+          id: `opp-${id}-${TRIGGERS.OUTPOST_DELIVERY_FEASIBLE}-${interval}`,
+          member_id: id,
+          member_name: member.first_name ?? member.display_name,
+          trigger: TRIGGERS.OUTPOST_DELIVERY_FEASIBLE,
+          priority: TRIGGER_PRIORITIES[TRIGGERS.OUTPOST_DELIVERY_FEASIBLE],
+          reason: `At Outpost A with startup materials duffle.`,
+          confidence: 1.0,
+          suggested_action: isFirstArrival ? "delivery-opportunity" : "deliver-startup-materials",
+          item_id: heldDuffle.id,
+          location: memberLoc,
+          at: interval
+        });
+      }
+    }
   }
 
   // Sort descending by priority
@@ -382,6 +405,68 @@ function scheduleDecisions(run, spatialDefinition = {}, world = null) {
         at: interval,
         result: "recorded"
       };
+    } else if (opp.trigger === TRIGGERS.OUTPOST_DELIVERY_FEASIBLE) {
+      if (opp.suggested_action === "delivery-opportunity" && !member.ordered_to_deliver) {
+        member.delivery_opportunity_noted = true;
+        member.current_intent = "awaiting drop order for startup materials at Outpost A";
+        decision = {
+          member_id: opp.member_id,
+          trigger: opp.trigger,
+          action: "delivery-opportunity-observed",
+          reason: opp.reason,
+          at: interval,
+          result: "opportunity-noted"
+        };
+        presentationBus.emit(run, {
+          type: presentationBus.EVENT_TYPES.DIALOGUE,
+          source: presentationBus.SOURCES.DETERMINISTIC,
+          speaker: member.display_name ?? member.personnel_id,
+          text: "We're at Outpost A. Ready to unload the materials duffle when instructed."
+        });
+      } else {
+        const itemId = opp.item_id || "startup-materials-duffle";
+        const targetEq = run.expedition?.equipment?.[itemId]
+          ?? Object.values(run.expedition?.equipment ?? {}).find((i) => i.id === itemId || i.instance_id === itemId || i.type === "startup-materials-duffle" || i.template === "startup-materials-duffle" || i.definition_id === "startup-materials-duffle");
+        if (targetEq) {
+          targetEq.holder = null;
+          targetEq.current_holder = null;
+          targetEq.location = "outpost-a";
+          targetEq.current_location = "outpost-a";
+          targetEq.condition = "dropped";
+          targetEq.state = "dropped";
+          targetEq.history ??= [];
+          targetEq.history.push({ event: "delivered-at-outpost", holder: null, location: "outpost-a", by: opp.member_id });
+        }
+        const authItem = run.expedition?.logistics?.items?.[itemId]
+          ?? Object.values(run.expedition?.logistics?.items ?? {}).find((i) => i.id === itemId || i.instance_id === itemId || i.definition_id === "startup-materials-duffle" || i.template === "startup-materials-duffle");
+        if (authItem) {
+          authItem.current_holder = null;
+          authItem.current_container = null;
+          authItem.current_location = "outpost-a";
+          authItem.condition = "dropped";
+          authItem.history ??= [];
+          authItem.history.push({ sequence: authItem.history.length + 1, action: "DROP", actor: opp.member_id, location: "outpost-a", at: interval });
+        }
+        if (run.expedition?.day1_opener) {
+          run.expedition.day1_opener.delivery_completed = true;
+        }
+        member.current_task = { type: "hold", state: "active", target: "outpost-a" };
+        member.current_intent = "startup materials delivered at Outpost A";
+        decision = {
+          member_id: opp.member_id,
+          trigger: opp.trigger,
+          action: "deliver-startup-materials",
+          reason: opp.reason,
+          at: interval,
+          result: "delivered"
+        };
+        presentationBus.emit(run, {
+          type: presentationBus.EVENT_TYPES.DIALOGUE,
+          source: presentationBus.SOURCES.DETERMINISTIC,
+          speaker: member.display_name ?? member.personnel_id,
+          text: "I've set the startup materials duffle down beside the folding tables."
+        });
+      }
     }
 
     if (decision) {

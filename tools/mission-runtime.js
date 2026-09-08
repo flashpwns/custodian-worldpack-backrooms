@@ -244,7 +244,15 @@ function compare(value, condition) {
 function playerId(context) { return context.player ?? context.run?.session?.startup?.player?.observer_id ?? null; }
 function objectRecord(context, id) { return context.run?.object_state?.objects?.[id] ?? null; }
 function evidenceMatches(item, condition) { return item?.valid !== false && (!condition.source_object || item.source_object === condition.source_object) && (!condition.type || item.type === condition.type) && (!condition.condition_fingerprint || item.condition_fingerprint === condition.condition_fingerprint); }
-function equipmentRecord(context, condition) { return context.run?.expedition?.equipment?.[condition.equipment_id] ?? Object.values(context.run?.expedition?.equipment ?? {}).find((item) => !condition.capability || item.capability === condition.capability) ?? null; }
+function equipmentRecord(context, condition) {
+  if (condition.equipment_id) {
+    return context.run?.expedition?.equipment?.[condition.equipment_id] ?? null;
+  }
+  if (condition.capability) {
+    return Object.values(context.run?.expedition?.equipment ?? {}).find((item) => item.capability === condition.capability) ?? null;
+  }
+  return null;
+}
 function personnelRecords(context, condition) {
   const members = context.run?.expedition?.team?.members ?? [];
   const player = playerId(context);

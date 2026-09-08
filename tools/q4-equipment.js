@@ -15,7 +15,10 @@ const DEFINITIONS = Object.freeze({
   "spare-film": { type: "35mm-film", label: "Spare film roll", model: "35mm documentation film", capability: "photographic documentation", consumable: { kind: "film exposures", remaining: 24 } },
   "route-marker-kit": { type: "route-marker-kit", label: "Numbered route-marker kit", model: "adhesive numbered survey tabs", capability: "route marking", consumable: { kind: "numbered tabs", remaining: 4 } },
   "evidence-sleeves": { type: "evidence-sleeves", label: "Sealable evidence sleeves", model: "numbered archival sleeves", capability: "evidence containment", consumable: { kind: "sleeves", remaining: 4 } },
-  "spare-battery": { type: "spare-battery", label: "Spare instrument battery", model: "sealed field battery", capability: "equipment replenishment", consumable: { kind: "battery", remaining: 1 } }
+  "spare-battery": { type: "spare-battery", label: "Spare instrument battery", model: "sealed field battery", capability: "equipment replenishment", consumable: { kind: "battery", remaining: 1 } },
+  "field-camera": { type: "35mm-camera", label: "35mm field camera", model: "manual 35mm documentation camera", capability: "photographic documentation", consumable: { kind: "film exposures", remaining: 12 } },
+  "startup-materials-duffle": { type: "startup-materials-duffle", label: "Startup materials duffle", model: "heavy canvas startup materials duffle", capability: "prerequisite material transport", consumable: { kind: "materials contents", remaining: "sealed" } },
+  "layout-record": { type: "layout-record", label: "Manifestation layout record", model: "field clipboard and layout record sheets", capability: "layout documentation", consumable: { kind: "record sheets", remaining: 10 } }
 });
 const clone = (value) => structuredClone(value);
 // Display fallback for migrated v1 saves only; new holders are resolved from
@@ -41,9 +44,24 @@ function prepare(world, run_id, { player, peer = null, assistant = null, coworke
   const optional = Object.fromEntries(OPTIONAL.map((key) => { const id = `q4-${key}-stores`; world.q4_equipment ??= {}; world.q4_equipment[id] ??= createItem(world, key, { owner: "q4-stores", holder: "q4-stores", container: "optional stores", location: "staging locker", id }); return [key, clone(world.q4_equipment[id])]; }));
   const people = coworkers.length ? coworkers : [peer, assistant].filter(Boolean);
   const roleHolder = (pattern, fallback = player) => people.find((person) => pattern.test(String(person.role ?? "")))?.identity ?? people.find((person) => typeof person === "string") ?? fallback;
-  const holders = { "field-light": player, "recording-device": roleHolder(/documentation/i), "survey-instrument": roleHolder(/survey technician/i), "survey-radio": player };
+  const isOpenerLoadout = required_keys.includes("startup-materials-duffle");
+  const holders = isOpenerLoadout ? {
+    "field-light": player,
+    "recording-device": player,
+    "field-camera": player,
+    "survey-instrument": roleHolder(/survey technician/i),
+    "survey-radio": player,
+    "startup-materials-duffle": roleHolder(/technician|intern/i, people[1]?.identity ?? player),
+    "layout-record": roleHolder(/doctor|medical/i, people[2]?.identity ?? player)
+  } : {
+    "field-light": player,
+    "recording-device": roleHolder(/documentation/i),
+    "field-camera": roleHolder(/documentation/i),
+    "survey-instrument": roleHolder(/survey technician/i),
+    "survey-radio": player
+  };
   for (const [key, item] of Object.entries(required)) { const holder = holders[key] ?? player; item.assigned_to = holder; item.holder = holder; item.container = "field case"; item.location = "staging locker"; if (holder !== player) item.history.push({ event: "assigned-to-team-member", holder, location: item.location }); }
-  return { required, optional, player, peer: holders["survey-instrument"], assistant: holders["recording-device"], coworkers: people.map((person) => person.identity ?? person) };
+  return { required, optional, player, peer: holders["survey-instrument"] ?? people[0]?.identity ?? null, assistant: holders["recording-device"] ?? holders["field-camera"] ?? people[1]?.identity ?? null, coworkers: people.map((person) => person.identity ?? person) };
 }
 function expeditionEquipment(loadout, player) {
   const values = loadout?.required ?? {};
@@ -81,11 +99,21 @@ function transfer(expedition, key, from, to, location = "with the field kit") {
   const item = expedition.equipment?.[key]; if (!item) return { ok: false, code: "EQUIPMENT_UNKNOWN" };
   if (item.holder !== from) return { ok: false, code: "EQUIPMENT_NOT_ACCESSIBLE" };
   if (!stateUsable(item)) return { ok: false, code: "EQUIPMENT_UNAVAILABLE" };
+  const opener = Boolean(expedition?.day1_opener) || expedition?.scenario === "day1-opener" || expedition?.scenario === "async-clear-q4-day1-opener" || expedition?.loadout?.hard_capacity_per_person === 2;
+  if (opener) {
+    const toCarried = Object.values(expedition.equipment ?? {}).filter((i) => i.holder === to && stateUsable(i)).length;
+    if (toCarried >= 2) return { ok: false, code: "PERSONNEL_CAPACITY_EXCEEDED", public_reason: "Every employee may carry a maximum of 2 mission equipment items." };
+  }
   item.holder = to; item.assigned_to = to; item.location = location; item.history ??= []; item.history.push({ event: "handed-over", from, to, location }); return { ok: true, item: clone(item) };
 }
 function selectOptional(expedition, key, holder) {
   const item = expedition.optional_stores?.[key];
   if (!item || item.holder !== "q4-stores") return { ok: false, code: "OPTIONAL_STORE_UNAVAILABLE" };
+  const opener = Boolean(expedition?.day1_opener) || expedition?.scenario === "day1-opener" || expedition?.scenario === "async-clear-q4-day1-opener" || expedition?.loadout?.hard_capacity_per_person === 2;
+  if (opener) {
+    const holderCarried = Object.values(expedition.equipment ?? {}).filter((i) => i.holder === holder && stateUsable(i)).length;
+    if (holderCarried >= 2) return { ok: false, code: "PERSONNEL_CAPACITY_EXCEEDED", public_reason: "Every employee may carry a maximum of 2 mission equipment items." };
+  }
   item.holder = holder; item.assigned_to = holder; item.container = "field case"; item.location = "staging locker"; item.history ??= []; item.history.push({ event: "selected-from-stores", holder, location: item.location }); expedition.equipment[key] = item; delete expedition.optional_stores[key]; return { ok: true, item: clone(item) };
 }
 function syncWorld(world, expedition) { if (!world || !expedition?.equipment) return; world.q4_equipment ??= {}; for (const item of Object.values(expedition.equipment)) world.q4_equipment[item.id] = clone(item); }

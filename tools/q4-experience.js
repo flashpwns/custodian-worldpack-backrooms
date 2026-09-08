@@ -26,6 +26,7 @@ const standardOperator = require("./q4-standard-operator");
 const environmentModel = require("./q4-environment");
 const outcomes = require("./q4-outcome-authority");
 const { facilityOperationsProjection } = require("./expedition");
+const cq4Day1Opener = require("./cq4-day1-opener");
 const cloneUpdates = (value) => structuredClone(value ?? []);
 
 const VERSION = "yellow-beast-clear-q4-experience@v3";
@@ -155,6 +156,8 @@ const evidence = (expedition?.evidence ?? []).map((item) => ({ id: item.id, miss
     phase: phase.phase_id,
     facility,
     briefing: copy[phase.phase_id],
+    scenario: run.scenario ?? null,
+    day1_opener: cq4Day1Opener.isOpener(run.scenario),
     mission: mission?.objective?.primary ?? expedition?.order?.primary ?? null,
     mission_record: mission ? { id: mission.id, display_id: mission.display_id ?? mission.id.replace(/^CQ4-[A-Z-]+-/, "CQ4-").replace(/-[A-Z0-9]{4,}$/, ""), family: mission.family_label, rationale: diegeticText(mission.rationale), site: mission.site, objective: mission.objective, reporting: { ...mission.reporting, summary: diegeticText(mission.reporting?.summary) }, expected_duration: mission.expected_duration, risks: mission.risks, prior_history: mission.prior_history, status: missionProgress?.lifecycle ?? mission.status } : null,
     display_mission: mission?.objective?.primary ?? "Review the assigned field work and return with a field record.",

@@ -64,6 +64,7 @@ function normalizeItem(key, legacy, definition = {}) {
     id: key,
     instance_id: legacy?.id ?? `item-${digest([key, definition.id])}`,
     definition_id: definition.id ?? legacy?.type ?? key,
+    template: definition.id ?? legacy?.type ?? key,
     display_name: definition.display_name ?? legacy?.label ?? key,
     category: definition.category ?? legacy?.type ?? "equipment",
     capabilities: clone(definition.capabilities ?? [legacy?.capability].filter(Boolean)),
@@ -90,7 +91,7 @@ function normalizeItem(key, legacy, definition = {}) {
   };
 }
 function createState(definition, context = {}) {
-  validateDefinition(definition, { personnel_roles: (context.team ?? []).map((member) => member.role) });
+  validateDefinition(definition, { personnel_roles: context.personnel_roles ?? [] });
   const definitions = Object.fromEntries(definition.item_definitions.map((item) => [item.id, item]));
   const state = { version: STATE_VERSION, worldpack_id: definition.worldpack_id, revision: 0, items: {}, containers: {}, required: clone(definition.loadout.required ?? []), optional: clone(definition.loadout.optional ?? []), selected_optional: [], transaction_history: [], reconciliation_history: [], migrated_from: null };
   for (const spec of definition.containers) state.containers[spec.id] = { id: spec.id, display_name: spec.display_name, kind: spec.kind, capacity: spec.capacity, allowed_categories: clone(spec.allowed_categories), open: spec.initial_open !== false, accessible: spec.initial_accessible !== false, current_holder: spec.holder === "player" ? context.player : spec.holder === "institution" ? "institutional-stores" : null, current_location: spec.location ?? null, parent_container: spec.parent_container ?? null, contents: [], lost: false, history: [] };
@@ -163,6 +164,21 @@ function transact(expedition, definition, request, context = {}) {
   if (action === "DEACTIVATE") { item.active = false; summary = `${item.display_name} deactivated.`; }
   if (["USE", "CONSUME"].includes(action)) { const amount = Math.max(1, Number(request.quantity ?? 1)); if (Number.isInteger(item.charges)) { if (item.charges < amount) return unavailable("ITEM_DEPLETED", "The item does not have enough remaining charge."); item.charges -= amount; } else if (item.quantity >= amount && item.consumable) item.quantity -= amount; if ((item.charges === 0 || item.quantity === 0) && item.consumable) item.condition = "depleted"; summary = `${item.display_name} ${action === "USE" ? "used" : "consumed"}.`; }
   if (action === "REPLENISH") { const source = resolveItem(draft, request.source_item_id); if (!source || source.current_holder !== actor || !source.consumable || source.quantity < 1 || !["operational", "serviceable"].includes(source.condition) || (Number.isInteger(source.charges) && source.charges < 1) || item.maximum_charges === null || !source.replenishes_definitions.includes(item.definition_id)) return unavailable("REPLENISHMENT_UNAVAILABLE", "A compatible carried supply is required."); item.charges = item.maximum_charges; if (item.condition === "depleted") item.condition = "operational"; source.quantity -= 1; if (Number.isInteger(source.charges)) source.charges = 0; if (source.quantity === 0 || source.charges === 0) source.condition = "depleted"; summary = `${item.display_name} replenished.`; }
+  const hardCapacity = context.hard_capacity_per_person ?? context.capacity_limit ?? (Boolean(expedition?.day1_opener) ? 2 : null) ?? (context.scenario === "day1-opener" || context.scenario === "async-clear-q4-day1-opener" || expedition?.scenario === "day1-opener" || expedition?.scenario === "async-clear-q4-day1-opener" ? 2 : null) ?? (expedition?.loadout?.hard_capacity_per_person) ?? (definition.assigned_manifest?.hard_capacity_per_person);
+  if (hardCapacity === 2) {
+    let recipientPerson = null;
+    if (["HAND_OVER", "RECEIVE", "ASSIGN"].includes(action)) {
+      recipientPerson = action === "RECEIVE" ? actor : request.target_holder;
+    } else if (["RETRIEVE", "CARRY", "RECOVER"].includes(action)) {
+      recipientPerson = actor;
+    }
+    if (recipientPerson && recipientPerson !== "institutional-stores" && item.current_holder !== recipientPerson) {
+      const currentCarried = Object.values(draft.items).filter((i) => i.id !== item.id && i.current_holder === recipientPerson && !["dropped", "lost", "abandoned", "destroyed"].includes(i.condition)).length;
+      if (currentCarried + 1 > 2) {
+        return unavailable("PERSONNEL_CAPACITY_EXCEEDED", "Every employee may carry a maximum of 2 mission equipment items.");
+      }
+    }
+  }
   if (["HAND_OVER", "RECEIVE", "ASSIGN"].includes(action)) { const target = request.target_holder; if (!target || !holderPresent || !sameLocation(context, actor, target)) return unavailable("TRANSFER_OUT_OF_RANGE", "Both people must share confirmed speaking range for a physical transfer."); if (action !== "RECEIVE" && item.current_holder !== actor) return unavailable("ITEM_NOT_IN_CUSTODY", "The current holder must participate in the transfer."); if (action === "RECEIVE" && item.current_holder !== target) return unavailable("TRANSFER_HOLDER_MISMATCH", "The declared holder does not possess that item."); const from = item.current_holder; const to = action === "RECEIVE" ? actor : target; item.current_holder = to; item.assigned_owner = action === "ASSIGN" ? to : item.assigned_owner; item.current_container = Object.values(draft.containers).find((entry) => entry.current_holder === to && entry.kind === "personal")?.id ?? null; item.current_location = actorLocation(context, to); item.equipped = false; summary = `${item.display_name} transferred from ${holderLabel(context, from)} to ${holderLabel(context, to)}.`; }
   if (["STORE", "PLACE"].includes(action)) { const container = draft.containers[request.target_container]; if (!containerAccess(draft, container, actor, context)) return unavailable("CONTAINER_INACCESSIBLE", "Open and reach the container before storing the item."); if (!possessed) return unavailable("ITEM_NOT_IN_CUSTODY", "The item must be in your custody first."); if (!container.allowed_categories.includes("*") && !container.allowed_categories.includes(item.category)) return unavailable("CONTAINER_CATEGORY_REJECTED", "That container is not rated for this item."); if (capacityUsed(draft, container.id, item.id) + item.capacity_contribution * item.quantity > container.capacity) return unavailable("CONTAINER_CAPACITY_EXCEEDED", "The container does not have enough remaining capacity."); item.current_holder = container.current_holder ?? actor; item.current_container = container.id; item.current_location = container.current_location ?? location; item.equipped = false; summary = `${item.display_name} stored in ${container.display_name}.`; }
   if (["RETRIEVE", "CARRY"].includes(action)) { const source = item.current_container ? draft.containers[item.current_container] : null; if (source && !containerAccess(draft, source, actor, context)) return unavailable("CONTAINER_INACCESSIBLE", "Open and reach the container before retrieving the item."); if (!source && item.current_location !== location) return unavailable("ITEM_OUT_OF_RANGE", "Reach the item's confirmed location before carrying it."); item.current_holder = actor; item.current_container = Object.values(draft.containers).find((entry) => entry.current_holder === actor && entry.kind === "personal")?.id ?? null; item.current_location = location; item.condition = item.condition === "dropped" ? "operational" : item.condition; summary = `${item.display_name} is now carried.`; }

@@ -103,8 +103,37 @@ async function developerConsole() {
 }
 function personnelCreation() {
   requestGate.invalidate();
-  app.innerHTML = `<section class="shell narrow personnel-creation" data-testid="q4-personnel-creation"><p class="eyebrow">ASYNC · PERSONNEL ENTRY</p><h1>Create your ASYNC personnel record.</h1><p>This record identifies the person you control in Clear-Q4. ASYNC assigns the field role and Q4 clearance; you do not choose mission or stats.</p><form id="personnel-creation-form"><label>First name <input name="first_name" autocomplete="given-name" required maxlength="40" autofocus></label><label>Last name <input name="last_name" autocomplete="family-name" required maxlength="60"></label><button type="submit">Create Personnel Record</button></form><p id="personnel-message" role="status"></p></section>`;
-  document.querySelector("#personnel-creation-form").addEventListener("submit", async (event) => { event.preventDefault(); const data = new FormData(event.currentTarget); const message = document.querySelector("#personnel-message"); try { const created = await yellowBeast.createQ4Personnel({ world_id:current.world.id, first_name:data.get("first_name"), last_name:data.get("last_name") }); if (resultIsError(created)) { message.textContent = created.error.message; document.querySelector("input[name=first_name]")?.focus(); return; } personnelConfirmation(created.player); } catch (_) { message.textContent = "The personnel record could not be saved. Your field file remains unchanged."; document.querySelector("input[name=first_name]")?.focus(); } });
+  app.innerHTML = `<section class="shell narrow personnel-creation async-document" data-testid="q4-personnel-creation"><header class="document-header"><p class="eyebrow">A-SYNC RESEARCH INSTITUTE · PERSONNEL DIVISION</p><div class="redacted-clause" aria-hidden="true">████████████████████████████████████████</div></header><h1>Create your ASYNC personnel record.</h1><p>This record identifies the person you control in Clear-Q4. ASYNC assigns the field role and Q4 clearance; you do not choose mission or stats.</p><div class="redacted-clause sub-clause" aria-hidden="true">████████████████████████████████████████████████████</div><form id="personnel-creation-form"><label>First name <input name="first_name" autocomplete="given-name" required maxlength="40" autofocus></label><label>Last name <input name="last_name" autocomplete="family-name" required maxlength="60"></label><button type="submit">Create Personnel Record</button></form><p id="personnel-message" role="status"></p></section>`;
+  document.querySelector("#personnel-creation-form").addEventListener("submit", async (event) => {
+    event.preventDefault();
+    const data = new FormData(event.currentTarget);
+    const message = document.querySelector("#personnel-message");
+    let first_name = (data.get("first_name") || "").trim();
+    let last_name = (data.get("last_name") || "").trim();
+    if (!last_name && first_name.includes(",")) {
+      const parts = first_name.split(",").map((s) => s.trim());
+      last_name = parts[0] || "";
+      first_name = parts[1] || "";
+    }
+    try {
+      const created = await yellowBeast.createQ4Personnel({ world_id: current.world.id, first_name, last_name });
+      if (resultIsError(created)) {
+        message.textContent = created.error.message;
+        document.querySelector("input[name=first_name]")?.focus();
+        return;
+      }
+      const section = document.querySelector(".personnel-creation");
+      if (section) {
+        section.classList.add("document-lift-away");
+        setTimeout(() => personnelConfirmation(created.player), 300);
+      } else {
+        personnelConfirmation(created.player);
+      }
+    } catch (_) {
+      message.textContent = "The personnel record could not be saved. Your field file remains unchanged.";
+      document.querySelector("input[name=first_name]")?.focus();
+    }
+  });
 }
 function personnelConfirmation(player) {
   app.innerHTML = `<section class="shell narrow personnel-confirmation" data-testid="q4-personnel-confirmation"><p class="eyebrow">ASYNC · PERSONNEL RECORD CREATED</p><h1>Personnel record created</h1><section class="personnel-record-card"><span class="portrait-slot badge-portrait-fallback" aria-hidden="true">${escape((player.first_name ?? "?")[0])}</span><h2>${escape(player.display_name)}</h2><p>${escape(player.role)} · Clearance ${escape(player.clearance)}</p><p>Status: Active</p></section><p>You are ${escape(player.display_name)}.</p><button type="button" data-action="personnel-confirm-continue">Continue to Assignment Briefing</button></section>`;
@@ -175,8 +204,9 @@ function play(message = "", state = "") {
     ? `<textarea name="text" rows="6" autocomplete="off" placeholder="${escape(naturalPlaceholder)}">${escape(draft)}</textarea>`
     : `<input type="text" name="text" autocomplete="off" placeholder="${escape(naturalPlaceholder)}" value="${escape(draft)}">`;
   const natural = q4Prefield ? "" : `<section class="action-dock natural-action" data-testid="natural-primary"><div>${isReport ? `<p class="eyebrow">EXPEDITION REPORT</p>` : `<p class="eyebrow">ACTION</p>`}<h2>${escape(naturalHeading)}</h2></div><form id="natural-form"><label><span class="sr-only">${isReport ? "Written expedition account" : "Describe what you are trying to do"}</span>${naturalControl}</label><button type="submit">${escape(submitButtonLabel)}</button></form><p>${escape(naturalInstruction)}</p></section>`;
+  const isOpener = projection.q4?.scenario === "day1-opener" || projection.q4?.scenario === "clear-q4-day1-opener" || projection.q4?.scenario === "async-clear-q4-day1-opener" || Boolean(projection.q4?.day1_opener);
   const prefieldDirect = q4Prefield ? projection.available_actions.find((action) => !action.target_required && action.type !== "WAIT") : null;
-  const prefieldLabel = prefieldDirect?.type === "READY" && projection.phase?.phase_id === "THRESHOLD" ? "Begin radio procedure" : prefieldDirect ? YBSurfaces.actionLabel(prefieldDirect.type) : "Establish the required Standard exchange";
+  const prefieldLabel = prefieldDirect?.type === "READY" && projection.phase?.phase_id === "THRESHOLD" ? "Begin radio procedure" : (prefieldDirect?.type === "CROSS" && isOpener) ? "CLEARED; CROSS?" : prefieldDirect ? YBSurfaces.actionLabel(prefieldDirect.type, isOpener) : "Establish the required Standard exchange";
   const prefieldAction = q4Prefield ? `<section class="action-dock natural-action prefield-action" data-testid="prefield-primary"><div><p class="eyebrow">CURRENT DECISION</p><h2>${escape(prefieldLabel)}</h2></div>${prefieldDirect ? `<button type="button" class="primary-action" data-game-action="${escape(prefieldDirect.type)}">${escape(prefieldLabel)}</button>` : `<p>Use STANDARD in the communications panel to continue.</p>`}<p>${prefieldDirect ? "This advances the recorded expedition phase." : "No physical turn is available until the radio procedure is complete."}</p></section>` : "";
   const retry = state === "application-error" ? `<button type="button" data-action="refresh-view">Refresh view</button>` : "";
   const hideStructured = q4Prefield || isReport || projection.available_actions.length === 0;
@@ -297,6 +327,51 @@ function play(message = "", state = "") {
   app.querySelectorAll("[data-q4-handoff]").forEach((item) => item.addEventListener("click", () => { if (typeof YBAudio !== "undefined") YBAudio.emitHook("ui_select"); submitTurn("structured", () => yellowBeast.submitQ4Handoff({ world_id:current.world.id, item_id:item.dataset.q4Handoff, target:item.dataset.q4HandoffTarget || null })); }));
   app.querySelectorAll("[data-logistics-action]").forEach((control) => control.addEventListener("click", () => { if (typeof YBAudio !== "undefined") YBAudio.emitHook("ui_select"); submitTurn("structured", () => yellowBeast.submitQ4Logistics({ world_id:current.world.id, action:control.dataset.logisticsAction, item_id:control.dataset.logisticsItem || null, container_id:control.dataset.logisticsContainerId || null, target_holder:control.dataset.logisticsHolder || null, target_container:control.dataset.logisticsContainer || null, source_item_id:control.dataset.logisticsSource || null })); }));
   app.querySelectorAll("[data-evidence-render]").forEach((item) => item.addEventListener("click", () => { if (typeof YBAudio !== "undefined") YBAudio.emitHook("ui_select"); submitTurn("presentation", () => yellowBeast.renderEvidence({ world_id:current.world.id, evidence_id:item.dataset.evidenceRender, retry:item.dataset.evidenceRetry === "true" })); }));
+  app.querySelectorAll("[data-q4-check-in]").forEach((button) => {
+    let holdActive = false;
+    let holdTimer = null;
+    const startHold = (e) => {
+      e.preventDefault();
+      holdActive = true;
+      button.classList.add("check-in-holding");
+      button.textContent = "Holding for Standard Check-In (2s)...";
+      if (typeof YBAudio !== "undefined") YBAudio.emitHook("ui_select");
+      yellowBeast.beginQ4CheckInHold({ world_id: current.world.id });
+      holdTimer = setTimeout(() => {
+        if (holdActive) {
+          button.textContent = "2s Reached — Release to Transmit";
+        }
+      }, 2000);
+    };
+    const cancelHold = (e) => {
+      if (!holdActive) return;
+      holdActive = false;
+      if (holdTimer) { clearTimeout(holdTimer); holdTimer = null; }
+      button.classList.remove("check-in-holding");
+      button.textContent = "Hold for Standard Check-In (2s)";
+      yellowBeast.cancelQ4CheckInHold({ world_id: current.world.id });
+    };
+    const finishHold = (e) => {
+      if (!holdActive) return;
+      holdActive = false;
+      if (holdTimer) { clearTimeout(holdTimer); holdTimer = null; }
+      button.classList.remove("check-in-holding");
+      button.textContent = "Hold for Standard Check-In (2s)";
+      submitTurn("communication", async () => {
+        const res = await yellowBeast.completeQ4CheckInHold({ world_id: current.world.id });
+        if (!resultIsError(res)) {
+          if (typeof YBAudio !== "undefined") YBAudio.emitHook("radio_chirp");
+        }
+        return res;
+      });
+    };
+    button.addEventListener("mousedown", startHold);
+    button.addEventListener("touchstart", startHold, { passive: false });
+    button.addEventListener("mouseup", finishHold);
+    button.addEventListener("touchend", finishHold);
+    button.addEventListener("mouseleave", cancelHold);
+    button.addEventListener("touchcancel", cancelHold);
+  });
   const recap = document.querySelector("#recap-panel"); if (recap) { recap.open = presentation.panel(context) === "recap"; recap.addEventListener("toggle", () => presentation.setPanel(context, recap.open ? "recap" : "")); }
   document.querySelector("[data-guidance-dismiss]")?.addEventListener("click", async () => { current.guidanceDismissed = true; await yellowBeast.updateSettings({ settings:{ guided_introductions:false } }); play(message, state); });
   document.querySelector("[data-guidance-show]")?.addEventListener("click", async () => { current.guidanceDismissed = false; await yellowBeast.updateSettings({ settings:{ guided_introductions:true } }); play(message, state); });

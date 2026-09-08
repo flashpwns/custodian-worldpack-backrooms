@@ -33,6 +33,7 @@ const environment = require("./q4-environment");
 const phenomenonEcology = require("./q4-phenomenon-ecology");
 const personnelContinuity = require("./q4-personnel-continuity");
 const referenceExpedition = require("./reference-expedition");
+const cq4Day1Opener = require("./cq4-day1-opener");
 const canonicalLedger = require("./canonical-world-ledger");
 
 const root = path.resolve(__dirname, "..");
@@ -55,9 +56,12 @@ function interactionDefinitionFor(packId) {
 function dynamicsDefinitionFor(packId) {
   return dynamicsRuntime.load(packId, { spatial: spatialDefinitionFor(packId), equipment: logisticsDefinitionFor(packId).item_instances.map((item) => item.id) });
 }
-function logisticsDefinitionFor(packId) {
+function logisticsDefinitionFor(packId, scenario = null) {
   if (typeof packId !== "string" || !/^[a-z0-9][a-z0-9-]*$/.test(packId)) throw new Error("invalid logistics worldpack id");
   const definition = read(`data/worldpacks/${packId}/logistics.json`);
+  if (cq4Day1Opener.isOpener(scenario)) {
+    return cq4Day1Opener.logisticsDefinition(definition);
+  }
   logisticsRuntime.validateDefinition(definition, { personnel_roles: dynamicsStaffingRoles(packId) });
   return definition;
 }
@@ -124,15 +128,15 @@ function configuredPack(profileId, playerId) {
   }
   return pack;
 }
-function newRun({ profile, seed, session, expedition, staffing = null, loadout = null, mission = null, procedural_state, procedural_scenario = false, spatial_state = null, object_state = null, survey_frontier = null, interpretation_state = null, spatial_pack_id = null, world_id = null, run_id = null, world = null, phase = "BRIEFING" }) {
+function newRun({ profile, seed, session, expedition, staffing = null, loadout = null, mission = null, procedural_state, procedural_scenario = false, scenario = null, spatial_state = null, object_state = null, survey_frontier = null, interpretation_state = null, spatial_pack_id = null, world_id = null, run_id = null, world = null, phase = "BRIEFING" }) {
   const profileRecord = profileFor(profile);
   const player = session.startup.player.observer_id;
   const staffingRules = spatial_pack_id ? dynamicsDefinitionFor(spatial_pack_id).staffing : {};
-  const run = { version: "yellow-beast-run@v9", profile_id: profile, profile_title: profileRecord.title, scenario: procedural_scenario ? "async-clear-q4-procedural-survey" : session.scenario.id, seed, session, lifecycle: "active", checklist: { moved: false, inspected: false, used: false }, aliases: {}, expedition: expedition ?? (profile === FIELD_PROFILE ? fieldExpedition(player, staffing, loadout, mission, seed, staffingRules) : null), procedural: procedural_scenario ? (procedural_state ?? procedural.initialize({ seed, observer: player })) : null, spatial_pack_id: profile === FIELD_PROFILE ? spatial_pack_id : null, spatial: spatial_state, object_state, survey_frontier, interpretation_state, world_id, run_id, _world: world };
+  const run = { version: "yellow-beast-run@v9", profile_id: profile, profile_title: profileRecord.title, scenario: scenario ?? (procedural_scenario ? "async-clear-q4-procedural-survey" : session.scenario.id), seed, session, lifecycle: "active", checklist: { moved: false, inspected: false, used: false }, aliases: {}, expedition: expedition ?? (profile === FIELD_PROFILE ? fieldExpedition(player, staffing, loadout, mission, seed, staffingRules) : null), procedural: procedural_scenario ? (procedural_state ?? procedural.initialize({ seed, observer: player })) : null, spatial_pack_id: profile === FIELD_PROFILE ? spatial_pack_id : null, spatial: spatial_state, object_state, survey_frontier, interpretation_state, world_id, run_id, _world: world };
   if (run.spatial_pack_id) {
     ensureFacilityOperations(run.expedition);
-    const logisticsDefinition = logisticsDefinitionFor(run.spatial_pack_id);
-    logisticsRuntime.migrate(run.expedition, logisticsDefinition, { player, team: run.expedition.team?.members ?? [], location: run.spatial?.player_location ?? logisticsDefinition.containers.find((item) => item.kind === "staging")?.location ?? null, at: run.expedition.clock?.interval ?? 0 });
+    const logisticsDefinition = logisticsDefinitionFor(run.spatial_pack_id, run.scenario);
+    logisticsRuntime.migrate(run.expedition, logisticsDefinition, { player, team: run.expedition.team?.members ?? [], location: run.spatial?.player_location ?? logisticsDefinition.containers.find((item) => item.kind === "staging")?.location ?? null, at: run.expedition.clock?.interval ?? 0, scenario: run.scenario });
     if (world) institutionalRuntime.ensure(world, institutionalDefinitionFor(run.spatial_pack_id));
     const definition = spatialDefinitionFor(run.spatial_pack_id);
     const context = spatialContext(run);
@@ -163,26 +167,28 @@ function startRun({ profile, seed = "yellow-beast-bootstrap", scenario = null, w
   const restored = restoreSession(exportSession(result.session).envelope);
   const procedural_scenario = profile === FIELD_PROFILE && scenario === "procedural-survey";
   const reference_scenario = profile === FIELD_PROFILE && referenceExpedition.isReference(scenario);
-  const runtimeScenario = procedural_scenario ? "async-clear-q4-procedural-survey" : reference_scenario ? referenceExpedition.RUNTIME_SCENARIO : result.session.scenario.id;
+  const opener_scenario = profile === FIELD_PROFILE && cq4Day1Opener.isOpener(scenario);
+  const runtimeScenario = procedural_scenario ? "async-clear-q4-procedural-survey" : reference_scenario ? referenceExpedition.RUNTIME_SCENARIO : opener_scenario ? cq4Day1Opener.RUNTIME_SCENARIO : result.session.scenario.id;
   const run_id = world ? history.beginRun(world, { profile, scenario: runtimeScenario, seed }) : null;
   const dynamics = profile === FIELD_PROFILE && spatial_worldpack ? dynamicsDefinitionFor(spatial_worldpack) : null;
   const institution = profile === FIELD_PROFILE && world && spatial_worldpack ? institutionalRuntime.ensure(world, institutionalDefinitionFor(spatial_worldpack)) : null;
   const followUpMinimum = Math.max(0, ...(institution?.follow_up_assignments ?? []).filter((item) => item.status === "available").map((item) => item.staffing_modifier?.minimum_total ?? 0));
   const institutionalStaffing = dynamics ? { ...dynamics.staffing, minimum_total: Math.min(dynamics.staffing.maximum_total, Math.max(dynamics.staffing.minimum_total, followUpMinimum, institution?.dimensions?.staffing_posture === "reinforced" ? 4 : 0)) } : null;
-  const staffingRules = reference_scenario ? referenceExpedition.staffingRules(institutionalStaffing ?? {}) : (institutionalStaffing ?? {});
+  const staffingRules = opener_scenario ? cq4Day1Opener.staffingRules(institutionalStaffing ?? {}) : reference_scenario ? referenceExpedition.staffingRules(institutionalStaffing ?? {}) : (institutionalStaffing ?? {});
   const staffing = profile === FIELD_PROFILE && world ? q4Personnel.staffQ4(world, run_id, player, seed, staffingRules) : null;
   if (staffing && !staffing.ok) return { ok: false, error: { code: staffing.code } };
-  const assignment = profile === FIELD_PROFILE && world && !reference_scenario ? assignmentEngine.issue(world, { run_id, seed, selection_context: `${world.world_id}:${world.q4_operations?.institutional_time ?? 0}`, staffing }) : null;
+  const assignment = profile === FIELD_PROFILE && world && !reference_scenario && !opener_scenario ? assignmentEngine.issue(world, { run_id, seed, selection_context: `${world.world_id}:${world.q4_operations?.institutional_time ?? 0}`, staffing }) : null;
   if (assignment && !assignment.ok) return { ok: false, error: { code: assignment.code } };
-  const mission = profile === FIELD_PROFILE ? (reference_scenario ? referenceExpedition.mission({ run_id, seed, staffing }) : (assignment?.mission ?? q4Missions.generate({ world, run_id, seed, staffing }))) : null;
+  const mission = profile === FIELD_PROFILE ? (opener_scenario ? cq4Day1Opener.mission({ run_id, seed, staffing }) : reference_scenario ? referenceExpedition.mission({ run_id, seed, staffing }) : (assignment?.mission ?? q4Missions.generate({ world, run_id, seed, staffing }))) : null;
   if (mission && world) history.recordQ4Mission(world, run_id, mission);
   const loadout = profile === FIELD_PROFILE && world ? q4Equipment.prepare(world, run_id, { player: staffing.player.identity, coworkers: staffing.coworkers, required_keys: mission.required_equipment }) : null;
   const existing = region_id && world?.regions?.[region_id];
   let generator; try { generator = generatorFor(existing?.generator_version ?? generator_version ?? procedural.VERSION); } catch (error) { return { ok: false, error: { code: error.code ?? "GENERATOR_VERSION_UNSUPPORTED" } }; }
   const procedural_state = existing ? clone(history.restoreRegion(world, region_id).state) : (procedural_scenario && generator_version === proceduralV2.VERSION ? generator.initialize({ seed, observer: player, policy: "moderate" }) : undefined);
   if (procedural_state) { const known = procedural_state.discovery[player] ?? { spaces: [], edges: [], features: [] }; procedural_state.discovery = { [player]: { spaces: [], edges: [], features: [] } }; procedural_state.current = { [player]: Object.keys(procedural_state.nodes)[0] }; void known; }
-  const run = newRun({ profile, seed, session: result.session, staffing, loadout, mission, procedural_scenario, procedural_state, spatial_pack_id: spatial_worldpack, spatial_state: world?.q4_geography ?? null, object_state: world?.q4_object_state ?? null, survey_frontier: world?.q4_survey_frontier ?? null, world_id: world?.world_id ?? null, run_id, world });
+  const run = newRun({ profile, seed, session: result.session, scenario: runtimeScenario, staffing, loadout, mission, procedural_scenario, procedural_state, spatial_pack_id: spatial_worldpack, spatial_state: world?.q4_geography ?? null, object_state: world?.q4_object_state ?? null, survey_frontier: world?.q4_survey_frontier ?? null, world_id: world?.world_id ?? null, run_id, world });
   if (reference_scenario) { run.scenario = referenceExpedition.RUNTIME_SCENARIO; referenceExpedition.instantiate(run); }
+  if (opener_scenario) { run.scenario = cq4Day1Opener.RUNTIME_SCENARIO; cq4Day1Opener.instantiate(run); }
   return { ok: restored.ok, session: result.session, run, restored_equivalent: restored.ok && stableSerialize(restored.session) === stableSerialize(result.session), summary: { session_id: result.session.id, profile, profile_title: profileRecord.title, scenario: result.session.scenario.id, seed, player: startup.player, knowledge: startup.knowledge, permissions: startup.permissions, resources: startup.resources } };
 }
 function normalizeRun(value) {
@@ -217,6 +223,7 @@ function ensureSpatial(runValue, phase = "BRIEFING") {
   run.expedition.mission_state = missionRuntime.migrate(run.expedition.mission_state, missionDefinition, { instance_id: run.expedition.mission?.id ?? missionDefinition.mission.id, phase, legacy_objectives: legacyObjectives, at: run.expedition.clock?.interval ?? 0 });
   missionRuntime.attachCompatibilityView(run.expedition);
   operationalCycle.ensure(run, dynamicsDefinitionFor(run.spatial_pack_id));
+  if (cq4Day1Opener.isOpener(run.scenario)) cq4Day1Opener.instantiate(run);
   if (["FIELD_OPERATION", "RETURN", "DEBRIEF"].includes(phase)) objectRuntime.observeLocation(run.object_state, interactions, { observer: run.session.startup.player.observer_id, location: run.spatial.player_location, time: run.expedition?.clock?.interval ?? 0 });
   return run;
 }
@@ -415,6 +422,9 @@ function expeditionAction(run, verb, target) {
   if (verb === "COMPLETE_RETURN") {
     const definition = missionDefinitionFor(run.spatial_pack_id); const state = expedition.mission_state;
     if (!state?.return?.requested) return { ok: false, error: { code: "RETURN_NOT_REQUESTED" }, result: { public_reason: "Begin the return procedure before mission closure." }, run };
+    if (cq4Day1Opener.isOpener(run?.scenario) && !cq4Day1Opener.verifyReturn(run)) {
+      return { ok: false, error: { code: "RETURN_SURVEILLANCE_UNVERIFIED" }, result: { public_reason: "Standard surveillance has not verified the team at KV31. Contact the Control Room upstairs over the radio before re-crossing." }, run };
+    }
     expedition.mission_state.phase = "RETURN"; evaluateMissionState(run, "RETURN");
     const closure = missionRuntime.requestClosure(state, definition, { run, player }, { at: expedition.clock?.interval ?? 0 });
     if (!closure.ok) return { ok: false, error: { code: closure.code }, result: { public_reason: closure.reason }, run };

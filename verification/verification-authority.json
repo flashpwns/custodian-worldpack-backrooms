@@ -94,7 +94,11 @@
       "tests/y88-actor-multi-turn-behavioral.test.js",
       "tests/y89-consequence-cascade-proof.test.js",
       "tests/y89-presentation-bus-wiring.test.js",
-      "tests/y90-expedition-script-30turn.test.js"
+      "tests/y90-expedition-script-30turn.test.js",
+      "tests/y91-cq4-day1-opener-core.test.js",
+      "tests/y92-cq4-day1-geography-delivery.test.js",
+      "tests/y93-cq4-day1-cold-boot-persistence.test.js",
+      "tests/y94-cq4-day1-adversarial-corrective.test.js"
     ],
     "long-world": [
       "tests/profile-model.test.js",
@@ -188,7 +192,7 @@
     "tests/y16-expedition.test.js": "c5be6ab3a790c3ee9b8f4696d21f1bf90eec29998604af985e5e4f62504a0fcf",
     "tests/y165-context-closure.test.js": "3018e5d58fd6d78f35ca4c2f1eb9b168f8eeee3c0dfd8f47dee1cce6203b2c85",
     "tests/y17-procedural-complex.test.js": "fa3a7e60c522378325682653877ae052f74a2b12a6a9c29d2aa160ccd484a100",
-    "tests/y18-world-history.test.js": "2d25a941c95451006db9b842f8e9206602fc656bd1f68627f9851c37793ae73e",
+    "tests/y18-world-history.test.js": "abac503bd2b45b641d8921ab0bbc8ab48fb17c4c409f9ba555cae858f5c6fc23",
     "tests/y19-becks-desk.test.js": "0dc6abad976093c1b81075d0339a6dce0918dedc71f67b8633678aa0e9db505d",
     "tests/y20-nullzone-exposure.test.js": "ebc3682cc9a63c13c8345ff134fa0d4dcdb03eb2ca66d7a0f11d5603bee4291d",
     "tests/y21-lost.test.js": "5824fbca621df58dfda2e07c558495d1416d1bf71b4d5c296c48c34edf085ade",
@@ -276,7 +280,7 @@
     "tests/y68-verification-gate.test.js": "f7efb4562cf204cc02b89397113f58a2fed352375a48a371eca69434b23515fd",
     "tests/y69-reference-expedition.test.js": "23ef25180a2ff7654c4474e31875bd60ac02349d51fe41aefb1dc8f2b3b0b88f",
     "tests/y70-coordinated-execution.test.js": "7fdbb04d7dda67bf17835951eec0d3ae63391fb050af49ff834aac627f96c0ba",
-    "tests/y71-ai-interpreter-boundary.test.js": "cc078839087a95c6ded84b22edd60596b9a991cae857f30e7587bf21ecb62f4c",
+    "tests/y71-ai-interpreter-boundary.test.js": "ffb774a4e3e667a90f759c3aca8a21a99603e00aa7a4ddee3480f583b6728f84",
     "tests/y72-live-scene-projection.test.js": "cbbb6dfa75f5dd27498a2681f6130d94d6c602c0e6a6520315f78946bde2149c",
     "tests/y73-ai-living-turn.test.js": "6395438933eb266e9e7a5d3b77246402a2a7c3a443351b6978a40702d87cb09a",
     "tests/y75-ui-audio-spec-compliance.test.js": "71c5ed29500d5862aea97cf492430d58d1412521949ed4e8d141bfa47fdc5246",
@@ -300,11 +304,15 @@
     "tests/y88-actor-multi-turn-behavioral.test.js": "440c112b89e71f9583d6cb8ab59a3ddb3c4c151894603af8498246b864bed6f1",
     "tests/y89-consequence-cascade-proof.test.js": "8b35e98802b100fde78ffc8be5ba57c033d497e649d967ac9d246071bd3c7c2d",
     "tests/y89-presentation-bus-wiring.test.js": "1764b1b0958c322215eaed56af3d386f972ad2bd8427f09bae2fbb6ce7693b85",
-    "tests/y90-expedition-script-30turn.test.js": "916bdbda2ebceea946d6c43c3283d52abbe1f6ec96fd8891a8477e48b5b0ad41"
+    "tests/y90-expedition-script-30turn.test.js": "916bdbda2ebceea946d6c43c3283d52abbe1f6ec96fd8891a8477e48b5b0ad41",
+    "tests/y91-cq4-day1-opener-core.test.js": "8e49b71ec1637d448a88e18c39a297eccb3eb6f0d6098048a8abf8a44aeb151c",
+    "tests/y92-cq4-day1-geography-delivery.test.js": "1d9aea90383d885ce026a61d345567bbcd49519aed0b64cc7083eae86e2420c9",
+    "tests/y93-cq4-day1-cold-boot-persistence.test.js": "ac54df511f50fc867576b8483d4ff1901ba9ded3aceb7e70f62ddddfd51f2174",
+    "tests/y94-cq4-day1-adversarial-corrective.test.js": "dd8acc84eedd6d5ba26100b6fb483664cb54e5642ce00b972d2f6eacfa327a69"
   },
   "verification_core_hashes": {
     "tools/verification-inventory.js": "0f27da4645f1d85e48b52133475371bbbce55072807b6900108c3a1afd344f3b",
-    "tools/verification-runner.js": "02326366bb7800b7cb9b058947cdfe70b1fd294b6836c5dbf41dd4307a5ccb8c",
+    "tools/verification-runner.js": "4d29ca37cf88b4f6b031a31d11dedf6413280f6e17f93e7852a7f5d0177c02e4",
     "tests/y68-verification-gate.test.js": "f7efb4562cf204cc02b89397113f58a2fed352375a48a371eca69434b23515fd",
     "tests/y68-long-world-known-failures.test.js": "f47ce74ec65ba0f238dea57244bee58664115988c7905c433cfaec062d60c19c"
   },

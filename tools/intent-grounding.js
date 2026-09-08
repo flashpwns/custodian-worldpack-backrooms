@@ -2,6 +2,10 @@
 const GROUNDED_INTENT_VERSION = "yellow-beast-grounded-intent@v1";
 const SOURCES = new Set(["visible", "inventory", "memory", "discourse", "role", "phenomenon", "self"]);
 const CATEGORIES = new Set(["entity", "location", "person", "inventory", "phenomenon", "self"]);
+const FORBIDDEN_METADATA = /\b(?:canonical[_ -]?geometry|euclidean[_ -]?relation|overlap[_ -]?depth|future[_ -]?(?:event|schedule)|random[_ -]?seed|provider[_ -]?(?:model|metadata|prompt)|migration|debug|semantic[_ -]?(?:id|identifier)|canonical[_ -]?(?:family|type))\b/i;
+const FORBIDDEN_INTERNAL_ID = /\b(?:q4|yb-personnel|coordinated|open-passage|utility-room|clear-q4|actor|object|node|edge|fixture|entity)-[a-z0-9][a-z0-9:-]{3,}\b/i;
+const FORBIDDEN_ENTITY_TAXONOMY = /\b(?:still[- ]?life|bacteria)\b/i;
+function safeClarificationText(text) { const raw = String(text ?? "").replace(/^the\s+/i, "").trim(); return (FORBIDDEN_METADATA.test(raw) || FORBIDDEN_INTERNAL_ID.test(raw) || FORBIDDEN_ENTITY_TAXONOMY.test(raw)) ? "that reference" : raw; }
 const plain = (value) => Boolean(value) && typeof value === "object" && !Array.isArray(value) && Object.getPrototypeOf(value) === Object.prototype;
 const normalize = (value) => String(value ?? "").toLowerCase().replace(/\b(the|a|an|my|that|this)\b/g, " ").replace(/[^a-z0-9]+/g, " ").trim();
 const words = (value) => normalize(value).split(" ").filter(Boolean);
@@ -20,7 +24,7 @@ function candidatesFor(reference, context, discourse) {
     return queryWords.length > 0 && queryWords.every((word) => haystack.includes(word));
   });
 }
-function clarification(ambiguous) { const labels = ambiguous.candidates.map(({ label }) => label); return { reference_id: ambiguous.reference_id, question: `Which ${ambiguous.text.replace(/^the\s+/i, "")} do you mean?`, candidate_labels: labels, reason: "multiple observer-safe candidates" }; }
+function clarification(ambiguous) { const labels = ambiguous.candidates.map(({ label }) => label); return { reference_id: ambiguous.reference_id, question: `Which ${safeClarificationText(ambiguous.text)} do you mean?`, candidate_labels: labels, reason: "multiple observer-safe candidates" }; }
 function groundReference(reference, reference_id, context, discourse) {
   const candidates = candidatesFor(reference, context, discourse);
   if (candidates.length === 1) { const candidate = candidates[0]; return { kind: "grounded", value: { reference_id, text: reference.text, canonical_ref: candidate.ref, safe_label: candidate.label, source: candidate.source, category: candidate.category, match: candidate.source === "discourse" ? "contextual" : "strong" } }; }

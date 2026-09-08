@@ -20,10 +20,27 @@ const DEFAULTS = LEGACY_PERSONNEL;
 
 function displayName(person) { return person?.display_name ?? [person?.first_name, person?.last_name].filter(Boolean).join(" "); }
 function identityFor(first_name, last_name) { return `q4-player-${crypto.createHash("sha256").update(`${first_name.trim().toLowerCase()}|${last_name.trim().toLowerCase()}`).digest("hex").slice(0, 16)}`; }
-function createPlayer(world, { first_name, last_name, display_name = null } = {}) {
-  const first = typeof first_name === "string" ? first_name.trim() : "";
-  const last = typeof last_name === "string" ? last_name.trim() : "";
-  if (!/^[A-Za-z][A-Za-z' -]{1,39}$/.test(first) || !/^[A-Za-z][A-Za-z' -]{1,59}$/.test(last)) return { ok: false, code: "PLAYER_NAME_INVALID" };
+function createPlayer(world, { first_name, last_name, name, display_name = null } = {}) {
+  let first = typeof first_name === "string" ? first_name.trim() : "";
+  let last = typeof last_name === "string" ? last_name.trim() : "";
+  if (!last && first.includes(",")) {
+    const parts = first.split(",").map((s) => s.trim());
+    last = parts[0] || "";
+    first = parts[1] || "";
+  } else if (typeof name === "string" && name.includes(",")) {
+    const parts = name.split(",").map((s) => s.trim());
+    last = parts[0] || "";
+    first = parts[1] || "";
+  } else if (typeof name === "string" && !first && !last) {
+    const parts = name.trim().split(/\s+/);
+    if (parts.length >= 2) {
+      first = parts[0];
+      last = parts.slice(1).join(" ");
+    }
+  }
+  if (!/^[A-Za-z][A-Za-z' -]{1,39}$/.test(first) || !/^[A-Za-z][A-Za-z' -]{1,59}$/.test(last)) {
+    return { ok: false, code: "PLAYER_NAME_INVALID", public_reason: "PERSONNEL RECORD REJECTED: INVALID FORMAT" };
+  }
   world.q4_operations ??= { institutional_time: 0, last_review: null };
   if (world.q4_operations.controlled_player) {
     const existing = history.character(world, world.q4_operations.controlled_player);
@@ -35,7 +52,25 @@ function createPlayer(world, { first_name, last_name, display_name = null } = {}
   world.q4_operations.player_created_at = { event: "personnel-record-created" };
   return { ok: true, created: true, player: safePerson(created) };
 }
-function safePerson(person) { return person ? { identity: person.identity, first_name: person.first_name, last_name: person.last_name, display_name: displayName(person), role: person.role, clearance: person.clearance, condition: person.condition, status: person.status, current_assignment: person.current_assignment, assignment_history: person.assignment_history ?? [], qualifications: person.continuity?.qualifications ?? continuity.qualifications(person), death: person.status === "dead" ? person.death : null } : null; }
+function safePerson(person) {
+  return person ? {
+    identity: person.identity,
+    first_name: person.first_name,
+    last_name: person.last_name,
+    display_name: displayName(person),
+    role: person.role,
+    clearance: person.clearance,
+    condition: person.condition,
+    status: person.status,
+    current_assignment: person.current_assignment,
+    assignment_history: person.assignment_history ?? [],
+    qualifications: person.continuity?.qualifications ?? continuity.qualifications(person),
+    death: person.status === "dead" ? person.death : null,
+    ...(person.archetype ? { archetype: person.archetype } : {}),
+    ...(person.personality ? { personality: person.personality } : {}),
+    ...(person.primary_task ? { primary_task: person.primary_task } : {})
+  } : null;
+}
 function ensure(world, run_id, spec) {
   const existing = history.character(world, spec.identity);
   if (existing) return continuity.ensurePerson(world, run_id, spec.identity);
@@ -52,6 +87,32 @@ function assign(world, run_id, person, assignment) {
   history.event(world, run_id, "character.assignment.changed", { identity: person.identity, assignment: next }, person.authority);
   return { ok: true, person };
 }
+function ensureMaxwell(world, run_id = "institutional-setup") {
+  if (!world) return null;
+  world.characters ??= {};
+  let maxwell = history.character(world, "dr-kirk-maxwell");
+  if (!maxwell) {
+    history.instantiateCharacter(world, {
+      run_id,
+      identity: "dr-kirk-maxwell",
+      display_name: "Dr. Kirk Maxwell",
+      first_name: "Kirk",
+      last_name: "Maxwell",
+      role: "Chief Expedition Briefing Authority",
+      clearance: "Executive",
+      classification: "institutional-authority",
+      provenance: "cq4-day1-briefing-authority",
+      authority: "institutional-personnel-record"
+    });
+    maxwell = history.character(world, "dr-kirk-maxwell");
+  }
+  if (maxwell) {
+    maxwell.deployable = false;
+    maxwell.mortal = false;
+  }
+  return maxwell;
+}
+
 function staffQ4(world, run_id, player_identity = null, seed = "q4", staffing_rules = {}) {
   player_identity ??= world.q4_operations?.controlled_player;
   if (!world.q4_operations?.controlled_player) {
@@ -95,10 +156,20 @@ function staffQ4(world, run_id, player_identity = null, seed = "q4", staffing_ru
       const generationSeed = attempt === 0 && !Array.isArray(coworkerIds) ? seed : `${seed}:restaff:${attempt + 1}`;
       const generated = personnelGeneration.generate({ seed: generationSeed, world_id: world.world_id, player: safePerson(player), staffing: staffing_rules });
       const selectedExisting = new Set();
-      const candidateIds = generated.coworkers.map((spec) => {
+      const candidateIds = generated.coworkers.map((spec, index) => {
+        const archetypeSpec = staffing_rules.coworker_archetypes?.[index];
+        const enrichedSpec = archetypeSpec ? { ...spec, archetype: archetypeSpec.archetype, personality: archetypeSpec.personality, primary_task: archetypeSpec.primary_task } : spec;
         const compatible = requiredRoles ? established.find((person) => person.role === spec.role && !selectedExisting.has(person.identity)) : null;
-        if (compatible) { selectedExisting.add(compatible.identity); return compatible.identity; }
-        return ensure(world, run_id, { ...spec, classification: "q4-generated-personnel", provenance: "seeded-operational-staffing", authority: "institutional-personnel-record" }).identity;
+        if (compatible) {
+          selectedExisting.add(compatible.identity);
+          if (archetypeSpec) {
+            compatible.archetype = archetypeSpec.archetype;
+            compatible.personality = archetypeSpec.personality;
+            compatible.primary_task = archetypeSpec.primary_task;
+          }
+          return compatible.identity;
+        }
+        return ensure(world, run_id, { ...enrichedSpec, classification: "q4-generated-personnel", provenance: "seeded-operational-staffing", authority: "institutional-personnel-record" }).identity;
       });
       if (!rosterUnavailable(candidateIds)) { coworkerIds = candidateIds; break; }
     }
@@ -107,6 +178,17 @@ function staffQ4(world, run_id, player_identity = null, seed = "q4", staffing_ru
   }
   const coworkers = coworkerIds.map((id) => history.character(world, id)).filter((person) => person?.status === "active" && person.identity !== player.identity);
   if (coworkers.length < 2 || coworkers.length > 4 || (requiredCoworkers !== null && coworkers.length !== requiredCoworkers)) return { ok: false, code: "Q4_TEAM_UNAVAILABLE" };
+  if (staffing_rules.coworker_archetypes) {
+    ensureMaxwell(world, run_id);
+    coworkers.forEach((coworker, index) => {
+      const arch = staffing_rules.coworker_archetypes[index];
+      if (arch) {
+        coworker.archetype = arch.archetype;
+        coworker.personality = arch.personality;
+        coworker.primary_task = arch.primary_task;
+      }
+    });
+  }
   assign(world, run_id, player, { id: "clear-q4-field-survey-alpha", expedition_id: "clear-q4-field-survey-alpha", role: player.role });
   for (const coworker of coworkers) assign(world, run_id, coworker, { id: "clear-q4-field-survey-alpha", expedition_id: "clear-q4-field-survey-alpha", role: coworker.role });
   continuity.ensureTeam(world, run_id, [player, ...coworkers]);
@@ -155,4 +237,4 @@ function publicTeam(run, phase = "FIELD_OPERATION", world = null) {
   });
 }
 
-module.exports = { VERSION, DEFAULTS, LEGACY_PERSONNEL, displayName, safePerson, createPlayer, identityFor, staffQ4, selectSuccessor, assign, teamMember, observerStatus, publicTeam };
+module.exports = { VERSION, DEFAULTS, LEGACY_PERSONNEL, displayName, safePerson, createPlayer, identityFor, staffQ4, selectSuccessor, assign, teamMember, observerStatus, publicTeam, ensureMaxwell };

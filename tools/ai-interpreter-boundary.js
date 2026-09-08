@@ -17,6 +17,10 @@ const COORDINATED_SINK = "custodian-coordinated-attempts@v1";
 const RELATIONS = new Set(["single", "coordinated"]);
 const AGENCY = new Set(["direct-player", "first-person", "player-order"]);
 const issuedCandidates = new WeakSet();
+const FORBIDDEN_METADATA = /\b(?:canonical[_ -]?geometry|euclidean[_ -]?relation|overlap[_ -]?depth|future[_ -]?(?:event|schedule)|random[_ -]?seed|provider[_ -]?(?:model|metadata|prompt)|migration|debug|semantic[_ -]?(?:id|identifier)|canonical[_ -]?(?:family|type))\b/i;
+const FORBIDDEN_INTERNAL_ID = /\b(?:q4|yb-personnel|coordinated|open-passage|utility-room|clear-q4|actor|object|node|edge|fixture|entity)-[a-z0-9][a-z0-9:-]{3,}\b/i;
+const FORBIDDEN_ENTITY_TAXONOMY = /\b(?:still[- ]?life|bacteria)\b/i;
+function containsForbiddenTerminology(text) { if (typeof text !== "string") return false; return FORBIDDEN_METADATA.test(text) || FORBIDDEN_INTERNAL_ID.test(text) || FORBIDDEN_ENTITY_TAXONOMY.test(text); }
 
 /** @typedef {{kind:"player"}|{kind:"coworker", reference:string}} ProposedActor */
 /** @typedef {{actor:ProposedActor, action:string, target_label:string|null, equipment_label:string|null, agency:"direct-player"|"first-person"|"player-order", language_span:string}} ProposedAttempt */
@@ -519,6 +523,10 @@ function resolveAttempt({ attempt, action, coworkers, sourceText, requestId, sou
 function validateAndResolve(proposal, scope, meta) {
   const { sourceText, requestId, source } = meta;
   if (!proposalShape(proposal)) return malformed(sourceText, requestId, source);
+  if (proposal.clarification_required && proposal.clarification) {
+    if (containsForbiddenTerminology(proposal.clarification.question)) return malformed(sourceText, requestId, source, "CLARIFICATION_FORBIDDEN_TERMINOLOGY");
+    for (const label of proposal.clarification.candidate_reference_labels ?? []) { if (containsForbiddenTerminology(label)) return malformed(sourceText, requestId, source, "CLARIFICATION_FORBIDDEN_TERMINOLOGY"); }
+  }
   if (proposal.attempts.some((attempt) => !agencySupported(attempt, sourceText))) {
     return clarification({ sourceText, requestId, source, code: "PLAYER_AGENCY_UNSUPPORTED", question: "What action, if any, do you want your character to take?" });
   }

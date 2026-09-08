@@ -720,6 +720,26 @@
       "file": "tests/y90-expedition-script-30turn.test.js",
       "status": "included",
       "tier": "aggregate"
+    },
+    {
+      "file": "tests/y91-cq4-day1-opener-core.test.js",
+      "status": "included",
+      "tier": "aggregate"
+    },
+    {
+      "file": "tests/y92-cq4-day1-geography-delivery.test.js",
+      "status": "included",
+      "tier": "aggregate"
+    },
+    {
+      "file": "tests/y93-cq4-day1-cold-boot-persistence.test.js",
+      "status": "included",
+      "tier": "aggregate"
+    },
+    {
+      "file": "tests/y94-cq4-day1-adversarial-corrective.test.js",
+      "status": "included",
+      "tier": "aggregate"
     }
   ],
   "report_tools": [

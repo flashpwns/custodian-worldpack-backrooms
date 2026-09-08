@@ -57,13 +57,15 @@ function classifyInput(text, phaseId, run) {
   const proc = ONBOARDING_PROCEDURES.phases?.[phaseId];
   if (proc) {
     // Check if input matches expected phase progression
-    const matchesExpected = proc.action_aliases?.some((alias) => {
+    const aliases = (proc.action_aliases ?? []).slice().sort((a, b) => b.length - a.length);
+    const matchedAlias = aliases.find((alias) => {
       const normAlias = normalize(alias);
       return (` ${norm} `).includes(` ${normAlias} `);
     });
 
-    if (matchesExpected) {
-      if (/\?|\b(?:not|never|no|don t|dont|isn t|isnt|aren t|arent|can t|cant|won t|wont|before|after|unless|if|but|while|and|then|wait|hold|stop|halt|pause)\b/i.test(`${norm} ${text.includes("?") ? "?" : ""}`)) {
+    if (matchedAlias) {
+      const remaining = (` ${norm} `).replace(` ${normalize(matchedAlias)} `, " ").trim();
+      if (/\?|\b(?:not|never|no|don t|dont|isn t|isnt|aren t|arent|can t|cant|won t|wont|before|after|unless|if|but|while|and|then|wait|hold|stop|halt|pause)\b/i.test(`${remaining} ${text.includes("?") ? "?" : ""}`)) {
         return { classification: "PREFIELD_CLARIFICATION", targetAction: null, targetPerson: null };
       }
       return {

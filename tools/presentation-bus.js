@@ -28,6 +28,7 @@ const EVENT_TYPES = Object.freeze({
 });
 
 const clone = (v) => structuredClone(v);
+const WORLD_EVENTS = new Map();
 
 function ensure(run) {
   if (!run?.expedition) return null;
@@ -51,7 +52,7 @@ function normalizeKey(str) {
  * Checks if a specific text snippet, chunk_id, or beat has already been presented.
  */
 function hasPresented(run, keyOrText) {
-  const bus = ensure(run);
+  const bus = run?.expedition?.presentation_bus;
   if (!bus || !keyOrText) return false;
   const k = normalizeKey(keyOrText);
   return bus.presented_keys[k] !== undefined;
@@ -80,7 +81,8 @@ function emit(run, {
   text = "",
   chunk_id = null,
   metadata = null,
-  timestamp = null
+  timestamp = null,
+  ...extra
 } = {}) {
   const bus = ensure(run);
   if (!bus) return null;
@@ -100,7 +102,8 @@ function emit(run, {
     chunk_id: chunk_id ?? null,
     metadata: metadata ? clone(metadata) : null,
     interval,
-    timestamp: timestamp ?? Date.now()
+    timestamp: timestamp ?? Date.now(),
+    ...extra
   };
 
   bus.events.push(event);
@@ -115,6 +118,16 @@ function emit(run, {
     run.expedition.dialogue_bus.push(clone(event));
   }
 
+  const worldId = run?.world_id ?? run?._world?.world_id;
+  if (worldId) {
+    let list = WORLD_EVENTS.get(worldId);
+    if (!list) {
+      list = [];
+      WORLD_EVENTS.set(worldId, list);
+    }
+    list.push(clone(event));
+  }
+
   return clone(event);
 }
 
@@ -122,7 +135,7 @@ function emit(run, {
  * Drains new unconsumed presentation events since last cursor.
  */
 function drain(run) {
-  const bus = ensure(run);
+  const bus = run?.expedition?.presentation_bus;
   if (!bus) return [];
   const start = bus.cursor;
   const newEvents = bus.events.slice(start);
@@ -134,7 +147,7 @@ function drain(run) {
  * Retrieves past events with optional filtering.
  */
 function getEvents(run, { type = null, source = null, speaker = null, since_interval = null } = {}) {
-  const bus = ensure(run);
+  const bus = run?.expedition?.presentation_bus;
   if (!bus) return [];
   return bus.events
     .filter((e) => !type || e.type === type)
@@ -145,10 +158,20 @@ function getEvents(run, { type = null, source = null, speaker = null, since_inte
 }
 
 /**
+ * Inspect all recorded events for a world or run.
+ */
+function inspectEvents(target) {
+  if (!target) return [];
+  if (typeof target === "string") return (WORLD_EVENTS.get(target) ?? []).map(clone);
+  if (target?.expedition) return getEvents(target);
+  return [];
+}
+
+/**
  * Flushes pending unconsumed events by advancing the cursor to the end of events.
  */
 function flush(run) {
-  const bus = ensure(run);
+  const bus = run?.expedition?.presentation_bus;
   if (!bus) return;
   bus.cursor = bus.events.length;
 }
@@ -158,7 +181,7 @@ function flush(run) {
  * Read-only: does not mutate the event queue. Cursor is advanced in-memory only.
  */
 function consumePending(run) {
-  const bus = ensure(run);
+  const bus = run?.expedition?.presentation_bus;
   if (!bus) return [];
   const cursor = bus.cursor ?? 0;
   const pending = bus.events.slice(cursor, cursor + 50);
@@ -177,5 +200,6 @@ module.exports = {
   drain,
   flush,
   getEvents,
+  inspectEvents,
   consumePending
 };

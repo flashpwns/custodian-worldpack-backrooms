@@ -188,3 +188,31 @@ test("dispatch rejects a forged candidate instead of trusting generated structur
   assert.equal(rejected.error.code, "UNVALIDATED_INTERPRETATION");
   assert.deepEqual(canonicalSnapshot(run), before);
 });
+
+test("a provider clarification containing internal terminology is rejected before mutation", async () => {
+  const { validateIntent } = require("../tools/ai-adapter");
+  const result = validateIntent({
+    version: "yellow-beast-intent@v1",
+    status: "proposal",
+    noncanonical: true,
+    actor: null,
+    goals: ["inspect something"],
+    steps: [{ id: "step-1", relation: "sequence", attempt: "inspect", goals: ["inspect"], methods: [], references: [], constraints: [], uncertain: true }],
+    methods: [],
+    referenced_entities: [],
+    referenced_locations: [],
+    referenced_people: [],
+    referenced_inventory: [],
+    conditions: [],
+    preferences: [],
+    social_intent: [],
+    communication_content: [],
+    temporal_order: [],
+    uncertainties: [],
+    assumptions: [],
+    clarification_required: true,
+    clarification: { question: "Do you mean the Still Life?", candidate_reference_labels: ["Still Life"] }
+  }, { raw_input: "inspect it", provider: "hostile-terminology-test", request_id: "terminology-001" });
+  assert.equal(result.status, "interpretation_error");
+  assert.equal(result.error.code, "CLARIFICATION_FORBIDDEN_TERMINOLOGY");
+});

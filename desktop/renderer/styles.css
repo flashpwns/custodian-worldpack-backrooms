@@ -318,3 +318,16 @@
 .provider-card dd{margin:2px 0 10px}.provider-card-actions{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}
 #provider-manager-message{min-height:1.5em}
 @media(max-width:600px){.provider-cards{grid-template-columns:1fr}}
+
+/* CQ4 Day 1 Opener: Identity document, ECHOMAPPING indicator, and radio hold */
+.echomapping-disabled-indicator{display:inline-block;padding:2px 6px;border:1px solid var(--async-alert);color:var(--async-alert);font-size:.65rem;letter-spacing:.08em;font-weight:700;background:rgba(217,75,75,0.12)}
+.async-document{background:var(--async-panel);border:2px solid var(--async-line);padding:24px;box-shadow:0 12px 36px rgba(0,0,0,0.6);transition:transform .3s ease-in,opacity .3s ease-in}
+.document-lift-away{transform:translateY(-24px);opacity:0;pointer-events:none}
+.document-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;border-bottom:1px solid var(--async-line);padding-bottom:8px}
+.redacted-clause{font-family:monospace;letter-spacing:.1em;color:var(--async-line);user-select:none;opacity:.6}
+.redacted-clause.sub-clause{font-size:.7rem;margin:8px 0 16px}
+.radio-check-in-container{margin-top:8px}
+.radio-check-in-button{border:1px solid var(--async-amber);color:var(--async-amber);background:#1a1910;transition:background-color .15s ease,color .15s ease}
+.radio-check-in-button:active,.radio-check-in-button.check-in-holding{background:var(--async-amber);color:var(--async-black);font-weight:700}
+.comms-form-actions{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.clickable-evidence{cursor:pointer}
