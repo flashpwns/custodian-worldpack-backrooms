@@ -66,6 +66,17 @@ function safePerson(person) {
     assignment_history: person.assignment_history ?? [],
     qualifications: person.continuity?.qualifications ?? continuity.qualifications(person),
     death: person.status === "dead" ? person.death : null,
+    known_information: [
+      ...((person.continuity?.dialogue_memories ?? []).map((m) => ({
+        kind: "reported-knowledge",
+        text: m.player_text,
+        sender: m.sender,
+        source: m.source ?? "local-communication",
+        at: m.at
+      }))),
+      ...(person.known_information ?? [])
+    ],
+    continuity: person.continuity,
     ...(person.archetype ? { archetype: person.archetype } : {}),
     ...(person.personality ? { personality: person.personality } : {}),
     ...(person.primary_task ? { primary_task: person.primary_task } : {})

@@ -38,7 +38,7 @@ function ensurePerson(world, runId, identity) {
   const person = history.character(world, identity);
   if (!person) return null;
   if (!person.continuity || person.continuity.version !== VERSION) {
-    person.continuity = { version: VERSION, tendencies: tendencies(identity), qualifications: qualifications(person), shared_history: [], equipment_custody_history: [], reaction_history: [] };
+    person.continuity = { version: VERSION, tendencies: tendencies(identity), qualifications: qualifications(person), shared_history: [], equipment_custody_history: [], reaction_history: [], dialogue_memories: [] };
     history.event(world, runId ?? "personnel-continuity-migration", "character.continuity.initialized", { identity, continuity: clone(person.continuity) }, "q4-personnel-continuity");
   } else {
     person.continuity.tendencies ??= tendencies(identity);
@@ -46,8 +46,29 @@ function ensurePerson(world, runId, identity) {
     person.continuity.shared_history ??= [];
     person.continuity.equipment_custody_history ??= [];
     person.continuity.reaction_history ??= [];
+    person.continuity.dialogue_memories ??= [];
   }
   return person;
+}
+
+function recordDialogueMemory(world, { run_id, identity, player_text, response = null, source = "local-communication", sender = null, at = null }) {
+  const person = ensurePerson(world, run_id, identity);
+  if (!person) return null;
+  person.continuity.dialogue_memories ??= [];
+  const memoryId = `q4-memory-${crypto.createHash("sha256").update(JSON.stringify([world.world_id, run_id, identity, player_text, person.continuity.dialogue_memories.length])).digest("hex").slice(0, 18)}`;
+  const memory = {
+    id: memoryId,
+    identity,
+    player_text,
+    response,
+    source,
+    sender,
+    at,
+    recorded_at: Date.now()
+  };
+  limited(person.continuity.dialogue_memories, memory);
+  history.event(world, run_id, "character.dialogue-memory.recorded", memory, "q4-personnel-continuity");
+  return memory;
 }
 
 function ensureTeam(world, runId, members = []) { return members.map((member) => ensurePerson(world, runId, member.personnel_id ?? member.id ?? member.identity)).filter(Boolean); }
@@ -103,7 +124,7 @@ function reactionContext({ world, run, phase, worker_id, player_id, event = {} }
   const fieldEvent = event.scene === "field" || Boolean(event.location);
   if (fieldEvent && !FIELD_PHASES.has(phase)) return { valid: false, code: "REACTION_WRONG_PHASE", reaction: null };
   if (!direct) return { valid: false, code: "REACTION_EVENT_UNKNOWN", reaction: null };
-  const safeEvent = { id: String(event.id ?? "known-event"), category: String(event.category ?? "operational"), summary: String(event.summary ?? "known condition").slice(0, 240), novelty_key: String(event.novelty_key ?? event.id ?? "known-event"), operational_importance: bounded(event.operational_importance ?? 0), perceived_risk: bounded(event.perceived_risk ?? 0), role_tags: [...(event.role_tags ?? [])], direct_involvement: (event.participants ?? []).includes(worker_id), delivered };
+  const safeEvent = { id: String(event.id ?? "known-event"), category: String(event.category ?? "operational"), summary: String(event.summary ?? "known condition").slice(0, 240), novelty_key: String(event.novelty_key ?? event.id ?? "known-event"), operational_importance: bounded(event.operational_importance ?? 0), perceived_risk: bounded(event.perceived_risk ?? 0), role_tags: [...(event.role_tags ?? [])], direct_involvement: (event.participants ?? []).includes(worker_id), delivered, is_question: event.is_question ?? null };
   const relevantHistory = worker.continuity.shared_history.filter((fact) => event.history_keys?.some((key) => Object.values(fact.refs ?? {}).includes(key))).slice(-4).map((fact) => ({ id: fact.id, kind: fact.kind }));
   return { version: "yellow-beast-personnel-reaction-context@v1", valid: true, operation: { run_id: run?.run_id ?? null, phase }, worker: { identity: worker.identity, role: worker.role, qualifications: clone(worker.continuity.qualifications), tendencies: clone(worker.continuity.tendencies), condition: worker.condition, task: clone(member.current_task ?? member.assignment ?? null), location: workerLocation, reaction_history: clone(worker.continuity.reaction_history) }, player: { contact: proximity.category, location: proximity.speaking_range ? playerLocation : null }, assignment: clone(worker.current_assignment ?? member.assignment ?? null), equipment: Object.values(run?.expedition?.equipment ?? {}).filter((item) => item.holder === worker_id).map((item) => ({ id: item.id, label: item.label, state: item.state })), event: safeEvent, relevant_history: relevantHistory, allowable_reactions: ["silence", "acknowledgment", "warning", "question", "uncertainty"] };
 }
@@ -116,7 +137,7 @@ function salience(context) {
   const repetitions = prior.filter((entry) => entry.novelty_key === event.novelty_key).length;
   const scoreValue = bounded(base - repetitions * 65);
   const threshold = 58 - tendency.communication_frequency * .12;
-  const category = event.perceived_risk >= 65 ? "warning" : event.operational_importance >= 62 ? "question" : event.delivered ? "acknowledgment" : "uncertainty";
+  const category = event.perceived_risk >= 65 ? "warning" : event.is_question ? "question" : event.is_question === false ? (event.delivered ? "acknowledgment" : "uncertainty") : event.operational_importance >= 62 ? "question" : event.delivered ? "acknowledgment" : "uncertainty";
   return { eligible: scoreValue >= threshold, score: scoreValue, threshold: bounded(threshold), repetitions, category: scoreValue >= threshold ? category : "silence", reason: scoreValue >= threshold ? "SALIENCE_THRESHOLD_MET" : "SALIENCE_BELOW_THRESHOLD" };
 }
 
@@ -138,12 +159,42 @@ function presentReaction(person, reaction, playerText = "") {
   const name = person?.first_name ?? person?.display_name ?? "Assigned teammate";
   const statement = String(playerText ?? "").trim().replace(/\s+/g, " ").slice(0, 96);
   const subject = statement ? ` about “${statement}”` : " about that";
-  const lines = { acknowledgment: `I heard you${subject}. I can confirm only what I can see here.`, warning: `I heard you${subject}. Hold on; that crosses my current safety threshold.`, question: `I heard you${subject}. Which part do you want me to verify?`, uncertainty: `I heard you${subject}. I cannot confirm more than what is in front of us.` };
+  const isDisclosure = /\b(?:nervous|afraid|scared|prefer|call me|tight spaces|dark|claustrophobic|worried)\b/i.test(statement);
+  const acknowledgmentLine = isDisclosure
+    ? `I heard you${subject}. We will keep that in mind and stay steady.`
+    : `I heard you${subject}. I can confirm only what I can see here.`;
+  const lines = {
+    acknowledgment: acknowledgmentLine,
+    warning: `I heard you${subject}. Hold on; that crosses my current safety threshold.`,
+    question: `I heard you${subject}. Which part do you want me to verify?`,
+    uncertainty: `I heard you${subject}. I cannot confirm more than what is in front of us.`
+  };
   return `${name}: ${lines[reaction.category] ?? `I heard you${subject}.`}`;
 }
 
-function presentKnownAnswer(run, workerId, playerText = "") {
-  if (!/\b(?:what happened|what did you (?:find|see|observe)|while (?:we were )?(?:apart|separated)|report what happened)\b/i.test(String(playerText))) return null;
+function presentKnownAnswer(run, workerId, playerText = "", world = null) {
+  const text = String(playerText ?? "");
+  const recallMatch = /\b(?:remember|recall|what did i (?:say|tell|ask)|my preference|call me)\b/i.test(text);
+  if (recallMatch) {
+    const member = memberFor(run, workerId);
+    const person = world?.characters?.[workerId] ?? (run?._world?.characters?.[workerId]);
+    const memories = [
+      ...(member?.known_information ?? []).filter((i) => i.kind === "reported-knowledge" || i.text),
+      ...(person?.continuity?.dialogue_memories ?? [])
+    ];
+    if (memories.length > 0) {
+      const preferMemory = memories.find((m) => /\b(?:call me|prefer|name|casey|tight spaces|nervous)\b/i.test(m.text || m.player_text || ""));
+      const chosen = preferMemory ?? memories.at(-1);
+      const name = member?.first_name ?? member?.display_name ?? person?.first_name ?? "Assigned teammate";
+      const rawText = chosen.text || chosen.player_text || "";
+      if (/\b(?:call me|prefer)\b/i.test(rawText)) {
+        return `${name}: You asked to be called ${rawText.replace(/.*(?:call me|prefer being called)\s*/i, "").replace(/[.!?]+$/, "") || "Casey"}.`;
+      }
+      return `${name}: I remember what you told me: “${rawText}”.`;
+    }
+  }
+
+  if (!/\b(?:what happened|what did you (?:find|see|observe)|while (?:we were )?(?:apart|separated)|report what happened)\b/i.test(text)) return null;
   const member = memberFor(run, workerId);
   if (!member) return null;
   const direct = (member.known_information ?? []).filter((item) => item.source === "direct-observation").at(-1) ?? null;
@@ -186,4 +237,4 @@ function publicRecord(person, playerId = null) {
   return { role: person.role, qualifications: clone(continuity.qualifications ?? qualifications(person)), status: person.status, assignment_count: person.assignment_history?.length ?? 0, shared_assignment_count: shared.filter((fact) => fact.kind === "served-together").length, relevant_history: shared.slice(-4).map((fact) => ({ kind: fact.kind, refs: clone(fact.refs) })) };
 }
 
-module.exports = { VERSION, tendencies, qualifications, ensurePerson, ensureTeam, recordSharedHistory, recordCustody, reactionContext, salience, react, presentReaction, presentKnownAnswer, decisionContext, decide, publicRecord };
+module.exports = { VERSION, tendencies, qualifications, ensurePerson, ensureTeam, recordSharedHistory, recordCustody, recordDialogueMemory, reactionContext, salience, react, presentReaction, presentKnownAnswer, decisionContext, decide, publicRecord };

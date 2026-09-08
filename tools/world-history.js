@@ -169,6 +169,10 @@ function rebuildCharacters(world) {
     if (entry.type === "character.shared-history.recorded") for (const identity of payload.participants ?? []) if (rebuilt[identity]?.continuity && !rebuilt[identity].continuity.shared_history.some((fact) => fact.id === payload.id)) rebuilt[identity].continuity.shared_history.push(clone(payload));
     if (entry.type === "character.equipment-custody.recorded") for (const identity of [payload.from, payload.to].filter(Boolean)) if (rebuilt[identity]?.continuity && !rebuilt[identity].continuity.equipment_custody_history.some((fact) => fact.id === payload.id)) rebuilt[identity].continuity.equipment_custody_history.push(clone(payload));
     if (entry.type === "character.reaction.recorded" && rebuilt[payload.identity]?.continuity && !rebuilt[payload.identity].continuity.reaction_history.some((fact) => fact.reaction?.id === payload.id)) rebuilt[payload.identity].continuity.reaction_history.push(clone(payload.reaction));
+    if (entry.type === "character.dialogue-memory.recorded" && rebuilt[payload.identity]?.continuity) {
+      rebuilt[payload.identity].continuity.dialogue_memories ??= [];
+      if (!rebuilt[payload.identity].continuity.dialogue_memories.some((fact) => fact.id === payload.id)) rebuilt[payload.identity].continuity.dialogue_memories.push(clone(payload));
+    }
     if (entry.type === "q4.personnel.condition.changed" && rebuilt[payload.identity]) { if (rebuilt[payload.identity].status !== "dead") { if (payload.status && CHARACTER_STATUSES.has(payload.status)) rebuilt[payload.identity].status = payload.status; if (payload.condition != null) rebuilt[payload.identity].condition = payload.condition; } }
   }
   return rebuilt;

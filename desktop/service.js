@@ -918,7 +918,28 @@ class DesktopService {
         canonical.result.public_reason = `${context.speaker.display_name}: ${validation.candidate.speech}`;
         context.interaction.presentation.response = validation.candidate.speech;
         context.interaction.presentation.source = "hosted-model";
+        q4Interactions.updatePresentation(context.entry.run.expedition, context.interaction.id, {
+          response: validation.candidate.speech,
+          source: "hosted-model"
+        });
+        personnelContinuity.recordDialogueMemory(context.world, {
+          run_id: context.entry.run.run_id,
+          identity: context.speaker.personnel_id ?? context.speaker.id,
+          player_text: context.player_text,
+          response: validation.candidate.speech,
+          source: "local-communication",
+          sender: context.entry.run.session.startup.player.observer_id,
+          at: context.entry.run.expedition.clock?.interval ?? 0
+        });
+        presentationBus.emit(context.entry.run, {
+          type: presentationBus.EVENT_TYPES.DIALOGUE,
+          source: presentationBus.SOURCES.AI_PERFORMANCE,
+          speaker: context.speaker.first_name ?? context.speaker.display_name ?? "Teammate",
+          channel: "LOCAL",
+          text: validation.candidate.speech
+        });
         this.persistSession(context.world, "field-researcher", context.entry);
+        canonical.projection = this.projectionFor(context.world, "field-researcher", context.entry);
       }
     } catch (error) {
       this.log(`LOCAL language assistance unavailable: ${error.message}`);
@@ -926,6 +947,7 @@ class DesktopService {
       canonical.result.presentation_source = "deterministic-fallback";
       canonical.result.public_reason = `Language assistance is unavailable. Deterministic response: ${context.fallback_text}`;
     }
+    canonical.result.scene = this.sceneFor(context.entry, "field-researcher", { scene_type: "delta", accepted: true, action: "LOCAL", public_reason: canonical.result.public_reason }, context.world);
     canonical.result.scene.narration = canonical.result.public_reason;
     canonical.result.scene.narration_source = canonical.result.presentation_source;
     return canonical;
@@ -976,15 +998,53 @@ class DesktopService {
          const deliveredLocal = communicationRuntime.local(expedition, { sender: playerId, recipients: recipients.map((member) => member.personnel_id ?? member.id), text: message, eligible: true });
         phenomenonEcology.recordSpeech(world, entry.run, { speaker:playerId, text:message, location_id:entry.run.spatial.player_location });
         if (/\b(route|corridor|passage|location|map|survey|where)\b/i.test(message) && entry.run.survey_frontier) for (const recipient of recipients) surveyFrontier.share(entry.run.survey_frontier, recipient.personnel_id ?? recipient.id, playerId, { at: expedition.clock.interval });
+        const request = /\b(hand|pass|give|bring|transfer)\b/i.test(message);
+        const isQuestion = /\?$/.test(message.trim()) || /^(?:what|where|who|when|why|how|can you|could you|do you|is there|are there|will you)\b/i.test(message.trim());
+        const isWarning = /\b(?:look out|watch out|careful|warning|danger|hazard|stop)\b/i.test(message);
+        const importance = request ? 58 : isWarning ? 75 : 85;
+        const risk = isWarning ? 70 : 0;
         for (const recipient of recipients) {
           recipient.last_communication = { channel: "LOCAL", direction: "received", at: expedition.clock.interval, message_id: deliveredLocal.message.id };
           recipient.known_information ??= [];
           recipient.known_information.push({ kind: "reported-knowledge", text: message, source: "local-communication", sender: playerId, at: expedition.clock.interval, message_id: deliveredLocal.message.id });
+          personnelContinuity.recordDialogueMemory(world, {
+            run_id: entry.run.run_id,
+            identity: recipient.personnel_id ?? recipient.id,
+            player_text: message,
+            response: null,
+            source: "local-communication",
+            sender: playerId,
+            at: expedition.clock.interval
+          });
         }
-        const request = /\b(hand|pass|give|bring|transfer)\b/i.test(message);
         const requestedEquipment = request ? Object.values(expedition.equipment ?? {}).find((item) => [item.id, item.label, item.type].filter(Boolean).some((value) => message.toLowerCase().includes(String(value).toLowerCase()) || String(value).toLowerCase().split(/\s+/).some((term) => term.length > 4 && message.toLowerCase().includes(term)))) : null;
         const equipmentHolder = requestedEquipment ? expedition.team.members.find((member) => member.personnel_id === requestedEquipment.holder) : null;
-        const responses = recipients.map((recipient) => { const recipientPerson = history.character(world, recipient.personnel_id ?? recipient.id); const reactionContext = personnelContinuity.reactionContext({ world, run: entry.run, phase: entry.phase?.phase_id, worker_id: recipient.personnel_id, player_id: playerId, event: { id: deliveredLocal.message.id, category: "local-communication", summary: `The teammate heard the player's statement: ${message}`, novelty_key: request ? "local-equipment-request" : `local-statement-${message.toLowerCase().slice(0, 80)}`, operational_importance: request ? 58 : 85, perceived_risk: 0, observed_by: [recipient.personnel_id], delivered_to: [recipient.personnel_id], participants: [playerId, recipient.personnel_id] } }); const reaction = personnelContinuity.react(world, reactionContext); const knownAnswer = personnelContinuity.presentKnownAnswer(entry.run, recipient.personnel_id, message); const response = request ? (requestedEquipment?.holder === recipient.personnel_id ? `${recipient.first_name}: I hear the request. The ${requestedEquipment.label.toLowerCase()} remains with me until we complete a physical handoff.` : requestedEquipment?.holder === playerId ? `${recipient.first_name}: You already hold the ${requestedEquipment.label.toLowerCase()}.` : equipmentHolder ? `${recipient.first_name}: ${equipmentHolder.first_name} has the ${requestedEquipment.label.toLowerCase()}; a physical handoff still has to happen in person.` : `${recipient.first_name}: I hear the request, but I cannot confirm that equipment in my custody.`) : knownAnswer ?? personnelContinuity.presentReaction(recipientPerson, reaction.reaction, message); return { recipient, person:recipientPerson, reaction_context:reactionContext, reaction:reaction.reaction, text:response }; });
+        const responses = recipients.map((recipient) => {
+          const recipientPerson = history.character(world, recipient.personnel_id ?? recipient.id);
+          const reactionContext = personnelContinuity.reactionContext({
+            world,
+            run: entry.run,
+            phase: entry.phase?.phase_id,
+            worker_id: recipient.personnel_id,
+            player_id: playerId,
+            event: {
+              id: deliveredLocal.message.id,
+              category: "local-communication",
+              summary: `The teammate heard the player's statement: ${message}`,
+              novelty_key: request ? "local-equipment-request" : `local-statement-${message.toLowerCase().slice(0, 80)}`,
+              operational_importance: importance,
+              perceived_risk: risk,
+              is_question: isQuestion,
+              observed_by: [recipient.personnel_id],
+              delivered_to: [recipient.personnel_id],
+              participants: [playerId, recipient.personnel_id]
+            }
+          });
+          const reaction = personnelContinuity.react(world, reactionContext);
+          const knownAnswer = personnelContinuity.presentKnownAnswer(entry.run, recipient.personnel_id, message, world);
+          const response = request ? (requestedEquipment?.holder === recipient.personnel_id ? `${recipient.first_name}: I hear the request. The ${requestedEquipment.label.toLowerCase()} remains with me until we complete a physical handoff.` : requestedEquipment?.holder === playerId ? `${recipient.first_name}: You already hold the ${requestedEquipment.label.toLowerCase()}.` : equipmentHolder ? `${recipient.first_name}: ${equipmentHolder.first_name} has the ${requestedEquipment.label.toLowerCase()}; a physical handoff still has to happen in person.` : `${recipient.first_name}: I hear the request, but I cannot confirm that equipment in my custody.`) : knownAnswer ?? personnelContinuity.presentReaction(recipientPerson, reaction.reaction, message);
+          return { recipient, person:recipientPerson, reaction_context:reactionContext, reaction:reaction.reaction, text:response };
+        });
         const addressed = peer ? responses.find((item) => item.recipient.personnel_id === peer.personnel_id) : null;
         const namedInMessage = recipients.find((m) => [m.first_name, m.last_name, m.display_name].filter(Boolean).some((n) => new RegExp(`\\b${String(n).replace(/[.*+?^${}()|[\\]\\\\]/g, "\\$&")}\\b`, "i").test(message)));
         const roleInMessage = recipients.find((m) => { const role = String(m.role ?? "").toLowerCase(); return role && role.split(/\s+/).some((w) => w.length > 3 && new RegExp(`\\b${w}\\b`, "i").test(message)); });

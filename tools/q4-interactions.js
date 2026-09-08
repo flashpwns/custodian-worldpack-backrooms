@@ -50,4 +50,26 @@ function publicEntry(entry) {
   };
 }
 
-module.exports = { VERSION, CHANNELS, record, history, publicEntry };
+function updatePresentation(expedition, interactionId, updates = {}) {
+  if (!expedition?.interaction_history) return null;
+  const interaction = expedition.interaction_history.find((entry) => entry.id === interactionId);
+  if (!interaction) return null;
+  if (updates.presentation) {
+    interaction.presentation = { ...interaction.presentation, ...clone(updates.presentation) };
+  }
+  if (updates.response !== undefined) {
+    interaction.presentation.response = updates.response;
+  }
+  if (updates.result !== undefined) {
+    interaction.presentation.result = updates.result;
+  }
+  if (updates.response_speaker !== undefined) {
+    interaction.response_speaker = updates.response_speaker;
+  }
+  if (updates.source !== undefined) {
+    interaction.presentation.source = updates.source;
+  }
+  return clone(interaction);
+}
+
+module.exports = { VERSION, CHANNELS, record, history, publicEntry, updatePresentation };

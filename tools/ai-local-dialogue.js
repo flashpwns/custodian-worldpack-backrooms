@@ -39,9 +39,22 @@ function deepFreeze(value) {
   return Object.freeze(value);
 }
 
-function buildLocalDialoguePacket({ run, player_text, speaker, person, reaction_context, reaction }) {
-  const playerId = run.session?.startup?.player?.observer_id;
-  const speakerId = speaker?.personnel_id ?? speaker?.id;
+function getRecentDialogue(expedition, playerId, speakerId, limit = 6) {
+  if (!expedition?.interaction_history) return [];
+  return expedition.interaction_history
+    .filter((entry) => entry.channel === "local" && (entry.player_text || entry.presentation?.response))
+    .slice(-limit)
+    .map((entry) => ({
+      player_text: entry.player_text,
+      response: entry.presentation?.response ?? null,
+      speaker: entry.response_speaker ?? null
+    }));
+}
+
+function buildLocalDialoguePacket(context) {
+  const { run, player_text, speaker, person, reaction_context, reaction } = context;
+  const playerId = run.session.startup.player.observer_id;
+  const speakerId = speaker.personnel_id ?? speaker.id;
 
   // Project the speaker's own observer mini-shell
   const speakerProjected = projectObserverState(run, speakerId, "coworker-mini-shell");
@@ -73,6 +86,14 @@ function buildLocalDialoguePacket({ run, player_text, speaker, person, reaction_
       current_task: reaction_context?.worker?.task ?? null,
       held_equipment: reaction_context?.equipment ?? [],
       qualifications: reaction_context?.worker?.qualifications ?? [],
+      tendencies: person?.continuity?.tendencies ?? reaction_context?.worker?.tendencies ?? {},
+      relationship: person?.continuity?.attitudes?.[playerId] ?? person?.continuity?.relationship ?? null,
+      memories: (person?.continuity?.dialogue_memories ?? []).slice(-10).map((m) => ({
+        player_text: m.player_text,
+        response: m.response,
+        sender: m.sender
+      })),
+      recent_dialogue: getRecentDialogue(run.expedition, playerId, speakerId),
       shared_history: (publicContinuity.shared_history ?? []).filter((item) => item.participants?.includes(playerId)).slice(-4).map((item) => ({ kind: item.kind }))
     },
     visible_context: {
@@ -83,7 +104,7 @@ function buildLocalDialoguePacket({ run, player_text, speaker, person, reaction_
     speaker_shell: speakerProjected.packet,
     authorized_response: {
       category: reaction?.category ?? "acknowledgment",
-      purpose: reaction?.category === "warning" ? "state a bounded immediate warning" : reaction?.category === "question" ? "ask one relevant bounded follow-up question" : reaction?.category === "uncertainty" ? "state uncertainty without inventing facts" : "acknowledge the message without inventing facts",
+      purpose: reaction?.category === "warning" ? "state a bounded immediate warning" : reaction?.category === "question" ? "answer the question if known or ask a relevant clarification" : reaction?.category === "uncertainty" ? "state uncertainty without inventing facts" : "acknowledge the player's message and respond in character without inventing facts",
       new_factual_claims: "forbidden"
     }
   };
@@ -277,7 +298,7 @@ function validateLocalDialogue(packet, candidate, runValue = null) {
   if (!speech || speech.length > 600) return { ok: false, code: "LOCAL_PRESENTATION_SCHEMA_INVALID" };
   if (FORBIDDEN_METADATA.test(speech) || FORBIDDEN_INTERNAL_ID.test(speech)) return { ok: false, code: "LOCAL_PRESENTATION_INTERNAL_METADATA" };
   if (INVENTED_PLAYER.test(speech)) return { ok: false, code: "LOCAL_PRESENTATION_PLAYER_AGENCY_INVENTED" };
-  if (/["“”]/.test(speech)) return { ok: false, code: "LOCAL_PRESENTATION_PLAYER_SPEECH_INVENTED" };
+  if (/\byou\s+(?:said|say|replied|reply|stated)\s*[:,\s]*["“”]/i.test(speech)) return { ok: false, code: "LOCAL_PRESENTATION_PLAYER_SPEECH_INVENTED" };
 
   const run = runValue ?? packet?._run ?? null;
   if (run) {
