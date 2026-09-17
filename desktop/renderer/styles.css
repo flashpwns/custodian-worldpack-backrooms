@@ -331,3 +331,144 @@
 .radio-check-in-button:active,.radio-check-in-button.check-in-holding{background:var(--async-amber);color:var(--async-black);font-weight:700}
 .comms-form-actions{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
 .clickable-evidence{cursor:pointer}
+
+/* Beat 1 Authoritative Presentation Styles */
+.title-card {
+  position: relative;
+  min-height: 100vh;
+  background: #000;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  color: var(--ink);
+  cursor: default;
+  overflow: hidden;
+  padding: 2rem;
+  box-sizing: border-box;
+}
+.title-card .title-logo {
+  height: clamp(2rem, 5vw, 3.5rem);
+  width: auto;
+  object-fit: contain;
+  filter: invert(1);
+  margin: 0 0 0.5rem 0;
+  user-select: none;
+  pointer-events: none;
+}
+.title-card h1 {
+  font-family: "Arial Narrow", "Helvetica Neue", "Avenir Next Condensed", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-stretch: condensed;
+  font-size: clamp(1.8rem, 4.2vw, 3.2rem);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  line-height: 1.15;
+  color: var(--ink);
+  margin: 0 0 0.35rem 0;
+}
+.title-card .title-subtitle {
+  font-family: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: clamp(0.6rem, 1.2vw, 0.85rem);
+  font-weight: 400;
+  letter-spacing: clamp(0.16em, 0.3vw, 0.26em);
+  text-transform: uppercase;
+  color: var(--async-dim, #94a3b8);
+  margin: 0.2rem 0 2.2rem 0;
+  width: 100%;
+  max-width: 800px;
+}
+.title-card small {
+  font-family: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+  color: var(--async-amber);
+  letter-spacing: 0.16em;
+  font-size: 0.85rem;
+}
+.title-card.title-materializing { animation: title-fade-in 2.2s ease-out forwards; }
+.title-card.title-materialized { animation: none; opacity: 1; filter: none; }
+@keyframes title-fade-in { from { opacity: 0; filter: blur(3px); } to { opacity: 1; filter: blur(0); } }
+
+.screen-fade-black { position: fixed; inset: 0; background: #000; z-index: 99999; animation: fade-to-black 3s cubic-bezier(0.4, 0, 0.2, 1) forwards; pointer-events: none; }
+@keyframes fade-to-black { from { opacity: 0; } to { opacity: 1; } }
+
+.personnel-creation.async-document { position: relative; z-index: 100; box-shadow: 0 0 60px rgba(0, 0, 0, 0.95); }
+.personnel-creation.async-document.waiver-exit-up, .waiver-slide-out, .personnel-confirmation.waiver-slide-out { animation: waiver-slide-out 0.45s cubic-bezier(0.7, 0, 0.84, 0) forwards; }
+@keyframes waiver-slide-out { from { transform: translateY(0); opacity: 1; } to { transform: translateY(-100vh); opacity: 0; } }
+
+.personnel-creation input.name-rejected { border-color: #ff4d4d !important; box-shadow: 0 0 0 2px #d32f2f, 0 0 16px rgba(255, 77, 77, 0.7) !important; animation: waiver-reject 0.32s ease-in-out !important; }
+@keyframes waiver-reject { 0%, 100% { transform: translateX(0); } 20%, 60% { transform: translateX(-6px); } 40%, 80% { transform: translateX(6px); } }
+
+.audio-setting-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: 8px 0; }
+.audio-setting-row label { flex: 1; margin: 0; display: flex; align-items: center; gap: 10px; }
+.audio-value-display { font-family: ui-monospace, monospace; font-size: 0.85rem; color: var(--async-phosphor); min-width: 42px; text-align: right; }
+
+[data-boot-locked="true"], [data-boot-locked="true"] * { pointer-events: none !important; user-select: none !important; }
+
+.title-wipe-shutter {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: calc(100% + 2px);
+  height: 100%;
+  background: #000;
+  transform: translate3d(-100%, 0, 0);
+  pointer-events: none;
+  z-index: 50;
+}
+.title-card.title-dismissing {
+  pointer-events: none;
+}
+.title-card.title-dismissing .title-wipe-shutter {
+  will-change: transform;
+  animation: title-wipe-slide 0.45s linear forwards;
+}
+@keyframes title-wipe-slide {
+  from {
+    transform: translate3d(-100%, 0, 0);
+  }
+  to {
+    transform: translate3d(0, 0, 0);
+  }
+}
+
+.exit-game-portal { position: fixed; inset: 0; background: rgba(4, 7, 12, 0.88); z-index: 100; display: flex; align-items: center; justify-content: center; padding: 16px; backdrop-filter: blur(2px); }
+.exit-game-dialog { background: var(--surface, #0f172a); border: 1px solid var(--async-amber, #f59e0b); box-shadow: 0 0 40px rgba(0, 0, 0, 0.85); max-width: 520px; width: 100%; padding: 24px; border-radius: 4px; color: var(--ink, #f8fafc); }
+.exit-game-dialog h2 { margin-top: 0.4rem; margin-bottom: 0.8rem; font-size: 1.4rem; letter-spacing: 0.08em; text-transform: uppercase; }
+.exit-game-warning { font-size: 0.95rem; color: var(--async-dim, #94a3b8); line-height: 1.5; margin-bottom: 1.4rem; }
+.exit-game-actions { display: flex; gap: 12px; justify-content: flex-end; }
+
+/* Beat 1.2: Restrained Institutional Styling for Operational Records */
+.async-access { max-width: 1080px; margin: 0 auto; padding: 36px 32px; border-left: 3px solid var(--async-amber); min-height: 100vh; background: var(--async-black); color: var(--ink); }
+.async-access .access-header { border-bottom: 2px solid var(--async-line); padding-bottom: 1.25rem; margin-bottom: 1.25rem; }
+.async-access .access-header .eyebrow { color: var(--async-amber); font-size: 0.72rem; font-weight: 600; letter-spacing: 0.14em; text-transform: uppercase; margin: 0 0 0.35rem 0; }
+.async-access h1 { font-size: 1.65rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink); margin: 0 0 0.4rem 0; }
+.async-access .access-subtitle { font-size: 0.82rem; color: var(--async-dim, #94a3b8); line-height: 1.5; margin: 0; }
+.async-access nav { display: flex; flex-wrap: wrap; gap: 8px; border-top: 1px solid var(--async-line); border-bottom: 1px solid var(--async-line); padding: 10px 0; margin: 1.25rem 0 1.75rem 0; }
+.async-access nav button { font-family: inherit; font-size: 0.76rem; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; border-radius: 0; padding: 7px 14px; margin: 0; cursor: pointer; background: transparent; color: var(--ink); border: 1px solid var(--async-line); }
+.async-access nav button:hover, .async-access nav button:focus-visible { background: rgba(44, 71, 109, 0.4); border-color: var(--async-phosphor); color: #fff; }
+.async-access nav button[data-action="new"] { background: var(--async-amber); color: var(--async-black); border: 1px solid var(--async-amber); }
+.async-access nav button[data-action="new"]:hover, .async-access nav button[data-action="new"]:focus-visible { background: #f0ce6b; color: #000; }
+.async-access nav button[data-action="exit-game"] { margin-left: auto; color: var(--muted); border-color: #384252; }
+.async-access nav button[data-action="exit-game"]:hover, .async-access nav button[data-action="exit-game"]:focus-visible { color: var(--danger, #ffb4a9); border-color: #a86156; background: rgba(168, 97, 86, 0.15); }
+.async-access .records-inventory h2 { font-size: 0.88rem; font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase; color: var(--async-amber); margin: 0 0 0.9rem 0; }
+.async-access .search-label { display: flex; align-items: center; gap: 10px; font-size: 0.72rem; letter-spacing: 0.1em; color: var(--async-phosphor); text-transform: uppercase; margin-bottom: 1rem; }
+.async-access input#world-filter { background: #040810; border: 1px solid var(--async-line); border-radius: 0; color: var(--ink); padding: 6px 10px; font-size: 0.8rem; font-family: inherit; width: 100%; max-width: 340px; }
+.async-access input#world-filter:focus { border-color: var(--async-amber); outline: none; }
+.async-access .worlds { list-style: none; padding: 0; margin: 0 0 1.25rem 0; display: flex; flex-direction: column; gap: 6px; }
+.async-access .worlds li { background: var(--async-panel); border: 1px solid var(--async-line); border-radius: 0; padding: 10px 14px; margin: 0; display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+.async-access .worlds li .world-meta { display: flex; flex-direction: column; gap: 2px; flex: 1; min-width: 0; }
+.async-access .worlds li .world-name { font-size: 0.92rem; font-weight: 600; color: var(--ink); letter-spacing: 0.04em; }
+.async-access .worlds li .world-status { font-size: 0.72rem; color: var(--async-phosphor); letter-spacing: 0.08em; text-transform: uppercase; }
+.async-access .worlds li .world-date { font-size: 0.68rem; color: var(--muted); letter-spacing: 0.06em; text-transform: uppercase; }
+.async-access .worlds li .world-actions { display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
+.async-access .worlds li .world-actions button { font-family: inherit; font-size: 0.72rem; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; border-radius: 0; padding: 5px 10px; margin: 0; cursor: pointer; background: transparent; color: var(--ink); border: 1px solid var(--async-line); }
+.async-access .worlds li .world-actions button:hover, .async-access .worlds li .world-actions button:focus-visible { background: rgba(44, 71, 109, 0.4); border-color: var(--async-phosphor); color: #fff; }
+.async-access .worlds li .world-actions button[data-action^="world:"] { background: var(--async-amber); color: var(--async-black); border: 1px solid var(--async-amber); }
+.async-access .worlds li .world-actions button[data-action^="world:"]:hover, .async-access .worlds li .world-actions button[data-action^="world:"]:focus-visible { background: #f0ce6b; color: #000; }
+.async-access .worlds li .world-actions button[data-action^="delete:"] { color: var(--muted); border-color: #384252; }
+.async-access .worlds li .world-actions button[data-action^="delete:"]:hover, .async-access .worlds li .world-actions button[data-action^="delete:"]:focus-visible { color: var(--danger, #ffb4a9); border-color: #a86156; background: rgba(168, 97, 86, 0.15); }
+.async-access .worlds li.empty { font-style: normal; color: var(--async-dim, #94a3b8); font-size: 0.78rem; letter-spacing: 0.08em; padding: 18px; text-align: center; justify-content: center; border: 1px dashed var(--async-line); background: rgba(11, 19, 32, 0.4); }
+.async-access .qol-help { margin-top: 1rem; font-size: 0.75rem; }
+.async-access .qol-help summary { color: var(--async-phosphor); letter-spacing: 0.08em; text-transform: uppercase; cursor: pointer; font-size: 0.72rem; }
+.async-access .qol-help p { margin: 6px 0 0 0; color: var(--muted); font-size: 0.74rem; line-height: 1.45; }

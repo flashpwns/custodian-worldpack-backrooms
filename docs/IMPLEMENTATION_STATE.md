@@ -1,5 +1,30 @@
 # Yellow Beast Implementation State
 
+## Beat 1 Repair Pass 1.3: Title Lockup & Smooth Dismissal — 2026-09-17
+
+- Bounded pass status: **COMPLETED** (Presentation-only title screen correction).
+- Visual acceptance status: `UNVERIFIED — REQUIRES HUMAN ELECTRON OBSERVATION`.
+- Scope constraints strictly preserved:
+  - Preserved verified world-selection/home screen, menu audio (bossa-only), exit confirmation dialog, title two-input gate law (`PRESS ANYTHING` → `PRESS AGAIN TO CONTINUE`), and authentic `ASYNC_Logo.png` asset.
+  - No new font files downloaded or introduced.
+  - Zero changes to CQ4 prefield flow, date card, waiver, personnel creation, persistence, or simulation layers.
+- Core repairs delivered:
+  1. **Title Lockup Refinement**:
+     - Reduced authoritative ASYNC logo height from `clamp(3.2rem, 8vw, 5.5rem)` to `clamp(2rem, 5vw, 3.5rem)` (~65% scale).
+     - Tightened vertical spacing between ASYNC logo and `VOICES OF THE THRESHOLD` to `0.5rem`, locking them into a single coherent visual mark.
+     - Moderately reduced main title `h1` size to `clamp(1.8rem, 4.2vw, 3.2rem)` with centered layout, restoring ample horizontal negative space and preventing screen edge crowding.
+  2. **Condensed Institutional Sans/Grotesk Typography**:
+     - Replaced terminal monospace on `h1` (`VOICES OF THE THRESHOLD`) with authentic archival condensed grotesk font stack: `"Arial Narrow", "Helvetica Neue", "Avenir Next Condensed", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif` with `font-stretch: condensed; font-weight: 700; letter-spacing: 0.07em; line-height: 1.15;`.
+     - Subtitle (`A Kane Pixels' Backrooms Simulacrum`) and prompt (`PRESS ANYTHING` / `PRESS AGAIN TO CONTINUE`) retain the established monospace font.
+  3. **Hardware-Accelerated Smooth Dismissal Wipe**:
+     - Diagnosed cause of Electron dismissal jitter: animating `clip-path: inset(...)` forced CPU rasterization and DOM reflow on every main-thread frame while audio and IPC events were dispatching.
+     - Replaced with a compositor-driven black shutter overlay (`.title-wipe-shutter`) animated with `transform: translate3d(-100%, 0, 0)` to `translate3d(0, 0, 0)` with `will-change: transform`.
+     - Completely offloaded to the GPU compositor thread: zero CPU raster repaints, zero layout reflows, locked 60fps/120fps fluid left-to-right sweep over 450ms.
+     - World-selection screen remains unexposed underneath until 450ms completion delay.
+- Automated verification:
+  - Aggregate test suite: 756 / 756 passed (139 included, 4 quarantined, 0 retired).
+  - Focused tests passed: `y103`, `y98`, `y75`, `y42`, `y30`, `y26`, `y77`.
+
 ## Reference Expedition living-turn integration checkpoint — 2026-09-02
 
 - Recovered boundary: branch `reference-expedition/foundation`, committed checkpoint `dbf8fa7` (`feat: add observer-safe live scene projection`). The interrupted working tree was a coherent continuation of that checkpoint, not disposable debris: it contained the living-turn interpreter/presentation pipeline, hosted-provider seams, LOCAL dialogue presentation, and renderer/playability repairs.

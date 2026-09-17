@@ -128,22 +128,173 @@
     }
   };
 
+  const DEFAULT_SOUND_MAP = Object.freeze({
+    radio_tx_chirp: "../assets/audio/Radio/Radio_Beep_01.mp3",
+    radio_rx_cue: "../assets/audio/Radio/Radio_Beep_01.mp3",
+    threshold_cross_hum: "../assets/audio/Anomalies/Noclip_01.mp3",
+    threshold_beacon: "../assets/audio/Equipment/Threshold_Ringing_01.mp3",
+    lpmds_twang_01: "../assets/audio/Equipment/Threshold_Ringing_01.mp3",
+    lpmds_twang_02: "../assets/audio/Equipment/Threshold_Ringing_01.mp3",
+    lpmds_twang_03: "../assets/audio/Equipment/Threshold_Ringing_01.mp3",
+    lpmds_bed: "../assets/audio/Ambience/Threshold_Ambience_01.mp3",
+    complex_hum: "../assets/audio/Ambience/Outpost_Ambience_01.mp3",
+    facility_ambient: "../assets/audio/Equipment/FF1_Electrical_Buzz_01.mp3",
+    boot_power: "../assets/audio/Equipment/Threshold_Activation_01.mp3",
+    blast_door_release: "../assets/audio/Equipment/Threshold_Door_Tumble_01.mp3",
+    blast_door_open: "../assets/audio/Equipment/Outpost_Door_01.mp3",
+    blast_door_close: "../assets/audio/Equipment/Outpost_Lights_Out_01.mp3",
+    localized_music_01: "../assets/audio/Ambience/Poolrooms_Ambience_01.mp3",
+    localized_music_02: "../assets/audio/Anomalies/Green_Crackle_01.mp3"
+  });
+
   const assetRegistry = new Map();
+  const activeAudioElements = new Map();
+  const playbacks = new Set();
+  // A bus controls volume, not duration. Mechanical actions are one-shots.
+  const LOOP_HOOKS = new Set(["facility_ambient", "lpmds_bed", "complex_hum", "threshold_beacon", "localized_music_01", "localized_music_02"]);
   let audioContext = null;
+  let menuTrack = null;
+  let menuWanted = false;
+  const playbackFailures = [];
 
   function getAudioContext() {
-    if (!audioContext && typeof global.AudioContext !== "undefined") {
-      audioContext = new global.AudioContext();
-    }
+    if (!audioContext && typeof global.AudioContext !== "undefined") audioContext = new global.AudioContext();
     return audioContext;
   }
 
-  function configure(next = {}) {
-    if (next.bus_volumes) {
-      settings.bus_volumes = { ...settings.bus_volumes, ...next.bus_volumes };
-      delete next.bus_volumes;
+  function updatePlayback(record) {
+    const volume = computeEffectiveGain(record.bus, record.gain) * record.fade;
+    record.audio.volume = volume;
+    if (volume <= 0.0001) record.audio.pause();
+    else if (record.audio.paused && !record.audio.ended) {
+      const promise = record.audio.play();
+      promise?.catch?.(error => {
+        playbackFailures.push({ hook: record.hookId, reason: String(error?.name ?? "playback-failed") });
+        if (playbackFailures.length > 20) playbackFailures.shift();
+      });
     }
-    settings = { ...settings, ...next };
+  }
+
+  function configure(next = {}) {
+    const { bus_volumes, ...rest } = next;
+    settings = { ...settings, ...rest, bus_volumes: { ...settings.bus_volumes, ...bus_volumes } };
+    playbacks.forEach(updatePlayback);
+  }
+
+  function dispose(record) {
+    if (record.timer) global.clearInterval(record.timer);
+    record.audio.pause();
+    record.nodes?.forEach(node => node.disconnect());
+    playbacks.delete(record);
+    if (activeAudioElements.get(record.hookId) === record) activeAudioElements.delete(record.hookId);
+  }
+
+  function stopHook(hookId, fadeMs = 0) {
+    for (const record of [...playbacks]) {
+      if (record.hookId !== hookId) continue;
+      if (record.timer) global.clearInterval(record.timer);
+      if (!fadeMs || typeof global.setInterval !== "function") { dispose(record); continue; }
+      const started = Date.now();
+      record.timer = global.setInterval(() => {
+        record.fade = Math.max(0, 1 - (Date.now() - started) / fadeMs);
+        updatePlayback(record);
+        if (!record.fade) dispose(record);
+      }, 25);
+    }
+  }
+
+  function stopAll() { for (const record of [...playbacks]) dispose(record); }
+
+  function distantRoomGraph(audio) {
+    const ctx = getAudioContext();
+    if (!ctx?.createMediaElementSource) return [];
+    const source = ctx.createMediaElementSource(audio);
+    const high = ctx.createBiquadFilter(); high.type = "highpass"; high.frequency.value = 100;
+    const low = ctx.createBiquadFilter(); low.type = "lowpass"; low.frequency.value = 6000;
+    const dry = ctx.createGain(); dry.gain.value = 0.86;
+    const wet = ctx.createGain(); wet.gain.value = 0.14;
+    const room = ctx.createConvolver();
+    const impulse = ctx.createBuffer(2, Math.ceil(ctx.sampleRate * 0.35), ctx.sampleRate);
+    for (let channel = 0; channel < 2; channel++) {
+      const samples = impulse.getChannelData(channel);
+      for (let i = 0; i < samples.length; i++) samples[i] = Math.sin(i * 1.71 + channel) * Math.pow(1 - i / samples.length, 4) * 0.15;
+      for (const [seconds, gain] of [[0.025, 0.5], [0.047, 0.3], [0.081, 0.15]]) samples[Math.floor(seconds * ctx.sampleRate)] += gain;
+    }
+    room.buffer = impulse;
+    source.connect(high).connect(low);
+    low.connect(dry).connect(ctx.destination);
+    low.connect(room).connect(wet).connect(ctx.destination);
+    ctx.resume()?.catch?.(() => {});
+    return [source, high, low, dry, wet, room];
+  }
+
+  function playAudioFile(hookId, srcPath, options = {}) {
+    if (typeof global.Audio === "undefined") return false;
+    const bus = options.bus ?? HOOK_BUS_MAP[hookId] ?? AUDIO_BUSES.INTERFACE;
+    const isLoop = options.loop ?? LOOP_HOOKS.has(hookId);
+    const existing = isLoop && activeAudioElements.get(hookId);
+    if (existing) {
+      if (existing.timer) { global.clearInterval(existing.timer); existing.timer = null; }
+      existing.fade = 1; existing.gain = options.gain ?? 1;
+      updatePlayback(existing); return true;
+    }
+    // Remember muted loops so unmuting starts the current scene. Drop muted one-shots.
+    if (!isLoop && computeEffectiveGain(bus, options.gain ?? 1) <= 0) return false;
+    try {
+      const audio = new global.Audio(srcPath);
+      audio.loop = Boolean(isLoop);
+      const record = { audio, hookId, bus, gain: options.gain ?? 1, fade: 1, nodes: [] };
+      if (options.distant) record.nodes = distantRoomGraph(audio);
+      if (isLoop) activeAudioElements.set(hookId, record);
+      playbacks.add(record);
+      audio.onended = () => { if (!isLoop) dispose(record); };
+      audio.onerror = () => { playbackFailures.push({ hook: hookId, reason: "media-error" }); dispose(record); };
+      updatePlayback(record);
+      return true;
+    } catch (_) { return false; }
+  }
+
+  function playCameraClick(options = {}) {
+    return playAudioFile("camera_shutter_click", "../assets/audio/Equipment/Camera_Click_01.mp3", { ...options, bus: AUDIO_BUSES.CHARACTER, gain: options.gain ?? 0.8, loop: false });
+  }
+
+  function startMenuMusic(track) {
+    if (!menuTrack && track) menuTrack = Object.freeze({ ...track });
+    menuWanted = true;
+    for (const hook of [...activeAudioElements.keys()]) if (hook !== "menu_music") stopHook(hook);
+    // Missing approved media remains an explicit silent slot; never reroll or substitute.
+    if (menuTrack?.src) playAudioFile("menu_music", menuTrack.src, { bus: AUDIO_BUSES.MUSIC, gain: 1.0, loop: true, distant: true });
+  }
+
+  function stopMenuMusic(fadeMs = 500) { menuWanted = false; stopHook("menu_music", fadeMs); }
+
+  function applyScene(scene) {
+    if (!scene) return;
+    const wanted = new Set([scene.ambient_loop, scene.machinery_bed].filter(hook => LOOP_HOOKS.has(hook)));
+    for (const hook of [...activeAudioElements.keys()]) if (hook !== "menu_music" && !wanted.has(hook)) stopHook(hook);
+    for (const hook of wanted) emitHook(hook, { loop: true, gain: hook === "threshold_beacon" ? scene.beacon_gain ?? 1 : 1 });
+  }
+
+  const hookCounts = {};
+
+  function diagnostics() {
+    return {
+      menu: { track: menuTrack?.id ?? null, available: Boolean(menuTrack?.src), wanted: menuWanted },
+      active_loops: [...activeAudioElements.keys()],
+      failures: playbackFailures.slice(-20),
+      context_state: audioContext?.state ?? null,
+      hook_counts: { ...hookCounts },
+      radio_tx_chirp_count: hookCounts["radio_tx_chirp"] || 0,
+      playback: [...playbacks].map(record => ({
+        hook: record.hookId,
+        loop: record.audio.loop,
+        paused: record.audio.paused,
+        ready_state: record.audio.readyState,
+        current_time: record.audio.currentTime,
+        volume: record.audio.volume,
+        room_filter_nodes: record.nodes.length
+      }))
+    };
   }
 
   function registerAsset(hookId, descriptor) {
@@ -233,7 +384,7 @@
         const gain = ctx.createGain();
         osc.type = "triangle";
         osc.frequency.setValueAtTime(hookId === "ui_submit" ? 520 : 440, now);
-        gain.gain.setValueAtTime(gainLevel * 0.08, now);
+        gain.gain.setValueAtTime(gainLevel * 0.35, now);
         gain.gain.exponentialRampToValueAtTime(0.001, now + 0.05);
         osc.connect(gain).connect(ctx.destination);
         osc.start(now);
@@ -481,17 +632,24 @@
       console.warn(`[YBAudio] Unrecognized acoustic hook: ${hookId}`);
       return;
     }
+    hookCounts[hookId] = (hookCounts[hookId] || 0) + 1;
     const registered = assetRegistry.get(hookId);
     if (registered && typeof registered.play === "function") {
       try {
         registered.play(options);
+        return;
       } catch (err) {
         console.error(`[YBAudio] Error in registered asset for ${hookId}:`, err);
         triggerProceduralFallback(hookId, options);
+        return;
       }
-    } else {
-      triggerProceduralFallback(hookId, options);
     }
+    const soundPath = DEFAULT_SOUND_MAP[hookId];
+    if (soundPath && typeof global.Audio !== "undefined") {
+      const played = playAudioFile(hookId, soundPath, options);
+      if (played) return;
+    }
+    triggerProceduralFallback(hookId, options);
   }
 
   // Legacy fallback compatibility with prior YBAudio.play(kind) interface
@@ -511,12 +669,21 @@
     AUDIO_BUSES,
     CONCEPTUAL_HOOKS,
     HOOK_BUS_MAP,
+    DEFAULT_SOUND_MAP,
     configure,
+    stopHook,
+    stopAll,
+    applyScene,
+    startMenuMusic,
+    stopMenuMusic,
+    diagnostics,
     registerAsset,
     getRegisteredAsset,
     listRegisteredHooks,
     calculateSpatialAttenuation,
+    computeEffectiveGain,
     emitHook,
+    playCameraClick,
     play
   });
 

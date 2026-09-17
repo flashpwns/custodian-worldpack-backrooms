@@ -19,7 +19,10 @@ const button = (label, action, disabled = false) => `<button type="${action === 
 const requestContext = () => ({ worldId: current.world?.id ?? "", mode: current.mode ?? "" });
 const resultIsError = (result) => result?.ok === false || Boolean(result?.error);
 const applicationError = (result) => /WORLD_|SAVE|REQUEST|INTERNAL/.test(result?.error?.code ?? "");
-const applyPreferences = (settings) => YBAccessibility.apply(document, settings);
+const applyPreferences = (settings) => {
+  YBAccessibility.apply(document, settings);
+  if (typeof YBAudio !== "undefined") YBAudio.configure({ audio_muted:settings.audio_muted, audio_master:settings.audio_master, reduced_sensory:settings.reduced_sensory, bus_volumes:{ music:settings.audio_music, interface:settings.audio_sfx, communications:settings.audio_sfx, environment:settings.audio_sfx, machinery:settings.audio_sfx, character:settings.audio_sfx } });
+};
 
 function expeditionLoadingMotif() {
   return `<span class="expedition-loading-motif" aria-label="Field expedition progression" role="img"><span class="walking-person lead" title="Lead surveyor (camera)">[▣]</span><span class="walking-person middle" title="Survey technician (equipment case)">[■]</span><span class="walking-person rear" title="Trailing researcher (lamp / tape)">[◌↩]</span></span>`;
@@ -68,9 +71,9 @@ async function home() {
   current.projection = null;
   requestGate.invalidate();
   const [info, worlds, preferences] = await Promise.all([yellowBeast.getAppInfo(), yellowBeast.listWorlds(), yellowBeast.getSettings()]);
-  applyPreferences(preferences.settings); current.developer = info.app.developer_mode === true;
-  const list = worlds.worlds.map((world) => `<li data-world-name="${escape(world.name)}"><strong>${escape(world.name)}</strong><span>${escape(world.last_mode ?? "Ready to choose an experience")}</span><span class="muted">Last played ${escape(world.last_played_at ? new Date(world.last_played_at).toLocaleDateString() : "not yet")}</span>${button("Open world", `world:${world.id}`)}${button("Rename", `rename:${world.id}`)}${button("Export", `export:${world.id}`)}${current.developer ? button("Export diagnostic record", `diagnostic:${world.id}`) : ""}${button("Delete", `delete:${world.id}`)}</li>`).join("") || `<li class="empty">No field files registered yet.</li>`;
-  const build = info.app.build ?? {}; app.innerHTML = `<section class="shell async-access" data-testid="world-library"><header class="access-header"><div><p class="eyebrow">ASYNC · FIELD OPERATIONS SYSTEM</p><h1>Operational Records</h1><p>Authorized personnel may resume an existing operational record or establish a new field file.</p></div><p class="version">v${escape(info.app.version)} · ${escape(String(build.commit ?? "source").slice(0, 12))}<br><small>${escape(build.built_at ?? "SOURCE_TREE")}</small></p></header><nav aria-label="Application">${button("Establish field file", "new")}${button("Import record", "import")}${button("Settings", "settings")}${button("About", "about")}</nav><section><h2>Registered records</h2>${worlds.worlds.length ? `<label>Find a record <input id="world-filter" autocomplete="off" placeholder="Search record names"></label>` : ""}<ul class="worlds">${list}</ul><details class="qol-help"><summary>Exporting an operational record</summary><p>Export creates a portable copy of this record. The record in this installation remains unchanged.</p></details></section></section>`;
+  applyPreferences(preferences.settings); if (typeof YBAudio !== "undefined") YBAudio.startMenuMusic(info.app.menu_music); current.developer = info.app.developer_mode === true;
+  const list = worlds.worlds.map((world) => `<li data-world-name="${escape(world.name)}"><div class="world-meta"><strong class="world-name">${escape(world.name)}</strong><span class="world-status">${escape(world.last_mode ? "ACTIVE: " + world.last_mode : "READY FOR ASSIGNMENT")}</span><span class="world-date muted">LAST ACCESSED: ${escape(world.last_played_at ? new Date(world.last_played_at).toLocaleDateString() : "NONE")}</span></div><div class="world-actions">${button("OPEN", `world:${world.id}`)}${button("RENAME", `rename:${world.id}`)}${button("EXPORT", `export:${world.id}`)}${current.developer ? button("Export diagnostic record", `diagnostic:${world.id}`) : ""}${button("DELETE", `delete:${world.id}`)}</div></li>`).join("") || `<li class="empty">No field files registered yet.</li>`;
+  app.innerHTML = `<section class="shell async-access" data-testid="world-library"><header class="access-header"><div><p class="eyebrow">ASYNC · FIELD OPERATIONS SYSTEM</p><h1>Operational Records</h1><p class="access-subtitle">Authorized personnel may resume an existing operational record or establish a new field file.</p></div></header><nav aria-label="Application">${button("NEW ASSIGNMENT", "new")}${button("IMPORT RECORD", "import")}${button("SETTINGS", "settings")}${button("ABOUT", "about")}<button type="button" data-action="exit-game" data-testid="exit-game-button">EXIT GAME</button></nav><section class="records-inventory"><h2>Registered Records</h2>${worlds.worlds.length ? `<label class="search-label">SEARCH RECORDS <input id="world-filter" autocomplete="off" placeholder="Search record names..."></label>` : ""}<ul class="worlds">${list}</ul><details class="qol-help"><summary>RECORD EXPORT INSTRUCTIONS</summary><p>Export creates a portable copy of this record. The record in this installation remains unchanged.</p></details></section></section>`;
   document.querySelector("#world-filter")?.addEventListener("input", (event) => { const query = event.target.value.toLowerCase(); app.querySelectorAll(".worlds li[data-world-name]").forEach((item) => { item.hidden = !item.dataset.worldName.toLowerCase().includes(query); }); });
 }
 async function newWorld() {
@@ -566,7 +569,89 @@ else if (action === "confirm-termination") {
   document.querySelector(".termination-portal")?.remove();
   home();
   return;
+} else if (action === "exit-game") {
+  if (typeof YBAudio !== "undefined") YBAudio.emitHook("ui_select");
+  showExitGameConfirmation();
+  return;
+} else if (action === "cancel-exit") {
+  if (typeof YBAudio !== "undefined") YBAudio.emitHook("ui_select");
+  document.querySelector(".exit-game-portal")?.remove();
+  document.querySelector('[data-action="exit-game"]')?.focus();
+  return;
+} else if (action === "confirm-exit") {
+  if (typeof YBAudio !== "undefined") YBAudio.emitHook("ui_submit");
+  yellowBeast.exitApplication();
+  return;
 } else if (action === "close-settings") { settingsController.state = "closing"; const opener = settingsController.opener; const returnTo = current.settingsReturn ?? home; current.settingsReturn = null; returnTo(); settingsController.state = "closed"; queueMicrotask(() => opener?.isConnected && opener.focus()); } else if (action === "new") newWorld(); else if (action === "import") { const imported = await yellowBeast.chooseImportWorld(); if (resultIsError(imported) && imported.error.code !== "IMPORT_CANCELLED") alert(imported.error.message); home(); } else if (action === "settings") settings(event.target); else if (action === "about") about(); else if (action === "reset-preferences") { const saved = await yellowBeast.updateSettings({ settings:{ theme:"system", text_scale:"default", reduced_motion:false, guided_introductions:true } }); if (!resultIsError(saved)) applyPreferences(saved.settings); settings(event.target); } else if (action === "refresh-view") { const context = requestContext(); const refreshed = await yellowBeast.getGameplayProjection({ world_id:context.worldId, mode:context.mode }); if (!resultIsError(refreshed) && requestContext().worldId === context.worldId && requestContext().mode === context.mode && event.target.isConnected) { current.projection = refreshed.projection; play("Current view refreshed.", "result"); } } else if (action.startsWith("rename:")) { const worldId = action.slice(7); const prior = event.target.closest("li")?.dataset.worldName ?? ""; const name = prompt("Rename this world. This changes only its library name.", prior); if (name !== null) { const renamed = await yellowBeast.renameWorld({ world_id:worldId, name }); if (resultIsError(renamed)) alert(renamed.error.message); home(); } } else if (action.startsWith("restore:")) { const restored = await yellowBeast.restoreBackup({ world_id:action.slice(8), confirmed:confirm("Restore the previous save? Recent changes may be lost.") }); if (!resultIsError(restored)) selectWorld(action.slice(8)); else alert(restored.error.message); } else if (action.startsWith("export:")) { const result = await yellowBeast.chooseExportWorld({ world_id: action.slice(7) }); if (resultIsError(result) && result.error.code !== "EXPORT_CANCELLED") alert(result.error.message); } else if (action.startsWith("delete:")) { const worldId = action.slice(7); const name = event.target.closest("li")?.dataset.worldName ?? "this world"; if (confirm(`Delete “${name}” and its saved sessions? This cannot be undone.`)) { const deleted = await yellowBeast.deleteWorld({ world_id:worldId, confirmed:true }); if (resultIsError(deleted)) alert(result.error.message); home(); } } else if (action.startsWith("diagnostic:")) { const result = await yellowBeast.exportTesterReport({ world_id:action.slice(11), mode:"field-researcher" }); alert(resultIsError(result) ? result.error.message : `Diagnostic record exported to ${result.file}. Credentials and provider keys are omitted.`); } else if (action.startsWith("world:")) selectWorld(action.slice(6)); else if (action.startsWith("mode:")) enterMode(action.slice(5)); });
-document.addEventListener("keydown", (event) => { if (event.key === "Escape" && document.querySelector(".termination-portal")) { event.preventDefault(); document.querySelector('[data-action="cancel-termination"]')?.click(); return; } if (event.key === "Escape" && document.querySelector("[data-testid=settings-surface]")) { event.preventDefault(); document.querySelector("[data-action=close-settings]")?.click(); return; } if (event.altKey && event.key === ",") { event.preventDefault(); settings(); return; } if (!current.projection || event.target.matches("input, textarea, select, button")) return; const recap = document.querySelector("#recap-panel"); if (event.key === "?" && recap) { event.preventDefault(); recap.open = true; recap.querySelector("summary")?.focus({ preventScroll:true }); } else if (event.key === "Escape" && recap?.open) { event.preventDefault(); recap.open = false; focusNaturalInput(); } });
-function boot() { const bypass = window.__YB_TEST_BYPASS_BOOT__ === true || /(?:bypass-boot|test-mode)/i.test(window.location.search + window.location.hash); if (bypass) { home(); return; } if (typeof YBAudio !== "undefined") YBAudio.emitHook("boot_relay"); app.innerHTML = `<section class="async-boot" data-testid="async-boot" role="status" aria-live="polite"><div class="async-boot-mark"><span>A</span><strong>ASYNC</strong></div><p>FIELD OPERATIONS SYSTEM</p><small>IDENTIFICATION / INITIALIZING</small><div class="boot-rule"><i></i></div><button type="button" data-action="skip-boot">Skip initialization</button></section>`; const timer = window.setTimeout(() => { if (typeof YBAudio !== "undefined") YBAudio.emitHook("boot_confirm"); home(); }, 700); document.querySelector("[data-action=skip-boot]").addEventListener("click", () => { window.clearTimeout(timer); if (typeof YBAudio !== "undefined") YBAudio.emitHook("boot_confirm"); home(); }); }
+function showExitGameConfirmation() {
+  document.querySelector(".exit-game-portal")?.remove();
+  const portal = document.createElement("div");
+  portal.className = "exit-game-portal";
+  portal.setAttribute("role", "dialog");
+  portal.setAttribute("aria-modal", "true");
+  portal.setAttribute("aria-labelledby", "exit-game-heading");
+  portal.innerHTML = `<div class="exit-game-dialog" data-testid="exit-game-dialog"><p class="eyebrow">ASYNC · TERMINAL SESSION</p><h2 id="exit-game-heading">Exit Voices of the Threshold?</h2><p class="exit-consequence">Unsaved field progress is preserved in the active operational record. The application will close.</p><div class="exit-actions"><button type="button" class="action-button secondary-action" data-action="cancel-exit" autofocus>CANCEL</button><button type="button" class="action-button primary-action danger-action" data-action="confirm-exit">CONFIRM APPLICATION EXIT</button></div></div>`;
+  document.body.appendChild(portal);
+  portal.querySelector('[data-action="cancel-exit"]')?.focus();
+}
+document.addEventListener("keydown", (event) => { if (event.key === "Escape" && document.querySelector(".exit-game-portal")) { event.preventDefault(); document.querySelector('[data-action="cancel-exit"]')?.click(); return; } if (event.key === "Escape" && document.querySelector(".termination-portal")) { event.preventDefault(); document.querySelector('[data-action="cancel-termination"]')?.click(); return; } if (event.key === "Escape" && document.querySelector("[data-testid=settings-surface]")) { event.preventDefault(); document.querySelector("[data-action=close-settings]")?.click(); return; } if (event.altKey && event.key === ",") { event.preventDefault(); settings(); return; } if (event.key === "Escape" && document.querySelector('[data-testid="world-library"]') && !document.querySelector(".exit-game-portal") && !document.querySelector("[data-testid=settings-surface]") && !document.querySelector(".termination-portal")) { event.preventDefault(); showExitGameConfirmation(); return; } if (!current.projection || event.target.matches("input, textarea, select, button")) return; const recap = document.querySelector("#recap-panel"); if (event.key === "?" && recap) { event.preventDefault(); recap.open = true; recap.querySelector("summary")?.focus({ preventScroll:true }); } else if (event.key === "Escape" && recap?.open) { event.preventDefault(); recap.open = false; focusNaturalInput(); } });
+function boot() { const bypass = window.__YB_TEST_BYPASS_BOOT__ === true || /(?:bypass-boot|test-mode)/i.test(window.location.search + window.location.hash); if (bypass) { home(); return; } app.innerHTML = `<section class="cold-launch" data-testid="cold-launch" role="status" aria-live="polite"><span class="loading-animation" aria-label="Loading"></span></section>`; window.setTimeout(showTitleCard, 900); }
+async function showTitleCard() {
+  const [info, preferences] = await Promise.all([yellowBeast.getAppInfo(), yellowBeast.getSettings()]);
+  applyPreferences(preferences.settings);
+  if (typeof YBAudio !== "undefined") YBAudio.startMenuMusic(info.app.menu_music);
+  app.innerHTML = `<section class="title-card title-materializing" data-testid="title-card" tabindex="0"><div class="title-wipe-shutter" aria-hidden="true"></div><img src="../assets/icon-source/ASYNC_Logo.png" class="title-logo" alt="ASYNC" draggable="false"><h1>VOICES OF THE THRESHOLD</h1><p class="title-subtitle">A Kane Pixels' Backrooms Simulacrum</p><small>PRESS ANYTHING</small></section>`;
+
+  let isMaterialized = false;
+  let gate1Acknowledged = false;
+  let gate1HandledAt = 0;
+  let gate2Dismissing = false;
+  const card = app.querySelector(".title-card");
+
+  const materializationTimer = window.setTimeout(() => {
+    if (!isMaterialized) {
+      isMaterialized = true;
+      card?.classList.remove("title-materializing");
+      card?.classList.add("title-materialized");
+    }
+  }, 2200);
+
+  const handleTitleInput = (e) => {
+    if (e.type === "keydown" && (e.repeat || ["Tab", "Shift", "Control", "Alt", "Meta"].includes(e.key))) return;
+    const now = Date.now();
+
+    if (!gate1Acknowledged) {
+      window.clearTimeout(materializationTimer);
+      isMaterialized = true;
+      gate1Acknowledged = true;
+      gate1HandledAt = now;
+      card?.classList.remove("title-materializing");
+      card?.classList.add("title-materialized");
+      card?.classList.add("title-acknowledged");
+      const promptEl = card?.querySelector("small");
+      if (promptEl) {
+        promptEl.textContent = "PRESS AGAIN TO CONTINUE";
+        promptEl.classList.add("prompt-acknowledged");
+      }
+      if (typeof YBAudio !== "undefined") YBAudio.emitHook("ui_select", { gain: 1.5 });
+      return;
+    }
+
+    if (now - gate1HandledAt < 120) return;
+    if (gate2Dismissing) return;
+    gate2Dismissing = true;
+    window.removeEventListener("keydown", handleTitleInput);
+    window.removeEventListener("pointerdown", handleTitleInput);
+    if (typeof YBAudio !== "undefined") YBAudio.emitHook("ui_submit", { gain: 1.5 });
+    card?.classList.add("title-dismissing");
+    const dismissDelay = window.__YB_TEST_FAST_FADE__ === true ? 0 : 450;
+    window.setTimeout(() => {
+      home();
+    }, dismissDelay);
+  };
+
+  window.addEventListener("keydown", handleTitleInput);
+  window.addEventListener("pointerdown", handleTitleInput);
+  card?.focus();
+}
 boot();
