@@ -6,17 +6,33 @@ const path = require("node:path");
 const test = require("node:test");
 const { DesktopService } = require("../desktop/service");
 const surfaces = require("../desktop/renderer/surfaces");
+const nameRules = require("../desktop/shared/name-rules");
+
+test('waiver rules accept names without substring false positives and reject invalid fields independently', () => {
+  for (const name of ["O'Neil", "Anne-Marie", "Élodie", "A", "Scunthorpe", "Dickson"]) assert.equal(nameRules.valid(name), true, name);
+  for (const name of ['', '123', 'Ann!', 'Anne Marie', 'Fuck', 'F-u-c-k', 'Shithead', 'A--B', "A'", 'Abcdefghijklm']) assert.equal(nameRules.valid(name), false, name);
+  assert.deepEqual(nameRules.invalidFields({ first_name:'Morgan', last_name:'123' }), ['last_name']);
+  assert.deepEqual(nameRules.invalidFields({ first_name:'', last_name:'Fuck' }), ['last_name', 'first_name']);
+});
+
+test('direct personnel creation cannot bypass profanity rejection or mutate a rejected record', () => {
+  const { service, world:record } = fixture('profanity-boundary');
+  const world = service.getWorld(record.id), before = structuredClone(world);
+  assert.equal(require('../tools/q4-personnel').createPlayer(world, { first_name:'Fuck', last_name:'Vale' }).code, 'PLAYER_NAME_INVALID');
+  assert.deepEqual(world, before);
+  service.shutdown();
+});
 
 function fixture(seed = "player-identity") {
   const service = new DesktopService({ appDataPath: fs.mkdtempSync(path.join(os.tmpdir(), "yb-q4-player-")) });
   const world = service.createWorld({ name: "Player identity", seed }).world;
   return { service, world };
 }
-function createAndStart(service, world, first_name = "Jack", last_name = "Rocha") {
+function createAndStart(service, world, first_name = "Jack", last_name = "Rocha", scenario = null) {
   const created = service.createQ4Personnel({ world_id: world.id, first_name, last_name });
   assert.equal(created.ok, true);
   assert.equal(service.confirmQ4Personnel({ world_id: world.id }).ok, true);
-  return service.startSession({ world_id: world.id, mode: "field-researcher", seed: "player-identity", require_personnel: true });
+  return service.startSession({ world_id: world.id, mode: "field-researcher", seed: "player-identity", require_personnel: true, ...(scenario ? { scenario } : {}) });
 }
 function advanceTo(service, world, actions = ["READY", "PROCEED", "APPROACH", "READY", "RADIO_CHECK", "CROSS"]) {
   let result;
@@ -77,10 +93,11 @@ test("LOCAL is delivered to a generated coworker before field entry while Standa
 });
 
 test("phase copy and progression controls identify the destination", () => {
-  const { service, world } = fixture("phase-copy"); createAndStart(service, world);
+  const { service, world } = fixture("phase-copy"); createAndStart(service, world, "Jack", "Rocha", "day1-opener");
   let projection = service.getGameplayProjection({ world_id: world.id, mode: "field-researcher" }).projection;
-  assert.match(projection.q4.briefing, /continue to staging/i); assert.match(surfaces.render(projection), /Continue to Staging/);
-  for (const [action, phase, copy] of [["READY", "STAGING", /proceed to the threshold room/i], ["PROCEED", "FACILITY_TRANSIT", /toward the Threshold room/i], ["APPROACH", "THRESHOLD", /begin the Standard radio procedure/i]]) {
+  assert.match(projection.q4.briefing, /speak with the assigned team/i); assert.match(surfaces.render(projection), /PROCEED TO ESD/);
+  service.completeBriefingBroadcast({ world_id: world.id });
+  for (const [action, phase, copy] of [["READY", "STAGING", /cooperate with the team/i], ["PROCEED", "FACILITY_TRANSIT", /toward the Threshold room/i], ["APPROACH", "THRESHOLD", /begin the Standard radio procedure/i]]) {
     const result = service.submitAction({ world_id: world.id, mode: "field-researcher", action }); assert.equal(result.projection.phase.phase_id, phase); assert.match(result.projection.q4.briefing, copy); projection = result.projection;
   }
   assert.match(surfaces.render(projection), /Begin radio procedure/);
@@ -89,5 +106,127 @@ test("phase copy and progression controls identify the destination", () => {
 
 test("renderer exposes creation, confirmation, phase guidance, and direct progression wiring", () => {
   const renderer = fs.readFileSync(path.join(__dirname, "../desktop/renderer/renderer.js"), "utf8");
-  assert.match(renderer, /Create your ASYNC personnel record/); assert.match(renderer, /Continue to Assignment Briefing/); assert.match(renderer, /createQ4Personnel/); assert.match(renderer, /selectedAction/); assert.match(renderer, /Hide guidance/); assert.doesNotMatch(renderer, /You are entering Clear-Q4/);
+  assert.match(renderer, /PERSONNEL IDENTITY WAIVER/); assert.match(renderer, /Last name/); assert.match(renderer, /First name/); assert.match(renderer, /personnelNameReview/); assert.match(renderer, /aeotInitialization/); assert.match(renderer, /createQ4Personnel/); assert.match(renderer, /selectedAction/); assert.match(renderer, /Hide guidance/); assert.doesNotMatch(renderer, /You are entering Clear-Q4/);
+});
+
+test('personnel entry enforces the beatmap twelve-character boundary without creating rejected records', () => {
+  const personnel = require('../tools/q4-personnel');
+  for (const field of ['first_name', 'last_name']) {
+    const { service, world:record } = fixture(`name-boundary-${field}`);
+    const world = service.getWorld(record.id);
+    const before = structuredClone(world);
+    const names = { first_name:'Morgan', last_name:'Vale', [field]:'Abcdefghijklm' };
+    assert.equal(personnel.createPlayer(world, names).code, 'PLAYER_NAME_INVALID');
+    assert.deepEqual(world, before, 'Rejected names must not mutate the world');
+    const accepted = service.createQ4Personnel({ world_id:record.id, ...names, [field]:'Abcdefghijkl' });
+    assert.equal(accepted.ok, true);
+    service.shutdown();
+  }
+});
+
+test("mixed-case personnel identity survives filing and persistence unchanged and locks world renaming", () => {
+  const { service, world } = fixture("mixed-case-identity");
+  assert.equal(world.name, "Player identity");
+
+  // Initial uncommenced world can be renamed
+  const renamedInitial = service.renameWorld({ world_id: world.id, name: "Initial Research Draft" });
+  assert.equal(renamedInitial.ok, true);
+  assert.equal(renamedInitial.world.name, "Initial Research Draft");
+  assert.equal(renamedInitial.world.has_filed_personnel, false);
+
+  // File mixed-case personnel identity
+  const created = service.createQ4Personnel({ world_id: world.id, first_name: "Jack", last_name: "Rocha" });
+  assert.equal(created.ok, true);
+  assert.equal(created.player.first_name, "Jack");
+  assert.equal(created.player.last_name, "Rocha");
+  assert.equal(created.player.display_name, "Jack Rocha");
+
+  assert.equal(service.confirmQ4Personnel({ world_id: world.id }).ok, true);
+
+  // Once confirmed, world label derives deterministically from personnel identity
+  const listed = service.listWorlds().worlds.find((w) => w.id === world.id);
+  assert.equal(listed.name, "Jack Rocha");
+  assert.equal(listed.has_filed_personnel, true);
+
+  const loaded = service.loadWorld({ world_id: world.id }).world;
+  assert.equal(loaded.name, "Jack Rocha");
+  assert.equal(loaded.has_filed_personnel, true);
+
+  // World renaming is locked once personnel identity is filed
+  const renameAttempt = service.renameWorld({ world_id: world.id, name: "Renamed File" });
+  assert.equal(renameAttempt.ok, false);
+  assert.equal(renameAttempt.error.code, "PERSONNEL_RECORD_LOCKED");
+
+  // Re-open service from disk to verify persistence
+  service.shutdown();
+  const restarted = new DesktopService({ appDataPath: service.paths.root });
+  const restoredStatus = restarted.getQ4PersonnelStatus({ world_id: world.id });
+  assert.equal(restoredStatus.player.first_name, "Jack");
+  assert.equal(restoredStatus.player.last_name, "Rocha");
+  assert.equal(restoredStatus.player.display_name, "Jack Rocha");
+
+  const restoredWorld = restarted.loadWorld({ world_id: world.id }).world;
+  assert.equal(restoredWorld.name, "Jack Rocha");
+  assert.equal(restoredWorld.has_filed_personnel, true);
+
+  // An uncommenced world before personnel registration can still be renamed
+  const uncommenced = restarted.createWorld({ name: "Untitled field file", seed: "uncommenced-test" }).world;
+  assert.equal(uncommenced.name, "Untitled field file");
+  assert.equal(uncommenced.has_filed_personnel, false);
+  const renamed = restarted.renameWorld({ world_id: uncommenced.id, name: "Alpha Assignment" });
+  assert.equal(renamed.ok, true);
+  assert.equal(renamed.world.name, "Alpha Assignment");
+  assert.equal(renamed.world.has_filed_personnel, false);
+  restarted.shutdown();
+});
+
+test("deliberately irregular capitalization survives filing, persistence, world listing, and reload unchanged", () => {
+  const { service, world } = fixture("irregular-capitalization");
+  const first_name = "jAcK";
+  const last_name = "rOcHa";
+
+  const created = service.createQ4Personnel({ world_id: world.id, first_name, last_name });
+  assert.equal(created.ok, true);
+  assert.equal(created.player.first_name, "jAcK");
+  assert.equal(created.player.last_name, "rOcHa");
+  assert.equal(created.player.display_name, "jAcK rOcHa");
+
+  const confirmed = service.confirmQ4Personnel({ world_id: world.id });
+  assert.equal(confirmed.ok, true);
+  assert.equal(confirmed.player.first_name, "jAcK");
+  assert.equal(confirmed.player.last_name, "rOcHa");
+  assert.equal(confirmed.player.display_name, "jAcK rOcHa");
+
+  // World listing derives exact display name
+  const listed = service.listWorlds().worlds.find((w) => w.id === world.id);
+  assert.equal(listed.name, "jAcK rOcHa");
+  assert.equal(listed.has_filed_personnel, true);
+
+  // Reload from disk to verify persistence
+  service.shutdown();
+  const restarted = new DesktopService({ appDataPath: service.paths.root });
+  const restoredStatus = restarted.getQ4PersonnelStatus({ world_id: world.id });
+  assert.equal(restoredStatus.player.first_name, "jAcK");
+  assert.equal(restoredStatus.player.last_name, "rOcHa");
+  assert.equal(restoredStatus.player.display_name, "jAcK rOcHa");
+
+  const restoredWorld = restarted.loadWorld({ world_id: world.id }).world;
+  assert.equal(restoredWorld.name, "jAcK rOcHa");
+  assert.equal(restoredWorld.has_filed_personnel, true);
+
+  // Session start also preserves exact identity
+  const started = restarted.startSession({ world_id: world.id, mode: "field-researcher", require_personnel: true });
+  assert.equal(started.ok, true);
+  assert.equal(started.projection.q4.player.first_name, "jAcK");
+  assert.equal(started.projection.q4.player.name, "jAcK rOcHa");
+  assert.equal(started.projection.q4.team[0].first_name, "jAcK");
+  assert.equal(started.projection.q4.team[0].last_name, "rOcHa");
+  assert.equal(started.projection.q4.team[0].display_name, "jAcK rOcHa · YOU");
+
+  // Waiver input and review do not force uppercase presentation
+  const css = fs.readFileSync(path.join(__dirname, "../desktop/renderer/styles.css"), "utf8");
+  assert.doesNotMatch(css, /\.bracket-unified-line input\s*\{[^}]*text-transform:\s*uppercase/);
+  assert.doesNotMatch(css, /\.review-name\s*\{[^}]*text-transform:\s*uppercase/);
+
+  restarted.shutdown();
 });

@@ -252,7 +252,7 @@
     "tests/y44-q4-replayability.test.js": "5643b81af5ae18ae402087e8b04dcb117442db160f34cc8d7f6ddcb16401700c",
     "tests/y45-q4-beta-gate.test.js": "9e5e9a2ab656ef1febd028583fa5f97ecac204b2982fd01edb494f1682961932",
     "tests/y46-q4-console-acceptance.test.js": "6859126de9a8cb3cd395b77e0a05f7851537fe049b861002c85a20402918e5cc",
-    "tests/y47-q4-player-identity.test.js": "d164ce2957c1596ea47edb8e8aa1eafb29bac52957fa708333cb3ed12129750e",
+    "tests/y47-q4-player-identity.test.js": "f2a22eec98b4c038688edcec7e8398aa747cf3629736d82c634b2649e6198e5f",
     "tests/y48-q4-prefield-flow.test.js": "ccb0d203d682e2af722622a70d03d5c3aa799a52e888989e3dc65cf110d7393b",
     "tests/y49-playable-spine-map.test.js": "f3e7f45eb54991cea648a40f849906aac525f9261827377a8323fe50a3e24545",
     "tests/y50-structured-interactions.test.js": "3d62e3530b663e9f0f764ccb7368633f6ec459ede2eed7e54d026a417acfc5e8",

@@ -72,14 +72,23 @@ async function home() {
   requestGate.invalidate();
   const [info, worlds, preferences] = await Promise.all([yellowBeast.getAppInfo(), yellowBeast.listWorlds(), yellowBeast.getSettings()]);
   applyPreferences(preferences.settings); if (typeof YBAudio !== "undefined") YBAudio.startMenuMusic(info.app.menu_music); current.developer = info.app.developer_mode === true;
-  const list = worlds.worlds.map((world) => `<li data-world-name="${escape(world.name)}"><div class="world-meta"><strong class="world-name">${escape(world.name)}</strong><span class="world-status">${escape(world.last_mode ? "ACTIVE: " + world.last_mode : "READY FOR ASSIGNMENT")}</span><span class="world-date muted">LAST ACCESSED: ${escape(world.last_played_at ? new Date(world.last_played_at).toLocaleDateString() : "NONE")}</span></div><div class="world-actions">${button("OPEN", `world:${world.id}`)}${button("RENAME", `rename:${world.id}`)}${button("EXPORT", `export:${world.id}`)}${current.developer ? button("Export diagnostic record", `diagnostic:${world.id}`) : ""}${button("DELETE", `delete:${world.id}`)}</div></li>`).join("") || `<li class="empty">No field files registered yet.</li>`;
+  const list = worlds.worlds.map((world) => `<li data-world-name="${escape(world.name)}" data-has-filed-personnel="${world.has_filed_personnel ? "true" : "false"}"><div class="world-meta"><strong class="world-name">${escape(world.name)}</strong><span class="world-status">${escape(world.last_mode ? "ACTIVE: " + world.last_mode : "READY FOR ASSIGNMENT")}</span><span class="world-date muted">LAST ACCESSED: ${escape(world.last_played_at ? new Date(world.last_played_at).toLocaleDateString() : "NONE")}</span></div><div class="world-actions">${button("OPEN", `world:${world.id}`)}${!world.has_filed_personnel ? button("RENAME", `rename:${world.id}` : "") : ""}${button("EXPORT", `export:${world.id}`)}${current.developer ? button("Export diagnostic record", `diagnostic:${world.id}`) : ""}${button("DELETE", `delete:${world.id}`)}</div></li>`).join("") || `<li class="empty">No field files registered yet.</li>`;
   app.innerHTML = `<section class="shell async-access" data-testid="world-library"><header class="access-header"><div><p class="eyebrow">ASYNC · FIELD OPERATIONS SYSTEM</p><h1>Operational Records</h1><p class="access-subtitle">Authorized personnel may resume an existing operational record or establish a new field file.</p></div></header><nav aria-label="Application">${button("NEW ASSIGNMENT", "new")}${button("IMPORT RECORD", "import")}${button("SETTINGS", "settings")}${button("ABOUT", "about")}<button type="button" data-action="exit-game" data-testid="exit-game-button">EXIT GAME</button></nav><section class="records-inventory"><h2>Registered Records</h2>${worlds.worlds.length ? `<label class="search-label">SEARCH RECORDS <input id="world-filter" autocomplete="off" placeholder="Search record names..."></label>` : ""}<ul class="worlds">${list}</ul><details class="qol-help"><summary>RECORD EXPORT INSTRUCTIONS</summary><p>Export creates a portable copy of this record. The record in this installation remains unchanged.</p></details></section></section>`;
   document.querySelector("#world-filter")?.addEventListener("input", (event) => { const query = event.target.value.toLowerCase(); app.querySelectorAll(".worlds li[data-world-name]").forEach((item) => { item.hidden = !item.dataset.worldName.toLowerCase().includes(query); }); });
 }
 async function newWorld() {
-  app.innerHTML = `<section class="shell narrow" data-testid="create-world"><p class="eyebrow">ASYNC · RECORDS CONTROL</p><h1>Establish a field file</h1><p>Name the persistent record before choosing an authorized operational program.</p><form id="new-world"><label>Record name <input name="name" maxlength="80" autofocus placeholder="Optional — defaults to Untitled field file"><small>Use a name for this career record, or leave it blank and continue.</small></label><label><input name="guided" type="checkbox" checked> Guided introduction</label><details><summary>Record initialization reference</summary><label>Repeatable seed <input name="seed"></label></details><div>${button("Establish and begin", "submit")}${button("Back", "home")}</div></form><div id="message" role="status" aria-live="polite"></div></section>`;
-  const form = document.querySelector("#new-world"); const nameInput = form.elements.namedItem("name"); const submit = form.querySelector('[data-action="submit"]'); let submitting = false;
-  form.addEventListener("submit", async (event) => { event.preventDefault(); if (submitting) return; submitting = true; submit.disabled = true; const data = new FormData(form); const message = document.querySelector("#message"); const guided = data.get("guided") === "on"; try { const preference = await yellowBeast.updateSettings({ settings:{ guided_introductions:guided } }); if (resultIsError(preference)) { message.textContent = preference.error.message; submitting = false; submit.disabled = false; nameInput?.focus(); return; } const result = await yellowBeast.createWorld({ name: data.get("name"), seed: data.get("seed") || null }); if (resultIsError(result)) { message.textContent = result.error.message; submitting = false; submit.disabled = false; nameInput?.focus(); } else { current.world = result.world; await selectWorld(result.world.id); } } catch (_) { message.textContent = "The field file could not be established. Check the local application and try again."; submitting = false; submit.disabled = false; nameInput?.focus(); } });
+  requestGate.invalidate();
+  try {
+    const defaultName = (typeof window !== "undefined" && window.__YB_TEST_WORLD_NAME__) || "Untitled field file";
+    const result = await yellowBeast.createWorld({ name: defaultName });
+    if (resultIsError(result)) {
+      app.innerHTML = `<section class="shell"><h1>Assignment record creation failed</h1><p class="error">${escape(result.error.message)}</p>${button("Back", "home")}</section>`;
+      return;
+    }
+    current.world = result.world; await selectWorld(result.world.id);
+  } catch (_) {
+    app.innerHTML = `<section class="shell"><h1>Assignment record creation failed</h1><p class="error">The field file could not be established. Check the local application and try again.</p>${button("Back", "home")}</section>`;
+  }
 }
 async function selectWorld(id) {
   requestGate.invalidate();
@@ -88,6 +97,7 @@ async function selectWorld(id) {
   current.world = world.world;
   const cards = modes.modes.map((mode) => `<article class="${mode.playable ? "playable" : "program-locked"}" data-mode="${escape(mode.id)}"><p class="eyebrow">${escape(mode.role)}</p><h2>${escape(mode.program_name ?? mode.label)}</h2><p>${escape(mode.playable ? mode.description : "Access unavailable")}</p><p class="mode-status">${escape(mode.playable ? "AUTHORIZED" : "ACCESS UNAVAILABLE")}</p>${button(mode.playable ? "Open operational record" : "Access unavailable", `mode:${mode.id}`, !mode.playable)}</article>`).join("");
   app.innerHTML = `<section class="shell" data-testid="world-entry"><p class="eyebrow">RECORD · ${escape(world.world.name)}</p><h1>Operational Programs</h1><p>Program access is determined by the current ASYNC registration record.</p><div class="cards">${cards}</div>${current.developer ? button("Developer console", "developer") : ""}${button("Back to records", "home")}</section>`;
+  app.querySelector("h1").textContent = "NEW ASSIGNMENT"; app.querySelector('[data-action^="mode:"]')?.replaceChildren("Begin assignment");
 }
 const developerJson = (value) => escape(JSON.stringify(value, null, 2));
 async function developerConsole() {
@@ -104,48 +114,318 @@ async function developerConsole() {
   document.querySelector("#developer-fixture-create")?.addEventListener("submit",async(event)=>{event.preventDefault();const form=new FormData(event.currentTarget);const response=await yellowBeast.controlQ4PhenomenonFixture({world_id:current.world.id,action:"instantiate",family:form.get("family"),profile_id:form.get("profile_id")||null,location_id:form.get("location_id")||null});if(resultIsError(response))document.querySelector("#developer-fixture-result").textContent=response.error.message;else{current.projection=response.projection;developerConsole();}});
   document.querySelector("#developer-fixture-action")?.addEventListener("submit",async(event)=>{event.preventDefault();const form=new FormData(event.currentTarget);const response=await yellowBeast.controlQ4PhenomenonFixture({world_id:current.world.id,action:String(form.get("fixture_action")).toLowerCase(),phenomenon_id:form.get("phenomenon_id")||null,text:form.get("text")||null,target_id:form.get("target_id")||null,alias:form.get("alias")||null});const node=document.querySelector("#developer-fixture-result");if(node)node.textContent=resultIsError(response)?response.error.message:JSON.stringify(response.result,null,2);if(!resultIsError(response))current.projection=response.projection;});
 }
-function personnelCreation() {
+function personnelCreation(draft = {}) {
   requestGate.invalidate();
-  app.innerHTML = `<section class="shell narrow personnel-creation async-document" data-testid="q4-personnel-creation"><header class="document-header"><p class="eyebrow">A-SYNC RESEARCH INSTITUTE · PERSONNEL DIVISION</p><div class="redacted-clause" aria-hidden="true">████████████████████████████████████████</div></header><h1>Create your ASYNC personnel record.</h1><p>This record identifies the person you control in Clear-Q4. ASYNC assigns the field role and Q4 clearance; you do not choose mission or stats.</p><div class="redacted-clause sub-clause" aria-hidden="true">████████████████████████████████████████████████████</div><form id="personnel-creation-form"><label>First name <input name="first_name" autocomplete="given-name" required maxlength="40" autofocus></label><label>Last name <input name="last_name" autocomplete="family-name" required maxlength="60"></label><button type="submit">Create Personnel Record</button></form><p id="personnel-message" role="status"></p></section>`;
-  document.querySelector("#personnel-creation-form").addEventListener("submit", async (event) => {
+  if (typeof YBAudio !== "undefined") YBAudio.emitHook("ui_panel_open");
+  app.innerHTML = `<section class="shell personnel-creation async-document waiver-fullscreen" data-testid="q4-personnel-creation" data-placeholder-id="WAIVER_RESPONSIBILITY">
+    <header class="document-header">
+      <div class="document-brand">
+        <p class="document-inst">ASYNC RESEARCH INSTITUTE</p>
+        <p class="document-dept">PERSONNEL DIVISION</p>
+      </div>
+      <div class="document-meta">
+        <span class="document-canon-id">ASYNC_Project_KV31_Waiver_of_Responsibility</span>
+      </div>
+    </header>
+
+    <div class="document-title-block">
+      <h1 class="document-title">WAIVER OF RESPONSIBILITY</h1>
+      <p class="document-subtitle">PERSONNEL IDENTITY WAIVER · PROJECT KV-31</p>
+    </div>
+
+    <div class="document-body">
+      <p class="document-clause">
+        The undersigned individual, having accepted assignment to technical and observation duties under the auspices of the ASYNC Research Institute within Project KV-31, executes this Waiver of Responsibility.
+      </p>
+
+      <div class="document-section-title">SECTION 1 · PERSONNEL IDENTITY &amp; RECORD FILING</div>
+      <p class="document-clause">
+        The undersigned enters their legal surname and given name below for institutional enrollment. The undersigned acknowledges that this filed record serves as the official designation for all operational files and cannot be changed after filing.
+      </p>
+
+      <form id="personnel-creation-form" class="waiver-form">
+        <div class="identity-bracket-container">
+          <span class="bracket-tag">LEGAL IDENTITY (LAST, FIRST):</span>
+          <div class="identity-bracket-group" role="group" aria-label="Personnel identity fields">
+            <span class="bracket-fence" aria-hidden="true">[</span>
+            <div class="bracket-unified-line">
+              <label for="waiver-last-name" class="visually-hidden">Last name</label>
+              <input id="waiver-last-name" name="last_name" autocomplete="family-name" required maxlength="12" autofocus placeholder="LAST NAME">
+              <span class="bracket-delimiter" aria-hidden="true">,</span>
+              <label for="waiver-first-name" class="visually-hidden">First name</label>
+              <input id="waiver-first-name" name="first_name" autocomplete="given-name" required maxlength="12" placeholder="FIRST NAME">
+            </div>
+            <span class="bracket-fence" aria-hidden="true">]</span>
+          </div>
+          <div class="identity-submission-row">
+            <span class="submission-instruction">PRESS ENTER TO REVIEW RECORD</span>
+            <button type="submit" class="waiver-review-btn">REVIEW RECORD</button>
+          </div>
+          <p id="personnel-message" role="status" aria-live="polite"></p>
+        </div>
+
+        <div class="document-section-title">SECTION 2 · OPERATIONAL RISK &amp; ASSUMPTION OF HAZARD</div>
+        <p class="document-clause">
+          The undersigned acknowledges that duties within Project KV-31 involve exposure to operational environments presenting inherent risks of bodily injury, illness, disorientation, incapacitation or loss of consciousness, serious or permanent injury, permanent disability, or death, as well as loss or damage of personal property. The undersigned understands that such conditions may involve risks that are unforeseen, incompletely characterized, or not specifically enumerated in this document, and voluntarily assumes all such risks associated with the assignment.
+        </p>
+
+        <div class="document-section-title">SECTION 3 · PROCEDURAL COMPLIANCE &amp; EQUIPMENT CUSTODY</div>
+        <p class="document-clause">
+          The undersigned covenants to comply strictly with all institutional operating procedures, shift scheduling, and safety directives. All instruments, transceivers, recording apparatus, and materials issued remain institutional property of the ASYNC Research Institute, must remain in personal custody during transit, and must be surrendered upon egress.
+        </p>
+
+        <div class="document-section-title">SECTION 4 · RELEASE OF LIABILITY</div>
+        <p class="document-clause">
+          The undersigned hereby releases and discharges the ASYNC Research Institute, its officers, and research staff from any and all liability, claims, or demands arising out of or related to any injury, illness, disability, death, or property loss sustained in connection with operations within Project KV-31.
+        </p>
+      </form>
+    </div>
+  </section>`;
+
+  const nameForm = document.querySelector("#personnel-creation-form");
+  nameForm.noValidate = true;
+  for (const name of ["last_name", "first_name"]) {
+    const input = nameForm.elements.namedItem(name);
+    input.value = typeof draft[name] === "string" ? draft[name] : "";
+    input.setAttribute("aria-describedby", "personnel-message");
+    input.addEventListener("input", () => {
+      input.removeAttribute("aria-invalid");
+      input.classList.remove("name-rejected");
+    });
+  }
+  nameForm.addEventListener("submit", (event) => {
     event.preventDefault();
     const data = new FormData(event.currentTarget);
-    const message = document.querySelector("#personnel-message");
-    let first_name = (data.get("first_name") || "").trim();
-    let last_name = (data.get("last_name") || "").trim();
-    if (!last_name && first_name.includes(",")) {
-      const parts = first_name.split(",").map((s) => s.trim());
-      last_name = parts[0] || "";
-      first_name = parts[1] || "";
-    }
-    try {
-      const created = await yellowBeast.createQ4Personnel({ world_id: current.world.id, first_name, last_name });
-      if (resultIsError(created)) {
-        message.textContent = created.error.message;
-        document.querySelector("input[name=first_name]")?.focus();
-        return;
+    const names = {
+      first_name: (data.get("first_name") || "").trim(),
+      last_name: (data.get("last_name") || "").trim()
+    };
+    const invalid = YBNameRules.invalidFields(names);
+    if (invalid.length) {
+      for (const name of ["last_name", "first_name"]) {
+        const input = nameForm.elements.namedItem(name);
+        input.classList.remove("name-rejected"); input.removeAttribute("aria-invalid");
+        if (invalid.includes(name)) { void input.offsetWidth; input.classList.add("name-rejected"); input.setAttribute("aria-invalid", "true"); }
       }
-      const section = document.querySelector(".personnel-creation");
-      if (section) {
-        section.classList.add("document-lift-away");
-        setTimeout(() => personnelConfirmation(created.player), 300);
-      } else {
-        personnelConfirmation(created.player);
-      }
-    } catch (_) {
-      message.textContent = "The personnel record could not be saved. Your field file remains unchanged.";
-      document.querySelector("input[name=first_name]")?.focus();
+      document.querySelector("#personnel-message").textContent = "PERSONNEL RECORD REJECTED. Use 1–12 characters: letters, hyphens or apostrophes. Profanity is not accepted.";
+      if (typeof YBAudio !== "undefined") YBAudio.emitHook("ui_error");
+      nameForm.elements.namedItem(invalid[0]).focus();
+      return;
     }
+    personnelNameReview(names);
   });
 }
+function personnelDateCard() {
+  requestGate.invalidate();
+  app.innerHTML = `<section class="opening-date-card" data-testid="opening-date-card" data-placeholder-id="DATE_CARD_JULY_1991" tabindex="0"><p>JULY, 1991</p><small>PRESS ANYTHING TO CONTINUE</small></section>`;
+  const card = app.querySelector(".opening-date-card");
+  let consumed = false;
+  const mountTime = Date.now();
+  const onInput = (e) => {
+    if (consumed) return;
+    if (Date.now() - mountTime < 100) return;
+    if (e.type === "keydown" && (e.repeat || ["Tab", "Shift", "Control", "Alt", "Meta"].includes(e.key))) return;
+    consumed = true;
+    window.removeEventListener("keydown", onInput);
+    window.removeEventListener("pointerdown", onInput);
+    if (typeof YBAudio !== "undefined") YBAudio.emitHook("ui_select");
+    personnelCreation();
+  };
+  window.addEventListener("keydown", onInput);
+  window.addEventListener("pointerdown", onInput);
+  card?.focus();
+}
+function releaseBriefingFeed() {
+  if (current.briefingTimer) {
+    window.clearTimeout(current.briefingTimer);
+    current.briefingTimer = null;
+  }
+  current.briefing_feed_completed = true;
+  if (current.projection) {
+    current.projection.briefing_feed_completed = true;
+  }
+  const worldId = current.world?.id || current.worldId;
+  if (worldId && window.yellowBeast?.completeBriefingBroadcast) {
+    window.yellowBeast.completeBriefingBroadcast({ world_id: worldId }).then((res) => {
+      if (res?.ok && res?.projection) {
+        current.projection = res.projection;
+        current.projection.briefing_feed_completed = true;
+      }
+      play();
+    }).catch(() => {
+      play();
+    });
+  } else {
+    play();
+  }
+}
+function personnelNameReview(player) {
+  requestGate.invalidate();
+  app.innerHTML = `<section class="shell personnel-confirmation async-document waiver-fullscreen" data-testid="q4-personnel-name-review">
+    <header class="document-header">
+      <div class="document-brand">
+        <p class="document-inst">ASYNC RESEARCH INSTITUTE</p>
+        <p class="document-dept">PERSONNEL DIVISION</p>
+      </div>
+      <div class="document-meta">
+        <span class="document-canon-id">ASYNC_Project_KV31_Waiver_of_Responsibility</span>
+        <span class="document-badge pending-badge">FILING PENDING</span>
+      </div>
+    </header>
+
+    <div class="document-title-block">
+      <p class="eyebrow">ASYNC · PERSONNEL RECORD PENDING</p>
+      <h1 class="review-name">${escape(player.last_name)}, ${escape(player.first_name)}</h1>
+      <p class="permanence-warning">This record cannot be altered after initialization.</p>
+    </div>
+
+    <div class="review-dossier-box">
+      <div class="dossier-row">
+        <span class="dossier-label">ASSIGNMENT PROGRAM:</span>
+        <span class="dossier-value">CLEAR-Q4 FIELD RESEARCH & OBSERVATION</span>
+      </div>
+      <div class="dossier-row">
+        <span class="dossier-label">FACILITY LOCATION:</span>
+        <span class="dossier-value">PROJECT KV-31</span>
+      </div>
+      <div class="dossier-row">
+        <span class="dossier-label">RECORD STATUS:</span>
+        <span class="dossier-value highlight">AWAITING CONFIRMATION</span>
+      </div>
+    </div>
+
+    <div class="review-confirmation-block">
+      <p class="confirmation-prompt">CONFIRM? Y/N</p>
+      <div class="confirmation-actions">
+        <button type="button" data-action="personnel-file-confirm" class="confirm-btn">Confirm and file (Y)</button>
+        <button type="button" data-action="personnel-file-back" class="back-btn">Return to waiver (N)</button>
+      </div>
+      <p id="personnel-message" role="status" aria-live="polite"></p>
+    </div>
+  </section>`;
+
+  app.querySelector('[data-action="personnel-file-back"]').addEventListener("click", () => handleReturn());
+  let submittingPersonnel = false;
+
+  const handleReturn = () => {
+    if (submittingPersonnel) return;
+    window.removeEventListener("keydown", handleKey);
+    if (typeof YBAudio !== "undefined") YBAudio.emitHook("ui_select");
+    personnelCreation(player);
+  };
+
+  const handleConfirm = async () => {
+    if (submittingPersonnel) return;
+    submittingPersonnel = true;
+    window.removeEventListener("keydown", handleKey);
+    const confirmBtn = app.querySelector('[data-action="personnel-file-confirm"]');
+    const backBtn = app.querySelector('[data-action="personnel-file-back"]');
+    if (confirmBtn) confirmBtn.disabled = true;
+    if (backBtn) backBtn.disabled = true;
+    if (typeof YBAudio !== "undefined") YBAudio.emitHook("ui_panel_close");
+    try {
+      const created = await yellowBeast.createQ4Personnel({ world_id:current.world.id, ...player });
+      if (resultIsError(created)) {
+        submittingPersonnel = false;
+        if (confirmBtn) confirmBtn.disabled = false;
+        if (backBtn) backBtn.disabled = false;
+        window.addEventListener("keydown", handleKey);
+        app.querySelector("#personnel-message").textContent = created.error.message;
+        return;
+      }
+      const confirmed = await yellowBeast.confirmQ4Personnel({ world_id:current.world.id });
+      if (resultIsError(confirmed)) {
+        submittingPersonnel = false;
+        if (confirmBtn) confirmBtn.disabled = false;
+        if (backBtn) backBtn.disabled = false;
+        window.addEventListener("keydown", handleKey);
+        app.querySelector("#personnel-message").textContent = confirmed.error.message;
+        return;
+      }
+
+      if (confirmed?.player?.display_name && current.world) current.world.name = confirmed.player.display_name;
+
+      // Show PERSONNEL RECORD CREATED
+      const eyebrow = app.querySelector(".eyebrow");
+      if (eyebrow) eyebrow.textContent = "ASYNC · PERSONNEL RECORD CREATED";
+      const promptEl = app.querySelector(".confirmation-prompt");
+      if (promptEl) promptEl.remove();
+      const infoP = app.querySelector(".permanence-warning");
+      if (infoP) infoP.textContent = "Operational record established.";
+      const actions = app.querySelector(".confirmation-actions");
+      if (actions) actions.style.display = "none";
+
+      if (typeof YBAudio !== "undefined") YBAudio.stopMenuMusic(600);
+      const section = app.querySelector(".personnel-confirmation");
+      if (section) section.classList.add("waiver-slide-out");
+
+      window.setTimeout(() => {
+        aeotInitialization();
+      }, 500);
+    } catch (_) {
+      submittingPersonnel = false;
+      if (confirmBtn) confirmBtn.disabled = false;
+      if (backBtn) backBtn.disabled = false;
+      window.addEventListener("keydown", handleKey);
+      app.querySelector("#personnel-message").textContent = "The personnel record could not be saved. Your field file remains unchanged.";
+    }
+  };
+
+  const handleKey = (e) => {
+    if (e.repeat || ["Tab", "Shift", "Control", "Alt", "Meta"].includes(e.key)) return;
+    if (e.key === "y" || e.key === "Y") {
+      e.preventDefault();
+      handleConfirm();
+    } else if (e.key === "n" || e.key === "N") {
+      e.preventDefault();
+      handleReturn();
+    }
+  };
+
+  window.addEventListener("keydown", handleKey);
+  app.querySelector('[data-action="personnel-file-confirm"]').addEventListener("click", handleConfirm);
+}
 function personnelConfirmation(player) {
-  app.innerHTML = `<section class="shell narrow personnel-confirmation" data-testid="q4-personnel-confirmation"><p class="eyebrow">ASYNC · PERSONNEL RECORD CREATED</p><h1>Personnel record created</h1><section class="personnel-record-card"><span class="portrait-slot badge-portrait-fallback" aria-hidden="true">${escape((player.first_name ?? "?")[0])}</span><h2>${escape(player.display_name)}</h2><p>${escape(player.role)} · Clearance ${escape(player.clearance)}</p><p>Status: Active</p></section><p>You are ${escape(player.display_name)}.</p><button type="button" data-action="personnel-confirm-continue">Continue to Assignment Briefing</button></section>`;
+  app.innerHTML = `<section class="shell narrow personnel-confirmation" data-testid="q4-personnel-confirmation"><p class="eyebrow">ASYNC · PERMANENT PERSONNEL RECORD</p><h1>${escape(player.display_name)}</h1><p>This identity is already filed and cannot be changed in this operational record.</p><button type="button" data-action="personnel-confirm-continue">Continue initialization</button></section>`;
+}
+let aeotRunning = false;
+function aeotInitialization() {
+  if (aeotRunning) return;
+  aeotRunning = true;
+  document.body.setAttribute("data-boot-locked", "true");
+  if (typeof YBAudio !== "undefined") YBAudio.emitHook("boot_relay");
+  if (typeof YBAudio !== "undefined") YBAudio.stopMenuMusic(500);
+  const stages = ["KERNEL LINK", "PERSONNEL RECORD", "ASSIGNMENT ROUTING", "AEOT READY"];
+  let index = 0;
+  app.innerHTML = `<section class="async-boot aeot-initialization" data-testid="aeot-initialization" data-placeholder-id="ASYNC_BOOT" role="status"><p class="eyebrow">ASYNC EXPEDITION OPERATIONS TERMINAL</p><h1>STAGED INITIALIZATION</h1><ol>${stages.map((stage) => `<li data-aeot-stage>${escape(stage)} <span>WAIT</span></li>`).join("")}</ol></section>`;
+  const advance = () => {
+    const rows = app.querySelectorAll("[data-aeot-stage]");
+    if (index > 0) rows[index - 1].querySelector("span").textContent = "OK";
+    if (index >= stages.length) {
+      aeotRunning = false;
+      if (typeof YBAudio !== "undefined") YBAudio.emitHook("boot_confirm");
+      document.body.removeAttribute("data-boot-locked");
+      enterMode("field-researcher");
+      return;
+    }
+    rows[index].querySelector("span").textContent = "INITIALIZING";
+    index += 1;
+    window.setTimeout(advance, 180);
+  };
+  advance();
 }
 async function enterMode(mode) {
   requestGate.invalidate(); current.mode = mode; current.guidanceDismissed = false;
   if (mode !== "field-researcher") { app.innerHTML = `<section class="shell narrow" data-testid="program-unavailable"><p class="eyebrow">ASYNC · ACCESS CONTROL</p><h1>Access unavailable</h1><p>This operational program is not authorized for the current installation.</p>${button("Back to programs", `world:${current.world.id}`)}</section>`; return; }
   const personnel = await yellowBeast.getQ4PersonnelStatus({ world_id:current.world.id }); if (resultIsError(personnel)) { app.innerHTML = `<section class="shell"><h1>Personnel record unavailable</h1><p class="error">${escape(personnel.error.message)}</p>${button("Back", `world:${current.world.id}`)}</section>`; return; }
-  if (personnel.required) { personnelCreation(); return; }
+  if (personnel.required) {
+    const fadeDuration = (window.__YB_TEST_FAST_FADE__ === true) ? 100 : 3000;
+    app.innerHTML = `<section class="screen-fade-black" data-testid="clear-q4-fade" role="status" aria-live="polite"></section>`;
+    window.setTimeout(() => {
+      personnelDateCard();
+    }, fadeDuration);
+    return;
+  }
   if (personnel.confirmation_required) { personnelConfirmation(personnel.player); return; }
   const resumed = await yellowBeast.resumeSession({ world_id:current.world.id, mode });
   const result = resultIsError(resumed) && resumed.error?.code === "SESSION_NOT_FOUND" ? await yellowBeast.startSession({ world_id:current.world.id, mode, require_personnel:true }) : resumed;
@@ -582,7 +862,7 @@ else if (action === "confirm-termination") {
   if (typeof YBAudio !== "undefined") YBAudio.emitHook("ui_submit");
   yellowBeast.exitApplication();
   return;
-} else if (action === "close-settings") { settingsController.state = "closing"; const opener = settingsController.opener; const returnTo = current.settingsReturn ?? home; current.settingsReturn = null; returnTo(); settingsController.state = "closed"; queueMicrotask(() => opener?.isConnected && opener.focus()); } else if (action === "new") newWorld(); else if (action === "import") { const imported = await yellowBeast.chooseImportWorld(); if (resultIsError(imported) && imported.error.code !== "IMPORT_CANCELLED") alert(imported.error.message); home(); } else if (action === "settings") settings(event.target); else if (action === "about") about(); else if (action === "reset-preferences") { const saved = await yellowBeast.updateSettings({ settings:{ theme:"system", text_scale:"default", reduced_motion:false, guided_introductions:true } }); if (!resultIsError(saved)) applyPreferences(saved.settings); settings(event.target); } else if (action === "refresh-view") { const context = requestContext(); const refreshed = await yellowBeast.getGameplayProjection({ world_id:context.worldId, mode:context.mode }); if (!resultIsError(refreshed) && requestContext().worldId === context.worldId && requestContext().mode === context.mode && event.target.isConnected) { current.projection = refreshed.projection; play("Current view refreshed.", "result"); } } else if (action.startsWith("rename:")) { const worldId = action.slice(7); const prior = event.target.closest("li")?.dataset.worldName ?? ""; const name = prompt("Rename this world. This changes only its library name.", prior); if (name !== null) { const renamed = await yellowBeast.renameWorld({ world_id:worldId, name }); if (resultIsError(renamed)) alert(renamed.error.message); home(); } } else if (action.startsWith("restore:")) { const restored = await yellowBeast.restoreBackup({ world_id:action.slice(8), confirmed:confirm("Restore the previous save? Recent changes may be lost.") }); if (!resultIsError(restored)) selectWorld(action.slice(8)); else alert(restored.error.message); } else if (action.startsWith("export:")) { const result = await yellowBeast.chooseExportWorld({ world_id: action.slice(7) }); if (resultIsError(result) && result.error.code !== "EXPORT_CANCELLED") alert(result.error.message); } else if (action.startsWith("delete:")) { const worldId = action.slice(7); const name = event.target.closest("li")?.dataset.worldName ?? "this world"; if (confirm(`Delete “${name}” and its saved sessions? This cannot be undone.`)) { const deleted = await yellowBeast.deleteWorld({ world_id:worldId, confirmed:true }); if (resultIsError(deleted)) alert(result.error.message); home(); } } else if (action.startsWith("diagnostic:")) { const result = await yellowBeast.exportTesterReport({ world_id:action.slice(11), mode:"field-researcher" }); alert(resultIsError(result) ? result.error.message : `Diagnostic record exported to ${result.file}. Credentials and provider keys are omitted.`); } else if (action.startsWith("world:")) selectWorld(action.slice(6)); else if (action.startsWith("mode:")) enterMode(action.slice(5)); });
+} else if (action === "close-settings") { settingsController.state = "closing"; const opener = settingsController.opener; const returnTo = current.settingsReturn ?? home; current.settingsReturn = null; returnTo(); settingsController.state = "closed"; queueMicrotask(() => opener?.isConnected && opener.focus()); } else if (action === "new") newWorld(); else if (action === "import") { const imported = await yellowBeast.chooseImportWorld(); if (resultIsError(imported) && imported.error.code !== "IMPORT_CANCELLED") alert(imported.error.message); home(); } else if (action === "settings") settings(event.target); else if (action === "about") about(); else if (action === "reset-preferences") { const saved = await yellowBeast.updateSettings({ settings:{ theme:"system", text_scale:"default", reduced_motion:false, guided_introductions:true } }); if (!resultIsError(saved)) applyPreferences(saved.settings); settings(event.target); } else if (action === "refresh-view") { const context = requestContext(); const refreshed = await yellowBeast.getGameplayProjection({ world_id:context.worldId, mode:context.mode }); if (!resultIsError(refreshed) && requestContext().worldId === context.worldId && requestContext().mode === context.mode && event.target.isConnected) { current.projection = refreshed.projection; play("Current view refreshed.", "result"); } } else if (action.startsWith("rename:")) { const worldId = action.slice(7); const isLocked = event.target.closest("li")?.dataset.hasFiledPersonnel === "true"; if (isLocked) { alert("This field file is registered to permanent personnel and cannot be renamed."); return; } const prior = event.target.closest("li")?.dataset.worldName ?? ""; const name = prompt("Rename this world. This changes only its library name.", prior); if (name !== null) { const renamed = await yellowBeast.renameWorld({ world_id:worldId, name }); if (resultIsError(renamed)) alert(renamed.error.message); home(); } } else if (action.startsWith("restore:")) { const restored = await yellowBeast.restoreBackup({ world_id:action.slice(8), confirmed:confirm("Restore the previous save? Recent changes may be lost.") }); if (!resultIsError(restored)) selectWorld(action.slice(8)); else alert(restored.error.message); } else if (action.startsWith("export:")) { const result = await yellowBeast.chooseExportWorld({ world_id: action.slice(7) }); if (resultIsError(result) && result.error.code !== "EXPORT_CANCELLED") alert(result.error.message); } else if (action.startsWith("delete:")) { const worldId = action.slice(7); const name = event.target.closest("li")?.dataset.worldName ?? "this world"; if (confirm(`Delete “${name}” and its saved sessions? This cannot be undone.`)) { const deleted = await yellowBeast.deleteWorld({ world_id:worldId, confirmed:true }); if (resultIsError(deleted)) alert(result.error.message); home(); } } else if (action.startsWith("diagnostic:")) { const result = await yellowBeast.exportTesterReport({ world_id:action.slice(11), mode:"field-researcher" }); alert(resultIsError(result) ? result.error.message : `Diagnostic record exported to ${result.file}. Credentials and provider keys are omitted.`); } else if (action.startsWith("world:")) selectWorld(action.slice(6)); else if (action.startsWith("mode:")) enterMode(action.slice(5)); });
 function showExitGameConfirmation() {
   document.querySelector(".exit-game-portal")?.remove();
   const portal = document.createElement("div");

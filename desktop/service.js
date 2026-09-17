@@ -203,7 +203,14 @@ class DesktopService {
       throw error;
     }
   }
-  worldInfo(world, metadata = {}) { return { id: world.world_id, name: metadata.name ?? world.world_id, version: world.version, created_at: metadata.created_at ?? null, last_played_at: metadata.last_played_at ?? null, last_mode: metadata.last_mode ?? null, status: outcomes.isRetired(world) ? "retired" : "ready" }; }
+  worldInfo(world, metadata = {}) {
+    const identity = world.q4_operations?.controlled_player;
+    const person = identity ? history.character(world, identity) : null;
+    const isFiled = Boolean(person && world.q4_operations?.personnel_confirmation?.completed);
+    const personnelName = isFiled ? (person.display_name || [person.first_name, person.last_name].filter(Boolean).join(" ")) : null;
+    const name = personnelName || metadata.name || world.world_id;
+    return { id: world.world_id, name, has_filed_personnel: isFiled, version: world.version, created_at: metadata.created_at ?? null, last_played_at: metadata.last_played_at ?? null, last_mode: metadata.last_mode ?? null, status: outcomes.isRetired(world) ? "retired" : "ready" };
+  }
 
   getAppInfo() { const data = this.metadata(); const build = buildInfo.read(); return { ok: true, app: { name: "Yellow Beast", version: packageVersion, alpha: true, build, first_run_complete: Boolean(data.first_run_complete), data_path: this.paths.root, developer_mode:this.developerMode } }; }
   getInterpretationProvenance({ limit = 20 } = {}) { if (!this.developerMode) return publicError("DEVELOPER_DISABLED", "Developer tooling is disabled."); return { ok: true, records: clone(this.interpretationProvenance.slice(-Math.max(1, Math.min(100, Number(limit) || 20)))) }; }
@@ -261,7 +268,7 @@ class DesktopService {
   createQ4Personnel({ world_id, first_name, last_name, display_name = null }) {
     if (this.commandBusy(world_id)) return publicError("SESSION_BUSY", "Wait for the current action to finish before changing this operation."); try { const world = this.getWorld(world_id); if (outcomes.isRetired(world)) return publicError("WORLD_RETIRED", "This world is a read-only historical record."); const created = q4Personnel.createPlayer(world, { first_name, last_name, display_name }); if (!created.ok) return publicError(created.code, "Enter a valid first and last name for the personnel record."); this.saveCanonical(world); return { ok: true, created: created.created, player: created.player }; } catch { return publicError("PERSONNEL_CREATION_FAILED", "The ASYNC personnel record could not be created safely."); } }
   confirmQ4Personnel({ world_id }) {
-    if (this.commandBusy(world_id)) return publicError("SESSION_BUSY", "Wait for the current action to finish before changing this operation."); try { const world = this.getWorld(world_id); if (outcomes.isRetired(world)) return publicError("WORLD_RETIRED", "This world is a read-only historical record."); const identity = world.q4_operations?.controlled_player; const person = identity ? history.character(world, identity) : null; if (!person) return publicError("PERSONNEL_CREATION_REQUIRED", "Create your ASYNC personnel record before confirming it."); world.q4_operations.personnel_confirmation = { completed: true, personnel_id: identity, confirmed_at: world.q4_operations.personnel_confirmation?.confirmed_at ?? new Date().toISOString() }; this.saveCanonical(world); return { ok: true, player: q4Personnel.safePerson(person) }; } catch { return publicError("PERSONNEL_CONFIRMATION_FAILED", "The personnel record could not be confirmed safely."); } }
+    if (this.commandBusy(world_id)) return publicError("SESSION_BUSY", "Wait for the current action to finish before changing this operation."); try { const world = this.getWorld(world_id); if (outcomes.isRetired(world)) return publicError("WORLD_RETIRED", "This world is a read-only historical record."); const identity = world.q4_operations?.controlled_player; const person = identity ? history.character(world, identity) : null; if (!person) return publicError("PERSONNEL_CREATION_REQUIRED", "Create your ASYNC personnel record before confirming it."); world.q4_operations.personnel_confirmation = { completed: true, personnel_id: identity, confirmed_at: world.q4_operations.personnel_confirmation?.confirmed_at ?? new Date().toISOString() }; this.saveCanonical(world); const data = this.metadata(); if (data.worlds[world_id]) { const displayName = person.display_name || [person.first_name, person.last_name].filter(Boolean).join(" "); if (displayName) { data.worlds[world_id].name = displayName; this.writeMetadata(data); } } return { ok: true, player: q4Personnel.safePerson(person) }; } catch { return publicError("PERSONNEL_CONFIRMATION_FAILED", "The personnel record could not be confirmed safely."); } }
   saveWorld({ world_id }) {
     if (this.commandBusy(world_id)) return publicError("SESSION_BUSY", "Wait for the current action to finish before changing this operation."); try { const world = this.getWorld(world_id); this.saveCanonical(world); return { ok: true }; } catch (error) { return publicError(error.code ?? "WORLD_SAVE_FAILED", "This world could not be saved."); } }
   deleteWorld({ world_id, confirmed = false }) {
@@ -340,7 +347,7 @@ class DesktopService {
     this.providerTests.set(provider,task);
     try { return await task; } finally { this.providerTests.delete(provider); }
   }
-  renameWorld({ world_id, name }) { if (!friendlyName(name)) return publicError("WORLD_NAME_INVALID", "Choose a world name between 1 and 80 characters."); const data = this.metadata(); if (!data.worlds[world_id]) return publicError("WORLD_NOT_FOUND", "This world no longer exists."); data.worlds[world_id].name = name.trim(); this.writeMetadata(data); return { ok: true, world: this.loadWorld({ world_id }).world }; }
+  renameWorld({ world_id, name }) { if (!friendlyName(name)) return publicError("WORLD_NAME_INVALID", "Choose a world name between 1 and 80 characters."); const data = this.metadata(); if (!data.worlds[world_id]) return publicError("WORLD_NOT_FOUND", "This world no longer exists."); try { const world = this.getWorld(world_id); const identity = world.q4_operations?.controlled_player; const person = identity ? history.character(world, identity) : null; if (person && world.q4_operations?.personnel_confirmation?.completed) return publicError("PERSONNEL_RECORD_LOCKED", "This field file is registered to permanent personnel and cannot be renamed."); } catch {} data.worlds[world_id].name = name.trim(); this.writeMetadata(data); return { ok: true, world: this.loadWorld({ world_id }).world }; }
   replaceRecoveryPrimaries(replacements) {
     const tag = `${process.pid}.${crypto.randomUUID()}`; const staged = []; const rollback = [];
     try {
