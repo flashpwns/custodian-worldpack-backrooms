@@ -1,0 +1,31 @@
+{
+  "authority": "LivingBeatmap_Reconciled_Canonical.docx, Music Pool and Release Rights Status; supplied by project owner 2026-09-13",
+  "rights_status": "Owner clearance recorded in canonical beatmap; no separate license instrument supplied in this folder.",
+  "missing": [],
+  "assets": [
+    {
+      "file": "libets-delay.mp3",
+      "title": "Libet’s Delay — The Caretaker",
+      "source_filename": "Libet's delay [ax294Sq5phc].mp3",
+      "sha256": "1782fadcbbf8133104c61a2cddc5d7eb9f5591e16ade5806cf95f53735f3eae6"
+    },
+    {
+      "file": "chirp.mp3",
+      "title": "Chirp — C418",
+      "source_filename": "C418 - Chirp (Minecraft Volume Beta) [cCibTj6drhM].mp3",
+      "sha256": "f3b25249e3865bb796c6f3ef847a626dc7648e28b37cfdbb32b9a21f2008dc87"
+    },
+    {
+      "file": "time-passages-kane.mp3",
+      "title": "Hanging Frame (Time Passages) — supplied Kane Parsons version",
+      "source_filename": "Hanging Frame (Time Passages) [96VFjZFWgUE].mp3",
+      "sha256": "dd775b01b0f78d7c84d75f5a6efa9775705dde669b1948c30be09be38c3e7b9d"
+    },
+    {
+      "file": "bossa-diary.mp3",
+      "title": "Bossanova, Sweet, Healing, Peaceful — Today’s diary",
+      "source_filename": "[달콤한 보사노바 음악] Bossanova, Sweet, Healing, Peaceful _ Today's diary [2NwW5oPwaGo].mp3",
+      "sha256": "c7779bfc5e2dcb288e60193b8ea3fb089664b2c6b61effc3313ac5757a8754c2"
+    }
+  ]
+}

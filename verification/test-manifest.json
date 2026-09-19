@@ -78,6 +78,11 @@
       "fast": true
     },
     {
+      "file": "tests/y105-authoritative-first-run-chronology.test.js",
+      "status": "included",
+      "tier": "aggregate"
+    },
+    {
       "file": "tests/y12b.test.js",
       "status": "included",
       "tier": "aggregate",

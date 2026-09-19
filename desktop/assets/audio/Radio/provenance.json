@@ -1,0 +1,10 @@
+{
+  "authority": "Pass 3.7 Part A / Pass 3.8A single-cue radio chirp invariant",
+  "source_master": "docs/Audio Sources/Radio/Radio_Beep_01.mp3",
+  "source_master_sha256": "be8c79122cc3d3b5759ce9671c92208f2424162bca619379d0be583522ecaefe",
+  "runtime_asset": "Radio_Beep_01.mp3",
+  "runtime_asset_sha256": "62fb606a9190575500d35587c4fc0390ed7b04b7e3f63368d75d6761d393efa1",
+  "duration_seconds": 0.48,
+  "derivation": "Trimmed non-destructively from source master to extract strictly Burst 1 (1.25s-1.73s, duration ~0.48s), eliminating delayed duplicate Bursts 2 and 3 and leading silence.",
+  "invariant": "one radio_tx_chirp trigger = exactly one audible chirp"
+}

@@ -67,7 +67,13 @@ function renderMessage(result, natural) {
 }
 
 async function home() {
+  if (current.standbyTimer) { window.clearTimeout(current.standbyTimer); current.standbyTimer = null; }
+  if (current.briefingTimer) { window.clearTimeout(current.briefingTimer); current.briefingTimer = null; }
   current.mode = null;
+  current.projection = null;
+  current.coldBootActive = false;
+  requestGate.invalidate();
+  if (typeof YBAudio !== "undefined") YBAudio.stopAll();
   current.projection = null;
   requestGate.invalidate();
   const [info, worlds, preferences] = await Promise.all([yellowBeast.getAppInfo(), yellowBeast.listWorlds(), yellowBeast.getSettings()]);
@@ -394,28 +400,95 @@ function aeotInitialization() {
   aeotRunning = true;
   document.body.setAttribute("data-boot-locked", "true");
   if (typeof YBAudio !== "undefined") YBAudio.emitHook("boot_relay");
-  if (typeof YBAudio !== "undefined") YBAudio.stopMenuMusic(500);
-  const stages = ["KERNEL LINK", "PERSONNEL RECORD", "ASSIGNMENT ROUTING", "AEOT READY"];
-  let index = 0;
-  app.innerHTML = `<section class="async-boot aeot-initialization" data-testid="aeot-initialization" data-placeholder-id="ASYNC_BOOT" role="status"><p class="eyebrow">ASYNC EXPEDITION OPERATIONS TERMINAL</p><h1>STAGED INITIALIZATION</h1><ol>${stages.map((stage) => `<li data-aeot-stage>${escape(stage)} <span>WAIT</span></li>`).join("")}</ol></section>`;
-  const advance = () => {
-    const rows = app.querySelectorAll("[data-aeot-stage]");
-    if (index > 0) rows[index - 1].querySelector("span").textContent = "OK";
-    if (index >= stages.length) {
+  const stages = [
+    "SUBSYSTEM BUS VERIFICATION",
+    "CLEARANCE VERIFICATION: Q4",
+    "SUB-LEVEL TELEMETRY LINK",
+    "FACILITY SCHEMATIC: SECTOR B1"
+  ];
+  app.innerHTML = `<section class="async-boot aeot-initialization" data-testid="aeot-initialization" data-placeholder-id="ASYNC_BOOT" role="status"><p class="eyebrow">ASYNC EXPEDITION OPERATIONS TERMINAL</p><h1>STAGED INITIALIZATION</h1><ol>${stages.map((stage, idx) => `<li data-aeot-stage data-stage-index="${idx}"><span class="aeot-stage-label">${escape(stage)}</span><div class="aeot-stage-status"><span class="aeot-stage-percent" data-aeot-percent>0%</span><span class="aeot-stage-badge waiting" data-aeot-badge>WAIT</span></div></li>`).join("")}</ol></section>`;
+  const rows = app.querySelectorAll("[data-aeot-stage]");
+  const fastTest = (typeof window !== "undefined") && (window.__YB_TEST_FAST_BOOT__ === true || window.__YB_TEST_FAST_FADE__ === true);
+  const rowDurationMs = fastTest ? 40 : 2000;
+  const tickIntervalMs = fastTest ? 10 : 100;
+  const totalSteps = Math.max(1, Math.floor(rowDurationMs / tickIntervalMs));
+  let currentStage = 0;
+  let currentStep = 0;
+
+  const runStageStep = () => {
+    if (currentStage >= stages.length) {
       aeotRunning = false;
       if (typeof YBAudio !== "undefined") YBAudio.emitHook("boot_confirm");
-      document.body.removeAttribute("data-boot-locked");
-      enterMode("field-researcher");
+      enterMode("field-researcher", { coldBoot: true });
       return;
     }
-    rows[index].querySelector("span").textContent = "INITIALIZING";
-    index += 1;
-    window.setTimeout(advance, 180);
+    const row = rows[currentStage];
+    const percentEl = row.querySelector("[data-aeot-percent]");
+    const badgeEl = row.querySelector("[data-aeot-badge]");
+    if (currentStep === 0) {
+      badgeEl.className = "aeot-stage-badge active";
+      badgeEl.textContent = "INITIALIZING";
+    }
+    currentStep += 1;
+    const progressFraction = Math.min(1, currentStep / totalSteps);
+    const percentValue = Math.round(progressFraction * 100);
+    percentEl.textContent = `${percentValue}%`;
+
+    if (currentStep >= totalSteps) {
+      percentEl.textContent = "100%";
+      badgeEl.className = "aeot-stage-badge completed";
+      badgeEl.textContent = "OK";
+      currentStage += 1;
+      currentStep = 0;
+      window.setTimeout(runStageStep, fastTest ? 10 : 60);
+    } else {
+      window.setTimeout(runStageStep, tickIntervalMs);
+    }
   };
-  advance();
+  runStageStep();
 }
-async function enterMode(mode) {
+function verifyBeat1ExitContract(world, projection) {
+  const errors = [];
+  const worldId = world?.id || world?.world_id;
+  if (!world || !worldId) errors.push("World missing or invalid ID");
+  if (world && "seed" in world && world.seed == null) errors.push("World missing seed");
+  if (!projection) errors.push("Gameplay projection missing");
+  if (projection?.mode?.id !== "field-researcher") errors.push(`Expected mode field-researcher, got ${projection?.mode?.id}`);
+  if (projection?.phase?.phase_id !== "BRIEFING") errors.push(`Expected initial phase BRIEFING, got ${projection?.phase?.phase_id}`);
+
+  const team = projection?.q4?.team ?? [];
+  if (team.length !== 4) errors.push(`Expected exactly 4 team members, got ${team.length}`);
+  const controlled = team.filter(m => m.controlled === true);
+  if (controlled.length !== 1) errors.push(`Expected exactly 1 controlled player, got ${controlled.length}`);
+  const coworkers = team.filter(m => !m.controlled);
+  if (coworkers.length !== 3) errors.push(`Expected exactly 3 coworkers, got ${coworkers.length}`);
+
+  const locationId = projection?.q4?.current_location?.id ?? projection?.q4?.spatial?.location_id ?? projection?.location?.id;
+  if (!locationId || !locationId.includes("briefing")) {
+    errors.push(`Expected initial location to be KV31 briefing room, got ${locationId}`);
+  }
+
+  if (!projection?.q4?.mission_record && !projection?.q4?.display_mission) {
+    errors.push("Missing mission record or display mission");
+  }
+
+  const opTime = projection?.q4?.operational_time;
+  if (typeof opTime !== "string" || !opTime.startsWith("T+0")) {
+    errors.push(`Expected operational time T+0, got ${opTime}`);
+  }
+
+  return {
+    ok: errors.length === 0,
+    errors
+  };
+}
+if (typeof window !== "undefined") {
+  window.verifyBeat1ExitContract = verifyBeat1ExitContract;
+}
+async function enterMode(mode, options = {}) {
   requestGate.invalidate(); current.mode = mode; current.guidanceDismissed = false;
+  if (typeof YBAudio !== "undefined") YBAudio.stopMenuMusic(1500);
+  current.coldBootActive = Boolean(options?.coldBoot);
   if (mode !== "field-researcher") { app.innerHTML = `<section class="shell narrow" data-testid="program-unavailable"><p class="eyebrow">ASYNC · ACCESS CONTROL</p><h1>Access unavailable</h1><p>This operational program is not authorized for the current installation.</p>${button("Back to programs", `world:${current.world.id}`)}</section>`; return; }
   const personnel = await yellowBeast.getQ4PersonnelStatus({ world_id:current.world.id }); if (resultIsError(personnel)) { app.innerHTML = `<section class="shell"><h1>Personnel record unavailable</h1><p class="error">${escape(personnel.error.message)}</p>${button("Back", `world:${current.world.id}`)}</section>`; return; }
   if (personnel.required) {
@@ -428,13 +501,23 @@ async function enterMode(mode) {
   }
   if (personnel.confirmation_required) { personnelConfirmation(personnel.player); return; }
   const resumed = await yellowBeast.resumeSession({ world_id:current.world.id, mode });
-  const result = resultIsError(resumed) && resumed.error?.code === "SESSION_NOT_FOUND" ? await yellowBeast.startSession({ world_id:current.world.id, mode, require_personnel:true }) : resumed;
+  const isFreshSession = resultIsError(resumed) && resumed.error?.code === "SESSION_NOT_FOUND";
+  const result = isFreshSession ? await yellowBeast.startSession({ world_id:current.world.id, mode, require_personnel:true }) : resumed;
   if (resultIsError(result)) { app.innerHTML = `<section class="shell"><h1>Unable to enter experience</h1><p class="error">${escape(result.error.message)}</p>${button("Back", `world:${current.world.id}`)}</section>`; return; }
   current.projection = result.projection; applyPreferences(current.projection.settings);
-  const initialPhase = current.projection?.phase?.phase_id;
+  if (isFreshSession) {
+    const exitCheck = verifyBeat1ExitContract(current.world, current.projection);
+    if (!exitCheck.ok) {
+      console.error("Beat 1 exit contract error:", exitCheck.errors);
+    }
+  }
+  current.briefing_feed_completed = true;
+  if (current.standbyTimer) { window.clearTimeout(current.standbyTimer); current.standbyTimer = null; }
+  if (current.briefingTimer) { window.clearTimeout(current.briefingTimer); current.briefingTimer = null; }
+  if (current.projection) current.projection.briefing_feed_completed = true;
   if (typeof YBAudio !== "undefined") {
-    if (initialPhase === "FIELD_OPERATION") YBAudio.emitHook("complex_hum");
-    else if (initialPhase) YBAudio.emitHook("facility_ambient");
+    YBAudio.stopMenuMusic();
+    applyAcousticScene(current.projection?.acoustic_scene);
   }
   const recovery = result.recovery?.world?.recovered ? result.recovery.world.message : result.recovery?.session?.recovered ? result.recovery.session.message : null; play(recovery ?? (resumed.ok ? YBQol.history(current.projection, 1).length ? `Last time: ${YBQol.history(current.projection, 1)[0]}` : "Last time: return to what you can observe now." : ""));
 }
@@ -488,9 +571,20 @@ function play(message = "", state = "") {
     : `<input type="text" name="text" autocomplete="off" placeholder="${escape(naturalPlaceholder)}" value="${escape(draft)}">`;
   const natural = q4Prefield ? "" : `<section class="action-dock natural-action" data-testid="natural-primary"><div>${isReport ? `<p class="eyebrow">EXPEDITION REPORT</p>` : `<p class="eyebrow">ACTION</p>`}<h2>${escape(naturalHeading)}</h2></div><form id="natural-form"><label><span class="sr-only">${isReport ? "Written expedition account" : "Describe what you are trying to do"}</span>${naturalControl}</label><button type="submit">${escape(submitButtonLabel)}</button></form><p>${escape(naturalInstruction)}</p></section>`;
   const isOpener = projection.q4?.scenario === "day1-opener" || projection.q4?.scenario === "clear-q4-day1-opener" || projection.q4?.scenario === "async-clear-q4-day1-opener" || Boolean(projection.q4?.day1_opener);
-  const prefieldDirect = q4Prefield ? projection.available_actions.find((action) => !action.target_required && action.type !== "WAIT") : null;
-  const prefieldLabel = prefieldDirect?.type === "READY" && projection.phase?.phase_id === "THRESHOLD" ? "Begin radio procedure" : (prefieldDirect?.type === "CROSS" && isOpener) ? "CLEARED; CROSS?" : prefieldDirect ? YBSurfaces.actionLabel(prefieldDirect.type, isOpener) : "Establish the required Standard exchange";
-  const prefieldAction = q4Prefield ? `<section class="action-dock natural-action prefield-action" data-testid="prefield-primary"><div><p class="eyebrow">CURRENT DECISION</p><h2>${escape(prefieldLabel)}</h2></div>${prefieldDirect ? `<button type="button" class="primary-action" data-game-action="${escape(prefieldDirect.type)}">${escape(prefieldLabel)}</button>` : `<p>Use STANDARD in the communications panel to continue.</p>`}<p>${prefieldDirect ? "This advances the recorded expedition phase." : "No physical turn is available until the radio procedure is complete."}</p></section>` : "";
+  const isPersonnelBriefing = projection.phase?.phase_id === "BRIEFING" && isOpener && (projection.q4?.beat === "PERSONNEL_BRIEFING" || projection.q4?.beat !== "LOCAL_INTRODUCTIONS");
+  const prefieldDirect = q4Prefield ? (isPersonnelBriefing ? null : projection.available_actions.find((action) => ["READY", "PROCEED", "APPROACH", "CROSS", "BEGIN_FIELD_OPERATION"].includes(action.type))) : null;
+  const prefieldLabel = (prefieldDirect?.type === "READY" && projection.phase?.phase_id === "THRESHOLD")
+    ? "Begin radio procedure"
+    : (prefieldDirect?.type === "CROSS" && isOpener)
+    ? "CLEARED; CROSS?"
+    : prefieldDirect
+    ? YBSurfaces.actionLabel(prefieldDirect.type, isOpener)
+    : (projection.phase?.phase_id === "STANDARD_RADIO_CHECK")
+    ? "Establish the required Standard exchange"
+    : "Awaiting next procedure";
+  const prefieldAction = q4Prefield ? (isPersonnelBriefing
+    ? `<section class="action-dock natural-action prefield-action" data-testid="prefield-primary"><div><p class="eyebrow">CURRENT DECISION</p><h2>BRIEFING PENDING</h2></div><button type="button" class="primary-action" disabled data-briefing-locked="true">BRIEFING PENDING</button><p>Standing by for assignment briefing.</p></section>`
+    : `<section class="action-dock natural-action prefield-action" data-testid="prefield-primary"><div><p class="eyebrow">CURRENT DECISION</p><h2>${escape(prefieldLabel)}</h2></div>${prefieldDirect ? `<button type="button" class="primary-action" data-game-action="${escape(prefieldDirect.type)}">${escape(prefieldLabel)}</button>` : `<p>Use STANDARD in the communications panel to continue.</p>`}<p>${prefieldDirect ? "This advances the recorded expedition phase." : "No physical turn is available until the radio procedure is complete."}</p></section>`) : "";
   const retry = state === "application-error" ? `<button type="button" data-action="refresh-view">Refresh view</button>` : "";
   const hideStructured = q4Prefield || isReport || projection.available_actions.length === 0;
   const structured = `<details class="action-dock structured-action" ${hideStructured ? "hidden" : ""}><summary>Structured controls</summary><form id="action-form" aria-label="Structured action input"><label>Choose action <select name="action" data-testid="action-select">${actionOptions}</select></label><label id="target-label">Valid target <select name="target" data-testid="target-select"></select></label><button type="submit" data-testid="submit-action">SUBMIT</button></form></details>`;
@@ -498,16 +592,75 @@ function play(message = "", state = "") {
   const q4Shell = projection.mode.id === "field-researcher";
   const phaseRecord = YBSurfaces.render(projection);
   const providerLabel = "CURRENT FIELD RECORD";
-  // The operational chassis mounts async-operations-layout via YBSurfaces.expeditionCockpit
+  const isBriefingWorkstation = q4Shell && projection.phase?.phase_id === "BRIEFING" && isOpener;
+  // The operational chassis mounts async-operations-layout via YBSurfaces.briefingWorkstation or YBSurfaces.expeditionCockpit
   const core = q4Shell
     ? (isReport
         ? `<main class="operations-main report-view" data-testid="async-operations-layout">${natural}${phaseRecord}</main>`
         : isDebrief
         ? `<main class="operations-main debrief-view" data-testid="async-operations-layout">${phaseRecord}</main>`
+        : isBriefingWorkstation
+        ? YBSurfaces.briefingWorkstation(projection, { actionDock })
         : YBSurfaces.expeditionCockpit(projection, { scene: state === "result" ? projection.scene : null, providerLabel, phaseRecord, actionDock }))
     : `${scene}${natural}${YBSurfaces.render(projection)}`;
   const feedbackContent = (state === "submitted" || state === "resolving") ? `<span class="feedback-text">${escape(message)}</span> ${expeditionLoadingMotif()}${retry}` : `${escape(message)}${retry}`;
   app.innerHTML = `<section class="shell play ${q4Shell ? "operations-shell eti-shell" : ""} mode-${escape(projection.mode.id)}" data-testid="play-shell">${q4Shell ? asyncHeader(projection) : `<header><div><p class="eyebrow">${escape(projection.world.name)}</p><h1>${escape(projection.mode.label)}</h1><p>${escape(projection.mode.description)}</p></div>${button("Settings", "settings")}${button("TERMINATE FIELD SESSION", "leave")}</header>`}<p id="interaction-feedback" class="interaction-feedback" data-state="${escape(state)}" role="status" aria-live="polite" aria-atomic="true">${feedbackContent}</p>${guidedIntroduction(projection)}${core}${q4Shell ? "" : (hideStructured ? "" : `${structured}<p class="muted">Accepted actions save automatically.</p>`)}</section>`;
+  if (current.coldBootActive && q4Shell && projection.phase?.phase_id === "BRIEFING") {
+    current.coldBootActive = false;
+    const headerEl = app.querySelector(".async-system-header");
+    const centerEl = app.querySelector(".eti-center");
+    const actionDockEl = app.querySelector(".eti-turn-controls");
+    if (headerEl) headerEl.classList.add("eti-cold-boot-pending");
+    if (centerEl) centerEl.classList.add("eti-cold-boot-pending");
+    if (actionDockEl) actionDockEl.classList.add("eti-cold-boot-pending");
+    document.body.setAttribute("data-boot-locked", "true");
+    const fastTest = (typeof window !== "undefined") && (window.__YB_TEST_FAST_BOOT__ === true || window.__YB_TEST_FAST_FADE__ === true);
+    if (fastTest) document.body.classList.add("fast-boot");
+    const stageDurationMs = fastTest ? 30 : 850;
+
+    // Stage 1: Top / Header
+    if (headerEl) {
+      headerEl.classList.remove("eti-cold-boot-pending");
+      headerEl.classList.add("eti-cold-boot-energizing");
+    }
+    if (typeof YBAudio !== "undefined") YBAudio.emitHook("boot_power");
+
+    // Stage 2: Central Workstation / Facility Schematic
+    window.setTimeout(() => {
+      if (headerEl) {
+        headerEl.classList.remove("eti-cold-boot-energizing");
+        headerEl.classList.add("eti-cold-boot-energized");
+      }
+      if (centerEl) {
+        centerEl.classList.remove("eti-cold-boot-pending");
+        centerEl.classList.add("eti-cold-boot-energizing");
+      }
+      if (typeof YBAudio !== "undefined") YBAudio.emitHook("boot_drive");
+
+      // Stage 3: Lower Action / Status containing eventual BRIEFING PENDING
+      window.setTimeout(() => {
+        if (centerEl) {
+          centerEl.classList.remove("eti-cold-boot-energizing");
+          centerEl.classList.add("eti-cold-boot-energized");
+        }
+        if (actionDockEl) {
+          actionDockEl.classList.remove("eti-cold-boot-pending");
+          actionDockEl.classList.add("eti-cold-boot-energizing");
+        }
+        if (typeof YBAudio !== "undefined") YBAudio.emitHook("boot_relay");
+
+        // Completion
+        window.setTimeout(() => {
+          if (actionDockEl) {
+            actionDockEl.classList.remove("eti-cold-boot-energizing");
+            actionDockEl.classList.add("eti-cold-boot-energized");
+          }
+          document.body.removeAttribute("data-boot-locked");
+          document.body.classList.remove("fast-boot");
+        }, stageDurationMs);
+      }, stageDurationMs);
+    }, stageDurationMs);
+  }
   if (current.developer && !q4Shell) document.querySelector(".play header").insertAdjacentHTML("beforeend", button("Developer console", "developer"));
   const form = document.querySelector("#action-form"); const actionSelect = form?.action; const targetSelect = form?.target;
   const targetsForAction = () => { if (!form) return; const action = projection.available_actions.find((item) => item.type === actionSelect.value); const targets = action?.targets ?? []; targetSelect.innerHTML = targets.map((target) => `<option value="${escape(target.ref)}">${escape(target.label)}</option>`).join(""); targetSelect.disabled = targets.length === 0; document.querySelector("#target-label").hidden = !action?.target_required; };
@@ -878,6 +1031,7 @@ document.addEventListener("keydown", (event) => { if (event.key === "Escape" && 
 function boot() { const bypass = window.__YB_TEST_BYPASS_BOOT__ === true || /(?:bypass-boot|test-mode)/i.test(window.location.search + window.location.hash); if (bypass) { home(); return; } app.innerHTML = `<section class="cold-launch" data-testid="cold-launch" role="status" aria-live="polite"><span class="loading-animation" aria-label="Loading"></span></section>`; window.setTimeout(showTitleCard, 900); }
 async function showTitleCard() {
   const [info, preferences] = await Promise.all([yellowBeast.getAppInfo(), yellowBeast.getSettings()]);
+  if (typeof YBAudio !== "undefined") YBAudio.stopAll();
   applyPreferences(preferences.settings);
   if (typeof YBAudio !== "undefined") YBAudio.startMenuMusic(info.app.menu_music);
   app.innerHTML = `<section class="title-card title-materializing" data-testid="title-card" tabindex="0"><div class="title-wipe-shutter" aria-hidden="true"></div><img src="../assets/icon-source/ASYNC_Logo.png" class="title-logo" alt="ASYNC" draggable="false"><h1>VOICES OF THE THRESHOLD</h1><p class="title-subtitle">A Kane Pixels' Backrooms Simulacrum</p><small>PRESS ANYTHING</small></section>`;

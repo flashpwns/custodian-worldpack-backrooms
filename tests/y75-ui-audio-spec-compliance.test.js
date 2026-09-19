@@ -244,7 +244,7 @@ test("Institutional Consequence Portal for session termination forbids videogame
   assert.match(renderer, /showTerminationPortal/);
   assert.match(renderer, /\[RETURN TO EXPEDITION\]/);
   assert.match(renderer, /\[CONFIRM SESSION TERMINATION\]/);
-  assert.match(renderer, /A-SYNC PROTOCOL KV31-C/);
+  assert.match(renderer, /ASYNC PROTOCOL KV31-C/);
   assert.match(renderer, /Institutional Consequence Warning/);
 
   // Styling for consequence portal
@@ -265,7 +265,7 @@ test("Ceremonial phase audio: decoupled door sequences and clean phase ambiance 
   assert.match(renderer, /YBAudio\.emitHook\("facility_ambient"\)/);
   assert.match(renderer, /YBAudio\.emitHook\("lpmds_bed"\)/);
   assert.match(renderer, /YBAudio\.emitHook\("threshold_cross_hum"\)/);
-  assert.match(renderer, /YBAudio\.emitHook\("complex_music"\)/);
+  assert.match(renderer, /YBAudio\.applyScene\(scene\)/);
   assert.match(renderer, /YBAudio\.emitHook\("threshold_beacon"\)/);
 
   // Director correction: Fabricated blast door sequences are decoupled from phase transitions
@@ -634,4 +634,209 @@ test("Pass 2 Presentation CSS: Observation record, comms lanes distinction, and 
   assert.match(css, /\.personnel-epistemic/);
   assert.match(css, /\.epistemic-observed/);
   assert.match(css, /\.epistemic-reported/);
+});
+
+function isolatedAudio() {
+  const made = [];
+  const sandbox = { console, Audio: class {
+    constructor(src) { this.src = src; this.paused = true; made.push(this); }
+    play() { this.paused = false; return Promise.resolve(); }
+    pause() { this.paused = true; }
+  }};
+  require('node:vm').runInNewContext(fs.readFileSync(path.join(__dirname, '../desktop/renderer/audio.js'), 'utf8'), sandbox);
+  return { audio: sandbox.YBAudio, made };
+}
+
+test('Threshold crossing and doors play once; scene changes retire previous loops', () => {
+  const { audio, made } = isolatedAudio();
+  for (const hook of ['threshold_cross_hum', 'blast_door_open', 'blast_door_close']) audio.emitHook(hook);
+  assert.ok(made.every(item => item.loop === false));
+  audio.applyScene({ ambient_loop: 'facility_ambient' });
+  const facility = made.at(-1);
+  audio.applyScene({ ambient_loop: 'complex_hum' });
+  assert.equal(facility.paused, true);
+  assert.deepEqual([...audio.diagnostics().active_loops], ['complex_hum']);
+  const count = made.length;
+  audio.applyScene({ ambient_loop: 'complex_hum' });
+  assert.equal(made.length, count, 'refresh must reuse the existing loop');
+  audio.stopAll();
+  assert.ok(made.every(item => item.paused));
+});
+
+test('Mute and bus changes preserve per-source gain and do not resurrect a stopped scene', () => {
+  const { audio, made } = isolatedAudio();
+  audio.configure({ audio_muted: true });
+  audio.emitHook('threshold_beacon', { gain: 0.1 });
+  const beacon = made[0];
+  assert.equal(beacon.paused, true);
+  audio.configure({ audio_muted: false });
+  const volume = beacon.volume;
+  assert.ok(volume > 0 && volume < 0.1);
+  audio.configure({ bus_volumes: { environment: 0.4 } });
+  assert.equal(beacon.volume, volume / 2);
+  audio.stopHook('threshold_beacon');
+  audio.configure({ audio_muted: true }); audio.configure({ audio_muted: false });
+  assert.equal(beacon.paused, true);
+});
+
+test('Main-menu music uses single bossa track and retains application process identity', () => {
+  const { selectTrack, applicationTrack, BOSSA_TRACK } = require('../desktop/menu-music');
+  assert.equal(selectTrack().id, 'bossa-diary');
+  assert.match(selectTrack().src, /bossa-diary\.mp3$/, 'bossa track must be playable');
+  assert.equal(applicationTrack, BOSSA_TRACK);
+  const { audio, made } = isolatedAudio();
+  audio.startMenuMusic(selectTrack());
+  const first = made[0];
+  audio.stopMenuMusic(0);
+  audio.startMenuMusic(selectTrack());
+  assert.equal(made.at(-1).src, first.src, 'menus and new worlds must retain the process-selected identity');
+});
+
+test('Main-menu music fade handoff initiates immediately and reaches silence in under 2 seconds', async () => {
+  const { selectTrack } = require('../desktop/menu-music');
+  const made = [];
+  const sandbox = {
+    console,
+    setInterval,
+    clearInterval,
+    setTimeout,
+    clearTimeout,
+    Date,
+    Audio: class {
+      constructor(src) { this.src = src; this.paused = true; this.volume = 1; made.push(this); }
+      play() { this.paused = false; return Promise.resolve(); }
+      pause() { this.paused = true; }
+    }
+  };
+  require('node:vm').runInNewContext(fs.readFileSync(path.join(__dirname, '../desktop/renderer/audio.js'), 'utf8'), sandbox);
+  const audio = sandbox.YBAudio;
+
+  const audioSource = fs.readFileSync(path.join(__dirname, '../desktop/renderer/audio.js'), 'utf8');
+  assert.match(audioSource, /function stopMenuMusic\(fadeMs = 1500\)/, "Default fade duration must be 1500ms (< 2s)");
+
+  audio.startMenuMusic(selectTrack());
+  const beforeDiag = audio.diagnostics().menu;
+  assert.equal(beforeDiag.active, true);
+  assert.equal(beforeDiag.wanted, true);
+  assert.equal(beforeDiag.fading, false);
+  assert.equal(beforeDiag.fade, 1);
+  assert.ok(beforeDiag.volume > 0);
+
+  audio.stopMenuMusic(100);
+  const immediatelyAfter = audio.diagnostics().menu;
+  assert.equal(immediatelyAfter.wanted, false, "stopMenuMusic must immediately unset wanted");
+  assert.equal(immediatelyAfter.active, true, "menu track must remain active during fade");
+  assert.equal(immediatelyAfter.fading, true, "menu track must be marked fading");
+  assert.equal(immediatelyAfter.fade, 1, "fade must begin from current gain level");
+
+  await new Promise(resolve => setTimeout(resolve, 150));
+
+  const afterFade = audio.diagnostics().menu;
+  assert.equal(afterFade.wanted, false);
+  assert.equal(afterFade.active, false, "menu track must be stopped and disposed after fade");
+  assert.equal(afterFade.fading, false);
+  assert.equal(afterFade.volume, 0, "volume must reach silence");
+  assert.ok(made[0].paused, "underlying Audio element must be paused");
+});
+
+test('Opening slots never use world anomaly audio; shutter is driven by committed evidence', () => {
+  for (const hook of ['opening_music_01', 'opening_music_02', 'opening_music_03']) assert.equal(audio.DEFAULT_SOUND_MAP[hook], undefined);
+  const renderer = fs.readFileSync(path.join(__dirname, '../desktop/renderer/renderer.js'), 'utf8');
+  assert.doesNotMatch(renderer, /dataset\.(?:gameAction|objectAction) === "PHOTOGRAPH"\) YBAudio\.playCameraClick/);
+  assert.match(renderer, /newPhotograph.*YBAudio\.playCameraClick/);
+});
+
+test('Radio transmit chirp asset invariant: runtime Radio_Beep_01.mp3 contains exactly one audible chirp burst', () => {
+  const runtimeAsset = path.join(__dirname, '../desktop/assets/audio/Radio/Radio_Beep_01.mp3');
+  assert.ok(fs.existsSync(runtimeAsset), 'runtime Radio_Beep_01.mp3 must exist');
+
+  const buffer = fs.readFileSync(runtimeAsset);
+  // Scan MPEG Layer III frame headers to verify total audio duration
+  let offset = 0;
+  if (buffer.length > 10 && buffer.toString('ascii', 0, 3) === 'ID3') {
+    const size = ((buffer[6] & 0x7f) << 21) | ((buffer[7] & 0x7f) << 14) | ((buffer[8] & 0x7f) << 7) | (buffer[9] & 0x7f);
+    offset = 10 + size;
+  }
+  let totalSamples = 0;
+  let sampleRate = 44100;
+  const bitratesV1L3 = [0, 32, 40, 48, 56, 64, 80, 96, 112, 128, 160, 192, 224, 256, 320, 0];
+  const sampleRatesV1 = [44100, 48000, 32000, 0];
+
+  while (offset < buffer.length - 4) {
+    if (buffer[offset] === 0xff && (buffer[offset + 1] & 0xe0) === 0xe0) {
+      const version = (buffer[offset + 1] >> 3) & 3;
+      const layer = (buffer[offset + 1] >> 1) & 3;
+      if (version === 3 && layer === 1) {
+        const brIdx = (buffer[offset + 2] >> 4) & 0x0f;
+        const srIdx = (buffer[offset + 2] >> 2) & 0x03;
+        const padding = (buffer[offset + 2] >> 1) & 0x01;
+        const bitrate = bitratesV1L3[brIdx] * 1000;
+        sampleRate = sampleRatesV1[srIdx];
+        if (bitrate > 0 && sampleRate > 0) {
+          const frameSize = Math.floor((144 * bitrate) / sampleRate) + padding;
+          totalSamples += 1152;
+          offset += frameSize;
+          continue;
+        }
+      }
+    }
+    offset++;
+  }
+  const duration = totalSamples / sampleRate;
+
+  // Exact failure regression: the un-trimmed 6.0s multi-burst master asset has delayed Burst 2 at 3.2s and Burst 3 at 4.4s.
+  // The runtime asset must be strictly bounded to a single chirp (< 1.0s, canonical ~0.48s).
+  assert.ok(duration > 0.3 && duration < 1.0, `Radio_Beep_01.mp3 duration must be single-chirp bounded (< 1.0s), got ${duration.toFixed(3)}s`);
+
+  // Verify provenance record is present
+  const provenancePath = path.join(__dirname, '../desktop/assets/audio/Radio/provenance.json');
+  assert.ok(fs.existsSync(provenancePath), 'Radio/provenance.json must exist');
+  const prov = JSON.parse(fs.readFileSync(provenancePath, 'utf8'));
+  assert.equal(prov.invariant, 'one radio_tx_chirp trigger = exactly one audible chirp');
+  assert.equal(prov.source_master, 'docs/Audio Sources/Radio/Radio_Beep_01.mp3');
+});
+
+test('Pre-equipment staging radio silence contract: opener stages contain zero radio_tx_chirp triggers', () => {
+  const renderer = fs.readFileSync(path.join(__dirname, '../desktop/renderer/renderer.js'), 'utf8');
+
+  // Verify renderOpenerBriefing does NOT schedule or emit radio_tx_chirp
+  const briefingSlice = renderer.slice(renderer.indexOf('function renderOpenerBriefing'), renderer.indexOf('function renderOpenerBriefing') + 2000);
+  assert.doesNotMatch(briefingSlice, /radio_tx_chirp/, 'renderOpenerBriefing must contain zero radio_tx_chirp triggers');
+
+  // Verify radio_tx_chirp is strictly reserved for legitimate radio equipment use
+  // 1. Standard channel chat submission
+  assert.match(renderer, /channel === "standard"/);
+  assert.match(renderer, /!resultIsError\(res\)\s*&&\s*channel === "standard"/);
+  // 2. Formal 2-second hold radio check-in at Threshold
+  assert.match(renderer, /completeQ4CheckInHold/);
+  assert.match(renderer, /completeQ4CheckInHold[\s\S]*?radio_tx_chirp/);
+});
+
+test('Landing audio leak invariant: menu music start disposes non-menu one-shots; configure never resumes one-shots', () => {
+  const { selectTrack } = require('../desktop/menu-music');
+  const { audio, made } = isolatedAudio();
+
+  // 1. Emit boot_power (which maps to Threshold_Activation_01.mp3)
+  audio.emitHook('boot_power');
+  assert.equal(made.length, 1);
+  const bootPowerAudio = made[0];
+  assert.equal(bootPowerAudio.paused, false);
+  assert.match(bootPowerAudio.src, /Threshold_Activation_01\.mp3/);
+
+  // 2. Starting menu music must immediately dispose non-menu playbacks, including boot_power
+  audio.startMenuMusic(selectTrack());
+  assert.equal(bootPowerAudio.paused, true, 'boot_power must be paused on menu music start');
+  const diags = audio.diagnostics();
+  assert.equal(diags.playback.some(p => p.hook === 'boot_power'), false, 'boot_power must be removed from playbacks');
+  assert.equal(diags.playback.some(p => p.hook === 'menu_music'), true, 'menu_music must be the active playback');
+
+  // 3. Applying preferences/configure must NOT resurrect the paused one-shot
+  audio.configure({ audio_muted: false, audio_master: 0.5 });
+  assert.equal(bootPowerAudio.paused, true, 'configure must never resurrect paused one-shot audio');
+
+  // 4. Verify renderer.js calls stopAll on home and showTitleCard
+  const renderer = fs.readFileSync(path.join(__dirname, '../desktop/renderer/renderer.js'), 'utf8');
+  assert.match(renderer, /async function home\(\)[\s\S]*?YBAudio\.stopAll\(\)[\s\S]*?startMenuMusic/, 'home() must call stopAll() before starting menu music');
+  assert.match(renderer, /async function showTitleCard\(\)[\s\S]*?YBAudio\.stopAll\(\)[\s\S]*?startMenuMusic/, 'showTitleCard() must call stopAll() before starting menu music');
+  assert.match(renderer, /async function home\(\)[\s\S]*?current\.coldBootActive = false/, 'home() must reset coldBootActive');
 });

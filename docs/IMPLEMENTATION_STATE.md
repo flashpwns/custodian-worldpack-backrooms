@@ -1,5 +1,63 @@
 # Yellow Beast Implementation State
 
+## Repair Pass 3.10.1: Menu Music Handoff + AEOT Cold-Boot Visibility — 2026-09-18
+
+- Bounded repair pass status: **COMPLETED** (Main-menu music fade handoff and AEOT cold boot visibility resolved).
+- Visual acceptance status: `UNVERIFIED — REQUIRES HUMAN ELECTRON OBSERVATION`.
+- Core repairs delivered:
+  1. **Immediate Menu Music Fade on New Game**:
+     - Synchronous initiation: `YBAudio.stopMenuMusic(1500)` triggers immediately when the player activates NEW GAME / enters the new-file sequence (`enterMode("field-researcher")`), before the screen fade to black.
+     - Linear fade-out from effective gain over 1500ms (< 2 seconds), completing and releasing cleanly well before the date presentation appears.
+     - Replaced obsolete/delayed stop hooks at personnel confirmation and initialization with immediate entry fade.
+     - Enhanced `YBAudio.diagnostics().menu` with active playback, fading state, fade multiplier, and current volume telemetry.
+     - Menu track does not restart or resume during date presentation, introductory video, waiver, confirmation, initialization, or AEOT startup.
+  2. **AEOT Cold-Boot Visibility & Sequential Energization**:
+     - Staged 3-region sequential power-up:
+       1. Top / Header (`.async-system-header`) — initiates at T=0 with `boot_power`.
+       2. Central Workstation / Facility Schematic (`.eti-center`) — initiates at T=850ms with `boot_drive`.
+       3. Lower Action / Status dock (`.eti-turn-controls`) — initiates at T=1700ms with `boot_relay`.
+     - Human-observable calibration: 850ms duration per region in production (~2.55s total) with non-overlapping energizing intervals; accelerated (30ms per region) in automated testing via `.fast-boot`.
+     - Early-1990s institutional display stabilization: subtle cathode/phosphor stabilization via `@keyframes eti-region-energize` (bloom to calibrated contrast/brightness) without cyberpunk glitches, fake CRT artifacts, scanline spectacle, or invented text.
+     - `BRIEFING PENDING` remains invisible (`.eti-cold-boot-pending`, `pointer-events: none`) and locked until the final region is energized.
+     - Entire interface remains non-interactive (`body[data-boot-locked="true"]`, `cursor: wait`) until cold boot completes at T=2550ms.
+  3. **Acoustic Discipline**:
+     - Removed automatic `ui_select` cue at cold boot completion.
+     - Preserved legitimate electrical hooks (`boot_power`, `boot_drive`, `boot_relay`).
+     - Strictly zero radio or transmission audio (`radio_chirp`, `radio_tx_chirp`, `radio_rx_cue`).
+- Automated verification:
+  - Aggregate test suite: 763 / 763 passed (141 included, 4 quarantined, 0 retired).
+  - Regression tests added to `tests/y75-ui-audio-spec-compliance.test.js` (menu music fade lifecycle, <2s release) and `tests/y105-authoritative-first-run-chronology.test.js` (sequential cold boot, 850ms calibration, absence of `ui_select`, immediate fade initiation).
+  - Packaged verifications passed: `npm run desktop:build`, `npm run desktop:verify`, `npm run desktop:settings-regression`, `npm run desktop:first-run-regression`.
+  - Conformance inventory: `INVENTORY CONSISTENT (0 errors, 0 warnings)`.
+
+## Implementation Pass 3.10: Authoritative First-Run Chronology + AEOT Cold Boot — 2026-09-18
+
+- Bounded pass status: **COMPLETED** (Authoritative first-run sequence and AEOT cold boot operational).
+- Visual acceptance status: `UNVERIFIED — REQUIRES HUMAN ELECTRON OBSERVATION`.
+- Authoritative first-run chronology enforced:
+  `NEW GAME → DATE PRESENTATION → INTRODUCTORY VIDEO → WAIVER / NAME PAPER → PERSONNEL CONFIRMATION → PAPER SLIDE-AWAY → AEOT SYSTEM INITIALIZATION → AEOT UI COLD BOOT → AEOT OPERATIONAL (BRIEFING PENDING) → STOP AT MAXWELL BOUNDARY`.
+- Core repairs delivered:
+  1. **Date Presentation & Standalone Introductory Video**:
+     - Date presentation starts from black, fades `JULY, 1991` in over 5s, fades out over 5s, accepting no skip input, and smoothly transitions into the standalone introductory video (`BRIEFING_INFORMATIONAL_VIDEO`).
+     - Standalone introductory video precedes the personnel waiver, grounding the legal acknowledgement in prior exposure to institutional material.
+     - Single-world persistence: reopening unconfirmed onboarding resumes from the Date Presentation within the existing world without creating or duplicating worlds.
+  2. **Sequential 4-Row AEOT System Initialization**:
+     - 4 audited diagnostic subsystem rows (`KV31 CORE LINK`, `OPTICAL BUS RELAYS`, `TOPOLOGY BUFFER`, `TELEMETRY MATRIX`) execute sequentially 0% → 100% (~2.0s per row in production, fast-tracked in automated testing).
+     - Subsystems step through discrete state indicators: `WAITING` → `ACTIVE` → `[OK]`.
+  3. **Staged AEOT UI Cold Boot**:
+     - Workstation mounts directly in KV31 Briefing Office displaying the controlled facility schematic (KV31-B1) on the central display.
+     - Sequential energization: Header powers up → Center panel energizes → Action dock activates with `BRIEFING PENDING` (locked/disabled).
+     - Synchronized electrical cues (`boot_power`, `boot_drive`, `boot_relay`, `ui_select`); strictly zero radio chirps (`radio_chirp`, `radio_tx_chirp`, `radio_rx_cue`).
+     - Removed obsolete post-boot `FACILITY_BROADCAST`, feed timers, and release buttons from workstation runtime.
+  4. **Strict Maxwell Boundary Enforcement**:
+     - Workstation stops immediately upon achieving operational `BRIEFING PENDING`.
+     - In-room Maxwell dialogue, coworker introductions, and transition to Equipment Staging remain strictly suppressed.
+- Automated verification:
+  - Aggregate test suite: 762 / 762 passed (141 included, 4 quarantined, 0 retired).
+  - New test registered: `tests/y105-authoritative-first-run-chronology.test.js` (aggregate tier).
+  - Packaged verifications passed: `npm run desktop:build`, `npm run desktop:verify`, `npm run desktop:settings-regression`, `npm run desktop:first-run-regression`.
+
+
 ## Beat 1 Repair Pass 1.3: Title Lockup & Smooth Dismissal — 2026-09-17
 
 - Bounded pass status: **COMPLETED** (Presentation-only title screen correction).

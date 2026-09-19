@@ -166,7 +166,7 @@
     const volume = computeEffectiveGain(record.bus, record.gain) * record.fade;
     record.audio.volume = volume;
     if (volume <= 0.0001) record.audio.pause();
-    else if (record.audio.paused && !record.audio.ended) {
+    else if (record.audio.paused && !record.audio.ended && record.audio.loop) {
       const promise = record.audio.play();
       promise?.catch?.(error => {
         playbackFailures.push({ hook: record.hookId, reason: String(error?.name ?? "playback-failed") });
@@ -192,11 +192,16 @@
   function stopHook(hookId, fadeMs = 0) {
     for (const record of [...playbacks]) {
       if (record.hookId !== hookId) continue;
-      if (record.timer) global.clearInterval(record.timer);
-      if (!fadeMs || typeof global.setInterval !== "function") { dispose(record); continue; }
+      if (!fadeMs || typeof global.setInterval !== "function") {
+        if (record.timer) global.clearInterval(record.timer);
+        dispose(record);
+        continue;
+      }
+      if (record.timer) continue;
       const started = Date.now();
+      const startFade = typeof record.fade === "number" ? record.fade : 1;
       record.timer = global.setInterval(() => {
-        record.fade = Math.max(0, 1 - (Date.now() - started) / fadeMs);
+        record.fade = Math.max(0, startFade * (1 - (Date.now() - started) / fadeMs));
         updatePlayback(record);
         if (!record.fade) dispose(record);
       }, 25);
@@ -250,6 +255,13 @@
       audio.onended = () => { if (!isLoop) dispose(record); };
       audio.onerror = () => { playbackFailures.push({ hook: hookId, reason: "media-error" }); dispose(record); };
       updatePlayback(record);
+      if (record.audio.paused && !record.audio.ended && record.audio.volume > 0.0001) {
+        const promise = record.audio.play();
+        promise?.catch?.(error => {
+          playbackFailures.push({ hook: record.hookId, reason: String(error?.name ?? "playback-failed") });
+          if (playbackFailures.length > 20) playbackFailures.shift();
+        });
+      }
       return true;
     } catch (_) { return false; }
   }
@@ -261,12 +273,14 @@
   function startMenuMusic(track) {
     if (!menuTrack && track) menuTrack = Object.freeze({ ...track });
     menuWanted = true;
-    for (const hook of [...activeAudioElements.keys()]) if (hook !== "menu_music") stopHook(hook);
+    for (const record of [...playbacks]) {
+      if (record.hookId !== "menu_music") dispose(record);
+    }
     // Missing approved media remains an explicit silent slot; never reroll or substitute.
     if (menuTrack?.src) playAudioFile("menu_music", menuTrack.src, { bus: AUDIO_BUSES.MUSIC, gain: 1.0, loop: true, distant: true });
   }
 
-  function stopMenuMusic(fadeMs = 500) { menuWanted = false; stopHook("menu_music", fadeMs); }
+  function stopMenuMusic(fadeMs = 1500) { menuWanted = false; stopHook("menu_music", fadeMs); }
 
   function applyScene(scene) {
     if (!scene) return;
@@ -278,8 +292,17 @@
   const hookCounts = {};
 
   function diagnostics() {
+    const menuRecord = [...playbacks].find(r => r.hookId === "menu_music") || activeAudioElements.get("menu_music") || null;
     return {
-      menu: { track: menuTrack?.id ?? null, available: Boolean(menuTrack?.src), wanted: menuWanted },
+      menu: {
+        track: menuTrack?.id ?? null,
+        available: Boolean(menuTrack?.src),
+        wanted: menuWanted,
+        active: Boolean(menuRecord),
+        fading: Boolean(menuRecord?.timer),
+        fade: menuRecord ? (typeof menuRecord.fade === "number" ? menuRecord.fade : 1) : null,
+        volume: menuRecord?.audio?.volume ?? 0
+      },
       active_loops: [...activeAudioElements.keys()],
       failures: playbackFailures.slice(-20),
       context_state: audioContext?.state ?? null,
@@ -298,10 +321,23 @@
   }
 
   function registerAsset(hookId, descriptor) {
-    if (!CONCEPTUAL_HOOKS.includes(hookId)) {
+    if (!CONCEPTUAL_HOOKS.includes(hookId) && hookId !== "date_presentation_cue") {
       throw new Error(`Cannot register unknown acoustic hook: "${hookId}"`);
     }
     assetRegistry.set(hookId, descriptor);
+  }
+
+  function emitDatePresentationCue() {
+    hookCounts["date_presentation_cue"] = (hookCounts["date_presentation_cue"] || 0) + 1;
+    const registered = assetRegistry.get("date_presentation_cue");
+    if (registered && typeof registered.play === "function") {
+      try {
+        registered.play();
+      } catch (err) {
+        console.error(`[YBAudio] Error in registered asset for date_presentation_cue:`, err);
+      }
+    }
+    // Dedicated cue asset has not been provided. Remains silent without procedural fallback.
   }
 
   function getRegisteredAsset(hookId) {
@@ -683,6 +719,7 @@
     calculateSpatialAttenuation,
     computeEffectiveGain,
     emitHook,
+    emitDatePresentationCue,
     playCameraClick,
     play
   });

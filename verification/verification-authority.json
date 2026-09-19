@@ -74,6 +74,7 @@
       "tests/y68-verification-gate.test.js",
       "tests/y68-long-world-known-failures.test.js",
       "tests/y75-ui-audio-spec-compliance.test.js",
+      "tests/y105-authoritative-first-run-chronology.test.js",
       "tests/y76-provider-autoselect-fallback.test.js",
       "tests/y77-cleanup-adjudication-invariants.test.js",
       "tests/y78-reference-expedition-living-world.test.js",
@@ -283,7 +284,7 @@
     "tests/y71-ai-interpreter-boundary.test.js": "ffb774a4e3e667a90f759c3aca8a21a99603e00aa7a4ddee3480f583b6728f84",
     "tests/y72-live-scene-projection.test.js": "cbbb6dfa75f5dd27498a2681f6130d94d6c602c0e6a6520315f78946bde2149c",
     "tests/y73-ai-living-turn.test.js": "6395438933eb266e9e7a5d3b77246402a2a7c3a443351b6978a40702d87cb09a",
-    "tests/y75-ui-audio-spec-compliance.test.js": "71c5ed29500d5862aea97cf492430d58d1412521949ed4e8d141bfa47fdc5246",
+    "tests/y75-ui-audio-spec-compliance.test.js": "a747ab85928ea4d42f550dbf42a22e9965fe48d4359ae97de9fa251a4aff5d51",
     "tests/y76-provider-autoselect-fallback.test.js": "66c9f50329ce5c937590293bc04b3b7cb26e0cedd83334a300e2a56b1771ecab",
     "tests/y77-cleanup-adjudication-invariants.test.js": "6647aefe6847c92c56360a9d09c2add0edf3d55f9fab8583f7d30ffad1625d43",
     "tests/y78-reference-expedition-living-world.test.js": "ec50e65a3f8f992a995800df2b393d85963c48aa5a820fe3603991d4bd42dd77",
@@ -308,7 +309,8 @@
     "tests/y91-cq4-day1-opener-core.test.js": "8e49b71ec1637d448a88e18c39a297eccb3eb6f0d6098048a8abf8a44aeb151c",
     "tests/y92-cq4-day1-geography-delivery.test.js": "1d9aea90383d885ce026a61d345567bbcd49519aed0b64cc7083eae86e2420c9",
     "tests/y93-cq4-day1-cold-boot-persistence.test.js": "ac54df511f50fc867576b8483d4ff1901ba9ded3aceb7e70f62ddddfd51f2174",
-    "tests/y94-cq4-day1-adversarial-corrective.test.js": "dd8acc84eedd6d5ba26100b6fb483664cb54e5642ce00b972d2f6eacfa327a69"
+    "tests/y94-cq4-day1-adversarial-corrective.test.js": "dd8acc84eedd6d5ba26100b6fb483664cb54e5642ce00b972d2f6eacfa327a69",
+    "tests/y105-authoritative-first-run-chronology.test.js": "ad16d49b56d6a21a0a0a9a8b763b09d6083cc410b92ed0cf1bebe0a2903f6bbe"
   },
   "verification_core_hashes": {
     "tools/verification-inventory.js": "0f27da4645f1d85e48b52133475371bbbce55072807b6900108c3a1afd344f3b",
