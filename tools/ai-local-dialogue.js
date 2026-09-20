@@ -5,12 +5,14 @@
 // the provider may only phrase that already-authorized response.
 const canonicalLedger = require("./canonical-world-ledger");
 const { projectLiveScene, projectObserverState } = require("./live-scene-projection");
+const { isParticipantOrListener, heardInitiatingUtterance, heardResponseUtterance, getAttitude, retrieveRelevantMemories } = require("./q4-personnel-continuity");
 
 const PACKET_VERSION = "yellow-beast-local-dialogue-packet@v1";
 const CANDIDATE_VERSION = "yellow-beast-local-dialogue-candidate@v1";
 const FORBIDDEN_METADATA = /\b(?:canonical[_ -]?geometry|euclidean[_ -]?relation|overlap[_ -]?depth|future[_ -]?(?:event|schedule)|random[_ -]?seed|provider[_ -]?(?:model|metadata|prompt)|migration|debug|semantic[_ -]?(?:id|identifier)|canonical[_ -]?(?:family|type))\b/i;
 const FORBIDDEN_INTERNAL_ID = /\b(?:q4|yb-personnel|coordinated|open-passage|utility-room|clear-q4|actor|object|node|edge|fixture|entity)-[a-z0-9][a-z0-9:-]{3,}\b/i;
 const INVENTED_PLAYER = /\byou (?:say|said|speak|spoke|ask|asked|reply|replied|answer|answered|decide|decided|realize|realized|conclude|concluded|notice|noticed|walk|walked|run|ran|move|moved|arrive|arrived|turn|turned|reach|reached|inspect|inspected|measure|measured|photograph|photographed|take|took|use|used)\b/i;
+const UNSUPPORTED_FACTUAL_SPEECH = /\b(?:there (?:is|are|'s)|i (?:know|served|worked|was stationed|have been)|we (?:know|mapped|confirmed)|the (?:exit|route|door|passage|room|corridor) (?:is|leads|goes|opens)|(?:will|going to) (?:happen|arrive|open|close))\b/i;
 
 const EQUIPMENT_KEYWORDS = [
   { term: "camera", id: "recording-device" },
@@ -39,16 +41,26 @@ function deepFreeze(value) {
   return Object.freeze(value);
 }
 
-function getRecentDialogue(expedition, playerId, speakerId, limit = 6) {
+function getRecentDialogue(expedition, playerId, speakerId, limit = 6, pendingInteractionId = null) {
   if (!expedition?.interaction_history) return [];
-  return expedition.interaction_history
-    .filter((entry) => entry.channel === "local" && (entry.player_text || entry.presentation?.response))
-    .slice(-limit)
-    .map((entry) => ({
-      player_text: entry.player_text,
-      response: entry.presentation?.response ?? null,
-      speaker: entry.response_speaker ?? null
-    }));
+  const results = [];
+  for (const entry of expedition.interaction_history) {
+    // The current player message has its own packet field. Its provisional
+    // fallback must not masquerade as an already delivered coworker reply.
+    if (pendingInteractionId && entry.id === pendingInteractionId) continue;
+    if (entry.channel !== "local") continue;
+    const heardInit = heardInitiatingUtterance(entry, speakerId);
+    const heardResp = heardResponseUtterance(entry, speakerId);
+    if (!heardInit && !heardResp) continue;
+
+    results.push({
+      id: entry.id,
+      player_text: heardInit ? (entry.player_text ?? null) : null,
+      response: heardResp ? (entry.presentation?.response ?? entry.response ?? null) : null,
+      speaker: heardResp ? (entry.response_speaker ?? null) : null
+    });
+  }
+  return results.slice(-limit);
 }
 
 function buildLocalDialoguePacket(context) {
@@ -67,6 +79,48 @@ function buildLocalDialoguePacket(context) {
   if (!visibleSpeaker) throw new Error("LOCAL_SPEAKER_NOT_VISIBLE");
 
   const publicContinuity = person?.continuity ?? {};
+  const recentDialogue = getRecentDialogue(run.expedition, playerId, speakerId, 6, context.interaction?.id);
+  const relevantMemories = retrieveRelevantMemories(person, run.expedition, {
+    queryText: player_text,
+    speakerId,
+    playerId,
+    limit: 5,
+    excludeRecent: recentDialogue
+  });
+
+  const baseMemories = (person?.continuity?.dialogue_memories ?? []).slice(-10).map((m) => ({
+    player_text: m.player_text,
+    response: m.response,
+    sender: m.sender
+  }));
+
+  const memoryMap = new Map();
+  for (const rm of relevantMemories) {
+    const key = rm.id || `${rm.player_text}:${rm.response}`;
+    memoryMap.set(key, {
+      player_text: rm.player_text,
+      response: rm.response,
+      sender: rm.sender ?? rm.speaker,
+      relevance: "explicit-query-match"
+    });
+  }
+  for (const bm of baseMemories) {
+    const key = bm.id || `${bm.player_text}:${bm.response}`;
+    if (!memoryMap.has(key)) {
+      memoryMap.set(key, bm);
+    }
+  }
+  const combinedMemories = [...memoryMap.values()];
+
+  const attitude = getAttitude(person, playerId);
+  const relationship = attitude ? {
+    trust: attitude.trust,
+    rapport: attitude.rapport,
+    disposition: attitude.disposition,
+    sentiment: attitude.sentiment,
+    recent_attribution: attitude.attributions?.at(-1)?.reason ?? null
+  } : null;
+
   const packet = {
     version: PACKET_VERSION,
     audience: "controlled-player",
@@ -86,14 +140,22 @@ function buildLocalDialoguePacket(context) {
       current_task: reaction_context?.worker?.task ?? null,
       held_equipment: reaction_context?.equipment ?? [],
       qualifications: reaction_context?.worker?.qualifications ?? [],
+      characterization: {
+        archetype: person?.archetype ?? null,
+        personality: person?.personality ?? null,
+        primary_task: person?.primary_task ?? null,
+        identity_substrate: person?.identity_substrate ?? null
+      },
       tendencies: person?.continuity?.tendencies ?? reaction_context?.worker?.tendencies ?? {},
-      relationship: person?.continuity?.attitudes?.[playerId] ?? person?.continuity?.relationship ?? null,
-      memories: (person?.continuity?.dialogue_memories ?? []).slice(-10).map((m) => ({
-        player_text: m.player_text,
-        response: m.response,
-        sender: m.sender
+      relationship,
+      memories: combinedMemories,
+      relevant_memories: relevantMemories.map((rm) => ({
+        player_text: rm.player_text,
+        response: rm.response,
+        sender: rm.sender ?? rm.speaker,
+        at: rm.at
       })),
-      recent_dialogue: getRecentDialogue(run.expedition, playerId, speakerId),
+      recent_dialogue: recentDialogue,
       shared_history: (publicContinuity.shared_history ?? []).filter((item) => item.participants?.includes(playerId)).slice(-4).map((item) => ({ kind: item.kind }))
     },
     visible_context: {
@@ -108,8 +170,9 @@ function buildLocalDialoguePacket(context) {
       new_factual_claims: "forbidden"
     }
   };
-  Object.defineProperty(packet, "_run", { configurable: true, enumerable: false, value: run });
-  return deepFreeze(packet);
+  const cloned = structuredClone(packet);
+  Object.defineProperty(cloned, "_run", { configurable: true, enumerable: false, value: run });
+  return deepFreeze(cloned);
 }
 
 function samePersonnel(id1, id2) {
@@ -199,12 +262,19 @@ function validateSemanticClaims(claims, speakerId, run) {
   if (!Array.isArray(claims)) {
     return { ok: false, code: "SEMANTIC_CLAIMS_INVALID_FORMAT", reason: "Claims must be an array" };
   }
+  if (claims.length > 8) {
+    return { ok: false, code: "SEMANTIC_CLAIMS_INVALID_FORMAT", reason: "At most eight claims are permitted" };
+  }
+  const allowedTypes = new Set(["equipment-possession", "equipment_possession", "location", "direct-observation", "direct_observation", "reported-claim", "reported-observation", "reported_claim", "measurement"]);
   for (const claim of claims) {
     if (!claim || typeof claim !== "object") {
       return { ok: false, code: "SEMANTIC_CLAIMS_INVALID_FORMAT", reason: "Each claim must be an object" };
     }
     const type = claim.type ?? claim.kind;
     const subject = claim.subject ?? claim.observer ?? speakerId;
+    if (!allowedTypes.has(type)) {
+      return { ok: false, code: "SEMANTIC_CLAIM_TYPE_UNSUPPORTED", claim, reason: `Unsupported semantic claim type: ${type ?? "missing"}.` };
+    }
 
     if (type === "equipment-possession" || type === "equipment_possession") {
       const item = claim.object ?? claim.item_id ?? claim.equipment;
@@ -284,6 +354,22 @@ function validateSemanticClaims(claims, speakerId, run) {
   return { ok: true, claims };
 }
 
+function claimCoversSpeech(claim, speech) {
+  const normalizedSpeech = String(speech).toLowerCase();
+  const quotedText = String(claim?.text ?? "").trim().toLowerCase();
+  if (quotedText.length >= 4 && normalizedSpeech.includes(quotedText)) return true;
+  const type = claim?.type ?? claim?.kind;
+  const subjectText = type === "equipment-possession" || type === "equipment_possession"
+    ? claim?.object ?? claim?.item_id ?? claim?.equipment
+    : type === "location"
+      ? claim?.location_id ?? claim?.location
+      : type === "reported-claim" || type === "reported-observation" || type === "reported_claim"
+        ? claim?.proposition ?? claim?.target
+        : claim?.target ?? claim?.evidence_id;
+  const normalizedSubject = String(subjectText ?? "").toLowerCase().replace(/[-_]+/g, " ").trim();
+  return normalizedSubject.length >= 3 && normalizedSpeech.replace(/[-_]+/g, " ").includes(normalizedSubject);
+}
+
 function validateLocalDialogue(packet, candidate, runValue = null) {
   const keys = candidate && typeof candidate === "object" && !Array.isArray(candidate) ? Object.keys(candidate) : [];
   const requiredKeys = ["version", "observer_id", "speech"];
@@ -303,9 +389,15 @@ function validateLocalDialogue(packet, candidate, runValue = null) {
   const run = runValue ?? packet?._run ?? null;
   if (run) {
     const claims = candidate.semantic_claims ?? candidate.claims;
+    if (UNSUPPORTED_FACTUAL_SPEECH.test(speech) && (!Array.isArray(claims) || claims.length === 0)) {
+      return { ok: false, code: "LOCAL_PRESENTATION_CLAIM_UNSUPPORTED" };
+    }
     if (Array.isArray(claims) && claims.length > 0) {
       const semanticValidation = validateSemanticClaims(claims, candidate.observer_id, run);
       if (!semanticValidation.ok) return semanticValidation;
+      if (UNSUPPORTED_FACTUAL_SPEECH.test(speech) && !claims.some((claim) => claimCoversSpeech(claim, speech))) {
+        return { ok: false, code: "LOCAL_PRESENTATION_CLAIM_UNSUPPORTED" };
+      }
     }
     const claimValidation = validateDialogueClaims(packet, candidate, run);
     if (!claimValidation.ok) return claimValidation;
@@ -327,6 +419,7 @@ function validateLocalDialogue(packet, candidate, runValue = null) {
 module.exports = {
   PACKET_VERSION,
   CANDIDATE_VERSION,
+  getRecentDialogue,
   buildLocalDialoguePacket,
   validateLocalDialogue,
   validateDialogueClaims,

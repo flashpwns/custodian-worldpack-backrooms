@@ -65,7 +65,11 @@
 
     // Localized Anomalous Music
     "localized_music_01",
-    "localized_music_02"
+    "localized_music_02",
+
+    // Physical Document Movement
+    "paper_sheet_enter",
+    "paper_sheet_exit"
   ]);
 
   const HOOK_BUS_MAP = Object.freeze({
@@ -93,6 +97,7 @@
     lpmds_twang_02: AUDIO_BUSES.MACHINERY,
     lpmds_twang_03: AUDIO_BUSES.MACHINERY,
     threshold_cross_hum: AUDIO_BUSES.MACHINERY,
+    threshold_activation: AUDIO_BUSES.MACHINERY,
 
     blast_door_release: AUDIO_BUSES.MACHINERY,
     blast_door_open: AUDIO_BUSES.MACHINERY,
@@ -110,7 +115,10 @@
     radio_dropout: AUDIO_BUSES.COMMUNICATIONS,
 
     localized_music_01: AUDIO_BUSES.MUSIC,
-    localized_music_02: AUDIO_BUSES.MUSIC
+    localized_music_02: AUDIO_BUSES.MUSIC,
+
+    paper_sheet_enter: AUDIO_BUSES.CHARACTER,
+    paper_sheet_exit: AUDIO_BUSES.CHARACTER
   });
 
   let settings = {
@@ -138,8 +146,8 @@
     lpmds_twang_03: "../assets/audio/Equipment/Threshold_Ringing_01.mp3",
     lpmds_bed: "../assets/audio/Ambience/Threshold_Ambience_01.mp3",
     complex_hum: "../assets/audio/Ambience/Outpost_Ambience_01.mp3",
-    facility_ambient: "../assets/audio/Equipment/FF1_Electrical_Buzz_01.mp3",
-    boot_power: "../assets/audio/Equipment/Threshold_Activation_01.mp3",
+    facility_ambient: "data:audio/wav;base64,UklGRigAAABXQVZFZm10IBIAAAABAAEARKwAAIhYAQACABAAAABkYXRhAgAAAAEA", // Standard facility ambient audio resolves strictly to silence until an approved asset exists. Complex hum must NEVER be substituted.
+    threshold_activation: "../assets/audio/Equipment/Threshold_Activation_01.mp3",
     blast_door_release: "../assets/audio/Equipment/Threshold_Door_Tumble_01.mp3",
     blast_door_open: "../assets/audio/Equipment/Outpost_Door_01.mp3",
     blast_door_close: "../assets/audio/Equipment/Outpost_Lights_Out_01.mp3",
@@ -208,16 +216,24 @@
     }
   }
 
-  function stopAll() { for (const record of [...playbacks]) dispose(record); }
+  function stopAll(options = {}) {
+    for (const record of [...playbacks]) {
+      if (record.hookId === "menu_music" && menuWanted && options.stopMenu !== true) {
+        continue;
+      }
+      dispose(record);
+    }
+  }
 
   function distantRoomGraph(audio) {
     const ctx = getAudioContext();
     if (!ctx?.createMediaElementSource) return [];
     const source = ctx.createMediaElementSource(audio);
-    const high = ctx.createBiquadFilter(); high.type = "highpass"; high.frequency.value = 100;
-    const low = ctx.createBiquadFilter(); low.type = "lowpass"; low.frequency.value = 6000;
-    const dry = ctx.createGain(); dry.gain.value = 0.86;
-    const wet = ctx.createGain(); wet.gain.value = 0.14;
+    const high = ctx.createBiquadFilter(); high.type = "highpass"; high.frequency.value = 350;
+    const low = ctx.createBiquadFilter(); low.type = "lowpass"; low.frequency.value = 4200;
+    const mid = ctx.createBiquadFilter(); mid.type = "peaking"; mid.frequency.value = 1600; mid.Q.value = 1.2; mid.gain.value = 3.5;
+    const dry = ctx.createGain(); dry.gain.value = 0.68;
+    const wet = ctx.createGain(); wet.gain.value = 0.32;
     const room = ctx.createConvolver();
     const impulse = ctx.createBuffer(2, Math.ceil(ctx.sampleRate * 0.35), ctx.sampleRate);
     for (let channel = 0; channel < 2; channel++) {
@@ -226,11 +242,11 @@
       for (const [seconds, gain] of [[0.025, 0.5], [0.047, 0.3], [0.081, 0.15]]) samples[Math.floor(seconds * ctx.sampleRate)] += gain;
     }
     room.buffer = impulse;
-    source.connect(high).connect(low);
-    low.connect(dry).connect(ctx.destination);
-    low.connect(room).connect(wet).connect(ctx.destination);
+    source.connect(high).connect(low).connect(mid);
+    mid.connect(dry).connect(ctx.destination);
+    mid.connect(room).connect(wet).connect(ctx.destination);
     ctx.resume()?.catch?.(() => {});
-    return [source, high, low, dry, wet, room];
+    return [source, high, low, mid, dry, wet, room];
   }
 
   function playAudioFile(hookId, srcPath, options = {}) {
@@ -282,9 +298,25 @@
 
   function stopMenuMusic(fadeMs = 1500) { menuWanted = false; stopHook("menu_music", fadeMs); }
 
+  let currentPhysicalEnvironment = "STANDARD";
+
   function applyScene(scene) {
     if (!scene) return;
-    const wanted = new Set([scene.ambient_loop, scene.machinery_bed].filter(hook => LOOP_HOOKS.has(hook)));
+    if (scene.physical_environment) {
+      currentPhysicalEnvironment = scene.physical_environment;
+    } else if (scene.phase_id) {
+      currentPhysicalEnvironment = ["FIELD_OPERATION", "RETURN"].includes(scene.phase_id) ? "COMPLEX" : "STANDARD";
+    } else if (scene.ambient_loop === "complex_hum" || scene.ambient_loop === "complex_music") {
+      currentPhysicalEnvironment = "COMPLEX";
+    } else if (scene.ambient_loop === "facility_ambient") {
+      currentPhysicalEnvironment = "STANDARD";
+    }
+    const isStandard = currentPhysicalEnvironment === "STANDARD";
+    const wanted = new Set([scene.ambient_loop, scene.machinery_bed].filter(hook => {
+      if (!hook || !LOOP_HOOKS.has(hook)) return false;
+      if (isStandard && (hook === "complex_hum" || hook === "complex_music")) return false;
+      return true;
+    }));
     for (const hook of [...activeAudioElements.keys()]) if (hook !== "menu_music" && !wanted.has(hook)) stopHook(hook);
     for (const hook of wanted) emitHook(hook, { loop: true, gain: hook === "threshold_beacon" ? scene.beacon_gain ?? 1 : 1 });
   }
@@ -321,7 +353,7 @@
   }
 
   function registerAsset(hookId, descriptor) {
-    if (!CONCEPTUAL_HOOKS.includes(hookId) && hookId !== "date_presentation_cue") {
+    if (!CONCEPTUAL_HOOKS.includes(hookId) && hookId !== "date_presentation_cue" && hookId !== "threshold_activation") {
       throw new Error(`Cannot register unknown acoustic hook: "${hookId}"`);
     }
     assetRegistry.set(hookId, descriptor);
@@ -442,6 +474,11 @@
         break;
       }
 
+      case "boot_power":
+      case "boot_drive":
+        // No dedicated audio asset provided. Remains silent without procedural fallback.
+        break;
+
       case "boot_relay": {
         // Crisp hardware contact relay click
         const osc = ctx.createOscillator();
@@ -501,17 +538,7 @@
       }
 
       case "facility_ambient": {
-        // Low warm institutional facility drone
-        const osc = ctx.createOscillator();
-        const gain = ctx.createGain();
-        osc.type = "triangle";
-        osc.frequency.setValueAtTime(110, now);
-        gain.gain.setValueAtTime(0.001, now);
-        gain.gain.linearRampToValueAtTime(gainLevel * 0.08, now + 0.1);
-        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.6);
-        osc.connect(gain).connect(ctx.destination);
-        osc.start(now);
-        osc.stop(now + 0.62);
+        // Standard facility ambience resolves strictly to silence until an authentic approved asset is provided.
         break;
       }
 
@@ -664,8 +691,12 @@
   }
 
   function emitHook(hookId, options = {}) {
-    if (!CONCEPTUAL_HOOKS.includes(hookId)) {
+    if (!CONCEPTUAL_HOOKS.includes(hookId) && hookId !== "threshold_activation") {
       console.warn(`[YBAudio] Unrecognized acoustic hook: ${hookId}`);
+      return;
+    }
+    // Complex environmental ambience must never play while physically in Standard facility
+    if (currentPhysicalEnvironment === "STANDARD" && (hookId === "complex_hum" || hookId === "complex_music")) {
       return;
     }
     hookCounts[hookId] = (hookCounts[hookId] || 0) + 1;
@@ -686,6 +717,10 @@
       if (played) return;
     }
     triggerProceduralFallback(hookId, options);
+  }
+
+  function emitThresholdActivation(options = {}) {
+    emitHook("threshold_activation", { bus: AUDIO_BUSES.MACHINERY, ...options });
   }
 
   // Legacy fallback compatibility with prior YBAudio.play(kind) interface
@@ -720,6 +755,7 @@
     computeEffectiveGain,
     emitHook,
     emitDatePresentationCue,
+    emitThresholdActivation,
     playCameraClick,
     play
   });

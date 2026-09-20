@@ -6,6 +6,7 @@ const spatialRuntime = require("./spatial-runtime");
 const personnelGeneration = require("./personnel-generation");
 const continuity = require("./q4-personnel-continuity");
 const VERSION = "yellow-beast-q4-personnel@v2";
+const nameRules = require("../desktop/shared/name-rules");
 
 // Conservative operational identities for the bounded Q4 experience. These
 // are procedural personnel records, not canon-character claims or biographies.
@@ -38,7 +39,7 @@ function createPlayer(world, { first_name, last_name, name, display_name = null 
       last = parts.slice(1).join(" ");
     }
   }
-  if (!/^[A-Za-z][A-Za-z' -]{1,39}$/.test(first) || !/^[A-Za-z][A-Za-z' -]{1,59}$/.test(last)) {
+  if (nameRules.invalidFields({ first_name:first, last_name:last }).length) {
     return { ok: false, code: "PLAYER_NAME_INVALID", public_reason: "PERSONNEL RECORD REJECTED: INVALID FORMAT" };
   }
   world.q4_operations ??= { institutional_time: 0, last_review: null };
@@ -77,6 +78,7 @@ function safePerson(person) {
       ...(person.known_information ?? [])
     ],
     continuity: person.continuity,
+    ...(person.identity_substrate ? { identity_substrate: structuredClone(person.identity_substrate) } : {}),
     ...(person.archetype ? { archetype: person.archetype } : {}),
     ...(person.personality ? { personality: person.personality } : {}),
     ...(person.primary_task ? { primary_task: person.primary_task } : {})
@@ -84,10 +86,43 @@ function safePerson(person) {
 }
 function ensure(world, run_id, spec) {
   const existing = history.character(world, spec.identity);
-  if (existing) return continuity.ensurePerson(world, run_id, spec.identity);
+  if (existing) {
+    const person = continuity.ensurePerson(world, run_id, spec.identity);
+    if (!person.identity_substrate && spec.identity_substrate) person.identity_substrate = structuredClone(spec.identity_substrate);
+    return person;
+  }
   const created = history.instantiateCharacter(world, { run_id, ...spec, display_name: displayName(spec), classification: "q4-procedural-personnel", provenance: "q4-operational-staffing" });
   if (!created.ok) throw Object.assign(new Error("Q4 personnel identity unavailable"), { code: created.code });
-  return continuity.ensurePerson(world, run_id, spec.identity);
+  const person = continuity.ensurePerson(world, run_id, spec.identity);
+  if (spec.identity_substrate) person.identity_substrate = structuredClone(spec.identity_substrate);
+  return person;
+}
+
+function initializeStarterPersonnel(world, { seed = world?.seed ?? "day1-opener", staffing_rules = {} } = {}) {
+  if (!world) return { ok: false, code: "WORLD_REQUIRED" };
+  world.q4_operations ??= { institutional_time: 0, last_review: null };
+  const existing = world.q4_operations.starter_personnel;
+  if (Array.isArray(existing) && existing.length === 3 && existing.every((id) => history.character(world, id))) {
+    return { ok: true, created: false, coworkers: existing.map((id) => safePerson(history.character(world, id))) };
+  }
+  const generationSeed = `day1-opener:${seed}`;
+  const generated = personnelGeneration.generate({ seed: generationSeed, world_id: world.world_id, player: null, staffing: staffing_rules });
+  if (generated.coworkers.length !== 3) return { ok: false, code: "STARTER_PERSONNEL_INVALID" };
+  const coworkers = generated.coworkers.map((spec, index) => {
+    const archetype = staffing_rules.coworker_archetypes?.[index] ?? {};
+    const person = ensure(world, "world-creation", {
+      ...spec,
+      ...archetype,
+      classification: "q4-generated-personnel",
+      provenance: "world-creation-starter-personnel",
+      authority: "institutional-personnel-record"
+    });
+    person.starter_assignment_pool = "day1-opener";
+    return person;
+  });
+  world.q4_operations.starter_personnel = coworkers.map((person) => person.identity);
+  world.q4_operations.starter_personnel_generation = { version: personnelGeneration.VERSION, seed: generationSeed, created: true };
+  return { ok: true, created: true, coworkers: coworkers.map(safePerson) };
 }
 function assign(world, run_id, person, assignment) {
   if (!person || person.status === "dead") return { ok: false, code: "PERSONNEL_UNAVAILABLE" };
@@ -119,7 +154,10 @@ function ensureMaxwell(world, run_id = "institutional-setup") {
   }
   if (maxwell) {
     maxwell.deployable = false;
-    maxwell.mortal = false;
+    maxwell.mortal = true;
+    maxwell.assignment_scope = "briefing-only";
+    maxwell.expedition_mortality_eligible = false;
+    maxwell.expedition_exclusion_reason = "not assigned to the expedition team";
   }
   return maxwell;
 }
@@ -148,13 +186,17 @@ function staffQ4(world, run_id, player_identity = null, seed = "q4", staffing_ru
     if (people.some((person) => person?.status !== "active")) return true;
     return requiredRoles ? requiredRoles.some((role) => !people.some((person) => person.role === role)) : false;
   };
+  if (staffing_rules.starter_roster === true && !rosterUnavailable(world.q4_operations.starter_personnel)) {
+    coworkerIds = [...world.q4_operations.starter_personnel];
+    world.q4_operations.generated_rosters[seed] = [...coworkerIds];
+  }
   if (rosterUnavailable(coworkerIds)) {
     // Existing active records are the first staffing pool. New generation only
     // fills a genuine gap, preserving a career's identities across shifts.
     const sharedWork = (person) => (person.continuity?.shared_history ?? []).filter((fact) => fact.kind === "served-together" && fact.participants?.includes(player.identity)).length;
     const immediatePriorRoster = new Set(world.q4_operations.last_roster ?? []);
     const returningPriority = (person) => sharedWork(person) > 0 && !immediatePriorRoster.has(person.identity) ? 1 : 0;
-    const established = Object.values(world.characters ?? {}).filter((person) => person.identity !== player.identity && person.status === "active" && person.role && person.clearance && /q4-|field|survey|documentation/i.test(`${person.classification ?? ""} ${person.role}`)).sort((a, b) => returningPriority(b) - returningPriority(a) || sharedWork(b) - sharedWork(a) || a.identity.localeCompare(b.identity));
+    const established = Object.values(world.characters ?? {}).filter((person) => person.identity !== player.identity && person.status === "active" && person.role && person.clearance && !immediatePriorRoster.has(person.identity) && (!person.starter_assignment_pool || staffing_rules.starter_roster === true) && /q4-|field|survey|documentation/i.test(`${person.classification ?? ""} ${person.role}`)).sort((a, b) => returningPriority(b) - returningPriority(a) || sharedWork(b) - sharedWork(a) || a.identity.localeCompare(b.identity));
     const roleSet = new Set(established.map((person) => person.role));
     if (requiredRoles?.length === requiredCoworkers && requiredRoles.every((role) => roleSet.has(role))) {
       coworkerIds = requiredRoles.map((role) => established.find((person) => person.role === role).identity);
@@ -248,4 +290,4 @@ function publicTeam(run, phase = "FIELD_OPERATION", world = null) {
   });
 }
 
-module.exports = { VERSION, DEFAULTS, LEGACY_PERSONNEL, displayName, safePerson, createPlayer, identityFor, staffQ4, selectSuccessor, assign, teamMember, observerStatus, publicTeam, ensureMaxwell };
+module.exports = { VERSION, DEFAULTS, LEGACY_PERSONNEL, displayName, safePerson, createPlayer, identityFor, initializeStarterPersonnel, staffQ4, selectSuccessor, assign, teamMember, observerStatus, publicTeam, ensureMaxwell };

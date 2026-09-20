@@ -4,7 +4,7 @@ const VERSION = "yellow-beast-q4-interaction-envelope@v1";
 const CHANNELS = Object.freeze(["action", "local", "standard"]);
 const clone = (value) => structuredClone(value);
 
-function record(expedition, { channel, speaker = "You", targets = [], player_text = null, attempted_behavior = null, eligibility = "eligible", delivery = "not-applicable", time_cost = 0, canonical_effects = [], observer_knowledge = [], presentation = {}, response_speaker = null, submission_id = null }) {
+function record(expedition, { channel, speaker = "You", speaker_id = null, targets = [], recipient_ids = [], listeners = [], player_text = null, attempted_behavior = null, eligibility = "eligible", delivery = "not-applicable", time_cost = 0, canonical_effects = [], observer_knowledge = [], presentation = {}, response_speaker = null, response_speaker_id = null, response_listeners = [], location_id = null, submission_id = null }) {
   if (!expedition || !CHANNELS.includes(channel)) throw new Error("Q4 interaction requires a supported channel");
   expedition.interaction_history ??= [];
   const interaction = {
@@ -13,7 +13,10 @@ function record(expedition, { channel, speaker = "You", targets = [], player_tex
     submission_id,
     channel,
     speaker,
+    speaker_id,
     targets: [...targets],
+    recipient_ids: [...recipient_ids],
+    listeners: [...listeners],
     player_text,
     attempted_behavior,
     eligibility,
@@ -22,7 +25,10 @@ function record(expedition, { channel, speaker = "You", targets = [], player_tex
     canonical_effects: [...canonical_effects],
     observer_knowledge: clone(observer_knowledge),
     presentation: clone(presentation),
-    response_speaker
+    response_speaker,
+    response_speaker_id,
+    response_listeners: [...response_listeners],
+    location_id
   };
   expedition.interaction_history.push(interaction);
   expedition.clock ??= {};
@@ -65,6 +71,12 @@ function updatePresentation(expedition, interactionId, updates = {}) {
   }
   if (updates.response_speaker !== undefined) {
     interaction.response_speaker = updates.response_speaker;
+  }
+  if (updates.response_speaker_id !== undefined) {
+    interaction.response_speaker_id = updates.response_speaker_id;
+  }
+  if (updates.response_listeners !== undefined) {
+    interaction.response_listeners = [...updates.response_listeners];
   }
   if (updates.source !== undefined) {
     interaction.presentation.source = updates.source;

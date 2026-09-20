@@ -38,7 +38,7 @@ test("one preparation surface preserves canonical pre-field transitions without 
   let html = surfaces.render(started.projection);
   assert.match(html, /q4-preparation-surface/);
   assert.match(html, /OPERATIONAL PREPARATION/);
-  assert.match(html, /Continue to Staging/);
+  assert.match(html, /PROCEED TO ESD/);
   assert.match(html, /data-testid="q4-communications"/);
   assert.match(html, /data-testid="q4-comms-form"/);
   assert.doesNotMatch(html, /local-comms|standard-comms|Deploy to radio readiness/);
@@ -46,7 +46,7 @@ test("one preparation surface preserves canonical pre-field transitions without 
   assert.doesNotMatch(html, /What do you do\?|Nothing notable changes|natural-form|Structured controls/);
   html = surfaces.render(advance(service, world, "READY").projection);
   assert.match(html, /q4-preparation-surface/);
-  assert.match(html, /deliberately depart Equipment Staging/);
+  assert.match(html, /Cooperate with the team on equipment and movement preparation/);
   assert.match(html, /data-testid="select-store-route-marker-kit"/);
   assert.doesNotMatch(html, /What do you do\?|Nothing notable changes/);
 });

@@ -49,7 +49,7 @@
       },
       asset_interface: {
         asset_id: "cinematic.date_card_july_1991",
-        format: "text/canvas",
+        format: "video/quicktime",
         is_final: false,
         resolved_path: null
       }
@@ -369,12 +369,34 @@
     return JSON.parse(JSON.stringify(REGISTRY[id]));
   }
 
+  const DEFAULT_AUTHORED_ASSETS = Object.freeze({
+    DATE_CARD_JULY_1991: "../assets/video/DateCardNewPlayerClip.mov",
+    BRIEFING_INFORMATIONAL_VIDEO: "../assets/video/IntroductoryVideoVotT.mov",
+    THRESHOLD_CROSSING_ENTRY_4: "../assets/video/CrossingIntoTheComplex.mov"
+  });
+
+  function getResolvedPath(id) {
+    if (REGISTRY[id]?.asset_interface?.is_final && REGISTRY[id]?.asset_interface?.resolved_path) {
+      return REGISTRY[id].asset_interface.resolved_path;
+    }
+    return DEFAULT_AUTHORED_ASSETS[id] || null;
+  }
+
+  function registerDefaultAuthoredAssets() {
+    for (const [id, assetPath] of Object.entries(DEFAULT_AUTHORED_ASSETS)) {
+      registerAsset(id, assetPath);
+    }
+  }
+
   return {
     CANONICAL_PLACEHOLDER_IDS,
     REGISTRY,
+    DEFAULT_AUTHORED_ASSETS,
     getPlaceholder,
     listPlaceholders,
     isRegistered,
-    registerAsset
+    registerAsset,
+    getResolvedPath,
+    registerDefaultAuthoredAssets
   };
 });

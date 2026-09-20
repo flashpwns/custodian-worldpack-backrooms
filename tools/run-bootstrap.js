@@ -422,12 +422,18 @@ function expeditionAction(run, verb, target) {
   if (verb === "COMPLETE_RETURN") {
     const definition = missionDefinitionFor(run.spatial_pack_id); const state = expedition.mission_state;
     if (!state?.return?.requested) return { ok: false, error: { code: "RETURN_NOT_REQUESTED" }, result: { public_reason: "Begin the return procedure before mission closure." }, run };
-    if (cq4Day1Opener.isOpener(run?.scenario) && !cq4Day1Opener.verifyReturn(run)) {
-      return { ok: false, error: { code: "RETURN_SURVEILLANCE_UNVERIFIED" }, result: { public_reason: "Standard surveillance has not verified the team at KV31. Contact the Control Room upstairs over the radio before re-crossing." }, run };
+    if (cq4Day1Opener.isOpener(run?.scenario)) {
+      if (cq4Day1Opener.isCutoffExceeded(run)) {
+        return cq4Day1Opener.triggerCatastrophicEnding(run._world, { run });
+      }
+      if (!cq4Day1Opener.verifyReturn(run)) {
+        return { ok: false, error: { code: "RETURN_SURVEILLANCE_UNVERIFIED" }, result: { public_reason: "Standard surveillance has not verified the team at KV31. Contact the Control Room upstairs over the radio before re-crossing." }, run };
+      }
     }
     expedition.mission_state.phase = "RETURN"; evaluateMissionState(run, "RETURN");
     const closure = missionRuntime.requestClosure(state, definition, { run, player }, { at: expedition.clock?.interval ?? 0 });
     if (!closure.ok) return { ok: false, error: { code: closure.code }, result: { public_reason: closure.reason }, run };
+    if (cq4Day1Opener.isOpener(run?.scenario)) expedition.day1_opener.returned_elapsed_seconds ??= expedition.day1_opener.elapsed_seconds;
     const closureRadio = expedition.equipment?.["survey-radio"];
     if (q4Radio.available(expedition) && q4Equipment.stateUsable(closureRadio) && closureRadio.charges > 0 && !(expedition.messages ?? []).some((message) => message.purpose === "mission-closure" && message.delivery_status === "delivered")) {
       useEquipment(expedition, "survey-radio", player);

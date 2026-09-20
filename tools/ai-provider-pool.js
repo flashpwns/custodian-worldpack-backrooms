@@ -9,6 +9,7 @@ const {
 } = require("./ai-hosted-transport");
 const { createLivingProvider } = require("./ai-living-provider");
 const { createMockProvider } = require("./ai-mock-provider");
+const { createLocalModelProvider, LOCAL_PROVIDER_SPEC, normalizeLocalEndpoint } = require("./ai-local-model-provider");
 
 const DEFAULT_AUTO_PRIORITY = Object.freeze(["groq", "gemini", "openrouter", "openai", "offline"]);
 
@@ -39,13 +40,14 @@ function calculateCooldownMs(failureClass, error) {
 }
 
 class ProviderPool {
-  constructor({ credentials = null, settingsGetter = null, onInvocation = null, onProvenance = null, clientFactory = null, providerFactory = null } = {}) {
+  constructor({ credentials = null, settingsGetter = null, onInvocation = null, onProvenance = null, clientFactory = null, providerFactory = null, localFetch = null } = {}) {
     this.credentials = credentials;
     this.settingsGetter = typeof settingsGetter === "function" ? settingsGetter : () => ({ provider: "auto" });
     this.onInvocation = onInvocation;
     this.onProvenance = onProvenance;
     this.clientFactory = clientFactory;
     this.providerFactory = providerFactory;
+    this.localFetch = localFetch;
     this.clients = new Map();
     this.health = new Map();
     this.instances = new Map();
@@ -58,6 +60,13 @@ class ProviderPool {
 
   isConfigured(providerId) {
     if (providerId === "offline") return true;
+    if (providerId === "local") {
+      const settings = this.settingsGetter();
+      try {
+        normalizeLocalEndpoint(settings.local_endpoint ?? LOCAL_PROVIDER_SPEC.defaultEndpoint);
+        return typeof (settings.local_model ?? LOCAL_PROVIDER_SPEC.defaultModel) === "string" && Boolean((settings.local_model ?? LOCAL_PROVIDER_SPEC.defaultModel).trim());
+      } catch { return false; }
+    }
     if (this.credentials && typeof this.credentials.configured === "function") {
       if (this.credentials.configured(providerId)) return true;
     }
@@ -67,7 +76,7 @@ class ProviderPool {
   }
 
   getKey(providerId) {
-    if (providerId === "offline") return null;
+    if (providerId === "offline" || providerId === "local") return null;
     if (this.credentials && typeof this.credentials.get === "function") {
       const key = this.credentials.get(providerId);
       if (key) return key;
@@ -79,6 +88,7 @@ class ProviderPool {
 
   getModel(providerId) {
     const settings = this.settingsGetter();
+    if (providerId === "local") return settings.local_model || LOCAL_PROVIDER_SPEC.defaultModel;
     if (providerId === "openai" && settings.openai_model) return settings.openai_model;
     if (providerId === "groq" && settings.groq_model) return settings.groq_model;
     if (providerId === "gemini" && settings.gemini_model) return settings.gemini_model;
@@ -120,6 +130,19 @@ class ProviderPool {
     }
     if (providerId === "offline") {
       return createLivingProvider();
+    }
+    if (providerId === "local") {
+      const settings = this.settingsGetter();
+      return createLocalModelProvider({
+        endpoint:settings.local_endpoint ?? LOCAL_PROVIDER_SPEC.defaultEndpoint,
+        model:this.getModel("local"),
+        fetchImpl:this.localFetch ?? globalThis.fetch,
+        timeout:120000,
+        onInvocation:(event) => {
+          if (typeof onInvocation === "function") event = onInvocation(event) ?? event;
+          if (typeof this.onInvocation === "function") this.onInvocation(event);
+        }
+      });
     }
     const key = this.getKey(providerId);
     const model = this.getModel(providerId);

@@ -2,12 +2,220 @@
 
 const crypto = require("node:crypto");
 const definition = require("../data/worldpacks/clear-q4/cq4-day1-opener.json");
+const presentationBus = require("./presentation-bus");
 
 const VERSION = definition.version;
 const SCENARIO = definition.scenario;
 const RUNTIME_SCENARIO = definition.runtime_scenario;
 const clone = (value) => structuredClone(value);
 const digest = (value) => crypto.createHash("sha256").update(JSON.stringify(value)).digest("hex");
+
+const BEATS = Object.freeze({
+  FACILITY_BROADCAST: "FACILITY_BROADCAST",
+  PERSONNEL_BRIEFING: "PERSONNEL_BRIEFING",
+  LOCAL_INTRODUCTIONS: "LOCAL_INTRODUCTIONS"
+});
+
+const ACTION_DURATIONS_SECONDS = Object.freeze({
+  WALK: 30, // Distance / 1.4 m/s (default 30s traversal)
+  RUN: 15,
+  PHOTOGRAPH: 60, // 1 minute
+  READY_EQUIPMENT: 30,
+  EXAMINE_QUICK: 60,
+  EXAMINE_STANDARD: 180,
+  DOCUMENT_DETAILED: 300,
+  RADIO_CHECK: 15,
+  CONVERSATION_BRIEF: 10,
+  CONVERSATION_NORMAL: 30,
+  CONVERSATION_EXTENDED: 120,
+  WAIT: 60,
+  REST: 600
+});
+
+function getActionDuration(verb, details = {}) {
+  const upper = String(verb ?? "").toUpperCase();
+  if (upper === "PHOTOGRAPH") return ACTION_DURATIONS_SECONDS.PHOTOGRAPH;
+  if (upper === "MOVE") {
+    if (details?.distance != null && Number(details.distance) > 0) {
+      return Math.max(5, Math.ceil((Number(details.distance) / 1.4) / 5) * 5);
+    }
+    return ACTION_DURATIONS_SECONDS.WALK;
+  }
+  if (upper === "RUN") {
+    if (details?.distance != null && Number(details.distance) > 0) {
+      return Math.max(5, Math.ceil((Number(details.distance) / 3.0) / 5) * 5);
+    }
+    return ACTION_DURATIONS_SECONDS.RUN;
+  }
+  if (upper === "USE" && (details?.item_id === "recording-device" || details?.action === "PHOTOGRAPH" || /photo|camera/i.test(details?.target ?? ""))) {
+    return ACTION_DURATIONS_SECONDS.PHOTOGRAPH;
+  }
+  if (upper === "INSPECT" || upper === "LOOK") {
+    if (details?.depth === "detailed") return ACTION_DURATIONS_SECONDS.DOCUMENT_DETAILED;
+    if (details?.depth === "standard") return ACTION_DURATIONS_SECONDS.EXAMINE_STANDARD;
+    return ACTION_DURATIONS_SECONDS.EXAMINE_QUICK;
+  }
+  if (upper === "HANDOFF" || upper === "TRANSFER" || upper === "READY") {
+    return ACTION_DURATIONS_SECONDS.READY_EQUIPMENT;
+  }
+  if (upper === "RADIO_CHECK" || upper === "CHECK_IN") {
+    return ACTION_DURATIONS_SECONDS.RADIO_CHECK;
+  }
+  if (upper === "COMMUNICATE" || upper === "LOCAL") {
+    if (details?.length === "brief") return ACTION_DURATIONS_SECONDS.CONVERSATION_BRIEF;
+    if (details?.length === "extended") return ACTION_DURATIONS_SECONDS.CONVERSATION_EXTENDED;
+    return ACTION_DURATIONS_SECONDS.CONVERSATION_NORMAL;
+  }
+  if (upper === "WAIT") {
+    return Number.isInteger(details?.seconds) && details.seconds > 0 ? details.seconds : ACTION_DURATIONS_SECONDS.WAIT;
+  }
+  if (upper === "REST") {
+    return Number.isInteger(details?.seconds) && details.seconds > 0 ? details.seconds : ACTION_DURATIONS_SECONDS.REST;
+  }
+  return 30;
+}
+
+function advanceSimulationTime(run, seconds = 30) {
+  if (!isOpener(run?.scenario)) return null;
+  run.expedition ??= {};
+  run.expedition.day1_opener ??= {};
+  const opener = run.expedition.day1_opener;
+  opener.elapsed_seconds = (opener.elapsed_seconds ?? 0) + seconds;
+
+  const totalSecs = opener.elapsed_seconds;
+  const startHour = 10;
+  const startMinute = 0;
+  const addedMinutes = Math.floor(totalSecs / 60);
+  const remainingSecs = totalSecs % 60;
+
+  const currentTotalMinutes = startHour * 60 + startMinute + addedMinutes;
+  const hour24 = Math.floor(currentTotalMinutes / 60);
+  const minute = currentTotalMinutes % 60;
+
+  const hour12 = hour24 % 12 === 0 ? 12 : hour24 % 12;
+  const ampm = hour24 < 12 ? "AM" : "PM";
+  const minuteStr = String(minute).padStart(2, "0");
+  const secondStr = String(remainingSecs).padStart(2, "0");
+
+  const formattedTime = `${hour12}:${minuteStr} ${ampm}`;
+  opener.simulation_time = formattedTime;
+  opener.simulation_time_precise = `${hour12}:${minuteStr}:${secondStr} ${ampm}`;
+
+  // Operational cutoff is 1:00 PM (13:00 / 10,800 seconds elapsed from 10:00 AM)
+  const cutoffLimit = opener.operational_cutoff_seconds ?? 10800;
+  if (totalSecs > cutoffLimit) {
+    opener.cutoff_exceeded = true;
+  }
+
+  return {
+    elapsed_seconds: totalSecs,
+    simulation_time: formattedTime,
+    cutoff_exceeded: Boolean(opener.cutoff_exceeded)
+  };
+}
+
+function isCutoffExceeded(run) {
+  if (!isOpener(run?.scenario)) return false;
+  const opener = run?.expedition?.day1_opener;
+  if (opener?.cutoff_exceeded) return true;
+  const totalSecs = opener?.elapsed_seconds ?? 0;
+  if (totalSecs > (opener?.operational_cutoff_seconds ?? 10800)) {
+    if (opener) opener.cutoff_exceeded = true;
+    return true;
+  }
+  return false;
+}
+
+function triggerCatastrophicEnding(world, entry) {
+  const run = entry?.run ?? entry;
+  const expedition = run.expedition ??= {};
+  const opener = expedition.day1_opener ??= {};
+
+  opener.catastrophic_ending = {
+    active: true,
+    stage: "terminal",
+    asset_id: "ending.catastrophic.newspaper",
+    headline: "TRAFFIC COLLISION CLAIMS FOUR IN SANTA CLARITA",
+    date: "JULY 17, 1991",
+    location: "Santa Clarita, California",
+    casualties: 4,
+    ambiguity_doctrine: "unexplained-correspondence",
+    sequence: [
+      "nonfunctional_threshold",
+      "coworker_panic",
+      "aeot_power_failure",
+      "async_logo_display",
+      "newspaper_record",
+      "terminal_title_transition"
+    ],
+    triggered_at_interval: expedition.clock?.interval ?? 18,
+    triggered_at_simulation_time: opener.simulation_time ?? "1:00 PM"
+  };
+
+  // Coworkers enter panicked state
+  for (const member of expedition.team?.members ?? []) {
+    if (member.identity !== run.session?.startup?.player?.observer_id) {
+      member.behavioral_state = "panicked";
+      member.stress = 10;
+      member.current_intent = "survive catastrophic Threshold failure";
+    }
+  }
+
+  presentationBus.emit(run, {
+    type: "threshold_nonfunctional",
+    speaker: "FACILITY",
+    text: "The Threshold apparatus is dead. The magnetic aperture has completely collapsed."
+  });
+  presentationBus.emit(run, {
+    type: "character_panic",
+    speaker: "TEAM",
+    text: "Coworkers recognize that the return route is severed. Uncontrolled panic ensues."
+  });
+  presentationBus.emit(run, {
+    type: "aeot_power_failure",
+    source: "aeot",
+    text: "AEOT terminal loses connection to Standard relay. Screen zaps to black."
+  });
+  presentationBus.emit(run, {
+    type: "async_logo_display",
+    source: "institutional",
+    asset: "async.logo"
+  });
+  presentationBus.emit(run, {
+    type: "newspaper_record",
+    asset_id: "ending.catastrophic.newspaper",
+    headline: "TRAFFIC COLLISION CLAIMS FOUR IN SANTA CLARITA",
+    date: "JULY 17, 1991"
+  });
+
+  run.lifecycle = "completed";
+  if (entry.phase) entry.phase.phase_id = "DEBRIEF";
+
+  if (world) {
+    world.q4_operations ??= {};
+    world.q4_operations.terminal_outcome = {
+      run_id: run.run_id,
+      outcome: "catastrophic-failure",
+      reason: "Post-1:00 PM operational cutoff exceeded Complex-side. Trapped personnel.",
+      asset_id: "ending.catastrophic.newspaper",
+      at: new Date().toISOString()
+    };
+  }
+
+  return {
+    ok: false,
+    error: {
+      code: "THRESHOLD_NONFUNCTIONAL",
+      message: "The Threshold apparatus is completely dark and unresponsive. The aperture has collapsed. Operational cutoff exceeded."
+    },
+    result: {
+      public_reason: "The Threshold apparatus is dead. Standard line is unresponsive. Egress is impossible.",
+      catastrophic_ending: clone(opener.catastrophic_ending)
+    },
+    public_reason: "The Threshold apparatus is dead. Standard line is unresponsive. Egress is impossible.",
+    run
+  };
+}
 
 const ONE_SHOT_EVENTS = Object.freeze([
   "briefing_date_card",
@@ -87,7 +295,7 @@ function isOpener(value) {
 
 function staffingRules(base = {}) {
   validate();
-  return { ...base, ...clone(definition.staffing) };
+  return { ...base, ...clone(definition.staffing), starter_roster: true };
 }
 
 function mission({ run_id = null, seed = "day1-opener", staffing = null } = {}) {
@@ -165,9 +373,86 @@ function instantiate(run) {
     return_surveillance_verified: false,
     check_in_held_seconds: 0,
     last_check_in_time: null,
-    one_shot_events: {}
+    one_shot_events: {},
+    elapsed_seconds: 0,
+    clock_start: "10:00 AM",
+    simulation_time: "10:00 AM",
+    operational_cutoff_seconds: 10800,
+    cutoff_exceeded: false,
+    catastrophic_ending: null
   };
   run.expedition.day1_opener.one_shot_events ??= {};
+  run.expedition.day1_opener.elapsed_seconds ??= (run.expedition.clock?.interval ?? 0) * 600;
+  run.expedition.day1_opener.clock_start ??= "10:00 AM";
+  run.expedition.day1_opener.simulation_time ??= "10:00 AM";
+  run.expedition.day1_opener.operational_cutoff_seconds ??= 10800;
+  run.expedition.day1_opener.cutoff_exceeded ??= false;
+  run.expedition.day1_opener.catastrophic_ending ??= null;
+
+  const members = run.expedition.team?.members ?? [];
+  const playerName = members[0]?.first_name || members[0]?.display_name || "Assignee";
+  const coworker1Name = members[1]?.first_name || members[1]?.display_name || "Teammate";
+  const coworker2Name = members[2]?.first_name || members[2]?.display_name || "Courier";
+  const coworker3Name = members[3]?.first_name || members[3]?.display_name || "Doctor";
+  const dialogue = definition.briefing_authority.dialogue;
+  const rosterCall = dialogue.roster_call
+    .replace("{player_name}", playerName)
+    .replace("{coworker1_name}", coworker1Name)
+    .replace("{coworker2_name}", coworker2Name)
+    .replace("{coworker3_name}", coworker3Name);
+  run.expedition.day1_opener.beat ??= BEATS.PERSONNEL_BRIEFING;
+  run.expedition.day1_opener.facility_broadcast ??= {
+    channel: "FACILITY BROADCAST",
+    mandatory: false,
+    visible: false,
+    status: "completed",
+    completed: true,
+    chirps_emitted: true,
+    title: definition.briefing_authority.title_template,
+    media_asset: {
+      placeholder_id: "BRIEFING_INFORMATIONAL_VIDEO"
+    },
+    chirps: [],
+    visual: { mode: "facility", substrate: "primary-visual-panel" }
+  };
+  run.expedition.day1_opener.personnel_briefing ??= {
+    speaker: "DR. KIRK MAXWELL",
+    speaker_title: "Chief Expedition Briefing Authority · Standard Side",
+    room_id: "async-briefing-room",
+    room_name: "KV31 Lower Briefing Room",
+    dialogue: {
+      greeting: dialogue.greeting,
+      intro: dialogue.intro,
+      mission_statement: dialogue.mission_statement,
+      roster_call: rosterCall,
+      dismissal: dialogue.dismissal
+    },
+    text: [dialogue.greeting, dialogue.intro, dialogue.mission_statement, rosterCall, dialogue.dismissal].join(" "),
+    authority_status: "legacy_unreconciled_briefing_material",
+    status: "pending",
+    exchange_history: [],
+    facts_communicated: {
+      briefing_authority: "Dr. Kirk Maxwell",
+      working_relationship: "Kirk",
+      deployment_time: definition.operational_window?.deployment_time ?? "10:00 AM",
+      expected_return: definition.operational_window?.expected_return_time ?? "12:00 noon",
+      cutoff_time: definition.operational_window?.cutoff_time ?? "1:00 PM",
+      destination: "Outpost A (Bermuda branch)",
+      route_guidance: "neon-green guidance tape with arrows (forward to Outpost A, reverse to KV31)",
+      team_size: 4
+    }
+  };
+  run.expedition.day1_opener.esd_handoff ??= {
+    status: "introductions-open",
+    destination: "Equipment Services Division",
+    player_dialogue_input: "local-open",
+    coworker_activity: "active"
+  };
+  run.expedition.day1_opener.introduction_pressure ??= members.slice(1).map((member) => ({
+    personnel_id: member.personnel_id ?? member.id,
+    prompt: `${member.first_name ?? member.display_name} is waiting with the rest of the assigned team.`,
+    concern: run._world?.characters?.[member.personnel_id ?? member.id]?.identity_substrate?.pre_expedition_concern ?? null
+  }));
 
   const seed = String(run.seed ?? "day1-opener");
   const hash = digest([seed, "outpost-a-geometry"]);
@@ -190,7 +475,7 @@ function instantiate(run) {
       id: "outpost-a",
       name: "Outpost A (Bermuda Branch)",
       type: "outpost",
-      short_description: "A forward A-Sync operational staging point under fluorescent lighting. Two folding tables sit against the drywall beside emptied boxes, wooden slats, screwdrivers, and a field radio station.",
+      short_description: "A forward ASync operational staging point under fluorescent lighting. Two folding tables sit against the drywall beside emptied boxes, wooden slats, screwdrivers, and a field radio station.",
       coordinates: outpostCoordinates,
       entry_state: "unmapped",
       environment: {
@@ -202,9 +487,9 @@ function instantiate(run) {
         {
           id: "outpost-a-placard",
           name: "stenciled equipment placard",
-          aliases: ["placard", "stencil", "sign", "label", "stenciled equipment placard", "outpost-a-placard", "A-SYNC OUTPOST A // BERMUDA BRANCH"],
-          observation: "A stenciled equipment placard reads: A-SYNC OUTPOST A // BERMUDA BRANCH.",
-          inspection: "The stenciled equipment placard is riveted into the drywall: A-SYNC OUTPOST A // BERMUDA BRANCH."
+          aliases: ["placard", "stencil", "sign", "label", "stenciled equipment placard", "outpost-a-placard", "ASYNC OUTPOST A // BERMUDA BRANCH", "A-SYNC OUTPOST A // BERMUDA BRANCH"],
+          observation: "A stenciled equipment placard reads: ASYNC OUTPOST A // BERMUDA BRANCH.",
+          inspection: "The stenciled equipment placard is riveted into the drywall: ASYNC OUTPOST A // BERMUDA BRANCH."
         },
         {
           id: "folding-tables",
@@ -232,7 +517,7 @@ function instantiate(run) {
           name: "emptied boxes",
           aliases: ["emptied-boxes", "emptied boxes", "empty boxes", "boxes", "cartons"],
           observation: "Several emptied cardboard shipping boxes rest beneath the folding tables.",
-          inspection: "Corrugated boxes marked with A-Sync logistics codes, their contents already unpacked."
+          inspection: "Corrugated boxes marked with ASync logistics codes, their contents already unpacked."
         },
         {
           id: "screwdrivers",
@@ -247,6 +532,23 @@ function instantiate(run) {
           aliases: ["guidance tape", "green tape", "directional tape", "tape termination"],
           observation: "The thick neon-green guidance tape terminates here on the concrete floor beside the tables.",
           inspection: "The bright green adhesive tape ends beside the folding tables, with reverse arrows pointing back toward KV31."
+        },
+        {
+          id: "clipped-swivel-chair",
+          name: "swivel-seat chair partially clipped into the wall",
+          aliases: ["swivel chair", "clipped chair", "chair", "swivel-seat chair", "office chair", "anomalous chair"],
+          observation: "An office swivel-seat chair is partially clipped into the drywall, its backrest embedded directly into the wall surface.",
+          inspection: "The padded brown vinyl swivel chair physically intersects the drywall without seam or fracture. The vinyl and steel five-star base are intact where exposed; the backrest penetrates the wall as though the architecture occupied the same physical coordinates. It is non-hostile, stable, and completely stationary.",
+          anomalous: true,
+          anomaly_family: "SPATIAL_INCONSISTENCY"
+        },
+        {
+          id: "blue-boundary-tape",
+          name: "blue anomaly boundary tape",
+          aliases: ["blue tape", "boundary tape", "perimeter tape", "blue marker tape", "investigation tape"],
+          observation: "Strips of dark blue adhesive tape are applied to the floor and wall forming a perimeter around the clipped chair.",
+          inspection: "Heavy blue vinyl tape placed by prior ASync personnel demarcates the perimeter of the anomalous chair intersection, indicating an established institutional survey perimeter.",
+          state: "canonical-physical-object"
         }
       ],
       hazards: [],
@@ -278,6 +580,45 @@ function instantiate(run) {
       hazards: [],
       tags: ["field", "corridor", "guidance-route"]
     };
+
+    // Canonical Day-One Anomaly Floor (Phase 26):
+    // Every valid Day-One Bermuda generation must contain at least one perceptible anomalous element.
+    const ANOMALY_FAMILIES = ["ACOUSTIC_ANOMALY", "ENVIRONMENTAL_DISCONTINUITY", "SPATIAL_INCONSISTENCY", "OBJECT_DISPLACEMENT"];
+    const anomalyFamily = ANOMALY_FAMILIES[seedNum % ANOMALY_FAMILIES.length];
+    const anomalyTargetId = (seedNum % 2 === 0) ? intermediateId : "outpost-a";
+
+    if (anomalyFamily === "ACOUSTIC_ANOMALY") {
+      intermediateLocation.environment.sound = "an unlocalized low-frequency acoustic vibration that pulses counter to the fluorescent drone";
+      intermediateLocation.acoustic_anomaly = true;
+      intermediateLocation.anomalous = true;
+    } else if (anomalyFamily === "ENVIRONMENTAL_DISCONTINUITY") {
+      intermediateLocation.environment.lighting = "fluorescent tubes with an unexplained localized cold drift along the walls";
+      intermediateLocation.anomalous = true;
+    } else if (anomalyFamily === "SPATIAL_INCONSISTENCY") {
+      intermediateLocation.short_description = "A wide corridor with scuffed linoleum floor where sightlines appear subtly distorted under fluorescent illumination.";
+      intermediateLocation.anomalous = true;
+    } else if (anomalyFamily === "OBJECT_DISPLACEMENT") {
+      intermediateLocation.landmarks.push({
+        id: "displaced-conduit-cover",
+        name: "displaced conduit cover",
+        aliases: ["conduit cover", "cover", "metal plate"],
+        observation: "A rectangular metal conduit cover lies displaced in the center of the corridor without visible tool marks.",
+        inspection: "The cover is undamaged and shows no fastening hardware or pry marks."
+      });
+      intermediateLocation.anomalous = true;
+    }
+
+    if (run._world) {
+      try {
+        const phenomena = require("./q4-phenomenon-ecology");
+        phenomena.instantiate(run._world, {
+          family: anomalyFamily,
+          location_id: anomalyTargetId,
+          spatial: run.spatial,
+          generation: { mode: "day1-opener-anomaly-floor", config_version: "yellow-beast-q4-phenomenon-config@v1" }
+        });
+      } catch {}
+    }
 
     run.spatial.generated_locations.push(intermediateLocation, outpostLocation);
 
@@ -377,6 +718,7 @@ function verifyDelivery(run) {
 
 function verifyReturn(run) {
   if (!isOpener(run?.scenario)) return false;
+  if (isCutoffExceeded(run)) return false;
   const playerLoc = run.spatial?.player_location;
   const isAtKV31 = playerLoc === "utility-room" || playerLoc === "threshold-side-entry";
   const surveillanceVerified = Boolean(run.expedition?.day1_opener?.return_surveillance_verified);
@@ -429,15 +771,16 @@ function assessInstitutionalRecord({ report, run, evidence_records = [] } = {}) 
     (duffle.current_holder && (run?.spatial?.personnel_locations?.[duffle.current_holder] === playerLoc || isAtKV31))
   );
 
-  const maxInterval = run?.expedition?.mission?.operational_window?.max_intervals ?? 24;
-  const isLate = interval > maxInterval;
+  const returnedSeconds = run?.expedition?.day1_opener?.returned_elapsed_seconds
+    ?? run?.expedition?.day1_opener?.elapsed_seconds ?? 0;
+  const isLate = returnedSeconds > 7200;
 
   let status = "delivery-confirmed";
   let summary = "Startup materials confirmed delivered to Outpost A. Field reconnaissance completed with accounted return.";
 
   if (isLate) {
     status = "late-return";
-    summary = `Expedition returned past scheduled operational window at interval ${interval}. Egress logged.`;
+    summary = `Expedition returned after the noon expectation (${returnedSeconds} seconds after 10:00 AM). Egress logged.`;
   } else if (!deliveryCompleted) {
     if (duffleAtKV31) {
       status = "delivery-undelivered";
@@ -461,6 +804,7 @@ function assessInstitutionalRecord({ report, run, evidence_records = [] } = {}) 
       delivery_completed: deliveryCompleted,
       return_verified: returnVerified,
       interval,
+      returned_elapsed_seconds: returnedSeconds,
       evidence_ids: evidence_records.map((r) => r.id),
       duffle_recovered: Boolean(duffleAtKV31),
       is_late: isLate
@@ -496,9 +840,22 @@ function logisticsDefinition(base) {
       consumable: false
     });
   }
+  if (!cloned.item_definitions.some((d) => d.id === "mass-spectrometer")) {
+    cloned.item_definitions.push({
+      id: "mass-spectrometer",
+      display_name: "Portable mass spectrometer",
+      category: "instrument",
+      model: "analytical mass spectrometer",
+      capabilities: ["compositional analysis"],
+      capacity_contribution: 1,
+      maximum_charges: 10,
+      consumable: false
+    });
+  }
   cloned.item_instances = [
     { id: "field-light", definition_id: "battery-lamp", assignment: { holder: "player" }, initial_container: "player-harness", initial_location: "equipment-staging", initial_charges: 6 },
-    { id: "recording-device", definition_id: "field-camera", assignment: { holder: "player" }, initial_container: "player-harness", initial_location: "equipment-staging", initial_charges: 12 },
+    { id: "recording-device", definition_id: "field-camera", assignment: { holder: "player" }, initial_container: "player-harness", initial_location: "equipment-staging", initial_charges: 24 },
+    { id: "mass-spectrometer", definition_id: "mass-spectrometer", assignment: { holder: "coworker1", role: "field researcher" }, initial_container: null, initial_location: "equipment-staging", initial_charges: 10 },
     { id: "startup-materials-duffle", definition_id: "startup-materials-duffle", assignment: { role: "field technician" }, initial_container: null, initial_location: "equipment-staging", initial_charges: 1 },
     { id: "layout-record", definition_id: "layout-record", assignment: { role: "field medical doctor" }, initial_container: null, initial_location: "equipment-staging", initial_charges: 10 },
     { id: "field-notebook", definition_id: "field-notebook", assignment: { holder: "institution" }, initial_container: "staging-locker", initial_location: "equipment-staging", initial_charges: 30 },
@@ -508,7 +865,7 @@ function logisticsDefinition(base) {
     { id: "spare-battery", definition_id: "spare-battery", assignment: { holder: "institution" }, initial_container: "staging-locker", initial_location: "equipment-staging", initial_quantity: 1 }
   ];
   cloned.loadout = {
-    required: ["field-light", "recording-device", "startup-materials-duffle", "layout-record"],
+    required: ["field-light", "recording-device", "mass-spectrometer", "startup-materials-duffle", "layout-record"],
     optional: ["field-notebook", "spare-film", "route-marker-kit", "evidence-sleeves", "spare-battery"],
     waiver_allowed: false,
     public_recommendations: []
@@ -518,13 +875,286 @@ function logisticsDefinition(base) {
   return cloned;
 }
 
+function isBroadcastStandby(run) {
+  if (!isOpener(run?.scenario)) return false;
+  return run?.expedition?.day1_opener?.facility_broadcast?.status === "standby";
+}
+
+function isBroadcastActive(run) {
+  if (!isOpener(run?.scenario)) return false;
+  const broadcast = run?.expedition?.day1_opener?.facility_broadcast;
+  return Boolean(broadcast?.status === "in-progress" && broadcast?.visible && !broadcast?.completed);
+}
+
+function isBroadcastCompleted(run) {
+  if (!isOpener(run?.scenario)) return true;
+  return Boolean(run?.expedition?.day1_opener?.facility_broadcast?.completed);
+}
+
+function startBroadcast(run) {
+  if (!isOpener(run?.scenario)) return { ok: false, code: "NOT_OPENER" };
+  run.expedition ??= {};
+  run.expedition.day1_opener ??= {};
+  const opener = run.expedition.day1_opener;
+  opener.facility_broadcast ??= {};
+  opener.beat = BEATS.PERSONNEL_BRIEFING;
+  opener.facility_broadcast.status = "completed";
+  opener.facility_broadcast.visible = false;
+  opener.facility_broadcast.completed = true;
+  return { ok: true, beat: BEATS.PERSONNEL_BRIEFING, already_completed: true };
+}
+
+function completeBroadcast(run) {
+  if (!isOpener(run?.scenario)) return { ok: false, code: "NOT_OPENER" };
+  run.expedition ??= {};
+  run.expedition.day1_opener ??= {};
+  const opener = run.expedition.day1_opener;
+  opener.beat = BEATS.PERSONNEL_BRIEFING;
+  opener.facility_broadcast ??= {};
+  opener.facility_broadcast.completed = true;
+  opener.facility_broadcast.visible = false;
+  opener.facility_broadcast.status = "completed";
+  return { ok: true, beat: BEATS.PERSONNEL_BRIEFING };
+}
+
+function startPersonnelBriefing(run) {
+  if (!isOpener(run?.scenario)) return { ok: false, code: "NOT_OPENER" };
+  run.expedition ??= {};
+  run.expedition.day1_opener ??= {};
+  const opener = run.expedition.day1_opener;
+  opener.personnel_briefing ??= {};
+  const briefing = opener.personnel_briefing;
+  briefing.speaker ??= "DR. KIRK MAXWELL";
+  briefing.speaker_title ??= "Chief Expedition Briefing Authority · Standard Side";
+  briefing.room_id ??= "async-briefing-room";
+  briefing.room_name ??= "KV31 Lower Briefing Room";
+  briefing.exchange_history ??= [];
+
+  if (briefing.status === "concluded") {
+    return { ok: true, status: "concluded", beat: opener.beat, briefing };
+  }
+
+  briefing.status = "active";
+  const beats = [
+    briefing.dialogue?.greeting,
+    briefing.dialogue?.intro,
+    briefing.dialogue?.mission_statement,
+    briefing.dialogue?.roster_call
+  ].filter(Boolean);
+  briefing.current_beat_index ??= 0;
+  briefing.beats_total = beats.length;
+
+  if (briefing.exchange_history.length === 0) {
+    const firstBeat = beats[0] || briefing.text || "Good morning.";
+    briefing.current_beat_index = 0;
+    briefing.exchange_history.push({
+      speaker: briefing.speaker,
+      speaker_title: briefing.speaker_title,
+      text: firstBeat,
+      at: new Date().toISOString()
+    });
+
+    presentationBus.emit(run, {
+      type: presentationBus.EVENT_TYPES.DIALOGUE,
+      source: presentationBus.SOURCES.DETERMINISTIC,
+      channel: "LOCAL",
+      speaker: briefing.speaker,
+      text: firstBeat
+    });
+    markOneShotConsumed(run, "maxwell_opening_briefing");
+  }
+
+  return {
+    ok: true,
+    status: "active",
+    beat: opener.beat ?? BEATS.PERSONNEL_BRIEFING,
+    briefing
+  };
+}
+
+function interactPersonnelBriefing(run, input = "") {
+  if (!isOpener(run?.scenario)) return { ok: false, code: "NOT_OPENER" };
+  const opener = run?.expedition?.day1_opener;
+  const briefing = opener?.personnel_briefing;
+  if (!briefing || briefing.status !== "active") {
+    return { ok: false, code: "BRIEFING_NOT_ACTIVE", message: "Personnel briefing is not currently active." };
+  }
+
+  const raw = String(input ?? "").trim();
+  briefing.exchange_history ??= [];
+  const beats = [
+    briefing.dialogue?.greeting,
+    briefing.dialogue?.intro,
+    briefing.dialogue?.mission_statement,
+    briefing.dialogue?.roster_call
+  ].filter(Boolean);
+  briefing.current_beat_index ??= 0;
+  briefing.beats_total = beats.length;
+
+  const isExplicitConclusion = /^(conclude|dismiss|dismissed|leave|exit|done|finish|finished|let'?s go|staging|equipment staging)\.?$/i.test(raw);
+  const isContinuePhrase = !raw || /^(continue|next|listen|go on|more|proceed|yes|ok|okay|copy|understood|understand)\.?$/i.test(raw);
+
+  if (isExplicitConclusion) {
+    return concludePersonnelBriefing(run);
+  }
+
+  if (isContinuePhrase) {
+    if (briefing.current_beat_index < beats.length - 1) {
+      briefing.current_beat_index++;
+      const nextBeatText = beats[briefing.current_beat_index];
+      briefing.exchange_history.push({
+        speaker: briefing.speaker,
+        speaker_title: briefing.speaker_title,
+        text: nextBeatText,
+        at: new Date().toISOString()
+      });
+      presentationBus.emit(run, {
+        type: presentationBus.EVENT_TYPES.DIALOGUE,
+        source: presentationBus.SOURCES.DETERMINISTIC,
+        channel: "LOCAL",
+        speaker: briefing.speaker,
+        text: nextBeatText
+      });
+      return {
+        ok: true,
+        status: "active",
+        beat: opener.beat ?? BEATS.PERSONNEL_BRIEFING,
+        reply: nextBeatText,
+        briefing
+      };
+    } else {
+      return concludePersonnelBriefing(run);
+    }
+  }
+
+  // Never fabricate player dialogue: record player's exact words
+  briefing.exchange_history.push({
+    speaker: "YOU",
+    speaker_title: "Assignee · Camera Operator",
+    text: raw,
+    at: new Date().toISOString()
+  });
+
+  const members = run.expedition?.team?.members ?? [];
+  const coworker1Name = members[1]?.first_name || members[1]?.display_name || "Teammate";
+  const coworker2Name = members[2]?.first_name || members[2]?.display_name || "Courier";
+  const coworker3Name = members[3]?.first_name || members[3]?.display_name || "Doctor";
+
+  let reply = "";
+  if (/outpost|bermuda|where|destination|location|objective|mission|what are we doing/i.test(raw)) {
+    reply = "Outpost A is our forward bastion along the guidance path, Bermuda branch. Your primary task is delivering the prerequisite startup duffle and returning before noon. Stay along the marked line.";
+  } else if (/tape|route|path|guidance|green|arrows?|direction|how do we get|where do we go/i.test(raw)) {
+    reply = "Follow the thick neon-green adhesive tape on the floor. Arrows point forward toward Outpost A, and reverse arrows guide back to KV31. Do not lose sight of that line.";
+  } else if (/times?|hours?|noon|cutoff|schedule|when|clock|duration/i.test(raw)) {
+    reply = "Departure is scheduled for 10:00 AM. Expected return is 12:00 noon—two standard hours. Operational cutoff is 1:00 PM firm. If you are not back before cutoff, the aperture cannot be held open.";
+  } else if (/camera|light|duffle|spectrometer|bag|kit|equipment|manifest|role|what do i carry|what do we have/i.test(raw)) {
+    reply = `${coworker2Name} is carrying the startup duffle. You have the field camera and lamp. ${coworker1Name} is on the spectrometer, and ${coworker3Name} has the layout record. Verify your gear in Staging before you head upstairs.`;
+  } else if (/kirk|maxwell|who are you|doctor/i.test(raw)) {
+    reply = "I manage the Standard-side briefing authority for Clear-Q4 operations. As I said, call me Kirk. You'll see plenty of me if you stick to protocol and come back in one piece.";
+  } else if (/threshold|complex|aperture|room|chamber|anomaly|kv31/i.test(raw)) {
+    reply = "The Threshold apparatus upstairs connects Standard to the Complex. The magnetic field remains stable during your window, provided you respect the time limits.";
+  } else if (/team|coworker|who is with|personnel|people/i.test(raw)) {
+    reply = "Four of you total today. You four are the complete assigned team for this morning's run. Introduce yourselves once we wrap here.";
+  } else {
+    reply = "Keep your mind on the work order: follow the green tape, drop the duffle at Outpost A, and be back before noon. There isn't time for a seminar in here.";
+  }
+
+  briefing.exchange_history.push({
+    speaker: briefing.speaker,
+    speaker_title: briefing.speaker_title,
+    text: reply,
+    at: new Date().toISOString()
+  });
+
+  presentationBus.emit(run, {
+    type: presentationBus.EVENT_TYPES.DIALOGUE,
+    source: presentationBus.SOURCES.DETERMINISTIC,
+    channel: "LOCAL",
+    speaker: briefing.speaker,
+    text: reply
+  });
+
+  return {
+    ok: true,
+    status: "active",
+    reply,
+    briefing
+  };
+}
+
+function concludePersonnelBriefing(run) {
+  if (!isOpener(run?.scenario)) return { ok: false, code: "NOT_OPENER" };
+  run.expedition ??= {};
+  run.expedition.day1_opener ??= {};
+  const opener = run.expedition.day1_opener;
+  opener.personnel_briefing ??= {};
+  const briefing = opener.personnel_briefing;
+
+  briefing.status = "concluded";
+  briefing.exchange_history ??= [];
+
+  const dismissalText = briefing.dialogue?.dismissal || "There isn't time for questions here. Get acquainted, then report to Equipment Staging.";
+  const lastTurn = briefing.exchange_history[briefing.exchange_history.length - 1];
+  if (!lastTurn || lastTurn.text !== dismissalText) {
+    briefing.exchange_history.push({
+      speaker: briefing.speaker || "DR. KIRK MAXWELL",
+      speaker_title: briefing.speaker_title || "Chief Expedition Briefing Authority · Standard Side",
+      text: dismissalText,
+      at: new Date().toISOString()
+    });
+  }
+
+  presentationBus.emit(run, {
+    type: presentationBus.EVENT_TYPES.DIALOGUE,
+    source: presentationBus.SOURCES.DETERMINISTIC,
+    channel: "LOCAL",
+    speaker: briefing.speaker || "DR. KIRK MAXWELL",
+    text: dismissalText
+  });
+
+  opener.beat = BEATS.LOCAL_INTRODUCTIONS;
+  opener.esd_handoff ??= {};
+  opener.esd_handoff.status = "introductions-open";
+  opener.esd_handoff.player_dialogue_input = "local-open";
+  opener.esd_handoff.coworker_activity = "active";
+
+  presentationBus.emit(run, {
+    type: presentationBus.EVENT_TYPES.INTERPRETATION,
+    source: presentationBus.SOURCES.DETERMINISTIC,
+    channel: "LOCAL",
+    text: "Dr. Maxwell gathers his briefing notes and departs the lower briefing room. Your three coworkers turn toward you."
+  });
+
+  return {
+    ok: true,
+    status: "concluded",
+    beat: BEATS.LOCAL_INTRODUCTIONS,
+    briefing
+  };
+}
+
+function advancePersonnelBriefingBeat(run) {
+  return interactPersonnelBriefing(run, "continue");
+}
+
 module.exports = {
   VERSION,
   SCENARIO,
   RUNTIME_SCENARIO,
+  BEATS,
   ONE_SHOT_EVENTS,
+  ACTION_DURATIONS_SECONDS,
   validate,
   isOpener,
+  isBroadcastStandby,
+  isBroadcastActive,
+  isBroadcastCompleted,
+  startBroadcast,
+  completeBroadcast,
+  startPersonnelBriefing,
+  advancePersonnelBriefingBeat,
+  interactPersonnelBriefing,
+  concludePersonnelBriefing,
   staffingRules,
   mission,
   instantiate,
@@ -535,7 +1165,9 @@ module.exports = {
   verifyReturn,
   writeReport,
   assessInstitutionalRecord,
-  logisticsDefinition
+  logisticsDefinition,
+  getActionDuration,
+  advanceSimulationTime,
+  isCutoffExceeded,
+  triggerCatastrophicEnding
 };
-
-

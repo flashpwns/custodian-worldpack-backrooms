@@ -19,8 +19,10 @@ function fixture(seed = "async-interface") {
 test("boot and title/access surfaces identify the institutional ASYNC field system", () => {
   const renderer = fs.readFileSync(path.join(__dirname, "../desktop/renderer/renderer.js"), "utf8");
   const html = fs.readFileSync(path.join(__dirname, "../desktop/renderer/index.html"), "utf8");
-  assert.match(renderer, /data-testid=.*async-boot/);
-  assert.match(renderer, /Skip initialization/);
+  assert.match(renderer, /data-testid=.*cold-launch/);
+  assert.match(renderer, /data-testid=.*title-card/);
+  assert.match(renderer, /PRESS ANYTHING/);
+  assert.doesNotMatch(renderer, /Skip initialization/);
   assert.match(renderer, /YB_TEST_BYPASS_BOOT|bypass-boot/);
   assert.match(renderer, /ASYNC · FIELD OPERATIONS SYSTEM/);
   assert.match(html, /Content-Security-Policy/);

@@ -173,6 +173,12 @@ function rebuildCharacters(world) {
       rebuilt[payload.identity].continuity.dialogue_memories ??= [];
       if (!rebuilt[payload.identity].continuity.dialogue_memories.some((fact) => fact.id === payload.id)) rebuilt[payload.identity].continuity.dialogue_memories.push(clone(payload));
     }
+    if (entry.type === "character.attitude.changed" && rebuilt[payload.identity]?.continuity) {
+      rebuilt[payload.identity].continuity.attitudes ??= {};
+      rebuilt[payload.identity].continuity.relationships ??= rebuilt[payload.identity].continuity.attitudes;
+      rebuilt[payload.identity].continuity.attitudes[payload.target_id] = clone(payload.resulting_attitude);
+      rebuilt[payload.identity].continuity.relationships[payload.target_id] = rebuilt[payload.identity].continuity.attitudes[payload.target_id];
+    }
     if (entry.type === "q4.personnel.condition.changed" && rebuilt[payload.identity]) { if (rebuilt[payload.identity].status !== "dead") { if (payload.status && CHARACTER_STATUSES.has(payload.status)) rebuilt[payload.identity].status = payload.status; if (payload.condition != null) rebuilt[payload.identity].condition = payload.condition; } }
   }
   return rebuilt;

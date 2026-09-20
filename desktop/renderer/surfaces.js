@@ -36,9 +36,11 @@
   );
   const actionLabel = (type, isOpener = false) => {
     if (type === "CROSS" && isOpener) return "CLEARED; CROSS?";
-    if (type === "READY") return isOpener ? "PROCEED TO ESD · PROCEED TO EQUIPMENT STAGING" : "PROCEED TO ESD";
+    if (type === "READY") return isOpener ? "PROCEED TO EQUIPMENT STAGING" : "PROCEED TO ESD";
     if (type === "PROCEED") return isOpener ? "CONFIRM ISSUE" : "Proceed toward the Threshold";
-    return ({ READY:"PROCEED TO ESD", PROCEED:"Proceed toward the Threshold", APPROACH:"Approach Threshold Room", CROSS:"Cross Threshold", RADIO_CHECK:"Establish Radio Contact", BEGIN_FIELD_OPERATION:"Proceed into the Complex", LOOK:"Observe", MOVE:"Move", INSPECT:"Inspect", USE:"Use equipment", ACTIVATE:"Activate", DEACTIVATE:"Deactivate", OPEN:"Open", CLOSE:"Close", TAKE:"Take", PLACE:"Place", MARK:"Mark", PHOTOGRAPH:"Photograph", RECORD:"Record evidence", TEST:"Test", REPAIR:"Repair", DAMAGE:"Damage", SECURE:"Secure", RELEASE:"Release", COMMUNICATE:"Communicate", WAIT:"Wait", ORDER_HOLD:"Order: Hold position", ORDER_INVESTIGATE:"Order: Investigate route", ORDER_FOLLOW:"Order: Restore contact", ASSIST:"Assist teammate", RECOVER:"Recover equipment", MITIGATE:"Mitigate known hazard", RETURN:"Begin Return Procedure", COMPLETE_RETURN:"Complete Return Procedure", ABORT:"Declare Controlled Abort", DROP:"Leave item", STRAND:"Stop and leave a remnant", EXPAND:"Explore route", DISCOVER:"Record object", REVIEW_REPORT:"Review reports", ADVANCE:"Advance institutional time", ADVANCE_OPERATIONS:"Continue to next assignment" })[type] ?? title(type);
+    if (type === "CONCLUDE_BRIEFING") return "CONCLUDE BRIEFING";
+    if (type === "ATTEND_BRIEFING") return "ATTEND BRIEFING";
+    return ({ READY:"PROCEED TO ESD", PROCEED:"Proceed toward the Threshold", APPROACH:"Approach Threshold Room", CROSS:"Cross Threshold", RADIO_CHECK:"Establish Radio Contact", BEGIN_FIELD_OPERATION:"Proceed into the Complex", CONCLUDE_BRIEFING:"Conclude Briefing", ATTEND_BRIEFING:"Attend Briefing", LOOK:"Observe", MOVE:"Move", INSPECT:"Inspect", USE:"Use equipment", ACTIVATE:"Activate", DEACTIVATE:"Deactivate", OPEN:"Open", CLOSE:"Close", TAKE:"Take", PLACE:"Place", MARK:"Mark", PHOTOGRAPH:"Photograph", RECORD:"Record evidence", TEST:"Test", REPAIR:"Repair", DAMAGE:"Damage", SECURE:"Secure", RELEASE:"Release", COMMUNICATE:"Communicate", WAIT:"Wait", ORDER_HOLD:"Order: Hold position", ORDER_INVESTIGATE:"Order: Investigate route", ORDER_FOLLOW:"Order: Restore contact", ASSIST:"Assist teammate", RECOVER:"Recover equipment", MITIGATE:"Mitigate known hazard", RETURN:"Begin Return Procedure", COMPLETE_RETURN:"Complete Return Procedure", ABORT:"Declare Controlled Abort", DROP:"Leave item", STRAND:"Stop and leave a remnant", EXPAND:"Explore route", DISCOVER:"Record object", REVIEW_REPORT:"Review reports", ADVANCE:"Advance institutional time", ADVANCE_OPERATIONS:"Continue to next assignment" })[type] ?? title(type);
   };
   const CAPABILITIES = Object.freeze({ "async-command": ["institution", "reports", "personnel", "research", "infrastructure", "tasks", "known-complex"], "field-researcher": ["objectives", "surroundings", "team", "communications", "evidence", "equipment", "risk", "known-route"], "local-anomaly": ["base", "archive", "artifacts", "questions", "routes", "preparation", "excursion"], lost: ["surroundings", "route-fragments", "landmarks", "resources", "notes"] });
   const actions = (projection) => {
@@ -112,7 +114,7 @@
     const standardDisabled = disabled || (!standard.available && !radioReady) ? "disabled" : "";
     const standardSelected = radioReady ? "selected" : "";
     const localSelected = radioReady ? "" : "selected";
-    const localState = isBriefingActive ? "broadcast in progress" : local.available ? (local.targets ?? []).join(", ") || "team" : (local.unavailable_reason ?? "unavailable");
+    const localState = isBriefingActive ? "broadcast in progress" : local.available ? (local.targets ?? []).join(", ") || "team" : (local.unavailable_reason ? "STANDBY" : "unavailable");
     const standardState = standard.state_label ?? (standard.available ? "CHANNEL READY" : "UNAVAILABLE");
     const radioEquipment = (projection.q4?.equipment?.required ?? []).find((item) => item.category === "field-radio");
     const radioBattery = radioEquipment?.consumable?.remaining;
@@ -122,7 +124,7 @@
     const targetSelector = addressableTeam.length > 0 ? `<label class="channel-select-label channel-target-label">To<select name="target" form="q4-comms-form" data-testid="q4-comms-target" ${radioReady || isBriefingActive ? "disabled" : ""}><option value="">— broadcast to all nearby —</option>${addressableTeam.map((m) => `<option value="${escape(m.first_name ?? m.display_name ?? "")}">${escape(String(m.display_name ?? "").replace(/ · YOU$/, ""))}</option>`).join("")}</select></label>` : "";
     const checkInButton = radioReady ? `<button type="button" class="action-button radio-check-in-button" data-q4-check-in="true" ${standardDisabled}>Hold for Standard Check-In (2s)</button>` : "";
     const localNotice = (!isBriefingActive && projection.phase?.phase_id === "BRIEFING" && local.available) ? `<div class="local-communication-notice"><div class="eyebrow">LOCAL COMMUNICATION</div><p>Address assigned coworkers directly (or to all nearby) before proceeding to Equipment Staging. Speaking does not advance the phase.</p></div>` : "";
-    const composerPlaceholder = isBriefingActive ? "Facility broadcast in progress..." : "Speak locally or transmit to Standard";
+    const composerPlaceholder = isBriefingActive ? "Facility broadcast in progress..." : local.available ? "Speak locally or transmit to Standard" : "Communications standby...";
     return `<aside class="eti-comms communications-surface" data-testid="q4-communications"><header><p class="eyebrow">STANDARD // LOCAL</p><div class="comms-header-status"><span class="channel-state" data-radio-state="${escape(standard.state ?? "unavailable")}">${escape(standardState)}</span>${radioBatteryHtml}</div></header><div class="mechanical-channel-selector" data-channel-current="${radioReady ? "standard" : "local"}"><div class="mechanical-channel-switch" role="group" aria-label="Channel toggle"><span class="switch-slot switch-standard ${standardSelected ? "active" : ""}">STANDARD</span><span class="switch-track" aria-hidden="true">${standardSelected ? "[■■□□]" : "[□□■■]"}</span><span class="switch-slot switch-local ${localSelected ? "active" : ""}">LOCAL</span></div><div class="channel-routing-controls"><label class="channel-select-label">Address<select name="channel" form="q4-comms-form" data-testid="q4-channel"><option value="local" ${localDisabled} ${localSelected}>LOCAL — nearby team</option><option value="standard" ${standardDisabled} ${standardSelected}>STANDARD — operations desk</option></select></label>${targetSelector}</div></div><ol class="communication-timeline" aria-label="Unified chronological communication history">${timeline}</ol><div class="comms-guidance"><p class="channel-explanation">LOCAL is heard by all nearby participating personnel. STANDARD is a radio transmission; delivery and acknowledgment are recorded separately.</p>${localNotice}</div><form id="q4-comms-form" data-testid="q4-comms-form"><label class="comms-input-label">Enter Coms Message<input name="text" autocomplete="off" placeholder="${composerPlaceholder}" ${composerDisabled ? "disabled" : ""}></label><button type="submit" ${composerDisabled ? "disabled" : ""}>Send</button>${checkInButton}</form><p class="comms-state"><span data-channel-state="local">LOCAL: ${escape(localState)}</span><span data-channel-state="standard">STANDARD: ${escape(standardState)}</span></p></aside>`;
   };
   const teamRail = (projection) => {
@@ -156,9 +158,98 @@
     return `<section class="eti-objective" data-testid="eti-objective"><p class="eyebrow">CURRENT EXPEDITION OBJECTIVE</p><strong>${escape(current?.name ?? q4.mission_record?.display_id ?? "Assigned field work")}</strong><p>${escape(text)}</p><small>${escape(progress.lifecycle_label ?? q4.mission_record?.status ?? projection.phase?.phase_id ?? "active")}</small></section>`;
   };
   const briefingWorkstation = (projection, options = {}) => {
-    const defaultAction = `<footer class="eti-turn-controls"><section class="action-dock natural-action prefield-action" data-testid="prefield-primary"><div><p class="eyebrow">CURRENT DECISION</p><h2>BRIEFING PENDING</h2></div><button type="button" class="primary-action" disabled data-briefing-locked="true">BRIEFING PENDING</button><p>Standing by for assignment briefing.</p></section></footer>`;
+    const briefing = projection.q4?.personnel_briefing;
+    const isActive = briefing?.status === "active";
+    const isIntroductions = projection.q4?.beat === "LOCAL_INTRODUCTIONS" || (briefing?.status === "concluded" && projection.phase?.phase_id === "BRIEFING");
+
+    let defaultAction;
+    if (isActive) {
+      const beatsRemaining = (briefing.beats_remaining ?? (briefing.current_beat_index !== undefined && briefing.beats_total ? briefing.beats_total - 1 - briefing.current_beat_index : 0)) > 0;
+      if (beatsRemaining) {
+        defaultAction = `<footer class="eti-turn-controls"><section class="action-dock natural-action prefield-action briefing-action-dock" data-testid="prefield-primary"><div><p class="eyebrow">CURRENT DECISION</p><h2>DR. KIRK MAXWELL</h2></div><button type="button" class="primary-action" data-game-action="CONTINUE_BRIEFING">CONTINUE LISTENING</button><button type="button" class="secondary-action subtle-action" data-game-action="CONCLUDE_BRIEFING">CONCLUDE BRIEFING</button><p>Dr. Kirk Maxwell is speaking in the Lower Briefing Room. Listen or inquire.</p></section></footer>`;
+      } else {
+        defaultAction = `<footer class="eti-turn-controls"><section class="action-dock natural-action prefield-action briefing-action-dock" data-testid="prefield-primary"><div><p class="eyebrow">CURRENT DECISION</p><h2>DR. KIRK MAXWELL</h2></div><button type="button" class="primary-action" data-game-action="CONCLUDE_BRIEFING">CONCLUDE BRIEFING</button><p>Dr. Kirk Maxwell has concluded the opening remarks. Inquire or conclude briefing.</p></section></footer>`;
+      }
+    } else if (isIntroductions) {
+      defaultAction = `<footer class="eti-turn-controls"><section class="action-dock natural-action prefield-action" data-testid="prefield-primary"><div><p class="eyebrow">CURRENT DECISION</p><h2>PROCEED TO EQUIPMENT STAGING</h2></div><button type="button" class="primary-action" data-game-action="READY">PROCEED TO EQUIPMENT STAGING</button><p>Step out of the briefing room and proceed with your team to Equipment Staging.</p></section></footer>`;
+    } else {
+      defaultAction = `<footer class="eti-turn-controls"><section class="action-dock natural-action prefield-action" data-testid="prefield-primary"><div><p class="eyebrow">CURRENT DECISION</p><h2>BRIEFING PENDING</h2></div><button type="button" class="primary-action" disabled data-briefing-locked="true" data-game-action="ATTEND_BRIEFING">BRIEFING PENDING</button><p>Standing by for assignment briefing.</p></section></footer>`;
+    }
     const actionDock = options.actionDock ?? defaultAction;
-    return `<section class="eti-cockpit briefing-workstation" data-testid="async-operations-layout">${presentationEvents(projection)}<main class="eti-center briefing-center"><section class="eti-spatial" aria-label="Current spatial view">${layoutMap(projection)}</section></main>${actionDock}</section>`;
+
+    let centerContent;
+    if (isActive) {
+      const history = briefing.exchange_history ?? [];
+      const currentTurn = history.length > 0 ? history[history.length - 1] : null;
+      const priorTurns = history.length > 1 ? history.slice(0, -1) : [];
+
+      const priorTurnsHtml = priorTurns.map((turn) => {
+        const isMaxwell = turn.speaker === "DR. KIRK MAXWELL";
+        const roleCls = isMaxwell ? "briefing-turn-authority" : "briefing-turn-player";
+        return `<div class="briefing-turn briefing-history-turn ${roleCls}">
+          <div class="turn-header">
+            <strong>${escape(turn.speaker)}</strong>
+          </div>
+          <p class="turn-text">${escape(turn.text)}</p>
+        </div>`;
+      }).join("");
+
+      const currentTurnHtml = currentTurn ? (() => {
+        const isMaxwell = currentTurn.speaker === "DR. KIRK MAXWELL";
+        const roleCls = isMaxwell ? "briefing-turn-authority" : "briefing-turn-player";
+        return `<div class="briefing-turn briefing-current-turn ${roleCls}">
+          <div class="turn-header">
+            <strong>${escape(currentTurn.speaker)}</strong>
+            ${isMaxwell ? `<span class="briefing-speaking-indicator">NOW SPEAKING</span>` : ""}
+          </div>
+          <p class="turn-text current-spoken-text">${escape(currentTurn.text)}</p>
+        </div>`;
+      })() : "";
+
+      centerContent = `<section class="in-person-briefing" data-testid="in-person-briefing">
+        <header class="briefing-presence-header">
+          <div class="briefing-authority-identity">
+            <h2 class="briefing-speaker-name">Dr. Kirk Maxwell</h2>
+            <small class="briefing-room-marker">KV31 Lower Briefing Room</small>
+          </div>
+        </header>
+        <div class="briefing-transcript" data-testid="briefing-transcript">
+          ${priorTurnsHtml ? `<div class="briefing-history-scroll" aria-label="Prior conversation history">${priorTurnsHtml}</div>` : ""}
+          <div class="briefing-active-turn-container">${currentTurnHtml}</div>
+        </div>
+      </section>`;
+    } else if (isIntroductions) {
+      const team = (projection.q4?.team ?? []).filter((m) => !m.controlled);
+      const coworkerCards = team.map((member) => `
+        <li class="coworker-presence-item" data-coworker-id="${escape(member.personnel_id ?? member.id ?? "")}">
+          <div class="coworker-presence-line">
+            <strong class="coworker-name">${escape(member.display_name ?? member.first_name)}</strong>
+            <span class="coworker-role muted">${escape(member.role ?? "Assigned Coworker")}</span>
+          </div>
+          <small class="coworker-posture">${escape(member.current_task ?? "Seated at the briefing table")}</small>
+        </li>
+      `).join("");
+
+      centerContent = `<section class="local-introductions-scene" data-testid="local-introductions">
+        <header class="introductions-header">
+          <p class="eyebrow">LOWER BRIEFING ROOM</p>
+          <h2>Briefing Room · Table</h2>
+          <p class="introductions-scene-text">Dr. Maxwell has concluded the briefing, gathered his paperwork, and stepped out toward the facility lift. Three assigned coworkers remain seated at the table.</p>
+        </header>
+        <div class="coworker-table-presence">
+          <ul class="coworker-presence-list">
+            ${coworkerCards}
+          </ul>
+        </div>
+      </section>`;
+    } else {
+      centerContent = `<section class="eti-spatial" aria-label="Current spatial view">${layoutMap(projection)}</section>`;
+    }
+
+    const comms = isIntroductions ? communicationConsole(projection, false) : "";
+
+    const workstationClass = `eti-cockpit briefing-workstation${isIntroductions ? " introductions-active" : ""}`;
+    return `<section class="${workstationClass}" data-testid="async-operations-layout">${presentationEvents(projection)}<main class="eti-center briefing-center">${centerContent}</main>${comms}${actionDock}</section>`;
   };
   const expeditionCockpit = (projection, options = {}) => {
     const isOpener = isOpenerProjection(projection);
@@ -175,7 +266,11 @@
     const readiness = q4.mission_progress?.return_readiness;
     const readinessState = readiness?.ready ? "READY TO CLOSE" : readiness?.route_available ? "RETURN ROUTE AVAILABLE" : "RETURN STATUS";
     const returnReadinessBar = projection.phase?.phase_id === "RETURN" && readiness ? `<div class="return-readiness-bar ${readiness.ready ? "return-ready" : "return-blocked"}" role="status" aria-live="polite"><span class="return-readiness-label">${escape(`${readinessState} — ${readiness.summary ?? "No return assessment is available."}`)}</span></div>` : "";
-    return `<section class="eti-cockpit" data-testid="async-operations-layout">${presentationEvents(projection)}${returnReadinessBar}<aside class="eti-left-rail">${teamRail(projection)}${equipmentRail(projection)}${objectiveRail(projection)}</aside><main class="eti-center"><section class="eti-spatial" aria-label="Current spatial view">${layoutMap(projection)}</section><section class="eti-interpretive field-observation" data-testid="field-observation"><span class="sr-only">Current scene observation record</span><header><p class="eyebrow observation-eyebrow">OBSERVATION RECORD</p><strong>${escape(q4.current_location?.name ?? projection.phase?.phase_id ?? "Expedition record")}</strong><small>${escape(options.providerLabel ?? "CURRENT FIELD RECORD")}</small></header><div class="observation-prose-container"><p class="observation-prose">${escape(narration)}</p></div>${interactables}<details class="eti-phase-record"><summary>Expedition record and structured controls</summary>${phaseRecord}</details></section></main>${communicationConsole(projection, options.disabled)}<aside class="eti-evidence"><header><p class="eyebrow">EVIDENCE / MEDIA</p><span class="film-indicator">${evidence.length} RETAINED</span></header><ul>${evidenceRows || `<li class="empty">No evidence returned or recorded.</li>`}</ul></aside>${options.actionDock ?? ""}</section>`;
+    const showEvidence = fieldPhase || evidence.length > 0;
+    const evidenceAside = showEvidence
+      ? `<aside class="eti-evidence"><header><p class="eyebrow">EVIDENCE / MEDIA</p><span class="film-indicator">${evidence.length} RETAINED</span></header><ul>${evidenceRows || `<li class="empty">No evidence returned or recorded.</li>`}</ul></aside>`
+      : "";
+    return `<section class="eti-cockpit ${showEvidence ? "" : "no-evidence-rail"}" data-testid="async-operations-layout">${presentationEvents(projection)}${returnReadinessBar}<aside class="eti-left-rail">${teamRail(projection)}${equipmentRail(projection)}${objectiveRail(projection)}</aside><main class="eti-center"><section class="eti-spatial" aria-label="Current spatial view">${layoutMap(projection)}</section><section class="eti-interpretive field-observation" data-testid="field-observation"><span class="sr-only">Current scene observation record</span><header><p class="eyebrow observation-eyebrow">OBSERVATION RECORD</p><strong>${escape(q4.current_location?.name ?? projection.phase?.phase_id ?? "Expedition record")}</strong><small>${escape(options.providerLabel ?? "CURRENT FIELD RECORD")}</small></header><div class="observation-prose-container"><p class="observation-prose">${escape(narration)}</p></div>${interactables}<details class="eti-phase-record"><summary>Expedition record and structured controls</summary>${phaseRecord}</details></section></main>${communicationConsole(projection, options.disabled)}${evidenceAside}${options.actionDock ?? ""}</section>`;
   };
   const equipmentList = (projection, optional = false, handoff = false) => list(projection.q4?.equipment?.[optional ? "optional" : "required"], (item) => `<li><strong><span class="equipment-mark" aria-hidden="true">${item.category === "field-radio" ? "◉" : item.category === "35mm-camera" ? "▣" : item.category === "battery-lamp" ? "◌" : "＋"}</span>${escape(item.label)}</strong><span>${escape(`${item.holder} · ${item.location}`)}</span>${badge(item.state)}<small>${escape(item.verification ?? "verification unknown")}${item.consumable?.remaining !== "Unknown" ? ` · ${escape(item.consumable?.kind ?? "condition")}: ${escape(item.consumable?.remaining ?? "known")}` : ""}</small>${optional ? `<button type="button" class="action-button" data-q4-store="${escape(item.ref)}" data-testid="select-store-${escape(item.ref)}">Select for kit</button>` : handoff && item.available ? `<button type="button" class="action-button" data-q4-handoff="${escape(item.ref)}" data-q4-handoff-target="${item.holder === "You" ? "" : "player"}" data-testid="handoff-${escape(item.ref)}">${item.holder === "You" ? "Hand to teammate" : "Take custody"}</button>` : ""}</li>`, optional ? "No optional stores are currently listed." : "No required field equipment is currently listed.");
   const logisticsButton = (item, action, compact = false) => `<button type="button" class="logistics-action ${compact ? "logistics-primary-action" : ""}" data-logistics-action="${escape(action.action)}" data-logistics-item="${escape(item.id)}" data-logistics-holder="${escape(action.target_holder ?? "")}" data-logistics-container="${escape(action.target_container ?? "")}" data-logistics-source="${escape(action.source_item_id ?? "")}" ${action.available ? "" : "disabled"} title="${escape(action.unavailable_reason ?? actionLabel(action.action))}" aria-label="${escape(`${actionLabel(action.action)} ${item.label}${action.unavailable_reason ? `. ${action.unavailable_reason}` : ""}`)}">${escape(actionLabel(action.action))}</button>`;
@@ -198,13 +293,47 @@
     }
 
     if (mode === "facility") {
-      const facilityNodes = [
-        { id: "maintenance-wing", name: "Maintenance Wing", x: 80, y: 165, desc: "Circulation and machinery access" },
-        { id: "async-briefing-room", name: "Lower Offices / Briefing", x: 195, y: 165, desc: "Administrative records and briefing" },
-        { id: "equipment-staging", name: "Hazmat / Staging", x: 310, y: 165, desc: "Equipment issue and suit lockers" },
-        { id: "control-observation", name: "KV31 Control Room", x: 435, y: 75, desc: "Observation window overlooking LPMDS" },
-        { id: "threshold-room", name: "Threshold Chamber (LPMDS)", x: 435, y: 195, desc: "Primary machine hall and dimensional boundary" },
-        { id: "threshold-side-entry", name: "KV31 Outpost", x: 565, y: 195, desc: "Protected ASync workplace beyond Threshold" }
+      const facilityRooms = [
+        {
+          id: "async-briefing-room",
+          code: "RM-L05",
+          name: "Briefing Room",
+          subtitle: "Lower Offices / Briefing",
+          desc: "Administrative records, briefing desk, and field terminal",
+          x: 25, y: 70, w: 140, h: 180,
+          youPos: { x: 95, y: 215 },
+          labelPos: { x: 95, y: 110 }
+        },
+        {
+          id: "maintenance-wing",
+          code: "HALL-L1",
+          name: "Corridor / Service",
+          subtitle: "Circulation & Machinery",
+          desc: "Circulation hallway connecting lower labs, lift shaft, and staging",
+          x: 175, y: 115, w: 100, h: 90,
+          youPos: { x: 225, y: 180 },
+          labelPos: { x: 225, y: 145 }
+        },
+        {
+          id: "equipment-staging",
+          code: "RM-L02",
+          name: "Dressing Room",
+          subtitle: "Equipment Staging",
+          desc: "Hazmat protective suit lockers and field instrumentation checkout",
+          x: 285, y: 70, w: 145, h: 180,
+          youPos: { x: 357, y: 215 },
+          labelPos: { x: 357, y: 110 }
+        },
+        {
+          id: "threshold-room",
+          code: "RM-L01",
+          name: "Threshold Chamber",
+          subtitle: "KV31 / LPMDS Hall",
+          desc: "Primary magnetic distortion machine hall and boundary aperture",
+          x: 460, y: 55, w: 165, h: 195,
+          youPos: { x: 542, y: 215 },
+          labelPos: { x: 542, y: 110 }
+        }
       ];
 
       const currentFacilityId = phaseId === "BRIEFING" ? "async-briefing-room" :
@@ -213,35 +342,79 @@
         phaseId === "STANDARD_RADIO_CHECK" ? "threshold-room" :
         phaseId === "THRESHOLD" ? "threshold-room" : "async-briefing-room";
 
-      const nodeSvg = facilityNodes.map((node) => {
-        const isCurrent = node.id === currentFacilityId;
-        const cls = `facility-node ${isCurrent ? "map-current-node" : "map-async-node"}`;
-        const marker = isCurrent ? `<text class="you-label" x="${node.x}" y="${node.y - 14}" text-anchor="middle">YOU</text>` : "";
-        return `<g class="${cls}" data-node-id="${escape(node.id)}"><circle cx="${node.x}" cy="${node.y}" r="${isCurrent ? 7 : 5}"></circle>${marker}<text x="${node.x}" y="${node.y + 16}" text-anchor="middle">${escape(node.name)}</text></g>`;
+      const currentRoom = facilityRooms.find((r) => r.id === currentFacilityId) || facilityRooms[0];
+
+      // Structural room geometries
+      const roomsSvg = facilityRooms.map((rm) => {
+        const isCurrent = rm.id === currentFacilityId;
+        const fill = isCurrent ? "rgba(245, 166, 35, 0.08)" : "rgba(18, 28, 24, 0.6)";
+        const stroke = isCurrent ? "var(--color-accent-amber, #f5a623)" : "var(--async-line, #3a5347)";
+        const strokeWidth = isCurrent ? "2" : "1";
+        const youMarker = isCurrent
+          ? `<g class="map-you-marker"><circle cx="${rm.youPos.x}" cy="${rm.youPos.y}" r="6" fill="#f5a623"></circle><text class="you-label" x="${rm.youPos.x}" y="${rm.youPos.y + 16}" text-anchor="middle" font-weight="bold" font-size="11" fill="#f5a623">YOU</text></g>`
+          : "";
+
+        return `<g class="facility-room ${isCurrent ? "facility-room-active" : ""}" data-room-id="${escape(rm.id)}" data-node-id="${escape(rm.id)}">
+          <rect x="${rm.x}" y="${rm.y}" width="${rm.w}" height="${rm.h}" fill="${fill}" stroke="${stroke}" stroke-width="${strokeWidth}" rx="3"></rect>
+          <text class="room-code" x="${rm.labelPos.x}" y="${rm.labelPos.y - 18}" text-anchor="middle" font-size="9" letter-spacing="1" fill="#88a898">${escape(rm.code)}</text>
+          <text class="room-title" x="${rm.labelPos.x}" y="${rm.labelPos.y}" text-anchor="middle" font-weight="bold" font-size="12" fill="#e8efe9">${escape(rm.name)}</text>
+          <text class="room-subtitle" x="${rm.labelPos.x}" y="${rm.labelPos.y + 16}" text-anchor="middle" font-size="10" fill="#a4c2b2">${escape(rm.subtitle)}</text>
+          ${youMarker}
+        </g>`;
       }).join("");
 
-      const facilityEdges = [
-        ["async-briefing-room", "maintenance-wing"],
-        ["maintenance-wing", "equipment-staging"],
-        ["equipment-staging", "control-observation"],
-        ["equipment-staging", "threshold-room"],
-        ["control-observation", "threshold-room"],
-        ["threshold-room", "threshold-side-entry"]
-      ];
+      // Corridors, airlocks, and structural architectural links
+      // 1. Lift shaft above central corridor
+      const liftShaft = `<g class="facility-lift-shaft">
+        <rect x="185" y="65" width="80" height="40" fill="rgba(12, 20, 18, 0.7)" stroke="var(--async-line, #3a5347)" stroke-dasharray="3 3" rx="2"></rect>
+        <text x="225" y="85" text-anchor="middle" font-size="9" fill="#7a9a8c">FREIGHT LIFT</text>
+        <text x="225" y="97" text-anchor="middle" font-size="8" fill="#5a7a6c">LEVELS 1–4</text>
+      </g>`;
 
-      const byId = new Map(facilityNodes.map((n) => [n.id, n]));
-      const edgeSvg = facilityEdges.map(([fromId, toId]) => {
-        const from = byId.get(fromId);
-        const to = byId.get(toId);
-        if (!from || !to) return "";
-        const isThresholdLink = (fromId === "threshold-room" && toId === "threshold-side-entry") || (toId === "threshold-room" && fromId === "threshold-side-entry");
-        return `<line class="facility-edge ${isThresholdLink ? "operational-edge-interlock" : ""}" x1="${from.x}" y1="${from.y}" x2="${to.x}" y2="${to.y}"></line>`;
-      }).join("");
+      // 2. Airlock between Dressing Room and Threshold Chamber
+      const airlockSvg = `<g class="facility-airlock">
+        <rect x="430" y="130" width="30" height="60" fill="rgba(30, 45, 38, 0.8)" stroke="#f5a623" stroke-width="1.5" rx="2"></rect>
+        <line x1="430" y1="145" x2="460" y2="145" stroke="#f5a623" stroke-dasharray="2 2"></line>
+        <line x1="430" y1="175" x2="460" y2="175" stroke="#f5a623" stroke-dasharray="2 2"></line>
+        <text x="445" y="163" text-anchor="middle" font-size="8" font-weight="bold" fill="#f5a623" transform="rotate(-90 445 163)">AIRLOCK</text>
+      </g>`;
+
+      // 3. Middle Level Control Room observation balcony overlooking Threshold Chamber
+      const controlObservationSvg = `<g class="facility-control-overlook" data-room-id="control-observation" data-node-id="control-observation">
+        <rect x="475" y="15" width="135" height="30" fill="rgba(18, 30, 26, 0.8)" stroke="#6ba88f" stroke-dasharray="4 2" rx="2"></rect>
+        <text x="542" y="30" text-anchor="middle" font-size="9" font-weight="bold" fill="#8ed4b6">KV31 CONTROL (LVL 2)</text>
+        <text x="542" y="41" text-anchor="middle" font-size="8" fill="#6ba88f">OBSERVATION GALLERY</text>
+        <line x1="490" y1="45" x2="595" y2="45" stroke="#6ba88f" stroke-width="1"></line>
+      </g>`;
+
+      // 4. LPMDS Aperture and magnetic boundary on East wall
+      const apertureSvg = `<g class="facility-aperture">
+        <line x1="625" y1="100" x2="625" y2="200" stroke="#00ffcc" stroke-width="3"></line>
+        <rect x="625" y="115" width="18" height="70" fill="rgba(0, 255, 204, 0.15)" stroke="#00ffcc" stroke-dasharray="2 2"></rect>
+        <text x="634" y="153" text-anchor="middle" font-size="8" font-weight="bold" fill="#00ffcc" transform="rotate(90 634 153)">APERTURE</text>
+      </g>`;
+
+      // Header & footer level indicators
+      const headerSvg = `<g class="facility-schematic-header">
+        <text x="25" y="32" font-size="11" font-weight="bold" letter-spacing="1.5" fill="#d0dfd7">ASYNC RESEARCH FACILITY · SECTOR B1</text>
+        <text x="25" y="47" font-size="9" letter-spacing="1" fill="#7a9a8c">LOWER LEVEL (SUB-1) · TOP-DOWN PHYSICAL GEOMETRY RECONCILIATION</text>
+      </g>`;
+
+      const levelSelectorSvg = `<g class="facility-level-pills">
+        <rect x="25" y="278" width="140" height="22" rx="3" fill="rgba(245, 166, 35, 0.15)" stroke="#f5a623"></rect>
+        <text x="95" y="293" text-anchor="middle" font-size="9" font-weight="bold" fill="#f5a623">LOWER LEVEL (ACTIVE)</text>
+        <rect x="175" y="278" width="110" height="22" rx="3" fill="rgba(20, 32, 28, 0.6)" stroke="#3a5347"></rect>
+        <text x="230" y="293" text-anchor="middle" font-size="9" fill="#7a9a8c">MIDDLE LEVEL</text>
+        <rect x="295" y="278" width="105" height="22" rx="3" fill="rgba(20, 32, 28, 0.6)" stroke="#3a5347"></rect>
+        <text x="347" y="293" text-anchor="middle" font-size="9" fill="#7a9a8c">UPPER LEVEL</text>
+        <rect x="410" y="278" width="115" height="22" rx="3" fill="rgba(20, 32, 28, 0.6)" stroke="#3a5347"></rect>
+        <text x="467" y="293" text-anchor="middle" font-size="9" fill="#7a9a8c">UPPER SECTION</text>
+      </g>`;
 
       const interlock = projection.q4?.interlock;
       const interlockStatus = interlock ? `South: ${interlock.south_barrier?.state?.toUpperCase() ?? "OPEN"} · East: ${interlock.east_blast_door?.state?.toUpperCase() ?? "SEALED"}` : "Interlock: Unmonitored";
 
-      return `<details class="operational-map survey-map spatial-visual-display facility-mode" data-testid="operational-map" data-display-mode="facility" open><summary>Spatial / Visual Display · Facility Schematic</summary><p class="map-knowledge-note">High institutional confidence · Controlled facility geography · Lower Sector · ${escape(interlockStatus)} · <span class="echomapping-disabled-indicator">ECHOMAPPING DISABLED IN STANDARD</span></p><svg role="img" aria-labelledby="facility-map-title facility-map-description" viewBox="0 0 650 330" preserveAspectRatio="xMidYMid meet"><title id="facility-map-title">ASync Facility Schematic centered on ${escape(byId.get(currentFacilityId)?.name ?? "current sector")}</title><desc id="facility-map-description">Controlled facility engineering schematic showing Maintenance Wing, Briefing, Staging, KV31 Control, and Threshold Chamber.</desc><rect x="5" y="5" width="640" height="320" fill="none" stroke="var(--async-line)" stroke-dasharray="2 4" opacity="0.4"></rect>${edgeSvg}${nodeSvg}<text class="facility-ingress" x="22" y="304">ASYNC RESEARCH FACILITY · SECTOR B1</text></svg><div class="operational-map-record"><section><h3>Current Sector</h3><p><strong>${escape(byId.get(currentFacilityId)?.name ?? "Controlled Sector")}</strong><br><small>${escape(byId.get(currentFacilityId)?.desc ?? "Authorized workplace")}</small></p></section><section><h3>Circulation</h3><p>Controlled personnel transit only.<br><small>Level 0 / Sub-level 1 infrastructure</small></p></section><section class="operational-map-legend-box"><details class="map-legend-details" open><summary>Map Legend</summary><ul class="map-legend"><li><strong>●</strong><span>Current location (YOU)</span></li><li><strong>○</strong><span>Controlled facility node</span></li><li><strong>═</strong><span>Observation / Threshold link</span></li></ul></details></section></div></details>`;
+      return `<details class="operational-map survey-map spatial-visual-display facility-mode" data-testid="operational-map" data-display-mode="facility" open><summary>Spatial / Visual Display · Facility Schematic</summary><p class="map-knowledge-note">High institutional confidence · Controlled facility geometry · Lower Sector · ${escape(interlockStatus)} · <span class="echomapping-disabled-indicator">ECHOMAPPING DISABLED IN STANDARD</span></p><svg role="img" aria-labelledby="facility-map-title facility-map-description" viewBox="0 0 650 330" preserveAspectRatio="xMidYMid meet"><title id="facility-map-title">ASync Facility Schematic centered on ${escape(currentRoom.name)}</title><desc id="facility-map-description">Controlled facility engineering schematic showing Briefing Room, Circulation Corridor, Dressing Room, and Threshold Chamber.</desc><rect x="5" y="5" width="640" height="320" fill="none" stroke="var(--async-line)" stroke-dasharray="2 4" opacity="0.3"></rect>${headerSvg}${liftShaft}${roomsSvg}${airlockSvg}${controlObservationSvg}${apertureSvg}${levelSelectorSvg}</svg><div class="operational-map-record"><section><h3>Current Sector</h3><p><strong>${escape(currentRoom.name)} (${escape(currentRoom.code)})</strong><br><small>${escape(currentRoom.desc)}</small></p></section><section><h3>Circulation</h3><p>Controlled personnel transit only.<br><small>Level 0 / Sub-level 1 infrastructure</small></p></section><section class="operational-map-legend-box"><details class="map-legend-details" open><summary>Map Legend</summary><ul class="map-legend"><li><strong style="color: #f5a623">●</strong><span>Current location (YOU)</span></li><li><strong style="color: #3a5347">□</strong><span>Controlled facility room</span></li><li><strong style="color: #00ffcc">║</strong><span>Threshold aperture (KV31)</span></li></ul></details></section></div></details>`;
     }
 
     // FIELD SURVEY MODE (Complex field map)
@@ -448,7 +621,7 @@
     const isOpener = isOpenerProjection(projection);
     const crossLabel = isOpener ? "CLEARED; CROSS?" : "Cross Threshold";
     const labels = {
-      BRIEFING: ["INTRODUCTIONS", isOpener ? "Speak with the assigned team over LOCAL, then proceed together to Equipment Staging Department." : "Inspect the work order and assigned team, then continue to Equipment Staging.", isOpener ? "PROCEED TO ESD · PROCEED TO EQUIPMENT STAGING" : "PROCEED TO ESD", "READY"],
+      BRIEFING: ["INTRODUCTIONS", isOpener ? "Speak with the assigned team over LOCAL, then proceed together to Equipment Staging Department." : "Inspect the work order and assigned team, then continue to Equipment Staging.", isOpener ? "PROCEED TO EQUIPMENT STAGING" : "PROCEED TO ESD", "READY"],
       STAGING: ["EQUIPMENT STAGING DEPARTMENT / ESD", isOpener ? "Review assigned manifest and confirm equipment issue before departure." : "Cooperate with the team on equipment and movement preparation.", isOpener ? "CONFIRM ISSUE" : "Proceed toward the Threshold", "PROCEED"],
       FACILITY_TRANSIT: ["THRESHOLD APPROACH", "Proceed with the accounted team toward the Threshold.", "Approach Threshold Room", "APPROACH"],
       THRESHOLD: ["THRESHOLD PROCEDURE", "Confirm the party outside the Complex, then begin the Standard radio procedure.", "Begin radio procedure", "READY"],
@@ -480,13 +653,17 @@
         ? "FACILITY BROADCAST IN PROGRESS"
         : (isPersonnelBriefing
           ? "BRIEFING PENDING"
-          : (isOpener && phase === "BRIEFING" ? "PROCEED TO ESD · PROCEED TO EQUIPMENT STAGING" : primary)));
+          : (isOpener && phase === "BRIEFING" ? "PROCEED TO EQUIPMENT STAGING" : primary)));
     const primaryButtonDisabled = isStandby || isBroadcastIncomplete || isPersonnelBriefing;
 
-    let primaryBrief = `<section class="preparation-board" data-testid="q4-preparation"><div class="preparation-summary"><p class="eyebrow">WORK ORDER</p><h1>${escape(mission.display_id ?? mission.id ?? "CLEAR-Q4 FIELD ASSIGNMENT")}</h1><p>${escape(mission.rationale ?? "Institutional field assignment.")}</p><strong>${escape(mission.objective?.primary ?? view.display_mission)}</strong></div><div class="preparation-progress"><p class="eyebrow">OPERATIONAL PREPARATION</p><ol>${step("prep", "Preparation", stageIndex > 0)}${step("radio", "Radio readiness", radioChecked)}</ol></div>${magneticWarning}${thresholdRoomEnvironment}${phase === "STANDARD_RADIO_CHECK" && !radioChecked ? "" : `<div class="briefing-next"><p class="eyebrow">CURRENT DECISION</p><p>${escape(currentDecisionInstruction)}</p><button type="button" class="primary-action" data-game-action="${escape(action)}" ${primaryButtonDisabled ? 'disabled aria-disabled="true" data-briefing-locked="true"' : ""} title="${primaryButtonDisabled ? escape(currentDecisionInstruction) : escape(primaryButtonLabel)}">${escape(primaryButtonLabel)}</button></div>`}</section>`;
+    const summaryMarkup = (isOpener && phase === "STAGING")
+      ? `<div class="preparation-summary"><p class="eyebrow">EQUIPMENT STAGING · RM-L02</p><h1>Dressing Room &amp; Equipment Issue</h1><p>Environmental protective suits, communications gear, and primary expedition instrumentation issue.</p></div>`
+      : `<div class="preparation-summary"><p class="eyebrow">WORK ORDER</p><h1>${escape(mission.display_id ?? mission.id ?? "CLEAR-Q4 FIELD ASSIGNMENT")}</h1><p>${escape(mission.rationale ?? "Institutional field assignment.")}</p><strong>${escape(mission.objective?.primary ?? view.display_mission)}</strong></div>`;
+
+    let primaryBrief = `<section class="preparation-board" data-testid="q4-preparation">${summaryMarkup}<div class="preparation-progress"><p class="eyebrow">OPERATIONAL PREPARATION</p><ol>${step("prep", "Preparation", stageIndex > 0)}${step("radio", "Radio readiness", radioChecked)}</ol></div>${magneticWarning}${thresholdRoomEnvironment}${phase === "STANDARD_RADIO_CHECK" && !radioChecked ? "" : `<div class="briefing-next"><p class="eyebrow">CURRENT DECISION</p><p>${escape(currentDecisionInstruction)}</p><button type="button" class="primary-action" data-game-action="${escape(action)}" ${primaryButtonDisabled ? 'disabled aria-disabled="true" data-briefing-locked="true"' : ""} title="${primaryButtonDisabled ? escape(currentDecisionInstruction) : escape(primaryButtonLabel)}">${escape(primaryButtonLabel)}</button></div>`}</section>`;
     const equipmentHeading = (phase === "STAGING" && isOpener) ? "CLEAR Q4 ASSIGNED EXPEDITION MANIFEST" : "Authorized field kit";
     const equipment = `${introductions}${phase === "STAGING" ? `${equipmentList(projection)}${equipmentList(projection, true)}` : equipmentList(projection)}`;
-    return `<div class="mode-surface q4-preparation-surface q4-prefield-${escape(phase.toLowerCase())} surface-clear-q4-${escape(phase.toLowerCase())}" data-testid="q4-preparation-surface"><header class="prefield-heading"><p class="eyebrow">CLEAR-Q4 · ${escape(heading)}</p><p>One preparation surface follows the team from briefing through deployment. Canonical phase changes remain recorded.</p></header>${primaryBrief}${layoutMap(projection)}${phase === "STANDARD_RADIO_CHECK" ? `<section class="radio-procedure" data-testid="visible-radio-exchange"><header><p class="eyebrow">STANDARD PROCEDURAL EXCHANGE</p><strong>${escape(view.channels?.standard?.state_label ?? "ESTABLISHING LINK")}</strong></header>${radioHistory}<div class="radio-check-in-container"><button type="button" class="action-button radio-check-in-button" data-q4-check-in="true">Hold for Standard Check-In (2s)</button></div></section>` : ""}<section class="preparation-secondary"><details ${phase === "STAGING" ? "open" : ""}><summary>Team and authorized preparation</summary>${panel("Personnel", team, 'data-testid="prefield-personnel"')}${panel(equipmentHeading, equipment, 'data-testid="prefield-equipment"')}</details><details><summary>Work-order records</summary>${panel("Reporting expectations", `<p>${escape(mission.reporting?.summary ?? view.reporting)}</p>${list(mission.reporting?.check_ins, (item) => `<li>${escape(item)}</li>`, "No schedule recorded.")}`, 'data-testid="prefield-reporting"')}${panel("Prior Survey Record", list(mission.prior_history, (item) => `<li><strong>${escape(item.status ?? "RECORDED")}</strong><span>${escape(item.text)}</span></li>`, "No prior survey record is part of this assignment."), 'data-testid="prefield-history"')}</details></section>${communicationLanes(projection, false)}</div>`;
+    return `<div class="mode-surface q4-preparation-surface q4-prefield-${escape(phase.toLowerCase())} surface-clear-q4-${escape(phase.toLowerCase())}" data-testid="q4-preparation-surface"><header class="prefield-heading"><p class="eyebrow">CLEAR-Q4 · ${escape(heading)}</p></header>${primaryBrief}${layoutMap(projection)}${phase === "STANDARD_RADIO_CHECK" ? `<section class="radio-procedure" data-testid="visible-radio-exchange"><header><p class="eyebrow">STANDARD PROCEDURAL EXCHANGE</p><strong>${escape(view.channels?.standard?.state_label ?? "ESTABLISHING LINK")}</strong></header>${radioHistory}<div class="radio-check-in-container"><button type="button" class="action-button radio-check-in-button" data-q4-check-in="true">Hold for Standard Check-In (2s)</button></div></section>` : ""}<section class="preparation-secondary"><details ${phase === "STAGING" ? "open" : ""}><summary>Team and authorized preparation</summary>${panel("Personnel", team, 'data-testid="prefield-personnel"')}${panel(equipmentHeading, equipment, 'data-testid="prefield-equipment"')}</details><details><summary>Work-order records</summary>${panel("Reporting expectations", `<p>${escape(mission.reporting?.summary ?? view.reporting)}</p>${list(mission.reporting?.check_ins, (item) => `<li>${escape(item)}</li>`, "No schedule recorded.")}`, 'data-testid="prefield-reporting"')}${panel("Prior Survey Record", list(mission.prior_history, (item) => `<li><strong>${escape(item.status ?? "RECORDED")}</strong><span>${escape(item.text)}</span></li>`, "No prior survey record is part of this assignment."), 'data-testid="prefield-history"')}</details></section>${communicationLanes(projection, false)}</div>`;
   }
   function operationalStatus(projection) {
     const q4 = projection.q4 ?? {}; const clock = q4.operational_clock ?? {}; const checkIn = q4.communications?.check_ins?.[0] ?? q4.check_in ?? {}; const messages = q4.communications?.messages ?? [];

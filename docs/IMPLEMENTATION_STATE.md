@@ -1,5 +1,87 @@
 # Yellow Beast Implementation State
 
+## Authored Cinematic Asset Integration & Reusable ESC Skip Contract — 2026-09-19
+
+- Bounded pass status: **COMPLETED** (Pending Human Electron Observation / Verification).
+- Visual acceptance status: `UNVERIFIED — REQUIRES HUMAN ELECTRON OBSERVATION`.
+- Integrated authored assets:
+  - `DateCardNewPlayerClip.mov` (22.5s, 1920x1080, H.264/AAC stereo) → `desktop/assets/video/DateCardNewPlayerClip.mov` (Slot: `DATE_CARD_JULY_1991`).
+  - `IntroductoryVideoVotT.mov` (208.3s, 1920x1080, H.264/AAC stereo) → `desktop/assets/video/IntroductoryVideoVotT.mov` (Slot: `BRIEFING_INFORMATIONAL_VIDEO`).
+  - `CrossingIntoTheComplex.mov` (40.3s, 1920x1080, H.264/AAC stereo) → `desktop/assets/video/CrossingIntoTheComplex.mov` (Slot: `THRESHOLD_CROSSING_ENTRY_4`).
+- Core architecture & contracts delivered:
+  1. **Hard Cinematic Input Law**:
+     - Every non-interactive cinematic is immediately skippable via `ESC`.
+     - ESC halts audio and video immediately, unloads media decoder pipeline (`pause()`, `removeAttribute("src")`, `load()`), removes the DOM surface, and invokes the deterministic completion callback `finishCinematic(reason = "ended" | "skipped")`.
+     - Capture-phase key handling (`useCapture: true`) with `stopImmediatePropagation()`, `stopPropagation()`, and `preventDefault()` guarantees zero event leakage into newly revealed interactive screens or Electron window handlers.
+     - Synchronous event listener deregistration prevents keyboard listeners from outliving the active cinematic.
+     - Zero orphaned media elements or background audio streams survive dismissal.
+     - Restrained skip affordance: subtle monospace `ESC · SKIP` element placed non-dominantly at bottom right.
+  2. **Unified Cinematic Player (`desktop/renderer/cinematic-player.js`)**:
+     - UMD module (`YBCinematicPlayer`) providing `playCinematic(options)`, `getActiveCinematic()`, and `skipActiveCinematic()`.
+     - Section 24 visual placeholder registry integration with dynamic path resolution (`getResolvedPath`).
+     - Safe fast-test support (`__YB_TEST_FAST_DATE_CARD__`, `__YB_TEST_FAST_BRIEFING__`, `__YB_TEST_FAST_CROSSING__`, `__YB_TEST_FAST_FADE__`).
+     - Idempotent lifecycle execution: single-completion guard (`finished = true`) eliminates race conditions between natural `ended` events and simultaneous ESC skips.
+  3. **Strict Beat 1 Chronology Preserved**:
+     `NEW GAME → JULY, 1991 (DateCard) → INTRO VIDEO (VotT) → WAIVER / IDENTITY → PERSONNEL CONFIRMATION → PAPER EXIT → AEOT INITIALIZATION → AEOT COLD BOOT → BRIEFING PENDING`.
+  4. **Threshold Crossing Isolation & Acoustic Boundary**:
+     - `CrossingIntoTheComplex.mov` is strictly gated to the successful canonical `CROSS` action transition from pre-crossing (`STANDARD_RADIO_CHECK` / `THRESHOLD`) to `FIELD_OPERATION`.
+     - Suppressed during application start, prefield, boot, transit, and staging.
+     - Complex environmental ambience (`complex_hum`) is held until `finishCinematic` completes (`completeTransition`), ensuring authentic silence / video-track audio during crossing traversal.
+- Automated verification:
+  - Aggregate test suite: 775 / 775 passed (143 included, 4 quarantined, 0 retired).
+  - Fast test suite: 144 / 144 passed.
+  - New test registered: `tests/y107-authored-cinematic-assets-and-esc-skip.test.js` (aggregate tier).
+  - Verification inventory consistent (`INVENTORY CONSISTENT (0 errors, 0 warnings)`).
+
+## Beat 2: Physical Dr. Kirk Maxwell Briefing & Opener Repair 2.2 — 2026-09-19
+
+- Bounded pass status: **PENDING HUMAN ELECTRON OBSERVATION / VERIFICATION**.
+- Visual acceptance status: `UNVERIFIED — REQUIRES HUMAN ELECTRON OBSERVATION`.
+- Player-facing sequence delivered:
+  `BRIEFING PENDING → ATTEND BRIEFING → PHYSICAL DR. KIRK MAXWELL BRIEFING → INQUIRY / CONVERSATION → CONCLUDE BRIEFING → LOCAL_INTRODUCTIONS (3 COWORKERS AT TABLE) → PROCEED TO EQUIPMENT STAGING → RM-L02 DRESSING ROOM & EQUIPMENT ISSUE`.
+- Core repairs delivered (Failures A through H):
+  1. **Failure A — Environmental Ambience Physical State Ownership**:
+     - Ambience is strictly owned by physical environment state (`STANDARD` vs `COMPLEX`).
+     - Standard facility ambience resolves to authentic silence (`data:audio/wav;base64,...` silent PCM WAV data URI in `DEFAULT_SOUND_MAP`).
+     - Complex fluorescent hum (`FF1_Electrical_Buzz_01.mp3`) and music loops are strictly suppressed Standard-side prior to Threshold crossing.
+     - In `acoustic-director.js`, `physical_environment` is evaluated; `fluorescent_hum_level` is set to `0.0` in all Standard facility phases including `THRESHOLD` and `STANDARD_RADIO_CHECK`.
+  2. **Failure B — Reconciled Facility Map Geometry (`ASYNC Facility.png`)**:
+     - Fully reconciled the spatial schematic in `surfaces.js` to match the authentic Lower Level architecture from `ASYNC Facility.png` (`gm_br_complex`):
+       - `RM-L05 Briefing Room` (Lower Offices / Briefing)
+       - `HALL-L1 Corridor / Service` (Circulation & Machinery)
+       - `FREIGHT LIFT` (Levels 1–4 shaft)
+       - `RM-L02 Dressing Room` (Hazmat & Equipment Staging)
+       - `AIRLOCK` (Interlock transition corridor)
+       - `RM-L01 Threshold Chamber` (KV31 / LPMDS Hall)
+       - `KV31 CONTROL (LVL 2)` (Observation gallery overlook)
+       - `APERTURE` (LPMDS boundary opening)
+       - 4-level indicator pills: `LOWER LEVEL (ACTIVE)`, `MIDDLE LEVEL`, `UPPER LEVEL`, `UPPER SECTION`
+     - Removed provisional node graph and eliminated all label collisions.
+  3. **Failure C — De-gamified Maxwell Briefing Scene**:
+     - Purged gamified meta-UI badges (`IN-PERSON BRIEFING`, `Chief Expedition Briefing Authority · Standard Side`, turn badges, and attendance cards/tags).
+     - Clean, physical presentation: Dr. Kirk Maxwell seated across the desk in `KV31 Lower Briefing Room` with authentic transcript history.
+  4. **Failure D — Purged Player-Facing Backend Language**:
+     - Removed `"Action accepted."` fallback in `renderer.js` `renderMessage`.
+     - Removed `" Saved."` string in `play(...)`. Persistence occurs silently without leaking implementation details.
+  5. **Failure E — Unified Next Action Label**:
+     - Removed duplicated concatenation `"PROCEED TO ESD · PROCEED TO EQUIPMENT STAGING"`.
+     - Standardized to single clean, diegetic action: `"PROCEED TO EQUIPMENT STAGING"`.
+  6. **Failure F — Discrete `LOCAL_INTRODUCTIONS` Beat**:
+     - Concluding Maxwell's briefing transitions beat to `LOCAL_INTRODUCTIONS`.
+     - Dedicated room view in `briefingWorkstation`: Dr. Maxwell has departed; the three coworkers remain seated at the table (`coworker-presence-card`).
+     - Active `communicationConsole` on LOCAL channel for spoken dialogue.
+     - Action dock features explicit `"PROCEED TO EQUIPMENT STAGING"` (no automatic advance).
+  7. **Failure G — Equipment Staging Progressive Disclosure**:
+     - Staging displays physical dressing room / equipment issue: `EQUIPMENT STAGING · RM-L02 Dressing Room & Equipment Issue`.
+     - Removed giant unformatted mission dossier banner across the top.
+     - Suppressed premature empty evidence rail in prefield/staging (`fieldPhase || evidence.length > 0`).
+  8. **Failure H — Clean Diegetic Comms Copy**:
+     - Replaced internal `"LOCAL dialogue input is paused during equipment operation."` copy with clean, diegetic feedback: `"Personnel are focused on equipment preparation."`, state `"STANDBY"`, and placeholder `"Communications standby..."`.
+- Automated verification:
+  - Aggregate test suite: 768 / 768 passed (142 included, 4 quarantined, 0 retired).
+  - All targeted tests passed: `y106`, `y104`, `y98`, `y75`, `y47`, `y48`.
+  - Verification inventory consistent (`INVENTORY CONSISTENT (0 errors, 0 warnings)`).
+
 ## Repair Pass 3.10.1: Menu Music Handoff + AEOT Cold-Boot Visibility — 2026-09-18
 
 - Bounded repair pass status: **COMPLETED** (Main-menu music fade handoff and AEOT cold boot visibility resolved).
@@ -57,6 +139,29 @@
   - New test registered: `tests/y105-authoritative-first-run-chronology.test.js` (aggregate tier).
   - Packaged verifications passed: `npm run desktop:build`, `npm run desktop:verify`, `npm run desktop:settings-regression`, `npm run desktop:first-run-regression`.
 
+## Beat 1 Repair Pass 3: Clean ASYNC Workstation Handoff — 2026-09-17
+
+- Bounded pass status: **COMPLETED** (Clean workstation handoff boundary between initialization and facility broadcast).
+- Visual acceptance status: `UNVERIFIED — REQUIRES HUMAN ELECTRON OBSERVATION`.
+- Authoritative sequence enforced: `BOOT → FACILITY BROADCAST → MAXWELL BRIEFING/DIALOGUE → LOCAL INTRODUCTIONS → EQUIPMENT STAGING` (Facility broadcast and Maxwell briefing remain strictly separate beats).
+- Core repairs delivered:
+  1. **Clean Workstation Standby State**:
+     - ASYNC boot initialization runs non-interactably until completed.
+     - Terminal renders in clean operational standby in the KV31 briefing office with persistent player and exactly 3 coworkers loaded.
+     - Facility schematic rendered as central display (`#map-svg-root`, `#map-briefing-room`, `#map-you-marker`); briefing broadcast projector feed suppressed during standby.
+     - Facility broadcast, Maxwell dialogue, chirps, and coworker introductions strictly suppressed during standby.
+     - Primary action displays disabled `STANDBY` button with explanatory reason. Later-beat objectives and work-orders suppressed (`ASSIGNMENT PENDING`).
+  2. **Deterministic Authoritative Broadcast Transition**:
+     - Presentation pause timer transitions from standby into `startBriefingBroadcast({ world_id })`.
+     - 4 radio chirps and dated briefing card emitted once upon broadcast commencement.
+     - CRT feed and projector visuals activate only when `status === "in-progress"`.
+  3. **Idempotence & Cold-Boot Persistence**:
+     - Completed broadcast state persists across service restarts; completed broadcast never replays on world resume.
+- Automated verification:
+  - Aggregate test suite: 759 / 759 passed (140 included, 4 quarantined, 0 retired).
+  - Fast test suite: 143 / 143 passed.
+  - New test registered: `tests/y104-clean-workstation-handoff.test.js` (aggregate tier).
+  - Smoke tests passed: `node desktop/first-run-smoke.js`, `node desktop/renderer-smoke.js`, `node tools/verification-inventory.js`.
 
 ## Beat 1 Repair Pass 1.3: Title Lockup & Smooth Dismissal — 2026-09-17
 
@@ -82,6 +187,18 @@
 - Automated verification:
   - Aggregate test suite: 756 / 756 passed (139 included, 4 quarantined, 0 retired).
   - Focused tests passed: `y103`, `y98`, `y75`, `y42`, `y30`, `y26`, `y77`.
+
+## Living Beatmap Player-Facing Post-Conformance Convergence Checkpoint — 2026-09-15
+
+- Bounded pass status: **CLOSED** for Living Beatmap desktop layout repair, locked Broadcast → Briefing state machine, settings appliance status card, and packaged verification.
+- Verified test suite: Governed aggregate **PASS** (137/137 suites, 740/740 tests, 0 failures, 0 warnings); `node tools/verification-inventory.js` **PASS** (included=137, quarantined=4, retired=0, unexplainedOnDisk=0).
+- Packaged desktop verification: `npm run desktop:build`, `npm run desktop:verify` (`offline_smoke`, `packaged_renderer_interaction`, `packaged_day1_opener_interaction`), and `npm run desktop:first-run-regression` all pass cleanly with production profiles unchanged.
+- Core repairs delivered:
+  1. **Communications Panel Vertical Ownership & Layout**: Completely refactored `.eti-comms` from a 5-row CSS grid with 7 children into a flex column with strict layer hierarchy: Header (Mode/State) → Mechanical Switch & Target Address → Timeline (`flex: 1 1 auto; overflow-y: auto`) → Guidance (`.comms-guidance` containing channel explanation & local communication notice) → Composer Form → Status. Eliminated text overlaps, element collisions, and track mismatches.
+  2. **Center-Column Content-Responsive Sizing**: Refactored `.eti-center` to a flex column (`display: flex; flex-direction: column; min-height: 0; gap: 7px;`). `.eti-spatial` set to `flex: 1 1 auto; min-height: 220px;`; `.eti-interpretive` set to `flex: 0 1 auto; min-height: 90px; max-height: 52%; overflow-y: auto;`. Stripped duplicate `<details class="operational-map">` from `phaseRecord` to prevent double map/feed rendering and preserve sacred AEOT geometry.
+  3. **Locked Canonical Broadcast → Briefing State Machine**: Dr. Kirk Maxwell's briefing presentation renders with live CRT feed and 4 chirps; release control restores facility map schematic and reveals Maxwell's greeting in purple typography (`.comm-maxwell`, `.comm-maxwell-text`); local channel enables coworker introductions; staging progression enables cleanly.
+  4. **Settings Appliance UI**: Appliance status card with status pill (`Ready`, `Not Installed`, `Installing`, `Repair Required`, `Unsupported`), strict 127.0.0.1 private loopback isolation notice, and `<details class="advanced-diagnostics" open>` housing diagnostics and configuration parameters without breaking native hit-testing.
+  5. **y101 State Machine Regression Test**: Registered in `verification/verification-authority.json` and `verification/test-manifest.json` with matching SHA-256 hash.
 
 ## Reference Expedition living-turn integration checkpoint — 2026-09-02
 

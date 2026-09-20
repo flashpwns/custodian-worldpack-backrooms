@@ -816,23 +816,28 @@ test('Landing audio leak invariant: menu music start disposes non-menu one-shots
   const { selectTrack } = require('../desktop/menu-music');
   const { audio, made } = isolatedAudio();
 
-  // 1. Emit boot_power (which maps to Threshold_Activation_01.mp3)
-  audio.emitHook('boot_power');
+  // 1. Emit threshold_activation (which maps to Threshold_Activation_01.mp3)
+  audio.emitHook('threshold_activation');
   assert.equal(made.length, 1);
-  const bootPowerAudio = made[0];
-  assert.equal(bootPowerAudio.paused, false);
-  assert.match(bootPowerAudio.src, /Threshold_Activation_01\.mp3/);
+  const thresholdAudio = made[0];
+  assert.equal(thresholdAudio.paused, false);
+  assert.match(thresholdAudio.src, /Threshold_Activation_01\.mp3/);
 
-  // 2. Starting menu music must immediately dispose non-menu playbacks, including boot_power
+  // 2. Starting menu music must immediately dispose non-menu playbacks, including threshold_activation
   audio.startMenuMusic(selectTrack());
-  assert.equal(bootPowerAudio.paused, true, 'boot_power must be paused on menu music start');
+  assert.equal(thresholdAudio.paused, true, 'threshold_activation must be paused on menu music start');
   const diags = audio.diagnostics();
-  assert.equal(diags.playback.some(p => p.hook === 'boot_power'), false, 'boot_power must be removed from playbacks');
+  assert.equal(diags.playback.some(p => p.hook === 'threshold_activation'), false, 'threshold_activation must be removed from playbacks');
   assert.equal(diags.playback.some(p => p.hook === 'menu_music'), true, 'menu_music must be the active playback');
 
   // 3. Applying preferences/configure must NOT resurrect the paused one-shot
   audio.configure({ audio_muted: false, audio_master: 0.5 });
-  assert.equal(bootPowerAudio.paused, true, 'configure must never resurrect paused one-shot audio');
+  assert.equal(thresholdAudio.paused, true, 'configure must never resurrect paused one-shot audio');
+
+  // 3b. Verify boot_power does NOT trigger Threshold_Activation_01.mp3 or any audio element
+  const madeBeforeBootPower = made.length;
+  audio.emitHook('boot_power');
+  assert.equal(made.length, madeBeforeBootPower, 'boot_power must not trigger Threshold_Activation_01 or audio playback');
 
   // 4. Verify renderer.js calls stopAll on home and showTitleCard
   const renderer = fs.readFileSync(path.join(__dirname, '../desktop/renderer/renderer.js'), 'utf8');

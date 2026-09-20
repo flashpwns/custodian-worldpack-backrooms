@@ -94,9 +94,14 @@ test("LOCAL is delivered to a generated coworker before field entry while Standa
 
 test("phase copy and progression controls identify the destination", () => {
   const { service, world } = fixture("phase-copy"); createAndStart(service, world, "Jack", "Rocha", "day1-opener");
-  let projection = service.getGameplayProjection({ world_id: world.id, mode: "field-researcher" }).projection;
-  assert.match(projection.q4.briefing, /speak with the assigned team/i); assert.match(surfaces.render(projection), /PROCEED TO ESD/);
+  service.startBriefingBroadcast({ world_id: world.id });
   service.completeBriefingBroadcast({ world_id: world.id });
+  let projection = service.getGameplayProjection({ world_id: world.id, mode: "field-researcher" }).projection;
+  assert.equal(projection.q4.beat, "PERSONNEL_BRIEFING");
+  assert.match(projection.q4.briefing, /standing by for assignment briefing/i);
+  service.session(world.id, "field-researcher").run.expedition.day1_opener.beat = "LOCAL_INTRODUCTIONS";
+  projection = service.getGameplayProjection({ world_id: world.id, mode: "field-researcher" }).projection;
+  assert.match(projection.q4.briefing, /speak with the assigned team/i); assert.match(surfaces.render(projection), /PROCEED TO EQUIPMENT STAGING/);
   for (const [action, phase, copy] of [["READY", "STAGING", /cooperate with the team/i], ["PROCEED", "FACILITY_TRANSIT", /toward the Threshold room/i], ["APPROACH", "THRESHOLD", /begin the Standard radio procedure/i]]) {
     const result = service.submitAction({ world_id: world.id, mode: "field-researcher", action }); assert.equal(result.projection.phase.phase_id, phase); assert.match(result.projection.q4.briefing, copy); projection = result.projection;
   }

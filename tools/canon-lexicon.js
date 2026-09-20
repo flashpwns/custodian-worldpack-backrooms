@@ -78,7 +78,7 @@ const CANONICAL_EQUIPMENT = Object.freeze({
   "survey-radio": {
     id: "survey-radio",
     display_name: "Standard Field Transceiver",
-    purpose: "Direct two-way VHF communication with A-Sync Standard dispatch",
+    purpose: "Direct two-way VHF communication with ASync Standard dispatch",
     holder_role: "team lead"
   },
   "recording-device": {

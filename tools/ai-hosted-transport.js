@@ -320,9 +320,27 @@ const LOCAL_DIALOGUE_SCHEMA = {
   properties: {
     version: { type: "string", const: LOCAL_DIALOGUE_CANDIDATE_VERSION },
     observer_id: { type: "string" },
-    speech: { type: "string" }
+    speech: { type: "string" },
+    semantic_claims: {
+      type: "array",
+      maxItems: 8,
+      items: {
+        type: "object",
+        additionalProperties: false,
+        properties: {
+          type: { type: "string", enum: ["equipment-possession", "location", "direct-observation", "reported-claim", "measurement"] },
+          text: { type: "string" },
+          subject: { type: ["string", "null"] },
+          object: { type: ["string", "null"] },
+          location_id: { type: ["string", "null"] },
+          target: { type: ["string", "null"] },
+          proposition: { type: ["string", "null"] }
+        },
+        required: ["type", "text", "subject", "object", "location_id", "target", "proposition"]
+      }
+    }
   },
-  required: ["version", "observer_id", "speech"]
+  required: ["version", "observer_id", "speech", "semantic_claims"]
 };
 
 function createHostedProvider({
@@ -491,7 +509,7 @@ function createHostedProvider({
     async presentLocal(packet) {
       return request(
         "local-dialogue",
-        "Return only an untrusted LOCAL dialogue candidate spoken by the single authorized coworker in the packet. Give that coworker a concise voice grounded in their supplied identity, role, condition, current task, equipment, qualifications, and shared history. Fulfil only the authorized response purpose. Do not invent facts, observations, knowledge, actions, other speakers, quoted player speech, or any player action or dialogue.",
+        "Return only an untrusted LOCAL dialogue candidate spoken by the single authorized coworker in the packet. Give that coworker a concise, distinct voice grounded in their supplied characterization, tendencies, relationship, memories, identity, role, condition, current task, equipment, qualifications, and shared history. Fulfil only the authorized response purpose. Do not invent facts, observations, knowledge, actions, other speakers, quoted player speech, or any player action or dialogue. Return semantic_claims as an empty array when the line makes no factual claim. For every factual claim, add one semantic_claim whose text is the exact supporting phrase from speech and whose remaining fields identify the supplied canonical fact; use null for fields that do not apply.",
         packet,
         { type: "json_schema", name: "yellow_beast_local_dialogue", strict: true, schema: LOCAL_DIALOGUE_SCHEMA }
       );

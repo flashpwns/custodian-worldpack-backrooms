@@ -29,6 +29,7 @@ const HOOKS = Object.freeze({
   LPMDS_TWANG_02: "lpmds_twang_02",
   LPMDS_TWANG_03: "lpmds_twang_03",
   THRESHOLD_CROSS_HUM: "threshold_cross_hum",
+  THRESHOLD_ACTIVATION: "threshold_activation",
   BLAST_DOOR_RELEASE: "blast_door_release",
   BLAST_DOOR_OPEN: "blast_door_open",
   BLAST_DOOR_CLOSE: "blast_door_close",
@@ -47,10 +48,13 @@ const HOOKS = Object.freeze({
  * Deterministically evaluates the complete acoustic soundscape for the current turn.
  * Governed strictly by canonical location, phase, environment, and recent events.
  */
-function evaluateAcousticScene(run, spatialDefinition = {}, world = null) {
-  const phaseId = run?.phase?.phase_id ?? run?.expedition?.phase ?? "BRIEFING";
+function evaluateAcousticScene(run, spatialDefinition = {}, world = null, projectedPhaseId = null) {
+  const phaseId = projectedPhaseId ?? run?.phase?.phase_id ?? run?.expedition?.phase ?? "BRIEFING";
   const playerLoc = run?.spatial?.player_location ?? "async-briefing-room";
   const interval = run?.expedition?.clock?.interval ?? 0;
+
+  const isComplex = ["FIELD_OPERATION", "RETURN"].includes(phaseId);
+  const physicalEnvironment = isComplex ? "COMPLEX" : "STANDARD";
 
   let ambientLoop = HOOKS.FACILITY_AMBIENT;
   let machineryBed = null;
@@ -58,8 +62,8 @@ function evaluateAcousticScene(run, spatialDefinition = {}, world = null) {
   const activeCues = [];
 
   const profile = {
-    reverberation: 0.2,
-    fluorescent_hum_level: 0.1,
+    reverberation: isComplex ? 0.75 : 0.2,
+    fluorescent_hum_level: isComplex ? 0.85 : 0.0,
     attenuation_distance: 1,
     radio_static_level: 0.0
   };
@@ -67,15 +71,13 @@ function evaluateAcousticScene(run, spatialDefinition = {}, world = null) {
   // Phase & Location-based deterministic soundscape mapping
   if (["BRIEFING", "STAGING", "FACILITY_TRANSIT"].includes(phaseId)) {
     ambientLoop = HOOKS.FACILITY_AMBIENT;
-    if (phaseId === "BRIEFING" && interval <= 1) {
-      musicCue = HOOKS.OPENING_MUSIC_01;
-    }
+    // Menu music is application-session presentation, never briefing audio.
   } else if (["THRESHOLD", "STANDARD_RADIO_CHECK"].includes(phaseId) || playerLoc === "threshold-room") {
     ambientLoop = HOOKS.LPMDS_BED;
-    machineryBed = HOOKS.THRESHOLD_CROSS_HUM;
+    machineryBed = HOOKS.THRESHOLD_BEACON;
     profile.reverberation = 0.6;
-    profile.fluorescent_hum_level = 0.4;
-  } else if (["FIELD_OPERATION", "RETURN"].includes(phaseId)) {
+    profile.fluorescent_hum_level = 0.0;
+  } else if (isComplex) {
     ambientLoop = HOOKS.COMPLEX_HUM;
     profile.fluorescent_hum_level = 0.85;
     profile.reverberation = 0.75;
@@ -84,23 +86,11 @@ function evaluateAcousticScene(run, spatialDefinition = {}, world = null) {
       machineryBed = HOOKS.THRESHOLD_BEACON;
     }
 
-    if (phaseId === "FIELD_OPERATION" && interval % 10 === 0) {
-      musicCue = HOOKS.COMPLEX_MUSIC;
-    }
-
-    // Phenomenon proximity
-    if (world?.phenomena && Object.keys(world.phenomena).length > 0) {
-      for (const phenom of Object.values(world.phenomena)) {
-        if (phenom.location_id === playerLoc) {
-          musicCue = HOOKS.LOCALIZED_MUSIC_01;
-          profile.radio_static_level = 0.4;
-          break;
-        }
-      }
-    }
+    // Unobserved phenomenon identities must not create audible discoveries.
   } else if (["REPORT", "DEBRIEF"].includes(phaseId)) {
     ambientLoop = HOOKS.FACILITY_AMBIENT;
     profile.reverberation = 0.2;
+    profile.fluorescent_hum_level = 0.0;
   }
 
   // Event-derived one-shot cues
@@ -120,6 +110,7 @@ function evaluateAcousticScene(run, spatialDefinition = {}, world = null) {
   return {
     version: VERSION,
     phase_id: phaseId,
+    physical_environment: physicalEnvironment,
     location_id: playerLoc,
     ambient_loop: ambientLoop,
     machinery_bed: machineryBed,

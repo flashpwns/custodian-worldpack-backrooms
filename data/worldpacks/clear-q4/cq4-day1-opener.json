@@ -20,7 +20,7 @@
         "archetype": "first-day-observer",
         "personality": "nervous-first-day",
         "primary_task": "verbal-recall",
-        "required_equipment": null
+        "required_equipment": "mass-spectrometer"
       },
       {
         "slot": 1,
@@ -44,17 +44,19 @@
     "deployment_time": "10:00 AM",
     "expected_return_time": "12:00 noon",
     "standard_duration_hours": 2,
-    "check_in_interval_standard_hours": 1
+    "check_in_interval_standard_hours": 1,
+    "cutoff_time": "1:00 PM",
+    "max_intervals": 18
   },
   "briefing_authority": {
     "name": "Dr. Kirk Maxwell",
     "identity": "dr-kirk-maxwell",
     "role": "Chief Expedition Briefing Authority",
-    "date_rule": "1994",
-    "title_template": "[DATE], 1994 BRIEFING",
+    "date_rule": "JULY 17, 1991",
+    "title_template": "JULY 17, 1991 · ASSIGNMENT BRIEFING",
     "dialogue": {
       "greeting": "Good morning, Q4 assignees.",
-      "intro": "My name is Dr. Kirk Maxwell. Should any of you become recurring expedition personnel, we'll be seeing quite a bit of one another.",
+      "intro": "My name is Dr. Kirk Maxwell. You can call me Kirk. Should any of you become recurring expedition personnel, we'll be seeing quite a bit of one another.",
       "mission_statement": "Today's assignment is straightforward. Delivery and introductory reconnaissance.",
       "roster_call": "{coworker2_name} has custody of the startup material scheduled for Outpost A, Bermuda branch. {player_name}, you're on camera. {coworker3_name}, layout record. {coworker1_name}, observation and verbal recall.",
       "dismissal": "There isn't time for questions here. Get acquainted, then report to Equipment Staging."
@@ -93,7 +95,9 @@
         "recording-device",
         "field-light"
       ],
-      "coworker1": [],
+      "coworker1": [
+        "mass-spectrometer"
+      ],
       "coworker2": [
         "startup-materials-duffle"
       ],
@@ -118,6 +122,14 @@
   ],
   "control_room_surveillance": {
     "operator_message": "I've got you from here. I'm logging the return this time. Don't count on somebody having eyes on you next time."
+  },
+  "catastrophic_ending": {
+    "cutoff_time": "1:00 PM",
+    "asset_id": "ending.catastrophic.newspaper",
+    "headline": "TRAFFIC COLLISION CLAIMS FOUR IN SANTA CLARITA",
+    "date": "JULY 17, 1991",
+    "location": "Santa Clarita, California",
+    "casualties": 4
   },
   "demo_termination": {
     "status_text": "NO FURTHER ASSIGNMENTS AVAILABLE"

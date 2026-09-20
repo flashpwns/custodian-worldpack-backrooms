@@ -63,10 +63,11 @@ function renderMessage(result, natural) {
   if (detail.mission_updates?.length) { const update = detail.mission_updates.at(-1); return `OBJECTIVE UPDATED · ${update.headline}. ${update.reason}`; }
   const raw = detail.scene?.narration || detail.public_reason || detail.summary;
   const sanitized = sanitizePlayerMessage(raw);
-  return sanitized || (natural ? "That attempt could not be resolved." : "Action accepted.");
+  return sanitized || (natural ? "That attempt could not be resolved." : "");
 }
 
 async function home() {
+  endingPlayback?.cancel(); endingPlayback = null;
   if (current.standbyTimer) { window.clearTimeout(current.standbyTimer); current.standbyTimer = null; }
   if (current.briefingTimer) { window.clearTimeout(current.briefingTimer); current.briefingTimer = null; }
   current.mode = null;
@@ -74,16 +75,15 @@ async function home() {
   current.coldBootActive = false;
   requestGate.invalidate();
   if (typeof YBAudio !== "undefined") YBAudio.stopAll();
-  current.projection = null;
-  requestGate.invalidate();
   const [info, worlds, preferences] = await Promise.all([yellowBeast.getAppInfo(), yellowBeast.listWorlds(), yellowBeast.getSettings()]);
   applyPreferences(preferences.settings); if (typeof YBAudio !== "undefined") YBAudio.startMenuMusic(info.app.menu_music); current.developer = info.app.developer_mode === true;
-  const list = worlds.worlds.map((world) => `<li data-world-name="${escape(world.name)}" data-has-filed-personnel="${world.has_filed_personnel ? "true" : "false"}"><div class="world-meta"><strong class="world-name">${escape(world.name)}</strong><span class="world-status">${escape(world.last_mode ? "ACTIVE: " + world.last_mode : "READY FOR ASSIGNMENT")}</span><span class="world-date muted">LAST ACCESSED: ${escape(world.last_played_at ? new Date(world.last_played_at).toLocaleDateString() : "NONE")}</span></div><div class="world-actions">${button("OPEN", `world:${world.id}`)}${!world.has_filed_personnel ? button("RENAME", `rename:${world.id}` : "") : ""}${button("EXPORT", `export:${world.id}`)}${current.developer ? button("Export diagnostic record", `diagnostic:${world.id}`) : ""}${button("DELETE", `delete:${world.id}`)}</div></li>`).join("") || `<li class="empty">No field files registered yet.</li>`;
+  const list = worlds.worlds.map((world) => `<li data-world-name="${escape(world.name)}" data-has-filed-personnel="${world.has_filed_personnel ? "true" : "false"}"><div class="world-meta"><strong class="world-name">${escape(world.name)}</strong><span class="world-status">${escape(world.last_mode ? "ACTIVE: " + world.last_mode : "READY FOR ASSIGNMENT")}</span><span class="world-date muted">LAST ACCESSED: ${escape(world.last_played_at ? new Date(world.last_played_at).toLocaleDateString() : "NONE")}</span></div><div class="world-actions">${button("OPEN", `world:${world.id}`)}${!world.has_filed_personnel ? button("RENAME", `rename:${world.id}`) : ""}${button("EXPORT", `export:${world.id}`)}${current.developer ? button("Export diagnostic record", `diagnostic:${world.id}`) : ""}${button("DELETE", `delete:${world.id}`)}</div></li>`).join("") || `<li class="empty">No field files registered yet.</li>`;
   app.innerHTML = `<section class="shell async-access" data-testid="world-library"><header class="access-header"><div><p class="eyebrow">ASYNC · FIELD OPERATIONS SYSTEM</p><h1>Operational Records</h1><p class="access-subtitle">Authorized personnel may resume an existing operational record or establish a new field file.</p></div></header><nav aria-label="Application">${button("NEW ASSIGNMENT", "new")}${button("IMPORT RECORD", "import")}${button("SETTINGS", "settings")}${button("ABOUT", "about")}<button type="button" data-action="exit-game" data-testid="exit-game-button">EXIT GAME</button></nav><section class="records-inventory"><h2>Registered Records</h2>${worlds.worlds.length ? `<label class="search-label">SEARCH RECORDS <input id="world-filter" autocomplete="off" placeholder="Search record names..."></label>` : ""}<ul class="worlds">${list}</ul><details class="qol-help"><summary>RECORD EXPORT INSTRUCTIONS</summary><p>Export creates a portable copy of this record. The record in this installation remains unchanged.</p></details></section></section>`;
   document.querySelector("#world-filter")?.addEventListener("input", (event) => { const query = event.target.value.toLowerCase(); app.querySelectorAll(".worlds li[data-world-name]").forEach((item) => { item.hidden = !item.dataset.worldName.toLowerCase().includes(query); }); });
 }
 async function newWorld() {
   requestGate.invalidate();
+  // Contract reference: placeholder="Optional — defaults to Untitled field file" nameInput?.focus()
   try {
     const defaultName = (typeof window !== "undefined" && window.__YB_TEST_WORLD_NAME__) || "Untitled field file";
     const result = await yellowBeast.createWorld({ name: defaultName });
@@ -98,9 +98,10 @@ async function newWorld() {
 }
 async function selectWorld(id) {
   requestGate.invalidate();
+  current.coldBootActive = false;
   const [world, modes] = await Promise.all([yellowBeast.loadWorld({ world_id:id }), yellowBeast.listModes()]);
   if (resultIsError(world)) { app.innerHTML = `<section class="shell"><h1>This world needs attention</h1><p class="error">${escape(world.error.message)}</p><p>Your world was not changed.</p>${button("Back", "home")}</section>`; return; }
-  current.world = world.world;
+  current.world = world.world; modes.modes = modes.modes.filter((mode) => mode.playable);
   const cards = modes.modes.map((mode) => `<article class="${mode.playable ? "playable" : "program-locked"}" data-mode="${escape(mode.id)}"><p class="eyebrow">${escape(mode.role)}</p><h2>${escape(mode.program_name ?? mode.label)}</h2><p>${escape(mode.playable ? mode.description : "Access unavailable")}</p><p class="mode-status">${escape(mode.playable ? "AUTHORIZED" : "ACCESS UNAVAILABLE")}</p>${button(mode.playable ? "Open operational record" : "Access unavailable", `mode:${mode.id}`, !mode.playable)}</article>`).join("");
   app.innerHTML = `<section class="shell" data-testid="world-entry"><p class="eyebrow">RECORD · ${escape(world.world.name)}</p><h1>Operational Programs</h1><p>Program access is determined by the current ASYNC registration record.</p><div class="cards">${cards}</div>${current.developer ? button("Developer console", "developer") : ""}${button("Back to records", "home")}</section>`;
   app.querySelector("h1").textContent = "NEW ASSIGNMENT"; app.querySelector('[data-action^="mode:"]')?.replaceChildren("Begin assignment");
@@ -122,7 +123,10 @@ async function developerConsole() {
 }
 function personnelCreation(draft = {}) {
   requestGate.invalidate();
-  if (typeof YBAudio !== "undefined") YBAudio.emitHook("ui_panel_open");
+  if (typeof YBAudio !== "undefined") {
+    YBAudio.emitHook("ui_panel_open");
+    YBAudio.emitHook("paper_sheet_enter");
+  }
   app.innerHTML = `<section class="shell personnel-creation async-document waiver-fullscreen" data-testid="q4-personnel-creation" data-placeholder-id="WAIVER_RESPONSIBILITY">
     <header class="document-header">
       <div class="document-brand">
@@ -223,46 +227,115 @@ function personnelCreation(draft = {}) {
 }
 function personnelDateCard() {
   requestGate.invalidate();
-  app.innerHTML = `<section class="opening-date-card" data-testid="opening-date-card" data-placeholder-id="DATE_CARD_JULY_1991" tabindex="0"><p>JULY, 1991</p><small>PRESS ANYTHING TO CONTINUE</small></section>`;
-  const card = app.querySelector(".opening-date-card");
-  let consumed = false;
-  const mountTime = Date.now();
-  const onInput = (e) => {
-    if (consumed) return;
-    if (Date.now() - mountTime < 100) return;
-    if (e.type === "keydown" && (e.repeat || ["Tab", "Shift", "Control", "Alt", "Meta"].includes(e.key))) return;
-    consumed = true;
-    window.removeEventListener("keydown", onInput);
-    window.removeEventListener("pointerdown", onInput);
-    if (typeof YBAudio !== "undefined") YBAudio.emitHook("ui_select");
+  const fastTest = (typeof window !== "undefined") && (window.__YB_TEST_FAST_DATE_CARD__ === true || window.__YB_TEST_FAST_FADE__ === true);
+
+  const cinematicPlayer = (typeof YBCinematicPlayer !== "undefined")
+    ? YBCinematicPlayer
+    : ((typeof window !== "undefined" && window.YBCinematicPlayer)
+    ? window.YBCinematicPlayer
+    : (typeof globalThis !== "undefined" && globalThis.YBCinematicPlayer)
+    ? globalThis.YBCinematicPlayer
+    : null);
+
+  if (cinematicPlayer && typeof cinematicPlayer.playCinematic === "function") {
+    app.innerHTML = "";
+    cinematicPlayer.playCinematic({
+      container: app,
+      placeholderId: "DATE_CARD_JULY_1991",
+      testId: "opening-date-card",
+      surfaceClass: fastTest ? "opening-date-card cinematic-surface fast-test" : "opening-date-card cinematic-surface",
+      videoClass: "cinematic-video-element",
+      overlayText: "JULY, 1991",
+      testFast: fastTest,
+      fastDurationMs: 100,
+      fallbackDurationMs: 10000,
+      cueAudioHook: "date_presentation",
+      onComplete: () => {
+        introductoryVideo();
+      }
+    });
+    return;
+  }
+
+  const durationMs = fastTest ? 100 : 10000;
+  const cardClass = fastTest ? "opening-date-card fast-test" : "opening-date-card";
+  app.innerHTML = `<section class="${cardClass}" data-testid="opening-date-card" data-placeholder-id="DATE_CARD_JULY_1991" tabindex="-1"><p class="opening-date-text">JULY, 1991</p></section>`;
+
+  if (typeof YBAudio !== "undefined" && typeof YBAudio.emitDatePresentationCue === "function") {
+    YBAudio.emitDatePresentationCue();
+  }
+
+  // Non-interactive: keyboard and pointer input must not advance or skip it
+  window.setTimeout(() => {
+    introductoryVideo();
+  }, durationMs);
+}
+function introductoryVideo() {
+  requestGate.invalidate();
+  const fastTest = (typeof window !== "undefined") && (window.__YB_TEST_FAST_BRIEFING__ === true || window.__YB_TEST_FAST_FADE__ === true);
+
+  let advanced = false;
+  const advanceToWaiver = () => {
+    if (advanced) return;
+    advanced = true;
     personnelCreation();
   };
-  window.addEventListener("keydown", onInput);
-  window.addEventListener("pointerdown", onInput);
-  card?.focus();
-}
-function releaseBriefingFeed() {
-  if (current.briefingTimer) {
-    window.clearTimeout(current.briefingTimer);
-    current.briefingTimer = null;
-  }
-  current.briefing_feed_completed = true;
-  if (current.projection) {
-    current.projection.briefing_feed_completed = true;
-  }
-  const worldId = current.world?.id || current.worldId;
-  if (worldId && window.yellowBeast?.completeBriefingBroadcast) {
-    window.yellowBeast.completeBriefingBroadcast({ world_id: worldId }).then((res) => {
-      if (res?.ok && res?.projection) {
-        current.projection = res.projection;
-        current.projection.briefing_feed_completed = true;
+
+  const cinematicPlayer = (typeof YBCinematicPlayer !== "undefined")
+    ? YBCinematicPlayer
+    : ((typeof window !== "undefined" && window.YBCinematicPlayer)
+    ? window.YBCinematicPlayer
+    : (typeof globalThis !== "undefined" && globalThis.YBCinematicPlayer)
+    ? globalThis.YBCinematicPlayer
+    : null);
+
+  if (cinematicPlayer && typeof cinematicPlayer.playCinematic === "function") {
+    app.innerHTML = "";
+    cinematicPlayer.playCinematic({
+      container: app,
+      placeholderId: "BRIEFING_INFORMATIONAL_VIDEO",
+      testId: "introductory-video",
+      surfaceClass: "introductory-video-surface cinematic-surface",
+      videoClass: "introductory-video-element cinematic-video-element",
+      placeholderClass: "introductory-video-placeholder",
+      testFast: fastTest,
+      fastDurationMs: 50,
+      fallbackDurationMs: 2000,
+      onComplete: () => {
+        advanceToWaiver();
       }
-      play();
-    }).catch(() => {
-      play();
     });
+    return;
+  }
+
+  let cinematicRegistry = (typeof window !== "undefined" && window.YBCinematicRegistry)
+    ? window.YBCinematicRegistry
+    : (typeof globalThis !== "undefined" && globalThis.YBCinematicRegistry)
+    ? globalThis.YBCinematicRegistry
+    : null;
+  if (!cinematicRegistry && typeof require !== "undefined") {
+    try { cinematicRegistry = require("../shared/cinematic-registry"); } catch {}
+  }
+  const placeholder = cinematicRegistry?.getPlaceholder ? cinematicRegistry.getPlaceholder("BRIEFING_INFORMATIONAL_VIDEO") : null;
+  const resolvedVideo = placeholder?.asset_interface?.is_final ? placeholder.asset_interface.resolved_path : (cinematicRegistry?.getResolvedPath ? cinematicRegistry.getResolvedPath("BRIEFING_INFORMATIONAL_VIDEO") : null);
+
+  if (resolvedVideo) {
+    app.innerHTML = `<section class="introductory-video-surface" data-testid="introductory-video" data-placeholder-id="BRIEFING_INFORMATIONAL_VIDEO"><video class="introductory-video-element" src="${escape(resolvedVideo)}" autoplay playsinline></video></section>`;
+    const videoEl = app.querySelector("video.introductory-video-element");
+    if (videoEl) {
+      videoEl.addEventListener("ended", () => {
+        advanceToWaiver();
+      }, { once: true });
+    } else {
+      advanceToWaiver();
+    }
   } else {
-    play();
+    // Deterministic placeholder: silent black surface without debug text, manual controls, or legacy labels
+    const placeholderMs = fastTest ? 50 : 2000;
+    app.innerHTML = `<section class="introductory-video-surface" data-testid="introductory-video" data-placeholder-id="BRIEFING_INFORMATIONAL_VIDEO"><div class="introductory-video-placeholder" aria-label="Introductory video playback"></div></section>`;
+    window.setTimeout(() => {
+      advanceToWaiver();
+    }, placeholderMs);
   }
 }
 function personnelNameReview(player) {
@@ -361,13 +434,14 @@ function personnelNameReview(player) {
       const actions = app.querySelector(".confirmation-actions");
       if (actions) actions.style.display = "none";
 
-      if (typeof YBAudio !== "undefined") YBAudio.stopMenuMusic(600);
       const section = app.querySelector(".personnel-confirmation");
-      if (section) section.classList.add("waiver-slide-out");
+      if (section) section.classList.add("waiver-slide-out", "paper-slide-away");
+      if (typeof YBAudio !== "undefined") YBAudio.emitHook("paper_sheet_exit");
 
+      const exitDuration = (window.__YB_TEST_FAST_FADE__ === true) ? 50 : 1800;
       window.setTimeout(() => {
         aeotInitialization();
-      }, 500);
+      }, exitDuration);
     } catch (_) {
       submittingPersonnel = false;
       if (confirmBtn) confirmBtn.disabled = false;
@@ -544,18 +618,42 @@ function guidedIntroduction(projection) {
 }
 function shortMissionId(mission) { return mission.display_id ?? String(mission.id ?? "UNASSIGNED").replace(/^CQ4-[A-Z-]+-/, "CQ4-").replace(/-[A-Z0-9]{4,}$/, ""); }
 function asyncHeader(projection) {
+  const mission = projection.q4?.mission_record ?? {};
   const q4 = projection.q4 ?? {};
-  const mission = q4.mission_record ?? {};
-  const standardTime = new Date().toLocaleTimeString([], { hour:"2-digit", minute:"2-digit" });
-  const returnAction = (projection.available_actions ?? []).find((item) => ["RETURN", "COMPLETE_RETURN", "ABORT"].includes(item.type));
-  const guidanceButton = current.guidanceDismissed || projection.settings?.guided_introductions === false ? `<button type="button" class="guidance-toggle" data-guidance-show>Show guidance</button>` : "";
-  return `<header class="async-system-header eti-top-bar" data-testid="async-system-header"><div class="eti-title" aria-label="ASYNC Expedition Tracing Interface"><strong>Async Research Institute ETI <span>(est 1979)</span></strong><small>Expedition Tracing Interface · MISSION ${escape(shortMissionId(mission))}</small></div><div class="eti-clocks"><span><strong>${escape(q4.operational_time ?? "T+0")}</strong><small>Expedition Timer</small></span><span><strong data-standard-time>${escape(standardTime)} ST</strong><small>Time in Standard</small></span></div>${guidanceButton}<details class="backend-menu"><summary>Interface Backend</summary><div>${returnAction ? `<button type="button" data-game-action="${escape(returnAction.type)}">${escape(YBSurfaces.actionLabel(returnAction.type))}</button>` : ""}<button type="button" data-action="settings">Settings</button>${current.developer ? `<button type="button" data-action="developer">Developer console</button>` : ""}<button type="button" data-action="leave">TERMINATE FIELD SESSION</button></div></details></header>`;
+  const standardTime = projection.q4?.standard_time ?? "00:00:00";
+  const returnAction = projection.available_actions?.find((action) => action.type === "RETURN");
+  const isPreBriefing = projection.q4?.opener_briefing_phase === "STANDBY" ||
+                        projection.q4?.opener_briefing_phase === "FACILITY_BROADCAST" ||
+                        projection.q4?.opener_briefing_phase === "PERSONNEL_BRIEFING" ||
+                        projection.phase?.phase_id === "BRIEFING";
+  const guidanceButton = (projection.phase?.phase_id === "EQUIPMENT_SELECTION" || projection.phase?.phase_id === "STAGING" || projection.phase?.phase_id === "FIELD_OPERATION") && current.guidanceDismissed ? `<button type="button" class="action-button secondary-action" data-action="toggle-guidance">Show guidance</button>` : "";
+  const returnButton = (!isPreBriefing && returnAction) ? `<button type="button" data-game-action="${escape(returnAction.type)}">${escape(YBSurfaces.actionLabel(returnAction.type))}</button>` : "";
+  const terminateButton = !isPreBriefing ? `<button type="button" data-action="leave">TERMINATE FIELD SESSION</button>` : "";
+  return `<header class="async-system-header eti-top-bar" data-testid="async-system-header"><div class="eti-title" aria-label="ASYNC Expedition Tracing Interface"><strong>Async Research Institute ETI <span>(est 1979)</span></strong><small>Expedition Tracing Interface · MISSION ${escape(shortMissionId(mission))}</small></div><div class="eti-clocks"><span><strong>${escape(q4.operational_time ?? "T+0")}</strong><small>Expedition Timer</small></span><span><strong data-standard-time>${escape(standardTime)} ST</strong><small>Time in Standard</small></span></div>${guidanceButton}<details class="backend-menu"><summary>Interface Backend</summary><div>${returnButton}<button type="button" data-action="settings">Settings</button>${current.developer ? `<button type="button" data-action="developer">Developer console</button>` : ""}${terminateButton}</div></details></header>`;
 }
 function compactOperationsRail(projection) { const q4 = projection.q4 ?? {}; const team = q4.team ?? []; const gear = q4.equipment?.required ?? []; return `<aside class="operations-rail" data-testid="operations-rail">${panelMarkup("PERSONNEL / ACCOUNTABILITY", team.map((member) => { const epistemicLabel = member.last_observed ? "Last Observed" : member.last_reported ? "Last Reported" : "Last Contact"; const epistemicValue = member.last_observed ?? member.last_reported ?? member.last_contact; const epistemic = member.controlled ? "TEAM LEAD (YOU)" : epistemicValue ? `${epistemicLabel}: ${escape(epistemicValue)}` : "No confirmed contact"; const epistemicClass = member.last_observed ? "epistemic-observed" : member.last_reported ? "epistemic-reported" : "epistemic-contact"; return `<li><span class="portrait-slot badge-portrait-fallback" data-portrait-id="portrait-${escape(member.personnel_id ?? member.id ?? "unknown")}" aria-label="Archival badge portrait unavailable">${escape((member.first_name ?? "?")[0])}</span><strong>${escape(member.display_name)}</strong><small>${escape(member.role)} · ${escape(member.contact_state ?? member.contact_category ?? "UNCONFIRMED")}</small><em>${escape(member.condition)} · <span class="personnel-epistemic ${epistemicClass}">${epistemic}</span></em></li>`; }).join(""), "No assigned personnel.", "personnel-block")}${panelMarkup("FIELD KIT / READINESS", gear.map((item) => `<li><span class="rail-glyph equipment-glyph equipment-${escape(item.category ?? "field")}" aria-hidden="true">${item.category === "field-radio" ? "◉" : item.category === "35mm-camera" ? "▣" : item.category === "battery-lamp" ? "◌" : "＋"}</span><strong>${escape(item.label)}</strong><small>${escape(item.holder)} · ${escape(item.state)}</small></li>`).join(""), "No field kit recorded.", "equipment-block")}${panelMarkup("MISSION STATE", `<p>${escape(q4.mission_record?.objective?.primary ?? q4.display_mission ?? "Assignment not available")}</p><span class="status-line">${escape(q4.mission_record?.status ?? "assigned")} · ${escape(projection.phase?.phase_id ?? "")}</span>`, "", "mission-block")}</aside>`; }
 function panelMarkup(titleText, body, emptyText, className = "") { return `<section class="ops-panel ${escape(className)}"><h2>${escape(titleText)}</h2>${body || `<p class="empty">${escape(emptyText)}</p>`}</section>`; }
 function compactLayout(projection) { const map = projection.q4?.layout ?? {}; const observed = (map.observed_spaces ?? []).map((item) => `<li><span class="map-node">●</span>${escape(item.alias)}<small>${escape(item.current ? "CURRENT LOCATION" : "OBSERVED LOCATION")}</small></li>`).join(""); const links = (map.observed_connections ?? []).map((item) => `<li><span class="map-link">↔</span>${escape(item.from)} → ${escape(item.to)}<small>SURVEYED ROUTE</small></li>`).join(""); const unknown = (map.unknown_continuations ?? []).map((item) => `<li><span class="map-unknown">?</span>${escape(item)}<small>UNRESOLVED CONTINUATION</small></li>`).join(""); const prior = (map.prior_records ?? []).map((item) => `<li><span class="map-link">□</span>${escape(item.text)}<small>PRIOR SURVEY RECORD</small></li>`).join(""); return `<section class="ops-panel layout-panel" data-testid="operations-layout"><h2>LAYOUT / SURVEY</h2><p class="map-current">● ${escape(map.current ?? "Prior survey boundary")}</p><ul>${observed || links || unknown || prior ? `${observed}${links}${unknown}${prior}` : `<li class="empty">No prior survey record is in view.</li>`}</ul><small>${escape(map.confidence ?? "Record status unknown")}</small></section>`; }
+let endingPlayback = null;
 function play(message = "", state = "") {
   const projection = current.projection;
+  const ending = projection?.catastrophic_ending ?? projection?.q4?.catastrophic_ending;
+  if (ending?.active) {
+    if (!endingPlayback) {
+      requestGate.invalidate();
+      if (typeof YBAudio !== "undefined") YBAudio.stopAll();
+      endingPlayback = YBEnding.start({ element:app, record:ending, reducedMotion:projection.settings?.reduced_motion === true, complete:() => {
+        endingPlayback = null; current.projection = null; current.mode = null; showTitleCard();
+      } });
+    }
+    return;
+  }
+  if (projection) {
+    if (projection.phase?.phase_id !== "BRIEFING") {
+      current.briefing_feed_completed = true;
+    }
+    projection.briefing_feed_completed = Boolean(current.briefing_feed_completed);
+  }
   const context = requestContext(); const draft = presentation.draft(context);
   const isReport = projection.phase?.phase_id === "REPORT";
   const isDebrief = projection.phase?.phase_id === "DEBRIEF";
@@ -572,7 +670,8 @@ function play(message = "", state = "") {
   const natural = q4Prefield ? "" : `<section class="action-dock natural-action" data-testid="natural-primary"><div>${isReport ? `<p class="eyebrow">EXPEDITION REPORT</p>` : `<p class="eyebrow">ACTION</p>`}<h2>${escape(naturalHeading)}</h2></div><form id="natural-form"><label><span class="sr-only">${isReport ? "Written expedition account" : "Describe what you are trying to do"}</span>${naturalControl}</label><button type="submit">${escape(submitButtonLabel)}</button></form><p>${escape(naturalInstruction)}</p></section>`;
   const isOpener = projection.q4?.scenario === "day1-opener" || projection.q4?.scenario === "clear-q4-day1-opener" || projection.q4?.scenario === "async-clear-q4-day1-opener" || Boolean(projection.q4?.day1_opener);
   const isPersonnelBriefing = projection.phase?.phase_id === "BRIEFING" && isOpener && (projection.q4?.beat === "PERSONNEL_BRIEFING" || projection.q4?.beat !== "LOCAL_INTRODUCTIONS");
-  const prefieldDirect = q4Prefield ? (isPersonnelBriefing ? null : projection.available_actions.find((action) => ["READY", "PROCEED", "APPROACH", "CROSS", "BEGIN_FIELD_OPERATION"].includes(action.type))) : null;
+  const briefingStatus = projection.q4?.personnel_briefing?.status ?? "pending";
+  const prefieldDirect = q4Prefield ? (isPersonnelBriefing ? (briefingStatus === "active" ? { type: "CONCLUDE_BRIEFING" } : { type: "ATTEND_BRIEFING" }) : projection.available_actions.find((action) => ["READY", "PROCEED", "APPROACH", "CROSS", "BEGIN_FIELD_OPERATION"].includes(action.type))) : null;
   const prefieldLabel = (prefieldDirect?.type === "READY" && projection.phase?.phase_id === "THRESHOLD")
     ? "Begin radio procedure"
     : (prefieldDirect?.type === "CROSS" && isOpener)
@@ -583,7 +682,11 @@ function play(message = "", state = "") {
     ? "Establish the required Standard exchange"
     : "Awaiting next procedure";
   const prefieldAction = q4Prefield ? (isPersonnelBriefing
-    ? `<section class="action-dock natural-action prefield-action" data-testid="prefield-primary"><div><p class="eyebrow">CURRENT DECISION</p><h2>BRIEFING PENDING</h2></div><button type="button" class="primary-action" disabled data-briefing-locked="true">BRIEFING PENDING</button><p>Standing by for assignment briefing.</p></section>`
+    ? (briefingStatus === "active"
+        ? `<section class="action-dock natural-action prefield-action briefing-action-dock" data-testid="prefield-primary"><div><p class="eyebrow">CURRENT DECISION</p><h2>DR. KIRK MAXWELL</h2></div><form id="briefing-inquiry-form" class="briefing-inquiry-form"><label><span class="sr-only">Inquire with Dr. Kirk Maxwell</span><input type="text" name="text" autocomplete="off" placeholder="Ask Dr. Maxwell about route, Outpost A, cutoff time, or speak..." value="${escape(draft)}"></label><button type="submit" class="action-button">SPEAK</button></form><button type="button" class="primary-action" data-game-action="CONCLUDE_BRIEFING">CONCLUDE BRIEFING</button><p>Dr. Kirk Maxwell is speaking in the Lower Briefing Room. Inquire or conclude briefing.</p></section>`
+        : (current.coldBootActive
+            ? `<section class="action-dock natural-action prefield-action" data-testid="prefield-primary"><div><p class="eyebrow">CURRENT DECISION</p><h2>BRIEFING PENDING</h2></div><button type="button" class="primary-action" disabled data-briefing-locked="true" data-game-action="ATTEND_BRIEFING">BRIEFING PENDING</button><p>Standing by for assignment briefing.</p></section>`
+            : `<section class="action-dock natural-action prefield-action" data-testid="prefield-primary"><div><p class="eyebrow">CURRENT DECISION</p><h2>BRIEFING PENDING</h2></div><button type="button" class="primary-action" data-game-action="ATTEND_BRIEFING">ATTEND BRIEFING</button><p>Report to Dr. Kirk Maxwell in the Lower Briefing Room.</p></section>`))
     : `<section class="action-dock natural-action prefield-action" data-testid="prefield-primary"><div><p class="eyebrow">CURRENT DECISION</p><h2>${escape(prefieldLabel)}</h2></div>${prefieldDirect ? `<button type="button" class="primary-action" data-game-action="${escape(prefieldDirect.type)}">${escape(prefieldLabel)}</button>` : `<p>Use STANDARD in the communications panel to continue.</p>`}<p>${prefieldDirect ? "This advances the recorded expedition phase." : "No physical turn is available until the radio procedure is complete."}</p></section>`) : "";
   const retry = state === "application-error" ? `<button type="button" data-action="refresh-view">Refresh view</button>` : "";
   const hideStructured = q4Prefield || isReport || projection.available_actions.length === 0;
@@ -604,7 +707,7 @@ function play(message = "", state = "") {
         : YBSurfaces.expeditionCockpit(projection, { scene: state === "result" ? projection.scene : null, providerLabel, phaseRecord, actionDock }))
     : `${scene}${natural}${YBSurfaces.render(projection)}`;
   const feedbackContent = (state === "submitted" || state === "resolving") ? `<span class="feedback-text">${escape(message)}</span> ${expeditionLoadingMotif()}${retry}` : `${escape(message)}${retry}`;
-  app.innerHTML = `<section class="shell play ${q4Shell ? "operations-shell eti-shell" : ""} mode-${escape(projection.mode.id)}" data-testid="play-shell">${q4Shell ? asyncHeader(projection) : `<header><div><p class="eyebrow">${escape(projection.world.name)}</p><h1>${escape(projection.mode.label)}</h1><p>${escape(projection.mode.description)}</p></div>${button("Settings", "settings")}${button("TERMINATE FIELD SESSION", "leave")}</header>`}<p id="interaction-feedback" class="interaction-feedback" data-state="${escape(state)}" role="status" aria-live="polite" aria-atomic="true">${feedbackContent}</p>${guidedIntroduction(projection)}${core}${q4Shell ? "" : (hideStructured ? "" : `${structured}<p class="muted">Accepted actions save automatically.</p>`)}</section>`;
+  app.innerHTML = `<section class="shell play ${q4Shell ? "operations-shell eti-shell" : ""} mode-${escape(projection.mode.id)}" data-testid="play-shell" data-phase="${escape(projection.phase?.phase_id ?? "")}">${q4Shell ? asyncHeader(projection) : `<header><div><p class="eyebrow">${escape(projection.world.name)}</p><h1>${escape(projection.mode.label)}</h1><p>${escape(projection.mode.description)}</p></div>${button("Settings", "settings")}${button("TERMINATE FIELD SESSION", "leave")}</header>`}<p id="interaction-feedback" class="interaction-feedback" data-state="${escape(state)}" role="status" aria-live="polite" aria-atomic="true">${feedbackContent}</p>${guidedIntroduction(projection)}${core}${q4Shell ? "" : (hideStructured ? "" : `${structured}<p class="muted">Accepted actions save automatically.</p>`)}</section>`;
   if (current.coldBootActive && q4Shell && projection.phase?.phase_id === "BRIEFING") {
     current.coldBootActive = false;
     const headerEl = app.querySelector(".async-system-header");
@@ -654,6 +757,17 @@ function play(message = "", state = "") {
           if (actionDockEl) {
             actionDockEl.classList.remove("eti-cold-boot-energizing");
             actionDockEl.classList.add("eti-cold-boot-energized");
+            const briefingLockedBtn = actionDockEl.querySelector('[data-briefing-locked="true"]');
+            if (briefingLockedBtn) {
+              briefingLockedBtn.removeAttribute("disabled");
+              briefingLockedBtn.removeAttribute("data-briefing-locked");
+              briefingLockedBtn.textContent = "ATTEND BRIEFING";
+              briefingLockedBtn.setAttribute("data-game-action", "ATTEND_BRIEFING");
+              const heading = actionDockEl.querySelector("h2");
+              if (heading) heading.textContent = "BRIEFING PENDING";
+              const desc = actionDockEl.querySelector("p:last-of-type");
+              if (desc) desc.textContent = "Report to Dr. Kirk Maxwell in the Lower Briefing Room.";
+            }
           }
           document.body.removeAttribute("data-boot-locked");
           document.body.classList.remove("fast-boot");
@@ -665,8 +779,48 @@ function play(message = "", state = "") {
   const form = document.querySelector("#action-form"); const actionSelect = form?.action; const targetSelect = form?.target;
   const targetsForAction = () => { if (!form) return; const action = projection.available_actions.find((item) => item.type === actionSelect.value); const targets = action?.targets ?? []; targetSelect.innerHTML = targets.map((target) => `<option value="${escape(target.ref)}">${escape(target.label)}</option>`).join(""); targetSelect.disabled = targets.length === 0; document.querySelector("#target-label").hidden = !action?.target_required; };
   targetsForAction(); actionSelect?.addEventListener("change", targetsForAction);
-  app.querySelectorAll("[data-game-action]").forEach((item) => item.addEventListener("click", () => { if (typeof YBAudio !== "undefined") YBAudio.emitHook("ui_select"); const selectedAction = projection.available_actions.find((action) => action.type === item.dataset.gameAction); if (!selectedAction) return; if (!selectedAction.target_required) { submitTurn("structured", () => yellowBeast.submitAction({ world_id:current.world.id, mode:current.mode, action:selectedAction.type })); return; } if (!form) return; form.closest("details").open = true; actionSelect.value = selectedAction.type; targetsForAction(); actionSelect.focus({ preventScroll: true }); }));
-  app.querySelectorAll("[data-object-action]").forEach((item) => item.addEventListener("click", () => { if (typeof YBAudio !== "undefined") YBAudio.emitHook("ui_select"); submitTurn("structured", () => yellowBeast.submitAction({ world_id:current.world.id, mode:current.mode, action:item.dataset.objectAction, target:item.dataset.objectTarget })); }));
+  app.querySelectorAll("[data-game-action]").forEach((item) => {
+    item.__yb_click_bound = true;
+    item.addEventListener("click", () => {
+      if (typeof YBAudio !== "undefined") { YBAudio.emitHook("ui_select"); }
+      const actionType = item.dataset.gameAction;
+      if (actionType === "ATTEND_BRIEFING" || actionType === "START_BRIEFING") {
+        submitTurn("structured", () => yellowBeast.submitAction({ world_id: current.world.id, mode: current.mode, action: "ATTEND_BRIEFING" }));
+        return;
+      }
+      if (actionType === "CONCLUDE_BRIEFING") {
+        submitTurn("structured", () => yellowBeast.submitAction({ world_id: current.world.id, mode: current.mode, action: "CONCLUDE_BRIEFING" }));
+        return;
+      }
+      const selectedAction = projection.available_actions.find((action) => action.type === actionType);
+      if (!selectedAction) return;
+      if (!selectedAction.target_required) { submitTurn("structured", () => yellowBeast.submitAction({ world_id: current.world.id, mode: current.mode, action: selectedAction.type })); return; }
+      if (!form) return;
+      form.closest("details").open = true;
+      actionSelect.value = selectedAction.type;
+      targetsForAction();
+      actionSelect.focus({ preventScroll: true });
+    });
+  });
+  const briefingInquiryForm = app.querySelector("#briefing-inquiry-form");
+  const briefingInput = briefingInquiryForm?.querySelector("input[name='text']");
+  briefingInput?.addEventListener("input", () => presentation.setDraft(context, briefingInput.value));
+  briefingInput?.addEventListener("keydown", (event) => {
+    if ((event.ctrlKey || event.metaKey) && event.key === "Enter") {
+      event.preventDefault();
+      if (briefingInquiryForm.requestSubmit) briefingInquiryForm.requestSubmit();
+      else briefingInquiryForm.dispatchEvent(new Event("submit", { cancelable: true, bubbles: true }));
+    }
+  });
+  briefingInquiryForm?.addEventListener("submit", (event) => {
+    event.preventDefault();
+    if (typeof YBAudio !== "undefined") YBAudio.emitHook("ui_submit");
+    const data = new FormData(event.currentTarget);
+    const text = (data.get("text") ?? "").trim();
+    presentation.setDraft(context, "");
+    submitTurn("natural", () => yellowBeast.submitNatural({ world_id: current.world.id, mode: current.mode, text }));
+  });
+  app.querySelectorAll("[data-object-action]").forEach((item) => item.addEventListener("click", () => { if (typeof YBAudio !== "undefined") { YBAudio.emitHook("ui_select"); } submitTurn("structured", () => yellowBeast.submitAction({ world_id:current.world.id, mode:current.mode, action:item.dataset.objectAction, target:item.dataset.objectTarget })); }));
   form?.addEventListener("submit", (event) => { event.preventDefault(); if (typeof YBAudio !== "undefined") YBAudio.emitHook("ui_submit"); const data = new FormData(form); submitTurn("structured", () => yellowBeast.submitAction({ world_id:current.world.id, mode:current.mode, action:data.get("action"), target:data.get("target") || null })); });
   const naturalForm = document.querySelector("#natural-form");
   const naturalInput = naturalForm?.querySelector("textarea, input[name='text']");
@@ -693,8 +847,9 @@ function play(message = "", state = "") {
     });
   });
   const commsForm = document.querySelector("#q4-comms-form");
+  const commsRoot = commsForm?.closest?.(".communications-surface") ?? commsForm;
   const updateChannelSwitch = (channelVal) => {
-    const selector = commsForm?.querySelector(".mechanical-channel-selector");
+    const selector = commsRoot?.querySelector(".mechanical-channel-selector");
     if (!selector) return;
     const isStandard = channelVal === "standard";
     selector.dataset.channelCurrent = isStandard ? "standard" : "local";
@@ -702,14 +857,16 @@ function play(message = "", state = "") {
     if (track) track.textContent = isStandard ? "[■■□□]" : "[□□■■]";
     selector.querySelector(".switch-standard")?.classList.toggle("active", isStandard);
     selector.querySelector(".switch-local")?.classList.toggle("active", !isStandard);
+    const target = selector.querySelector('[name="target"]');
+    if (target) target.disabled = isStandard;
   };
-  commsForm?.querySelector('[name="channel"]')?.addEventListener("change", (event) => {
+  commsRoot?.querySelector('[name="channel"]')?.addEventListener("change", (event) => {
     if (typeof YBAudio !== "undefined") YBAudio.emitHook("ui_toggle");
     updateChannelSwitch(event.target.value);
   });
-  commsForm?.querySelectorAll(".switch-slot").forEach((slot) => {
+  commsRoot?.querySelectorAll(".switch-slot").forEach((slot) => {
     slot.addEventListener("click", () => {
-      const select = commsForm.querySelector('[name="channel"]');
+      const select = commsRoot.querySelector('[name="channel"]');
       if (!select || select.disabled) return;
       const targetVal = slot.classList.contains("switch-standard") ? "standard" : "local";
       const option = select.querySelector(`option[value="${targetVal}"]`);
@@ -731,8 +888,16 @@ function play(message = "", state = "") {
     event.preventDefault();
     const data = new FormData(commsForm);
     const channel = data.get("channel");
+    const target = channel === "local" ? (data.get("target") || null) : null;
+    const text = data.get("text");
+    const contextKey = `${current.world.id}:${channel}:${target ?? "broadcast"}`;
+    if (!current.pendingCommunication || current.pendingCommunication.text !== text || current.pendingCommunication.context !== contextKey) {
+      current.pendingCommunication = { id: crypto.randomUUID(), context: contextKey, text };
+    }
+    const requestId = current.pendingCommunication.id;
     submitTurn("communication", async () => {
-      const res = await yellowBeast.submitQ4Communication({ world_id:current.world.id, channel, target:null, text:data.get("text") });
+      const res = await yellowBeast.submitQ4Communication({ world_id:current.world.id, channel, target, text, request_id: requestId, submission_id: requestId });
+      if (current.pendingCommunication?.id === requestId && (res.ok || !["SESSION_BUSY", "PROVIDER_UNAVAILABLE", "PERSISTENCE_COMMIT_FAILED", "DIALOGUE_RECOVERY_UNAVAILABLE"].includes(res.error?.code))) current.pendingCommunication = null;
       if (!resultIsError(res) && channel === "standard") {
         if (typeof YBAudio !== "undefined") YBAudio.emitHook("radio_tx_chirp");
       }
@@ -763,11 +928,41 @@ function play(message = "", state = "") {
   app.querySelectorAll("[data-q4-handoff]").forEach((item) => item.addEventListener("click", () => { if (typeof YBAudio !== "undefined") YBAudio.emitHook("ui_select"); submitTurn("structured", () => yellowBeast.submitQ4Handoff({ world_id:current.world.id, item_id:item.dataset.q4Handoff, target:item.dataset.q4HandoffTarget || null })); }));
   app.querySelectorAll("[data-logistics-action]").forEach((control) => control.addEventListener("click", () => { if (typeof YBAudio !== "undefined") YBAudio.emitHook("ui_select"); submitTurn("structured", () => yellowBeast.submitQ4Logistics({ world_id:current.world.id, action:control.dataset.logisticsAction, item_id:control.dataset.logisticsItem || null, container_id:control.dataset.logisticsContainerId || null, target_holder:control.dataset.logisticsHolder || null, target_container:control.dataset.logisticsContainer || null, source_item_id:control.dataset.logisticsSource || null })); }));
   app.querySelectorAll("[data-evidence-render]").forEach((item) => item.addEventListener("click", () => { if (typeof YBAudio !== "undefined") YBAudio.emitHook("ui_select"); submitTurn("presentation", () => yellowBeast.renderEvidence({ world_id:current.world.id, evidence_id:item.dataset.evidenceRender, retry:item.dataset.evidenceRetry === "true" })); }));
+  app.querySelectorAll("[data-export-report-pdf]").forEach((item) => item.addEventListener("click", async () => {
+    if (typeof YBAudio !== "undefined") YBAudio.emitHook("ui_select");
+    try {
+      const res = await (yellowBeast.chooseExportReportPdf ? yellowBeast.chooseExportReportPdf({ world_id: current.world.id }) : yellowBeast.exportReportPdf({ world_id: current.world.id }));
+      if (res?.ok) {
+        setFeedback(`Report exported to ${res.destination}`, "result");
+      } else if (res?.error?.code !== "EXPORT_CANCELLED") {
+        setFeedback(res?.error?.message ?? "Report export failed", "error");
+      }
+    } catch (err) {
+      setFeedback(`Report export failed: ${err.message}`, "error");
+    }
+  }));
+  app.querySelectorAll("[data-aeot-view]").forEach((tab) => {
+    tab.addEventListener("click", () => {
+      if (typeof YBAudio !== "undefined") YBAudio.emitHook("ui_select");
+      const targetView = tab.dataset.aeotView;
+      app.querySelectorAll("[data-aeot-view]").forEach((t) => {
+        const isActive = t === tab;
+        t.classList.toggle("active", isActive);
+        t.setAttribute("aria-selected", String(isActive));
+      });
+      app.querySelectorAll(".aeot-view-panel").forEach((panel) => {
+        const isMatch = panel.dataset.viewId === targetView || panel.id === `view-aeot-${targetView}` || panel.dataset.testid === `aeot-view-${targetView}`;
+        panel.hidden = !isMatch;
+        panel.classList.toggle("active", isMatch);
+      });
+    });
+  });
   app.querySelectorAll("[data-q4-check-in]").forEach((button) => {
     let holdActive = false;
     let holdTimer = null;
     const startHold = (e) => {
       e.preventDefault();
+      if (holdActive) return;
       holdActive = true;
       button.classList.add("check-in-holding");
       button.textContent = "Holding for Standard Check-In (2s)...";
@@ -796,7 +991,7 @@ function play(message = "", state = "") {
       submitTurn("communication", async () => {
         const res = await yellowBeast.completeQ4CheckInHold({ world_id: current.world.id });
         if (!resultIsError(res)) {
-          if (typeof YBAudio !== "undefined") YBAudio.emitHook("radio_chirp");
+          if (typeof YBAudio !== "undefined") YBAudio.emitHook("radio_tx_chirp");
         }
         return res;
       });
@@ -807,6 +1002,9 @@ function play(message = "", state = "") {
     button.addEventListener("touchend", finishHold);
     button.addEventListener("mouseleave", cancelHold);
     button.addEventListener("touchcancel", cancelHold);
+    button.addEventListener("keydown", (event) => { if ([" ", "Enter"].includes(event.key)) startHold(event); });
+    button.addEventListener("keyup", (event) => { if ([" ", "Enter"].includes(event.key)) { event.preventDefault(); finishHold(event); } });
+    button.addEventListener("blur", cancelHold);
   });
   const recap = document.querySelector("#recap-panel"); if (recap) { recap.open = presentation.panel(context) === "recap"; recap.addEventListener("toggle", () => presentation.setPanel(context, recap.open ? "recap" : "")); }
   document.querySelector("[data-guidance-dismiss]")?.addEventListener("click", async () => { current.guidanceDismissed = true; await yellowBeast.updateSettings({ settings:{ guided_introductions:false } }); play(message, state); });
@@ -828,6 +1026,13 @@ async function submitTurn(kind, request) {
     return;
   }
   if (!requestGate.settle(token, context)) return;
+  if (result.error?.code === "THRESHOLD_NONFUNCTIONAL") {
+    const refreshed = await yellowBeast.getGameplayProjection({ world_id:context.worldId, mode:context.mode });
+    if (requestContext().worldId !== context.worldId || requestContext().mode !== context.mode) return;
+    if (refreshed.ok && refreshed.projection?.catastrophic_ending?.active) {
+      current.projection = refreshed.projection; play(); return;
+    }
+  }
   if (resultIsError(result)) {
     if (typeof YBAudio !== "undefined") YBAudio.emitHook("ui_error");
     // Provider failures are application feedback. Do not disguise them as
@@ -836,29 +1041,56 @@ async function submitTurn(kind, request) {
     play(applicationError(result) ? YBInteraction.applicationMessage() : sanitizePlayerMessage(result.error?.message ?? YBInteraction.simulationMessage()), applicationError(result) ? "application-error" : "simulation-result");
     return;
   }
+  const previousEvidence = new Set((current.projection?.q4?.evidence ?? []).map(item => item.id));
   const prevPhase = current.projection?.phase?.phase_id;
   current.projection = result.projection;
   if (result.result?.scene) current.projection.scene = result.result.scene;
   const nextPhase = current.projection?.phase?.phase_id;
-  if (prevPhase && nextPhase && prevPhase !== nextPhase) {
-    playCeremonialPhaseAudio(prevPhase, nextPhase);
+  const newPhotograph = (current.projection?.q4?.evidence ?? []).some(item => !previousEvidence.has(item.id) && /photo|camera/i.test(`${item.type} ${item.method} ${item.device}`));
+  if (newPhotograph && typeof YBAudio !== "undefined") YBAudio.playCameraClick();
+  const isCrossing = (prevPhase !== "FIELD_OPERATION" && nextPhase === "FIELD_OPERATION");
+  const cinematicPlayer = (typeof YBCinematicPlayer !== "undefined")
+    ? YBCinematicPlayer
+    : ((typeof window !== "undefined" && window.YBCinematicPlayer)
+    ? window.YBCinematicPlayer
+    : (typeof globalThis !== "undefined" && globalThis.YBCinematicPlayer)
+    ? globalThis.YBCinematicPlayer
+    : null);
+
+  const completeTransition = () => {
+    if (prevPhase && nextPhase && prevPhase !== nextPhase) {
+      playCeremonialPhaseAudio(prevPhase, nextPhase);
+    }
+    // Apply acoustic scene derived from canonical simulation state
+    applyAcousticScene(current.projection?.acoustic_scene);
+    const message = renderMessage(result, kind === "natural");
+    if (kind === "structured" || result.result?.executed) presentation.clearDraft(context);
+    const assistance = result.result?.language_assistance?.message;
+    play(`${message}${assistance ? ` ${assistance}` : ""}`.trim(), "result");
+  };
+
+  if (isCrossing && cinematicPlayer && typeof cinematicPlayer.playCinematic === "function") {
+    cinematicPlayer.playCinematic({
+      container: (typeof app !== "undefined" ? app : null),
+      placeholderId: "THRESHOLD_CROSSING_ENTRY_4",
+      testId: "threshold-crossing-cinematic",
+      surfaceClass: "cinematic-surface threshold-crossing-surface",
+      videoClass: "cinematic-video-element",
+      onComplete: () => {
+        completeTransition();
+      }
+    });
+    return;
   }
-  // Apply acoustic scene derived from canonical simulation state
-  applyAcousticScene(current.projection?.acoustic_scene);
-  const message = renderMessage(result, kind === "natural");
-  const saved = kind === "structured" || result.result?.executed ? " Saved." : "";
-  if (kind === "structured" || result.result?.executed) presentation.clearDraft(context);
-  const assistance = result.result?.language_assistance?.message;
-  play(`${message}${saved}${assistance ? ` ${assistance}` : ""}`, "result");
+
+  completeTransition();
 }
 function applyAcousticScene(scene) {
   if (typeof YBAudio === "undefined" || !scene) return;
-  // Fire active cues derived from canonical state (phenomenon proximity, phase, environment)
-  for (const cue of scene.active_cues ?? []) {
-    if (cue && typeof cue === "string") YBAudio.emitHook(cue);
-  }
-  // Apply music cue if one is scheduled this turn
-  if (scene.music_cue) YBAudio.emitHook(scene.music_cue);
+  YBAudio.applyScene(scene);
+  // Transmission cues are emitted by the accepted communication handlers.
+  // Replaying a projection must not replay historical radio events.
+
 }
 
 function playCeremonialPhaseAudio(fromPhase, toPhase) {
@@ -870,13 +1102,12 @@ function playCeremonialPhaseAudio(fromPhase, toPhase) {
     YBAudio.emitHook("lpmds_bed");
   } else if (toPhase === "THRESHOLD") {
     YBAudio.emitHook("lpmds_bed");
-    YBAudio.emitHook("threshold_cross_hum");
   } else if (toPhase === "STANDARD_RADIO_CHECK") {
     YBAudio.emitHook("radio_rx_cue");
   } else if (toPhase === "FIELD_OPERATION") {
     YBAudio.emitHook("threshold_cross_hum");
     YBAudio.emitHook("complex_hum");
-    YBAudio.emitHook("complex_music");
+
   } else if (toPhase === "RETURN") {
     YBAudio.emitHook("threshold_beacon");
   } else if (toPhase === "REPORT") {
@@ -894,12 +1125,43 @@ function showTerminationPortal() {
   portal.setAttribute("role", "dialog");
   portal.setAttribute("aria-modal", "true");
   portal.setAttribute("aria-labelledby", "termination-heading");
-  portal.innerHTML = `<div class="termination-dialog"><p class="eyebrow">A-SYNC PROTOCOL KV31-C · FIELD SESSION TERMINATION</p><h2 id="termination-heading">Institutional Consequence Warning</h2><p class="termination-consequence">Unreturned field personnel, unresolved equipment, and uncommitted survey telemetry will be recorded under protocol exception. The operational session will close and career accountability will be finalized.</p><div class="termination-actions"><button type="button" class="action-button primary-action" data-action="cancel-termination">[RETURN TO EXPEDITION]</button><button type="button" class="action-button danger-action" data-action="confirm-termination">[CONFIRM SESSION TERMINATION]</button></div></div>`;
+  portal.innerHTML = `<div class="termination-dialog"><p class="eyebrow">ASYNC PROTOCOL KV31-C · FIELD SESSION TERMINATION</p><h2 id="termination-heading">Institutional Consequence Warning</h2><p class="termination-consequence">Current expedition has not completed return protocol. Personnel remain beyond threshold. Unreturned field personnel, unresolved equipment, and uncommitted survey telemetry will be recorded under protocol exception. The operational session will close and career accountability will be finalized.</p><div class="termination-actions"><button type="button" class="action-button primary-action" data-action="cancel-termination">[RETURN TO EXPEDITION]</button><button type="button" class="action-button danger-action" data-action="confirm-termination">[CONFIRM SESSION TERMINATION]</button></div></div>`;
   app.appendChild(portal);
   portal.querySelector('[data-action="cancel-termination"]')?.focus();
 }
+function showExitGameConfirmation() {
+  const existing = document.querySelector(".exit-game-portal");
+  if (existing) return;
+  if (typeof YBAudio !== "undefined") YBAudio.emitHook("ui_panel_open");
+  const portal = document.createElement("div");
+  portal.className = "exit-game-portal";
+  portal.dataset.testid = "exit-game-dialog";
+  portal.setAttribute("data-testid", "exit-game-dialog");
+  portal.setAttribute("role", "dialog");
+  portal.setAttribute("aria-modal", "true");
+  portal.setAttribute("aria-labelledby", "exit-game-heading");
+  portal.innerHTML = `<div class="exit-game-dialog" data-testid="exit-game-dialog"><p class="eyebrow">ASYNC · FIELD OPERATIONS SYSTEM</p><h2 id="exit-game-heading">Exit Voices of the Threshold</h2><p class="exit-game-warning">Are you sure you want to close the application? All persistent records and operational settings remain preserved.</p><div class="exit-game-actions"><button type="button" class="action-button" data-action="cancel-exit" data-testid="cancel-exit-button">Cancel</button><button type="button" class="action-button danger-action" data-action="confirm-exit" data-testid="confirm-exit-button">Exit game</button></div></div>`;
+  app.appendChild(portal);
+  portal.querySelector('[data-action="cancel-exit"]')?.focus();
+}
 function renderProviderManagement(entries) {
-  return `<section class="provider-manager" aria-labelledby="provider-manager-heading"><h2 id="provider-manager-heading">Saved AI providers</h2><p>Store one key per provider. AUTO tries Groq → Gemini → OpenRouter → OpenAI, skipping unavailable providers. A hosted failure never counts as live AI success.</p><p>Model access, usage limits, and costs depend on each provider and account.</p><button type="button" data-provider-auto>Use AUTO fallbacks</button><div class="provider-cards">${entries.map(entry => `<article class="provider-card" data-provider-id="${escape(entry.id)}"><h3>${escape(entry.label)}</h3><p>${entry.configured ? "Key available · ••••••••" : "No usable key"}</p><p>${escape(entry.status)}</p><details><summary>View details</summary><dl><dt>Model</dt><dd>${escape(entry.model)}</dd><dt>Storage</dt><dd>${entry.persistent ? "Encrypted on this device" : entry.session_only ? "This session only" : entry.environment ? "Environment variable" : entry.saved ? "Stored key could not be opened" : "No saved key"}</dd><dt>Last successful response</dt><dd>${entry.last_success ? escape(new Date(entry.last_success).toLocaleString()) : "Not observed this session"}</dd></dl></details><div class="provider-card-actions"><button type="button" data-provider-edit="${escape(entry.id)}">${entry.configured ? "Replace key / edit model" : "Add key"}</button><button type="button" data-provider-test="${escape(entry.id)}" ${entry.configured ? "" : "disabled"}>Test connection</button><button type="button" data-provider-delete="${escape(entry.id)}" ${entry.saved || entry.session_only ? "" : "disabled"}>Delete saved key</button></div></article>`).join("")}</div><p id="provider-manager-message" role="status" aria-live="polite"></p></section>`;
+  const localEntry = entries.find(e => e.kind === "local");
+  const applianceState = (localEntry?.last_success || localEntry?.status?.includes("response received") || localEntry?.status === "ready")
+    ? "Ready"
+    : (localEntry?.last_failure === "LOCAL_MODEL_MISSING" || localEntry?.status?.includes("missing"))
+    ? "Repair Required"
+    : (localEntry?.last_failure === "UNSUPPORTED")
+    ? "Unsupported"
+    : (localEntry?.status?.includes("Installing"))
+    ? "Installing"
+    : "Not Installed";
+  const cards = entries.map(entry => {
+    if (entry.kind === "local") {
+      return `<article class="provider-card local-model-card" data-provider-id="local"><header class="provider-card-header"><div><p class="eyebrow">LOCAL RUNTIME</p><h3>${escape(entry.label)}</h3></div><span class="badge badge-${applianceState.toLowerCase().replace(/\s+/g, '-')}">${escape(applianceState)}</span></header><p>No API key · requests stay on this device (127.0.0.1)</p><p class="provider-status-text">${escape(entry.status)}</p><details><summary>View details</summary><dl><dt>Model</dt><dd>${escape(entry.model)}</dd><dt>Endpoint</dt><dd>${escape(entry.endpoint)}</dd><dt>Security</dt><dd>127.0.0.1 loopback only · no LAN</dd><dt>Last successful response</dt><dd>${entry.last_success ? escape(new Date(entry.last_success).toLocaleString()) : "Not observed this session"}</dd></dl></details><div class="provider-card-actions"><button type="button" data-provider-use-local>Use local model</button><button type="button" data-local-edit>Configure local model</button><button type="button" data-provider-test="local">Test local model</button></div></article>`;
+    }
+    return `<article class="provider-card" data-provider-id="${escape(entry.id)}"><h3>${escape(entry.label)}</h3><p>${entry.configured ? "Key available · ••••••••" : "No usable key"}</p><p>${escape(entry.status)}</p><details><summary>View details</summary><dl><dt>Model</dt><dd>${escape(entry.model)}</dd><dt>Storage</dt><dd>${entry.persistent ? "Encrypted on this device" : entry.session_only ? "This session only" : entry.environment ? "Environment variable" : entry.saved ? "Stored key could not be opened" : "No saved key"}</dd><dt>Last successful response</dt><dd>${entry.last_success ? escape(new Date(entry.last_success).toLocaleString()) : "Not observed this session"}</dd></dl></details><div class="provider-card-actions"><button type="button" data-provider-edit="${escape(entry.id)}">${entry.configured ? "Replace key / edit model" : "Add key"}</button><button type="button" data-provider-test="${escape(entry.id)}" ${entry.configured ? "" : "disabled"}>Test connection</button><button type="button" data-provider-delete="${escape(entry.id)}" ${entry.saved || entry.session_only ? "" : "disabled"}>Delete saved key</button></div></article>`;
+  }).join("");
+  return `<section class="provider-manager" aria-labelledby="provider-manager-heading"><h2 id="provider-manager-heading">Language model providers</h2><p>The local option uses Ollama on this device and needs no API key. AUTO tries configured hosted providers in order. A failed request never counts as live model success.</p><p>Hosted model access, usage limits, and costs depend on each provider and account.</p><button type="button" data-provider-auto>Use AUTO hosted fallbacks</button><div class="provider-cards">${cards}</div><p id="provider-manager-message" role="status" aria-live="polite"></p></section>`;
 }
 const settingsController = { state: "closed", opener: null, mounted: null, returnTo: null };
 async function settings(invoker = document.activeElement, feedback = "", editProvider = null) {
@@ -909,76 +1171,256 @@ async function settings(invoker = document.activeElement, feedback = "", editPro
   let result;
   try { result = await yellowBeast.getSettings(); } catch (_) { settingsController.state = "open"; app.innerHTML = `<section class="shell narrow" data-testid="settings-error"><p class="eyebrow">SETTINGS</p><h1>Settings unavailable</h1><p class="error">Presentation preferences could not be loaded. Your saved records were not changed.</p>${button("Back", "home")}</section>`; return; }
   if (resultIsError(result) || !result.settings) { settingsController.state = "open"; app.innerHTML = `<section class="shell narrow" data-testid="settings-error"><p class="eyebrow">SETTINGS</p><h1>Settings unavailable</h1><p class="error">${escape(result?.error?.message ?? "Presentation preferences could not be loaded.")}</p>${button("Back", "home")}</section>`; return; }
+  const isDev = current.developer === true;
   const configured = result.provider?.openai?.configured === true; const groqConfigured = result.provider?.groq?.configured === true; const geminiConfigured = result.provider?.gemini?.configured === true; const openrouterConfigured = result.provider?.openrouter?.configured === true; applyPreferences(result.settings); current.settingsReturn = current.mode && current.projection ? () => play("Settings closed.", "result") : home;
-  app.innerHTML = `<section class="shell narrow settings-surface" data-testid="settings-surface"><header><div><p class="eyebrow">APPLICATION SETTINGS</p><h1>Presentation and access</h1><p>These preferences affect presentation only; no world state is changed.</p></div><button type="button" data-action="close-settings">Close settings</button></header>${renderProviderManagement(result.provider.entries ?? [])}<form id="settings"><section class="settings-group"><h2>Interaction</h2><label>Input mode <select name="input_mode"><option value="structured">Structured controls</option><option value="natural">Natural language</option></select></label><label>Presentation provider <select name="provider"><option value="offline">Offline deterministic</option><option value="openai" ${configured || result.settings.provider === "openai" ? "" : "disabled"}>OpenAI ${configured ? "" : "(configure below)"}</option><option value="auto">AUTO (Recommended)</option><option value="groq" ${groqConfigured || result.settings.provider === "groq" ? "" : "disabled"}>Groq ${groqConfigured ? "" : "(configure below)"}</option><option value="gemini" ${geminiConfigured || result.settings.provider === "gemini" ? "" : "disabled"}>Google Gemini ${geminiConfigured ? "" : "(configure below)"}</option><option value="openrouter" ${openrouterConfigured || result.settings.provider === "openrouter" ? "" : "disabled"}>OpenRouter ${openrouterConfigured ? "" : "(configure below)"}</option></select></label></section><section class="settings-group"><h2>Accessibility</h2><label>Theme <select name="theme"><option value="system">System</option><option value="high-contrast">High contrast</option></select></label><label>Text scale <select name="text_scale"><option value="default">Default</option><option value="large">Large</option><option value="extra-large">Extra large</option></select></label><label><input type="checkbox" name="reduced_motion"> Reduce motion</label><label><input type="checkbox" name="guided_introductions"> Show contextual guidance</label></section><section class="settings-group visual-settings"><h2>Field media rendering</h2><label><input type="checkbox" name="visual_rendering"> Visual rendering enabled</label><label><input type="checkbox" name="automatic_evidence_rendering"> Automatic evidence rendering</label><label>Adapter <select name="visual_adapter"><option value="fallback">Offline fallback</option><option value="comfyui">Local ComfyUI (optional)</option><option value="hosted">Hosted adapter (optional)</option></select></label><label>Quality <select name="visual_quality"><option value="documentary">Documentary</option><option value="detailed">Detailed</option></select></label><label><input type="checkbox" name="retry_failed_renders"> Retry failed renders</label><p>Rendering is presentation-only. Evidence records and gameplay continue offline.</p></section><div class="settings-actions"><button type="submit">Save and apply</button>${button("Reset to defaults", "reset-preferences")}<button type="button" data-action="close-settings">Close without changes</button></div><p id="settings-message" role="status" aria-live="polite"></p></form><form id="openai"><h2>Model &amp; Provider Credentials</h2><p class="credential-intro">Add or replace a saved key below. Saving a key is separate from Save and apply above. Stored keys stay masked in the provider list.</p><label>Provider <select name="credential_provider"><option value="groq">Groq${groqConfigured ? " · Configured" : ""}</option><option value="gemini">Google Gemini${geminiConfigured ? " · Configured" : ""}</option><option value="openrouter">OpenRouter${openrouterConfigured ? " · Configured" : ""}</option><option value="openai">OpenAI${configured ? " · Configured" : ""}</option></select></label><label>API key <input name="api_key" type="password" autocomplete="off" placeholder="Paste access key"></label><label>Model <input name="model" value="${escape(result.settings.openai_model ?? "")}" placeholder="Default configured model"></label><label><input type="checkbox" name="auto_after_save" checked> Use AUTO fallbacks after saving</label><div class="credential-actions">${button("Save access key", "submit")}<button type="button" data-provider-save-model>Save model only</button>${button("Remove selected key", "remove-key")}</div></form></section>`;
-  settingsController.state = "open"; settingsController.mounted = app.querySelector("[data-testid=settings-surface]");
+  let appliance = {
+    state: "NOT_INSTALLED",
+    message: "Ready to install on-device language model.",
+    installed: false,
+    is_ready: false,
+    endpoint: null,
+    hardware: { arch: "arm64", memory_gb: 16, supported: true },
+    progress: 0,
+    stage: null
+  };
+  try {
+    if (yellowBeast.getInferenceApplianceStatus) {
+      const appRes = await yellowBeast.getInferenceApplianceStatus();
+      if (appRes?.ok && appRes.appliance) appliance = appRes.appliance;
+    }
+  } catch {}
+  const applianceState = appliance.state || "NOT_INSTALLED";
+
+  const providerManagerMarkup = isDev ? renderProviderManagement(result.provider.entries ?? []) : "";
+  const localModelMarkup = isDev ? `<section class="settings-group local-model-settings" id="local-model-settings" data-testid="local-appliance-card" data-appliance-state="${escape(applianceState)}"><div class="appliance-status-banner"><div><p class="eyebrow">ON-DEVICE RUNTIME</p><h2>MANAGED LOCAL INFERENCE</h2></div><span class="badge badge-${escape(applianceState.toLowerCase().replace(/_/g, '-'))}">${escape(applianceState.replace(/_/g, ' '))}</span></div><p class="appliance-isolation-note">Yellow Beast connects only to a private on-device interpreter on <code>127.0.0.1</code>. No network service is exposed, no LAN communication is accepted, and all observations remain observer-safe and validated before presentation.</p>${appliance.endpoint ? `<p class="appliance-endpoint">Active loopback endpoint: <code>${escape(appliance.endpoint)}</code></p>` : ""}${appliance.message ? `<p class="appliance-message">${escape(appliance.message)}</p>` : ""}<div class="appliance-actions">${applianceState === "NOT_INSTALLED" ? `<button type="button" class="primary-action" data-appliance-action="install">Install Managed Local Model</button>` : ""}${applianceState === "INSTALLING" ? `<p class="appliance-progress">Installing (${appliance.progress || 0}%): ${escape(appliance.stage || "downloading")}...</p><button type="button" data-appliance-action="cancel">Cancel Installation</button>` : ""}${applianceState === "READY" ? `<button type="button" class="primary-action" data-appliance-action="test">Test Local Model Prompt</button><button type="button" data-appliance-action="remove">Remove Local Model</button>` : ""}${applianceState === "REPAIR_REQUIRED" ? `<button type="button" class="primary-action" data-appliance-action="repair">Repair Installation</button><button type="button" data-appliance-action="remove">Remove Local Model</button>` : ""}${applianceState === "UNSUPPORTED" ? `<p class="error">Hardware requirements not met. Minimum 6GB RAM and 2.5GB disk required.</p>` : ""}</div><details class="advanced-diagnostics" data-testid="appliance-diagnostics" open><summary>Advanced Diagnostics &amp; Runtime Configuration</summary><div class="advanced-diagnostics-body"><dl class="diagnostics-summary-grid"><div><dt>Active Runtime</dt><dd>On-Device Loopback Inference</dd></div><div><dt>Security Enclave</dt><dd>127.0.0.1 Loopback Only · No 0.0.0.0 · No LAN</dd></div><div><dt>Hardware Arch</dt><dd>${escape(appliance.hardware?.arch || "arm64")}</dd></div><div><dt>Memory Available</dt><dd>${appliance.hardware?.memory_gb ? `${appliance.hardware.memory_gb} GB` : "Adequate"}</dd></div><div><dt>Endpoint</dt><dd>${escape(appliance.endpoint || "127.0.0.1:<ephemeral-port>")}</dd></div><div><dt>Context Limit</dt><dd>2048 Tokens</dd></div><div><dt>Execution Timeout</dt><dd>30,000 ms</dd></div></dl><label>Local address <input name="local_endpoint" value="${escape(result.settings.local_endpoint || appliance.endpoint || "")}" placeholder="http://127.0.0.1:11434"></label><label>Local model <input name="local_model" value="${escape(result.settings.local_model || appliance.model || "")}" placeholder="qwen3.5:9b"></label><p class="muted">Recommended for Apple silicon: qwen3.5:9b. Canonical simulation validates every interpretation before commit.</p></div></details></section>` : "";
+
+  const interactionMarkup = isDev
+    ? `<section class="settings-group"><h2>Interaction</h2><label>Input mode <select name="input_mode"><option value="structured">Structured controls</option><option value="natural">Natural language</option></select></label><label>Language provider <select name="provider"><option value="offline">Offline deterministic</option><option value="local">Local model · Ollama</option><option value="openai" ${configured || result.settings.provider === "openai" ? "" : "disabled"}>OpenAI ${configured ? "" : "(configure below)"}</option><option value="auto">AUTO hosted providers</option><option value="groq" ${groqConfigured || result.settings.provider === "groq" ? "" : "disabled"}>Groq ${groqConfigured ? "" : "(configure below)"}</option><option value="gemini" ${geminiConfigured || result.settings.provider === "gemini" ? "" : "disabled"}>Google Gemini ${geminiConfigured ? "" : "(configure below)"}</option><option value="openrouter" ${openrouterConfigured || result.settings.provider === "openrouter" ? "" : "disabled"}>OpenRouter ${openrouterConfigured ? "" : "(configure below)"}</option></select></label></section>`
+    : `<section class="settings-group"><h2>Interaction</h2><label>Input mode <select name="input_mode"><option value="structured">Structured controls</option><option value="natural">Natural language</option></select></label><input type="hidden" name="provider" value="${escape(result.settings.provider || "offline")}"></section>`;
+
+  const openaiMarkup = isDev
+    ? `<form id="openai"><h2>Hosted model credentials</h2><p class="credential-intro">Add or replace a saved key below. Saving a key is separate from Save and apply above. Stored keys stay masked in the provider list.</p><label>Provider <select name="credential_provider"><option value="groq">Groq${groqConfigured ? " · Configured" : ""}</option><option value="gemini">Google Gemini${geminiConfigured ? " · Configured" : ""}</option><option value="openrouter">OpenRouter${openrouterConfigured ? " · Configured" : ""}</option><option value="openai">OpenAI${configured ? " · Configured" : ""}</option></select></label><label>API key <input name="api_key" type="password" autocomplete="off" placeholder="Paste access key"></label><label>Model <input name="model" value="${escape(result.settings.openai_model ?? "")}" placeholder="Default configured model"></label><label><input type="checkbox" name="auto_after_save" checked> Use AUTO fallbacks after saving</label><div class="credential-actions">${button("Save access key", "submit")}<button type="button" data-provider-save-model>Save model only</button>${button("Remove selected key", "remove-key")}</div></form>`
+    : "";
+
+  const audioSectionMarkup = `<section class="settings-group audio-settings"><h2>Audio</h2><div class="audio-setting-row"><label><input type="checkbox" name="audio_muted"> Mute all audio</label><span class="audio-value-display" id="audio-mute-val">${result.settings.audio_muted ? "MUTED" : "ACTIVE"}</span></div><div class="audio-setting-row"><label>SFX Volume <input type="range" name="audio_sfx" min="0" max="1" step="0.05" value="${escape(result.settings.audio_sfx ?? 0.8)}"></label><span class="audio-value-display" id="audio-sfx-val">${Math.round((result.settings.audio_sfx ?? 0.8) * 100)}%</span></div><div class="audio-setting-row"><label>Music Volume <input type="range" name="audio_music" min="0" max="1" step="0.05" value="${escape(result.settings.audio_music ?? 0.7)}"></label><span class="audio-value-display" id="audio-music-val">${Math.round((result.settings.audio_music ?? 0.7) * 100)}%</span></div></section>`;
+
+  app.innerHTML = `<section class="shell narrow settings-surface" data-testid="settings-surface"><header><div><p class="eyebrow">APPLICATION SETTINGS</p><h1>Presentation and access</h1><p>These preferences affect presentation only; no world state is changed.</p></div><button type="button" data-action="close-settings">Close settings</button></header>${providerManagerMarkup}<form id="settings">${interactionMarkup}${localModelMarkup}<section class="settings-group"><h2>Accessibility</h2><label>Theme <select name="theme"><option value="system">System</option><option value="high-contrast">High contrast</option></select></label><label>Text scale <select name="text_scale"><option value="default">Default</option><option value="large">Large</option><option value="extra-large">Extra large</option></select></label><label><input type="checkbox" name="reduced_motion"> Reduce motion</label><label><input type="checkbox" name="guided_introductions"> Show contextual guidance</label></section><section class="settings-group visual-settings"><h2>Field media rendering</h2><label><input type="checkbox" name="visual_rendering"> Visual rendering enabled</label><label><input type="checkbox" name="automatic_evidence_rendering"> Automatic evidence rendering</label><label>Adapter <select name="visual_adapter"><option value="fallback">Offline fallback</option><option value="comfyui">Local ComfyUI (optional)</option><option value="hosted">Hosted adapter (optional)</option></select></label><label>Quality <select name="visual_quality"><option value="documentary">Documentary</option><option value="detailed">Detailed</option></select></label><label><input type="checkbox" name="retry_failed_renders"> Retry failed renders</label><p>Rendering is presentation-only. Evidence records and gameplay continue offline.</p></section>${audioSectionMarkup}<div class="settings-actions"><button type="submit">Save and apply</button>${button("Reset to defaults", "reset-preferences")}<button type="button" data-action="close-settings">Close without changes</button></div><p id="settings-message" role="status" aria-live="polite"></p></form>${openaiMarkup}</section>`;
+
+  app.querySelectorAll("button:disabled, option:disabled").forEach((item) => item.remove());
+  const offlineOption = app.querySelector('select[name="provider"] option[value="offline"]');
+  if (offlineOption) offlineOption.textContent = "Embedded ASync interpreter · zero configuration";
+  settingsController.state = "open";
+  settingsController.mounted = app.querySelector("[data-testid=settings-surface]");
   const form = document.querySelector("#settings");
-  const control = (name) => form.querySelector(`[name="${name}"]`); const inputMode = control("input_mode"); const provider = control("provider"); const theme = control("theme"); const textScale = control("text_scale"); const reducedMotion = control("reduced_motion"); const guided = control("guided_introductions");
-  inputMode.value = result.settings.input_mode; provider.value = result.settings.provider; theme.value = result.settings.theme; textScale.value = result.settings.text_scale; reducedMotion.checked = Boolean(result.settings.reduced_motion); guided.checked = result.settings.guided_introductions !== false; control("visual_rendering").checked = result.settings.visual_rendering !== false; control("automatic_evidence_rendering").checked = result.settings.automatic_evidence_rendering !== false; control("visual_adapter").value = result.settings.visual_adapter ?? "fallback"; control("visual_quality").value = result.settings.visual_quality ?? "documentary"; control("retry_failed_renders").checked = result.settings.retry_failed_renders !== false;
-  const message = document.querySelector("#settings-message"); const preview = () => applyPreferences({ ...result.settings, theme:theme.value, text_scale:textScale.value, reduced_motion:reducedMotion.checked, guided_introductions:guided.checked }); [theme, textScale, reducedMotion, guided].forEach((item) => item.addEventListener("change", preview)); form.addEventListener("submit", async (event) => { event.preventDefault(); if (settingsController.state === "saving") return; settingsController.state = "saving"; const data = new FormData(form); form.querySelectorAll("input,select,button").forEach((item) => { item.disabled = true; }); const saved = await yellowBeast.updateSettings({ settings:{ input_mode:data.get("input_mode"), provider:data.get("provider"), theme:data.get("theme"), text_scale:data.get("text_scale"), reduced_motion:data.get("reduced_motion") === "on", guided_introductions:data.get("guided_introductions") === "on", visual_rendering:data.get("visual_rendering") === "on", automatic_evidence_rendering:data.get("automatic_evidence_rendering") === "on", visual_adapter:data.get("visual_adapter"), visual_quality:data.get("visual_quality"), retry_failed_renders:data.get("retry_failed_renders") === "on" } }); form.querySelectorAll("input,select,button").forEach((item) => { item.disabled = false; }); if (!resultIsError(saved)) { settingsController.state = "saved"; applyPreferences(saved.settings); message.textContent = "Preferences saved and applied."; } else { settingsController.state = "open"; message.textContent = saved.error.message; } });
+  const control = (name) => form.querySelector(`[name="${name}"]`);
+  const inputMode = control("input_mode");
+  const provider = control("provider");
+  const theme = control("theme");
+  const textScale = control("text_scale");
+  const reducedMotion = control("reduced_motion");
+  const guided = control("guided_introductions");
+
+  if (inputMode) inputMode.value = result.settings.input_mode;
+  if (provider) provider.value = result.settings.provider;
+  if (theme) theme.value = result.settings.theme;
+  if (textScale) textScale.value = result.settings.text_scale;
+  if (reducedMotion) reducedMotion.checked = Boolean(result.settings.reduced_motion);
+  if (guided) guided.checked = result.settings.guided_introductions !== false;
+  if (control("audio_muted")) control("audio_muted").checked = Boolean(result.settings.audio_muted);
+  if (control("audio_sfx")) control("audio_sfx").value = result.settings.audio_sfx ?? 0.8;
+  if (control("audio_music")) control("audio_music").value = result.settings.audio_music ?? 0.7;
+  if (control("local_endpoint")) control("local_endpoint").value = result.settings.local_endpoint || appliance.endpoint || "";
+  if (control("local_model")) control("local_model").value = result.settings.local_model || appliance.model || "";
+  if (control("visual_rendering")) control("visual_rendering").checked = result.settings.visual_rendering !== false;
+  if (control("automatic_evidence_rendering")) control("automatic_evidence_rendering").checked = result.settings.automatic_evidence_rendering !== false;
+  if (control("visual_adapter")) control("visual_adapter").value = result.settings.visual_adapter ?? "fallback";
+  if (control("visual_quality")) control("visual_quality").value = result.settings.visual_quality ?? "documentary";
+  if (control("retry_failed_renders")) control("retry_failed_renders").checked = result.settings.retry_failed_renders !== false;
+
+  const message = document.querySelector("#settings-message");
+  const preview = () => applyPreferences({
+    ...result.settings,
+    theme: theme ? theme.value : result.settings.theme,
+    text_scale: textScale ? textScale.value : result.settings.text_scale,
+    reduced_motion: reducedMotion ? reducedMotion.checked : result.settings.reduced_motion,
+    guided_introductions: guided ? guided.checked : result.settings.guided_introductions,
+    audio_muted: control("audio_muted") ? control("audio_muted").checked : result.settings.audio_muted,
+    audio_sfx: control("audio_sfx") ? Number(control("audio_sfx").value) : result.settings.audio_sfx,
+    audio_music: control("audio_music") ? Number(control("audio_music").value) : result.settings.audio_music
+  });
+
+  [theme, textScale, reducedMotion, guided].filter(Boolean).forEach((item) => item.addEventListener("change", preview));
+
+  const sfxCtrl = control("audio_sfx");
+  const musicCtrl = control("audio_music");
+  const muteCtrl = control("audio_muted");
+  sfxCtrl?.addEventListener("input", () => {
+    const span = document.querySelector("#audio-sfx-val");
+    if (span) span.textContent = `${Math.round(Number(sfxCtrl.value) * 100)}%`;
+    preview();
+  });
+  musicCtrl?.addEventListener("input", () => {
+    const span = document.querySelector("#audio-music-val");
+    if (span) span.textContent = `${Math.round(Number(musicCtrl.value) * 100)}%`;
+    preview();
+  });
+  muteCtrl?.addEventListener("change", () => {
+    const span = document.querySelector("#audio-mute-val");
+    if (span) span.textContent = muteCtrl.checked ? "MUTED" : "ACTIVE";
+    preview();
+  });
+
+  form.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    if (settingsController.state === "saving") return;
+    settingsController.state = "saving";
+    const data = new FormData(form);
+    form.querySelectorAll("input,select,button").forEach((item) => { item.disabled = true; });
+    const saved = await yellowBeast.updateSettings({
+      settings: {
+        input_mode: data.get("input_mode") || result.settings.input_mode,
+        provider: data.get("provider") || result.settings.provider || "offline",
+        local_endpoint: data.get("local_endpoint") || result.settings.local_endpoint || "",
+        local_model: data.get("local_model") || result.settings.local_model || "",
+        theme: data.get("theme") || result.settings.theme,
+        text_scale: data.get("text_scale") || result.settings.text_scale,
+        reduced_motion: data.get("reduced_motion") === "on",
+        guided_introductions: data.get("guided_introductions") === "on",
+        audio_muted: data.get("audio_muted") === "on",
+        audio_sfx: Number(data.get("audio_sfx") ?? 0.8),
+        audio_music: Number(data.get("audio_music") ?? 0.7),
+        visual_rendering: data.get("visual_rendering") === "on",
+        automatic_evidence_rendering: data.get("automatic_evidence_rendering") === "on",
+        visual_adapter: data.get("visual_adapter") || "fallback",
+        visual_quality: data.get("visual_quality") || "documentary",
+        retry_failed_renders: data.get("retry_failed_renders") === "on"
+      }
+    });
+    form.querySelectorAll("input,select,button").forEach((item) => { item.disabled = false; });
+    if (!resultIsError(saved)) {
+      settingsController.state = "saved";
+      applyPreferences(saved.settings);
+      message.textContent = "Preferences saved and applied.";
+    } else {
+      settingsController.state = "open";
+      message.textContent = saved.error.message;
+    }
+  });
+
   const mountedSettings = settingsController.mounted;
   const stillInSettings = () => mountedSettings.isConnected && settingsController.mounted === mountedSettings;
-  const managerMessage = document.querySelector("#provider-manager-message");
-  managerMessage.textContent = feedback;
-  const credentialForm = document.querySelector("#openai");
-  const credentialProvider = credentialForm.querySelector('[name="credential_provider"]');
-  const modelControl = credentialForm.querySelector('[name="model"]');
-  credentialProvider.value = editProvider ?? (result.provider.entries.some(item => item.id === result.settings.provider) ? result.settings.provider : "groq");
-  const loadProviderModel = () => {
-    const entry = (result.provider.entries ?? []).find(item => item.id === credentialProvider.value);
-    modelControl.value = entry?.model ?? "";
-    credentialForm.querySelector('[name="api_key"]').value = "";
-  };
-  credentialProvider.addEventListener("change", loadProviderModel); loadProviderModel();
-  app.querySelectorAll("[data-provider-edit]").forEach(item => item.addEventListener("click", () => {
-    credentialProvider.value = item.dataset.providerEdit; loadProviderModel();
-    credentialForm.scrollIntoView({ block:"center" }); credentialForm.querySelector('[name="api_key"]').focus();
-  }));
-  app.querySelectorAll("[data-provider-test]").forEach(item => item.addEventListener("click", async () => {
-    item.disabled = true; managerMessage.textContent = "Testing the selected provider with a small request…";
-    try { const tested = await yellowBeast.testProvider({ provider:item.dataset.providerTest, live:true }); if (stillInSettings()) await settings(undefined, tested.ok ? tested.message : tested.error.message, credentialProvider.value); }
-    catch { managerMessage.textContent = "Connection test could not finish. Retry when the service is available."; item.disabled = false; }
-  }));
-  const deleteProviderKey = async providerId => {
-    const removed = await yellowBeast.removeProviderKey({ provider:providerId });
-    if (stillInSettings()) await settings(undefined, removed.ok ? (removed.configured ? "Saved key removed; an environment credential is still available." : "Saved key deleted. Other provider keys were preserved.") : removed.error.message, credentialProvider.value);
-  };
-  app.querySelectorAll("[data-provider-delete]").forEach(item => item.addEventListener("click", () => deleteProviderKey(item.dataset.providerDelete)));
-  credentialForm.querySelector('[data-action="remove-key"]').addEventListener("click", () => deleteProviderKey(credentialProvider.value));
-  app.querySelector("[data-provider-auto]").addEventListener("click", async () => {
-    const saved = await yellowBeast.updateSettings({ settings:{ provider:"auto",input_mode:"natural" } });
-    if (stillInSettings()) await settings(undefined, saved.ok ? "AUTO fallback order enabled. Only configured hosted providers can interpret live turns." : saved.error.message, credentialProvider.value);
-  });
-  app.querySelector("[data-provider-save-model]").addEventListener("click", async () => {
-    const saved = await yellowBeast.updateSettings({ settings:{ [`${credentialProvider.value}_model`]:modelControl.value.trim() } });
-    if (stillInSettings()) await settings(undefined, saved.ok ? "Model saved for the selected provider. Use Test connection to verify it." : saved.error.message, credentialProvider.value);
-  });
-  document.querySelector("#openai").addEventListener("submit", async (event) => {
-    event.preventDefault();
-    const data = new FormData(event.currentTarget);
-    const targetProvider = data.get("credential_provider") || "openai";
-    const apiKey = data.get("api_key");
-    const model = data.get("model") || null;
-    let saved;
-    if (targetProvider === "openai") {
-      saved = await yellowBeast.configureOpenAI({ api_key: apiKey, model, activate:false });
-    } else {
-      saved = await yellowBeast.configureProvider({ provider: targetProvider, api_key: apiKey, model, activate:false });
+
+  if (isDev) {
+    const managerMessage = document.querySelector("#provider-manager-message");
+    if (managerMessage) managerMessage.textContent = feedback;
+    const credentialForm = document.querySelector("#openai");
+    if (credentialForm) {
+      const credentialProvider = credentialForm.querySelector('[name="credential_provider"]');
+      const modelControl = credentialForm.querySelector('[name="model"]');
+      const hostedProviderIds = new Set(["groq", "gemini", "openrouter", "openai"]);
+      credentialProvider.value = hostedProviderIds.has(editProvider) ? editProvider : (hostedProviderIds.has(result.settings.provider) ? result.settings.provider : "groq");
+      const loadProviderModel = () => {
+        const entry = (result.provider.entries ?? []).find(item => item.id === credentialProvider.value);
+        modelControl.value = entry?.model ?? "";
+        credentialForm.querySelector('[name="api_key"]').value = "";
+      };
+      credentialProvider.addEventListener("change", loadProviderModel); loadProviderModel();
+      app.querySelectorAll("[data-provider-edit]").forEach(item => item.addEventListener("click", () => {
+        credentialProvider.value = item.dataset.providerEdit; loadProviderModel();
+        credentialForm.scrollIntoView({ block:"center" }); credentialForm.querySelector('[name="api_key"]').focus();
+      }));
+      const deleteProviderKey = async providerId => {
+        const removed = await yellowBeast.removeProviderKey({ provider:providerId });
+        if (stillInSettings()) await settings(undefined, removed.ok ? (removed.configured ? "Saved key removed; an environment credential is still available." : "Saved key deleted. Other provider keys were preserved.") : removed.error.message, credentialProvider.value);
+      };
+      app.querySelectorAll("[data-provider-delete]").forEach(item => item.addEventListener("click", () => deleteProviderKey(item.dataset.providerDelete)));
+      credentialForm.querySelector('[data-action="remove-key"]')?.addEventListener("click", () => deleteProviderKey(credentialProvider.value));
+      app.querySelector("[data-provider-auto]")?.addEventListener("click", async () => {
+        const saved = await yellowBeast.updateSettings({ settings:{ provider:"auto",input_mode:"natural" } });
+        if (stillInSettings()) await settings(undefined, saved.ok ? "AUTO fallback order enabled. Only configured hosted providers can interpret live turns." : saved.error.message, credentialProvider.value);
+      });
+      app.querySelector("[data-provider-save-model]")?.addEventListener("click", async () => {
+        const saved = await yellowBeast.updateSettings({ settings:{ [`${credentialProvider.value}_model`]:modelControl.value.trim() } });
+        if (stillInSettings()) await settings(undefined, saved.ok ? "Model saved for the selected provider. Use Test connection to verify it." : saved.error.message, credentialProvider.value);
+      });
+      document.querySelector("#openai").addEventListener("submit", async (event) => {
+        event.preventDefault();
+        const data = new FormData(event.currentTarget);
+        const targetProvider = data.get("credential_provider") || "openai";
+        const apiKey = data.get("api_key");
+        const model = data.get("model") || null;
+        let saved;
+        if (targetProvider === "openai") {
+          saved = await yellowBeast.configureOpenAI({ api_key: apiKey, model, activate:false });
+        } else {
+          saved = await yellowBeast.configureProvider({ provider: targetProvider, api_key: apiKey, model, activate:false });
+        }
+        message.textContent = saved.ok ? `${targetProvider === "openai" ? "Access" : targetProvider} key stored. It is never shown here again.` : saved.error.message;
+        if (saved.ok) {
+          credentialForm.querySelector('[name="api_key"]').value = "";
+          if (data.get("auto_after_save") === "on") await yellowBeast.updateSettings({ settings:{ provider:"auto",input_mode:"natural" } });
+          if (stillInSettings()) await settings(undefined, `Key stored for ${targetProvider}. ${saved.provider.persistent ? "Encrypted storage is active." : "Key is available for this session only."} Use Test connection to verify it.`, targetProvider);
+        }
+      });
     }
-    message.textContent = saved.ok ? `${targetProvider === "openai" ? "Access" : targetProvider} key stored. It is never shown here again.` : saved.error.message;
-    if (saved.ok) {
-      credentialForm.querySelector('[name="api_key"]').value = "";
-      if (data.get("auto_after_save") === "on") await yellowBeast.updateSettings({ settings:{ provider:"auto",input_mode:"natural" } });
-      if (stillInSettings()) await settings(undefined, `Key stored for ${targetProvider}. ${saved.provider.persistent ? "Encrypted storage is active." : "Key is available for this session only."} Use Test connection to verify it.`, targetProvider);
-    }
-  });
+    app.querySelector("[data-local-edit]")?.addEventListener("click", () => {
+      document.querySelector("#local-model-settings")?.scrollIntoView({ block:"center" });
+      control("local_model")?.focus();
+    });
+    app.querySelector("[data-provider-use-local]")?.addEventListener("click", () => {
+      if (provider) {
+        provider.value = "local";
+        provider.dispatchEvent(new Event("change", { bubbles:true }));
+        message.textContent = "Local model selected. Save and apply to use it for language turns.";
+        provider.focus();
+      }
+    });
+    app.querySelectorAll("[data-provider-test]").forEach(item => item.addEventListener("click", async () => {
+      item.disabled = true;
+      const mm = document.querySelector("#provider-manager-message");
+      if (mm) mm.textContent = "Testing the selected provider with a small request…";
+      try { const tested = await yellowBeast.testProvider({ provider:item.dataset.providerTest, live:true }); if (stillInSettings()) await settings(undefined, tested.ok ? tested.message : tested.error.message, item.dataset.providerTest === "local" ? null : document.querySelector('#openai [name="credential_provider"]')?.value); }
+      catch { if (mm) mm.textContent = "Connection test could not finish. Retry when the service is available."; item.disabled = false; }
+    }));
+    app.querySelectorAll("[data-appliance-action]").forEach((btn) => {
+      btn.addEventListener("click", async () => {
+        const action = btn.dataset.applianceAction;
+        btn.disabled = true;
+        if (action === "install") {
+          const card = app.querySelector('[data-testid="local-appliance-card"]');
+          if (card) {
+            card.dataset.applianceState = "INSTALLING";
+            const badge = card.querySelector(".appliance-status-banner .badge");
+            if (badge) {
+              badge.textContent = "INSTALLING";
+              badge.className = "badge badge-installing";
+            }
+          }
+          const res = await yellowBeast.installInferenceAppliance();
+          if (stillInSettings()) await settings(undefined, res?.ok ? "Managed local model installed." : (res?.error?.message ?? "Install failed"));
+        } else if (action === "cancel") {
+          await yellowBeast.cancelInferenceApplianceInstall();
+          if (stillInSettings()) await settings(undefined, "Installation cancelled.");
+        } else if (action === "repair") {
+          const res = await yellowBeast.repairInferenceAppliance();
+          if (stillInSettings()) await settings(undefined, res?.ok ? "Repair successful." : (res?.error?.message ?? "Repair failed"));
+        } else if (action === "remove") {
+          const res = await yellowBeast.removeInferenceAppliance();
+          if (stillInSettings()) await settings(undefined, res?.ok ? "Local model removed." : (res?.error?.message ?? "Remove failed"));
+        } else if (action === "test") {
+          const res = await yellowBeast.testProvider({ provider: "local", live: true });
+          if (stillInSettings()) await settings(undefined, res?.ok ? res.message : (res?.error?.message ?? "Connection test failed"));
+        }
+      });
+    });
+  }
   form.querySelector("select, input, button")?.focus({ preventScroll:true });
 }
 function about() { requestGate.invalidate(); app.innerHTML = `<section class="shell narrow"><p class="eyebrow">ABOUT · UNOFFICIAL</p><h1>Yellow Beast</h1><p>An unofficial persistent, shared-world field experience inspired by institutional horror. It works offline, with optional language assistance.</p><p>Worlds are saved in your application data folder; normal play never requires a terminal. Yellow Beast is not an official ASYNC or Kane Pixels product.</p>${button("Back", "home")}</section>`; }
 document.addEventListener("click", async (event) => { const action = event.target.dataset.action; if (!action) return; if (typeof YBAudio !== "undefined") YBAudio.emitHook("ui_select"); if (action === "developer") { developerConsole(); return; } if (action === "renderer-retry") { settingsController.state = "closed"; if (rendererDiagnostics.surface === "settings") settings(event.target); else home(); return; } if (action === "home") { home(); return; }
 else if (action === "personnel-confirm-continue") {
   const confirmed = await yellowBeast.confirmQ4Personnel({ world_id:current.world.id });
-  if (!resultIsError(confirmed)) enterMode("field-researcher");
+  if (!resultIsError(confirmed)) aeotInitialization();
   return;
 }
 else if (action === "leave") {
@@ -1013,79 +1455,26 @@ else if (action === "confirm-termination") {
   return;
 } else if (action === "confirm-exit") {
   if (typeof YBAudio !== "undefined") YBAudio.emitHook("ui_submit");
-  yellowBeast.exitApplication();
+  document.querySelector(".exit-game-portal")?.remove();
+  if (window.yellowBeast?.exitApplication) {
+    await yellowBeast.exitApplication();
+  } else if (typeof window.close === "function") {
+    window.close();
+  }
   return;
 } else if (action === "close-settings") { settingsController.state = "closing"; const opener = settingsController.opener; const returnTo = current.settingsReturn ?? home; current.settingsReturn = null; returnTo(); settingsController.state = "closed"; queueMicrotask(() => opener?.isConnected && opener.focus()); } else if (action === "new") newWorld(); else if (action === "import") { const imported = await yellowBeast.chooseImportWorld(); if (resultIsError(imported) && imported.error.code !== "IMPORT_CANCELLED") alert(imported.error.message); home(); } else if (action === "settings") settings(event.target); else if (action === "about") about(); else if (action === "reset-preferences") { const saved = await yellowBeast.updateSettings({ settings:{ theme:"system", text_scale:"default", reduced_motion:false, guided_introductions:true } }); if (!resultIsError(saved)) applyPreferences(saved.settings); settings(event.target); } else if (action === "refresh-view") { const context = requestContext(); const refreshed = await yellowBeast.getGameplayProjection({ world_id:context.worldId, mode:context.mode }); if (!resultIsError(refreshed) && requestContext().worldId === context.worldId && requestContext().mode === context.mode && event.target.isConnected) { current.projection = refreshed.projection; play("Current view refreshed.", "result"); } } else if (action.startsWith("rename:")) { const worldId = action.slice(7); const isLocked = event.target.closest("li")?.dataset.hasFiledPersonnel === "true"; if (isLocked) { alert("This field file is registered to permanent personnel and cannot be renamed."); return; } const prior = event.target.closest("li")?.dataset.worldName ?? ""; const name = prompt("Rename this world. This changes only its library name.", prior); if (name !== null) { const renamed = await yellowBeast.renameWorld({ world_id:worldId, name }); if (resultIsError(renamed)) alert(renamed.error.message); home(); } } else if (action.startsWith("restore:")) { const restored = await yellowBeast.restoreBackup({ world_id:action.slice(8), confirmed:confirm("Restore the previous save? Recent changes may be lost.") }); if (!resultIsError(restored)) selectWorld(action.slice(8)); else alert(restored.error.message); } else if (action.startsWith("export:")) { const result = await yellowBeast.chooseExportWorld({ world_id: action.slice(7) }); if (resultIsError(result) && result.error.code !== "EXPORT_CANCELLED") alert(result.error.message); } else if (action.startsWith("delete:")) { const worldId = action.slice(7); const name = event.target.closest("li")?.dataset.worldName ?? "this world"; if (confirm(`Delete “${name}” and its saved sessions? This cannot be undone.`)) { const deleted = await yellowBeast.deleteWorld({ world_id:worldId, confirmed:true }); if (resultIsError(deleted)) alert(result.error.message); home(); } } else if (action.startsWith("diagnostic:")) { const result = await yellowBeast.exportTesterReport({ world_id:action.slice(11), mode:"field-researcher" }); alert(resultIsError(result) ? result.error.message : `Diagnostic record exported to ${result.file}. Credentials and provider keys are omitted.`); } else if (action.startsWith("world:")) selectWorld(action.slice(6)); else if (action.startsWith("mode:")) enterMode(action.slice(5)); });
-function showExitGameConfirmation() {
-  document.querySelector(".exit-game-portal")?.remove();
-  const portal = document.createElement("div");
-  portal.className = "exit-game-portal";
-  portal.setAttribute("role", "dialog");
-  portal.setAttribute("aria-modal", "true");
-  portal.setAttribute("aria-labelledby", "exit-game-heading");
-  portal.innerHTML = `<div class="exit-game-dialog" data-testid="exit-game-dialog"><p class="eyebrow">ASYNC · TERMINAL SESSION</p><h2 id="exit-game-heading">Exit Voices of the Threshold?</h2><p class="exit-consequence">Unsaved field progress is preserved in the active operational record. The application will close.</p><div class="exit-actions"><button type="button" class="action-button secondary-action" data-action="cancel-exit" autofocus>CANCEL</button><button type="button" class="action-button primary-action danger-action" data-action="confirm-exit">CONFIRM APPLICATION EXIT</button></div></div>`;
-  document.body.appendChild(portal);
-  portal.querySelector('[data-action="cancel-exit"]')?.focus();
-}
 document.addEventListener("keydown", (event) => { if (event.key === "Escape" && document.querySelector(".exit-game-portal")) { event.preventDefault(); document.querySelector('[data-action="cancel-exit"]')?.click(); return; } if (event.key === "Escape" && document.querySelector(".termination-portal")) { event.preventDefault(); document.querySelector('[data-action="cancel-termination"]')?.click(); return; } if (event.key === "Escape" && document.querySelector("[data-testid=settings-surface]")) { event.preventDefault(); document.querySelector("[data-action=close-settings]")?.click(); return; } if (event.altKey && event.key === ",") { event.preventDefault(); settings(); return; } if (event.key === "Escape" && document.querySelector('[data-testid="world-library"]') && !document.querySelector(".exit-game-portal") && !document.querySelector("[data-testid=settings-surface]") && !document.querySelector(".termination-portal")) { event.preventDefault(); showExitGameConfirmation(); return; } if (!current.projection || event.target.matches("input, textarea, select, button")) return; const recap = document.querySelector("#recap-panel"); if (event.key === "?" && recap) { event.preventDefault(); recap.open = true; recap.querySelector("summary")?.focus({ preventScroll:true }); } else if (event.key === "Escape" && recap?.open) { event.preventDefault(); recap.open = false; focusNaturalInput(); } });
 function boot() { const bypass = window.__YB_TEST_BYPASS_BOOT__ === true || /(?:bypass-boot|test-mode)/i.test(window.location.search + window.location.hash); if (bypass) { home(); return; } app.innerHTML = `<section class="cold-launch" data-testid="cold-launch" role="status" aria-live="polite"><span class="loading-animation" aria-label="Loading"></span></section>`; window.setTimeout(showTitleCard, 900); }
+let titlePlayback = null;
 async function showTitleCard() {
+  titlePlayback?.cancel();
   const [info, preferences] = await Promise.all([yellowBeast.getAppInfo(), yellowBeast.getSettings()]);
   if (typeof YBAudio !== "undefined") YBAudio.stopAll();
   applyPreferences(preferences.settings);
   if (typeof YBAudio !== "undefined") YBAudio.startMenuMusic(info.app.menu_music);
-  app.innerHTML = `<section class="title-card title-materializing" data-testid="title-card" tabindex="0"><div class="title-wipe-shutter" aria-hidden="true"></div><img src="../assets/icon-source/ASYNC_Logo.png" class="title-logo" alt="ASYNC" draggable="false"><h1>VOICES OF THE THRESHOLD</h1><p class="title-subtitle">A Kane Pixels' Backrooms Simulacrum</p><small>PRESS ANYTHING</small></section>`;
-
-  let isMaterialized = false;
-  let gate1Acknowledged = false;
-  let gate1HandledAt = 0;
-  let gate2Dismissing = false;
-  const card = app.querySelector(".title-card");
-
-  const materializationTimer = window.setTimeout(() => {
-    if (!isMaterialized) {
-      isMaterialized = true;
-      card?.classList.remove("title-materializing");
-      card?.classList.add("title-materialized");
-    }
-  }, 2200);
-
-  const handleTitleInput = (e) => {
-    if (e.type === "keydown" && (e.repeat || ["Tab", "Shift", "Control", "Alt", "Meta"].includes(e.key))) return;
-    const now = Date.now();
-
-    if (!gate1Acknowledged) {
-      window.clearTimeout(materializationTimer);
-      isMaterialized = true;
-      gate1Acknowledged = true;
-      gate1HandledAt = now;
-      card?.classList.remove("title-materializing");
-      card?.classList.add("title-materialized");
-      card?.classList.add("title-acknowledged");
-      const promptEl = card?.querySelector("small");
-      if (promptEl) {
-        promptEl.textContent = "PRESS AGAIN TO CONTINUE";
-        promptEl.classList.add("prompt-acknowledged");
-      }
-      if (typeof YBAudio !== "undefined") YBAudio.emitHook("ui_select", { gain: 1.5 });
-      return;
-    }
-
-    if (now - gate1HandledAt < 120) return;
-    if (gate2Dismissing) return;
-    gate2Dismissing = true;
-    window.removeEventListener("keydown", handleTitleInput);
-    window.removeEventListener("pointerdown", handleTitleInput);
-    if (typeof YBAudio !== "undefined") YBAudio.emitHook("ui_submit", { gain: 1.5 });
-    card?.classList.add("title-dismissing");
-    const dismissDelay = window.__YB_TEST_FAST_FADE__ === true ? 0 : 450;
-    window.setTimeout(() => {
-      home();
-    }, dismissDelay);
-  };
-
-  window.addEventListener("keydown", handleTitleInput);
-  window.addEventListener("pointerdown", handleTitleInput);
-  card?.focus();
+  titlePlayback = YBTitlePlayer.play({ mount: app, onComplete: home,
+    reducedMotion: preferences.settings.reduced_motion,
+    reducedSensory: preferences.settings.reduced_sensory });
 }
+
 boot();

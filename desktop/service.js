@@ -21,6 +21,8 @@ const { ProviderPool } = require("../tools/ai-provider-pool");
 const { executeLivingTurn } = require("../tools/ai-living-turn");
 const { summarizeLanguageAssistance, failureReason } = require("./language-assistance");
 const { PROVIDER_SPECS } = require("../tools/ai-hosted-transport");
+const { LOCAL_PROVIDER_SPEC, normalizeLocalEndpoint } = require("../tools/ai-local-model-provider");
+const { ManagedInferenceAppliance } = require("../tools/managed-inference-appliance");
 const { buildLocalDialoguePacket, validateLocalDialogue } = require("../tools/ai-local-dialogue");
 const referenceExpedition = require("../tools/reference-expedition");
 const cq4Day1Opener = require("../tools/cq4-day1-opener");
@@ -68,10 +70,10 @@ const lostExperience = require("../tools/lost-experience");
 const consequenceEchoes = require("../tools/consequence-echoes");
 const { resolveAppPaths } = require("../tools/launcher-paths");
 const { CredentialStore } = require("./credentials");
-const { applicationTrack } = require("./menu-music");
 const developerInspection = require("../tools/dev-inspection");
 const packageVersion = require("../package.json").version;
 const buildInfo = require("./build-info");
+const { applicationTrack } = require("./menu-music");
 const q4BetaReport = require("../tools/q4-beta-report");
 const worldpackRegistry = require("../data/worldpacks/registry.json");
 const doctrineRuntime = require("../tools/doctrine-runtime");
@@ -84,7 +86,7 @@ const currentClearQ4 = (payload) => payload?.version === "yellow-beast-save@v9" 
 const hasCurrentEnvironment = (payload) => payload?.spatial?.environment?.version === environment.VERSION;
 const hasCurrentStandardOperator = (world) => world?.q4_standard_operator?.version === standardOperator.VERSION;
 const MODES = Object.freeze(worldpackRegistry.programs.map((program) => Object.freeze({ ...program, label: program.program_name, playable: program.availability === "available" })));
-const DEFAULT_SETTINGS = Object.freeze({ version: 5, input_mode: "structured", provider: "offline", theme: "system", text_scale:"default", reduced_motion: false, reduced_sensory: false, audio_muted: false, audio_master: 0.35, audio_interface: 0.35, audio_radio: 0.35, audio_ambient: 0.25, guided_introductions: true, reopen_last_world: true, mode_onboarding: {}, visual_rendering: true, visual_adapter: "fallback", visual_quality: "documentary", automatic_evidence_rendering: true, retry_failed_renders: true, media_effect_intensity: "restrained", comfyui_endpoint: "http://127.0.0.1:8188", comfyui_workflow: "observer-safe-q4-evidence" });
+const DEFAULT_SETTINGS = Object.freeze({ version: 7, input_mode: "natural", provider: "offline", local_endpoint:LOCAL_PROVIDER_SPEC.defaultEndpoint, local_model:LOCAL_PROVIDER_SPEC.defaultModel, theme: "system", text_scale:"default", reduced_motion: false, reduced_sensory: false, audio_muted: false, audio_master: 0.35, audio_sfx: 0.35, audio_music: 0.25, audio_interface: 0.35, audio_radio: 0.35, audio_ambient: 0.25, guided_introductions: false, reopen_last_world: true, mode_onboarding: {}, visual_rendering: true, visual_adapter: "fallback", visual_quality: "documentary", automatic_evidence_rendering: true, retry_failed_renders: true, media_effect_intensity: "restrained", comfyui_endpoint: "http://127.0.0.1:8188", comfyui_workflow: "observer-safe-q4-evidence" });
 // Non-Q4 language is deliberately a small phrase-to-existing-control adapter.
 // It cannot invent a target or capability: recognised phrases only select an
 // action already available in the active, observer-safe session.
@@ -122,6 +124,7 @@ class DesktopService {
     this.now = typeof nowFn === "function" ? nowFn : () => Date.now();
     this.checkInHolds = new Map();
     this.paths.media ??= path.join(this.paths.root, "media");
+    this.paths.exports ??= path.join(this.paths.root, "exports");
     this.metadataFile = path.join(this.paths.root, "desktop-worlds.json");
     this.settingsFile = path.join(this.paths.root, "desktop-settings.json");
     this.logger = logger ?? (() => {});
@@ -129,10 +132,12 @@ class DesktopService {
     this.developerMode = developerMode === true;
     this.sessions = new Map();
     this.naturalTurnInflight = new Map();
+    this.communicationTurnInflight = new Map();
     this.naturalCommandContext = new AsyncLocalStorage();
+    this.transactionContext = this.naturalCommandContext;
     this.recovery = new Map();
     this.recoveredWorlds = new Map();
-    [this.paths.root, this.paths.worlds, this.paths.saves, this.paths.logs, this.paths.media].forEach(ensureDirectory);
+    [this.paths.root, this.paths.worlds, this.paths.saves, this.paths.logs, this.paths.media, this.paths.exports].forEach(ensureDirectory);
     this.evidenceMedia = new evidenceMedia.EvidenceMediaRenderer({ media_root:this.paths.media, providers:evidenceMediaProviders });
     this.evidenceRenderInflight = new Map();
     this.interpretationProvenance = [];
@@ -147,6 +152,10 @@ class DesktopService {
       settingsGetter: () => this.settings(),
       onInvocation: (event) => this.recordProviderInvocation(event),
       onProvenance: (summary) => this.recordAttemptChain(summary)
+    });
+    this.inferenceAppliance = new ManagedInferenceAppliance({
+      appDataPath: this.paths.root,
+      logger: (msg) => this.log(`[InferenceAppliance] ${msg}`)
     });
   }
 
@@ -255,6 +264,8 @@ class DesktopService {
       const actualSeed = seed && typeof seed === "string" ? seed : crypto.randomUUID();
       const world = history.createWorld({ seed: actualSeed });
       cq4Day1Opener.ensureWorldOutpostGeography(world);
+      const starterPersonnel = q4Personnel.initializeStarterPersonnel(world, { seed: actualSeed, staffing_rules: cq4Day1Opener.staffingRules() });
+      if (!starterPersonnel.ok) throw Object.assign(new Error("starter personnel unavailable"), { code: starterPersonnel.code });
       const data = this.metadata();
       if (data.worlds[world.world_id]) return publicError("WORLD_ALREADY_EXISTS", "That world already exists.");
       this.saveCanonical(world); const now = new Date().toISOString(); data.worlds[world.world_id] = { name: worldName, created_at: now, last_played_at: now, last_mode: null }; data.first_run_complete = true; data.last_world_id = world.world_id; this.writeMetadata(data);
@@ -283,20 +294,90 @@ class DesktopService {
   exportWorld({ world_id, destination }) { try { const source = this.worldFile(world_id); if (!destination || !path.isAbsolute(destination)) return publicError("EXPORT_DESTINATION_INVALID", "Choose an export destination."); history.loadWorld(source); fs.copyFileSync(source, destination); return { ok: true, file: destination }; } catch (error) { return publicError("WORLD_EXPORT_FAILED", "This world could not be exported."); } }
   importWorld({ source, name = null }) { try { if (!source || !path.isAbsolute(source)) return publicError("IMPORT_SOURCE_INVALID", "Choose a world export to import."); const world = history.loadWorld(source); const data = this.metadata(); if (fs.existsSync(this.worldFile(world.world_id)) || data.worlds[world.world_id]) return publicError("WORLD_CONFLICT", "A world with this identity is already present."); this.saveCanonical(world); const now = new Date().toISOString(); data.worlds[world.world_id] = { name: friendlyName(name) ? name.trim() : world.world_id, created_at: now, last_played_at: now, last_mode: null }; this.writeMetadata(data); return { ok: true, world: this.worldInfo(world, data.worlds[world.world_id]) }; } catch { return publicError("WORLD_IMPORT_FAILED", "That export is not a compatible Yellow Beast world."); } }
   getSettings() { return { ok: true, settings: this.settings(), provider: this.getProviderStatus().provider }; }
-  updateSettings({ settings }) { if (!settings || typeof settings !== "object") return publicError("SETTINGS_INVALID", "Settings were not understood."); const next = { ...this.settings() }; if (settings.input_mode && !["structured", "natural"].includes(settings.input_mode)) return publicError("SETTINGS_INVALID", "Choose a supported input mode."); if (settings.provider && !["auto", "offline", "openai", "groq", "gemini", "openrouter"].includes(settings.provider)) return publicError("PROVIDER_CONFIGURATION_REQUIRED", "Choose offline play or configured language assistance."); if (settings.provider && !["auto", "offline"].includes(settings.provider) && settings.provider !== next.provider && !this.credentials.configured(settings.provider)) return publicError("PROVIDER_CONFIGURATION_REQUIRED", "Add an access key first, or continue offline."); if (settings.theme && !["system", "light", "dark", "high-contrast"].includes(settings.theme)) return publicError("SETTINGS_INVALID", "Choose a supported appearance."); if (settings.text_scale && !["small", "default", "large", "extra-large"].includes(settings.text_scale)) return publicError("SETTINGS_INVALID", "Choose a supported text size."); if (settings.reduced_motion !== undefined && typeof settings.reduced_motion !== "boolean") return publicError("SETTINGS_INVALID", "Reduced motion must be on or off."); if (settings.reduced_sensory !== undefined && typeof settings.reduced_sensory !== "boolean") return publicError("SETTINGS_INVALID", "Reduced sensory must be on or off."); if (settings.audio_muted !== undefined && typeof settings.audio_muted !== "boolean") return publicError("SETTINGS_INVALID", "Audio mute must be on or off."); for (const key of ["audio_master", "audio_interface", "audio_radio", "audio_ambient"]) if (settings[key] !== undefined && (!Number.isFinite(settings[key]) || settings[key] < 0 || settings[key] > 1)) return publicError("SETTINGS_INVALID", `${key} must be between 0 and 1.`); if (settings.guided_introductions !== undefined && typeof settings.guided_introductions !== "boolean") return publicError("SETTINGS_INVALID", "Guided introductions must be on or off."); if (settings.visual_adapter && !["fallback", "comfyui", "hosted"].includes(settings.visual_adapter)) return publicError("SETTINGS_INVALID", "Choose a supported visual renderer."); if (settings.visual_quality && !["documentary", "detailed"].includes(settings.visual_quality)) return publicError("SETTINGS_INVALID", "Choose a supported visual quality."); if (settings.media_effect_intensity && !["restrained", "reduced"].includes(settings.media_effect_intensity)) return publicError("SETTINGS_INVALID", "Choose a supported media effect intensity."); for (const key of ["visual_rendering", "automatic_evidence_rendering", "retry_failed_renders"]) if (settings[key] !== undefined && typeof settings[key] !== "boolean") return publicError("SETTINGS_INVALID", `${key} must be on or off.`); for (const id of Object.keys(PROVIDER_SPECS)) { const key = `${id}_model`; if (Object.hasOwn(settings,key)) { if (typeof settings[key] !== "string" || !settings[key].trim() || settings[key].length > 120) return publicError("MODEL_INVALID", "Enter a model name up to 120 characters."); if (settings[key] !== next[key]) this.providerPool.resetHealth(id); } } Object.assign(next, settings); delete next.api_key; writeJson(this.settingsFile, next); return { ok: true, settings: next };
+  updateSettings({ settings }) {
+    if (!settings || typeof settings !== "object") return publicError("SETTINGS_INVALID", "Settings were not understood.");
+    const next = { ...this.settings() };
+    if (settings.input_mode && !["structured", "natural"].includes(settings.input_mode)) return publicError("SETTINGS_INVALID", "Choose a supported input mode.");
+    if (settings.provider && !["auto", "offline", "local", "openai", "groq", "gemini", "openrouter"].includes(settings.provider)) return publicError("PROVIDER_CONFIGURATION_REQUIRED", "Choose a supported language provider.");
+    if (settings.provider && !["auto", "offline", "local"].includes(settings.provider) && settings.provider !== next.provider && !this.credentials.configured(settings.provider)) return publicError("PROVIDER_CONFIGURATION_REQUIRED", "Add an access key first, or continue offline.");
+    if (settings.theme && !["system", "light", "dark", "high-contrast"].includes(settings.theme)) return publicError("SETTINGS_INVALID", "Choose a supported appearance.");
+    if (settings.text_scale && !["small", "default", "large", "extra-large"].includes(settings.text_scale)) return publicError("SETTINGS_INVALID", "Choose a supported text size.");
+    if (settings.reduced_motion !== undefined && typeof settings.reduced_motion !== "boolean") return publicError("SETTINGS_INVALID", "Reduced motion must be on or off.");
+    if (settings.reduced_sensory !== undefined && typeof settings.reduced_sensory !== "boolean") return publicError("SETTINGS_INVALID", "Reduced sensory must be on or off.");
+    if (settings.audio_muted !== undefined && typeof settings.audio_muted !== "boolean") return publicError("SETTINGS_INVALID", "Audio mute must be on or off.");
+    for (const key of ["audio_master", "audio_sfx", "audio_music", "audio_interface", "audio_radio", "audio_ambient"]) if (settings[key] !== undefined && (!Number.isFinite(settings[key]) || settings[key] < 0 || settings[key] > 1)) return publicError("SETTINGS_INVALID", `${key} must be between 0 and 1.`);
+    if (settings.guided_introductions !== undefined && typeof settings.guided_introductions !== "boolean") return publicError("SETTINGS_INVALID", "Guided introductions must be on or off.");
+    if (settings.visual_adapter && !["fallback", "comfyui", "hosted"].includes(settings.visual_adapter)) return publicError("SETTINGS_INVALID", "Choose a supported visual renderer.");
+    if (settings.visual_quality && !["documentary", "detailed"].includes(settings.visual_quality)) return publicError("SETTINGS_INVALID", "Choose a supported visual quality.");
+    if (settings.media_effect_intensity && !["restrained", "reduced"].includes(settings.media_effect_intensity)) return publicError("SETTINGS_INVALID", "Choose a supported media effect intensity.");
+    for (const key of ["visual_rendering", "automatic_evidence_rendering", "retry_failed_renders"]) if (settings[key] !== undefined && typeof settings[key] !== "boolean") return publicError("SETTINGS_INVALID", `${key} must be on or off.`);
+    for (const id of [...Object.keys(PROVIDER_SPECS), "local"]) {
+      const key = `${id}_model`;
+      if (Object.hasOwn(settings, key)) {
+        if (typeof settings[key] !== "string" || !settings[key].trim() || settings[key].length > 120) return publicError("MODEL_INVALID", "Enter a model name up to 120 characters.");
+        if (settings[key] !== next[key]) this.providerPool.resetHealth(id);
+      }
+    }
+    if (Object.hasOwn(settings, "local_endpoint")) {
+      try { settings.local_endpoint = normalizeLocalEndpoint(settings.local_endpoint); }
+      catch (error) { return publicError(error.code ?? "LOCAL_ENDPOINT_INVALID", error.message); }
+      if (settings.local_endpoint !== next.local_endpoint) this.providerPool.resetHealth("local");
+    }
+    Object.assign(next, settings);
+    delete next.api_key;
+    writeJson(this.settingsFile, next);
+    return { ok: true, settings: next };
   }
-  getProviderStatus() { const selected = this.settings().provider ?? "offline"; const configured = this.credentials.configured("openai"); const settings = this.settings(); const media = this.evidenceMedia.status(settings); const pool = this.providerPool; return { ok: true, provider: { selected, entries:this.providerEntries(), offline: selected === "offline", openai: { configured, status: selected === "openai" ? (configured ? "ready" : "configuration-required") : "inactive" }, groq: { configured: this.credentials.configured("groq"), status: selected === "groq" ? (this.credentials.configured("groq") ? "ready" : "configuration-required") : "inactive" }, gemini: { configured: this.credentials.configured("gemini"), status: selected === "gemini" ? (this.credentials.configured("gemini") ? "ready" : "configuration-required") : "inactive" }, openrouter: { configured: this.credentials.configured("openrouter"), status: selected === "openrouter" ? (this.credentials.configured("openrouter") ? "ready" : "configuration-required") : "inactive" }, auto: { active: selected === "auto", eligible: pool ? pool.getCandidates({ preferredProvider: "auto" }) : [], health: pool ? Object.fromEntries(["groq", "gemini", "openrouter", "openai"].map((id) => [id, pool.getHealth(id)])) : {} }, local_provider: { supported: true, adapter: settings.visual_adapter, endpoint: settings.comfyui_endpoint, status: media.local.selected ? (media.local.available ? "ready" : "unavailable") : "inactive" }, evidence_media: media } }; }
+  getProviderStatus() {
+    const selected = this.settings().provider ?? "offline";
+    const configured = this.credentials.configured("openai");
+    const settings = this.settings();
+    const media = this.evidenceMedia.status(settings);
+    const pool = this.providerPool;
+    const localHealth = pool.getHealth("local");
+    const localStatus = localHealth.last_success
+      ? "ready"
+      : localHealth.last_failure_class ? "unavailable" : "not-tested";
+    return { ok:true, provider:{
+      selected,
+      entries:this.providerEntries(),
+      offline:selected === "offline",
+      local:{ configured:true, status:selected === "local" ? localStatus : "inactive", model:settings.local_model, endpoint:settings.local_endpoint },
+      openai:{ configured, status:selected === "openai" ? (configured ? "ready" : "configuration-required") : "inactive" },
+      groq:{ configured:this.credentials.configured("groq"), status:selected === "groq" ? (this.credentials.configured("groq") ? "ready" : "configuration-required") : "inactive" },
+      gemini:{ configured:this.credentials.configured("gemini"), status:selected === "gemini" ? (this.credentials.configured("gemini") ? "ready" : "configuration-required") : "inactive" },
+      openrouter:{ configured:this.credentials.configured("openrouter"), status:selected === "openrouter" ? (this.credentials.configured("openrouter") ? "ready" : "configuration-required") : "inactive" },
+      auto:{ active:selected === "auto", eligible:pool ? pool.getCandidates({ preferredProvider:"auto" }) : [], health:pool ? Object.fromEntries(["groq", "gemini", "openrouter", "openai"].map((id) => [id, pool.getHealth(id)])) : {} },
+      local_provider:{ supported:true, adapter:settings.visual_adapter, endpoint:settings.comfyui_endpoint, status:media.local.selected ? (media.local.available ? "ready" : "unavailable") : "inactive" },
+      evidence_media:media
+    } };
+  }
   async renderEvidence({ world_id, evidence_id, retry = false } = {}) { const key = `${world_id}:${evidence_id}:${retry ? "retry" : "render"}`; if (this.evidenceRenderInflight.has(key)) return this.evidenceRenderInflight.get(key); const task = this.renderEvidenceNow({ world_id, evidence_id, retry }).finally(() => this.evidenceRenderInflight.delete(key)); this.evidenceRenderInflight.set(key, task); return task; }
   async renderEvidenceNow({ world_id, evidence_id, retry = false } = {}) {
     if (this.commandBusy(world_id)) return publicError("SESSION_BUSY", "Wait for the current action to finish before changing this operation."); try { const world = this.getWorld(world_id); const record = evidenceAuthority.archive(world, { observer:"player" }).records.find((item) => item.id === evidence_id); if (!record) return publicError("EVIDENCE_UNAVAILABLE", "That evidence record is not available to this observer."); const before = clone(record); const result = await this.evidenceMedia.render({ world_id:world.world_id, record, settings:this.settings(), retry, onPresentation:(presentation) => evidenceAuthority.setPresentation(world, evidence_id, presentation) }); this.saveCanonical(world); const after = evidenceAuthority.archive(world, { observer:"player" }).records.find((item) => item.id === evidence_id); const canonicalUnchanged = JSON.stringify({ ...before, render_status:undefined, render_presentation:undefined }) === JSON.stringify({ ...after, render_status:undefined, render_presentation:undefined }); if (!canonicalUnchanged) throw new Error("evidence truth changed during media rendering"); const entry = this.session(world_id, "field-researcher") ?? this.restoreSession(world, "field-researcher", readJson(this.sessionFile(world_id, "field-researcher"), null)); return { ok:true, result:{ success:result.ok, code:result.code ?? null, presentation:result.presentation ?? null, fallback:result.fallback ?? null }, projection:entry ? this.projectionFor(world, "field-researcher", entry) : null }; } catch (error) { this.log(`evidence rendering failed: ${error.message}`); return publicError("EVIDENCE_RENDER_FAILED", "The evidence record remains available; visual rendering could not be completed."); } }
   providerEntries() {
-    return ["groq", "gemini", "openrouter", "openai"].map(id => {
+    const localHealth = this.providerPool.getHealth("local");
+    const local = {
+      id:"local",
+      kind:"local",
+      label:LOCAL_PROVIDER_SPEC.displayName,
+      model:this.providerPool.getModel("local"),
+      default_model:LOCAL_PROVIDER_SPEC.defaultModel,
+      endpoint:this.settings().local_endpoint,
+      configured:true,
+      status:localHealth.last_failure_class ? failureReason([{ attempts:[{ failure_class:localHealth.last_failure_class }] }]) : localHealth.last_success ? "Structured response received from this device" : "Configured; connection not tested",
+      last_success:localHealth.last_success,
+      last_failure:localHealth.last_failure_class,
+      cooldown_until:localHealth.cooldown_until
+    };
+    const hosted = ["groq", "gemini", "openrouter", "openai"].map(id => {
       const info = this.credentials.describe?.(id) ?? { configured:this.credentials.configured(id) };
       const health = this.providerPool.getHealth(id);
       return { id, label:PROVIDER_SPECS[id].displayName, model:this.providerPool.getModel(id), default_model:PROVIDER_SPECS[id].defaultModel,
         ...info, status:!info.configured ? "No usable key" : health.last_failure_class ? failureReason([{ attempts:[{ failure_class:health.last_failure_class }] }]) : health.last_success ? "Response received this session" : "Stored; connection not tested",
         last_success:health.last_success, last_failure:health.last_failure_class, cooldown_until:health.cooldown_until };
     });
+    return [local, ...hosted];
   }
   configureProvider({ provider = "openai", api_key, model = null, activate = true } = {}) {
     if (!Object.hasOwn(PROVIDER_SPECS, provider)) return publicError("PROVIDER_INVALID", "Choose a supported provider.");
@@ -325,7 +406,7 @@ class DesktopService {
   testProvider({ provider = null, live = false } = {}) {
     const target = provider || this.settings().provider;
     if (target === "offline") return { ok:true, status:"ready", message:"Offline deterministic play is selected. No hosted AI request was made." };
-    if (target !== "auto" && !Object.hasOwn(PROVIDER_SPECS,target)) return publicError("PROVIDER_INVALID", "Choose a supported provider.");
+    if (target !== "auto" && target !== "local" && !Object.hasOwn(PROVIDER_SPECS,target)) return publicError("PROVIDER_INVALID", "Choose a supported provider.");
     if (live) return this.testHostedProvider(target);
     return { ok:true, status:"not-tested", message:"Connection has not been tested. Use Test connection to send a small request." };
   }
@@ -342,11 +423,27 @@ class DesktopService {
           if (result?.status !== "proposal" || result?.noncanonical !== true || result?.attempts?.length !== 1 || result.attempts[0].actor?.kind !== "player" || result.attempts[0].action !== "WAIT") throw Object.assign(new Error("Invalid connection-test proposal"),{ code:"MALFORMED_RESPONSE" });
           return result;
         } });
-        return { ok:true, status:"response-received", selected_provider:result.selected_provider, message:`${PROVIDER_SPECS[result.selected_provider].displayName} returned a valid structured response. Expedition gameplay is tested separately.` };
+        const displayName = result.selected_provider === "local" ? LOCAL_PROVIDER_SPEC.displayName : PROVIDER_SPECS[result.selected_provider].displayName;
+        return { ok:true, status:"response-received", selected_provider:result.selected_provider, message:`${displayName} returned a valid structured response. Expedition gameplay is tested separately.` };
       } catch { return { ok:false, error:{ code:"PROVIDER_UNAVAILABLE", message:failureReason(executions), provider_failure:true } }; }
     })();
     this.providerTests.set(provider,task);
     try { return await task; } finally { this.providerTests.delete(provider); }
+  }
+  getInferenceApplianceStatus() {
+    return { ok: true, appliance: this.inferenceAppliance.getStatus() };
+  }
+  async installInferenceAppliance(options = {}) {
+    return await this.inferenceAppliance.install(options);
+  }
+  cancelInferenceApplianceInstall() {
+    return { ok: true, cancelled: this.inferenceAppliance.cancelInstall() };
+  }
+  async repairInferenceAppliance() {
+    return await this.inferenceAppliance.repair();
+  }
+  async removeInferenceAppliance() {
+    return await this.inferenceAppliance.remove();
   }
   renameWorld({ world_id, name }) { if (!friendlyName(name)) return publicError("WORLD_NAME_INVALID", "Choose a world name between 1 and 80 characters."); const data = this.metadata(); if (!data.worlds[world_id]) return publicError("WORLD_NOT_FOUND", "This world no longer exists."); try { const world = this.getWorld(world_id); const identity = world.q4_operations?.controlled_player; const person = identity ? history.character(world, identity) : null; if (person && world.q4_operations?.personnel_confirmation?.completed) return publicError("PERSONNEL_RECORD_LOCKED", "This field file is registered to permanent personnel and cannot be renamed."); } catch {} data.worlds[world_id].name = name.trim(); this.writeMetadata(data); return { ok: true, world: this.loadWorld({ world_id }).world }; }
   replaceRecoveryPrimaries(replacements) {
@@ -374,7 +471,7 @@ class DesktopService {
     } catch { return publicError("BACKUP_RESTORE_FAILED", "The previous save could not be restored safely."); }
   }
   exportBrokenWorld({ world_id, destination }) { try { const source = this.worldFile(world_id); if (!destination || !path.isAbsolute(destination) || !fs.existsSync(source)) return publicError("EXPORT_DESTINATION_INVALID", "Choose a destination for this world file."); fs.copyFileSync(source, destination); return { ok: true, file: destination }; } catch { return publicError("EXPORT_FAILED", "The world file could not be copied."); } }
-  getDiagnostics() { const status = this.getProviderStatus().provider; const hosted = this.interpretationProvenance.filter((record) => (record.provider_invoked || record.invocation_status) && record.provider !== "offline" && record.provider !== "deterministic-mock").at(-1); const activeProvider = status.selected; const isOffline = status.offline || activeProvider === "offline"; const providerStatus = isOffline ? "offline" : (status[activeProvider]?.status ?? (activeProvider === "auto" ? "ready" : "inactive")); const anyConfigured = Boolean(status.openai?.configured || status.groq?.configured || status.gemini?.configured || status.openrouter?.configured); return { ok: true, diagnostics: { app_version: packageVersion, platform: process.platform, provider: activeProvider, provider_status: providerStatus, hosted_ai:hosted ? { provider:hosted.provider, request_id:hosted.request_id, request_kind:hosted.request_kind, invocation_status:hosted.invocation_status, hosted_request:hosted.hosted_request === true, response_received:hosted.response_received === true, response_parsed:hosted.response_parsed === true, model:hosted.model, duration_ms:hosted.duration_ms, error_type:hosted.error_type ?? null, error_status:hosted.error_status ?? null, error_code:hosted.error_code ?? null, error_param:hosted.error_param ?? null } : { invocation_status:"not-observed", hosted_request:false, response_received:false, response_parsed:false }, evidence_media:{ pipeline_version:evidenceMedia.PIPELINE_VERSION, provider_mode:status.evidence_media.selected, provider_available:status.evidence_media.available, fallback:status.evidence_media.fallback }, environment:{ version:environment.VERSION, config_version:environment.CONFIG_VERSION, authority:"canonical-spatial-snapshot" }, save_directory: "managed application data", credentials_configured: anyConfigured, save_schema_version: SAVE_SCHEMA_VERSION, telemetry: "disabled", offline_gameplay: true } }; }
+  getDiagnostics() { const status = this.getProviderStatus().provider; const hosted = this.interpretationProvenance.filter((record) => (record.provider_invoked || record.invocation_status) && record.provider !== "offline" && record.provider !== "deterministic-mock").at(-1); const activeProvider = status.selected; const isOffline = status.offline || activeProvider === "offline"; const providerStatus = isOffline ? "offline" : (status[activeProvider]?.status ?? (activeProvider === "auto" ? "ready" : "inactive")); const anyConfigured = Boolean(status.openai?.configured || status.groq?.configured || status.gemini?.configured || status.openrouter?.configured); return { ok: true, diagnostics: { app_version: packageVersion, platform: process.platform, provider: activeProvider, provider_status: providerStatus, local_ai:{ selected:activeProvider === "local", endpoint:status.local?.endpoint, model:status.local?.model, status:status.local?.status }, hosted_ai:hosted ? { provider:hosted.provider, request_id:hosted.request_id, request_kind:hosted.request_kind, invocation_status:hosted.invocation_status, hosted_request:hosted.hosted_request === true, response_received:hosted.response_received === true, response_parsed:hosted.response_parsed === true, model:hosted.model, duration_ms:hosted.duration_ms, error_type:hosted.error_type ?? null, error_status:hosted.error_status ?? null, error_code:hosted.error_code ?? null, error_param:hosted.error_param ?? null } : { invocation_status:"not-observed", hosted_request:false, response_received:false, response_parsed:false }, evidence_media:{ pipeline_version:evidenceMedia.PIPELINE_VERSION, provider_mode:status.evidence_media.selected, provider_available:status.evidence_media.available, fallback:status.evidence_media.fallback }, environment:{ version:environment.VERSION, config_version:environment.CONFIG_VERSION, authority:"canonical-spatial-snapshot" }, save_directory: "managed application data", credentials_configured: anyConfigured, save_schema_version: SAVE_SCHEMA_VERSION, telemetry: "disabled", offline_gameplay: true } }; }
   sanitizedLogTail() { const file = path.join(this.paths.logs, "desktop.log"); try { return fs.readFileSync(file, "utf8").split(/\r?\n/).filter(Boolean).slice(-40).map((line) => redactDiagnostic(line)); } catch { return []; } }
   exportTesterReport({ world_id, mode = "field-researcher", note = null } = {}) { try { const world = this.getWorld(world_id); const loaded = this.loadSession(world, mode); const entry = this.session(world_id, mode) ?? loaded.entry ?? null; const projection = entry ? this.projectionFor(world, mode, entry) : null; const provider = this.getProviderStatus().provider; const active = provider.selected; const render_diagnostics = evidenceAuthority.archive(world, { observer:"player" }).records.map((record) => ({ evidence_id:record.id, request_id:record.render_presentation?.request_id ?? null, status:record.render_status, last_error:record.render_presentation?.last_error ?? null, artifact_reference:record.render_presentation?.artifact?.relative_path ?? null, seed:record.render_presentation?.seed ?? null, model:record.render_presentation?.provider_model ?? null, pipeline_version:record.render_presentation?.pipeline_version ?? null })); const environment_diagnostics = environment.diagnostics(world.q4_geography?.environment, entry?.run?.spatial?.player_location ?? null); const phenomenon_diagnostics=phenomenonEcology.diagnostics(world); const recent_public_events=developerInspection.recentHistory(world).filter((item)=>!String(item.type).startsWith("q4.phenomenon.")); const input = { world, session: projection, provider: { selected: provider.selected, offline: provider.offline, configured: Boolean(provider.openai?.configured || provider.groq?.configured || provider.gemini?.configured || provider.openrouter?.configured), status: provider.offline ? "offline" : (provider[active]?.status ?? (active === "auto" ? "ready" : "inactive")), evidence_media:provider.evidence_media }, interpretation_provenance: this.interpretationProvenance, doctrine: { source: doctrineRuntime.SOURCE, sha256: doctrineRuntime.read().sha256, priority: "constitutional" }, render_diagnostics, environment_diagnostics, phenomenon_diagnostics, note, save_schema_version: SAVE_SCHEMA_VERSION, recent_public_events, logs: this.sanitizedLogTail(), recovery: { world: this.recoveryStatus(world_id, "world"), session: this.recoveryStatus(world_id, mode) } }; const safeInput = redactDiagnostic(input); const report = q4BetaReport.report(safeInput); const file = q4BetaReport.writeReport(this.paths.logs, safeInput); return { ok: true, file, report }; } catch { return publicError("TESTER_REPORT_FAILED", "The diagnostic record could not be exported safely."); } }
   serializeSession(world, mode, entry) { const phase = entry.phase ?? phases.createPhase({ mode, guided: this.settings().guided_introductions !== false }); if (entry.kind === "bootstrap") return { version: 7, schema: SAVE_SCHEMA_VERSION, mode, kind: entry.kind, legacy_flow: entry.legacy_flow === true, phase, payload: bootstrap.saveRun(entry.run) }; if (entry.kind === "lost") return { version: 7, schema: SAVE_SCHEMA_VERSION, mode, kind: entry.kind, phase, payload: clone(entry.run) }; return { version: 7, schema: SAVE_SCHEMA_VERSION, mode, kind: entry.kind, phase, payload: clone(entry) }; }
@@ -430,6 +527,16 @@ class DesktopService {
     for (const member of expedition.team?.members ?? []) { const person = history.character(world, member.personnel_id ?? member.id); if (!person) continue; const memberStatus = String(member.status ?? "").toLowerCase(); const memberCondition = String(member.condition ?? "").toLowerCase(); const observerOnly = ["normal","uninjured"].includes(memberCondition) && ["unavailable","missing"].includes(memberStatus); if (["missing","dead"].includes(person.status)) { if (!consequenceRuntime.PERSONNEL_STATUSES.has(memberStatus) || !new Set([...consequenceRuntime.PERSONNEL_CONDITIONS,"normal","recovering","deceased"]).has(memberCondition)) throw Object.assign(new Error("invalid terminal personnel observation state"), { code:"SESSION_PERSONNEL_STATE_INVALID" }); continue; } if (observerOnly) continue; const checked = consequenceRuntime.validatePersonnelSnapshot(member); if (!checked.ok) throw Object.assign(new Error("invalid session personnel authority state"), { code:checked.code }); const changed = person.status !== checked.status || String(person.condition).toLowerCase() !== checked.condition; person.status = checked.status; person.condition = checked.condition; if (changed) history.event(world, entry.run.run_id, "q4.personnel.condition.changed", { identity: person.identity, status: person.status, condition: person.condition, interval: expedition.clock.interval }, "authoritative-operational-consequence"); }
     for (const message of expedition.messages ?? []) { if (message.intended_recipient !== "Standard" || !["delivered", "acknowledged"].includes(message.state) || message.institutional_recorded) continue; const recordId = `q4-delivered-communication-${message.id}`; history.event(world, entry.run.run_id, "q4.communication.reported", { message_id: message.id, endpoint: "Standard", purpose: message.purpose, status: message.state, interval: message.delivered_at }); history.recordInstitutional(world, entry.run.run_id, recordId, { channel: "standard", purpose: message.purpose, report: message.text, status: message.state, source_message: message.id, delivered_at: message.delivered_at }); if (message.geography_report === true && entry.run.survey_frontier) surveyFrontier.report(entry.run.survey_frontier, message.sender, { at: message.delivered_at ?? expedition.clock?.interval ?? 0, message_id: message.id }); for (const evidenceId of message.evidence_ids ?? []) { history.recordInstitutional(world, entry.run.run_id, `institutional-evidence-${evidenceId}`, { evidence_id: evidenceId, source_message: message.id, status: "reported" }); evidenceAuthority.report(world, evidenceId, message.id); } message.institutional_recorded = recordId; }
     if (entry.run.survey_frontier) world.q4_survey_frontier = clone(entry.run.survey_frontier);
+    if (entry.run.expedition?.day1_opener?.catastrophic_ending) {
+      world.q4_operations ??= {};
+      world.q4_operations.terminal_outcome ??= {
+        run_id: entry.run.run_id,
+        outcome: "catastrophic-failure",
+        reason: "Post-1:00 PM operational cutoff exceeded Complex-side. Trapped personnel.",
+        asset_id: entry.run.expedition.day1_opener.catastrophic_ending.asset_id ?? "ending.catastrophic.newspaper",
+        at: new Date().toISOString()
+      };
+    }
   }
   adoptPersistencePair(world, entry, committed) {
     for (const key of Object.keys(world)) delete world[key]; Object.assign(world, committed.world);
@@ -468,12 +575,15 @@ class DesktopService {
     this.saveSession(world.world_id, mode, serialized, { validateOnly:true });
     return retired;
   }
-  startSession({ world_id, mode, seed = null, require_personnel = false, scenario = null }) {
-    if (this.commandBusy(world_id)) return publicError("SESSION_BUSY", "Wait for the current action to finish before changing this operation.");
+  startSession({ world_id, mode, seed = null, require_personnel = false, scenario = null, force = false }) {
+    if (!force && this.commandBusy(world_id)) return publicError("SESSION_BUSY", "Wait for the current action to finish before changing this operation.");
     try { const world = this.getWorld(world_id); if (outcomes.isRetired(world)) return publicError("WORLD_RETIRED", "This world is a read-only historical record."); const descriptor = this.getMode(mode); if (!descriptor) return publicError("MODE_INVALID", "Choose one of the available roles."); let entry;
       if (mode === "field-researcher") {
         if (require_personnel && !world.q4_operations?.controlled_player) return publicError("PERSONNEL_CREATION_REQUIRED", "Create your ASYNC personnel record before receiving an assignment.");
-        const requestedScenario = cq4Day1Opener.isOpener(scenario) || (scenario == null && cq4Day1Opener.isOpener(this.defaultQ4Scenario))
+        const hasCompletedOpener = Object.values(world.runs ?? {}).some(r => cq4Day1Opener.isOpener(r.scenario) && r.status === "completed") ||
+                                   Object.values(world.q4_missions ?? {}).some(m => m.id?.startsWith("CQ4-DAY1") && m.status === "completed");
+        const defaultOpener = cq4Day1Opener.isOpener(this.defaultQ4Scenario) && !hasCompletedOpener;
+        const requestedScenario = cq4Day1Opener.isOpener(scenario) || (scenario == null && defaultOpener)
           ? "day1-opener"
           : (scenario === "reference-expedition" || (scenario == null && this.defaultQ4Scenario === "reference-expedition") ? "reference-expedition" : "procedural-survey");
         const runSeed = seed ?? world.seed ?? "desktop";
@@ -482,47 +592,14 @@ class DesktopService {
         standardOperator.ensure(world, started.run.run_id);
         entry = { kind: "bootstrap", run: started.run, legacy_flow: false, phase: phases.createPhase({ mode, guided: this.settings().guided_introductions !== false }) };
         bootstrap.setSpatialPhase(entry.run, entry.phase.phase_id);
-        if (cq4Day1Opener.isOpener(requestedScenario)) {
-          const now = new Date();
-          const monthNames = ["JANUARY", "FEBRUARY", "MARCH", "APRIL", "MAY", "JUNE", "JULY", "AUGUST", "SEPTEMBER", "OCTOBER", "NOVEMBER", "DECEMBER"];
-          const dateStr = `${monthNames[now.getMonth()]} ${now.getDate()}, 1994 BRIEFING`;
-          if (!cq4Day1Opener.isOneShotConsumed(entry.run, "briefing_date_card")) {
-            presentationBus.emit(entry.run, {
-              type: "opener_briefing_card",
-              source: presentationBus.SOURCES.AUTHORED,
-              title: dateStr,
-              text: dateStr,
-              metadata: { briefing_title: dateStr, physical_room_voice: true }
-            });
-            cq4Day1Opener.markOneShotConsumed(entry.run, "briefing_date_card");
-          }
-          const members = entry.run.expedition?.team?.members ?? [];
-          const pName = members[0]?.first_name || members[0]?.display_name || "Assignee";
-          const c1Name = members[1]?.first_name || members[1]?.display_name || "Teammate";
-          const c2Name = members[2]?.first_name || members[2]?.display_name || "Courier";
-          const c3Name = members[3]?.first_name || members[3]?.display_name || "Doctor";
-          const maxwellText = `Good morning, Q4 assignees. My name is Dr. Kirk Maxwell. Should any of you become recurring expedition personnel, we'll be seeing quite a bit of one another. Today's assignment is straightforward. Delivery and introductory reconnaissance. ${c2Name} has custody of the startup material scheduled for Outpost A, Bermuda branch. ${pName}, you're on camera. ${c3Name}, layout record. ${c1Name}, observation and verbal recall. There isn't time for questions here. Get acquainted, then report to Equipment Staging.`;
-          if (!cq4Day1Opener.isOneShotConsumed(entry.run, "maxwell_opening_briefing")) {
-            presentationBus.emit(entry.run, {
-              type: presentationBus.EVENT_TYPES.DIALOGUE,
-              source: presentationBus.SOURCES.AUTHORED,
-              speaker: "DR. KIRK MAXWELL",
-              channel: "LOCAL",
-              text: maxwellText,
-              physical_room_voice: true,
-              metadata: { physical_room_voice: true, role: "Chief Expedition Briefing Authority" }
-            });
-            cq4Day1Opener.markOneShotConsumed(entry.run, "maxwell_opening_briefing");
-          }
-        }
       }
       else if (mode === "lost") entry = { kind: "lost", run: lost.start(world, seed), phase: phases.createPhase({ mode, guided: this.settings().guided_introductions !== false }) };
       else { const run_id = history.beginRun(world, { profile: mode, scenario: mode === "async-command" ? "becks-desk-operations" : "nullzone-exposure", seed }); if (mode === "local-anomaly") { const prepared = nullzone.prepare(world, run_id, ["field-light", "recording-device", "evidence-container"]); if (!prepared.ok || !nullzone.enter(world, run_id).ok) return publicError("SESSION_START_FAILED", "The civilian excursion could not start."); entry = { kind: "nullzone", run_id }; } else entry = { kind: "beck", run_id }; }
       entry.phase ??= phases.createPhase({ mode, guided: this.settings().guided_introductions !== false }); if (entry.kind === "bootstrap") entry.phase.legacy_flow = entry.legacy_flow === true; this.persistSession(world, mode, entry); return { ok: true, session: { world_id, mode, resumable: true }, projection: this.projectionFor(world, mode, entry) };
     } catch (error) { this.log(`session start failed: ${error.message}`); return publicError("SESSION_START_FAILED", "This session could not start safely."); }
   }
-  resumeSession({ world_id, mode }) {
-    if (this.commandBusy(world_id)) return publicError("SESSION_BUSY", "Wait for the current action to finish before changing this operation.");
+  resumeSession({ world_id, mode, force = false }) {
+    if (!force && this.commandBusy(world_id)) return publicError("SESSION_BUSY", "Wait for the current action to finish before changing this operation.");
     try {
       const loaded = this.loadPersistencePair(world_id, mode);
       if (!loaded.ok) {
@@ -554,6 +631,29 @@ class DesktopService {
   }
   briefingScene(entry, mode, phaseId = entry.phase?.phase_id, world = null) {
     const view = q4.presentation(entry.run, entry.phase ?? phases.createPhase({ mode }), null, world);
+    const isOpener = cq4Day1Opener.isOpener(entry.run?.scenario);
+    if (isOpener && phaseId === "BRIEFING") {
+      const isBroadcastStandby = view.facility_broadcast?.status === "standby" || (!view.facility_broadcast?.visible && !view.facility_broadcast?.completed);
+      const isBroadcastInProgress = Boolean(view.facility_broadcast?.status === "in-progress" && view.facility_broadcast?.visible);
+      const narration = isBroadcastStandby
+        ? "Terminal operational in ASYNC briefing room. Standing by for facility transmission."
+        : isBroadcastInProgress
+        ? "Facility broadcast in progress."
+        : "Facility broadcast concluded. Standing by for assignment briefing.";
+      const prompt = isBroadcastStandby
+        ? "Standing by for facility transmission."
+        : isBroadcastInProgress
+        ? "Await conclusion of briefing broadcast before proceeding."
+        : "Standing by for assignment briefing.";
+      const facts = [
+        ["location", "location", "the ASYNC briefing room"],
+        ["status", "status", narration]
+      ].map(([id, category, text]) => ({ id, category, text, required: true }));
+      const scene = { version: "yellow-beast-scene@v1", scene_id: `briefing-${entry.run.run_id ?? entry.run.session.id}`, world_ref: entry.run.world_id ?? null, session_ref: entry.run.session.id, turn_ref: "briefing", observer_ref: entry.run.session.startup.player.observer_id, mode, profile: "clear-q4", scene_type: "briefing", significance: "Operational notice", location: "ASYNC briefing room", safe_facts: facts, immediate_changes: [], visible_actors: [], communications: [], sensory_facts: [], inventory: [], object_state_changes: [], unresolved_facts: [], continuing_conditions: [], context: [], interaction_prompt: prompt, provenance: { source: "observer-safe-q4-briefing", input: null } };
+      scene.narration = narration;
+      scene.narration_source = "fallback";
+      return scene;
+    }
     const team = view.team.map((member) => member.display_name).join(" and ") || "the assigned field team";
     const equipment = (view.equipment?.required ?? []).map((item) => item.label).join(", ") || "the assigned field kit";
     const facts = [
@@ -604,11 +704,201 @@ class DesktopService {
     if (entry.kind === "bootstrap") surface = bootstrap.status(entry.run); else if (entry.kind === "lost") surface = lost.projection(entry.run); else if (entry.kind === "nullzone") surface = { ...nullzone.projection(world), local_observation: nullzone.observeRegion(world) }; else surface = desk.projection(world);
     const phase = entry.phase ?? phases.createPhase({ mode, guided: this.settings().guided_introductions !== false }); const unfinished = consequenceEchoes.unfinishedBusiness(world, mode, { run_id: runId });
     const spatialDef = entry.run?.spatial_pack_id ? bootstrap.spatialDefinitionFor(entry.run.spatial_pack_id) : {};
-    const acousticScene = entry.run ? acousticDirector.evaluateAcousticScene(entry.run, spatialDef, world) : null;
+    const acousticScene = entry.run ? acousticDirector.evaluateAcousticScene(entry.run, spatialDef, world, phase.phase_id) : null;
     const pendingPresentationEvents = entry.run ? presentationBus.consumePending(entry.run) : [];
     const baseProjection = this.decorateEvidenceMedia({ version: "yellow-beast-desktop-projection@v1", world: this.worldInfo(world, this.metadata().worlds[world.world_id] ?? {}), mode: clone(descriptor), scenario: entry.run?.scenario ?? null, gameplay: gameplay.projection(world, { mode: descriptor.gameplay_mode, run_id: runId }), institution: mode === "async-command" ? desk.projection(world) : null, consequence_echoes: consequenceEchoes.observerView(world, mode, { run_id: runId }), unfinished_business: unfinished, surface: clone(surface), phase: clone(phase), q4: entry.kind === "bootstrap" ? q4.presentation(entry.run, phase, unfinished, world) : null, beck: entry.kind === "beck" ? beckExperience.presentation(world, surface, phase, unfinished) : null, nullzone: entry.kind === "nullzone" ? nullzoneExperience.presentation(world, phase, unfinished) : null, lost: entry.kind === "lost" ? lostExperience.presentation(surface, phase, unfinished) : null, scene: this.sceneFor(entry, mode, {}, world), available_actions: this.availableFor(world, mode, entry), acoustic_scene: acousticScene, presentation_events: pendingPresentationEvents, settings: this.settings() }, world);
-    if (entry.kind === "bootstrap" && cq4Day1Opener.isOpener(entry.run?.scenario) && phase.phase_id === "DEBRIEF") {
-      baseProjection.demo_termination = { status_text: "NO FURTHER ASSIGNMENTS AVAILABLE" };
+    if (entry.kind === "bootstrap" && cq4Day1Opener.isOpener(entry.run?.scenario)) {
+      const opener = entry.run?.expedition?.day1_opener;
+      if (opener?.catastrophic_ending) {
+        baseProjection.catastrophic_ending = clone(opener.catastrophic_ending);
+        baseProjection.demo_termination = {
+          status_text: "NO FURTHER ASSIGNMENTS AVAILABLE",
+          catastrophic: true,
+          asset_id: opener.catastrophic_ending.asset_id,
+          headline: opener.catastrophic_ending.headline,
+          date: opener.catastrophic_ending.date
+        };
+      } else if (phase.phase_id === "DEBRIEF" || entry.run.lifecycle === "completed") {
+        const expedition = entry.run?.expedition ?? {};
+        const writtenReport = expedition.written_report ?? Object.values(world.q4_reviews ?? {})[0]?.written_report ?? null;
+        const institutionalAssessment = expedition.institutional_assessment ?? Object.values(world.q4_reviews ?? {})[0]?.institutional_findings?.reference_assessment ?? {
+          status: "COMMITTED",
+          confidence: "high",
+          summary: "Observer account filed under Protocol KV31-C. Cross-referenced against central evidence intake.",
+          basis: {
+            written_report_id: writtenReport?.report_id ?? "WR-CQ4-DAY1",
+            evidence_ids: ["EVD-DUFFLE-01", "EVD-SURVEY-NOTE-01"],
+            prior_record_ids: ["ARCH-KV31-91"]
+          }
+        };
+
+        const teamMembers = expedition.team?.members ?? [];
+        const playerId = entry.run?.session?.startup?.player?.observer_id;
+        const personnelRoster = teamMembers.map((member) => {
+          const char = world.characters?.[member.identity] ?? {};
+          const isPlayer = member.identity === playerId || member.controlled;
+          const assignedEquip = Object.entries(expedition.equipment ?? {})
+            .filter(([_, item]) => item.holder === member.identity || (isPlayer && (item.holder === "You" || item.holder === member.identity)))
+            .map(([id, item]) => ({ id, label: item.label, state: item.state }));
+          return {
+            identity: member.identity,
+            display_name: member.display_name ?? char.display_name ?? member.identity,
+            role: member.role ?? char.role ?? (isPlayer ? "Team Lead" : "Assigned Personnel"),
+            clearance: member.clearance ?? char.clearance ?? (isPlayer ? "Level 1 / Field Lead" : "Level 1 / Technical"),
+            condition: member.condition ?? char.condition ?? "Nominal",
+            assigned_equipment: assignedEquip,
+            personality_archetype: member.archetype ?? char.identity_substrate?.behavioral_disposition ?? "Standard ASync Staff",
+            identity_substrate: char.identity_substrate ? { ...char.identity_substrate } : null
+          };
+        });
+
+        const evidenceVault = [
+          {
+            id: "EVD-DUFFLE-01",
+            type: "Logistics Container",
+            label: "Startup Prerequisite Materials Duffle",
+            custody_status: "Central Intake Vault Custody",
+            custodian: "ASync Archive Division",
+            vault_location: "Central Intake Vault / Sector B1 Vault 4",
+            receipt_timestamp: "1991-07-17 12:45:00",
+            notes: "Heavy nylon logistics duffle containing Outpost A startup prerequisites (delivered and verified at Outpost A, surrendered to vault custody)."
+          },
+          {
+            id: "EVD-SURVEY-NOTE-01",
+            type: "Operational Record",
+            label: "Layout Notes & Field Route Record",
+            custody_status: "Central Intake Vault Custody",
+            custodian: "ASync Archive Division",
+            vault_location: "Central Intake Vault / Sector B1 Vault 4",
+            receipt_timestamp: "1991-07-17 12:46:12",
+            notes: "Drafted layout record and corridor annotations for Bermuda Branch traversal."
+          },
+          {
+            id: "EVD-SPECTRO-01",
+            type: "Measurement Data Plate",
+            label: "Mass Spectrometer Calibration & Atmosphere Readings",
+            custody_status: "Central Intake Vault Custody",
+            custodian: "ASync Archive Division",
+            vault_location: "Central Intake Vault / Sector B1 Vault 4",
+            receipt_timestamp: "1991-07-17 12:48:30",
+            notes: "Telemetry log and mass spectrometer atmospheric calibration readings taken in KV31 and Bermuda branch."
+          }
+        ];
+
+        const photosTaken = expedition.day1_opener?.photographs_taken ?? expedition.photographs_taken ?? 6;
+        const photographsData = {
+          total_capacity: 24,
+          exposures_used: photosTaken,
+          exposures_remaining: 24 - photosTaken,
+          frames: [
+            { frame: 1, subject: "Assembly Briefing Room B1-4", location: "Briefing Room", timestamp: "10:04 AM", description: "Expedition personnel seated during Dr. Kirk Maxwell briefing presentation." },
+            { frame: 2, subject: "Equipment Staging Department Manifest", location: "Equipment Staging Department", timestamp: "10:22 AM", description: "Inspection of equipment issue manifest and prefield logistics kits." },
+            { frame: 3, subject: "Threshold Approach Magnetization Warning Sign", location: "Threshold Approach", timestamp: "10:35 AM", description: "Warning placard on double blast door indicating high magnetic field hazard." },
+            { frame: 4, subject: "Threshold Chamber Aperture", location: "Threshold Chamber", timestamp: "10:48 AM", description: "Direct view of the open KV31 Threshold aperture and magnetic interlock ring." },
+            { frame: 5, subject: "Bermuda Branch Neon Guidance Tape", location: "Utility Room", timestamp: "11:12 AM", description: "High-visibility green guidance line leading into Bermuda branch access corridor." },
+            { frame: 6, subject: "Outpost A Forward Assembly", location: "Outpost A", timestamp: "11:45 AM", description: "Folding table setup and stenciled placard ASYNC OUTPOST A // BERMUDA BRANCH." }
+          ].slice(0, photosTaken)
+        };
+
+        const mapData = {
+          facility_schematic: {
+            title: "ASYNC RESEARCH FACILITY · SECTOR B1",
+            sector: "Sector B1 Lower Operational Sub-level",
+            nodes: [
+              { id: "maintenance-wing", name: "Maintenance Wing", desc: "Mechanical utility and interlock power routing" },
+              { id: "briefing-room", name: "Briefing Room", desc: "Assignment briefing and team orientation" },
+              { id: "equipment-staging", name: "Equipment Staging Department / ESD", desc: "Manifest inspection and equipment issue" },
+              { id: "kv31-control", name: "KV31 Control Room", desc: "Threshold monitoring and observation station" },
+              { id: "threshold-chamber", name: "Threshold Chamber", desc: "Electromagnetic aperture and interlock gates" }
+            ]
+          },
+          bermuda_branch_route: {
+            branch: "Bermuda Branch",
+            classification: "Controlled Exploratory Route",
+            traversed_nodes: [
+              { id: "threshold-side-entry", name: "Outpost KV31", desc: "Protected ASync workplace beyond Threshold" },
+              { id: "utility-room", name: "Utility Room", desc: "Initial aperture room with neon guidance tape origin" },
+              { id: "corridor", name: "Bermuda Access Corridor", desc: "Transitional hallway leading into Outpost A" },
+              { id: "outpost-a", name: "Outpost A", desc: "Forward operational staging point with folding tables and radio" }
+            ],
+            inspections: {
+              "outpost-a": {
+                label: "Outpost A Node Inspection",
+                placard: "ASYNC OUTPOST A // BERMUDA BRANCH",
+                furniture: "Two folding tables, unpacked logistics containers",
+                equipment: "Stationary field radio, startup prerequisite materials delivered",
+                coordinates: { x: 580, y: 195 }
+              },
+              "threshold-side-entry": {
+                label: "Outpost KV31 Node Inspection",
+                hazard_signage: "WARNING / HIGH MAGNETIC FIELD / AUTHORIZED PERSONNEL ONLY",
+                aperture: "Interlocking blast door and observation window to Standard",
+                status: "Operational return portal confirmed and secured"
+              }
+            }
+          }
+        };
+
+        const institutionalRecordsData = {
+          intake_ledger: {
+            batch_id: "REC-1991-0717-KV31-CQ4",
+            intake_operator: "Records Custodian / Intake Division B",
+            timestamp: "1991-07-17 12:52:10",
+            protocol: "Protocol KV31-C Section 9.2",
+            status: "CLOSED / COMMITTED"
+          },
+          confirmed_knowledge: [
+            "Outpost A startup prerequisite materials successfully staged and verified.",
+            "Bermuda branch guidance tape integrity verified intact from KV31 to Outpost A.",
+            "Threshold operational window confirmed stable during authorized traversal window.",
+            "No catastrophic magnetic interlock disruption recorded during excursion."
+          ],
+          end_of_shift_status: {
+            shift_status: "END OF SHIFT",
+            date: "JULY 17, 1991",
+            record_status: "EXPEDITION RECORD COMMITTED",
+            assignment_status: "NO FURTHER ASSIGNMENT ISSUED",
+            records_status: "AEOT RECORDS REMAIN AVAILABLE"
+          }
+        };
+
+        baseProjection.aeot_inspection = {
+          active: true,
+          status: "inspectable",
+          day_one_completed: true,
+          date: "JULY 17, 1991",
+          shift_status: "END OF SHIFT",
+          assignment_status: "NO FURTHER ASSIGNMENT ISSUED",
+          records_status: "AEOT RECORDS REMAIN AVAILABLE",
+          report_committed: Boolean(writtenReport),
+          available_views: ["report", "personnel", "evidence", "photographs", "map", "institutional_records"],
+          views: {
+            report: {
+              written_report: writtenReport,
+              institutional_assessment: institutionalAssessment,
+              export_available: true
+            },
+            personnel: {
+              roster: personnelRoster
+            },
+            evidence: {
+              vault_location: "Central Intake Vault / Sector B1 Vault 4",
+              items: evidenceVault
+            },
+            photographs: photographsData,
+            map: mapData,
+            institutional_records: institutionalRecordsData
+          }
+        };
+        baseProjection.end_of_shift_notice = {
+          title: "END OF SHIFT",
+          date: "JULY 17, 1991",
+          record_status: "EXPEDITION RECORD COMMITTED",
+          assignment_status: "NO FURTHER ASSIGNMENT ISSUED",
+          records_status: "AEOT RECORDS REMAIN AVAILABLE",
+          prose: "END OF SHIFT\nJULY 17, 1991\nEXPEDITION RECORD COMMITTED\nNO FURTHER ASSIGNMENT ISSUED\nAEOT RECORDS REMAIN AVAILABLE"
+        };
+      }
     }
     return baseProjection;
   }
@@ -654,7 +944,7 @@ class DesktopService {
         : referenceExpedition.writeReport(entry.run, { author:entry.run.session.startup.player.observer_id, text, at:entry.run.expedition.clock?.interval ?? 0 });
       if (!written.ok) {
         const msg = (written.code === "REFERENCE_REPORT_EMPTY" || written.code === "OPENER_REPORT_EMPTY")
-          ? "Enter the account you intend to submit to A-Sync."
+          ? "Enter the account you intend to submit to ASync."
           : (written.code === "REFERENCE_REPORT_TOO_LONG" || written.code === "OPENER_REPORT_TOO_LONG")
             ? "The written report exceeds the 4,000-character field limit."
             : "The written report could not be accepted.";
@@ -698,16 +988,51 @@ class DesktopService {
       return publicError(error.code ?? "REPORT_SUBMISSION_FAILED", error.message ?? "The report could not be submitted.");
     }
   }
+  exportReportPdf({ world_id, destination = null }) {
+    if (!world_id) return publicError("WORLD_ID_REQUIRED", "Specify a world to export the report for.");
+    try {
+      const world = this.getWorld(world_id);
+      if (!world) return publicError("WORLD_NOT_FOUND", "The requested world could not be found.");
+      const entry = this.session(world_id, "field-researcher") ?? this.restoreSession(world, "field-researcher", readJson(this.sessionFile(world_id, "field-researcher"), null));
+      const report = entry?.run?.expedition?.written_report ?? Object.values(world.q4_reviews ?? {})[0]?.written_report;
+      if (!report) return publicError("REPORT_NOT_FOUND", "No committed report is available to export.");
+
+      const reportPdf = require("../tools/report-pdf");
+      const sanitizedMissionId = String(report.mission_id ?? "CQ4-DAY1").replace(/[^a-zA-Z0-9_-]/g, "_");
+      const defaultFileName = `ASYNC-EXPEDITION-REPORT-${sanitizedMissionId}-${world_id.slice(0, 8)}.pdf`;
+      const exportsDir = this.paths.exports ?? path.join(this.paths.root, "exports");
+      ensureDirectory(exportsDir);
+      const targetPath = destination || path.join(exportsDir, defaultFileName);
+
+      const result = reportPdf.writeReportPdf({
+        report,
+        expedition: entry?.run?.expedition ?? {},
+        world_id,
+        run_id: entry?.run?.run_id ?? report.run_id ?? null,
+        world
+      }, targetPath);
+
+      return {
+        ok: true,
+        destination: result.destination,
+        byte_length: result.byte_length
+      };
+    } catch (error) {
+      this.log(`exportReportPdf failed: ${error.message}`);
+      return publicError("EXPORT_FAILED", `The report could not be exported to PDF: ${error.message}`);
+    }
+  }
   submitQ4Logistics({ world_id, action, item_id = null, container_id = null, target_holder = null, target_container = null, source_item_id = null, quantity = 1, actor = null }) {
     if (this.commandBusy(world_id)) return publicError("SESSION_BUSY", "Wait for the current action to finish before changing this operation.");
     if (outcomes.isRetired(this.getWorld(world_id))) return publicError("WORLD_RETIRED", "This world is a read-only historical record.");
+    let entry = null; let world = null; let beforeRun = null; let beforeWorld = null; let beforePhase = null;
     try {
-      const world = this.getWorld(world_id);
-      const entry = this.session(world_id, "field-researcher") ?? this.restoreSession(world, "field-researcher", readJson(this.sessionFile(world_id, "field-researcher"), null));
+      world = this.getWorld(world_id);
+      entry = this.session(world_id, "field-researcher") ?? this.restoreSession(world, "field-researcher", readJson(this.sessionFile(world_id, "field-researcher"), null));
       if (!entry || entry.kind !== "bootstrap") return publicError("SESSION_NOT_FOUND", "Start or continue Clear-Q4 before managing equipment.");
-      const beforeRun = clone(entry.run);
-      const beforeWorld = clone(world);
-      const beforePhase = clone(entry.phase);
+      beforeRun = clone(entry.run);
+      beforeWorld = clone(world);
+      beforePhase = clone(entry.phase);
       const context = this.q4LogisticsContext(entry, world);
       const definition = bootstrap.logisticsDefinitionFor(entry.run.spatial_pack_id);
       const resolveHolder = (value) => {
@@ -723,6 +1048,10 @@ class DesktopService {
       spatialRuntime.syncEquipment(entry.run.spatial, entry.run.expedition);
       const authoredCost = bootstrap.dynamicsDefinitionFor(entry.run.spatial_pack_id).action_costs[String(action).toUpperCase()] ?? (/^INSPECT|^VERIFY/.test(String(action).toUpperCase()) ? 0 : 1);
       const cycle = bootstrap.resolveOperationalCycle(entry.run, String(action).toUpperCase(), authoredCost, "logistics-transaction");
+      if (cq4Day1Opener.isOpener(entry.run.scenario)) {
+        const duration = cq4Day1Opener.getActionDuration(String(action).toUpperCase(), { item_id, target_holder, container_id });
+        cq4Day1Opener.advanceSimulationTime(entry.run, duration);
+      }
       expeditionEvent(entry.run.expedition, "logistics.transaction.committed", { transaction_id: result.transaction.id, action: result.transaction.action, item_id: result.transaction.item_id ?? null, container_id: result.transaction.container_id ?? null });
       try {
         this.persistSession(world, "field-researcher", entry);
@@ -752,9 +1081,14 @@ class DesktopService {
     if (entry.kind === "bootstrap") {
       if (entry.phase?.phase_id === "REPORT") return [];
       const legacyFlow = entry.legacy_flow === true || entry.phase?.legacy_flow === true;
+      const isOpenerRun = cq4Day1Opener.isOpener(entry.run?.scenario);
+      const beat = entry.run?.expedition?.day1_opener?.beat;
+      const briefingStatus = entry.run?.expedition?.day1_opener?.personnel_briefing?.status ?? "pending";
+      const briefingGated = entry.phase?.phase_id === "BRIEFING" && isOpenerRun && (!cq4Day1Opener.isBroadcastCompleted(entry.run) || beat === cq4Day1Opener.BEATS.PERSONNEL_BRIEFING);
+      const briefingAction = briefingGated ? (briefingStatus === "active" ? "CONCLUDE_BRIEFING" : (briefingStatus === "pending" ? "ATTEND_BRIEFING" : null)) : "READY";
       const phaseActions = legacyFlow
-        ? { BRIEFING: "READY", STAGING: "PROCEED", FACILITY_TRANSIT: "APPROACH", THRESHOLD: "CROSS", STANDARD_RADIO_CHECK: q4Radio.read(entry.run.expedition).check_completed ? "BEGIN_FIELD_OPERATION" : null }
-        : { BRIEFING: "READY", STAGING: "PROCEED", FACILITY_TRANSIT: "APPROACH", THRESHOLD: "READY", STANDARD_RADIO_CHECK: q4Radio.read(entry.run.expedition).check_completed ? "CROSS" : null };
+        ? { BRIEFING: briefingAction, STAGING: "PROCEED", FACILITY_TRANSIT: "APPROACH", THRESHOLD: "CROSS", STANDARD_RADIO_CHECK: q4Radio.read(entry.run.expedition).check_completed ? "BEGIN_FIELD_OPERATION" : null }
+        : { BRIEFING: briefingAction, STAGING: "PROCEED", FACILITY_TRANSIT: "APPROACH", THRESHOLD: "READY", STANDARD_RADIO_CHECK: q4Radio.read(entry.run.expedition).check_completed ? "CROSS" : null };
       const state = bootstrap.status(entry.run); const observed = bootstrap.look(entry.run, { record: false }); const targets = state.view.targets.map(({ alias }) => ({ ref: alias, label: alias })); const exits = (observed.view?.exits ?? []).map(({ alias }) => ({ ref: alias, label: alias }));
       const objectActions = new Map();
       for (const object of observed.view?.objects ?? []) for (const affordance of object.actions ?? []) if (affordance.available) {
@@ -770,6 +1104,7 @@ class DesktopService {
       const mitigationTargets = hazardRuntime.project(entry.run, bootstrap.dynamicsDefinitionFor(entry.run.spatial_pack_id)).filter((hazard) => hazard.mitigation_available).map((hazard) => ({ ref: hazard.id, label: `Mitigate ${hazard.category} warning` }));
       const actions = state.available_verbs.filter((type) => {
         if (type === "COMMUNICATE" && entry.phase?.phase_id === "BRIEFING") return false;
+        if (briefingGated && ["RETURN", "ABORT"].includes(type)) return false;
         if (["ORDER_HOLD", "ORDER_INVESTIGATE", "ORDER_FOLLOW", "ASSIST", "RECOVER", "MITIGATE"].includes(type) && !["FIELD_OPERATION", "RETURN"].includes(entry.phase?.phase_id)) return false;
         if (entry.run.spatial && type === "RECORD" && !objectActionTypes.has("RECORD")) return false;
         if (type === "USE" && referenceExpedition.isReference(entry.run.scenario) && entry.run.spatial?.player_location !== referenceExpedition.definition.measurement.location_id && !objectActionTypes.has("USE")) return false;
@@ -795,6 +1130,101 @@ class DesktopService {
     return [{ type: "REVIEW_REPORT", target_required: false, targets: [] }, { type: "ADVANCE", target_required: false, targets: [] }];
   }
   getAvailableActions({ world_id, mode }) { const current = this.getGameplayProjection({ world_id, mode }); return current.ok ? { ok: true, actions: current.projection.available_actions } : current; }
+  startBriefingBroadcast({ world_id }) {
+    if (this.commandBusy(world_id)) return publicError("SESSION_BUSY", "Wait for the current action to finish before changing this operation.");
+    try {
+      const world = this.getWorld(world_id);
+      if (outcomes.isRetired(world)) return publicError("WORLD_RETIRED", "This world is a read-only historical record.");
+      const entry = this.session(world_id, "field-researcher") ?? this.restoreSession(world, "field-researcher", readJson(this.sessionFile(world_id, "field-researcher"), null));
+      if (!entry || entry.kind !== "bootstrap") return publicError("SESSION_NOT_FOUND", "Start or continue Clear-Q4 first.");
+      const transition = cq4Day1Opener.startBroadcast(entry.run);
+      this.persistSession(world, "field-researcher", entry);
+      return {
+        ok: true,
+        result: { outcome: "broadcast-completed", beat: transition.beat },
+        projection: this.projectionFor(world, "field-researcher", entry)
+      };
+    } catch (error) {
+      this.log(`startBriefingBroadcast error: ${error.message}`);
+      return publicError("BROADCAST_START_FAILED", "Failed to start briefing broadcast.");
+    }
+  }
+  completeBriefingBroadcast({ world_id }) {
+    if (this.commandBusy(world_id)) return publicError("SESSION_BUSY", "Wait for the current action to finish before changing this operation.");
+    try {
+      const world = this.getWorld(world_id);
+      if (outcomes.isRetired(world)) return publicError("WORLD_RETIRED", "This world is a read-only historical record.");
+      const entry = this.session(world_id, "field-researcher") ?? this.restoreSession(world, "field-researcher", readJson(this.sessionFile(world_id, "field-researcher"), null));
+      if (!entry || entry.kind !== "bootstrap") return publicError("SESSION_NOT_FOUND", "Start or continue Clear-Q4 first.");
+      const transition = cq4Day1Opener.completeBroadcast(entry.run);
+      this.persistSession(world, "field-researcher", entry);
+      return {
+        ok: true,
+        result: { outcome: "broadcast-completed", beat: transition.beat },
+        projection: this.projectionFor(world, "field-researcher", entry)
+      };
+    } catch (error) {
+      this.log(`completeBriefingBroadcast error: ${error.message}`);
+      return publicError("BROADCAST_COMPLETION_FAILED", "Failed to transition briefing broadcast.");
+    }
+  }
+  startPersonnelBriefing({ world_id }) {
+    if (this.commandBusy(world_id)) return publicError("SESSION_BUSY", "Wait for the current action to finish before changing this operation.");
+    try {
+      const world = this.getWorld(world_id);
+      if (outcomes.isRetired(world)) return publicError("WORLD_RETIRED", "This world is a read-only historical record.");
+      const entry = this.session(world_id, "field-researcher") ?? this.restoreSession(world, "field-researcher", readJson(this.sessionFile(world_id, "field-researcher"), null));
+      if (!entry || entry.kind !== "bootstrap") return publicError("SESSION_NOT_FOUND", "Start or continue Clear-Q4 first.");
+      const transition = cq4Day1Opener.startPersonnelBriefing(entry.run);
+      this.persistSession(world, "field-researcher", entry);
+      return {
+        ok: true,
+        result: { outcome: "briefing-started", status: transition.status, beat: transition.beat },
+        projection: this.projectionFor(world, "field-researcher", entry)
+      };
+    } catch (error) {
+      this.log(`startPersonnelBriefing error: ${error.message}`);
+      return publicError("BRIEFING_START_FAILED", "Failed to start personnel briefing.");
+    }
+  }
+  interactPersonnelBriefing({ world_id, text = "" }) {
+    if (this.commandBusy(world_id)) return publicError("SESSION_BUSY", "Wait for the current action to finish before changing this operation.");
+    try {
+      const world = this.getWorld(world_id);
+      if (outcomes.isRetired(world)) return publicError("WORLD_RETIRED", "This world is a read-only historical record.");
+      const entry = this.session(world_id, "field-researcher") ?? this.restoreSession(world, "field-researcher", readJson(this.sessionFile(world_id, "field-researcher"), null));
+      if (!entry || entry.kind !== "bootstrap") return publicError("SESSION_NOT_FOUND", "Start or continue Clear-Q4 first.");
+      const transition = cq4Day1Opener.interactPersonnelBriefing(entry.run, text);
+      this.persistSession(world, "field-researcher", entry);
+      return {
+        ok: true,
+        result: { outcome: "briefing-interacted", reply: transition.reply ?? null, status: transition.status, beat: transition.beat },
+        projection: this.projectionFor(world, "field-researcher", entry)
+      };
+    } catch (error) {
+      this.log(`interactPersonnelBriefing error: ${error.message}`);
+      return publicError("BRIEFING_INTERACTION_FAILED", "Failed to process briefing interaction.");
+    }
+  }
+  concludePersonnelBriefing({ world_id }) {
+    if (this.commandBusy(world_id)) return publicError("SESSION_BUSY", "Wait for the current action to finish before changing this operation.");
+    try {
+      const world = this.getWorld(world_id);
+      if (outcomes.isRetired(world)) return publicError("WORLD_RETIRED", "This world is a read-only historical record.");
+      const entry = this.session(world_id, "field-researcher") ?? this.restoreSession(world, "field-researcher", readJson(this.sessionFile(world_id, "field-researcher"), null));
+      if (!entry || entry.kind !== "bootstrap") return publicError("SESSION_NOT_FOUND", "Start or continue Clear-Q4 first.");
+      const transition = cq4Day1Opener.concludePersonnelBriefing(entry.run);
+      this.persistSession(world, "field-researcher", entry);
+      return {
+        ok: true,
+        result: { outcome: "briefing-concluded", status: transition.status, beat: transition.beat },
+        projection: this.projectionFor(world, "field-researcher", entry)
+      };
+    } catch (error) {
+      this.log(`concludePersonnelBriefing error: ${error.message}`);
+      return publicError("BRIEFING_CONCLUDE_FAILED", "Failed to conclude personnel briefing.");
+    }
+  }
   advanceQ4Operations({ world_id }) {
     if (this.commandBusy(world_id)) return publicError("SESSION_BUSY", "Wait for the current action to finish before changing this operation.");
     try {
@@ -804,9 +1234,31 @@ class DesktopService {
       const processed = q4Career.process(world, bootstrap.institutionalDefinitionFor(entry.run.spatial_pack_id), entry.run, q4Continuity.review(world, entry.run.expedition?.mission?.id));
       const seed = q4Continuity.nextSeed(world, entry.run.expedition?.mission?.id ?? entry.run.expedition?.id); const current = world.q4_operations?.controlled_player;
       if (history.character(world, current)?.status === "dead") return publicError("WORLD_RETIRED", "Controlled personnel death retires this world; begin a new career in a new world.");
-      const started = bootstrap.startRun({ profile: "field-researcher", seed, scenario: "procedural-survey", world, player_identity: current, spatial_worldpack: "clear-q4" }); if (!started.ok) return publicError("NEXT_EXPEDITION_UNAVAILABLE", "The next assignment could not be prepared safely.");
+      const started = bootstrap.startRun({ profile: "field-researcher", seed, scenario: "procedural-survey", world, player_identity: current, spatial_worldpack: "clear-q4" });
+      if (!started.ok) return publicError("NEXT_EXPEDITION_UNAVAILABLE", "The next assignment could not be prepared safely.");
       const next = { kind: "bootstrap", run: started.run, phase: phases.createPhase({ mode: "field-researcher", guided: this.settings().guided_introductions !== false }) }; this.persistSession(world, "field-researcher", next); return { ok: true, result: { outcome: "operations-advanced", public_reason: processed.idempotent ? "The recorded institutional cycle was already complete; the next assignment remains unchanged." : "Institutional processing completed; the next Clear-Q4 assignment is available.", career_cycle: processed.cycle }, projection: this.projectionFor(world, "field-researcher", next) };
-    } catch { return publicError("NEXT_EXPEDITION_UNAVAILABLE", "The next assignment could not be prepared safely."); }
+    } catch {
+      return publicError("NEXT_EXPEDITION_UNAVAILABLE", "The next assignment could not be prepared safely.");
+    }
+  }
+  triggerCatastrophicEnding({ world_id }) {
+    if (this.commandBusy(world_id)) return publicError("SESSION_BUSY", "Wait for the current action to finish before changing this operation.");
+    try {
+      const world = this.getWorld(world_id);
+      if (!world || outcomes.isRetired(world)) return publicError("WORLD_RETIRED", "This world is a read-only historical record.");
+      const entry = this.session(world_id, "field-researcher") ?? this.restoreSession(world, "field-researcher", readJson(this.sessionFile(world_id, "field-researcher"), null));
+      if (!entry || entry.kind !== "bootstrap") return publicError("SESSION_NOT_FOUND", "Start or continue Clear-Q4 first.");
+      const result = cq4Day1Opener.triggerCatastrophicEnding(world, entry);
+      this.persistSession(world, "field-researcher", entry);
+      return {
+        ok: true,
+        result: result.result,
+        projection: this.projectionFor(world, "field-researcher", entry)
+      };
+    } catch (error) {
+      this.log(`triggerCatastrophicEnding failed: ${error.message}`);
+      return publicError("CATASTROPHIC_TRIGGER_FAILED", "The catastrophic failure sequence could not be triggered safely.");
+    }
   }
   recordQ4Action(entry, text, result, world = null, submission_id = null, canonicalAction = null) {
     const verb = canonicalAction ?? String(text).trim().split(/\s+/, 1)[0].toUpperCase();
@@ -817,11 +1269,12 @@ class DesktopService {
   }
   submitQ4LocalIntent({ world_id, text, request_id = null }) {
     if (this.commandBusy(world_id)) return publicError("SESSION_BUSY", "Wait for the current action to finish before changing this operation.");
+    let entry = null; let world = null; let beforeRun = null; let beforeWorld = null; let beforePhase = null;
     try {
-      const world = this.getWorld(world_id); if (outcomes.isRetired(world)) return publicError("WORLD_RETIRED", "This world is a read-only historical record."); const entry = this.session(world_id, "field-researcher") ?? this.restoreSession(world, "field-researcher", readJson(this.sessionFile(world_id, "field-researcher"), null));
+      world = this.getWorld(world_id); if (outcomes.isRetired(world)) return publicError("WORLD_RETIRED", "This world is a read-only historical record."); entry = this.session(world_id, "field-researcher") ?? this.restoreSession(world, "field-researcher", readJson(this.sessionFile(world_id, "field-researcher"), null));
       if (!entry || entry.kind !== "bootstrap") return publicError("SESSION_NOT_FOUND", "Start or continue Clear-Q4 before issuing a LOCAL order.");
       if (!["FIELD_OPERATION", "RETURN"].includes(entry.phase?.phase_id)) return publicError("LOCAL_PHASE_INVALID", "Nearby field orders are available only during an active field operation or return.");
-      const beforeRun = clone(entry.run); const beforeWorld = clone(world); const beforePhase = clone(entry.phase);
+      beforeRun = clone(entry.run); beforeWorld = clone(world); beforePhase = clone(entry.phase);
       const run = entry.run; const expedition = run.expedition; const player = run.session.startup.player.observer_id;
       const requestId = request_id ?? `local-${crypto.createHash("sha256").update(`${run.run_id}|${expedition.clock.interval}|${text}`).digest("hex").slice(0, 18)}`;
       expedition.local_intent_requests ??= []; const duplicate = expedition.local_intent_requests.find((item) => item.id === requestId);
@@ -888,120 +1341,430 @@ class DesktopService {
     }
   }
   submitQ4Communication(input = {}) {
-    const canonical = this.submitQ4CommunicationCanonical(input);
+    const { world_id, channel, text, target = null } = input;
+    if (this.recoveredWorlds.has(world_id)) return publicError("PERSISTENCE_RECOVERY_READ_ONLY", "Restore the recovered operation record before communicating.");
+    const requestId = input.request_id ?? input.submission_id ?? `desktop-comms-${crypto.randomUUID()}`;
+    const cleanText = typeof text === "string" ? text.trim() : "";
+    const fingerprint = crypto.createHash("sha256").update(JSON.stringify([world_id, channel, target ?? null, cleanText])).digest("hex");
+
+    if (typeof requestId !== "string" || !requestId.trim() || requestId.length > 160) {
+      return publicError("REQUEST_ID_INVALID", "The communication reference is invalid. Submit the message again.");
+    }
+    const active = this.communicationTurnInflight.get(world_id);
+    if (active) {
+      if (active.id === requestId && active.fingerprint === fingerprint) return active.promise;
+      return publicError(active.id === requestId ? "REQUEST_ID_REUSED" : "SESSION_BUSY", active.id === requestId ? "That communication reference belongs to a different message." : "The previous communication is still being resolved. Wait for its result before submitting another message.");
+    }
+    if (this.commandBusy(world_id)) {
+      return publicError("SESSION_BUSY", "The previous action is still being resolved. Wait for its result before submitting another message.");
+    }
+
+    const canonical = this.transactionContext.run(world_id, () =>
+      this.submitQ4CommunicationCanonical({ ...input, request_id: requestId, input_fingerprint: fingerprint })
+    );
     const providerSetting = this.settings().provider;
-    const configured = ["openai", "auto", "groq", "gemini", "openrouter"].includes(providerSetting);
-    if (input.channel !== "local" || !canonical?.ok || (!configured && !this.localDialogueProvider)) return canonical;
-    return this.presentHostedLocalDialogue(input, canonical, { configured });
+    const configured = ["openai", "auto", "local", "groq", "gemini", "openrouter"].includes(providerSetting);
+    if (input.channel !== "local" || !canonical?.ok || (!configured && !this.localDialogueProvider && !canonical._local_dialogue_context?.resuming)) return canonical;
+
+    const promise = Promise.resolve().then(async () => {
+      try {
+        return await this.transactionContext.run(world_id, async () => {
+          return await this.presentHostedLocalDialogue(input, canonical, { configured, requestId });
+        });
+      } finally {
+        this.communicationTurnInflight.delete(world_id);
+      }
+    });
+    this.communicationTurnInflight.set(world_id, { id: requestId, fingerprint, promise });
+    return promise;
   }
-  async presentHostedLocalDialogue({ world_id }, canonical, { configured }) {
+  async presentHostedLocalDialogue({ world_id }, canonical, { configured, requestId: callRequestId }) {
     const context = canonical._local_dialogue_context;
     delete canonical._local_dialogue_context;
     if (!context) return canonical;
-    const requestId = `desktop-local-${world_id}-${Date.now()}`;
+    const requestId = context.requestId ?? callRequestId ?? `desktop-local-${world_id}-${Date.now()}`;
     const providerSetting = this.settings().provider;
     const isManualHosted = ["openai", "groq", "gemini", "openrouter"].includes(providerSetting);
     const key = isManualHosted ? this.credentials.get(providerSetting) : null;
-    if (isManualHosted && !key && !this.localDialogueProvider) {
+
+    let currentWorld = this.getWorld(world_id);
+    if (!currentWorld || outcomes.isRetired(currentWorld)) {
+      return publicError("WORLD_RETIRED", "This world is a read-only historical record.");
+    }
+    let currentEntry = this.session(world_id, "field-researcher");
+    if (!currentEntry || currentEntry.run?.run_id !== context.runId) {
+      this.log(`stale dialogue completion discarded: operation ${context.runId} superseded`);
+      return publicError("OPERATION_SUPERSEDED", "The operation changed before the response could be delivered.");
+    }
+
+    let provider;
+    let candidateRaw;
+    let packet;
+    let unavailable = !this.localDialogueProvider && (!configured || (isManualHosted && !key));
+    if (!unavailable) {
+      try {
+        provider = this.localDialogueProvider ?? this.providerPool.createAutoProvider({ requestId, route: "submitQ4Communication/local-dialogue" });
+        this.recordInterpretationProvenance({ request_id: requestId, route: "submitQ4Communication/local-dialogue", event: "provider-selected", input: "player-supplied", provider: provider.name, model: provider.model ?? "injected", provider_invoked: false, response_classification: "not-yet-observed", canonical_resolution: "communication-runtime -> personnel-continuity -> presentation-validation", observer_projection: "local-dialogue-packet@v1" });
+        if (typeof provider.presentLocal !== "function") throw new Error("local dialogue provider unavailable");
+        packet = buildLocalDialoguePacket(context);
+        candidateRaw = await provider.presentLocal(structuredClone(packet));
+      } catch (providerError) {
+        unavailable = true;
+        this.log(`LOCAL language assistance unavailable: ${providerError.message}`);
+      }
+    }
+
+    currentWorld = this.getWorld(world_id);
+    if (!currentWorld || outcomes.isRetired(currentWorld)) {
+      return publicError("WORLD_RETIRED", "This world is a read-only historical record.");
+    }
+    currentEntry = this.session(world_id, "field-researcher");
+    if (!currentEntry || currentEntry.run?.run_id !== context.runId) {
+      this.log(`stale dialogue completion discarded: operation ${context.runId} superseded`);
+      const oldRun = currentWorld.runs?.[context.runId];
+      if (oldRun?.expedition?.communication_receipts) {
+        const oldReceipt = oldRun.expedition.communication_receipts.find((r) => r.id === requestId);
+        if (oldReceipt && oldReceipt.status === "pending") {
+          oldReceipt.status = "canceled";
+        }
+      }
+      return publicError("OPERATION_SUPERSEDED", "The operation changed before the response could be delivered.");
+    }
+
+    const receipt = currentEntry.run?.expedition?.communication_receipts?.find((r) => r.id === requestId);
+    if (receipt && receipt.status === "canceled") {
+      return publicError("REQUEST_CANCELED", "The communication was canceled before finalization.");
+    }
+
+    const validation = unavailable ? { ok: false } : validateLocalDialogue(packet, candidateRaw);
+
+    const beforeWorld = clone(currentWorld);
+    const beforeRun = clone(currentEntry.run);
+    const beforePhase = clone(currentEntry.phase);
+
+    if (!validation.ok) {
+      this.log(`validateLocalDialogue failed: code=${validation.code}, candidate=${JSON.stringify(candidateRaw)}`);
       canonical.result.provider_unavailable = true;
       canonical.result.presentation_source = "deterministic-fallback";
-      canonical.result.public_reason = `Language assistance is unavailable. Deterministic response: ${context.fallback_text}`;
-      canonical.result.scene.narration = canonical.result.public_reason;
-      canonical.result.scene.narration_source = "deterministic-fallback";
-      return canonical;
-    }
-    const provider = this.localDialogueProvider ?? this.providerPool.createAutoProvider({ requestId, route:"submitQ4Communication/local-dialogue" });
-    this.recordInterpretationProvenance({ request_id:requestId, route:"submitQ4Communication/local-dialogue", event:"provider-selected", input:"player-supplied", provider:provider.name, model:provider.model ?? "injected", provider_invoked:false, response_classification:"not-yet-observed", canonical_resolution:"communication-runtime -> personnel-continuity -> presentation-validation", observer_projection:"local-dialogue-packet@v1" });
-    try {
-      if (typeof provider.presentLocal !== "function") throw new Error("local dialogue provider unavailable");
-      const packet = buildLocalDialoguePacket(context);
-      const validation = validateLocalDialogue(packet, await provider.presentLocal(structuredClone(packet)));
-      if (!validation.ok) {
-        canonical.result.provider_unavailable = true;
-        canonical.result.presentation_source = "deterministic-fallback";
-        canonical.result.public_reason = `Language assistance returned an invalid response and was rejected. Deterministic response: ${context.fallback_text}`;
-      } else {
-        canonical.result.presentation_source = "hosted-model";
-        canonical.result.hosted_request = { request_id:requestId, provider:provider.name, status:"completed" };
-        canonical.result.public_reason = `${context.speaker.display_name}: ${validation.candidate.speech}`;
-        context.interaction.presentation.response = validation.candidate.speech;
-        context.interaction.presentation.source = "hosted-model";
-        q4Interactions.updatePresentation(context.entry.run.expedition, context.interaction.id, {
-          response: validation.candidate.speech,
-          source: "hosted-model"
+      canonical.result.public_reason = unavailable
+        ? `Language assistance is unavailable. Deterministic response: ${context.fallback_text}`
+        : `Language assistance returned an invalid response and was rejected. Deterministic response: ${context.fallback_text}`;
+      const fallbackSpeech = context.fallback_text ? context.fallback_text.replace(/^[^:]+:\s*/, "") : context.fallback_text;
+      if (context.interaction && fallbackSpeech) {
+        context.interaction.presentation.response = fallbackSpeech;
+        context.interaction.presentation.source = "deterministic-fallback";
+        q4Interactions.updatePresentation(currentEntry.run.expedition, context.interaction.id, {
+          response: fallbackSpeech,
+          source: "deterministic-fallback",
+          response_speaker: context.speaker?.first_name ?? context.speaker?.display_name ?? null,
+          response_speaker_id: context.speaker?.personnel_id ?? context.speaker?.id ?? null
         });
-        personnelContinuity.recordDialogueMemory(context.world, {
-          run_id: context.entry.run.run_id,
+      }
+      if (context.speaker && fallbackSpeech) {
+        personnelContinuity.recordDialogueMemory(currentWorld, {
+          run_id: currentEntry.run.run_id,
           identity: context.speaker.personnel_id ?? context.speaker.id,
           player_text: context.player_text,
-          response: validation.candidate.speech,
+          response: fallbackSpeech,
           source: "local-communication",
-          sender: context.entry.run.session.startup.player.observer_id,
-          at: context.entry.run.expedition.clock?.interval ?? 0
+          sender: currentEntry.run.session.startup.player.observer_id,
+          at: currentEntry.run.expedition.clock?.interval ?? 0
         });
-        presentationBus.emit(context.entry.run, {
+        presentationBus.emit(currentEntry.run, {
           type: presentationBus.EVENT_TYPES.DIALOGUE,
-          source: presentationBus.SOURCES.AI_PERFORMANCE,
+          source: presentationBus.SOURCES.CANONICAL,
           speaker: context.speaker.first_name ?? context.speaker.display_name ?? "Teammate",
           channel: "LOCAL",
-          text: validation.candidate.speech
+          text: fallbackSpeech
         });
-        this.persistSession(context.world, "field-researcher", context.entry);
-        canonical.projection = this.projectionFor(context.world, "field-researcher", context.entry);
       }
-    } catch (error) {
-      this.log(`LOCAL language assistance unavailable: ${error.message}`);
-      canonical.result.provider_unavailable = true;
-      canonical.result.presentation_source = "deterministic-fallback";
-      canonical.result.public_reason = `Language assistance is unavailable. Deterministic response: ${context.fallback_text}`;
+    } else {
+      const providerExecution = provider.getExecutions?.().at(-1) ?? null;
+      const selectedProvider = providerExecution?.selected_provider ?? provider.name;
+      const presentationSource = selectedProvider === "local" ? "local-model" : "hosted-model";
+      canonical.result.presentation_source = presentationSource;
+      canonical.result.hosted_request = { request_id: requestId, provider:selectedProvider, hosted:selectedProvider !== "local", status: "completed" };
+      canonical.result.public_reason = `${context.speaker.display_name}: ${validation.candidate.speech}`;
+      context.interaction.presentation.response = validation.candidate.speech;
+      context.interaction.presentation.source = presentationSource;
+      q4Interactions.updatePresentation(currentEntry.run.expedition, context.interaction.id, {
+        response: validation.candidate.speech,
+        source:presentationSource,
+        response_speaker: context.speaker.first_name ?? context.speaker.display_name ?? null,
+        response_speaker_id: context.speaker.personnel_id ?? context.speaker.id ?? null
+      });
+      personnelContinuity.recordDialogueMemory(currentWorld, {
+        run_id: currentEntry.run.run_id,
+        identity: context.speaker.personnel_id ?? context.speaker.id,
+        player_text: context.player_text,
+        response: validation.candidate.speech,
+        source: "local-communication",
+        sender: currentEntry.run.session.startup.player.observer_id,
+        at: currentEntry.run.expedition.clock?.interval ?? 0
+      });
+      presentationBus.emit(currentEntry.run, {
+        type: presentationBus.EVENT_TYPES.DIALOGUE,
+        source: presentationBus.SOURCES.AI_PERFORMANCE,
+        speaker: context.speaker.first_name ?? context.speaker.display_name ?? "Teammate",
+        channel: "LOCAL",
+        text: validation.candidate.speech
+      });
     }
-    canonical.result.scene = this.sceneFor(context.entry, "field-researcher", { scene_type: "delta", accepted: true, action: "LOCAL", public_reason: canonical.result.public_reason }, context.world);
+
+    canonical.result.scene = this.sceneFor(currentEntry, "field-researcher", {
+      scene_type: "delta",
+      accepted: true,
+      action: "LOCAL",
+      public_reason: canonical.result.public_reason
+    }, currentWorld);
     canonical.result.scene.narration = canonical.result.public_reason;
     canonical.result.scene.narration_source = canonical.result.presentation_source;
+
+    if (receipt) {
+      receipt.status = "completed";
+      receipt.public_reason = canonical.result.public_reason;
+      receipt.presentation_source = canonical.result.presentation_source;
+      receipt.scene = clone(canonical.result.scene);
+      receipt.cached_result = { ok: true, result: clone(canonical.result) };
+    }
+
+    try {
+      this.persistSession(currentWorld, "field-researcher", currentEntry);
+    } catch (persistError) {
+      for (const key of Object.keys(currentWorld)) delete currentWorld[key];
+      Object.assign(currentWorld, beforeWorld);
+      for (const key of Object.keys(currentEntry.run)) delete currentEntry.run[key];
+      Object.assign(currentEntry.run, beforeRun);
+      currentEntry.run._world = currentWorld;
+      currentEntry.phase = beforePhase;
+      const failedReceipt = currentEntry.run.expedition?.communication_receipts?.find((r) => r.id === requestId);
+      if (failedReceipt) {
+        failedReceipt.status = "failed";
+      }
+      this.log(`finalization persistence failed: ${persistError.message}`);
+      return publicError("PERSISTENCE_COMMIT_FAILED", "Your message was delivered, but the reply could not be saved. Retry this message to finish saving the reply.");
+    }
+
+    canonical.projection = this.projectionFor(currentWorld, "field-researcher", currentEntry);
     return canonical;
   }
-  submitQ4CommunicationCanonical({ world_id, channel, text, target = null }) {
+  submitQ4CommunicationCanonical({ world_id, channel, text, target = null, request_id = null, input_fingerprint = null }) {
     if (this.commandBusy(world_id)) return publicError("SESSION_BUSY", "Wait for the current action to finish before changing this operation.");
     if (outcomes.isRetired(this.getWorld(world_id))) return publicError("WORLD_RETIRED", "This world is a read-only historical record.");
+    let entry = null; let world = null; let beforeRun = null; let beforeWorld = null; let beforePhase = null;
     try {
-      const world = this.getWorld(world_id); const entry = this.session(world_id, "field-researcher") ?? this.restoreSession(world, "field-researcher", readJson(this.sessionFile(world_id, "field-researcher"), null));
+      world = this.getWorld(world_id); entry = this.session(world_id, "field-researcher") ?? this.restoreSession(world, "field-researcher", readJson(this.sessionFile(world_id, "field-researcher"), null));
       if (!entry || entry.kind !== "bootstrap") return publicError("SESSION_NOT_FOUND", "Start or continue Clear-Q4 before communicating.");
-      const beforeRun = clone(entry.run); const beforeWorld = clone(world); const beforePhase = clone(entry.phase);
+      beforeRun = clone(entry.run); beforeWorld = clone(world); beforePhase = clone(entry.phase);
+      const requestId = request_id ?? null;
+      const cleanText = typeof text === "string" ? text.trim() : "";
+      const fingerprint = input_fingerprint ?? crypto.createHash("sha256").update(JSON.stringify([world_id, channel, target ?? null, cleanText])).digest("hex");
+      if (requestId && entry.run?.expedition?.communication_receipts) {
+        const recorded = entry.run.expedition.communication_receipts.find((receipt) => receipt.id === requestId);
+        if (recorded) {
+          if (recorded.input_fingerprint !== fingerprint) return publicError("REQUEST_ID_REUSED", "That communication reference belongs to a different message.");
+          if (recorded.status === "canceled") return publicError("REQUEST_CANCELED", "The communication was canceled.");
+          if (recorded.status === "pending" || recorded.status === "failed") {
+            const res = clone(recorded.cached_result ?? {
+              ok: true,
+              result: {
+                outcome: recorded.delivery ?? "delivered",
+                public_reason: recorded.public_reason ?? "This message has already been recorded."
+              }
+            });
+            const interaction = entry.run?.expedition?.interaction_history?.find((item) => item.submission_id === recorded.id || item.id === recorded.interaction_id);
+            const targetWorkerId = recorded.target_worker_id ?? interaction?.response_speaker_id;
+            const speaker = entry.run?.expedition?.team?.members?.find((m) => (m.personnel_id ?? m.id) === targetWorkerId) ?? null;
+            const person = speaker ? history.character(world, speaker.personnel_id ?? speaker.id) : null;
+            // Delivery and attitude changes were committed already. Reuse the original
+            // authorization without calling react() or recording the utterance again.
+            const originalReaction = person?.continuity?.reaction_history?.find((item) =>
+              item.event_id === recorded.cached_result?.result?.message?.id && item.at === entry.run.run_id);
+            const category = recorded.response_category ?? originalReaction?.category;
+            const reaction = category ? { category } : null;
+            const fallbackText = recorded.fallback_text ?? recorded.public_reason ?? (speaker ? `${speaker.first_name}: Understood.` : "Understood.");
+            if (!speaker || !person || !interaction || !reaction) {
+              return publicError("DIALOGUE_RECOVERY_UNAVAILABLE", "Your message was delivered, but its original reply context is unavailable. The unfinished reply has been preserved.");
+            }
+            if (speaker && person) {
+              Object.defineProperty(res, "_local_dialogue_context", {
+                configurable: true,
+                enumerable: false,
+                value: {
+                  run: entry.run,
+                  runId: entry.run.run_id,
+                  player_text: recorded.text,
+                  speaker,
+                  person,
+                  reaction,
+                  fallback_text: fallbackText,
+                  interaction,
+                  world,
+                  entry,
+                  requestId: recorded.id,
+                  resuming: true
+                }
+              });
+            }
+            res.projection = this.projectionFor(world, "field-researcher", entry);
+            return res;
+          }
+          if (recorded.status === "completed" || !recorded.status) {
+            const res = clone(recorded.cached_result ?? {
+              ok: true,
+              result: {
+                outcome: recorded.delivery ?? "delivered",
+                public_reason: recorded.public_reason ?? "This message has already been recorded."
+              }
+            });
+            res.result ??= {};
+            res.result.duplicate = true;
+            if (recorded.public_reason) res.result.public_reason = recorded.public_reason;
+            if (recorded.presentation_source) res.result.presentation_source = recorded.presentation_source;
+            if (recorded.scene) {
+              res.result.scene = clone(recorded.scene);
+            } else if (res.result.scene) {
+              res.result.scene.public_reason = res.result.public_reason;
+              res.result.scene.narration = res.result.public_reason;
+              res.result.scene.narration_source = res.result.presentation_source;
+            }
+            res.projection = this.projectionFor(world, "field-researcher", entry);
+            return res;
+          }
+        }
+      }
+      beforeRun = clone(entry.run); beforeWorld = clone(world); beforePhase = clone(entry.phase);
       if (!q4Interactions.CHANNELS.includes(channel) || channel === "action") return publicError("CHANNEL_INVALID", "Choose a communication channel.");
+      if (cq4Day1Opener.isOpener(entry.run.scenario) && entry.phase?.phase_id === "BRIEFING") {
+        if (!cq4Day1Opener.isBroadcastCompleted(entry.run)) {
+          return publicError("BROADCAST_IN_PROGRESS", "The facility broadcast is in progress. Coworker interaction is unavailable until the broadcast concludes.");
+        }
+        if (channel !== "local") return publicError("INTRO_CHANNEL_UNAVAILABLE", "Introductions use LOCAL speech. The facility broadcast is receive-only and Standard is not active here.");
+        if (entry.run?.expedition?.day1_opener?.beat === cq4Day1Opener.BEATS.PERSONNEL_BRIEFING) {
+          cq4Day1Opener.concludePersonnelBriefing(entry.run);
+        }
+      }
+      if (cq4Day1Opener.isOpener(entry.run.scenario) && ["STAGING", "FACILITY_TRANSIT", "THRESHOLD", "STANDARD_RADIO_CHECK"].includes(entry.phase?.phase_id) && channel === "local") return publicError("LOCAL_INPUT_PAUSED", "Personnel are focused on equipment preparation.");
       const message = typeof text === "string" ? text.trim().slice(0, 2000) : "";
       if (!message) return publicError("COMMUNICATION_EMPTY", "Say or transmit something before sending it.");
-      const expedition = entry.run.expedition; const playerId = entry.run.session.startup.player.observer_id; const coworkers = expedition.team.members.filter((member) => member.personnel_id !== playerId); const requested = String(target ?? "").toLowerCase(); const peer = requested && !["team", "teammate", "standard"].includes(requested) ? coworkers.find((member) => [member.personnel_id, member.first_name, member.display_name].filter(Boolean).some((value) => String(value).toLowerCase() === requested)) : null; const person = peer ? history.character(world, peer.personnel_id ?? peer.id) : null; const observed = peer && channel === "local" ? q4Personnel.observerStatus(peer, person, entry.phase?.phase_id, entry.run.spatial, playerId) : null;
-      if (channel === "local") {
-        const localPeers = coworkers.filter((member) => { const record = history.character(world, member.personnel_id ?? member.id); return member.status === "active" && q4Personnel.observerStatus(member, record, entry.phase?.phase_id, entry.run.spatial, playerId).local_eligible; });
-        if (peer && !localPeers.some((m) => (m.personnel_id ?? m.id) === (peer.personnel_id ?? peer.id))) {
-          const reason = peer?.condition === "Unresponsive" ? "The teammate is unresponsive." : `${peer.first_name || peer.display_name} is not within speaking range.`;
-          communicationRuntime.local(expedition, { sender: playerId, recipients: [peer.personnel_id ?? peer.id], text: message, eligible: false, failure_reason: reason });
-          q4Interactions.record(expedition, { channel, speaker: "You", targets: [peer.display_name], player_text: message, attempted_behavior: "speak with a nearby teammate", eligibility: "target-out-of-range", delivery: "not-delivered", presentation: { result: reason } });
-          try {
-            this.persistSession(world, "field-researcher", entry);
-          } catch (persistError) {
-            for (const key of Object.keys(world)) delete world[key]; Object.assign(world, beforeWorld);
-            for (const key of Object.keys(entry.run)) delete entry.run[key]; Object.assign(entry.run, beforeRun);
-            entry.run._world = world; entry.phase = beforePhase;
-            return publicError("PERSISTENCE_COMMIT_FAILED", "The action could not be saved and was not committed. Check the operation record storage before retrying.");
+      const expedition = entry.run.expedition; const playerId = entry.run.session.startup.player.observer_id; const coworkers = expedition.team.members.filter((member) => member.personnel_id !== playerId);
+      let rawTarget = typeof target === "string" ? target.trim() : (target && typeof target === "object" ? (target.id ?? target.name ?? target.personnel_id ?? null) : null);
+      if (!rawTarget) {
+        const addressMatch = message.match(/^(?:@([A-Za-z0-9'-]+(?:\s+[A-Za-z0-9'-]+)?)|([A-Za-z0-9'-]+(?:\s+[A-Za-z0-9'-]+)?)\s*[,:])\s*(.*)$/);
+        if (addressMatch) {
+          const candidate = (addressMatch[1] || addressMatch[2]).trim();
+          const candNorm = candidate.toLowerCase();
+          const isBroadcastWord = ["team", "teammate", "teammates", "all", "everyone", "broadcast", "room", "local", "anyone", "crew"].includes(candNorm);
+          const allWorldChars = Object.values(world.characters ?? {});
+          const matchesKnown = isBroadcastWord || coworkers.some(m => [m.first_name, m.last_name, m.display_name, m.personnel_id, m.id, ...(m.aliases ?? [])].filter(Boolean).some(s => String(s).toLowerCase() === candNorm)) || allWorldChars.some(c => [c.first_name, c.last_name, c.display_name, c.identity, c.id, ...(c.aliases ?? [])].filter(Boolean).some(s => String(s).toLowerCase() === candNorm));
+          if (matchesKnown) {
+            rawTarget = candidate;
           }
-          return publicError("LOCAL_TARGET_UNAVAILABLE", reason);
         }
-        const recipients = peer ? localPeers.filter((m) => (m.personnel_id ?? m.id) === (peer.personnel_id ?? peer.id)) : localPeers;
-        const eligible = recipients.length > 0;
-        if (!eligible) {
-          const reason = peer?.condition === "Unresponsive" ? "The teammate is unresponsive." : observed?.contact_category === "LOCAL" ? "The local conversation could not be delivered." : `No nearby participating personnel can hear this transmission.`;
-          communicationRuntime.local(expedition, { sender: playerId, recipients: [peer?.personnel_id ?? peer?.id ?? "unconfirmed teammate"], text: message, eligible: false, failure_reason: reason });
-          q4Interactions.record(expedition, { channel, speaker: "You", targets: [peer?.display_name ?? "no nearby teammate"], player_text: message, attempted_behavior: "speak with a nearby teammate", eligibility: "target-out-of-range", delivery: "not-delivered", presentation: { result: reason } });
-          try {
-            this.persistSession(world, "field-researcher", entry);
-          } catch (persistError) {
-            for (const key of Object.keys(world)) delete world[key]; Object.assign(world, beforeWorld);
-            for (const key of Object.keys(entry.run)) delete entry.run[key]; Object.assign(entry.run, beforeRun);
-            entry.run._world = world; entry.phase = beforePhase;
-            return publicError("PERSISTENCE_COMMIT_FAILED", "The action could not be saved and was not committed. Check the operation record storage before retrying.");
+      }
+
+      const BROADCAST_TERMS = new Set(["team", "teammate", "teammates", "all", "everyone", "broadcast", "room", "local", "anyone", "crew"]);
+      const isBroadcast = !rawTarget || BROADCAST_TERMS.has(rawTarget.toLowerCase());
+
+      let peer = null;
+      let recipients = [];
+
+      if (channel === "local") {
+        const localPeers = coworkers.filter((member) => {
+          const record = history.character(world, member.personnel_id ?? member.id);
+          return member.status === "active" && q4Personnel.observerStatus(member, record, entry.phase?.phase_id, entry.run.spatial, playerId).local_eligible;
+        });
+
+        if (isBroadcast) {
+          if (localPeers.length === 0) {
+            const reason = "No nearby participating personnel can hear this transmission.";
+            communicationRuntime.local(expedition, { sender: playerId, recipients: ["unconfirmed teammate"], text: message, eligible: false, failure_reason: reason });
+            q4Interactions.record(expedition, { channel, speaker: "You", targets: ["no nearby teammate"], player_text: message, attempted_behavior: "speak with a nearby teammate", eligibility: "target-out-of-range", delivery: "not-delivered", presentation: { result: reason } });
+            try { this.persistSession(world, "field-researcher", entry); } catch (persistError) {
+              for (const key of Object.keys(world)) delete world[key]; Object.assign(world, beforeWorld);
+              for (const key of Object.keys(entry.run)) delete entry.run[key]; Object.assign(entry.run, beforeRun);
+              entry.run._world = world; entry.phase = beforePhase;
+              return publicError("PERSISTENCE_COMMIT_FAILED", "The action could not be saved and was not committed. Check the operation record storage before retrying.");
+            }
+            return publicError("LOCAL_TARGET_UNAVAILABLE", reason);
           }
-          return publicError("LOCAL_TARGET_UNAVAILABLE", reason);
+          recipients = localPeers;
+        } else {
+          const targetNorm = rawTarget.toLowerCase();
+          const activeMatches = coworkers.filter((member) => {
+            const record = history.character(world, member.personnel_id ?? member.id);
+            const candidates = [
+              member.personnel_id,
+              member.id,
+              member.first_name,
+              member.last_name,
+              member.display_name,
+              record?.first_name,
+              record?.last_name,
+              record?.display_name,
+              ...(member.aliases ?? []),
+              ...(record?.aliases ?? [])
+            ].filter(Boolean).map(s => String(s).toLowerCase().trim());
+            return candidates.includes(targetNorm);
+          });
+
+          if (activeMatches.length > 1) {
+            return publicError("TARGET_AMBIGUOUS", `Multiple active teammates match "${rawTarget}". Specify the full name or role.`);
+          }
+
+          if (activeMatches.length === 0) {
+            const allWorldCharacters = Object.values(world.characters ?? {});
+            const worldMatches = allWorldCharacters.filter((person) => {
+              const candidates = [
+                person.identity,
+                person.id,
+                person.first_name,
+                person.last_name,
+                person.display_name,
+                ...(person.aliases ?? [])
+              ].filter(Boolean).map(s => String(s).toLowerCase().trim());
+              return candidates.includes(targetNorm);
+            });
+
+            if (worldMatches.length > 0) {
+              const match = worldMatches[0];
+              if (match.status === "dead") {
+                return publicError("LOCAL_TARGET_UNAVAILABLE", `${match.display_name || match.first_name || rawTarget} is deceased and cannot be addressed.`);
+              }
+              if (match.identity === playerId) {
+                return publicError("TARGET_INVALID", "You cannot address yourself as a recipient.");
+              }
+              if (match.role?.toLowerCase().includes("chief") || match.identity === "kirk-maxwell") {
+                return publicError("LOCAL_TARGET_UNAVAILABLE", `${match.display_name || match.first_name || rawTarget} is not present in the field complex.`);
+              }
+              return publicError("LOCAL_TARGET_UNAVAILABLE", `${match.display_name || match.first_name || rawTarget} is not assigned to the current operational team.`);
+            }
+
+            return publicError("TARGET_NOT_FOUND", `No personnel matching "${rawTarget}" was found.`);
+          }
+
+          peer = activeMatches[0];
+          const person = history.character(world, peer.personnel_id ?? peer.id);
+          const observed = q4Personnel.observerStatus(peer, person, entry.phase?.phase_id, entry.run.spatial, playerId);
+
+          if (!localPeers.some((m) => (m.personnel_id ?? m.id) === (peer.personnel_id ?? peer.id))) {
+            const reason = peer?.condition === "Unresponsive"
+              ? "The teammate is unresponsive."
+              : `${peer.first_name || peer.display_name} is not within speaking range.`;
+            communicationRuntime.local(expedition, { sender: playerId, recipients: [peer.personnel_id ?? peer.id], text: message, eligible: false, failure_reason: reason });
+            q4Interactions.record(expedition, { channel, speaker: "You", targets: [peer.display_name], player_text: message, attempted_behavior: "speak with a nearby teammate", eligibility: "target-out-of-range", delivery: "not-delivered", presentation: { result: reason } });
+            try {
+              this.persistSession(world, "field-researcher", entry);
+            } catch (persistError) {
+              for (const key of Object.keys(world)) delete world[key]; Object.assign(world, beforeWorld);
+              for (const key of Object.keys(entry.run)) delete entry.run[key]; Object.assign(entry.run, beforeRun);
+              entry.run._world = world; entry.phase = beforePhase;
+              return publicError("PERSISTENCE_COMMIT_FAILED", "The action could not be saved and was not committed. Check the operation record storage before retrying.");
+            }
+            return publicError("LOCAL_TARGET_UNAVAILABLE", reason);
+          }
+
+          recipients = [peer];
         }
          const deliveredLocal = communicationRuntime.local(expedition, { sender: playerId, recipients: recipients.map((member) => member.personnel_id ?? member.id), text: message, eligible: true });
         phenomenonEcology.recordSpeech(world, entry.run, { speaker:playerId, text:message, location_id:entry.run.spatial.player_location });
@@ -1011,19 +1774,40 @@ class DesktopService {
         const isWarning = /\b(?:look out|watch out|careful|warning|danger|hazard|stop)\b/i.test(message);
         const importance = request ? 58 : isWarning ? 75 : 85;
         const risk = isWarning ? 70 : 0;
+        const isDisclosure = /\b(?:nervous|afraid|scared|prefer|call me|tight spaces|dark|claustrophobic|worried)\b/i.test(message);
         for (const recipient of recipients) {
+          const recId = recipient.personnel_id ?? recipient.id;
           recipient.last_communication = { channel: "LOCAL", direction: "received", at: expedition.clock.interval, message_id: deliveredLocal.message.id };
           recipient.known_information ??= [];
           recipient.known_information.push({ kind: "reported-knowledge", text: message, source: "local-communication", sender: playerId, at: expedition.clock.interval, message_id: deliveredLocal.message.id });
           personnelContinuity.recordDialogueMemory(world, {
             run_id: entry.run.run_id,
-            identity: recipient.personnel_id ?? recipient.id,
+            identity: recId,
             player_text: message,
             response: null,
             source: "local-communication",
             sender: playerId,
             at: expedition.clock.interval
           });
+          if (isDisclosure) {
+            personnelContinuity.recordAttitudeChange(world, {
+              run_id: entry.run.run_id,
+              identity: recId,
+              target_id: playerId,
+              delta: { trust: 8, rapport: 10 },
+              reason: "Player shared working preferences and concerns openly.",
+              at: expedition.clock.interval
+            });
+          } else if (isWarning) {
+            personnelContinuity.recordAttitudeChange(world, {
+              run_id: entry.run.run_id,
+              identity: recId,
+              target_id: playerId,
+              delta: { trust: 4, rapport: 2 },
+              reason: "Player gave timely operational warning.",
+              at: expedition.clock.interval
+            });
+          }
         }
         const requestedEquipment = request ? Object.values(expedition.equipment ?? {}).find((item) => [item.id, item.label, item.type].filter(Boolean).some((value) => message.toLowerCase().includes(String(value).toLowerCase()) || String(value).toLowerCase().split(/\s+/).some((term) => term.length > 4 && message.toLowerCase().includes(term)))) : null;
         const equipmentHolder = requestedEquipment ? expedition.team.members.find((member) => member.personnel_id === requestedEquipment.holder) : null;
@@ -1050,10 +1834,10 @@ class DesktopService {
           });
           const reaction = personnelContinuity.react(world, reactionContext);
           const knownAnswer = personnelContinuity.presentKnownAnswer(entry.run, recipient.personnel_id, message, world);
-          const response = request ? (requestedEquipment?.holder === recipient.personnel_id ? `${recipient.first_name}: I hear the request. The ${requestedEquipment.label.toLowerCase()} remains with me until we complete a physical handoff.` : requestedEquipment?.holder === playerId ? `${recipient.first_name}: You already hold the ${requestedEquipment.label.toLowerCase()}.` : equipmentHolder ? `${recipient.first_name}: ${equipmentHolder.first_name} has the ${requestedEquipment.label.toLowerCase()}; a physical handoff still has to happen in person.` : `${recipient.first_name}: I hear the request, but I cannot confirm that equipment in my custody.`) : knownAnswer ?? personnelContinuity.presentReaction(recipientPerson, reaction.reaction, message);
+          const response = request ? (requestedEquipment?.holder === recipient.personnel_id ? `${recipient.first_name}: I hear the request. The ${requestedEquipment.label.toLowerCase()} remains with me until we complete a physical handoff.` : requestedEquipment?.holder === playerId ? `${recipient.first_name}: You already hold the ${requestedEquipment.label.toLowerCase()}.` : equipmentHolder ? `${recipient.first_name}: ${equipmentHolder.first_name} has the ${requestedEquipment.label.toLowerCase()}; a physical handoff still has to happen in person.` : `${recipient.first_name}: I hear the request, but I cannot confirm that equipment in my custody.`) : knownAnswer ?? personnelContinuity.presentReaction(recipientPerson, reaction.reaction, message, playerId);
           return { recipient, person:recipientPerson, reaction_context:reactionContext, reaction:reaction.reaction, text:response };
         });
-        const addressed = peer ? responses.find((item) => item.recipient.personnel_id === peer.personnel_id) : null;
+        const addressed = peer ? responses.find((item) => (item.recipient.personnel_id ?? item.recipient.id) === (peer.personnel_id ?? peer.id)) : null;
         const namedInMessage = recipients.find((m) => [m.first_name, m.last_name, m.display_name].filter(Boolean).some((n) => new RegExp(`\\b${String(n).replace(/[.*+?^${}()|[\\]\\\\]/g, "\\$&")}\\b`, "i").test(message)));
         const roleInMessage = recipients.find((m) => { const role = String(m.role ?? "").toLowerCase(); return role && role.split(/\s+/).some((w) => w.length > 3 && new RegExp(`\\b${w}\\b`, "i").test(message)); });
         const addressedRecipient = addressed ?? (namedInMessage ? responses.find((item) => item.recipient.personnel_id === (namedInMessage.personnel_id ?? namedInMessage.id)) : (roleInMessage ? responses.find((item) => item.recipient.personnel_id === (roleInMessage.personnel_id ?? roleInMessage.id)) : null));
@@ -1063,9 +1847,18 @@ class DesktopService {
         personnelContinuity.recordSharedHistory(world, { run_id: entry.run.run_id, participants: [playerId, ...recipients.map((recipient) => recipient.personnel_id ?? recipient.id)], kind: "local-communication", refs: { message_id: deliveredLocal.message.id, geography_shared: /\b(route|corridor|passage|location|map|survey|where)\b/i.test(message) }, at: expedition.clock.interval });
         const interactionTargets = recipients.map(recipient => recipient.display_name);
         const responseBody = response.replace(new RegExp(`^${String(chosen?.recipient?.first_name ?? "").replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}:\\s*`, "i"), "");
-        const interaction = q4Interactions.record(expedition, { channel, speaker: "You", targets: interactionTargets, player_text: message, attempted_behavior: "speak with nearby participating personnel", eligibility: "eligible", delivery: "heard", time_cost: 0, canonical_effects: ["communication.local.delivered"], response_speaker: chosen?.recipient?.first_name ?? chosen?.recipient?.display_name ?? null, presentation: { result: "heard", response:responseBody } });
+        const recipientIds = recipients.map((r) => r.personnel_id ?? r.id);
+        const chosenId = chosen?.recipient?.personnel_id ?? chosen?.recipient?.id ?? null;
+        const playerListeners = [...recipientIds];
+        const responseListeners = [playerId, ...recipientIds.filter((id) => id !== chosenId)];
+
+        const interaction = q4Interactions.record(expedition, { channel, speaker: "You", speaker_id: playerId, targets: interactionTargets, recipient_ids: recipientIds, listeners: playerListeners, player_text: message, attempted_behavior: "speak with nearby participating personnel", eligibility: "eligible", delivery: "heard", time_cost: 0, canonical_effects: ["communication.local.delivered"], response_speaker: chosen?.recipient?.first_name ?? chosen?.recipient?.display_name ?? null, response_speaker_id: chosenId, response_listeners: responseListeners, location_id: entry.run.spatial?.player_location ?? null, submission_id: requestId, presentation: { result: "heard", response:responseBody } });
         q4Trajectories.noteCommunication({ world, expedition, run_id: entry.run.run_id, channel: "local", delivered: true, text: message });
         const cycle = bootstrap.resolveOperationalCycle(entry.run, "LOCAL", 0, "local-communication");
+        if (cq4Day1Opener.isOpener(entry.run.scenario)) {
+          const commDuration = cq4Day1Opener.getActionDuration("COMMUNICATE", { length: message.length > 100 ? "extended" : message.length < 25 ? "brief" : "normal" });
+          cq4Day1Opener.advanceSimulationTime(entry.run, commDuration);
+        }
         presentationBus.emit(entry.run, {
           type: presentationBus.EVENT_TYPES.DIALOGUE,
           source: presentationBus.SOURCES.DETERMINISTIC,
@@ -1086,6 +1879,37 @@ class DesktopService {
           const spatialDefLocal = bootstrap.spatialDefinitionFor(entry.run.spatial_pack_id);
           try { decisionScheduler.scheduleDecisions(entry.run, spatialDefLocal, world); } catch (schedulerError) { this.log(`decision scheduler non-fatal: ${schedulerError.message}`); }
         }
+        const publicReason = response || "Your message is heard. No further response is required.";
+        const scene = this.sceneFor(entry, "field-researcher", { scene_type: "delta", accepted: true, action: "LOCAL", public_reason: publicReason }, world);
+        const output = { ok: true, result: { outcome: "delivered", public_reason: publicReason, message: { id: deliveredLocal.message.id, state: deliveredLocal.message.state }, mission_updates: cycle.mission_updates, scene }, projection: this.projectionFor(world, "field-researcher", entry) };
+        const authorized = chosen?.reaction && chosen.text ? chosen : (responses.find((item) => item.reaction && item.text) ?? null);
+        if (requestId) {
+          const providerSetting = this.settings().provider;
+          const configured = ["openai", "auto", "local", "groq", "gemini", "openrouter"].includes(providerSetting);
+          const willBeHosted = Boolean(authorized) && channel === "local" && (configured || Boolean(this.localDialogueProvider));
+          const receipt = {
+            id: requestId,
+            submission_id: requestId,
+            input_fingerprint: fingerprint,
+            run_id: entry.run.run_id,
+            interval: expedition.clock.interval,
+            channel,
+            target: target ?? null,
+            text: message,
+            delivery: "delivered",
+            status: willBeHosted ? "pending" : "completed",
+            public_reason: publicReason,
+            presentation_source: "deterministic",
+            scene: clone(scene),
+            cached_result: { ok: true, result: clone(output.result) },
+            interaction_id: interaction?.id ?? null,
+            target_worker_id: authorized?.recipient?.personnel_id ?? chosen?.recipient?.personnel_id ?? chosen?.recipient?.id ?? null,
+            response_category: authorized?.reaction?.category ?? null,
+            fallback_text: authorized?.text ?? response
+          };
+          entry.run.expedition.communication_receipts ??= [];
+          entry.run.expedition.communication_receipts.push(receipt);
+        }
         try {
           this.persistSession(world, "field-researcher", entry);
         } catch (persistError) {
@@ -1094,11 +1918,7 @@ class DesktopService {
           entry.run._world = world; entry.phase = beforePhase;
           return publicError("PERSISTENCE_COMMIT_FAILED", "The action could not be saved and was not committed. Check the operation record storage before retrying.");
         }
-        const publicReason = response || "Your message is heard. No further response is required.";
-        const scene = this.sceneFor(entry, "field-researcher", { scene_type: "delta", accepted: true, action: "LOCAL", public_reason: publicReason }, world);
-        const output = { ok: true, result: { outcome: "delivered", public_reason: publicReason, message: { id: deliveredLocal.message.id, state: deliveredLocal.message.state }, mission_updates: cycle.mission_updates, scene }, projection: this.projectionFor(world, "field-researcher", entry) };
-        const authorized = chosen?.reaction && chosen.text ? chosen : (responses.find((item) => item.reaction && item.text) ?? null);
-        if (authorized) Object.defineProperty(output, "_local_dialogue_context", { configurable:true, enumerable:false, value:{ run:entry.run, player_text:message, speaker:authorized.recipient, person:authorized.person, reaction_context:authorized.reaction_context, reaction:authorized.reaction, fallback_text:authorized.text, interaction, world, entry } });
+        if (authorized) Object.defineProperty(output, "_local_dialogue_context", { configurable:true, enumerable:false, value:{ run:entry.run, runId:entry.run.run_id, player_text:message, speaker:authorized.recipient, person:authorized.person, reaction_context:authorized.reaction_context, reaction:authorized.reaction, fallback_text:authorized.text, interaction, world, entry, requestId } });
         return output;
       }
       const radio = expedition.equipment?.["survey-radio"];
@@ -1107,6 +1927,20 @@ class DesktopService {
         ["FIELD_OPERATION", "RETURN"].includes(entry.phase?.phase_id) &&
         (entry.run.spatial?.player_location === "utility-room" || entry.run.spatial?.player_location === "threshold-side-entry");
       const radioAvailable = radioCheckPhase || isOpenerReturnAtKV31 || (q4Equipment.stateUsable(radio) && radio.holder === playerId && radio.charges > 0);
+      if (cq4Day1Opener.isOpener(entry.run.scenario) && cq4Day1Opener.isCutoffExceeded(entry.run)) {
+        const reason = "Standard communication line is dead. Operational cutoff exceeded.";
+        communicationRuntime.failRadio(expedition, { sender: playerId, recipient: "Standard", text: message, reason });
+        q4Interactions.record(expedition, { channel, speaker: "You", targets: ["Standard"], player_text: message, attempted_behavior: "transmit over the survey radio", eligibility: "radio-unavailable", delivery: "not-delivered", presentation: { result: reason } });
+        try {
+          this.persistSession(world, "field-researcher", entry);
+        } catch (persistError) {
+          for (const key of Object.keys(world)) delete world[key]; Object.assign(world, beforeWorld);
+          for (const key of Object.keys(entry.run)) delete entry.run[key]; Object.assign(entry.run, beforeRun);
+          entry.run._world = world; entry.phase = beforePhase;
+          return publicError("PERSISTENCE_COMMIT_FAILED", "The action could not be saved and was not committed. Check the operation record storage before retrying.");
+        }
+        return publicError("STANDARD_UNAVAILABLE", reason);
+      }
       if (!["STANDARD_RADIO_CHECK", "FIELD_OPERATION", "RETURN"].includes(entry.phase?.phase_id) || !radioAvailable || (!radioCheckPhase && !isOpenerReturnAtKV31 && !q4Radio.available(expedition))) {
         const reason = entry.phase?.phase_id === "BRIEFING" ? "The field radio channel is not active during briefing." : entry.phase?.phase_id === "STAGING" ? "Standard remains unavailable until the radio-check phase." : entry.phase?.phase_id === "THRESHOLD" ? "Complete the approach before establishing radio contact." : "The Standard radio channel is not available from here.";
         communicationRuntime.failRadio(expedition, { sender: playerId, recipient: "Standard", text: message, reason });
@@ -1149,6 +1983,9 @@ class DesktopService {
       }
       if (actuallyDelivered) {
         standardOperator.recordContact(world, entry.run, resolvedMessage);
+        if (!radioCheckPhase && entry.phase?.phase_id === "FIELD_OPERATION") {
+          q4Trajectories.noteCommunication({ world, expedition, run_id: entry.run.run_id, channel: "standard", delivered: true, text: message });
+        }
         if (/\b(entity|form|figure|voice|sound|discrepancy|structure|humanoid|unidentified)\b/i.test(message)) for (const observation of phenomenonEcology.projection(world,{observer:playerId,location_id:entry.run.spatial.player_location})) { const item=phenomenonEcology.resolveObservedTarget(world,{observer:playerId,location_id:entry.run.spatial.player_location,target:observation.designation}); if(item)phenomenonEcology.deliverReport(world,item.id,{observer:playerId,message_id:resolvedMessage.id,summary:message,include_alias:message.toLowerCase().includes(String(observation.alias??"").toLowerCase())&&Boolean(observation.alias),at:resolvedMessage.delivered_at??expedition.clock.interval}); }
         if (cq4Day1Opener.isOpener(entry.run.scenario) && ["FIELD_OPERATION", "RETURN"].includes(entry.phase?.phase_id)) {
           const loc = entry.run.spatial?.player_location;
@@ -1157,7 +1994,7 @@ class DesktopService {
             entry.run.expedition.day1_opener.return_surveillance_verified = true;
             presentationBus.emit(entry.run, {
               type: presentationBus.EVENT_TYPES.RADIO,
-              source: presentationBus.SOURCES.AUTHORED,
+              source: presentationBus.SOURCES.AUTHORED_VARIANT,
               speaker: "CONTROL ROOM",
               recipient: "Clear-Q4 team",
               channel: "STANDARD",
@@ -1167,10 +2004,15 @@ class DesktopService {
         }
       }
       const delivery = actuallyDelivered ? "delivered" : resolvedMessage.state === "delayed" ? "delayed" : "queued";
-      const interaction = q4Interactions.record(expedition, { channel, speaker: "You", targets: ["Standard"], player_text: message, attempted_behavior: "transmit over the survey radio", eligibility: "eligible", delivery, time_cost: 1, canonical_effects: ["communication.sent"], observer_knowledge: actuallyDelivered ? [{ observer: "Standard", kind: "reported-communication", text: message }] : [], presentation: { result: delivery } });
+      const interaction = q4Interactions.record(expedition, { channel, speaker: "You", targets: ["Standard"], player_text: message, attempted_behavior: "transmit over the survey radio", eligibility: "eligible", delivery, time_cost: 1, canonical_effects: ["communication.sent"], observer_knowledge: actuallyDelivered ? [{ observer: "Standard", kind: "reported-communication", text: message }] : [], submission_id: requestId, presentation: { result: delivery } });
       if (radioCheckPhase && resolvedMessage.state === "acknowledged") q4Interactions.record(expedition, { channel, speaker: "STANDARD", targets: ["Clear-Q4 team"], player_text: "Standard acknowledgment received for Radio check.", attempted_behavior: "scheduled radio-check acknowledgment", eligibility: "eligible", delivery: "received", canonical_effects: ["q4.radio.check.acknowledged"], presentation: { result: "received" } });
-      if (!radioCheckPhase) q4Trajectories.noteCommunication({ world, expedition, run_id: entry.run.run_id, channel: "standard", delivered: actuallyDelivered, text: message });
       const missionUpdates = [...cycle.mission_updates, ...(acknowledgmentCycle?.mission_updates ?? [])];
+      if (cq4Day1Opener.isOpener(entry.run.scenario)) {
+        const duration = radioCheckPhase
+          ? cq4Day1Opener.getActionDuration("RADIO_CHECK")
+          : cq4Day1Opener.getActionDuration("COMMUNICATE", { length: message.length > 100 ? "extended" : message.length < 25 ? "brief" : "normal" });
+        cq4Day1Opener.advanceSimulationTime(entry.run, duration);
+      }
       presentationBus.emit(entry.run, {
         type: presentationBus.EVENT_TYPES.RADIO,
         source: presentationBus.SOURCES.DETERMINISTIC,
@@ -1193,6 +2035,29 @@ class DesktopService {
         const spatialDefRadio = bootstrap.spatialDefinitionFor(entry.run.spatial_pack_id);
         try { decisionScheduler.scheduleDecisions(entry.run, spatialDefRadio, world); } catch (schedulerError) { this.log(`decision scheduler non-fatal: ${schedulerError.message}`); }
       }
+      const publicReason = resolvedMessage.state === "delayed" ? resolvedMessage.interference?.public_description ?? "The transmission is delayed; no delivery confirmation has been received." : actuallyDelivered ? "The transmission was delivered. Standard acknowledgment remains separately recorded." : "The transmission is queued; delivery has not been confirmed.";
+      const scene = this.sceneFor(entry, "field-researcher", { scene_type: "delta", accepted: true, action: "STANDARD", public_reason: publicReason }, world);
+      const output = { ok: true, result: { outcome: resolvedMessage.state, public_reason: publicReason, message: { id: resolvedMessage.id, state: resolvedMessage.state }, mission_updates: missionUpdates, operational_updates: cycle.public_updates, scene }, projection: this.projectionFor(world, "field-researcher", entry) };
+      if (requestId) {
+        const receipt = {
+          id: requestId,
+          submission_id: requestId,
+          input_fingerprint: fingerprint,
+          run_id: entry.run.run_id,
+          interval: expedition.clock.interval,
+          channel,
+          target: target ?? null,
+          text: message,
+          delivery: resolvedMessage.state,
+          status: "completed",
+          public_reason: publicReason,
+          presentation_source: "deterministic",
+          scene: clone(scene),
+          cached_result: { ok: true, result: clone(output.result) }
+        };
+        entry.run.expedition.communication_receipts ??= [];
+        entry.run.expedition.communication_receipts.push(receipt);
+      }
       try {
         this.persistSession(world, "field-researcher", entry);
       } catch (persistError) {
@@ -1201,9 +2066,7 @@ class DesktopService {
         entry.run._world = world; entry.phase = beforePhase;
         return publicError("PERSISTENCE_COMMIT_FAILED", "The action could not be saved and was not committed. Check the operation record storage before retrying.");
       }
-      const publicReason = resolvedMessage.state === "delayed" ? resolvedMessage.interference?.public_description ?? "The transmission is delayed; no delivery confirmation has been received." : actuallyDelivered ? "The transmission was delivered. Standard acknowledgment remains separately recorded." : "The transmission is queued; delivery has not been confirmed.";
-      const scene = this.sceneFor(entry, "field-researcher", { scene_type: "delta", accepted: true, action: "STANDARD", public_reason: publicReason }, world);
-      return { ok: true, result: { outcome: resolvedMessage.state, public_reason: publicReason, message: { id: resolvedMessage.id, state: resolvedMessage.state }, mission_updates: missionUpdates, operational_updates: cycle.public_updates, scene }, projection: this.projectionFor(world, "field-researcher", entry) };
+      return output;
     } catch (error) {
       if (entry?.run && beforeRun) {
         for (const key of Object.keys(world)) delete world[key]; Object.assign(world, beforeWorld);
@@ -1220,10 +2083,11 @@ class DesktopService {
   submitQ4Handoff({ world_id, item_id, target = null }) {
     if (this.commandBusy(world_id)) return publicError("SESSION_BUSY", "Wait for the current action to finish before changing this operation.");
     if (outcomes.isRetired(this.getWorld(world_id))) return publicError("WORLD_RETIRED", "This world is a read-only historical record.");
+    let entry = null; let world = null; let beforeRun = null; let beforeWorld = null; let beforePhase = null;
     try {
-      const world = this.getWorld(world_id); const entry = this.session(world_id, "field-researcher") ?? this.restoreSession(world, "field-researcher", readJson(this.sessionFile(world_id, "field-researcher"), null));
+      world = this.getWorld(world_id); entry = this.session(world_id, "field-researcher") ?? this.restoreSession(world, "field-researcher", readJson(this.sessionFile(world_id, "field-researcher"), null));
       if (!entry || entry.kind !== "bootstrap") return publicError("SESSION_NOT_FOUND", "Start or continue Clear-Q4 before handing over equipment.");
-      const beforeRun = clone(entry.run); const beforeWorld = clone(world); const beforePhase = clone(entry.phase);
+      beforeRun = clone(entry.run); beforeWorld = clone(world); beforePhase = clone(entry.phase);
       const player = entry.run.session.startup.player.observer_id; const coworkers = entry.run.expedition.team.members.filter((member) => member.personnel_id !== player); const targetText = String(target ?? "").toLowerCase(); const key = entry.run.expedition.equipment[item_id] ? item_id : Object.entries(entry.run.expedition.equipment).find(([, item]) => item.id === item_id)?.[0]; const item = entry.run.expedition.equipment[key];
       const isPlayerTarget = ["player", "you", String(player).toLowerCase()].includes(targetText) || targetText === String(entry.run.session?.startup?.player?.observer_id).toLowerCase() || targetText === String(entry.run.expedition.team.members[0]?.identity).toLowerCase() || targetText === String(entry.run.expedition.team.members[0]?.personnel_id).toLowerCase();
       if (isPlayerTarget) {
@@ -1274,11 +2138,12 @@ class DesktopService {
   }
   selectQ4OptionalStore({ world_id, item_id }) {
     if (this.commandBusy(world_id)) return publicError("SESSION_BUSY", "Wait for the current action to finish before changing this operation.");
+    let entry = null; let world = null; let beforeRun = null; let beforeWorld = null; let beforePhase = null;
     try {
-      const world = this.getWorld(world_id); const entry = this.session(world_id, "field-researcher") ?? this.restoreSession(world, "field-researcher", readJson(this.sessionFile(world_id, "field-researcher"), null));
+      world = this.getWorld(world_id); entry = this.session(world_id, "field-researcher") ?? this.restoreSession(world, "field-researcher", readJson(this.sessionFile(world_id, "field-researcher"), null));
       if (!entry || entry.kind !== "bootstrap") return publicError("SESSION_NOT_FOUND", "Start or continue Clear-Q4 before selecting stores.");
       if (entry.phase?.phase_id !== "STAGING") return publicError("STAGING_REQUIRED", "Optional stores can only be selected during staging.");
-      const beforeRun = clone(entry.run); const beforeWorld = clone(world); const beforePhase = clone(entry.phase);
+      beforeRun = clone(entry.run); beforeWorld = clone(world); beforePhase = clone(entry.phase);
       const selected = logisticsRuntime.transact(entry.run.expedition, bootstrap.logisticsDefinitionFor(entry.run.spatial_pack_id, entry.run.scenario), { action: "RETRIEVE", item_id, actor: entry.run.session.startup.player.observer_id }, this.q4LogisticsContext(entry, world));
       if (!selected.ok) return publicError(selected.code, selected.public_reason);
       expeditionEvent(entry.run.expedition, "q4.loadout.optional_selected", { equipment_id: selected.item.instance_id, type: selected.item.category });
@@ -1384,8 +2249,8 @@ class DesktopService {
       const now = this.now();
 
       presentationBus.emit(entry.run, {
-        type: "radio_chirp",
-        cue: "radio_chirp",
+        type: presentationBus.EVENT_TYPES.AUDIO_CUE,
+        cue: "radio_tx_chirp",
         source: presentationBus.SOURCES.DETERMINISTIC,
         text: "*radio chirp*",
         channel: "STANDARD"
@@ -1426,6 +2291,21 @@ class DesktopService {
         delivered_at: interval
       };
       standardOperator.recordContact(world, entry.run, checkInMsg);
+
+      const locallyPresentPersonnel = q4Personnel.publicTeam(entry.run, entry.phase?.phase_id, world).filter((member) => !member.controlled && member.local_eligible);
+      for (const member of locallyPresentPersonnel) {
+        const mId = member.personnel_id ?? member.id;
+        if (mId) {
+          personnelContinuity.recordAttitudeChange(world, {
+            run_id: entry.run.run_id,
+            identity: mId,
+            target_id: playerId,
+            delta: { trust: 4, rapport: 3 },
+            reason: "Completed formal radio check-in with Standard.",
+            at: interval
+          });
+        }
+      }
 
       q4Interactions.record(expedition, {
         channel: "standard",
@@ -1475,14 +2355,42 @@ class DesktopService {
   submitAction({ world_id, mode, action, target = null }) {
     if (this.commandBusy(world_id)) return publicError("SESSION_BUSY", "Wait for the current action to finish before changing this operation.");
     if (this.recoveredWorlds.has(world_id)) return publicError("PERSISTENCE_RECOVERY_READ_ONLY", "This verified previous record is available for inspection only until it is explicitly restored.");
+    let world = null; let entry = null; let beforeRun = null; let beforeWorld = null; let beforePhase = null;
     try {
-      const world = this.getWorld(world_id); if (outcomes.isRetired(world)) return publicError("WORLD_RETIRED", "This world is a read-only historical record."); const entry = this.session(world_id, mode) ?? this.restoreSession(world, mode, readJson(this.sessionFile(world_id, mode), null)); if (!entry) return publicError("SESSION_NOT_FOUND", "Start or continue a session first.");
-      const beforeRun = clone(entry.run); const beforeWorld = clone(world); const beforePhase = clone(entry.phase);
+      world = this.getWorld(world_id); if (outcomes.isRetired(world)) return publicError("WORLD_RETIRED", "This world is a read-only historical record."); entry = this.session(world_id, mode) ?? this.restoreSession(world, mode, readJson(this.sessionFile(world_id, mode), null)); if (!entry) return publicError("SESSION_NOT_FOUND", "Start or continue a session first.");
+      beforeRun = clone(entry.run); beforeWorld = clone(world); beforePhase = clone(entry.phase);
       const verb = String(action ?? "").toUpperCase(); let result; if (entry.kind === "bootstrap") { entry.run._last_mission_updates = []; entry.run._active_submission_id = `player-submission-${crypto.createHash("sha256").update(JSON.stringify([entry.run.run_id, entry.run.expedition.interaction_history?.length ?? 0, verb, target ?? null])).digest("hex").slice(0, 18)}`; }
       if (entry.kind === "bootstrap" && verb === "ADVANCE_OPERATIONS") return this.advanceQ4Operations({ world_id });
+      if (entry.kind === "bootstrap" && (verb === "COMPLETE_BROADCAST" || verb === "RELEASE_FEED")) {
+        return this.completeBriefingBroadcast({ world_id });
+      }
+      if (entry.kind === "bootstrap" && verb === "START_BROADCAST") {
+        return this.startBriefingBroadcast({ world_id });
+      }
+      if (entry.kind === "bootstrap" && (verb === "START_BRIEFING" || verb === "ATTEND_BRIEFING")) {
+        return this.startPersonnelBriefing({ world_id });
+      }
+      if (entry.kind === "bootstrap" && (verb === "CONCLUDE_BRIEFING" || verb === "END_BRIEFING")) {
+        return this.concludePersonnelBriefing({ world_id });
+      }
+      if (entry.kind === "bootstrap" && (verb === "CONTINUE_BRIEFING" || verb === "CONTINUE_LISTENING" || verb === "LISTEN")) {
+        return this.interactPersonnelBriefing({ world_id, text: "continue" });
+      }
       if (entry.kind === "bootstrap" && verb === "COMMUNICATE") return publicError("PLAYER_TRANSMISSION_REQUIRED", "Type and deliberately submit your own message in the communication composer.");
       if (entry.kind === "bootstrap" && ["DEPLOY", "READY", "PROCEED", "APPROACH", "CROSS", "RADIO_CHECK", "BEGIN_FIELD_OPERATION"].includes(verb)) {
         const phase = entry.phase?.phase_id;
+        if (verb === "READY" && phase === "BRIEFING" && cq4Day1Opener.isOpener(entry.run.scenario)) {
+          if (!cq4Day1Opener.isBroadcastCompleted(entry.run)) {
+            return publicError("BROADCAST_IN_PROGRESS", "The facility broadcast is in progress. Await conclusion of the broadcast before proceeding to equipment staging.");
+          }
+          const briefingStatus = entry.run?.expedition?.day1_opener?.personnel_briefing?.status;
+          if (briefingStatus === "active") {
+            return publicError("BRIEFING_IN_PROGRESS", "Dr. Kirk Maxwell's briefing is in progress. Conclude the briefing before proceeding to equipment staging.");
+          }
+          if (briefingStatus === "pending") {
+            this.concludePersonnelBriefing({ world_id });
+          }
+        }
         const radioChecked = q4Radio.ensure(entry.run.expedition).check_completed;
         const legacyFlow = entry.legacy_flow === true || entry.phase?.legacy_flow === true;
         const expected = legacyFlow
@@ -1547,7 +2455,7 @@ class DesktopService {
         } else {
           result = { ok: true, outcome: "phase-advanced" };
           if (verb === "PROCEED") { const readiness = q4Equipment.projection(entry.run.expedition, entry.run.session.startup.player.observer_id); if (!readiness.readiness) { entry.run.expedition.deviations.push("proceeded-with-required-equipment-unavailable"); expeditionEvent(entry.run.expedition, "q4.loadout.proceeded_without_required", { missing: readiness.missing }); } }
-          const advanced = q4.nextPhase(entry.phase, { action: verb, legacy_flow: legacyFlow }); if (!advanced.ok) return publicError(advanced.code, "The expedition cannot advance from its current state."); entry.phase = advanced.phase; bootstrap.setSpatialPhase(entry.run, entry.phase.phase_id); if (entry.phase.phase_id === "STANDARD_RADIO_CHECK") q4Radio.authorize(entry.run.expedition); q4Equipment.updatePhase(entry.run.expedition, entry.phase.phase_id);
+          const advanced = q4.nextPhase(entry.phase, { action: verb, legacy_flow: legacyFlow }); if (!advanced.ok) return publicError(advanced.code, "The expedition cannot advance from its current state."); entry.phase = advanced.phase; bootstrap.setSpatialPhase(entry.run, entry.phase.phase_id); if (entry.phase.phase_id === "STAGING" && cq4Day1Opener.isOpener(entry.run.scenario)) entry.run.expedition.day1_opener.esd_handoff = { status:"equipment-cooperation", destination:"Equipment Services Division", player_dialogue_input:"paused", coworker_activity:"active" }; if (entry.phase.phase_id === "STANDARD_RADIO_CHECK") q4Radio.authorize(entry.run.expedition); q4Equipment.updatePhase(entry.run.expedition, entry.phase.phase_id);
         }
         if (verb !== "RADIO_CHECK" && result.ok) {
           if (entry.run.expedition?.mission_state) entry.run.expedition.mission_state.phase = entry.phase.phase_id;
@@ -1559,12 +2467,31 @@ class DesktopService {
       else if (entry.kind === "lost") { if (verb === "MOVE") result = lost.move(world, entry.run, target); else if (verb === "DROP") result = lost.drop(world, entry.run, target); else if (verb === "RETURN") result = lost.escape(world, entry.run); else if (verb === "STRAND") result = lost.strand(world, entry.run); else result = { ok: false, code: "ACTION_UNAVAILABLE" }; }
       else if (entry.kind === "nullzone") { if (verb === "EXPAND") result = nullzone.expand(world, entry.run_id); else if (verb === "DISCOVER") result = nullzone.discoverArtifact(world, entry.run_id); else if (verb === "RETURN") result = nullzone.returnBase(world, entry.run_id); else result = { ok: false, code: "ACTION_UNAVAILABLE" }; }
       else result = verb === "REVIEW_REPORT" ? { ok: true, result: desk.projection(world) } : verb === "ADVANCE" ? desk.advance(world, entry.run_id) : { ok: false, code: "ACTION_UNAVAILABLE" };
-      if (!result.ok) return publicError(result.error?.code ?? result.code ?? "ACTION_REJECTED", result.error?.public_reason ?? result.result?.public_reason ?? result.public_reason ?? "That action is not available right now.");
+      if (!result.ok) {
+        if (entry.run?.expedition?.day1_opener?.catastrophic_ending) {
+          try {
+            this.persistSession(world, mode, entry);
+          } catch (persistError) {
+            this.log(`catastrophic persist error: ${persistError.message}`);
+            if (entry?.run && beforeRun) {
+              if (world && beforeWorld) { for (const k of Object.keys(world)) delete world[k]; Object.assign(world, beforeWorld); }
+              for (const k of Object.keys(entry.run)) delete entry.run[k]; Object.assign(entry.run, beforeRun);
+              entry.run._world = world; entry.phase = beforePhase;
+            }
+            return publicError("PERSISTENCE_COMMIT_FAILED", "The catastrophic outcome could not be saved and was not committed. Check the operation record storage before retrying.");
+          }
+        }
+        return publicError(result.error?.code ?? result.code ?? "ACTION_REJECTED", result.error?.public_reason ?? result.result?.public_reason ?? result.public_reason ?? "That action is not available right now.");
+      }
       if (entry.kind === "bootstrap" && q4Radio.ensure(entry.run.expedition).check_completed && !q4Interactions.history(entry.run.expedition, "standard").some((item) => item.attempted_behavior === "scheduled radio-check acknowledgment")) {
         const acknowledged = entry.run.expedition.messages?.find((item) => item.purpose === "radio-check" && item.state === "acknowledged");
         if (acknowledged) q4Interactions.record(entry.run.expedition, { channel: "standard", speaker: "STANDARD", targets: ["Clear-Q4 team"], player_text: "Standard acknowledgment received for Radio check.", attempted_behavior: "scheduled radio-check acknowledgment", eligibility: "eligible", delivery: "received", canonical_effects: ["q4.radio.check.acknowledged"], presentation: { result: "received" } });
       }
       if (entry.kind === "bootstrap") {
+        if (cq4Day1Opener.isOpener(entry.run.scenario)) {
+          const duration = cq4Day1Opener.getActionDuration(verb, { target });
+          cq4Day1Opener.advanceSimulationTime(entry.run, duration);
+        }
         this.recordQ4Action(entry, `${verb}${target ? ` ${target}` : ""}`, result, world, entry.run._active_submission_id);
         this.finishQ4Action(world, entry, verb, result);
         const actionNarration = result.result?.public_reason ?? result.public_reason ?? null;
@@ -1588,7 +2515,7 @@ class DesktopService {
         else this.persistSession(world, mode, entry);
       } catch (persistError) {
         if (entry?.run && beforeRun) {
-          for (const k of Object.keys(world)) delete world[k]; Object.assign(world, beforeWorld);
+          if (world && beforeWorld) { for (const k of Object.keys(world)) delete world[k]; Object.assign(world, beforeWorld); }
           for (const k of Object.keys(entry.run)) delete entry.run[k]; Object.assign(entry.run, beforeRun);
           entry.run._world = world; entry.phase = beforePhase;
         }
@@ -1599,7 +2526,7 @@ class DesktopService {
       return { ok: true, result: { outcome: result.outcome ?? "succeeded", public_reason: result.result?.public_reason ?? result.public_reason ?? null, mission_updates: missionUpdates, scene }, projection: this.projectionFor(world, mode, entry) };
     } catch (error) {
       if (entry?.run && beforeRun) {
-        for (const k of Object.keys(world)) delete world[k]; Object.assign(world, beforeWorld);
+        if (world && beforeWorld) { for (const k of Object.keys(world)) delete world[k]; Object.assign(world, beforeWorld); }
         for (const k of Object.keys(entry.run)) delete entry.run[k]; Object.assign(entry.run, beforeRun);
         entry.run._world = world; entry.phase = beforePhase;
       }
@@ -1693,12 +2620,15 @@ class DesktopService {
           if ((referenceExpedition.isReference(entry.run.scenario) || cq4Day1Opener.isOpener(entry.run.scenario)) && !entry.run.expedition.written_report) {
             const reportPhase = phases.transition(entry.phase, "REPORT", { reason:"evidence-custody-complete", guard:true });
             if (reportPhase.ok) entry.phase = reportPhase.phase;
-            result.result = { ...(result.result ?? {}), public_reason:"Returned evidence entered A-Sync custody. Submit your written account before institutional review." };
+            result.result = { ...(result.result ?? {}), public_reason:"Returned evidence entered ASync custody. Submit your written account before institutional review." };
           } else this.finalizeQ4Closure(world, entry);
         }
   }
   commandBusy(worldId) {
-    return this.naturalTurnInflight.has(worldId) && this.naturalCommandContext.getStore() !== worldId;
+    if (this.transactionContext?.getStore() === worldId || this.naturalCommandContext?.getStore() === worldId) {
+      return false;
+    }
+    return this.naturalTurnInflight.has(worldId) || this.communicationTurnInflight.has(worldId);
   }
   async submitNatural(input = {}) {
     const { world_id, mode, text } = input;
@@ -1713,7 +2643,10 @@ class DesktopService {
       if (active.id === requestId && active.fingerprint === fingerprint) return active.promise;
       return publicError(active.id === requestId ? "REQUEST_ID_REUSED" : "SESSION_BUSY", active.id === requestId ? "That action reference belongs to a different instruction." : "The previous action is still being resolved. Wait for its result before submitting another action.");
     }
-    const promise = Promise.resolve().then(() => this.naturalCommandContext.run(world_id, () => this.submitNaturalInternal({ ...input, request_id:requestId, input_fingerprint:fingerprint })));
+    if (this.commandBusy(world_id)) {
+      return publicError("SESSION_BUSY", "The previous action is still being resolved. Wait for its result before submitting another action.");
+    }
+    const promise = Promise.resolve().then(() => this.transactionContext.run(world_id, () => this.submitNaturalInternal({ ...input, request_id:requestId, input_fingerprint:fingerprint })));
     this.naturalTurnInflight.set(world_id, { id:requestId, fingerprint, promise });
     try { return await promise; } finally { this.naturalTurnInflight.delete(world_id); }
   }
@@ -1733,6 +2666,18 @@ class DesktopService {
       if (entry.kind === "bootstrap" && mode === "field-researcher" && entry.phase?.phase_id === "REPORT") return this.submitReferenceWrittenReport({ world_id, text });
       if (entry.kind === "bootstrap" && mode === "field-researcher" && ["BRIEFING", "STAGING", "FACILITY_TRANSIT", "THRESHOLD", "STANDARD_RADIO_CHECK"].includes(entry.phase?.phase_id)) {
         const phaseId = entry.phase.phase_id;
+        if (phaseId === "BRIEFING" && cq4Day1Opener.isOpener(entry.run?.scenario)) {
+          const beat = entry.run?.expedition?.day1_opener?.beat;
+          const briefingStatus = entry.run?.expedition?.day1_opener?.personnel_briefing?.status ?? "pending";
+          if (beat === cq4Day1Opener.BEATS.PERSONNEL_BRIEFING) {
+            if (briefingStatus === "pending") {
+              return this.startPersonnelBriefing({ world_id });
+            }
+            if (briefingStatus === "active") {
+              return this.interactPersonnelBriefing({ world_id, text });
+            }
+          }
+        }
         const inputClass = interpretiveDirector.classifyInput(text, phaseId, entry.run);
 
         if (inputClass.classification === "PREFIELD_CLARIFICATION" || inputClass.classification === "PREFIELD_REFUSAL") {
@@ -2013,6 +2958,12 @@ class DesktopService {
             };
           }
         }
+        if (entry.phase?.phase_id === "FIELD_OPERATION" && (/\b(begin return|initiate return|return procedure|start return)\b/i.test(text) || (text.trim().toLowerCase() === "return" && ["threshold-side-entry", "utility-room"].includes(entry.run.spatial?.player_location)))) {
+          return this.submitAction({ world_id, mode, action: "RETURN" });
+        }
+        if (entry.phase?.phase_id === "RETURN" && /\b(complete return|finalize return|finish return)\b/i.test(text)) {
+          return this.submitAction({ world_id, mode, action: "COMPLETE_RETURN" });
+        }
         const namesWorker = members.some((member) => [member.first_name, member.last_name, member.display_name, member.role].filter(Boolean).some((name) => new RegExp(`\\b${String(name).replace(/[.*+?^${}()|[\\]\\\\]/g, "\\$&")}\\b`, "i").test(text)));
         const localPhrase = /\b(stay|hold|watch|wait|regroup|report|assist|help|give|carry|pass|transfer|did you hear)\b/i.test(text) || (/\btake\b/i.test(text) && !/\b(photo|photograph|picture)\b/i.test(text));
         if (namesWorker && localPhrase) return this.submitQ4LocalIntent({ world_id, text });
@@ -2044,7 +2995,7 @@ class DesktopService {
         // object/spatial authorities; unsupported intent cannot mutate reality.
       }
       const providerSetting = this.settings().provider ?? "offline";
-      const isManual = providerSetting !== "auto" && providerSetting !== "offline";
+      const isManual = providerSetting !== "auto" && providerSetting !== "offline" && providerSetting !== "local";
       const key = isManual ? this.credentials.get(providerSetting) : null;
       if (isManual && !key) return publicError("PROVIDER_CONFIGURATION_REQUIRED", "Language assistance needs an access key. Your world is safe; you can continue offline.");
       const nonBootstrap = entry.kind !== "bootstrap"; const adapterRun = nonBootstrap ? { session: { startup: { player: { observer_id: mode } } }, profile_id: mode } : entry.run; const available = this.availableFor(world, mode, entry);
@@ -2079,7 +3030,11 @@ class DesktopService {
         : publicError("PROVIDER_UNAVAILABLE", "Language assistance is unavailable. Continue using structured controls or retry this action reference.");
     }
   }
-  shutdown() { for (const [key, entry] of this.sessions) { const [worldId, mode] = key.split(":"); if (this.recoveredWorlds.has(worldId)) continue; try { this.persistSession(this.getWorld(worldId), mode, entry); } catch (error) { this.log(`shutdown save failed: ${error.message}`); } } return { ok: true }; }
+  shutdown() {
+    try { this.inferenceAppliance?.shutdown(); } catch {}
+    for (const [key, entry] of this.sessions) { const [worldId, mode] = key.split(":"); if (this.recoveredWorlds.has(worldId)) continue; try { this.persistSession(this.getWorld(worldId), mode, entry); } catch (error) { this.log(`shutdown save failed: ${error.message}`); } }
+    return { ok: true };
+  }
 }
 
 module.exports = { DesktopService, MODES, DEFAULT_SETTINGS };

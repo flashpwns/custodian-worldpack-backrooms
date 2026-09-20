@@ -1,7 +1,7 @@
 {
   "version": "yellow-beast-verification-manifest@v2",
   "governance": "verification/verification-authority.json",
-  "authority": "V02 \u2014 Test Truth and Verification Gate (docs/YELLOW_BEAST_VISION_PASS_MAP.md \u00a7V02)",
+  "authority": "V02 — Test Truth and Verification Gate (docs/YELLOW_BEAST_VISION_PASS_MAP.md §V02)",
   "tiers": [
     "fast",
     "aggregate",
@@ -78,7 +78,43 @@
       "fast": true
     },
     {
+      "file": "tests/y100-cinematic-registry.test.js",
+      "status": "included",
+      "tier": "aggregate"
+    },
+    {
+      "file": "tests/y101-broadcast-to-briefing.test.js",
+      "status": "included",
+      "tier": "aggregate"
+    },
+    {
+      "file": "tests/y102-managed-inference-appliance.test.js",
+      "status": "included",
+      "tier": "aggregate",
+      "fast": true
+    },
+    {
+      "file": "tests/y103-beat1-implementation.test.js",
+      "status": "included",
+      "tier": "aggregate"
+    },
+    {
+      "file": "tests/y104-clean-workstation-handoff.test.js",
+      "status": "included",
+      "tier": "aggregate"
+    },
+    {
       "file": "tests/y105-authoritative-first-run-chronology.test.js",
+      "status": "included",
+      "tier": "aggregate"
+    },
+    {
+      "file": "tests/y106-physical-maxwell-briefing.test.js",
+      "status": "included",
+      "tier": "aggregate"
+    },
+    {
+      "file": "tests/y107-authored-cinematic-assets-and-esc-skip.test.js",
       "status": "included",
       "tier": "aggregate"
     },
@@ -110,15 +146,15 @@
       "tier": "aggregate"
     },
     {
+      "file": "tests/y16-expedition.test.js",
+      "status": "included",
+      "tier": "aggregate"
+    },
+    {
       "file": "tests/y165-context-closure.test.js",
       "status": "included",
       "tier": "aggregate",
       "fast": true
-    },
-    {
-      "file": "tests/y16-expedition.test.js",
-      "status": "included",
-      "tier": "aggregate"
     },
     {
       "file": "tests/y17-procedural-complex.test.js",
@@ -579,15 +615,15 @@
       "tier": "aggregate"
     },
     {
+      "file": "tests/y68-long-world-known-failures.test.js",
+      "status": "included",
+      "tier": "aggregate"
+    },
+    {
       "file": "tests/y68-verification-gate.test.js",
       "status": "included",
       "tier": "aggregate",
       "fast": true
-    },
-    {
-      "file": "tests/y68-long-world-known-failures.test.js",
-      "status": "included",
-      "tier": "aggregate"
     },
     {
       "file": "tests/y69-reference-expedition.test.js",
@@ -635,6 +671,11 @@
       "tier": "aggregate"
     },
     {
+      "file": "tests/y79-canonical-world-ledger-invariants.test.js",
+      "status": "included",
+      "tier": "aggregate"
+    },
+    {
       "file": "tests/y79-clause-completeness-coordinated.test.js",
       "status": "included",
       "tier": "aggregate"
@@ -655,21 +696,15 @@
       "tier": "aggregate"
     },
     {
+      "file": "tests/y83-ai-runtime-stability.test.js",
+      "status": "included",
+      "tier": "aggregate"
+    },
+    {
       "file": "tests/y83-natural-command-transactions.test.js",
       "status": "included",
       "tier": "aggregate",
       "fast": false
-    },
-    {
-      "file": "tests/y84-live-provider-failure.test.js",
-      "status": "included",
-      "tier": "aggregate",
-      "fast": false
-    },
-    {
-      "file": "tests/y83-ai-runtime-stability.test.js",
-      "status": "included",
-      "tier": "aggregate"
     },
     {
       "file": "tests/y84-hybrid-canon-hardening.test.js",
@@ -677,9 +712,10 @@
       "tier": "aggregate"
     },
     {
-      "file": "tests/y79-canonical-world-ledger-invariants.test.js",
+      "file": "tests/y84-live-provider-failure.test.js",
       "status": "included",
-      "tier": "aggregate"
+      "tier": "aggregate",
+      "fast": false
     },
     {
       "file": "tests/y85-negation-aware-onboarding.test.js",
@@ -743,6 +779,31 @@
     },
     {
       "file": "tests/y94-cq4-day1-adversarial-corrective.test.js",
+      "status": "included",
+      "tier": "aggregate"
+    },
+    {
+      "file": "tests/y95-map-provenance-and-restart.test.js",
+      "status": "included",
+      "tier": "aggregate"
+    },
+    {
+      "file": "tests/y96-comms-targeting-and-absent-recipients.test.js",
+      "status": "included",
+      "tier": "aggregate"
+    },
+    {
+      "file": "tests/y97-local-model-provider.test.js",
+      "status": "included",
+      "tier": "aggregate"
+    },
+    {
+      "file": "tests/y98-opening-beats-1-4.test.js",
+      "status": "included",
+      "tier": "aggregate"
+    },
+    {
+      "file": "tests/y99-cq4-day1-beatmap-conformance.test.js",
       "status": "included",
       "tier": "aggregate"
     }

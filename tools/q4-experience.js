@@ -38,7 +38,7 @@ const copy = {
   STANDARD_RADIO_CHECK: "Establish contact with Standard and wait for acknowledgment before departure.",
   FIELD_OPERATION: "Continue the declared survey. Record what you actually observe and report only what you choose to transmit.",
   RETURN: "Return with the equipment and evidence that remain with the team.",
-  REPORT: "Write the account you are submitting to A-Sync. Your report is a claim and does not rewrite the expedition record.",
+  REPORT: "Write the account you are submitting to ASync. Your report is a claim and does not rewrite the expedition record.",
   DEBRIEF: "Review the expedition record. What you report remains distinct from what occurred and what you observed."
 };
 
@@ -106,7 +106,10 @@ function presentation(run, phase, unfinished = null, world = null) {
     personnel: team.map((member) => ({ id: member.personnel_id, name: String(member.display_name).replace(/ · YOU$/, ""), known_location: member.current_or_last_known_location ?? member.location, confirmed_current: ["LOCAL", "SELF"].includes(member.contact_state ?? member.contact_category) })),
     mission_markers: [{ id: "assigned-survey-area", label: "Assigned survey area", location: bootstrap.spatialDefinitionFor(run.spatial_pack_id).field_entry_location }]
   }) : null;
-  const publicMap = run.spatial && run.survey_frontier ? { ...surveyFrontier.map(run.survey_frontier, topologyDefinition, run.session.startup.player.observer_id, { current_location: run.spatial.player_location }), route_history: cloneUpdates(run.spatial.route_history), unresolved_exits: spatialRuntime.visibleExits(run.spatial, topologyDefinition).filter((exit) => !exit.destination_id || !surveyFrontier.known(run.survey_frontier, run.session.startup.player.observer_id, exit.destination_id)).map((exit) => ({ ref: exit.ref, label: exit.label, status: exit.status })) } : operationalMap ? { ...operationalMap, nodes: operationalMap.nodes.map((node) => ({ ...node, personnel: (node.personnel ?? []).map(({ name, status }) => ({ name, status })) })) } : null;
+  const visitedLocations = Array.isArray(run.spatial?.visited_locations)
+    ? run.spatial.visited_locations
+    : (Array.isArray(run.spatial?.route_history) ? run.spatial.route_history.map(r => r.to || r.location_id).filter(Boolean) : []);
+  const publicMap = run.spatial && run.survey_frontier ? { ...surveyFrontier.map(run.survey_frontier, topologyDefinition, run.session.startup.player.observer_id, { current_location: run.spatial.player_location, visited_locations: visitedLocations }), route_history: cloneUpdates(run.spatial.route_history), unresolved_exits: spatialRuntime.visibleExits(run.spatial, topologyDefinition).filter((exit) => !exit.destination_id || !surveyFrontier.known(run.survey_frontier, run.session.startup.player.observer_id, exit.destination_id)).map((exit) => ({ ref: exit.ref, label: exit.label, status: exit.status })) } : operationalMap ? { ...operationalMap, nodes: operationalMap.nodes.map((node) => ({ ...node, visited: Boolean(node.visited || visitedLocations.includes(node.id)), visited_this_expedition: Boolean(node.visited_this_expedition || visitedLocations.includes(node.id)), personnel: (node.personnel ?? []).map(({ name, status }) => ({ name, status })) })) } : null;
   if (publicMap && run.spatial) for (const node of publicMap.nodes) node.mission_markers = (run.spatial.route_markers ?? []).filter((marker) => marker.location === node.id).map((marker) => ({ label: marker.label, state: marker.state }));
   const standardMap = run.spatial && run.survey_frontier ? surveyFrontier.standardMap(run.survey_frontier, topologyDefinition) : null;
   const topology = publicMap ?? safeStatus.discovered_topology ?? { spaces: [], connections: [], unknown_exits: [] };
@@ -133,10 +136,26 @@ const evidence = (expedition?.evidence ?? []).map((item) => ({ id: item.id, miss
   // not a reason to remove the only recovery surface.
   const standardAvailable = radioEquipmentReady && ((phase.phase_id === "STANDARD_RADIO_CHECK" && !radioState.check_completed) || radioModel.available(expedition)) && ["STANDARD_RADIO_CHECK", "FIELD_OPERATION", "RETURN"].includes(phase.phase_id);
   const standardReason = !radioEquipmentReady ? "FIELD RADIO NOT OPERATIONAL" : phase.phase_id === "BRIEFING" ? "FIELD RADIO CHANNEL NOT ACTIVE DURING BRIEFING" : phase.phase_id === "STAGING" || phase.phase_id === "FACILITY_TRANSIT" ? "STANDARD UNAVAILABLE UNTIL THE RADIO-CHECK PHASE" : phase.phase_id === "THRESHOLD" ? "STANDARD UNAVAILABLE UNTIL RADIO CHECK" : radioModel.label(expedition);
+  const isOpenerRun = cq4Day1Opener.isOpener(run.scenario);
+  const isBroadcastStandby = isOpenerRun && phase.phase_id === "BRIEFING" && cq4Day1Opener.isBroadcastStandby(run);
+  const isBroadcastInProgress = isOpenerRun && phase.phase_id === "BRIEFING" && cq4Day1Opener.isBroadcastActive(run);
+  const isBroadcastCompleted = isOpenerRun && phase.phase_id === "BRIEFING" && cq4Day1Opener.isBroadcastCompleted(run);
+  const isPersonnelBriefing = isOpenerRun && phase.phase_id === "BRIEFING" && (expedition?.day1_opener?.beat === cq4Day1Opener.BEATS.PERSONNEL_BRIEFING || (isBroadcastCompleted && expedition?.day1_opener?.beat !== "LOCAL_INTRODUCTIONS"));
+  const isBriefingGated = isOpenerRun && phase.phase_id === "BRIEFING" && (!isBroadcastCompleted || isPersonnelBriefing);
+  const openerLocalInput = !isOpenerRun || (!isBroadcastStandby && !isBroadcastInProgress && !isPersonnelBriefing && !["STAGING", "FACILITY_TRANSIT", "THRESHOLD", "STANDARD_RADIO_CHECK"].includes(phase.phase_id));
+  const localUnavailableReason = isBroadcastStandby
+    ? "Standing by for facility broadcast. Local coworker interaction is unavailable until the broadcast concludes."
+    : isBroadcastInProgress
+    ? "The facility broadcast is in progress. Local coworker interaction is unavailable until the broadcast concludes."
+    : isPersonnelBriefing
+    ? "Standing by for assignment briefing. Local coworker interaction is unavailable until the briefing concludes."
+    : !openerLocalInput
+    ? "Personnel focused on equipment staging procedure."
+    : localCoworkers.length ? null : "No assigned personnel share the current speaking-range zone.";
   const channels = {
     action: { history: actionHistory },
     team_status: safeTeam,
-    local: { available: localCoworkers.length > 0, targets: localCoworkers.map((member) => member.first_name), target: localCoworkers[0]?.first_name ?? null, unavailable_reason: localCoworkers.length ? null : "No assigned personnel share the current speaking-range zone.", history: localHistory },
+    local: { available: openerLocalInput && localCoworkers.length > 0 && !isBriefingGated, targets: localCoworkers.map((member) => member.first_name), target: localCoworkers[0]?.first_name ?? null, unavailable_reason: localUnavailableReason, history: localHistory },
     standard: { available: standardAvailable, state: radioState.state, state_label: radioModel.label(expedition), endpoint: "Standard", operator: world ? standardOperator.projection(world) : null, unavailable_reason: standardAvailable ? null : standardReason, history: standardHistory }
   };
   const checkIn = timeModel.status(expedition);
@@ -155,17 +174,72 @@ const evidence = (expedition?.evidence ?? []).map((item) => ({ id: item.id, miss
     version: VERSION,
     phase: phase.phase_id,
     facility,
-    briefing: copy[phase.phase_id],
+    briefing: cq4Day1Opener.isOpener(run.scenario)
+      ? ({
+          BRIEFING: isBroadcastStandby
+            ? "Standing by for facility broadcast in the briefing room."
+            : isBroadcastInProgress
+            ? "Facility broadcast in progress."
+            : isPersonnelBriefing
+            ? "Standing by for assignment briefing in the briefing room."
+            : "Speak with the assigned team over LOCAL, then proceed together to Equipment Staging Department.",
+          STAGING: "Cooperate with the team on equipment and movement preparation."
+        }[phase.phase_id] ?? copy[phase.phase_id])
+      : copy[phase.phase_id],
     scenario: run.scenario ?? null,
-    day1_opener: cq4Day1Opener.isOpener(run.scenario),
-    mission: mission?.objective?.primary ?? expedition?.order?.primary ?? null,
-    mission_record: mission ? { id: mission.id, display_id: mission.display_id ?? mission.id.replace(/^CQ4-[A-Z-]+-/, "CQ4-").replace(/-[A-Z0-9]{4,}$/, ""), family: mission.family_label, rationale: diegeticText(mission.rationale), site: mission.site, objective: mission.objective, reporting: { ...mission.reporting, summary: diegeticText(mission.reporting?.summary) }, expected_duration: mission.expected_duration, risks: mission.risks, prior_history: mission.prior_history, status: missionProgress?.lifecycle ?? mission.status } : null,
-    display_mission: mission?.objective?.primary ?? "Review the assigned field work and return with a field record.",
+    day1_opener: cq4Day1Opener.isOpener(run.scenario)
+      ? {
+          active: true,
+          delivery_completed: Boolean(expedition?.day1_opener?.delivery_completed),
+          return_surveillance_verified: Boolean(expedition?.day1_opener?.return_surveillance_verified),
+          simulation_time: expedition?.day1_opener?.simulation_time ?? "10:00 AM",
+          simulation_time_precise: expedition?.day1_opener?.simulation_time_precise ?? "10:00:00 AM",
+          photographs_taken: expedition?.day1_opener?.photographs_taken ?? 0,
+          elapsed_seconds: expedition?.day1_opener?.elapsed_seconds ?? 0,
+          cutoff_exceeded: Boolean(expedition?.day1_opener?.cutoff_exceeded),
+          check_in_held_seconds: expedition?.day1_opener?.check_in_held_seconds ?? 0,
+          last_check_in_time: expedition?.day1_opener?.last_check_in_time ?? null,
+        }
+      : null,
+    facility_broadcast: cq4Day1Opener.isOpener(run.scenario) && expedition?.day1_opener?.facility_broadcast
+      ? {
+          ...cloneUpdates(expedition.day1_opener.facility_broadcast),
+          visible: Boolean(expedition.day1_opener.facility_broadcast.visible && phase?.phase_id === "BRIEFING" && !expedition.day1_opener.facility_broadcast.completed && expedition.day1_opener.facility_broadcast.status === "in-progress"),
+          completed: Boolean(expedition.day1_opener.facility_broadcast.completed)
+        }
+      : null,
+    personnel_briefing: cq4Day1Opener.isOpener(run.scenario) && expedition?.day1_opener?.personnel_briefing
+      ? cloneUpdates(expedition.day1_opener.personnel_briefing)
+      : null,
+    beat: cq4Day1Opener.isOpener(run.scenario) ? (expedition?.day1_opener?.beat ?? "FACILITY_BROADCAST") : null,
+    introduction_pressure: cq4Day1Opener.isOpener(run.scenario) && isBroadcastCompleted && expedition?.day1_opener?.beat !== "PERSONNEL_BRIEFING" && expedition?.day1_opener?.beat !== "FACILITY_BROADCAST"
+      ? (expedition.day1_opener?.introduction_pressure ?? []).map(({ personnel_id, prompt }) => ({ personnel_id, prompt }))
+      : null,
+    esd_handoff: cq4Day1Opener.isOpener(run.scenario) ? cloneUpdates(expedition.day1_opener?.esd_handoff) : null,
+    mission: isBriefingGated ? null : (mission?.objective?.primary ?? expedition?.order?.primary ?? null),
+    mission_record: mission ? {
+      id: mission.id,
+      display_id: isBriefingGated ? "ASSIGNMENT PENDING" : (mission.display_id ?? mission.id.replace(/^CQ4-[A-Z-]+-/, "CQ4-").replace(/-[A-Z0-9]{4,}$/, "")),
+      family: isBriefingGated ? "Scheduled Field Assignment" : mission.family_label,
+      rationale: isBriefingGated ? "Awaiting institutional assignment briefing scheduled for 10:00 AM ST." : diegeticText(mission.rationale),
+      site: mission.site,
+      objective: isBriefingGated ? { primary: isBroadcastStandby ? "Awaiting transmission from Briefing Authority." : isBroadcastInProgress ? "Facility broadcast in progress." : "Awaiting assignment briefing." } : mission.objective,
+      reporting: isBriefingGated ? { summary: "Reporting schedule will be established during briefing." } : { ...mission.reporting, summary: diegeticText(mission.reporting?.summary) },
+      expected_duration: mission.expected_duration,
+      risks: isBriefingGated ? [] : mission.risks,
+      prior_history: isBriefingGated ? [] : mission.prior_history,
+      status: missionProgress?.lifecycle ?? mission.status
+    } : null,
+    display_mission: isBriefingGated ? (isBroadcastStandby ? "Awaiting transmission from Briefing Authority." : isBroadcastInProgress ? "Facility broadcast in progress." : "Awaiting assignment briefing.") : (mission?.objective?.primary ?? "Review the assigned field work and return with a field record."),
     restrictions: mission?.objective?.procedures ?? expedition?.order?.constraints ?? [],
     reporting: diegeticText(mission?.reporting?.summary ?? expedition?.order?.reporting),
     operational_time: `T+${operationalClock.interval} intervals`,
     operational_clock: operationalClock,
+    simulation_time: cq4Day1Opener.isOpener(run.scenario) ? (expedition.day1_opener?.simulation_time ?? "10:00 AM") : null,
+    catastrophic_ending: cq4Day1Opener.isOpener(run.scenario) ? cloneUpdates(expedition.day1_opener?.catastrophic_ending) : null,
     check_in: checkIn,
+    last_check_in: expedition?.last_check_in ? structuredClone(expedition.last_check_in) : (expedition?.day1_opener?.last_check_in_time ? { timestamp: expedition.day1_opener.last_check_in_time } : null),
+    last_check_in_time: expedition?.last_check_in?.timestamp ? new Date(expedition.last_check_in.timestamp).toLocaleTimeString([], { hour:"2-digit", minute:"2-digit" }) : (expedition?.day1_opener?.last_check_in_time ? new Date(expedition.day1_opener.last_check_in_time).toLocaleTimeString([], { hour:"2-digit", minute:"2-digit" }) : null),
     radio_check: { completed: radioState.check_completed, authorized: radioState.authorized, state: radioState.state },
     facility_operations: facilityOperationsProjection(expedition),
     objectives: canonicalObjectives(run),
