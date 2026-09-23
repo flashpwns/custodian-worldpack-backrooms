@@ -11,9 +11,12 @@ const {
 
 const LOCAL_PROVIDER_SPEC = Object.freeze({
   id: "local",
-  displayName: "Local model (Ollama)",
-  defaultEndpoint: "http://127.0.0.1:11434",
-  defaultModel: "qwen3.5:9b",
+  displayName: "Local model",
+  // The real port is ephemeral (chosen at daemon start); this is a dev-only
+  // fallback used when nothing else supplies an endpoint (e.g. direct unit
+  // construction of this module without the managed appliance).
+  defaultEndpoint: "http://127.0.0.1:8734",
+  defaultModel: "yellow-beast-local-v1",
   capabilities: ["intent", "living-interpretation", "living-presentation", "local-dialogue"]
 });
 
@@ -22,13 +25,13 @@ const LOOPBACK_HOSTS = new Set(["localhost", "127.0.0.1", "[::1]", "::1"]);
 function normalizeLocalEndpoint(value = LOCAL_PROVIDER_SPEC.defaultEndpoint) {
   let parsed;
   try { parsed = new URL(String(value).trim()); }
-  catch { throw Object.assign(new Error("Enter a valid local Ollama address."), { code:"LOCAL_ENDPOINT_INVALID" }); }
+  catch { throw Object.assign(new Error("Enter a valid local model address."), { code:"LOCAL_ENDPOINT_INVALID" }); }
   if (parsed.protocol !== "http:" || !LOOPBACK_HOSTS.has(parsed.hostname) || parsed.username || parsed.password || parsed.search || parsed.hash) {
     throw Object.assign(new Error("The local model address must be an HTTP loopback address on this device."), { code:"LOCAL_ENDPOINT_INVALID" });
   }
   const pathname = parsed.pathname.replace(/\/+$/, "");
   if (pathname && pathname !== "/") {
-    throw Object.assign(new Error("Use the Ollama server root, such as http://127.0.0.1:11434."), { code:"LOCAL_ENDPOINT_INVALID" });
+    throw Object.assign(new Error("Use the local server root, such as http://127.0.0.1:8734."), { code:"LOCAL_ENDPOINT_INVALID" });
   }
   return `${parsed.protocol}//${parsed.host}`;
 }
@@ -56,9 +59,9 @@ async function fetchJson(url, options, { fetchImpl = globalThis.fetch, timeout =
     const response = await fetchImpl(url, { ...options, signal:controller.signal });
     let body;
     try { body = await response.json(); }
-    catch { throw Object.assign(new Error("Ollama returned an unreadable response."), { code:"MALFORMED_RESPONSE", status:response.status }); }
+    catch { throw Object.assign(new Error("The local model returned an unreadable response."), { code:"MALFORMED_RESPONSE", status:response.status }); }
     if (!response.ok) {
-      const error = Object.assign(new Error(typeof body?.error === "string" ? body.error : `Ollama request failed with status ${response.status}.`), { status:response.status });
+      const error = Object.assign(new Error(typeof body?.error === "string" ? body.error : `Local model request failed with status ${response.status}.`), { status:response.status });
       if (response.status === 404 && /model|manifest/i.test(error.message)) error.code = "model_not_found";
       throw error;
     }
@@ -84,14 +87,17 @@ function localSystemInstructions(taskInstructions) {
   ].join("\n");
 }
 
+// llama.cpp's OpenAI-compatible /v1/chat/completions endpoint takes sampling
+// parameters at the top level of the request body rather than nested under an
+// "options" object. num_ctx moves to the daemon's --ctx-size launch flag
+// (fixed for the whole process) instead of being sent per-request.
 function generationOptions(kind) {
   const interpretation = kind === "intent" || kind === "living-interpretation";
   return {
     temperature: interpretation ? 0 : 0.45,
     top_p: interpretation ? 0.8 : 0.9,
     repeat_penalty: 1.08,
-    num_ctx: 8192,
-    num_predict: interpretation ? 1800 : 900
+    max_tokens: interpretation ? 1800 : 900
   };
 }
 
@@ -161,7 +167,7 @@ function createLocalModelProvider({
       request_kind:kind,
       provider:"local",
       model:resolvedModel,
-      transport:"ollama-loopback",
+      transport:"llamacpp-loopback",
       hosted_request:false,
       local_request:true,
       provider_call_attempted:true,
@@ -173,7 +179,7 @@ function createLocalModelProvider({
     report({ ...common, status:"started", response_received:false, response_parsed:false, duration_ms:0 });
     let responseReceived = false;
     try {
-      const body = await fetchJson(`${resolvedEndpoint}/api/chat`, {
+      const body = await fetchJson(`${resolvedEndpoint}/v1/chat/completions`, {
         method:"POST",
         headers:{ "content-type":"application/json" },
         body:JSON.stringify({
@@ -182,16 +188,17 @@ function createLocalModelProvider({
             { role:"system", content:localSystemInstructions(taskInstructions) },
             { role:"user", content:`Required JSON schema:\n${JSON.stringify(format.schema)}\n\nObserver-safe input packet:\n${JSON.stringify(payload)}` }
           ],
+          response_format:{
+            type:"json_schema",
+            json_schema:{ name:format.name || kind.replace(/-/g, "_"), strict:true, schema:format.schema }
+          },
           stream:false,
-          think:false,
-          format:format.schema,
-          keep_alive:"10m",
-          options:generationOptions(kind)
+          ...generationOptions(kind)
         })
       }, { fetchImpl, timeout });
       responseReceived = true;
       let parsed;
-      try { parsed = JSON.parse(cleanJsonText(body?.message?.content)); }
+      try { parsed = JSON.parse(cleanJsonText(body?.choices?.[0]?.message?.content)); }
       catch (error) {
         if (error?.code) throw error;
         throw Object.assign(new Error(`Failed to parse JSON response from the local model: ${error.message}`), { code:"MALFORMED_RESPONSE" });
@@ -201,7 +208,7 @@ function createLocalModelProvider({
         status:"completed",
         response_received:true,
         response_parsed:true,
-        response_id_sha256:crypto.createHash("sha256").update(`${body?.model ?? resolvedModel}:${body?.created_at ?? invocationId}`).digest("hex"),
+        response_id_sha256:crypto.createHash("sha256").update(`${body?.model ?? resolvedModel}:${body?.id ?? invocationId}`).digest("hex"),
         duration_ms:Date.now() - startedAt
       });
       return parsed;
@@ -268,13 +275,24 @@ function createLocalModelProvider({
 
 async function inspectLocalModel({ endpoint = LOCAL_PROVIDER_SPEC.defaultEndpoint, model = LOCAL_PROVIDER_SPEC.defaultModel, fetchImpl = globalThis.fetch, timeout = 3000 } = {}) {
   const resolvedEndpoint = normalizeLocalEndpoint(endpoint);
+  let runtimeAvailable = false;
   try {
-    const body = await fetchJson(`${resolvedEndpoint}/api/tags`, { method:"GET", headers:{ accept:"application/json" } }, { fetchImpl, timeout });
-    const models = Array.isArray(body?.models) ? body.models.map(item => item?.name).filter(name => typeof name === "string") : [];
-    const available = models.includes(model) || models.includes(`${model}:latest`) || (model.endsWith(":latest") && models.includes(model.slice(0, -7)));
-    return { ok:true, runtime_available:true, model_available:available, models };
+    await fetchJson(`${resolvedEndpoint}/health`, { method:"GET", headers:{ accept:"application/json" } }, { fetchImpl, timeout });
+    runtimeAvailable = true;
   } catch (error) {
     return { ok:false, runtime_available:false, model_available:false, models:[], error_code:classifyProviderError(error) };
+  }
+  try {
+    const body = await fetchJson(`${resolvedEndpoint}/v1/models`, { method:"GET", headers:{ accept:"application/json" } }, { fetchImpl, timeout });
+    const models = Array.isArray(body?.data) ? body.data.map(item => item?.id).filter(id => typeof id === "string") : [];
+    const available = models.length === 0 || models.includes(model);
+    return { ok:true, runtime_available:runtimeAvailable, model_available:available, models };
+  } catch (error) {
+    // The daemon is reachable (health succeeded) but model listing failed;
+    // a running llama-server always serves exactly the one loaded model, so
+    // treat this as "runtime up, model identity unconfirmed" rather than a
+    // hard failure.
+    return { ok:true, runtime_available:runtimeAvailable, model_available:true, models:[], error_code:classifyProviderError(error) };
   }
 }
 

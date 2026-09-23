@@ -119,6 +119,26 @@
       "tier": "aggregate"
     },
     {
+      "file": "tests/y108-beat-2-4-convergence-repair.test.js",
+      "status": "included",
+      "tier": "aggregate"
+    },
+    {
+      "file": "tests/y109-local-coworker-dialogue-runtime.test.js",
+      "status": "included",
+      "tier": "aggregate"
+    },
+    {
+      "file": "tests/y110-dialogue-interpretation.test.js",
+      "status": "included",
+      "tier": "aggregate"
+    },
+    {
+      "file": "tests/y111-local-group-dialogue-pass.test.js",
+      "status": "included",
+      "tier": "aggregate"
+    },
+    {
       "file": "tests/y12b.test.js",
       "status": "included",
       "tier": "aggregate",

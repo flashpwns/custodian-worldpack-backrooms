@@ -125,7 +125,7 @@ test("y98 — name permanence and staged first-run/settings contract", () => {
   const f = fixture("identity-and-settings");
   try {
     const defaults = f.service.getSettings().settings;
-    assert.equal(defaults.provider, "offline", "fresh start must have a zero-configuration embedded provider");
+    assert.equal(defaults.provider, "local", "fresh start must have a zero-configuration embedded provider");
     assert.equal(defaults.input_mode, "natural");
     assert.equal(defaults.guided_introductions, false, "interpretive guidance is optional rather than blocking");
     assert.ok(Number.isFinite(defaults.audio_sfx));

@@ -4,6 +4,7 @@ const canonicalLedger = require("./canonical-world-ledger");
 const perceptionService = require("./perception-service");
 const affordanceService = require("./affordance-service");
 const canonLexicon = require("./canon-lexicon");
+const observationAuthority = require("./observation-authority");
 
 const VERSION = "yellow-beast-observer-context-compiler@v1";
 
@@ -20,9 +21,22 @@ function compileObserverContext(run, observerId = null, currentInput = "", optio
   const obs = observerId ?? playerId;
   const perceived = perceptionService.perceive(run, obs);
 
+  // perceptionService.perceive() reads raw canonical state (any landmark,
+  // object, connection, or teammate at the observer's location) without
+  // regard for whether this observer has actually noticed it yet.
+  // observation-authority is the sole authority on that, so every entry is
+  // cross-checked against its projection before it can reach the model --
+  // this can only narrow what perceive() found, never widen it.
+  const observedFeatures = new Map(observationAuthority.projectFor(run, obs, run._world ?? null).map((item) => [item.featureId, item]));
+  const isObserverSafe = (item) => {
+    if (Object.hasOwn(item, "role")) return observedFeatures.has(`personnel:${item.id}`);
+    return observedFeatures.has(`landmark:${item.id}`) || observedFeatures.has(`object:${item.id}`) || observedFeatures.has(`connection:${item.id}`);
+  };
+  const visiblePerceived = perceived.visible.filter(isObserverSafe);
+
   // Perception formatting
   const visibleList = [];
-  for (const v of perceived.visible) {
+  for (const v of visiblePerceived) {
     const dist = v.distance_m ? `${v.distance_m}m` : "";
     const dir = v.direction ? v.direction : "";
     visibleList.push(`${v.name} ${dist} ${dir}`.replace(/\s+/g, " ").trim());
@@ -69,12 +83,12 @@ function compileObserverContext(run, observerId = null, currentInput = "", optio
   // Available referents
   const availableReferents = {
     person: Object.values(team).filter((t) => t.present).map((t) => t.id),
-    object: perceived.visible.filter((v) => !v.role && !v.name.includes("passage")).map((v) => v.name)
+    object: visiblePerceived.filter((v) => !v.role && !v.name.includes("passage")).map((v) => v.name)
   };
 
   // Possible actions
   const possibleActions = new Set(["inspect", "speak"]);
-  if (perceived.visible.some((v) => v.name.includes("passage"))) possibleActions.add("move");
+  if (visiblePerceived.some((v) => v.name.includes("passage"))) possibleActions.add("move");
   const heldItems = canonicalLedger.getEquipmentHeldBy(run, obs);
   if (heldItems.length > 0) {
     possibleActions.add("give");

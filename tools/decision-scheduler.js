@@ -417,12 +417,11 @@ function scheduleDecisions(run, spatialDefinition = {}, world = null) {
           at: interval,
           result: "opportunity-noted"
         };
-        presentationBus.emit(run, {
-          type: presentationBus.EVENT_TYPES.DIALOGUE,
-          source: presentationBus.SOURCES.DETERMINISTIC,
-          speaker: member.display_name ?? member.personnel_id,
-          text: "We're at Outpost A. Ready to unload the materials duffle when instructed."
-        });
+        // No presentationBus.emit(DIALOGUE) here: this narration bypassed
+        // listener routing and knowledge updates with no observation-authority
+        // basis (speech-scheduler.js is now the sole autonomous-speech
+        // authority). The PERSONNEL_STATUS emit below still surfaces the state
+        // change without impersonating routed LOCAL speech.
       } else {
         const itemId = opp.item_id || "startup-materials-duffle";
         const targetEq = run.expedition?.equipment?.[itemId]
@@ -460,12 +459,7 @@ function scheduleDecisions(run, spatialDefinition = {}, world = null) {
           at: interval,
           result: "delivered"
         };
-        presentationBus.emit(run, {
-          type: presentationBus.EVENT_TYPES.DIALOGUE,
-          source: presentationBus.SOURCES.DETERMINISTIC,
-          speaker: member.display_name ?? member.personnel_id,
-          text: "I've set the startup materials duffle down beside the folding tables."
-        });
+        // See note above: no unrouted DIALOGUE emission here either.
       }
     }
 

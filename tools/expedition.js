@@ -76,7 +76,7 @@ function fieldExpedition(player, staffing = null, loadout = null, mission = null
     clock: { interval: 0, check_in_due_at: null, check_in_overdue: false, check_in_missed: false, check_in_completed_at: null, communication_ticks: 0 },
     operational: { version: "yellow-beast-operational-time@v1", clock: { interval: 0, check_in_due_at: null, check_in_overdue: false, check_in_missed: false, check_in_completed_at: null, communication_ticks: 0 }, events: [], event_history: [], cycle_history: [], evaluation_revision: 0, consequences: [], consequence_revision: 0 },
     radio: { version: "yellow-beast-q4-radio@v1", state: "unavailable", check_completed: false, authorized: false, last_transition: "expedition-created", last_delivery: null },
-    evidence: [], messages: [], interaction_history: [], deviations: [], history: [], facility_operations: { version:FACILITY_OPERATIONS_VERSION, events:[] }, outcome: null, result: null
+    evidence: [], messages: [], interaction_history: [], dialogue_history: [], deviations: [], history: [], facility_operations: { version:FACILITY_OPERATIONS_VERSION, events:[] }, outcome: null, result: null
   };
 }
 function event(expedition, kind, payload) { expedition.history.push({ sequence: expedition.history.length + 1, kind, payload: clone(payload) }); }

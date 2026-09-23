@@ -206,7 +206,17 @@ function waiveCheckIn(expedition, id, reason) {
   checkIn.waived_at = expedition.clock.interval; transitionCheckIn(expedition, checkIn, "waived", reason ?? "communication conditions authorized a waiver"); updateLegacyClock(expedition, checkIn); return { ok: true, check_in: checkIn };
 }
 
-function project(expedition) {
+// Lazy require: live-scene-projection.js -> run-bootstrap.js -> (this
+// module), so a top-level require here would close that cycle while this
+// module is still mid-initialization (the same class of bug fixed in
+// run-bootstrap.js's own speech-scheduler require).
+function messageVisibleToPlayer(message, playerId) {
+  if (String(message.channel ?? "").toUpperCase() !== "LOCAL") return true; // STANDARD/radio traffic is unaffected
+  if (!playerId) return true; // no observer context to filter by: preserve prior behavior
+  return require("./live-scene-projection").messageVisibleTo(message, playerId);
+}
+
+function project(expedition, { playerId = null } = {}) {
   const runtime = expedition.communications ?? { check_ins: [], last_successful_contact: null };
   const personnel = new Map((expedition.team?.members ?? []).map((member) => [member.personnel_id ?? member.id, member]));
   const controlledId = expedition.team?.members?.[0] ? (expedition.team.members[0].personnel_id ?? expedition.team.members[0].id) : null;
@@ -214,7 +224,12 @@ function project(expedition) {
   return {
     version: VERSION,
     check_ins: runtime.check_ins.map((item) => ({ id: item.id, label: item.label, state: item.state, state_label: item.state.replace(/-/g, " ").replace(/\b\w/g, (letter) => letter.toUpperCase()), due_at: item.due_at, completed_at: item.completed_at, summary: item.state === "approaching" ? `Due in ${item.due_at - expedition.clock.interval} interval.` : item.state === "due" ? "The field report is due now." : item.state === "transmitting" ? "A report is transmitting; delivery is not yet confirmed." : item.state === "overdue" ? "The report is overdue, but a late transmission may still be received." : item.state === "missed" ? "The reporting window closed without delivery." : item.state === "completed" ? "Standard received the field report." : item.state === "waived" ? "Communication conditions authorized a waiver." : `Due at operational interval ${item.due_at}.` })),
-    messages: (expedition.messages ?? []).map((message) => ({ id: message.id, sender: participant(message.sender), recipient: participant(message.intended_recipient), channel: message.channel, purpose: message.purpose, sent_at: message.sent_at, state: message.state ?? "delivered", state_label: String(message.state ?? "delivered").replace(/\b\w/g, (letter) => letter.toUpperCase()), delivered_at: message.delivered_at, acknowledged_at: message.acknowledged_at, known_reason: message.failure_reason ?? message.interference?.public_description ?? null })),
+    // LOCAL message metadata (purpose/interval/delivery) is exposed to the
+    // player only if the same observer-safe authority used elsewhere
+    // (messageVisibleTo) says the player could actually receive it -- an
+    // autonomous LOCAL report the player did not hear must not leak through
+    // this Expedition-level projection. STANDARD/radio records are untouched.
+    messages: (expedition.messages ?? []).filter((message) => messageVisibleToPlayer(message, playerId)).map((message) => ({ id: message.id, sender: participant(message.sender), recipient: participant(message.intended_recipient), channel: message.channel, purpose: message.purpose, sent_at: message.sent_at, state: message.state ?? "delivered", state_label: String(message.state ?? "delivered").replace(/\b\w/g, (letter) => letter.toUpperCase()), delivered_at: message.delivered_at, acknowledged_at: message.acknowledged_at, known_reason: message.failure_reason ?? message.interference?.public_description ?? null })),
     last_successful_contact: clone(runtime.last_successful_contact)
   };
 }

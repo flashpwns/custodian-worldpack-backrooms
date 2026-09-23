@@ -1,20 +1,27 @@
 "use strict";
 
-const VERSION = "yellow-beast-q4-interaction-envelope@v1";
+const VERSION = "yellow-beast-q4-interaction-envelope@v2";
 const CHANNELS = Object.freeze(["action", "local", "standard"]);
 const clone = (value) => structuredClone(value);
 
-function record(expedition, { channel, speaker = "You", speaker_id = null, targets = [], recipient_ids = [], listeners = [], player_text = null, attempted_behavior = null, eligibility = "eligible", delivery = "not-applicable", time_cost = 0, canonical_effects = [], observer_knowledge = [], presentation = {}, response_speaker = null, response_speaker_id = null, response_listeners = [], location_id = null, submission_id = null }) {
+function record(expedition, { channel, speaker = "You", speaker_id = null, targets = [], recipient_type = null, recipient_id = null, recipient_ids = [], listeners = [], player_text = null, attempted_behavior = null, eligibility = "eligible", delivery = "not-applicable", time_cost = 0, canonical_effects = [], observer_knowledge = [], presentation = {}, response_speaker = null, response_speaker_id = null, response_owners = [], responses = [], response_listeners = [], location_id = null, submission_id = null, source = "player" }) {
   if (!expedition || !CHANNELS.includes(channel)) throw new Error("Q4 interaction requires a supported channel");
   expedition.interaction_history ??= [];
   const interaction = {
     version: VERSION,
     id: `q4-interaction-${expedition.interaction_history.length + 1}`,
     submission_id,
+    // "player" (a player-initiated exchange) or "autonomous-observation" (an
+    // unprompted NPC report committed by speech-scheduler.js). Internal
+    // bookkeeping only -- publicEntry carries it through but does not
+    // interpret it; the LOCAL rail renders both the same way.
+    source,
     channel,
     speaker,
     speaker_id,
     targets: [...targets],
+    recipient_type,
+    recipient_id,
     recipient_ids: [...recipient_ids],
     listeners: [...listeners],
     player_text,
@@ -27,6 +34,8 @@ function record(expedition, { channel, speaker = "You", speaker_id = null, targe
     presentation: clone(presentation),
     response_speaker,
     response_speaker_id,
+    response_owners: clone(response_owners),
+    responses: clone(responses),
     response_listeners: [...response_listeners],
     location_id
   };
@@ -42,9 +51,14 @@ function history(expedition, channel) {
 
 function publicEntry(entry) {
   return {
+    id: entry.id,
+    submission_id: entry.submission_id ?? null,
+    source: entry.source ?? "player",
     channel: entry.channel,
     speaker: entry.speaker,
     targets: entry.targets,
+    recipient_type: entry.recipient_type ?? null,
+    recipient_id: entry.recipient_id ?? null,
     text: entry.player_text,
     attempted_behavior: entry.attempted_behavior,
     eligibility: entry.eligibility,
@@ -52,7 +66,10 @@ function publicEntry(entry) {
     time_cost: entry.time_cost,
     result: entry.presentation.result ?? null,
     response: entry.presentation.response ?? null,
-    response_speaker: entry.response_speaker ?? null
+    response_speaker: entry.response_speaker ?? null,
+    response_speaker_id: entry.response_speaker_id ?? null,
+    response_owners: clone(entry.response_owners ?? []),
+    responses: clone(entry.responses ?? [])
   };
 }
 
@@ -74,6 +91,12 @@ function updatePresentation(expedition, interactionId, updates = {}) {
   }
   if (updates.response_speaker_id !== undefined) {
     interaction.response_speaker_id = updates.response_speaker_id;
+  }
+  if (updates.response_owners !== undefined) {
+    interaction.response_owners = clone(updates.response_owners);
+  }
+  if (updates.responses !== undefined) {
+    interaction.responses = clone(updates.responses);
   }
   if (updates.response_listeners !== undefined) {
     interaction.response_listeners = [...updates.response_listeners];

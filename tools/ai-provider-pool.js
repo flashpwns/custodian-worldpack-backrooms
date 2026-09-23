@@ -11,7 +11,7 @@ const { createLivingProvider } = require("./ai-living-provider");
 const { createMockProvider } = require("./ai-mock-provider");
 const { createLocalModelProvider, LOCAL_PROVIDER_SPEC, normalizeLocalEndpoint } = require("./ai-local-model-provider");
 
-const DEFAULT_AUTO_PRIORITY = Object.freeze(["groq", "gemini", "openrouter", "openai", "offline"]);
+const DEFAULT_AUTO_PRIORITY = Object.freeze(["local", "groq", "gemini", "openrouter", "openai", "offline"]);
 
 const COOLDOWN_DURATIONS_MS = Object.freeze({
   [FAILURE_CLASSES.BILLING_EXHAUSTED]: 15 * 60 * 1000, // 15 minutes
@@ -40,7 +40,7 @@ function calculateCooldownMs(failureClass, error) {
 }
 
 class ProviderPool {
-  constructor({ credentials = null, settingsGetter = null, onInvocation = null, onProvenance = null, clientFactory = null, providerFactory = null, localFetch = null } = {}) {
+  constructor({ credentials = null, settingsGetter = null, onInvocation = null, onProvenance = null, clientFactory = null, providerFactory = null, localFetch = null, applianceGetter = null } = {}) {
     this.credentials = credentials;
     this.settingsGetter = typeof settingsGetter === "function" ? settingsGetter : () => ({ provider: "auto" });
     this.onInvocation = onInvocation;
@@ -48,6 +48,11 @@ class ProviderPool {
     this.clientFactory = clientFactory;
     this.providerFactory = providerFactory;
     this.localFetch = localFetch;
+    // Wired by DesktopService to the real ManagedInferenceAppliance. When
+    // absent (e.g. a bare ProviderPool built directly in a unit test) the
+    // "local" provider falls back to the legacy settings-driven loopback
+    // check below rather than requiring an appliance instance to exist.
+    this.applianceGetter = typeof applianceGetter === "function" ? applianceGetter : null;
     this.clients = new Map();
     this.health = new Map();
     this.instances = new Map();
@@ -58,14 +63,21 @@ class ProviderPool {
     this.clients.set(providerId, client);
   }
 
+  localApplianceStatus() {
+    if (!this.applianceGetter) return null;
+    try { return this.applianceGetter()?.getStatus?.() ?? null; }
+    catch { return null; }
+  }
+
   isConfigured(providerId) {
     if (providerId === "offline") return true;
     if (providerId === "local") {
-      const settings = this.settingsGetter();
-      try {
-        normalizeLocalEndpoint(settings.local_endpoint ?? LOCAL_PROVIDER_SPEC.defaultEndpoint);
-        return typeof (settings.local_model ?? LOCAL_PROVIDER_SPEC.defaultModel) === "string" && Boolean((settings.local_model ?? LOCAL_PROVIDER_SPEC.defaultModel).trim());
-      } catch { return false; }
+      // Readiness can only be established via the appliance (the source of truth for
+      // the hidden runtime). Without one wired in, local is not usable/configured —
+      // settings no longer control the production runtime, so they can't substitute.
+      if (!this.applianceGetter) return false;
+      const applianceStatus = this.localApplianceStatus();
+      return applianceStatus?.is_ready === true;
     }
     if (this.credentials && typeof this.credentials.configured === "function") {
       if (this.credentials.configured(providerId)) return true;
@@ -88,7 +100,11 @@ class ProviderPool {
 
   getModel(providerId) {
     const settings = this.settingsGetter();
-    if (providerId === "local") return settings.local_model || LOCAL_PROVIDER_SPEC.defaultModel;
+    if (providerId === "local") {
+      const applianceStatus = this.localApplianceStatus();
+      if (applianceStatus) return applianceStatus.model || LOCAL_PROVIDER_SPEC.defaultModel;
+      return settings.local_model || LOCAL_PROVIDER_SPEC.defaultModel;
+    }
     if (providerId === "openai" && settings.openai_model) return settings.openai_model;
     if (providerId === "groq" && settings.groq_model) return settings.groq_model;
     if (providerId === "gemini" && settings.gemini_model) return settings.gemini_model;
@@ -132,9 +148,10 @@ class ProviderPool {
       return createLivingProvider();
     }
     if (providerId === "local") {
+      const applianceStatus = this.localApplianceStatus();
       const settings = this.settingsGetter();
       return createLocalModelProvider({
-        endpoint:settings.local_endpoint ?? LOCAL_PROVIDER_SPEC.defaultEndpoint,
+        endpoint: applianceStatus?.endpoint || settings.local_endpoint || LOCAL_PROVIDER_SPEC.defaultEndpoint,
         model:this.getModel("local"),
         fetchImpl:this.localFetch ?? globalThis.fetch,
         timeout:120000,

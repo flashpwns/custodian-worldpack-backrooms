@@ -16,9 +16,16 @@
    *    finishCinematic(reason = "ended" | "skipped").
    * 3. Capture-phase key handling (useCapture: true) with stopImmediatePropagation()
    *    to prevent leakage into newly revealed screens or Electron window handlers.
-   * 4. Zero orphaned media elements or audio streams.
-   * 5. Restrained skip affordance: "ESC · SKIP".
-   * 6. Idempotent completion: exactly one invocation of onComplete per playback.
+   * 4. Idempotent: multiple ESC presses or simultaneous ended+ESC must not cause races.
+   * 5. Hard input law: ESC key skips immediately (visual prompt purged per Beat 2.4).
+   * 6. Preserves natural completion if not skipped; exactly one invocation of onComplete per playback.
+   * 7. Optional warmup gate (options.runtimeReadiness, a duck-typed object exposing
+   *    getStatus() -> { ready, state }): while supplied and not ready, ESC is swallowed
+   *    (still capture-phase, still stops propagation) instead of skipping, so the
+   *    cinematic can serve as silent warmup time. The gate lifts the moment
+   *    getStatus().ready is true, on getStatus().state === "failed" (terminal failure),
+   *    or once a bounded options.skipUnlockTimeoutMs elapses — whichever comes first.
+   *    Without options.runtimeReadiness, ESC skip behaves exactly as before.
    */
 
   let currentActiveCinematic = null;
@@ -115,6 +122,55 @@
     let videoElement = null;
     let surfaceElement = null;
 
+    // Warmup gate: absent options.runtimeReadiness, skip is always allowed
+    // (unchanged behavior). When present, ESC is swallowed until ready,
+    // terminally failed, or the bounded unlock timeout fires.
+    const runtimeReadiness = (options.runtimeReadiness && typeof options.runtimeReadiness.getStatus === "function")
+      ? options.runtimeReadiness
+      : null;
+    let skipUnlockTimer = null;
+    let skipUnlockTimeoutElapsed = false;
+
+    function isRuntimeReady() {
+      try {
+        const status = runtimeReadiness.getStatus();
+        return Boolean(status && status.ready);
+      } catch (err) {
+        return true; // fail-open: never let an internal readiness error block skip
+      }
+    }
+
+    function isRuntimeTerminallyFailed() {
+      try {
+        const status = runtimeReadiness.getStatus();
+        return Boolean(status && status.state === "failed");
+      } catch (err) {
+        return true; // fail-open
+      }
+    }
+
+    function skipAllowed() {
+      if (!runtimeReadiness) return true;
+      if (skipUnlockTimeoutElapsed) return true;
+      if (isRuntimeTerminallyFailed()) return true;
+      return isRuntimeReady();
+    }
+
+    function clearSkipUnlockTimer() {
+      if (skipUnlockTimer !== null) {
+        clearTimeout(skipUnlockTimer);
+        skipUnlockTimer = null;
+      }
+    }
+
+    if (runtimeReadiness && !isRuntimeReady()) {
+      const skipUnlockTimeoutMs = options.skipUnlockTimeoutMs || 15000;
+      skipUnlockTimer = setTimeout(() => {
+        skipUnlockTimer = null;
+        skipUnlockTimeoutElapsed = true;
+      }, skipUnlockTimeoutMs);
+    }
+
     function finishCinematic(reason = "ended") {
       if (finished) return;
       finished = true;
@@ -129,6 +185,7 @@
         clearTimeout(fallbackTimer);
         fallbackTimer = null;
       }
+      clearSkipUnlockTimer();
 
       // 3. Immediately halt audio and video, unload video pipeline
       if (videoElement) {
@@ -170,6 +227,10 @@
         if (typeof event.stopPropagation === "function") event.stopPropagation();
         if (typeof event.stopImmediatePropagation === "function") {
           event.stopImmediatePropagation();
+        }
+        if (!skipAllowed()) {
+          // Warmup still in progress: swallow the key without skipping.
+          return;
         }
         finishCinematic("skipped");
       }
@@ -269,7 +330,8 @@
       videoElement,
       finishCinematic,
       skip: () => finishCinematic("skipped"),
-      isFinished: () => finished
+      isFinished: () => finished,
+      isSkipAllowed: () => skipAllowed()
     };
 
     currentActiveCinematic = cinematicHandle;

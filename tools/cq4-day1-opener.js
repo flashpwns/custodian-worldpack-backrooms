@@ -419,7 +419,7 @@ function instantiate(run) {
     speaker: "DR. KIRK MAXWELL",
     speaker_title: "Chief Expedition Briefing Authority · Standard Side",
     room_id: "async-briefing-room",
-    room_name: "KV31 Lower Briefing Room",
+    room_name: "ASYNC FACILITY // LOWER LEVEL",
     dialogue: {
       greeting: dialogue.greeting,
       intro: dialogue.intro,
@@ -927,7 +927,7 @@ function startPersonnelBriefing(run) {
   briefing.speaker ??= "DR. KIRK MAXWELL";
   briefing.speaker_title ??= "Chief Expedition Briefing Authority · Standard Side";
   briefing.room_id ??= "async-briefing-room";
-  briefing.room_name ??= "KV31 Lower Briefing Room";
+  briefing.room_name ??= "ASYNC FACILITY // LOWER LEVEL";
   briefing.exchange_history ??= [];
 
   if (briefing.status === "concluded") {
@@ -936,9 +936,9 @@ function startPersonnelBriefing(run) {
 
   briefing.status = "active";
   const beats = [
-    briefing.dialogue?.greeting,
-    briefing.dialogue?.intro,
+    [briefing.dialogue?.greeting, briefing.dialogue?.intro].filter(Boolean).join(" "),
     briefing.dialogue?.mission_statement,
+    "Departure is scheduled for 10:00 AM, expected return 12:00 noon, cutoff 1:00 PM firm.",
     briefing.dialogue?.roster_call
   ].filter(Boolean);
   briefing.current_beat_index ??= 0;
@@ -959,6 +959,11 @@ function startPersonnelBriefing(run) {
       source: presentationBus.SOURCES.DETERMINISTIC,
       channel: "LOCAL",
       speaker: briefing.speaker,
+      speaker_id: "kirk-maxwell",
+      speaker_title: briefing.speaker_title,
+      recipient_type: "group",
+      recipient_id: "@briefing",
+      recipient_name: "Q4 Assignees",
       text: firstBeat
     });
     markOneShotConsumed(run, "maxwell_opening_briefing");
@@ -983,15 +988,15 @@ function interactPersonnelBriefing(run, input = "") {
   const raw = String(input ?? "").trim();
   briefing.exchange_history ??= [];
   const beats = [
-    briefing.dialogue?.greeting,
-    briefing.dialogue?.intro,
+    [briefing.dialogue?.greeting, briefing.dialogue?.intro].filter(Boolean).join(" "),
     briefing.dialogue?.mission_statement,
+    "Departure is scheduled for 10:00 AM, expected return 12:00 noon, cutoff 1:00 PM firm.",
     briefing.dialogue?.roster_call
   ].filter(Boolean);
   briefing.current_beat_index ??= 0;
   briefing.beats_total = beats.length;
 
-  const isExplicitConclusion = /^(conclude|dismiss|dismissed|leave|exit|done|finish|finished|let'?s go|staging|equipment staging)\.?$/i.test(raw);
+  const isExplicitConclusion = /^(conclude|dismiss|dismissed|leave|exit|done|finish|finished|let'?s go|staging|equipment staging|no questions|none|nothing|no|clear|all set|silence)\.?$/i.test(raw);
   const isContinuePhrase = !raw || /^(continue|next|listen|go on|more|proceed|yes|ok|okay|copy|understood|understand)\.?$/i.test(raw);
 
   if (isExplicitConclusion) {
@@ -1013,6 +1018,11 @@ function interactPersonnelBriefing(run, input = "") {
         source: presentationBus.SOURCES.DETERMINISTIC,
         channel: "LOCAL",
         speaker: briefing.speaker,
+        speaker_id: "kirk-maxwell",
+        speaker_title: briefing.speaker_title,
+        recipient_type: "group",
+        recipient_id: "@briefing",
+        recipient_name: "Q4 Assignees",
         text: nextBeatText
       });
       return {
@@ -1035,29 +1045,25 @@ function interactPersonnelBriefing(run, input = "") {
     at: new Date().toISOString()
   });
 
-  const members = run.expedition?.team?.members ?? [];
-  const coworker1Name = members[1]?.first_name || members[1]?.display_name || "Teammate";
-  const coworker2Name = members[2]?.first_name || members[2]?.display_name || "Courier";
-  const coworker3Name = members[3]?.first_name || members[3]?.display_name || "Doctor";
+  presentationBus.emit(run, {
+    type: presentationBus.EVENT_TYPES.DIALOGUE,
+    source: presentationBus.SOURCES.DETERMINISTIC,
+    channel: "LOCAL",
+    speaker: "YOU",
+    speaker_id: run.session?.startup?.player?.observer_id ?? "player",
+    recipient_type: "direct",
+    recipient_id: "kirk-maxwell",
+    recipient_name: briefing.speaker,
+    text: raw
+  });
 
-  let reply = "";
-  if (/outpost|bermuda|where|destination|location|objective|mission|what are we doing/i.test(raw)) {
-    reply = "Outpost A is our forward bastion along the guidance path, Bermuda branch. Your primary task is delivering the prerequisite startup duffle and returning before noon. Stay along the marked line.";
-  } else if (/tape|route|path|guidance|green|arrows?|direction|how do we get|where do we go/i.test(raw)) {
-    reply = "Follow the thick neon-green adhesive tape on the floor. Arrows point forward toward Outpost A, and reverse arrows guide back to KV31. Do not lose sight of that line.";
-  } else if (/times?|hours?|noon|cutoff|schedule|when|clock|duration/i.test(raw)) {
-    reply = "Departure is scheduled for 10:00 AM. Expected return is 12:00 noon—two standard hours. Operational cutoff is 1:00 PM firm. If you are not back before cutoff, the aperture cannot be held open.";
-  } else if (/camera|light|duffle|spectrometer|bag|kit|equipment|manifest|role|what do i carry|what do we have/i.test(raw)) {
-    reply = `${coworker2Name} is carrying the startup duffle. You have the field camera and lamp. ${coworker1Name} is on the spectrometer, and ${coworker3Name} has the layout record. Verify your gear in Staging before you head upstairs.`;
-  } else if (/kirk|maxwell|who are you|doctor/i.test(raw)) {
-    reply = "I manage the Standard-side briefing authority for Clear-Q4 operations. As I said, call me Kirk. You'll see plenty of me if you stick to protocol and come back in one piece.";
-  } else if (/threshold|complex|aperture|room|chamber|anomaly|kv31/i.test(raw)) {
-    reply = "The Threshold apparatus upstairs connects Standard to the Complex. The magnetic field remains stable during your window, provided you respect the time limits.";
-  } else if (/team|coworker|who is with|personnel|people/i.test(raw)) {
-    reply = "Four of you total today. You four are the complete assigned team for this morning's run. Introduce yourselves once we wrap here.";
-  } else {
-    reply = "Keep your mind on the work order: follow the green tape, drop the duffle at Outpost A, and be back before noon. There isn't time for a seminar in here.";
-  }
+  // This is an authored temporal delivery, not an open FAQ surface: Maxwell does not
+  // field free-form questions mid-briefing. Speech-act classification is retained
+  // (buildMaxwellWordsmithHints / dialogue-interpretation.js still exists and is used
+  // elsewhere), but this call site no longer branches replies off of topic-matching —
+  // any input that isn't a recognized continue/conclude phrase gets a single authored
+  // deflection back to the authored beats, keeping the briefing on rails.
+  const reply = "There isn't time for that right now — let's get through this, and you can ask around once we're done here.";
 
   briefing.exchange_history.push({
     speaker: briefing.speaker,
@@ -1071,6 +1077,11 @@ function interactPersonnelBriefing(run, input = "") {
     source: presentationBus.SOURCES.DETERMINISTIC,
     channel: "LOCAL",
     speaker: briefing.speaker,
+    speaker_id: "kirk-maxwell",
+    speaker_title: briefing.speaker_title,
+    recipient_type: "direct",
+    recipient_id: run.session?.startup?.player?.observer_id ?? "player",
+    recipient_name: "YOU",
     text: reply
   });
 
@@ -1093,7 +1104,7 @@ function concludePersonnelBriefing(run) {
   briefing.status = "concluded";
   briefing.exchange_history ??= [];
 
-  const dismissalText = briefing.dialogue?.dismissal || "There isn't time for questions here. Get acquainted, then report to Equipment Staging.";
+  const dismissalText = briefing.dialogue?.dismissal || "That's the briefing. Take a few minutes, get acquainted with the people at your table, and report to Equipment Staging when you're ready.";
   const lastTurn = briefing.exchange_history[briefing.exchange_history.length - 1];
   if (!lastTurn || lastTurn.text !== dismissalText) {
     briefing.exchange_history.push({

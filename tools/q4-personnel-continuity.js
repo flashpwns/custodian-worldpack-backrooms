@@ -373,7 +373,7 @@ function react(world, context) {
   return { ...final, reaction: clone(reaction) };
 }
 
-function presentReaction(person, reaction, playerText = "", targetId = null) {
+function presentReaction(person, reaction, playerText = "", targetId = null, speechAct = null) {
   if (!reaction) return null;
   const name = person?.first_name ?? person?.display_name ?? "Assigned teammate";
   const statement = String(playerText ?? "").trim().replace(/\s+/g, " ").slice(0, 96);
@@ -384,11 +384,78 @@ function presentReaction(person, reaction, playerText = "", targetId = null) {
   const isGuarded = attitude?.disposition === "guarded" || attitude?.disposition === "skeptical" || (attitude?.trust ?? 50) <= 35;
 
   const personality = person?.personality ?? person?.archetype ?? "";
+
+  // Social / sarcasm / greeting acts — do not convert to FAQ fallback
+  const isSocial = speechAct != null && ["social_observation", "joke_or_sarcasm", "greeting", "introduction", "acknowledgment"].includes(speechAct);
+  const isPersonalQ = speechAct === "personal_question";
+  const isFactualQ = speechAct === "factual_question" || speechAct === "group_question";
+
+  if (isSocial) {
+    // Social acknowledgment: restrained, in-character, no information content.
+    // Fallback wording here must read as SOCIAL, never operational -- "ready
+    // when you are" / "awaiting orders" style phrasing is reserved for actual
+    // readiness/task exchanges, not a bare greeting or check-in. Variation is
+    // deterministic, driven by each character's own grounded
+    // identity_substrate (never invented), so a multi-responder social turn
+    // does not collapse every teammate onto the same line.
+    const socialExpression = person?.identity_substrate?.social_expression ?? null;
+    const temperament = person?.identity_substrate?.conversational_temperament ?? null;
+
+    const GREETING_BY_EXPRESSION = {
+      "dryly observant": "Hey.",
+      "quietly friendly": "Hi there.",
+      "carefully polite": "Good morning.",
+      "plain-spoken": "Hey.",
+      "wry under pressure": "Well, hello."
+    };
+    const INTRODUCTION_BY_EXPRESSION = {
+      "dryly observant": "Noted.",
+      "quietly friendly": "Good to meet you.",
+      "carefully polite": "Pleasure to meet you.",
+      "plain-spoken": "Good to know.",
+      "wry under pressure": "Duly noted."
+    };
+    const ACKNOWLEDGMENT_BY_TEMPERAMENT = {
+      "brief and direct": "Got it.",
+      "measured and reflective": "Understood.",
+      "warm but guarded": "Okay.",
+      "talkative when uneasy": "Sounds good.",
+      "deadpan": "Noted."
+    };
+    const SOCIAL_OBSERVATION_BY_TEMPERAMENT = {
+      "brief and direct": "I'm fine.",
+      "measured and reflective": "Managing, thanks.",
+      "warm but guarded": "I'm all right.",
+      "talkative when uneasy": "Could be better, could be worse.",
+      "deadpan": "Can't complain."
+    };
+
+    const socialLines = {
+      "joke_or_sarcasm": isSupportive ? `${name}: Fair point.` : `${name}: Let's stay focused.`,
+      "greeting": `${name}: ${GREETING_BY_EXPRESSION[socialExpression] ?? (isSupportive ? "Good to see you." : "Hello.")}`,
+      "introduction": `${name}: ${INTRODUCTION_BY_EXPRESSION[socialExpression] ?? "Good to know."}`,
+      "acknowledgment": `${name}: ${ACKNOWLEDGMENT_BY_TEMPERAMENT[temperament] ?? "Understood."}`,
+      "social_observation": isGuarded
+        ? `${name}: Let's keep moving.`
+        : `${name}: ${SOCIAL_OBSERVATION_BY_TEMPERAMENT[temperament] ?? (isSupportive ? "I'm fine." : "Noted.")}`
+    };
+    return socialLines[speechAct] ?? `${name}: Understood.`;
+  }
+
+  if (isPersonalQ) {
+    // Personal question: honest about limited information; never invent biography
+    return personality === "nervous-first-day"
+      ? `${name}: First time for me too.`
+      : personality === "veteran-doctor"
+        ? `${name}: I'll keep that to myself for now.`
+        : `${name}: Nothing I can confirm from here.`;
+  }
+
   const reportedAcknowledgment = personality === "intern"
-    ? `Okay. I have “${statement}” in the notes as your report.`
+    ? `Okay. I have "${statement}" in the notes as your report.`
     : personality === "veteran-doctor"
-      ? `Logged as your report: “${statement}”. I'll keep it separate from what I've verified.`
-      : `Noted. I'm treating “${statement}” as your report until we can confirm it.`;
+      ? `Logged as your report: "${statement}". I'll keep it separate from what I've verified.`
+      : `Noted. I'm treating "${statement}" as your report until we can confirm it.`;
   const characterAcknowledgment = !isDisclosure && isOperationalReport
     ? reportedAcknowledgment
     : personality === "nervous-first-day"
@@ -407,7 +474,10 @@ function presentReaction(person, reaction, playerText = "", targetId = null) {
   const lines = {
     acknowledgment: acknowledgmentLine,
     warning: "Hold there. I can't safely back that from where we are.",
-    question: personality === "veteran-doctor" ? "What do you want me to verify from here?" : "Which part should I check?",
+    // "question" category: factual question only — if hosted AI is unavailable
+    question: isFactualQ
+      ? (personality === "veteran-doctor" ? "What exactly are you asking me to verify?" : "Which part do you need me to check?")
+      : "Understood.",
     uncertainty: "I can't confirm more than what I can observe from here."
   };
   return `${name}: ${lines[reaction.category] ?? "Understood."}`;

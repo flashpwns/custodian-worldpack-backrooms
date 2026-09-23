@@ -59,7 +59,7 @@
       "intro": "My name is Dr. Kirk Maxwell. You can call me Kirk. Should any of you become recurring expedition personnel, we'll be seeing quite a bit of one another.",
       "mission_statement": "Today's assignment is straightforward. Delivery and introductory reconnaissance.",
       "roster_call": "{coworker2_name} has custody of the startup material scheduled for Outpost A, Bermuda branch. {player_name}, you're on camera. {coworker3_name}, layout record. {coworker1_name}, observation and verbal recall.",
-      "dismissal": "There isn't time for questions here. Get acquainted, then report to Equipment Staging."
+      "dismissal": "That's the briefing. Take a few minutes, get acquainted with the people at your table, and report to Equipment Staging when you're ready."
     },
     "threshold_sendoff": "Proceed with a radio check upstairs, and they'll clear you. Nothing you haven't done before. Enter, remember what you see, drop the bag, be home before the streetlights come on. Godspeed, kids."
   },

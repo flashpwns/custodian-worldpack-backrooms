@@ -692,6 +692,60 @@ test('Main-menu music uses single bossa track and retains application process id
   assert.equal(made.at(-1).src, first.src, 'menus and new worlds must retain the process-selected identity');
 });
 
+test('Startup music alone uses the narrow-band tannoy processing graph', () => {
+  class FakeNode {
+    constructor(kind) { this.kind = kind; this.connections = []; this.disconnected = false; }
+    connect(node) { this.connections.push(node); return node; }
+    disconnect() { this.disconnected = true; }
+  }
+  const param = () => ({ value: 0 });
+  const madeNodes = [];
+  const makeNode = (kind, fields = {}) => Object.assign(new FakeNode(kind), fields);
+  class FakeAudioContext {
+    constructor() { this.sampleRate = 1000; this.destination = makeNode('destination'); }
+    createMediaElementSource() { const node = makeNode('source'); madeNodes.push(node); return node; }
+    createGain() { const node = makeNode('gain', { gain: param() }); madeNodes.push(node); return node; }
+    createBiquadFilter() { const node = makeNode('filter', { frequency: param(), Q: param(), gain: param() }); madeNodes.push(node); return node; }
+    createWaveShaper() {
+      const node = makeNode('waveshaper');
+      Object.defineProperty(node, 'curve', {
+        set(value) { this.copiedCurve = Array.from(value); },
+        get() { return this.copiedCurve; }
+      });
+      madeNodes.push(node); return node;
+    }
+    createDynamicsCompressor() { const node = makeNode('compressor', { threshold: param(), knee: param(), ratio: param(), attack: param(), release: param() }); madeNodes.push(node); return node; }
+    createConvolver() { const node = makeNode('convolver'); madeNodes.push(node); return node; }
+    createBuffer(channels, length) {
+      const data = Array.from({ length: channels }, () => new Float32Array(length));
+      return { numberOfChannels: channels, getChannelData: channel => data[channel] };
+    }
+    resume() { return Promise.resolve(); }
+  }
+  const madeAudio = [];
+  const sandbox = { console, AudioContext: FakeAudioContext, Audio: class {
+    constructor(src) { this.src = src; this.paused = true; madeAudio.push(this); }
+    play() { this.paused = false; return Promise.resolve(); }
+    pause() { this.paused = true; }
+  }};
+  require('node:vm').runInNewContext(fs.readFileSync(path.join(__dirname, '../desktop/renderer/audio.js'), 'utf8'), sandbox);
+  const audio = sandbox.YBAudio;
+  audio.emitHook('lpmds_bed');
+  assert.equal(audio.diagnostics().playback[0].processing, null, 'field audio must remain unprocessed by the title effect');
+  audio.startMenuMusic(require('../desktop/menu-music').selectTrack());
+  const playback = audio.diagnostics().playback.find(item => item.hook === 'menu_music');
+  assert.equal(playback.processing, 'startup-tannoy');
+  const filters = madeNodes.filter(node => node.kind === 'filter');
+  assert.deepEqual(filters.map(node => [node.type, node.frequency.value]), [['highpass', 250], ['lowpass', 4000], ['peaking', 1500]]);
+  const shaper = madeNodes.find(node => node.kind === 'waveshaper');
+  assert.ok(shaper.curve.some(value => value > 0.5) && shaper.curve.some(value => value < -0.5), 'curve must contain signal at assignment time; Web Audio copies it');
+  assert.equal(madeNodes.find(node => node.channelCount === 1).channelCountMode, 'explicit');
+  assert.equal(madeNodes.some(node => node.kind === 'compressor' && node.ratio.value === 2.5), true);
+  audio.stopMenuMusic(0);
+  assert.equal(madeNodes.filter(node => node.kind !== 'destination').every(node => node.disconnected), true, 'ending startup music must disconnect its processing graph');
+  assert.equal(madeAudio.every(item => item.paused), true);
+});
+
 test('Main-menu music fade handoff initiates immediately and reaches silence in under 2 seconds', async () => {
   const { selectTrack } = require('../desktop/menu-music');
   const made = [];

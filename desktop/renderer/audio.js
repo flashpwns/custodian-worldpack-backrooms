@@ -65,9 +65,11 @@
 
     // Localized Anomalous Music
     "localized_music_01",
-    "localized_music_02",
+    "localized_music_02"
+  ]);
 
-    // Physical Document Movement
+  const EXTENDED_HOOKS = Object.freeze([
+    "threshold_activation",
     "paper_sheet_enter",
     "paper_sheet_exit"
   ]);
@@ -225,28 +227,43 @@
     }
   }
 
-  function distantRoomGraph(audio) {
+  function startupTannoyGraph(audio) {
     const ctx = getAudioContext();
     if (!ctx?.createMediaElementSource) return [];
     const source = ctx.createMediaElementSource(audio);
-    const high = ctx.createBiquadFilter(); high.type = "highpass"; high.frequency.value = 350;
-    const low = ctx.createBiquadFilter(); low.type = "lowpass"; low.frequency.value = 4200;
-    const mid = ctx.createBiquadFilter(); mid.type = "peaking"; mid.frequency.value = 1600; mid.Q.value = 1.2; mid.gain.value = 3.5;
-    const dry = ctx.createGain(); dry.gain.value = 0.68;
-    const wet = ctx.createGain(); wet.gain.value = 0.32;
+    const mono = ctx.createGain(); mono.channelCount = 1; mono.channelCountMode = "explicit";
+    const high = ctx.createBiquadFilter(); high.type = "highpass"; high.frequency.value = 250;
+    high.Q.value = 0.707;
+    const low = ctx.createBiquadFilter(); low.type = "lowpass"; low.frequency.value = 4000;
+    low.Q.value = 0.707;
+    const mid = ctx.createBiquadFilter(); mid.type = "peaking"; mid.frequency.value = 1500; mid.Q.value = 1.1; mid.gain.value = 5;
+    const saturation = ctx.createWaveShaper();
+    const curve = new Float32Array(2049);
+    for (let i = 0; i < curve.length; i++) {
+      const x = 2 * i / (curve.length - 1) - 1;
+      curve[i] = Math.tanh(2 * x) / Math.tanh(2);
+    }
+    // Web Audio copies this array on assignment: populate it BEFORE assigning.
+    saturation.curve = curve;
+    saturation.oversample = "2x";
+    const compression = ctx.createDynamicsCompressor();
+    compression.threshold.value = -20; compression.knee.value = 12; compression.ratio.value = 2.5;
+    compression.attack.value = 0.008; compression.release.value = 0.18;
+    const dry = ctx.createGain(); dry.gain.value = 0.88;
+    const wet = ctx.createGain(); wet.gain.value = 0.12;
     const room = ctx.createConvolver();
-    const impulse = ctx.createBuffer(2, Math.ceil(ctx.sampleRate * 0.35), ctx.sampleRate);
-    for (let channel = 0; channel < 2; channel++) {
+    const impulse = ctx.createBuffer(1, Math.ceil(ctx.sampleRate * 0.14), ctx.sampleRate);
+    for (let channel = 0; channel < impulse.numberOfChannels; channel++) {
       const samples = impulse.getChannelData(channel);
-      for (let i = 0; i < samples.length; i++) samples[i] = Math.sin(i * 1.71 + channel) * Math.pow(1 - i / samples.length, 4) * 0.15;
-      for (const [seconds, gain] of [[0.025, 0.5], [0.047, 0.3], [0.081, 0.15]]) samples[Math.floor(seconds * ctx.sampleRate)] += gain;
+      for (let i = 0; i < samples.length; i++) samples[i] = Math.sin(i * 1.71) * Math.pow(1 - i / samples.length, 5) * 0.035;
+      for (const [seconds, gain] of [[0.018, 0.22], [0.041, 0.12], [0.073, 0.06]]) samples[Math.floor(seconds * ctx.sampleRate)] += gain;
     }
     room.buffer = impulse;
-    source.connect(high).connect(low).connect(mid);
-    mid.connect(dry).connect(ctx.destination);
-    mid.connect(room).connect(wet).connect(ctx.destination);
+    source.connect(mono).connect(high).connect(mid).connect(saturation).connect(low).connect(compression);
+    compression.connect(dry).connect(ctx.destination);
+    compression.connect(room).connect(wet).connect(ctx.destination);
     ctx.resume()?.catch?.(() => {});
-    return [source, high, low, mid, dry, wet, room];
+    return [source, mono, high, low, mid, saturation, compression, dry, wet, room];
   }
 
   function playAudioFile(hookId, srcPath, options = {}) {
@@ -264,8 +281,11 @@
     try {
       const audio = new global.Audio(srcPath);
       audio.loop = Boolean(isLoop);
-      const record = { audio, hookId, bus, gain: options.gain ?? 1, fade: 1, nodes: [] };
-      if (options.distant) record.nodes = distantRoomGraph(audio);
+      const record = { audio, hookId, bus, gain: options.gain ?? 1, fade: 1, nodes: [], processing: null };
+      if (options.startupTannoy) {
+        record.nodes = startupTannoyGraph(audio);
+        if (record.nodes.length) record.processing = "startup-tannoy";
+      }
       if (isLoop) activeAudioElements.set(hookId, record);
       playbacks.add(record);
       audio.onended = () => { if (!isLoop) dispose(record); };
@@ -293,7 +313,7 @@
       if (record.hookId !== "menu_music") dispose(record);
     }
     // Missing approved media remains an explicit silent slot; never reroll or substitute.
-    if (menuTrack?.src) playAudioFile("menu_music", menuTrack.src, { bus: AUDIO_BUSES.MUSIC, gain: 1.0, loop: true, distant: true });
+    if (menuTrack?.src) playAudioFile("menu_music", menuTrack.src, { bus: AUDIO_BUSES.MUSIC, gain: 1.0, loop: true, startupTannoy: true });
   }
 
   function stopMenuMusic(fadeMs = 1500) { menuWanted = false; stopHook("menu_music", fadeMs); }
@@ -347,13 +367,14 @@
         ready_state: record.audio.readyState,
         current_time: record.audio.currentTime,
         volume: record.audio.volume,
+        processing: record.processing,
         room_filter_nodes: record.nodes.length
       }))
     };
   }
 
   function registerAsset(hookId, descriptor) {
-    if (!CONCEPTUAL_HOOKS.includes(hookId) && hookId !== "date_presentation_cue" && hookId !== "threshold_activation") {
+    if (!CONCEPTUAL_HOOKS.includes(hookId) && !EXTENDED_HOOKS.includes(hookId) && hookId !== "date_presentation_cue") {
       throw new Error(`Cannot register unknown acoustic hook: "${hookId}"`);
     }
     assetRegistry.set(hookId, descriptor);
@@ -476,6 +497,8 @@
 
       case "boot_power":
       case "boot_drive":
+      case "paper_sheet_enter":
+      case "paper_sheet_exit":
         // No dedicated audio asset provided. Remains silent without procedural fallback.
         break;
 
@@ -691,7 +714,7 @@
   }
 
   function emitHook(hookId, options = {}) {
-    if (!CONCEPTUAL_HOOKS.includes(hookId) && hookId !== "threshold_activation") {
+    if (!CONCEPTUAL_HOOKS.includes(hookId) && !EXTENDED_HOOKS.includes(hookId)) {
       console.warn(`[YBAudio] Unrecognized acoustic hook: ${hookId}`);
       return;
     }

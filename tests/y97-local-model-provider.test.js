@@ -70,17 +70,18 @@ test("local provider accepts only on-device loopback endpoints", () => {
   assert.throws(() => normalizeLocalEndpoint("http://127.0.0.1:11434/proxy"), { code:"LOCAL_ENDPOINT_INVALID" });
 });
 
-test("local provider sends schema-constrained, non-streaming, non-thinking requests for interpretation and dialogue", async () => {
+test("local provider sends schema-constrained, non-streaming requests over the llama.cpp chat-completions transport", async () => {
   const calls = [];
   const events = [];
   const fetchImpl = async (url, options) => {
     const body = JSON.parse(options.body);
     calls.push({ url, body });
-    const required = body.format?.required ?? [];
-    if (required.includes("observer_id")) return response({ model:body.model, created_at:"dialogue", message:{ role:"assistant", content:JSON.stringify({ version:"yellow-beast-local-dialogue-candidate@v1", observer_id:"coworker-1", speech:"Stay close. I can keep this simple.", semantic_claims:[] }) }, done:true });
-    if (required.includes("relation")) return response({ model:body.model, created_at:"living", message:{ role:"assistant", content:JSON.stringify(waitProposal()) }, done:true });
-    if (required.includes("scene_description")) return response({ model:body.model, created_at:"presentation", message:{ role:"assistant", content:JSON.stringify({ version:"yellow-beast-presentation-candidate@v1", scene_description:"The visible room remains still.", npc_presentations:[], presentation_claims:[] }) }, done:true });
-    return response({ model:body.model, created_at:"intent", message:{ role:"assistant", content:JSON.stringify(intentProposal) }, done:true });
+    const required = body.response_format?.json_schema?.schema?.required ?? [];
+    const wrap = (content) => response({ id:"fixture-response", model:body.model, choices:[{ message:{ role:"assistant", content:JSON.stringify(content) } }] });
+    if (required.includes("observer_id")) return wrap({ version:"yellow-beast-local-dialogue-candidate@v1", observer_id:"coworker-1", speech:"Stay close. I can keep this simple.", semantic_claims:[] });
+    if (required.includes("relation")) return wrap(waitProposal());
+    if (required.includes("scene_description")) return wrap({ version:"yellow-beast-presentation-candidate@v1", scene_description:"The visible room remains still.", npc_presentations:[], presentation_claims:[] });
+    return wrap(intentProposal);
   };
   const provider = createLocalModelProvider({ model:"fixture:9b", fetchImpl, onInvocation:event => events.push(event) });
 
@@ -94,26 +95,30 @@ test("local provider sends schema-constrained, non-streaming, non-thinking reque
 
   assert.equal(calls.length, 4);
   for (const call of calls) {
-    assert.equal(call.url, "http://127.0.0.1:11434/api/chat");
+    assert.equal(call.url, "http://127.0.0.1:8734/v1/chat/completions");
     assert.equal(call.body.stream, false);
-    assert.equal(call.body.think, false);
     assert.equal(call.body.model, "fixture:9b");
-    assert.equal(call.body.format.type, "object");
+    assert.equal(call.body.response_format.type, "json_schema");
+    assert.equal(call.body.response_format.json_schema.strict, true);
+    assert.equal(call.body.response_format.json_schema.schema.type, "object");
     assert.match(call.body.messages[0].content, /complete canon available/i);
     assert.match(call.body.messages[0].content, /personality affect word choice/i);
     assert.match(call.body.messages[1].content, /Required JSON schema/);
   }
   assert.equal(events.filter(event => event.status === "completed").length, 4);
-  assert.ok(events.every(event => event.hosted_request === false && event.transport === "ollama-loopback"));
+  assert.ok(events.every(event => event.hosted_request === false && event.transport === "llamacpp-loopback"));
   assert.doesNotMatch(JSON.stringify(events), /inspect the light|Stay close/);
 });
 
-test("runtime inspection distinguishes an installed model from a reachable server without it", async () => {
-  const ready = await inspectLocalModel({ model:"qwen3.5:9b", fetchImpl:async () => response({ models:[{ name:"qwen3.5:9b" }] }) });
-  assert.deepEqual(ready, { ok:true, runtime_available:true, model_available:true, models:["qwen3.5:9b"] });
-  const missing = await inspectLocalModel({ model:"qwen3.5:9b", fetchImpl:async () => response({ models:[{ name:"other:latest" }] }) });
-  assert.equal(missing.runtime_available, true);
-  assert.equal(missing.model_available, false);
+test("runtime inspection distinguishes a reachable server from one without the model loaded", async () => {
+  const ready = await inspectLocalModel({
+    model:"yellow-beast-local-v1",
+    fetchImpl:async (url) => String(url).endsWith("/health") ? response({ status:"ok" }) : response({ data:[{ id:"yellow-beast-local-v1" }] })
+  });
+  assert.deepEqual(ready, { ok:true, runtime_available:true, model_available:true, models:["yellow-beast-local-v1"] });
+  const unreachable = await inspectLocalModel({ model:"yellow-beast-local-v1", fetchImpl:async () => { throw new Error("connection refused"); } });
+  assert.equal(unreachable.runtime_available, false);
+  assert.equal(unreachable.model_available, false);
 });
 
 test("local dialogue sanitation removes unused model claims without authorizing new prose", () => {
@@ -131,17 +136,24 @@ test("provider pool and desktop settings select local generation without an API 
   const requests = [];
   const fetchImpl = async (_url, options) => {
     requests.push(JSON.parse(options.body));
-    return response({ model:"qwen3.5:9b", created_at:"test", message:{ role:"assistant", content:JSON.stringify(waitProposal()) }, done:true });
+    return response({ id:"fixture", model:LOCAL_PROVIDER_SPEC.defaultModel, choices:[{ message:{ role:"assistant", content:JSON.stringify(waitProposal()) } }] });
   };
-  const settings = { provider:"local", local_endpoint:"http://127.0.0.1:11434", local_model:"qwen3.5:9b" };
+  // With no managed appliance wired, the pool falls back to the legacy
+  // settings-driven loopback check so a bare ProviderPool remains testable.
+  const settings = { provider:"local" };
   const pool = new ProviderPool({ settingsGetter:() => settings, localFetch:fetchImpl });
   assert.deepEqual(pool.getCandidates({ preferredProvider:"local" }), ["local", "offline"]);
-  assert.equal(pool.getProviderInstance("local").model, "qwen3.5:9b");
+  assert.equal(pool.getProviderInstance("local").model, LOCAL_PROVIDER_SPEC.defaultModel);
 
+  // Through DesktopService, "local" is only actually usable once the managed
+  // inference appliance is installed and its daemon reports READY -- the
+  // endpoint/model are then sourced from the appliance, not from settings.
   const root = fs.mkdtempSync(path.join(os.tmpdir(), "yb-y97-local-"));
   const service = new DesktopService({ appDataPath:root });
   service.providerPool.localFetch = fetchImpl;
-  const saved = service.updateSettings({ settings });
+  const installed = await service.installInferenceAppliance();
+  assert.equal(installed.ok, true);
+  const saved = service.updateSettings({ settings:{ provider:"local" } });
   assert.equal(saved.ok, true);
   assert.equal(saved.settings.provider, "local");
   assert.equal(service.getProviderStatus().provider.entries[0].kind, "local");
@@ -152,12 +164,16 @@ test("provider pool and desktop settings select local generation without an API 
   assert.equal(service.getDiagnostics().diagnostics.local_ai.model, LOCAL_PROVIDER_SPEC.defaultModel);
 });
 
-test("desktop rejects remote local-model addresses without changing saved settings", () => {
+test("desktop ignores legacy local-model settings instead of rejecting the update", () => {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), "yb-y97-remote-"));
   const service = new DesktopService({ appDataPath:root });
   const before = service.settings();
-  const rejected = service.updateSettings({ settings:{ provider:"local", local_endpoint:"http://example.com:11434", local_model:"qwen3.5:9b" } });
-  assert.equal(rejected.ok, false);
-  assert.equal(rejected.error.code, "LOCAL_ENDPOINT_INVALID");
-  assert.deepEqual(service.settings(), before);
+  // local_endpoint/local_model no longer control the production local
+  // runtime (the managed inference appliance owns the real endpoint/model),
+  // so a legacy client sending them is accepted and the values are ignored
+  // rather than validated or persisted.
+  const accepted = service.updateSettings({ settings:{ provider:"local", local_endpoint:"http://example.com:11434", local_model:"qwen3.5:9b" } });
+  assert.equal(accepted.ok, true);
+  assert.equal(accepted.settings.local_endpoint, before.local_endpoint);
+  assert.equal(accepted.settings.local_model, before.local_model);
 });

@@ -1,5 +1,123 @@
 # Yellow Beast Implementation State
 
+## Assembly Table LOCAL Dialogue Presentation & Group Response Pass — 2026-09-21
+
+- Normal Assembly Table dialogue remains in the right-side communications rail; the center column remains map/reconstruction space, apart from the existing authored Maxwell presentation.
+- The player-facing `@table` group route was removed. Natural-language interpretation now classifies obvious group greetings and questions while preserving direct coworker selection as an optional explicit address.
+- Deterministic dialogue policy now owns ordered `response_owners[]`: greetings and social check-ins can receive all-present replies, established-knowledge questions select only knowledgeable coworkers, warnings can be heard without forcing replies, and ambiguous group speech selects one clarification owner.
+- Untargeted LOCAL speech now has a beat-scoped deterministic response policy: social remarks may receive a bounded reaction, arbitrary statements may receive none, and silence still commits no dialogue events.
+- Multi-responder turns commit the player event first and each responder event afterward in deterministic order. Presentation consumes that same committed order. Model generation remains wordsmith-only and runs once per authorized responder.
+- Development-only traces record the provider, deterministic responder order, sanitized wordsmith inputs, raw candidates, fallback/model decisions, and committed event IDs without exposing those details in the player-facing UI.
+- Focused verification: dialogue policy/runtime plus the existing living-world LOCAL regression (`y78`, `y109`, `y110`, `y111`) passed 59/59. Authoritative `npm test` passed 839/839 with inventory consistency and all required reports green.
+
+## Beat 2.4 Reusable Dialogue Runtime & LOCAL Coworker Proof — 2026-09-20
+
+- **Source Truth**:
+  - Branch: `opener-human-green-2026-09-19`
+  - Base Commit: `9161525b3bad83f69afdc0c0238783915b0e6b11`
+  - Status: Working tree modifications preserved, uncommitted, strictly scoped to dialogue runtime completion and proof.
+- **Corrected Roadmap Readiness Assessment**:
+  - **LOCAL vs STANDARD Channels**: **READY**. Channel separation enforced across simulation and presentation. LOCAL uses acoustic room propagation with distance limits and recipient targeting; STANDARD uses radio transceivers with acknowledgment states and battery consumption.
+  - **Dialogue Transcript & History**: **READY**. Unified chronological `dialogue_history` backed by presentation bus envelopes, surviving cold boot restoration and renderer remounts without duplication.
+  - **Interruptions, Sequencing & Pacing**: **READY**. Progressive typewriter delivery (`YBDialoguePlayer`) supports instant skip-to-complete on first user action without advancing beats; canonical simulation state commits synchronously before UI typing timers.
+  - **Dialogue Persistence**: **READY**. Canonical dialogue events stored in `run.expedition.dialogue_history` survive full serialize-to-disk and deserialize cold restarts.
+  - **Multi-Character Conversations**: **READY for Deterministic Local Targeting** (Direct, Group, and Untargeted routing verified across 3 table coworkers); **PARTIALLY READY for Autonomous Multi-Turn Unscripted Exchanges** (requires local LLM routing for unscripted emergent peer conversations).
+  - **Natural-Language Input & Free-form Queries**: **PARTIALLY READY**. Fully wired and verified for Dr. Kirk Maxwell briefing and deterministic coworker targeting; model-assisted routing for unscripted queries verified with fail-safe fallback, awaiting full local appliance deployment.
+- **Dialogue Runtime & Targeting Semantics**:
+  - **Direct Address**: Only the addressed coworker responds; other coworkers hear acoustically if in range, but never become primary responders.
+  - **Group Address (`@table` / `@team`)**: Addressed to the group; designated spokesperson/equipment holder responds on behalf of the group; all present peers hear.
+  - **Untargeted Room Speech**: Spoken aloud to the room (`recipient_type = "none"`); all peers hear acoustically, but nobody answers (`"You speak aloud to the room. Nobody at the table responds."`). Creates exactly one dialogue event (player only).
+  - **Silence Path**: Player can proceed to Equipment Staging without speaking; creates exactly zero dialogue events.
+  - **Validation & Boundary Guards**: Physically absent targets (`LOCAL_TARGET_UNAVAILABLE`), unknown targets (`TARGET_NOT_FOUND`), channel mismatches (`INTRO_CHANNEL_UNAVAILABLE`), and empty/whitespace inputs (`COMMUNICATION_EMPTY`) fail closed without emitting dialogue events.
+  - **Fail-Safe Fallback**: Faulty or malformed model candidates fail validation and fall back to deterministic response without corrupting simulation state.
+- **Verification Evidence**:
+  - Unit test suite: `tests/y109-local-coworker-dialogue-runtime.test.js` (12/12 passing).
+  - Repair suite: `tests/y108-beat-2-4-convergence-repair.test.js` (11/11 passing).
+  - Verification Gate: `tests/y68-verification-gate.test.js` (32/32 passing).
+  - Authoritative Aggregate: `npm test` (800/800 passing, all reports passing, inventory 100% consistent).
+  - Native Packaged Verification: `desktop:verify`, `desktop:settings-regression`, `desktop:first-run-regression` all passing cleanly.
+  - Live Electron Automated Traversal: `node tools/run-visual-traversal.js` passed, capturing 21 screenshots covering title, video, waiver, AEOT boot, facility schematic, briefing inquiry/skip, and all 5 LOCAL dialogue targeting scenarios plus staging boundary.
+
+## Beat 2.4 Pre-Commit Authority Cleanup & Dialogue Architecture Convergence — 2026-09-20
+
+- **Pre-Commit Authority Cleanup**:
+  - **Player-Facing Room Label Neutralization (`desktop/renderer/surfaces.js`, `desktop/renderer/renderer.js`, `tools/cq4-day1-opener.js`)**:
+    - Purged invented room designations `ASYNC Briefing Room`, `Briefing Room`, `Lower Briefing Room`, and `KV31 Lower Briefing Room` from all player-facing UI, dialogue headers, and map annotations.
+    - Standardized player-facing location headers to neutral physical designations: `ASYNC FACILITY // LOWER LEVEL` (eyebrow) and `Assembly Table` (header). Unlabelled briefing spaces render strictly as geometry (`Controlled Facility Space`).
+  - **Paper Audio Foley Purge (`desktop/renderer/audio.js`, `desktop/assets/audio/Interface/`)**:
+    - Completely deleted procedural/synthesized paper rustle WAV files (`Paper_Sheet_Enter.wav`, `Paper_Sheet_Exit.wav`) and directory.
+    - Procedural fallback for `paper_sheet_enter` and `paper_sheet_exit` executes as an explicit silent no-op. Paper transitions remain silent until authentic recorded foley exists.
+  - **Validation Terminology Discipline**:
+    - Corrected all automated validation logs and status keys from "human-observed" to "live Electron automated traversal" / "rendered Electron traversal".
+    - Reserved human sensory validation exclusively for Jack's manual playthrough.
+
+- **Priority 1 — Facility Map Blueprint Authority Convergence (`desktop/renderer/surfaces.js`, `desktop/renderer/renderer.js`, `tools/cq4-day1-opener.js`)**:
+  - Reconciled facility schematic strictly against `/Users/jacktr/Pictures/Screenshots/ASYNC Facility.png` (`Top-down geometry extracted from gm_br_complex • fan reconstruction by schlimbodimblo`):
+    - Blueprint is the sole authority for room designations. Corridors and unlabelled briefing spaces render strictly as geometry without invented functional labels or subtitles.
+    - Lower Level: Briefing table area and circulation corridor render as pure geometry with `name: ""` and `subtitle: ""` (fallback to neutral `Controlled Facility Space`). Blueprint-exact rooms: `Threshold Chamber` (#1), `Dressing Room` (#2), `Freight Lift` (#9), `Lift` (#10).
+    - Middle Level: `Control Room` (#1), `Conference Room` (#2), `Relay Room` (#3/#4), `Medical Lab` (#5/#6), `Freight Lift` (#9), `Lift` (#8). Purged invented prefixes `KV31` and `Telemetry`. All functional subtitles removed.
+    - Upper Level: `Server Room` (#1), `Restrooms` (#2/#3), `Maintenance Access` (#4), `Freight Lift` (#5), `Lift` (#6). Purged ungrounded invention `Administrative Offices`. All functional subtitles removed.
+    - Upper Section: `Auditorium` (#1), `Lounge Access` (#2), `Lift`. Purged ungrounded invention `Mechanical & Roof Access`. All functional subtitles removed.
+  - Fixed Facility Floor Tab Inspection:
+    - Scoped floor tab click listener from `[data-facility-floor]` down to `button.facility-floor-button, g.facility-floor-tab` with `e.stopPropagation()`, preventing click events from bubbling up to `<details class="operational-map" data-facility-floor="lower">` and resetting the active floor back to `"lower"`.
+    - Passed `options` into `layoutMap(projection, null, options)` across `briefingWorkstation`, `expeditionCockpit`, and prefield layouts so `inspectedFacilityFloor` correctly switches rendered floor layers.
+
+- **Priority 2 & 3 — Progressive Dialogue Player & Dialogue Architecture Audit (`desktop/renderer/dialogue-player.js`, `desktop/renderer/renderer.js`, `desktop/renderer/styles.css`, `tools/presentation-bus.js`)**:
+  - Dialogue Architecture Inventory:
+    - Formalized canonical dialogue data contract `createDialogueEvent({ channel, speaker, recipient, text, mode, ... })` exported via `tools/presentation-bus.js`.
+    - Maintained strict unidirectional authority flow: `CQ4 / World Engine (Canonical Authority)` → `presentationBus / Projection (Observer Boundary)` → `YBDialoguePlayer (Progressive Presentation)`.
+  - Reusable `YBDialoguePlayer` supporting progressive letter-by-letter rendering tuned to conversational pace:
+    - Base character delay: ~36ms.
+    - Punctuation breaths: commas/colons 130ms, em/en dashes 180ms, sentence-ending periods/exclamations/questions 260ms, newlines 200ms.
+    - Skip-on-first-action semantics: clicking "CONTINUE LISTENING", clicking turn container, or pressing Space/Enter/Escape while typing immediately snaps the current beat to complete text without advancing the simulation beat. Subsequent action advances to the next beat.
+    - Safe detached DOM check (`element.isConnected === false`) cancels ticker and prevents memory leaks if the container unmounts mid-speech.
+    - Fast-forward / reduced-motion bypass: instant reveal when `__YB_TEST_FAST_BOOT__`, `__YB_TEST_FAST_FADE__`, `__YB_TEST_FAST_DIALOGUE__`, or `(prefers-reduced-motion: reduce)` is active.
+    - Suppressed false-positive failure banner: `renderMessage` in `renderer.js` avoids emitting `"That attempt could not be resolved."` on successful in-scene dialogue queries (`detail.outcome === "briefing-interacted"`).
+    - Responsive briefing layout: `.eti-turn-controls > .briefing-action-dock` uses responsive flexbox with wrap, and `.in-person-briefing` / `.briefing-transcript` use `flex: 1 1 auto; min-height: 0;` with subtle blinking caret (`▮`), eliminating text clipping at 1024x768.
+
+- **Priority 4 — LOCAL Introductions UX Audit & Repair (`desktop/renderer/surfaces.js`, `desktop/renderer/renderer.js`, `desktop/renderer/styles.css`)**:
+  - Coworker Table Presence: Coworker cards render as seated colleagues at the briefing table. Task label `"follow"` replaced with observational postures (`"Reviewing equipment manifest"`, `"Adjusting radio pack harness"`, `"Seated at table, awaiting staging"`).
+  - Direct Recipient Selection: Clicking any coworker card directly selects/deselects them as the comms recipient in the input dock (`[data-testid="q4-comms-target"]`), accompanied by visual highlight (`.selected-target`) and keyboard accessibility.
+  - Silence / Proceed Affordance: Clear institutional path to proceed in silence without speaking. The "PROCEED TO EQUIPMENT STAGING" button remains visible and accessible without requiring dialogue interaction.
+  - Visual Hierarchy Restraint: Under `.introductions-active`, stage advance button is styled with secondary restraint (`background: #242b35; border-color: #3b4654;`) until the user is ready, keeping focus on coworker presence.
+
+- **Priority 5 — Live Electron Automated Traversal (`desktop/visual-acceptance-smoke.js`, `tools/run-visual-traversal.js`)**:
+  - Ran live Electron instance using an isolated test profile (`profiles.createIsolatedTestProfile(...)`).
+  - Successfully traversed complete sequence (Steps 1 through 13b):
+    1. Title Screen with ASYNC logo & menu music.
+    2. July 1991 Date Card (non-interactive video).
+    3. Introductory Video (`IntroductoryVideoVotT.mov`) with tested `ESC` skip contract.
+    4. Personnel Waiver name entry.
+    5. Personnel Confirmation screen.
+    6. AEOT Initialization (8s countdown/test bypass).
+    7. AEOT Cold Boot (3 stages: Memory Check, Network Handshake, Subsystem Ready).
+    8. Facility Schematic inspection across all 4 levels (Lower, Middle, Upper, Upper Section). Blueprint exactness verified.
+    9. In-person Maxwell briefing with progressive letter-by-letter rendering.
+    10. Mid-typing skip test (snapped text instantly to full, did not advance beat).
+    11. Inquiry interaction ("What is our cutoff time?") yielding Dr. Maxwell's in-scene reply ("Departure is scheduled for 10:00 AM... Operational cutoff is 1:00 PM firm.") with clean UI feedback and zero error banners.
+    12. Completed Maxwell opening remarks and active CONCLUDE BRIEFING button.
+    13. LOCAL Introductions scene with 3 seated coworkers at Assembly Table and PROCEED TO EQUIPMENT STAGING affordance.
+    14. Coworker interaction: clicked coworker card to address directly, verified target select synchronization, clicked again to return to neutral.
+  - Audio audit: Standard facility strictly silences `complex_hum` and `complex_music`. `facility_ambient` active. Zero audio leaks.
+  - Visual integrity verified at both 1440x900 and 1024x768 viewports: zero clipping, collisions, or overlaps. 20 visual artifacts captured.
+
+- **Priority 6 — Verification Suite Health**:
+  - Aggregate test suite: 788 / 788 tests passed (100%).
+  - Reports passed: `corpus-context-closure`, `stranger-flow`, `replayability`.
+  - Packaged desktop regressions: `desktop:verify`, `desktop:settings-regression`, `desktop:first-run-regression` all passed.
+  - Verification inventory: consistent (0 errors, 0 warnings).
+  - No Git commits or pushes performed. Preserved clean working state for Jack's manual sensory review.
+
+
+## Paper sound and automatic Maxwell pacing — 2026-09-20
+
+- Added locally synthesized 1.8-second paper-rustle WAVs to the existing paper entry/exit hooks; these are procedural approximations, not recorded Foley. Provenance is beside the assets.
+- Maxwell opening remarks advance through the existing CONTINUE_BRIEFING action at a reading pace, without a continue button. Pacing pauses while the question field is focused or contains a draft, while the window is hidden, or while another action resolves. Leaving the surface invalidates its timer.
+- Fixed conclusion visibility to use canonical current_beat_index/beats_total fields. Explicit conclusion remains the player's choice after the remarks. Earlier dialogue is collapsed into an expandable history.
+- Authored title-video integration, PA music treatment, 1.8-second paper movement, hidden cinematic skip hints, and floor-inspection controls remain in place. Floor inspection is not physical travel.
+- No test suites or Electron run performed at user request. Paper timbre and briefing pacing require human listening/observation. No commit or push.
+
+
 ## Authored Cinematic Asset Integration & Reusable ESC Skip Contract — 2026-09-19
 
 - Bounded pass status: **COMPLETED** (Pending Human Electron Observation / Verification).

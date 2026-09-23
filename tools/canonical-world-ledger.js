@@ -317,6 +317,28 @@ function validateInvariants(run) {
     }
   }
 
+  // 8. A direct-observation record made against an observation-authority
+  // feature id (the "kind:canonicalId" shape observation-authority.js
+  // writes, e.g. "landmark:old-console") must have a matching bucket entry
+  // in that observer's own run.observation_state. This only checks that the
+  // entry exists -- observation_state remains the sole authority on
+  // perception state itself, and the ledger never duplicates it. Free-text
+  // legacy/dialogue-authored targets (e.g. "environment") are not
+  // observation-authority feature ids and are left alone by this check.
+  const OBSERVATION_FEATURE_KINDS = new Set(["landmark", "object", "connection", "phenomenon", "personnel", "evidence"]);
+  for (const member of run.expedition?.team?.members ?? []) {
+    const id = member.personnel_id ?? member.id;
+    for (const item of member.known_information ?? []) {
+      if (item.source !== "direct-observation") continue;
+      const target = String(item.target ?? "");
+      const kind = target.slice(0, target.indexOf(":"));
+      if (!OBSERVATION_FEATURE_KINDS.has(kind)) continue;
+      if (!run.observation_state?.observers?.[id]?.features?.[target]) {
+        violations.push({ invariant: 8, code: "DIRECT_OBSERVATION_MISSING_OBSERVATION_STATE", message: `Direct observation ${target} for ${id} has no matching observation_state bucket entry` });
+      }
+    }
+  }
+
   const ok = violations.length === 0 && unverifiable.length === 0;
   const status = violations.length > 0 ? "FAIL" : (unverifiable.length > 0 ? "UNVERIFIABLE" : "PASS");
 

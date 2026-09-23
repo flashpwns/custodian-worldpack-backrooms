@@ -1,7 +1,36 @@
 "use strict";
 const app = document.querySelector("#app");
-const current = { world: null, mode: null, projection: null, developer: false, settingsReturn: null };
+const current = { world: null, mode: null, projection: null, developer: false, settingsReturn: null, mapView: {} };
+if (typeof window !== "undefined") window.__YB_MAP_VIEW__ = current.mapView;
 const rendererDiagnostics = { errors: [], surface: null };
+// Facility map pan/zoom: per-floor view state {x, y, scale}. This is pure UI-viewport state —
+// it is never allowed to touch the authored room geometry in YBSurfaces.layoutMap, and it is
+// applied client-side (direct DOM transform) rather than through a full play() re-render so
+// dragging/zooming never spams a turn submission.
+const FACILITY_MAP_MIN_SCALE = 0.6;
+const FACILITY_MAP_MAX_SCALE = 3;
+const FACILITY_MAP_VIEWBOX = { width: 650, height: 330 };
+function getMapView(floor) {
+  const key = floor || "lower";
+  if (!current.mapView[key]) current.mapView[key] = { x: 0, y: 0, scale: 1 };
+  return current.mapView[key];
+}
+function clampMapView(view) {
+  view.scale = Math.min(FACILITY_MAP_MAX_SCALE, Math.max(FACILITY_MAP_MIN_SCALE, Number.isFinite(view.scale) ? view.scale : 1));
+  const bound = 80 + Math.abs(view.scale - 1) * 420;
+  view.x = Math.min(bound, Math.max(-bound, Number.isFinite(view.x) ? view.x : 0));
+  view.y = Math.min(bound, Math.max(-bound, Number.isFinite(view.y) ? view.y : 0));
+  return view;
+}
+function currentFacilityFloor() {
+  return app?.querySelector('[data-testid="operational-map"][data-display-mode="facility"]')?.dataset?.facilityFloor || current.inspectedFacilityFloor || "lower";
+}
+function applyFacilityMapTransform(floor) {
+  const worldGroup = app?.querySelector('[data-testid="operational-map"][data-display-mode="facility"] svg .facility-map-world');
+  if (!worldGroup) return;
+  const view = getMapView(floor || currentFacilityFloor());
+  worldGroup.setAttribute("transform", `translate(${view.x} ${view.y}) scale(${view.scale})`);
+}
 function showRendererFailure(kind, error) {
   const message = String(error?.message ?? error ?? "Unknown renderer failure").slice(0, 240);
   rendererDiagnostics.errors.push({ kind, message, at: new Date().toISOString() });
@@ -39,7 +68,7 @@ function setFeedback(text, state = "resolving") {
   }
 }
 function disableTurnForms() {
-  app.querySelectorAll("#natural-form textarea, #natural-form input, #natural-form button, #action-form select, #action-form button, #q4-comms-form textarea, #q4-comms-form input, #q4-comms-form button, #q4-comms-form select").forEach((item) => { item.disabled = true; });
+  app.querySelectorAll("#natural-form textarea, #natural-form input, #natural-form button, #action-form select, #action-form button, #q4-comms-form textarea, #q4-comms-form input, #q4-comms-form button, #q4-comms-form select, #briefing-inquiry-form input, #briefing-inquiry-form button").forEach((item) => { item.disabled = true; });
 }
 function focusNaturalInput() { (document.querySelector("#natural-form textarea") || document.querySelector("#natural-form input"))?.focus({ preventScroll: true }); }
 function sanitizePlayerMessage(text) {
@@ -61,6 +90,7 @@ function renderMessage(result, natural) {
   if (natural && detail.interpretation_error) return "That attempt could not be interpreted safely. No world state changed.";
   if (natural && detail.clarification_required) return `${detail.clarification_question || "That attempt needs clarification."} No world state changed.`;
   if (detail.mission_updates?.length) { const update = detail.mission_updates.at(-1); return `OBJECTIVE UPDATED · ${update.headline}. ${update.reason}`; }
+  if (detail.outcome === "briefing-interacted") return "";
   const raw = detail.scene?.narration || detail.public_reason || detail.summary;
   const sanitized = sanitizePlayerMessage(raw);
   return sanitized || (natural ? "That attempt could not be resolved." : "");
@@ -629,7 +659,7 @@ function asyncHeader(projection) {
   const guidanceButton = (projection.phase?.phase_id === "EQUIPMENT_SELECTION" || projection.phase?.phase_id === "STAGING" || projection.phase?.phase_id === "FIELD_OPERATION") && current.guidanceDismissed ? `<button type="button" class="action-button secondary-action" data-action="toggle-guidance">Show guidance</button>` : "";
   const returnButton = (!isPreBriefing && returnAction) ? `<button type="button" data-game-action="${escape(returnAction.type)}">${escape(YBSurfaces.actionLabel(returnAction.type))}</button>` : "";
   const terminateButton = !isPreBriefing ? `<button type="button" data-action="leave">TERMINATE FIELD SESSION</button>` : "";
-  return `<header class="async-system-header eti-top-bar" data-testid="async-system-header"><div class="eti-title" aria-label="ASYNC Expedition Tracing Interface"><strong>Async Research Institute ETI <span>(est 1979)</span></strong><small>Expedition Tracing Interface · MISSION ${escape(shortMissionId(mission))}</small></div><div class="eti-clocks"><span><strong>${escape(q4.operational_time ?? "T+0")}</strong><small>Expedition Timer</small></span><span><strong data-standard-time>${escape(standardTime)} ST</strong><small>Time in Standard</small></span></div>${guidanceButton}<details class="backend-menu"><summary>Interface Backend</summary><div>${returnButton}<button type="button" data-action="settings">Settings</button>${current.developer ? `<button type="button" data-action="developer">Developer console</button>` : ""}${terminateButton}</div></details></header>`;
+  return `<header class="async-system-header eti-top-bar" data-testid="async-system-header"><div class="eti-title" aria-label="ASYNC Expedition Tracing Interface"><strong>Async Research Institute ETI <span>(est 1979)</span></strong><small>Expedition Tracing Interface · MISSION ${escape(shortMissionId(mission))}</small></div><div class="eti-clocks"><span><strong>${escape(q4.operational_time ?? "T+0")}</strong><small>Expedition Timer</small></span><span><strong data-standard-time>${escape(standardTime)} ST</strong><small>Time in Standard</small></span></div>${guidanceButton}<details class="backend-menu"><summary>Workstation Controls</summary><div>${returnButton}<button type="button" data-action="settings">Settings</button>${current.developer ? `<button type="button" data-action="developer">Developer console</button>` : ""}${terminateButton}</div></details></header>`;
 }
 function compactOperationsRail(projection) { const q4 = projection.q4 ?? {}; const team = q4.team ?? []; const gear = q4.equipment?.required ?? []; return `<aside class="operations-rail" data-testid="operations-rail">${panelMarkup("PERSONNEL / ACCOUNTABILITY", team.map((member) => { const epistemicLabel = member.last_observed ? "Last Observed" : member.last_reported ? "Last Reported" : "Last Contact"; const epistemicValue = member.last_observed ?? member.last_reported ?? member.last_contact; const epistemic = member.controlled ? "TEAM LEAD (YOU)" : epistemicValue ? `${epistemicLabel}: ${escape(epistemicValue)}` : "No confirmed contact"; const epistemicClass = member.last_observed ? "epistemic-observed" : member.last_reported ? "epistemic-reported" : "epistemic-contact"; return `<li><span class="portrait-slot badge-portrait-fallback" data-portrait-id="portrait-${escape(member.personnel_id ?? member.id ?? "unknown")}" aria-label="Archival badge portrait unavailable">${escape((member.first_name ?? "?")[0])}</span><strong>${escape(member.display_name)}</strong><small>${escape(member.role)} · ${escape(member.contact_state ?? member.contact_category ?? "UNCONFIRMED")}</small><em>${escape(member.condition)} · <span class="personnel-epistemic ${epistemicClass}">${epistemic}</span></em></li>`; }).join(""), "No assigned personnel.", "personnel-block")}${panelMarkup("FIELD KIT / READINESS", gear.map((item) => `<li><span class="rail-glyph equipment-glyph equipment-${escape(item.category ?? "field")}" aria-hidden="true">${item.category === "field-radio" ? "◉" : item.category === "35mm-camera" ? "▣" : item.category === "battery-lamp" ? "◌" : "＋"}</span><strong>${escape(item.label)}</strong><small>${escape(item.holder)} · ${escape(item.state)}</small></li>`).join(""), "No field kit recorded.", "equipment-block")}${panelMarkup("MISSION STATE", `<p>${escape(q4.mission_record?.objective?.primary ?? q4.display_mission ?? "Assignment not available")}</p><span class="status-line">${escape(q4.mission_record?.status ?? "assigned")} · ${escape(projection.phase?.phase_id ?? "")}</span>`, "", "mission-block")}</aside>`; }
 function panelMarkup(titleText, body, emptyText, className = "") { return `<section class="ops-panel ${escape(className)}"><h2>${escape(titleText)}</h2>${body || `<p class="empty">${escape(emptyText)}</p>`}</section>`; }
@@ -682,12 +712,16 @@ function play(message = "", state = "") {
     ? "Establish the required Standard exchange"
     : "Awaiting next procedure";
   const prefieldAction = q4Prefield ? (isPersonnelBriefing
-    ? (briefingStatus === "active"
-        ? `<section class="action-dock natural-action prefield-action briefing-action-dock" data-testid="prefield-primary"><div><p class="eyebrow">CURRENT DECISION</p><h2>DR. KIRK MAXWELL</h2></div><form id="briefing-inquiry-form" class="briefing-inquiry-form"><label><span class="sr-only">Inquire with Dr. Kirk Maxwell</span><input type="text" name="text" autocomplete="off" placeholder="Ask Dr. Maxwell about route, Outpost A, cutoff time, or speak..." value="${escape(draft)}"></label><button type="submit" class="action-button">SPEAK</button></form><button type="button" class="primary-action" data-game-action="CONCLUDE_BRIEFING">CONCLUDE BRIEFING</button><p>Dr. Kirk Maxwell is speaking in the Lower Briefing Room. Inquire or conclude briefing.</p></section>`
-        : (current.coldBootActive
-            ? `<section class="action-dock natural-action prefield-action" data-testid="prefield-primary"><div><p class="eyebrow">CURRENT DECISION</p><h2>BRIEFING PENDING</h2></div><button type="button" class="primary-action" disabled data-briefing-locked="true" data-game-action="ATTEND_BRIEFING">BRIEFING PENDING</button><p>Standing by for assignment briefing.</p></section>`
-            : `<section class="action-dock natural-action prefield-action" data-testid="prefield-primary"><div><p class="eyebrow">CURRENT DECISION</p><h2>BRIEFING PENDING</h2></div><button type="button" class="primary-action" data-game-action="ATTEND_BRIEFING">ATTEND BRIEFING</button><p>Report to Dr. Kirk Maxwell in the Lower Briefing Room.</p></section>`))
-    : `<section class="action-dock natural-action prefield-action" data-testid="prefield-primary"><div><p class="eyebrow">CURRENT DECISION</p><h2>${escape(prefieldLabel)}</h2></div>${prefieldDirect ? `<button type="button" class="primary-action" data-game-action="${escape(prefieldDirect.type)}">${escape(prefieldLabel)}</button>` : `<p>Use STANDARD in the communications panel to continue.</p>`}<p>${prefieldDirect ? "This advances the recorded expedition phase." : "No physical turn is available until the radio procedure is complete."}</p></section>`) : "";
+      ? (briefingStatus === "active"
+          ? (() => {
+              const briefing = projection.q4.personnel_briefing;
+              const canConclude = (briefing.current_beat_index ?? 0) >= (briefing.beats_total ?? 4) - 1;
+              return `<section class="action-dock natural-action prefield-action briefing-action-dock" data-testid="prefield-primary"><div><p class="eyebrow">CURRENT DECISION</p><h2>DR. KIRK MAXWELL</h2></div><form id="briefing-inquiry-form" class="briefing-inquiry-form"><label><span class="sr-only">Inquire with Dr. Kirk Maxwell</span><input type="text" name="text" autocomplete="off" placeholder="Ask Dr. Maxwell about route, Outpost A, cutoff time, or speak..." value="${escape(draft)}"></label><button type="submit" class="action-button">SPEAK</button></form>${canConclude ? `<button type="button" class="primary-action" data-game-action="CONCLUDE_BRIEFING">CONCLUDE BRIEFING</button>` : `<button type="button" class="primary-action" data-game-action="CONTINUE_BRIEFING">CONTINUE LISTENING</button>`}<p>Dr. Kirk Maxwell is speaking. You can ask a question at any time.</p></section>`;
+            })()
+          : (current.coldBootActive
+              ? `<section class="action-dock natural-action prefield-action" data-testid="prefield-primary"><div><p class="eyebrow">CURRENT DECISION</p><h2>BRIEFING PENDING</h2></div><button type="button" class="primary-action" disabled data-briefing-locked="true" data-game-action="ATTEND_BRIEFING">BRIEFING PENDING</button><p>Standing by for assignment briefing.</p></section>`
+              : `<section class="action-dock natural-action prefield-action" data-testid="prefield-primary"><div><p class="eyebrow">CURRENT DECISION</p><h2>BRIEFING PENDING</h2></div><button type="button" class="primary-action" data-game-action="ATTEND_BRIEFING">ATTEND BRIEFING</button><p>Report to Dr. Kirk Maxwell on the Lower Level.</p></section>`))
+      : `<section class="action-dock natural-action prefield-action" data-testid="prefield-primary"><div><p class="eyebrow">CURRENT DECISION</p><h2>${escape(prefieldLabel)}</h2></div>${prefieldDirect ? `<button type="button" class="primary-action" data-game-action="${escape(prefieldDirect.type)}">${escape(prefieldLabel)}</button>` : `<p>Use STANDARD in the communications panel to continue.</p>`}<p>${prefieldDirect ? "This advances the recorded expedition phase." : "No physical turn is available until the radio procedure is complete."}</p></section>`) : "";
   const retry = state === "application-error" ? `<button type="button" data-action="refresh-view">Refresh view</button>` : "";
   const hideStructured = q4Prefield || isReport || projection.available_actions.length === 0;
   const structured = `<details class="action-dock structured-action" ${hideStructured ? "hidden" : ""}><summary>Structured controls</summary><form id="action-form" aria-label="Structured action input"><label>Choose action <select name="action" data-testid="action-select">${actionOptions}</select></label><label id="target-label">Valid target <select name="target" data-testid="target-select"></select></label><button type="submit" data-testid="submit-action">SUBMIT</button></form></details>`;
@@ -703,10 +737,11 @@ function play(message = "", state = "") {
         : isDebrief
         ? `<main class="operations-main debrief-view" data-testid="async-operations-layout">${phaseRecord}</main>`
         : isBriefingWorkstation
-        ? YBSurfaces.briefingWorkstation(projection, { actionDock })
-        : YBSurfaces.expeditionCockpit(projection, { scene: state === "result" ? projection.scene : null, providerLabel, phaseRecord, actionDock }))
+        ? YBSurfaces.briefingWorkstation(projection, { actionDock, inspectedFacilityFloor: current.inspectedFacilityFloor, mapView: current.mapView })
+        : YBSurfaces.expeditionCockpit(projection, { scene: state === "result" ? projection.scene : null, providerLabel, phaseRecord, actionDock, inspectedFacilityFloor: current.inspectedFacilityFloor, mapView: current.mapView }))
     : `${scene}${natural}${YBSurfaces.render(projection)}`;
   const feedbackContent = (state === "submitted" || state === "resolving") ? `<span class="feedback-text">${escape(message)}</span> ${expeditionLoadingMotif()}${retry}` : `${escape(message)}${retry}`;
+  if (typeof YBDialoguePlayer !== "undefined") YBDialoguePlayer.cancel();
   app.innerHTML = `<section class="shell play ${q4Shell ? "operations-shell eti-shell" : ""} mode-${escape(projection.mode.id)}" data-testid="play-shell" data-phase="${escape(projection.phase?.phase_id ?? "")}">${q4Shell ? asyncHeader(projection) : `<header><div><p class="eyebrow">${escape(projection.world.name)}</p><h1>${escape(projection.mode.label)}</h1><p>${escape(projection.mode.description)}</p></div>${button("Settings", "settings")}${button("TERMINATE FIELD SESSION", "leave")}</header>`}<p id="interaction-feedback" class="interaction-feedback" data-state="${escape(state)}" role="status" aria-live="polite" aria-atomic="true">${feedbackContent}</p>${guidedIntroduction(projection)}${core}${q4Shell ? "" : (hideStructured ? "" : `${structured}<p class="muted">Accepted actions save automatically.</p>`)}</section>`;
   if (current.coldBootActive && q4Shell && projection.phase?.phase_id === "BRIEFING") {
     current.coldBootActive = false;
@@ -766,7 +801,7 @@ function play(message = "", state = "") {
               const heading = actionDockEl.querySelector("h2");
               if (heading) heading.textContent = "BRIEFING PENDING";
               const desc = actionDockEl.querySelector("p:last-of-type");
-              if (desc) desc.textContent = "Report to Dr. Kirk Maxwell in the Lower Briefing Room.";
+              if (desc) desc.textContent = "Report to Dr. Kirk Maxwell on the Lower Level.";
             }
           }
           document.body.removeAttribute("data-boot-locked");
@@ -788,7 +823,18 @@ function play(message = "", state = "") {
         submitTurn("structured", () => yellowBeast.submitAction({ world_id: current.world.id, mode: current.mode, action: "ATTEND_BRIEFING" }));
         return;
       }
+      if (actionType === "CONTINUE_BRIEFING" || actionType === "CONTINUE_LISTENING" || actionType === "LISTEN") {
+        if (typeof YBDialoguePlayer !== "undefined" && YBDialoguePlayer.isTyping()) {
+          YBDialoguePlayer.finish();
+          return;
+        }
+        submitTurn("structured", () => yellowBeast.submitAction({ world_id: current.world.id, mode: current.mode, action: "CONTINUE_BRIEFING" }));
+        return;
+      }
       if (actionType === "CONCLUDE_BRIEFING") {
+        if (typeof YBDialoguePlayer !== "undefined" && YBDialoguePlayer.isTyping()) {
+          YBDialoguePlayer.finish();
+        }
         submitTurn("structured", () => yellowBeast.submitAction({ world_id: current.world.id, mode: current.mode, action: "CONCLUDE_BRIEFING" }));
         return;
       }
@@ -802,6 +848,59 @@ function play(message = "", state = "") {
       actionSelect.focus({ preventScroll: true });
     });
   });
+  if (current.briefingTimer) window.clearTimeout(current.briefingTimer);
+  const spokenBriefing = projection.q4?.personnel_briefing;
+  const isBriefingActive = spokenBriefing?.status === "active";
+  const scheduleBriefingAutoAdvance = () => {
+    if (isBriefingActive &&
+        (spokenBriefing.current_beat_index ?? 0) < (spokenBriefing.beats_total ?? 4) - 1) {
+      const surface = app.querySelector('[data-testid="in-person-briefing"]');
+      const words = (spokenBriefing.exchange_history?.at(-1)?.text ?? "").split(/\s+/).length;
+      const advanceBriefing = () => {
+        if (!surface?.isConnected || current.projection !== projection) return;
+        const input = app.querySelector('#briefing-inquiry-form input');
+        if (document.hidden || input?.value.trim() || document.activeElement === input ||
+            ["submitted", "resolving"].includes(document.querySelector('#interaction-feedback')?.dataset.state)) {
+          current.briefingTimer = window.setTimeout(advanceBriefing, 1000);
+          return;
+        }
+        submitTurn("structured", () => yellowBeast.submitAction({ world_id: current.world.id, mode: current.mode, action: "CONTINUE_BRIEFING" }));
+      };
+      current.briefingTimer = window.setTimeout(advanceBriefing, Math.max(4500, words * 350 + 1200));
+    }
+  };
+
+  const currentSpokenEl = app.querySelector(".current-spoken-text");
+  if (currentSpokenEl && isBriefingActive) {
+    const fullText = spokenBriefing.exchange_history?.at(-1)?.text ?? currentSpokenEl.textContent;
+    if (typeof YBDialoguePlayer !== "undefined") {
+      YBDialoguePlayer.type(currentSpokenEl, fullText, {
+        onChar: () => {
+          const transcriptEl = app.querySelector(".briefing-transcript");
+          if (transcriptEl) transcriptEl.scrollTop = transcriptEl.scrollHeight;
+        },
+        onComplete: () => {
+          const transcriptEl = app.querySelector(".briefing-transcript");
+          if (transcriptEl) transcriptEl.scrollTop = transcriptEl.scrollHeight;
+          scheduleBriefingAutoAdvance();
+        }
+      });
+    } else {
+      scheduleBriefingAutoAdvance();
+    }
+  } else {
+    scheduleBriefingAutoAdvance();
+  }
+
+  const activeTurnContainer = app.querySelector(".briefing-active-turn-container");
+  if (activeTurnContainer) {
+    activeTurnContainer.addEventListener("click", () => {
+      if (typeof YBDialoguePlayer !== "undefined" && YBDialoguePlayer.isTyping()) {
+        YBDialoguePlayer.finish();
+      }
+    });
+  }
+
   const briefingInquiryForm = app.querySelector("#briefing-inquiry-form");
   const briefingInput = briefingInquiryForm?.querySelector("input[name='text']");
   briefingInput?.addEventListener("input", () => presentation.setDraft(context, briefingInput.value));
@@ -814,6 +913,7 @@ function play(message = "", state = "") {
   });
   briefingInquiryForm?.addEventListener("submit", (event) => {
     event.preventDefault();
+    if (typeof YBDialoguePlayer !== "undefined") YBDialoguePlayer.cancel();
     if (typeof YBAudio !== "undefined") YBAudio.emitHook("ui_submit");
     const data = new FormData(event.currentTarget);
     const text = (data.get("text") ?? "").trim();
@@ -890,11 +990,14 @@ function play(message = "", state = "") {
     const channel = data.get("channel");
     const target = channel === "local" ? (data.get("target") || null) : null;
     const text = data.get("text");
-    const contextKey = `${current.world.id}:${channel}:${target ?? "broadcast"}`;
+    const contextKey = `${current.world.id}:${channel}:${target ?? "untargeted"}`;
     if (!current.pendingCommunication || current.pendingCommunication.text !== text || current.pendingCommunication.context !== contextKey) {
       current.pendingCommunication = { id: crypto.randomUUID(), context: contextKey, text };
     }
     const requestId = current.pendingCommunication.id;
+    if (typeof YBDialoguePlayer !== "undefined" && YBDialoguePlayer.isTyping()) {
+      YBDialoguePlayer.finish();
+    }
     submitTurn("communication", async () => {
       const res = await yellowBeast.submitQ4Communication({ world_id:current.world.id, channel, target, text, request_id: requestId, submission_id: requestId });
       if (current.pendingCommunication?.id === requestId && (res.ok || !["SESSION_BUSY", "PROVIDER_UNAVAILABLE", "PERSISTENCE_COMMIT_FAILED", "DIALOGUE_RECOVERY_UNAVAILABLE"].includes(res.error?.code))) current.pendingCommunication = null;
@@ -902,6 +1005,77 @@ function play(message = "", state = "") {
         if (typeof YBAudio !== "undefined") YBAudio.emitHook("radio_tx_chirp");
       }
       return res;
+    });
+  });
+  const targetSelectEl = commsRoot?.querySelector('[data-testid="q4-comms-target"]');
+  if (targetSelectEl) {
+    targetSelectEl.addEventListener("change", () => {
+      const selected = targetSelectEl.value;
+      app.querySelectorAll(".coworker-presence-card").forEach((c) => {
+        c.classList.toggle("selected-target", Boolean(selected) && c.getAttribute("data-coworker-name") === selected);
+      });
+      const textInput = commsForm?.querySelector("input[name='text'], textarea[name='text']");
+      if (textInput) {
+        textInput.placeholder = selected
+          ? `Speak directly to ${selected}...`
+          : "Speak naturally, or select one coworker for a direct aside...";
+      }
+    });
+  }
+  const timelineEl = commsRoot?.querySelector(".communication-timeline");
+  if (timelineEl) {
+    timelineEl.addEventListener("click", () => {
+      if (typeof YBDialoguePlayer !== "undefined" && YBDialoguePlayer.isTyping()) {
+        YBDialoguePlayer.finish();
+      }
+    });
+  }
+  const latestLocalRespEls = [...(commsRoot?.querySelectorAll(".communication-timeline li:last-child .comm-local-response .comm-text") ?? [])];
+  if (latestLocalRespEls.length > 0 && typeof YBDialoguePlayer !== "undefined") {
+    const responseTexts = latestLocalRespEls.map((element) => element.textContent);
+    const respKey = responseTexts.join("\u241e");
+    if (current.lastTypedTimelineText !== respKey && !YBDialoguePlayer.isTyping()) {
+      current.lastTypedTimelineText = respKey;
+      latestLocalRespEls.forEach((element) => { element.textContent = ""; });
+      const presentNext = (index) => {
+        if (index >= latestLocalRespEls.length) return;
+        YBDialoguePlayer.type(latestLocalRespEls[index], responseTexts[index], {
+          onChar: () => {
+            if (timelineEl) timelineEl.scrollTop = timelineEl.scrollHeight;
+          },
+          onComplete: () => {
+            if (timelineEl) timelineEl.scrollTop = timelineEl.scrollHeight;
+            presentNext(index + 1);
+          }
+        });
+      };
+      presentNext(0);
+    }
+  }
+  app.querySelectorAll(".coworker-presence-card").forEach((card) => {
+    const handleSelect = () => {
+      const name = card.getAttribute("data-coworker-name");
+      if (targetSelectEl && name) {
+        if (targetSelectEl.value === name) {
+          targetSelectEl.value = "";
+        } else {
+          targetSelectEl.value = name;
+        }
+        targetSelectEl.dispatchEvent(new Event("change", { bubbles: true }));
+      }
+      const currentSelected = targetSelectEl ? targetSelectEl.value : "";
+      app.querySelectorAll(".coworker-presence-card").forEach((c) => {
+        const isMatch = Boolean(currentSelected) && c.getAttribute("data-coworker-name") === currentSelected;
+        c.classList.toggle("selected-target", isMatch);
+      });
+      if (typeof YBAudio !== "undefined") YBAudio.emitHook("ui_select");
+    };
+    card.addEventListener("click", handleSelect);
+    card.addEventListener("keydown", (e) => {
+      if (e.key === "Enter" || e.key === " ") {
+        e.preventDefault();
+        handleSelect();
+      }
     });
   });
   app.querySelectorAll("[data-spatial-mode]").forEach((btn) => {
@@ -957,6 +1131,95 @@ function play(message = "", state = "") {
       });
     });
   });
+  app.querySelectorAll("button.facility-floor-button").forEach((item) => {
+    item.addEventListener("click", (e) => {
+      e.stopPropagation();
+      const floor = item.getAttribute("data-facility-floor") || item.dataset?.facilityFloor;
+      if (floor) {
+        if (typeof YBAudio !== "undefined") YBAudio.emitHook("ui_select");
+        current.inspectedFacilityFloor = floor;
+        if (typeof window !== "undefined") window.__YB_CURRENT_FACILITY_FLOOR__ = floor;
+        if (typeof global !== "undefined") global.__YB_CURRENT_FACILITY_FLOOR__ = floor;
+        play(message, state);
+      }
+    });
+  });
+  // Facility map pan + zoom. Entirely client-side (direct SVG transform on the
+  // `.facility-map-world` group) so dragging/scrolling never triggers a turn submission or a
+  // full play() re-render; the resulting view is persisted per-floor in current.mapView so it
+  // survives the next full re-render (a floor switch, an action, etc).
+  {
+    const facilityMapSvg = app.querySelector('[data-testid="operational-map"][data-display-mode="facility"] svg');
+    if (facilityMapSvg) {
+      applyFacilityMapTransform();
+      let dragState = null;
+      const svgUnitsPerClientPixel = () => {
+        const rect = facilityMapSvg.getBoundingClientRect();
+        return {
+          x: rect.width > 0 ? FACILITY_MAP_VIEWBOX.width / rect.width : 1,
+          y: rect.height > 0 ? FACILITY_MAP_VIEWBOX.height / rect.height : 1,
+          rect
+        };
+      };
+      facilityMapSvg.addEventListener("wheel", (e) => {
+        e.preventDefault();
+        const floor = currentFacilityFloor();
+        const view = getMapView(floor);
+        const { x: ratioX, y: ratioY, rect } = svgUnitsPerClientPixel();
+        const pointerX = (e.clientX - rect.left) * ratioX;
+        const pointerY = (e.clientY - rect.top) * ratioY;
+        const worldX = (pointerX - view.x) / view.scale;
+        const worldY = (pointerY - view.y) / view.scale;
+        const zoomFactor = Math.exp(-e.deltaY * 0.0015);
+        const newScale = Math.min(FACILITY_MAP_MAX_SCALE, Math.max(FACILITY_MAP_MIN_SCALE, view.scale * zoomFactor));
+        view.x = pointerX - worldX * newScale;
+        view.y = pointerY - worldY * newScale;
+        view.scale = newScale;
+        clampMapView(view);
+        applyFacilityMapTransform(floor);
+      }, { passive: false });
+      facilityMapSvg.addEventListener("pointerdown", (e) => {
+        if (e.button !== 0 && e.pointerType === "mouse") return;
+        const floor = currentFacilityFloor();
+        const view = getMapView(floor);
+        dragState = { pointerId: e.pointerId, floor, startClientX: e.clientX, startClientY: e.clientY, startX: view.x, startY: view.y };
+        try { facilityMapSvg.setPointerCapture(e.pointerId); } catch (err) { /* ignore */ }
+        facilityMapSvg.classList.add("facility-map-dragging");
+      });
+      facilityMapSvg.addEventListener("pointermove", (e) => {
+        if (!dragState || dragState.pointerId !== e.pointerId) return;
+        const { x: ratioX, y: ratioY } = svgUnitsPerClientPixel();
+        const view = getMapView(dragState.floor);
+        view.x = dragState.startX + (e.clientX - dragState.startClientX) * ratioX;
+        view.y = dragState.startY + (e.clientY - dragState.startClientY) * ratioY;
+        clampMapView(view);
+        applyFacilityMapTransform(dragState.floor);
+      });
+      const endFacilityMapDrag = (e) => {
+        if (!dragState || (e && e.pointerId !== undefined && e.pointerId !== dragState.pointerId)) return;
+        try { facilityMapSvg.releasePointerCapture(dragState.pointerId); } catch (err) { /* ignore */ }
+        facilityMapSvg.classList.remove("facility-map-dragging");
+        dragState = null;
+      };
+      facilityMapSvg.addEventListener("pointerup", endFacilityMapDrag);
+      facilityMapSvg.addEventListener("pointercancel", endFacilityMapDrag);
+      facilityMapSvg.addEventListener("pointerleave", endFacilityMapDrag);
+    }
+    app.querySelectorAll("[data-map-action]").forEach((btn) => {
+      btn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        const floor = currentFacilityFloor();
+        const view = getMapView(floor);
+        const action = btn.getAttribute("data-map-action");
+        if (action === "zoom-in") view.scale *= 1.25;
+        else if (action === "zoom-out") view.scale /= 1.25;
+        else if (action === "reset-view") { view.x = 0; view.y = 0; view.scale = 1; }
+        clampMapView(view);
+        if (typeof YBAudio !== "undefined") YBAudio.emitHook("ui_select");
+        applyFacilityMapTransform(floor);
+      });
+    });
+  }
   app.querySelectorAll("[data-q4-check-in]").forEach((button) => {
     let holdActive = false;
     let holdTimer = null;
@@ -1463,7 +1726,7 @@ else if (action === "confirm-termination") {
   }
   return;
 } else if (action === "close-settings") { settingsController.state = "closing"; const opener = settingsController.opener; const returnTo = current.settingsReturn ?? home; current.settingsReturn = null; returnTo(); settingsController.state = "closed"; queueMicrotask(() => opener?.isConnected && opener.focus()); } else if (action === "new") newWorld(); else if (action === "import") { const imported = await yellowBeast.chooseImportWorld(); if (resultIsError(imported) && imported.error.code !== "IMPORT_CANCELLED") alert(imported.error.message); home(); } else if (action === "settings") settings(event.target); else if (action === "about") about(); else if (action === "reset-preferences") { const saved = await yellowBeast.updateSettings({ settings:{ theme:"system", text_scale:"default", reduced_motion:false, guided_introductions:true } }); if (!resultIsError(saved)) applyPreferences(saved.settings); settings(event.target); } else if (action === "refresh-view") { const context = requestContext(); const refreshed = await yellowBeast.getGameplayProjection({ world_id:context.worldId, mode:context.mode }); if (!resultIsError(refreshed) && requestContext().worldId === context.worldId && requestContext().mode === context.mode && event.target.isConnected) { current.projection = refreshed.projection; play("Current view refreshed.", "result"); } } else if (action.startsWith("rename:")) { const worldId = action.slice(7); const isLocked = event.target.closest("li")?.dataset.hasFiledPersonnel === "true"; if (isLocked) { alert("This field file is registered to permanent personnel and cannot be renamed."); return; } const prior = event.target.closest("li")?.dataset.worldName ?? ""; const name = prompt("Rename this world. This changes only its library name.", prior); if (name !== null) { const renamed = await yellowBeast.renameWorld({ world_id:worldId, name }); if (resultIsError(renamed)) alert(renamed.error.message); home(); } } else if (action.startsWith("restore:")) { const restored = await yellowBeast.restoreBackup({ world_id:action.slice(8), confirmed:confirm("Restore the previous save? Recent changes may be lost.") }); if (!resultIsError(restored)) selectWorld(action.slice(8)); else alert(restored.error.message); } else if (action.startsWith("export:")) { const result = await yellowBeast.chooseExportWorld({ world_id: action.slice(7) }); if (resultIsError(result) && result.error.code !== "EXPORT_CANCELLED") alert(result.error.message); } else if (action.startsWith("delete:")) { const worldId = action.slice(7); const name = event.target.closest("li")?.dataset.worldName ?? "this world"; if (confirm(`Delete “${name}” and its saved sessions? This cannot be undone.`)) { const deleted = await yellowBeast.deleteWorld({ world_id:worldId, confirmed:true }); if (resultIsError(deleted)) alert(result.error.message); home(); } } else if (action.startsWith("diagnostic:")) { const result = await yellowBeast.exportTesterReport({ world_id:action.slice(11), mode:"field-researcher" }); alert(resultIsError(result) ? result.error.message : `Diagnostic record exported to ${result.file}. Credentials and provider keys are omitted.`); } else if (action.startsWith("world:")) selectWorld(action.slice(6)); else if (action.startsWith("mode:")) enterMode(action.slice(5)); });
-document.addEventListener("keydown", (event) => { if (event.key === "Escape" && document.querySelector(".exit-game-portal")) { event.preventDefault(); document.querySelector('[data-action="cancel-exit"]')?.click(); return; } if (event.key === "Escape" && document.querySelector(".termination-portal")) { event.preventDefault(); document.querySelector('[data-action="cancel-termination"]')?.click(); return; } if (event.key === "Escape" && document.querySelector("[data-testid=settings-surface]")) { event.preventDefault(); document.querySelector("[data-action=close-settings]")?.click(); return; } if (event.altKey && event.key === ",") { event.preventDefault(); settings(); return; } if (event.key === "Escape" && document.querySelector('[data-testid="world-library"]') && !document.querySelector(".exit-game-portal") && !document.querySelector("[data-testid=settings-surface]") && !document.querySelector(".termination-portal")) { event.preventDefault(); showExitGameConfirmation(); return; } if (!current.projection || event.target.matches("input, textarea, select, button")) return; const recap = document.querySelector("#recap-panel"); if (event.key === "?" && recap) { event.preventDefault(); recap.open = true; recap.querySelector("summary")?.focus({ preventScroll:true }); } else if (event.key === "Escape" && recap?.open) { event.preventDefault(); recap.open = false; focusNaturalInput(); } });
+document.addEventListener("keydown", (event) => { if (typeof YBDialoguePlayer !== "undefined" && YBDialoguePlayer.isTyping()) { if ([" ", "Enter", "Escape"].includes(event.key) && !event.target.matches("input, textarea, select")) { event.preventDefault(); YBDialoguePlayer.finish(); return; } } if (event.key === "Escape" && document.querySelector(".exit-game-portal")) { event.preventDefault(); document.querySelector('[data-action="cancel-exit"]')?.click(); return; } if (event.key === "Escape" && document.querySelector(".termination-portal")) { event.preventDefault(); document.querySelector('[data-action="cancel-termination"]')?.click(); return; } if (event.key === "Escape" && document.querySelector("[data-testid=settings-surface]")) { event.preventDefault(); document.querySelector("[data-action=close-settings]")?.click(); return; } if (event.altKey && event.key === ",") { event.preventDefault(); settings(); return; } if (event.key === "Escape" && document.querySelector('[data-testid="world-library"]') && !document.querySelector(".exit-game-portal") && !document.querySelector("[data-testid=settings-surface]") && !document.querySelector(".termination-portal")) { event.preventDefault(); showExitGameConfirmation(); return; } if (!current.projection || event.target.matches("input, textarea, select, button")) return; const recap = document.querySelector("#recap-panel"); if (event.key === "?" && recap) { event.preventDefault(); recap.open = true; recap.querySelector("summary")?.focus({ preventScroll:true }); } else if (event.key === "Escape" && recap?.open) { event.preventDefault(); recap.open = false; focusNaturalInput(); } });
 function boot() { const bypass = window.__YB_TEST_BYPASS_BOOT__ === true || /(?:bypass-boot|test-mode)/i.test(window.location.search + window.location.hash); if (bypass) { home(); return; } app.innerHTML = `<section class="cold-launch" data-testid="cold-launch" role="status" aria-live="polite"><span class="loading-animation" aria-label="Loading"></span></section>`; window.setTimeout(showTitleCard, 900); }
 let titlePlayback = null;
 async function showTitleCard() {
@@ -1472,9 +1735,83 @@ async function showTitleCard() {
   if (typeof YBAudio !== "undefined") YBAudio.stopAll();
   applyPreferences(preferences.settings);
   if (typeof YBAudio !== "undefined") YBAudio.startMenuMusic(info.app.menu_music);
-  titlePlayback = YBTitlePlayer.play({ mount: app, onComplete: home,
-    reducedMotion: preferences.settings.reduced_motion,
-    reducedSensory: preferences.settings.reduced_sensory });
+  if (typeof YBTitlePlayer !== "undefined") {
+    titlePlayback = YBTitlePlayer.play({ mount: app, onComplete: home,
+      reducedMotion: preferences.settings.reduced_motion,
+      reducedSensory: preferences.settings.reduced_sensory });
+    return;
+  }
+  app.innerHTML = `<section class="title-card title-materializing" data-testid="title-card" tabindex="0"><div class="title-wipe-shutter" aria-hidden="true"></div><img src="../assets/icon-source/ASYNC_Logo.png" class="title-logo" alt="ASYNC" draggable="false"><h1>VOICES OF THE THRESHOLD</h1><p class="title-subtitle">A Kane Pixels' Backrooms Simulacrum</p><small>PRESS ANYTHING</small></section>`;
+
+  let isMaterialized = false;
+  let gate1Acknowledged = false;
+  let gate1HandledAt = 0;
+  let gate2Dismissing = false;
+  const card = app.querySelector(".title-card");
+
+  const materializationTimer = window.setTimeout(() => {
+    if (!isMaterialized) {
+      isMaterialized = true;
+      card?.classList.remove("title-materializing");
+      card?.classList.add("title-materialized");
+    }
+  }, 2200);
+
+  const handleTitleInput = (e) => {
+    if (e.type === "keydown" && (e.repeat || ["Tab", "Shift", "Control", "Alt", "Meta"].includes(e.key))) return;
+    const now = Date.now();
+
+    if (!gate1Acknowledged) {
+      window.clearTimeout(materializationTimer);
+      isMaterialized = true;
+      gate1Acknowledged = true;
+      gate1HandledAt = now;
+      card?.classList.remove("title-materializing");
+      card?.classList.add("title-materialized");
+      card?.classList.add("title-acknowledged");
+      const promptEl = card?.querySelector("small");
+      if (promptEl) {
+        promptEl.textContent = "PRESS AGAIN TO CONTINUE";
+        promptEl.classList.add("prompt-acknowledged");
+      }
+      if (typeof YBAudio !== "undefined") YBAudio.emitHook("ui_select", { gain: 1.5 });
+      return;
+    }
+
+    if (now - gate1HandledAt < 120) return;
+    if (gate2Dismissing) return;
+    gate2Dismissing = true;
+    window.removeEventListener("keydown", handleTitleInput);
+    window.removeEventListener("pointerdown", handleTitleInput);
+    if (typeof YBAudio !== "undefined") YBAudio.emitHook("ui_submit", { gain: 1.5 });
+    card?.classList.add("title-dismissing");
+    const dismissDelay = window.__YB_TEST_FAST_FADE__ === true ? 0 : 450;
+    window.setTimeout(() => {
+      home();
+    }, dismissDelay);
+  };
+
+  window.addEventListener("keydown", handleTitleInput);
+  window.addEventListener("pointerdown", handleTitleInput);
+  card?.focus();
+}
+
+// Pass 9C-2: the only main->renderer push in the app. The payload carries
+// nothing but a world_id -- it is an invalidation signal, not presentable
+// state -- so on receipt we re-read through the exact same projection path
+// the "refresh-view" action already uses, and ignore it outright if it does
+// not match the session currently on screen (a stale/backgrounded world
+// must never overwrite the active one).
+if (typeof yellowBeast !== "undefined" && typeof yellowBeast.onProjectionChanged === "function") {
+  yellowBeast.onProjectionChanged(async (payload) => {
+    const context = requestContext();
+    if (!context.worldId || payload?.world_id !== context.worldId) return;
+    const refreshed = await yellowBeast.getGameplayProjection({ world_id: context.worldId, mode: context.mode });
+    if (resultIsError(refreshed)) return;
+    if (requestContext().worldId !== context.worldId || requestContext().mode !== context.mode) return;
+    current.projection = refreshed.projection;
+    play();
+  });
 }
 
 boot();

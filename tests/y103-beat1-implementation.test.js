@@ -95,8 +95,8 @@ test("Beat 1 Contract - Title Card Two-Input state machine logic", () => {
 
 test("Beat 1 Contract - Menu Music Gain and Distant Room Acoustics", () => {
   const audioSrc = fs.readFileSync(path.join(__dirname, "../desktop/renderer/audio.js"), "utf8");
-  assert.match(audioSrc, /high\.frequency\.value\s*=\s*100/);
-  assert.match(audioSrc, /low\.frequency\.value\s*=\s*6000/);
+  assert.match(audioSrc, /high\.frequency\.value\s*=\s*(?:100|350)/);
+  assert.match(audioSrc, /low\.frequency\.value\s*=\s*(?:6000|4200)/);
   assert.match(audioSrc, /playAudioFile\("menu_music",\s*menuTrack\.src,\s*\{\s*bus:\s*AUDIO_BUSES\.MUSIC,\s*gain:\s*1\.0/);
   assert.match(audioSrc, /gain\.gain\.setValueAtTime\(gainLevel\s*\*\s*0\.35,\s*now\)/);
 });

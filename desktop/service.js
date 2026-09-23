@@ -21,9 +21,11 @@ const { ProviderPool } = require("../tools/ai-provider-pool");
 const { executeLivingTurn } = require("../tools/ai-living-turn");
 const { summarizeLanguageAssistance, failureReason } = require("./language-assistance");
 const { PROVIDER_SPECS } = require("../tools/ai-hosted-transport");
-const { LOCAL_PROVIDER_SPEC, normalizeLocalEndpoint } = require("../tools/ai-local-model-provider");
+const { LOCAL_PROVIDER_SPEC } = require("../tools/ai-local-model-provider");
 const { ManagedInferenceAppliance } = require("../tools/managed-inference-appliance");
-const { buildLocalDialoguePacket, validateLocalDialogue } = require("../tools/ai-local-dialogue");
+const { createDialogueRuntimeSupervisor } = require("../tools/dialogue-runtime-supervisor");
+const { buildLocalDialoguePacket, buildObservationReportPacket, validateLocalDialogue } = require("../tools/ai-local-dialogue");
+const { interpretUtterance: interpretDialogueUtterance, inferLocalRecipientType, resolveResponseOwners, BARE_REACTION_PATTERN: BARE_FOLLOWUP_PATTERN } = require("../tools/dialogue-interpretation");
 const referenceExpedition = require("../tools/reference-expedition");
 const cq4Day1Opener = require("../tools/cq4-day1-opener");
 const interpretiveDirector = require("../tools/interpretive-director");
@@ -63,6 +65,7 @@ const consequenceRuntime = require("../tools/consequence-runtime");
 const presentationBus = require("../tools/presentation-bus");
 const acousticDirector = require("../tools/acoustic-director");
 const decisionScheduler = require("../tools/decision-scheduler");
+const speechScheduler = require("../tools/speech-scheduler");
 const { event: expeditionEvent } = require("../tools/expedition");
 const beckExperience = require("../tools/beck-experience");
 const nullzoneExperience = require("../tools/nullzone-experience");
@@ -82,11 +85,11 @@ const SAVE_SCHEMA_VERSION = "yellow-beast-session@7";
 const PERSISTENCE_PAIR_VERSION = "yellow-beast-persistence-pair@v1";
 
 const clone = (value) => structuredClone(value);
-const currentClearQ4 = (payload) => payload?.version === "yellow-beast-save@v9" && (payload.lifecycle ?? "active") === "active" && payload.spatial_pack_id === "clear-q4";
+const currentClearQ4 = (payload) => payload?.version === "yellow-beast-save@v10" && (payload.lifecycle ?? "active") === "active" && payload.spatial_pack_id === "clear-q4";
 const hasCurrentEnvironment = (payload) => payload?.spatial?.environment?.version === environment.VERSION;
 const hasCurrentStandardOperator = (world) => world?.q4_standard_operator?.version === standardOperator.VERSION;
 const MODES = Object.freeze(worldpackRegistry.programs.map((program) => Object.freeze({ ...program, label: program.program_name, playable: program.availability === "available" })));
-const DEFAULT_SETTINGS = Object.freeze({ version: 7, input_mode: "natural", provider: "offline", local_endpoint:LOCAL_PROVIDER_SPEC.defaultEndpoint, local_model:LOCAL_PROVIDER_SPEC.defaultModel, theme: "system", text_scale:"default", reduced_motion: false, reduced_sensory: false, audio_muted: false, audio_master: 0.35, audio_sfx: 0.35, audio_music: 0.25, audio_interface: 0.35, audio_radio: 0.35, audio_ambient: 0.25, guided_introductions: false, reopen_last_world: true, mode_onboarding: {}, visual_rendering: true, visual_adapter: "fallback", visual_quality: "documentary", automatic_evidence_rendering: true, retry_failed_renders: true, media_effect_intensity: "restrained", comfyui_endpoint: "http://127.0.0.1:8188", comfyui_workflow: "observer-safe-q4-evidence" });
+const DEFAULT_SETTINGS = Object.freeze({ version: 8, input_mode: "natural", provider: "local", local_endpoint:LOCAL_PROVIDER_SPEC.defaultEndpoint, local_model:LOCAL_PROVIDER_SPEC.defaultModel, theme: "system", text_scale:"default", reduced_motion: false, reduced_sensory: false, audio_muted: false, audio_master: 0.35, audio_sfx: 0.35, audio_music: 0.25, audio_interface: 0.35, audio_radio: 0.35, audio_ambient: 0.25, guided_introductions: false, reopen_last_world: true, mode_onboarding: {}, visual_rendering: true, visual_adapter: "fallback", visual_quality: "documentary", automatic_evidence_rendering: true, retry_failed_renders: true, media_effect_intensity: "restrained", comfyui_endpoint: "http://127.0.0.1:8188", comfyui_workflow: "observer-safe-q4-evidence" });
 // Non-Q4 language is deliberately a small phrase-to-existing-control adapter.
 // It cannot invent a target or capability: recognised phrases only select an
 // action already available in the active, observer-safe session.
@@ -119,7 +122,14 @@ function sessionRuntimeCandidate(entry) {
 function redactDiagnostic(value) { if (Array.isArray(value)) return value.map(redactDiagnostic); if (value && typeof value === "object") return Object.fromEntries(Object.entries(value).map(([key, item]) => [key, /key|token|password|secret|credential/i.test(key) ? "[redacted]" : redactDiagnostic(item)])); return typeof value === "string" ? value.replace(/\b(?:sk|rk|pk)-[A-Za-z0-9_-]+\b/g, "[redacted]") : value; }
 
 class DesktopService {
-  constructor({ appDataPath = null, paths = null, logger = null, credentials = null, evidenceMediaProviders = {}, livingTurnProvider = null, localDialogueProvider = null, defaultQ4Scenario = "procedural-survey", developerMode = process.env.YELLOW_BEAST_DEVELOPER_MODE === "1", nowFn = null } = {}) {
+  constructor({ appDataPath = null, paths = null, logger = null, credentials = null, evidenceMediaProviders = {}, livingTurnProvider = null, localDialogueProvider = null, defaultQ4Scenario = "procedural-survey", developerMode = process.env.YELLOW_BEAST_DEVELOPER_MODE === "1", nowFn = null, notifyProjectionChanged = null } = {}) {
+    // Pass 9C-2: the only main->renderer push in the app. Electron's IPC here
+    // is otherwise invoke/response only (see preload.js), so an autonomous
+    // report committed after a request has already returned would otherwise
+    // sit unseen until some unrelated future request re-reads projection.
+    // Narrow by design: carries only a world_id, never dialogue content --
+    // the renderer re-reads through its existing getGameplayProjection path.
+    this.notifyProjectionChanged = typeof notifyProjectionChanged === "function" ? notifyProjectionChanged : () => {};
     this.paths = paths ?? (appDataPath ? { root: appDataPath, worlds: path.join(appDataPath, "worlds"), saves: path.join(appDataPath, "saves"), logs: path.join(appDataPath, "logs"), media: path.join(appDataPath, "media"), config: path.join(appDataPath, "config.json") } : resolveAppPaths());
     this.now = typeof nowFn === "function" ? nowFn : () => Date.now();
     this.checkInHolds = new Map();
@@ -141,22 +151,50 @@ class DesktopService {
     this.evidenceMedia = new evidenceMedia.EvidenceMediaRenderer({ media_root:this.paths.media, providers:evidenceMediaProviders });
     this.evidenceRenderInflight = new Map();
     this.interpretationProvenance = [];
+    this.dialogueWordsmithTraces = [];
     this.authorityRegistry = createAuthorityRegistry();
     this.livingTurnProvider = livingTurnProvider;
     this.localDialogueProvider = localDialogueProvider;
     this.defaultQ4Scenario = cq4Day1Opener.isOpener(defaultQ4Scenario)
       ? "day1-opener"
       : (defaultQ4Scenario === "reference-expedition" ? "reference-expedition" : "procedural-survey");
+    this.inferenceAppliance = new ManagedInferenceAppliance({
+      appDataPath: this.paths.root,
+      developerMode: this.developerMode,
+      logger: (msg) => this.log(`[InferenceAppliance] ${msg}`)
+    });
     this.providerPool = new ProviderPool({
       credentials: this.credentials,
       settingsGetter: () => this.settings(),
+      applianceGetter: () => this.inferenceAppliance,
       onInvocation: (event) => this.recordProviderInvocation(event),
       onProvenance: (summary) => this.recordAttemptChain(summary)
     });
-    this.inferenceAppliance = new ManagedInferenceAppliance({
-      appDataPath: this.paths.root,
-      logger: (msg) => this.log(`[InferenceAppliance] ${msg}`)
+    // Non-blocking: the endpoint changes on every daemon respawn, so it is
+    // read fresh from the appliance on every supervisor inspection/warmup
+    // rather than captured once here. Does not call .start() -- this
+    // constructor runs on every test/app start and must stay side-effect
+    // light; callers kick off warmup explicitly via startDialogueRuntime().
+    this.dialogueRuntime = createDialogueRuntimeSupervisor({
+      endpointFn: () => this.inferenceAppliance.getStatus().endpoint,
+      model: LOCAL_PROVIDER_SPEC.defaultModel,
+      // DEGRADED/FAILED only ever *ask* for a respawn; process ownership
+      // (spawn/kill) stays entirely inside the appliance. repair() is the
+      // appliance's own "stop, re-verify, restart daemon" entry point.
+      onRestartRequested: () => {
+        try {
+          const state = this.inferenceAppliance.state;
+          if (state === "READY" || state === "REPAIR_REQUIRED") this.inferenceAppliance.repair().catch(() => {});
+        } catch {}
+      }
     });
+  }
+
+  // Kicks off dialogue runtime warmup without blocking startup. Intended to
+  // be called once from main.js after the window/service are constructed so
+  // warmup overlaps the title/cinematic sequence instead of gating it.
+  startDialogueRuntime() {
+    try { this.dialogueRuntime?.start().catch(() => {}); } catch {}
   }
 
   recordAttemptChain(summary) {
@@ -179,7 +217,20 @@ class DesktopService {
   log(message) { this.logger(String(message).replace(/[\r\n]+/g, " ")); }
   metadata() { const value = readJson(this.metadataFile, { version: 1, worlds: {}, first_run_complete: false, last_world_id: null }); value.worlds ??= {}; return value; }
   writeMetadata(value) { writeJson(this.metadataFile, value); }
-  settings() { return { ...DEFAULT_SETTINGS, ...readJson(this.settingsFile, DEFAULT_SETTINGS) }; }
+  settings() {
+    const stored = readJson(this.settingsFile, DEFAULT_SETTINGS);
+    const merged = { ...DEFAULT_SETTINGS, ...stored };
+    // Settings schema v8: local_endpoint/local_model no longer control the
+    // production local runtime (the managed inference appliance owns the
+    // real endpoint/model). Discard any pre-v8 stored override so an old
+    // save cannot silently point at a stale manual address.
+    if ((stored.version ?? 0) < 8) {
+      merged.local_endpoint = DEFAULT_SETTINGS.local_endpoint;
+      merged.local_model = DEFAULT_SETTINGS.local_model;
+    }
+    merged.version = DEFAULT_SETTINGS.version;
+    return merged;
+  }
   worldFile(worldId) { if (!safeId(worldId)) throw Object.assign(new Error("invalid world reference"), { code: "WORLD_INVALID" }); return path.join(this.paths.worlds, `${worldId}.json`); }
   sessionFile(worldId, mode) { if (!safeId(worldId) || !MODES.some((item) => item.id === mode)) throw Object.assign(new Error("invalid session reference"), { code: "SESSION_INVALID" }); return path.join(this.paths.saves, `${worldId}-${mode}.json`); }
   getMode(mode) { return MODES.find((item) => item.id === mode) ?? null; }
@@ -225,6 +276,8 @@ class DesktopService {
   getAppInfo() { const data = this.metadata(); const build = buildInfo.read(); return { ok: true, app: { name: "Yellow Beast", version: packageVersion, alpha: true, build, menu_music: applicationTrack, first_run_complete: Boolean(data.first_run_complete), data_path: this.paths.root, developer_mode:this.developerMode } }; }
   getInterpretationProvenance({ limit = 20 } = {}) { if (!this.developerMode) return publicError("DEVELOPER_DISABLED", "Developer tooling is disabled."); return { ok: true, records: clone(this.interpretationProvenance.slice(-Math.max(1, Math.min(100, Number(limit) || 20)))) }; }
   recordInterpretationProvenance(record) { const offline = record.provider === "deterministic-mock" || record.provider === "deterministic-living-provider"; this.interpretationProvenance.push({ ...record, execution_mode: offline ? "offline" : (record.provider ?? "unknown"), provider_invoked: record.provider_invoked === true, response_classification: record.response_classification ?? (offline ? "deterministic" : "not-yet-observed"), authority_registry: this.authorityRegistry?.version ?? null, authority_context_order: ["simulation-doctrine", "worldpack-and-domain-authority", "canonical-current-state", "observer-safe-projection", "persisted-history", "player-submission", "response-contract"], authority_sources: this.authorityRegistry?.sourceMetadata?.() ?? [], recorded_at: new Date().toISOString() }); if (this.interpretationProvenance.length > 100) this.interpretationProvenance.shift(); }
+  recordDialogueWordsmithTrace(record) { if (!this.developerMode) return; this.dialogueWordsmithTraces.push(redactDiagnostic(record)); if (this.dialogueWordsmithTraces.length > 50) this.dialogueWordsmithTraces.shift(); }
+  getDialogueWordsmithTrace({ limit = 20 } = {}) { if (!this.developerMode) return publicError("DEVELOPER_DISABLED", "Developer tooling is disabled."); return { ok:true, developer_only:true, traces:clone(this.dialogueWordsmithTraces.slice(-Math.max(1, Math.min(50, Number(limit) || 20)))) }; }
   recordProviderInvocation({ request_id, route, ...event }) {
     this.recordInterpretationProvenance({ request_id, route, event:"provider-invocation", ...event, provider_invoked:true, invocation_status:event.status, response_classification:event.status === "completed" ? "model-response-parsed" : event.status === "failed" ? "provider-failure" : "provider-request-started" });
     this.traceNaturalTurn("provider-invocation", { request_id, route, ...event });
@@ -234,7 +287,7 @@ class DesktopService {
     // Callers supply bounded metadata only: never credentials, raw prompts, or saves.
     try { this.log(JSON.stringify({ diagnostic:"natural-turn", stage, ...detail })); } catch {}
   }
-  getDeveloperSnapshot({ world_id, mode = null } = {}) { if (!this.developerMode) return publicError("DEVELOPER_DISABLED", "Developer tooling is disabled."); try { const world = this.getWorld(world_id); const entry = mode ? (this.session(world_id, mode) ?? this.restoreSession(world, mode, readJson(this.sessionFile(world_id, mode), null))) : null; const provider = this.getProviderStatus().provider; const run = entry?.kind === "bootstrap" ? entry.run : null; const simulationTruth = run ? { developer_only: true, authoritative_clock: structuredClone(run.expedition.clock), event_queue: structuredClone(run.expedition.operational?.events ?? []), mission_state: structuredClone(run.expedition.mission_state), teammate_locations: structuredClone(run.spatial?.personnel_locations ?? {}), teammate_decisions: structuredClone(run.expedition.team_runtime?.decision_history ?? run.expedition.operational?.decision_history ?? []), hazard_state: structuredClone(run.expedition.hazards ?? {}), phenomenon_state:phenomenonEcology.diagnostics(world,{developer:true}), item_custody: structuredClone(run.expedition.logistics?.items ?? {}), container_contents: structuredClone(run.expedition.logistics?.containers ?? {}), institutional_knowledge: structuredClone(world.institutional_response?.confirmed_knowledge ?? []), standard_response_queue: structuredClone(world.institutional_response?.pending_decisions ?? []), observer_safe_projection: q4.presentation(run, entry.phase, null, world) } : null; return { ok:true, snapshot:developerInspection.snapshot(world), active:{ mode, phase:entry?.phase ?? null, session_kind:entry?.kind ?? null, simulation_truth:simulationTruth }, provider:{ selected:provider.selected, offline:provider.offline, configured:provider.openai.configured, status:provider.offline ? "offline" : provider.openai.status }, doctrine: doctrineRuntime.read(), interpretation_provenance: clone(this.interpretationProvenance), provider_safe_context:run ? developerInspection.providerSafeContext(run) : null, recent_history:developerInspection.recentHistory(world) }; } catch { return publicError("DEVELOPER_SNAPSHOT_UNAVAILABLE", "The selected world could not be inspected."); } }
+  getDeveloperSnapshot({ world_id, mode = null } = {}) { if (!this.developerMode) return publicError("DEVELOPER_DISABLED", "Developer tooling is disabled."); try { const world = this.getWorld(world_id); const entry = mode ? (this.session(world_id, mode) ?? this.restoreSession(world, mode, readJson(this.sessionFile(world_id, mode), null))) : null; const provider = this.getProviderStatus().provider; const run = entry?.kind === "bootstrap" ? entry.run : null; const simulationTruth = run ? { developer_only: true, authoritative_clock: structuredClone(run.expedition.clock), event_queue: structuredClone(run.expedition.operational?.events ?? []), mission_state: structuredClone(run.expedition.mission_state), teammate_locations: structuredClone(run.spatial?.personnel_locations ?? {}), teammate_decisions: structuredClone(run.expedition.team_runtime?.decision_history ?? run.expedition.operational?.decision_history ?? []), hazard_state: structuredClone(run.expedition.hazards ?? {}), phenomenon_state:phenomenonEcology.diagnostics(world,{developer:true}), item_custody: structuredClone(run.expedition.logistics?.items ?? {}), container_contents: structuredClone(run.expedition.logistics?.containers ?? {}), institutional_knowledge: structuredClone(world.institutional_response?.confirmed_knowledge ?? []), standard_response_queue: structuredClone(world.institutional_response?.pending_decisions ?? []), observer_safe_projection: q4.presentation(run, entry.phase, null, world) } : null; return { ok:true, snapshot:developerInspection.snapshot(world), active:{ mode, phase:entry?.phase ?? null, session_kind:entry?.kind ?? null, simulation_truth:simulationTruth }, provider:{ selected:provider.selected, offline:provider.offline, configured:provider.openai.configured, status:provider.offline ? "offline" : provider.openai.status }, doctrine: doctrineRuntime.read(), interpretation_provenance: clone(this.interpretationProvenance), dialogue_wordsmith_trace:clone(this.dialogueWordsmithTraces), provider_safe_context:run ? developerInspection.providerSafeContext(run) : null, recent_history:developerInspection.recentHistory(world) }; } catch { return publicError("DEVELOPER_SNAPSHOT_UNAVAILABLE", "The selected world could not be inspected."); } }
   async traceDeveloperIntent({ world_id, mode, text }) { if (!this.developerMode) return publicError("DEVELOPER_DISABLED", "Developer tooling is disabled."); try { const world = this.getWorld(world_id); const entry = this.session(world_id, mode) ?? this.restoreSession(world, mode, readJson(this.sessionFile(world_id, mode), null)); if (!entry || entry.kind !== "bootstrap") return publicError("TRACE_UNAVAILABLE", "A Clear-Q4 session is required for this non-executing trace."); return { ok:true, trace:await developerInspection.intentTrace({ run:entry.run, provider:createMockProvider(), player_text:text }) }; } catch { return publicError("TRACE_UNAVAILABLE", "The selected session could not be traced."); } }
   controlQ4PhenomenonFixture({ world_id, action="instantiate", family=null, location_id=null, profile_id=null, phenomenon_id=null, text=null, target_id=null, alias=null }={}) {
     if (this.commandBusy(world_id)) return publicError("SESSION_BUSY", "Wait for the current action to finish before changing this operation."); if(!this.developerMode)return publicError("DEVELOPER_DISABLED","Developer tooling is disabled.");try{const world=this.getWorld(world_id);const entry=this.session(world_id,"field-researcher")??this.restoreSession(world,"field-researcher",readJson(this.sessionFile(world_id,"field-researcher"),null));if(!entry||entry.kind!=="bootstrap"||!entry.run.spatial)return publicError("FIXTURE_SESSION_REQUIRED","Start Clear-Q4 before using a controlled phenomenon fixture.");const run=entry.run;const player=run.session.startup.player.observer_id;const location=location_id??run.spatial.player_location;let result;
@@ -311,18 +364,20 @@ class DesktopService {
     if (settings.visual_quality && !["documentary", "detailed"].includes(settings.visual_quality)) return publicError("SETTINGS_INVALID", "Choose a supported visual quality.");
     if (settings.media_effect_intensity && !["restrained", "reduced"].includes(settings.media_effect_intensity)) return publicError("SETTINGS_INVALID", "Choose a supported media effect intensity.");
     for (const key of ["visual_rendering", "automatic_evidence_rendering", "retry_failed_renders"]) if (settings[key] !== undefined && typeof settings[key] !== "boolean") return publicError("SETTINGS_INVALID", `${key} must be on or off.`);
-    for (const id of [...Object.keys(PROVIDER_SPECS), "local"]) {
+    for (const id of Object.keys(PROVIDER_SPECS)) {
       const key = `${id}_model`;
       if (Object.hasOwn(settings, key)) {
         if (typeof settings[key] !== "string" || !settings[key].trim() || settings[key].length > 120) return publicError("MODEL_INVALID", "Enter a model name up to 120 characters.");
         if (settings[key] !== next[key]) this.providerPool.resetHealth(id);
       }
     }
-    if (Object.hasOwn(settings, "local_endpoint")) {
-      try { settings.local_endpoint = normalizeLocalEndpoint(settings.local_endpoint); }
-      catch (error) { return publicError(error.code ?? "LOCAL_ENDPOINT_INVALID", error.message); }
-      if (settings.local_endpoint !== next.local_endpoint) this.providerPool.resetHealth("local");
-    }
+    // local_endpoint / local_model no longer control the production local
+    // runtime -- the managed inference appliance owns the real endpoint and
+    // model. Accept and silently ignore these keys (older clients/saved
+    // settings may still send them) rather than validating or persisting
+    // them.
+    delete settings.local_endpoint;
+    delete settings.local_model;
     Object.assign(next, settings);
     delete next.api_key;
     writeJson(this.settingsFile, next);
@@ -338,11 +393,12 @@ class DesktopService {
     const localStatus = localHealth.last_success
       ? "ready"
       : localHealth.last_failure_class ? "unavailable" : "not-tested";
+    const applianceStatus = this.inferenceAppliance.getStatus();
     return { ok:true, provider:{
       selected,
       entries:this.providerEntries(),
-      offline:selected === "offline",
-      local:{ configured:true, status:selected === "local" ? localStatus : "inactive", model:settings.local_model, endpoint:settings.local_endpoint },
+      offline:selected === "offline" || (selected === "local" && !applianceStatus.is_ready),
+      local:{ configured:true, status:selected === "local" ? localStatus : "inactive", model:applianceStatus.model, endpoint:applianceStatus.endpoint },
       openai:{ configured, status:selected === "openai" ? (configured ? "ready" : "configuration-required") : "inactive" },
       groq:{ configured:this.credentials.configured("groq"), status:selected === "groq" ? (this.credentials.configured("groq") ? "ready" : "configuration-required") : "inactive" },
       gemini:{ configured:this.credentials.configured("gemini"), status:selected === "gemini" ? (this.credentials.configured("gemini") ? "ready" : "configuration-required") : "inactive" },
@@ -363,7 +419,7 @@ class DesktopService {
       label:LOCAL_PROVIDER_SPEC.displayName,
       model:this.providerPool.getModel("local"),
       default_model:LOCAL_PROVIDER_SPEC.defaultModel,
-      endpoint:this.settings().local_endpoint,
+      endpoint:this.inferenceAppliance.getStatus().endpoint,
       configured:true,
       status:localHealth.last_failure_class ? failureReason([{ attempts:[{ failure_class:localHealth.last_failure_class }] }]) : localHealth.last_success ? "Structured response received from this device" : "Configured; connection not tested",
       last_success:localHealth.last_success,
@@ -476,7 +532,7 @@ class DesktopService {
   exportTesterReport({ world_id, mode = "field-researcher", note = null } = {}) { try { const world = this.getWorld(world_id); const loaded = this.loadSession(world, mode); const entry = this.session(world_id, mode) ?? loaded.entry ?? null; const projection = entry ? this.projectionFor(world, mode, entry) : null; const provider = this.getProviderStatus().provider; const active = provider.selected; const render_diagnostics = evidenceAuthority.archive(world, { observer:"player" }).records.map((record) => ({ evidence_id:record.id, request_id:record.render_presentation?.request_id ?? null, status:record.render_status, last_error:record.render_presentation?.last_error ?? null, artifact_reference:record.render_presentation?.artifact?.relative_path ?? null, seed:record.render_presentation?.seed ?? null, model:record.render_presentation?.provider_model ?? null, pipeline_version:record.render_presentation?.pipeline_version ?? null })); const environment_diagnostics = environment.diagnostics(world.q4_geography?.environment, entry?.run?.spatial?.player_location ?? null); const phenomenon_diagnostics=phenomenonEcology.diagnostics(world); const recent_public_events=developerInspection.recentHistory(world).filter((item)=>!String(item.type).startsWith("q4.phenomenon.")); const input = { world, session: projection, provider: { selected: provider.selected, offline: provider.offline, configured: Boolean(provider.openai?.configured || provider.groq?.configured || provider.gemini?.configured || provider.openrouter?.configured), status: provider.offline ? "offline" : (provider[active]?.status ?? (active === "auto" ? "ready" : "inactive")), evidence_media:provider.evidence_media }, interpretation_provenance: this.interpretationProvenance, doctrine: { source: doctrineRuntime.SOURCE, sha256: doctrineRuntime.read().sha256, priority: "constitutional" }, render_diagnostics, environment_diagnostics, phenomenon_diagnostics, note, save_schema_version: SAVE_SCHEMA_VERSION, recent_public_events, logs: this.sanitizedLogTail(), recovery: { world: this.recoveryStatus(world_id, "world"), session: this.recoveryStatus(world_id, mode) } }; const safeInput = redactDiagnostic(input); const report = q4BetaReport.report(safeInput); const file = q4BetaReport.writeReport(this.paths.logs, safeInput); return { ok: true, file, report }; } catch { return publicError("TESTER_REPORT_FAILED", "The diagnostic record could not be exported safely."); } }
   serializeSession(world, mode, entry) { const phase = entry.phase ?? phases.createPhase({ mode, guided: this.settings().guided_introductions !== false }); if (entry.kind === "bootstrap") return { version: 7, schema: SAVE_SCHEMA_VERSION, mode, kind: entry.kind, legacy_flow: entry.legacy_flow === true, phase, payload: bootstrap.saveRun(entry.run) }; if (entry.kind === "lost") return { version: 7, schema: SAVE_SCHEMA_VERSION, mode, kind: entry.kind, phase, payload: clone(entry.run) }; return { version: 7, schema: SAVE_SCHEMA_VERSION, mode, kind: entry.kind, phase, payload: clone(entry) }; }
   validateSessionSave(saved, mode) { if (!saved || typeof saved !== "object") return "SESSION_SAVE_DAMAGED"; if (saved.mode !== mode) return "SESSION_MODE_INVALID"; if (![1, 2, 3, 4, 5, 6, 7].includes(saved.version ?? 1)) return "SESSION_VERSION_UNSUPPORTED"; if (saved.version === 7 && saved.schema !== SAVE_SCHEMA_VERSION) return "SESSION_SCHEMA_UNSUPPORTED"; if (!["bootstrap", "lost", "nullzone", "beck"].includes(saved.kind)) return "SESSION_SAVE_DAMAGED"; if (saved.phase?.mode_id && saved.phase.mode_id !== mode) return "SESSION_SAVE_DAMAGED"; if (saved.kind === "bootstrap" && currentClearQ4(saved.payload) && (!hasCurrentEnvironment(saved.payload) || !bootstrap.resumeRun(saved.payload).ok)) return "SESSION_SAVE_DAMAGED"; try { if (saved.phase?.phase_id) phases.validate(mode, saved.phase.phase_id); } catch { return "SESSION_SAVE_DAMAGED"; } return null; }
-  restoreSession(world, mode, saved, { allowUnmarked = true } = {}) { if (this.validateSessionSave(saved, mode) || !persistencePairMatches(world, saved, { mode, allowUnmarked })) return null; const phase = saved.phase ?? phases.createPhase({ mode, guided: this.settings().guided_introductions !== false }); if (saved.kind === "bootstrap") { const current = saved.payload?.version === "yellow-beast-save@v9"; if (currentClearQ4(saved.payload) && !hasCurrentStandardOperator(world)) return null; const hadSpatialState = Boolean(saved.payload?.spatial); const hadRadioState = Boolean(saved.payload?.expedition?.radio); const hadOperationalState = Boolean(saved.payload?.expedition?.operational); const restored = bootstrap.resumeRun(saved.payload, { world, spatial_worldpack: mode === "field-researcher" ? "clear-q4" : null, phase: phase.phase_id }); if (!restored.ok) return null; if (!current) { bootstrap.ensureSpatial(restored.run, phase.phase_id); if (!hadSpatialState) { if (["FIELD_OPERATION", "RETURN", "DEBRIEF"].includes(phase.phase_id)) bootstrap.enterSpatialField(restored.run); else bootstrap.setSpatialPhase(restored.run, phase.phase_id); } if (!hadRadioState && ["FIELD_OPERATION", "RETURN", "DEBRIEF"].includes(phase.phase_id)) q4Radio.completeCheck(restored.run.expedition); if (!hadOperationalState && restored.run.expedition?.clock?.check_in_due_at != null && !restored.run.expedition.communications?.check_ins?.length) q4Time.schedule(restored.run.expedition, Math.max(1, restored.run.expedition.clock.check_in_due_at - restored.run.expedition.clock.interval)); bootstrap.evaluateMissionState(restored.run, phase.phase_id); } return { kind: "bootstrap", run: restored.run, legacy_flow: saved.legacy_flow === true || phase.legacy_flow === true, restored_from_legacy:!current, phase }; } if (saved.kind === "lost") return { kind: "lost", run: saved.payload, phase }; if (saved.kind === "nullzone") return { kind: "nullzone", run_id: saved.payload.run_id, phase }; if (saved.kind === "beck") return { kind: "beck", run_id: saved.payload.run_id, phase }; return null; }
+  restoreSession(world, mode, saved, { allowUnmarked = true } = {}) { if (this.validateSessionSave(saved, mode) || !persistencePairMatches(world, saved, { mode, allowUnmarked })) return null; const phase = saved.phase ?? phases.createPhase({ mode, guided: this.settings().guided_introductions !== false }); if (saved.kind === "bootstrap") { const current = saved.payload?.version === "yellow-beast-save@v10"; if (currentClearQ4(saved.payload) && !hasCurrentStandardOperator(world)) return null; const hadSpatialState = Boolean(saved.payload?.spatial); const hadRadioState = Boolean(saved.payload?.expedition?.radio); const hadOperationalState = Boolean(saved.payload?.expedition?.operational); const restored = bootstrap.resumeRun(saved.payload, { world, spatial_worldpack: mode === "field-researcher" ? "clear-q4" : null, phase: phase.phase_id }); if (!restored.ok) return null; if (!current) { bootstrap.ensureSpatial(restored.run, phase.phase_id); if (!hadSpatialState) { if (["FIELD_OPERATION", "RETURN", "DEBRIEF"].includes(phase.phase_id)) bootstrap.enterSpatialField(restored.run); else bootstrap.setSpatialPhase(restored.run, phase.phase_id); } if (!hadRadioState && ["FIELD_OPERATION", "RETURN", "DEBRIEF"].includes(phase.phase_id)) q4Radio.completeCheck(restored.run.expedition); if (!hadOperationalState && restored.run.expedition?.clock?.check_in_due_at != null && !restored.run.expedition.communications?.check_ins?.length) q4Time.schedule(restored.run.expedition, Math.max(1, restored.run.expedition.clock.check_in_due_at - restored.run.expedition.clock.interval)); bootstrap.evaluateMissionState(restored.run, phase.phase_id); } return { kind: "bootstrap", run: restored.run, legacy_flow: saved.legacy_flow === true || phase.legacy_flow === true, restored_from_legacy:!current, phase }; } if (saved.kind === "lost") return { kind: "lost", run: saved.payload, phase }; if (saved.kind === "nullzone") return { kind: "nullzone", run_id: saved.payload.run_id, phase }; if (saved.kind === "beck") return { kind: "beck", run_id: saved.payload.run_id, phase }; return null; }
   loadSession(world, mode) { const file = this.sessionFile(world.world_id, mode); const current = readJsonCandidate(file); if (!current.ok && current.code === "SAVE_MISSING") return { ok:false, code:"SESSION_NOT_FOUND" }; const problem = current.ok ? this.validateSessionSave(current.value, mode) : "SESSION_SAVE_DAMAGED"; const entry = !problem ? this.restoreSession(world, mode, current.value) : null; if (entry) return { ok:true, entry, recovery:this.recoveryStatus(world.world_id, mode) }; if (["SESSION_VERSION_UNSUPPORTED","SESSION_SCHEMA_UNSUPPORTED"].includes(problem)) return { ok:false, code:problem }; const backup = readJsonCandidate(this.sessionBackupFile(world.world_id, mode)); const recovered = backup.ok && !this.validateSessionSave(backup.value, mode) ? this.restoreSession(world, mode, backup.value, { allowUnmarked:false }) : null; if (recovered) return { ok:true, entry:recovered, recovery:this.noteRecovery(world.world_id, mode, "previous-good-session") }; return { ok:false, code:problem ?? "SESSION_SAVE_DAMAGED" }; }
   loadPersistencePair(worldId, mode) {
     const worldPrimary = this.worldFile(worldId); const worldBackup = this.backupFile(worldId); const sessionPrimary = this.sessionFile(worldId, mode); const sessionBackup = this.sessionBackupFile(worldId, mode);
@@ -544,7 +600,7 @@ class DesktopService {
     const source = committed.entry.run; const target = entry.run;
     const environmentIds = new Map((source.spatial?.environment?.history ?? []).map((change) => [change.id, change.world_history_id])); for (const change of target.spatial?.environment?.history ?? []) if (environmentIds.has(change.id)) change.world_history_id = environmentIds.get(change.id);
     const messageRecords = new Map((source.expedition?.messages ?? []).map((message) => [message.id, message.institutional_recorded])); for (const message of target.expedition?.messages ?? []) if (messageRecords.get(message.id)) message.institutional_recorded = messageRecords.get(message.id);
-    target.survey_frontier = clone(source.survey_frontier); q4Equipment.absorbCompatibility(target.expedition); if (target.expedition.logistics) logisticsRuntime.attach(target.expedition); missionRuntime.attachCompatibilityView(target.expedition); target._world = world;
+    target.survey_frontier = clone(source.survey_frontier); target.observation_state = clone(source.observation_state); q4Equipment.absorbCompatibility(target.expedition); if (target.expedition.logistics) logisticsRuntime.attach(target.expedition); missionRuntime.attachCompatibilityView(target.expedition); target._world = world;
   }
   session(worldId, mode) { return this.sessions.get(`${worldId}:${mode}`) ?? null; }
   persistSession(world, mode, entry) { if (this.recoveredWorlds.has(world.world_id)) throw Object.assign(new Error("automatic recovery is read-only until explicitly adopted"), { code:"PERSISTENCE_RECOVERY_READ_ONLY" }); const candidateWorld = history.canonicalJson(world, { code:"CANONICAL_WORLD_VALUE_INVALID" }); const candidateEntry = sessionRuntimeCandidate(entry); if (candidateEntry.kind === "bootstrap") missionRuntime.attachCompatibilityView(candidateEntry.run.expedition); this.reconcileSessionCandidate(candidateWorld, candidateEntry); const serialized = this.serializeSession(candidateWorld, mode, candidateEntry); const committed = this.commitPersistencePair(candidateWorld, mode, serialized); committed.entry = candidateEntry; this.adoptPersistencePair(world, entry, committed); this.sessions.set(`${world.world_id}:${mode}`, entry); try { const data = this.metadata(); if (data.worlds[world.world_id]) { data.worlds[world.world_id].last_played_at = new Date().toISOString(); data.worlds[world.world_id].last_mode = mode; data.last_world_id = world.world_id; this.writeMetadata(data); } } catch (error) { this.log(`persistence metadata update failed after coordinated commit: ${error.message}`); } }
@@ -635,15 +691,20 @@ class DesktopService {
     if (isOpener && phaseId === "BRIEFING") {
       const isBroadcastStandby = view.facility_broadcast?.status === "standby" || (!view.facility_broadcast?.visible && !view.facility_broadcast?.completed);
       const isBroadcastInProgress = Boolean(view.facility_broadcast?.status === "in-progress" && view.facility_broadcast?.visible);
+      const isBriefingConcluded = view.beat === "LOCAL_INTRODUCTIONS" || view.personnel_briefing?.status === "concluded";
       const narration = isBroadcastStandby
         ? "Terminal operational in ASYNC briefing room. Standing by for facility transmission."
         : isBroadcastInProgress
         ? "Facility broadcast in progress."
+        : isBriefingConcluded
+        ? "Dr. Maxwell has concluded the assignment briefing. Get acquainted with your team, then proceed to Equipment Staging."
         : "Facility broadcast concluded. Standing by for assignment briefing.";
       const prompt = isBroadcastStandby
         ? "Standing by for facility transmission."
         : isBroadcastInProgress
         ? "Await conclusion of briefing broadcast before proceeding."
+        : isBriefingConcluded
+        ? "Get acquainted with your team, then proceed to Equipment Staging."
         : "Standing by for assignment briefing.";
       const facts = [
         ["location", "location", "the ASYNC briefing room"],
@@ -694,6 +755,22 @@ class DesktopService {
     return this.modeScene(world, mode, entry, { consequence: { result: { accepted: options.accepted !== false, observer_safe_summary: options.public_reason ?? "The current situation remains unchanged." } } });
   }
   decorateEvidenceMedia(projection, world) { if (!projection.q4?.archive) return projection; const safe = clone(projection); safe.q4.archive.records = safe.q4.archive.records.map((record) => { const presentation = record.render_presentation ?? evidenceAuthority.presentation(record); const available = presentation.status === "ready" && evidenceMedia.artifactAvailable(this.paths.media, presentation.artifact); const status = !available && presentation.status === "ready" ? "unavailable" : presentation.status; return { ...record, render_presentation:{ ...presentation, status, artifact_available:available, artifact_url:available ? `file:///${path.resolve(this.paths.media, presentation.artifact.relative_path).replace(/\\/g, "/")}` : null }, fallback:evidenceMedia.fallback(record, available ? "" : presentation.last_error?.message ?? "not generated") }; }); return safe; }
+  // Closes the omniscience leak Pass 9A found: consumePending() drained
+  // unfiltered, so any autonomous LOCAL dialogue event would reach the
+  // renderer regardless of who could actually hear it. Only LOCAL dialogue
+  // events that explicitly carry listeners[] are gated; events with no
+  // listeners[] recorded (non-dialogue types, and pre-existing authored
+  // narration that never populated it, e.g. the Maxwell briefing beats) pass
+  // through unchanged.
+  filterAutonomousDialogueForPlayer(events, run) {
+    const playerId = run?.session?.startup?.player?.observer_id ?? null;
+    return events.filter((event) => {
+      if (event.type !== presentationBus.EVENT_TYPES.DIALOGUE) return true;
+      if (String(event.channel ?? "").toUpperCase() !== "LOCAL") return true;
+      if (!Array.isArray(event.listeners) || event.listeners.length === 0) return true;
+      return !playerId || event.listeners.includes(playerId);
+    });
+  }
   projectionFor(worldOrId, mode, entryParam = null) {
     const world = typeof worldOrId === "string" ? this.getWorld(worldOrId) : worldOrId;
     const worldId = world?.world_id ?? world?.id ?? (typeof worldOrId === "string" ? worldOrId : null);
@@ -705,7 +782,7 @@ class DesktopService {
     const phase = entry.phase ?? phases.createPhase({ mode, guided: this.settings().guided_introductions !== false }); const unfinished = consequenceEchoes.unfinishedBusiness(world, mode, { run_id: runId });
     const spatialDef = entry.run?.spatial_pack_id ? bootstrap.spatialDefinitionFor(entry.run.spatial_pack_id) : {};
     const acousticScene = entry.run ? acousticDirector.evaluateAcousticScene(entry.run, spatialDef, world, phase.phase_id) : null;
-    const pendingPresentationEvents = entry.run ? presentationBus.consumePending(entry.run) : [];
+    const pendingPresentationEvents = entry.run ? this.filterAutonomousDialogueForPlayer(presentationBus.consumePending(entry.run), entry.run) : [];
     const baseProjection = this.decorateEvidenceMedia({ version: "yellow-beast-desktop-projection@v1", world: this.worldInfo(world, this.metadata().worlds[world.world_id] ?? {}), mode: clone(descriptor), scenario: entry.run?.scenario ?? null, gameplay: gameplay.projection(world, { mode: descriptor.gameplay_mode, run_id: runId }), institution: mode === "async-command" ? desk.projection(world) : null, consequence_echoes: consequenceEchoes.observerView(world, mode, { run_id: runId }), unfinished_business: unfinished, surface: clone(surface), phase: clone(phase), q4: entry.kind === "bootstrap" ? q4.presentation(entry.run, phase, unfinished, world) : null, beck: entry.kind === "beck" ? beckExperience.presentation(world, surface, phase, unfinished) : null, nullzone: entry.kind === "nullzone" ? nullzoneExperience.presentation(world, phase, unfinished) : null, lost: entry.kind === "lost" ? lostExperience.presentation(surface, phase, unfinished) : null, scene: this.sceneFor(entry, mode, {}, world), available_actions: this.availableFor(world, mode, entry), acoustic_scene: acousticScene, presentation_events: pendingPresentationEvents, settings: this.settings() }, world);
     if (entry.kind === "bootstrap" && cq4Day1Opener.isOpener(entry.run?.scenario)) {
       const opener = entry.run?.expedition?.day1_opener;
@@ -1317,6 +1394,7 @@ class DesktopService {
       // Advance deterministic actor decision scheduler before persistence
       const spatialDefLocal = bootstrap.spatialDefinitionFor(run.spatial_pack_id);
       try { decisionScheduler.scheduleDecisions(run, spatialDefLocal, world); } catch (schedulerError) { this.log(`decision scheduler non-fatal: ${schedulerError.message}`); }
+      try { this.processAutonomousSpeech(world.world_id, run.run_id); } catch (speechSchedulerError) { this.log(`speech scheduler non-fatal: ${speechSchedulerError.message}`); }
       try {
         this.persistSession(world, "field-researcher", entry);
       } catch (persistError) {
@@ -1364,7 +1442,8 @@ class DesktopService {
     );
     const providerSetting = this.settings().provider;
     const configured = ["openai", "auto", "local", "groq", "gemini", "openrouter"].includes(providerSetting);
-    if (input.channel !== "local" || !canonical?.ok || (!configured && !this.localDialogueProvider && !canonical._local_dialogue_context?.resuming)) return canonical;
+    const dialogueContexts = canonical?._local_dialogue_contexts ?? (canonical?._local_dialogue_context ? [canonical._local_dialogue_context] : []);
+    if (input.channel !== "local" || !canonical?.ok || dialogueContexts.length === 0 || (!configured && !this.localDialogueProvider && !dialogueContexts.some((context) => context.resuming))) return canonical;
 
     const promise = Promise.resolve().then(async () => {
       try {
@@ -1373,45 +1452,204 @@ class DesktopService {
         });
       } finally {
         this.communicationTurnInflight.delete(world_id);
+        this.giveAutonomousSpeechAnotherChance(world_id);
       }
     });
     this.communicationTurnInflight.set(world_id, { id: requestId, fingerprint, promise });
     return promise;
   }
-  async presentHostedLocalDialogue({ world_id }, canonical, { configured, requestId: callRequestId }) {
-    const context = canonical._local_dialogue_context;
-    delete canonical._local_dialogue_context;
-    if (!context) return canonical;
-    const requestId = context.requestId ?? callRequestId ?? `desktop-local-${world_id}-${Date.now()}`;
+  // Shared by presentHostedLocalDialogue (player-directed replies) and
+  // presentObservationReport (autonomous NPC reports, Pass 9B-2): resolves
+  // whether a local dialogue provider is usable right now and, if so,
+  // acquires it under the same readiness rules. An explicitly injected
+  // this.localDialogueProvider (dev/test override) bypasses the appliance
+  // readiness supervisor entirely; the auto-selected appliance-backed
+  // provider is wrapped by dialogueRuntime so a failed/unavailable backend
+  // still drives supervisor state. Neither path weakens presentLocal's
+  // contract: any failure throws the same way either provider would.
+  acquireLocalDialogueProvider({ requestId, route, configured }) {
     const providerSetting = this.settings().provider;
     const isManualHosted = ["openai", "groq", "gemini", "openrouter"].includes(providerSetting);
     const key = isManualHosted ? this.credentials.get(providerSetting) : null;
+    let provider = null;
+    let dialogueProvider = null;
+    let providerUnavailable = !this.localDialogueProvider && (!configured || (isManualHosted && !key));
+    if (!providerUnavailable) {
+      try {
+        provider = this.localDialogueProvider ?? this.providerPool.createAutoProvider({ requestId, route });
+        if (typeof provider.presentLocal !== "function") throw new Error("local dialogue provider unavailable");
+        dialogueProvider = this.localDialogueProvider ? provider : this.dialogueRuntime.wrapProvider(provider, {
+          fallback: () => { throw new Error("local dialogue provider unavailable"); }
+        });
+      } catch (providerError) {
+        providerUnavailable = true;
+        this.log(`LOCAL language assistance unavailable: ${providerError.message}`);
+      }
+    }
+    return { provider, dialogueProvider, providerUnavailable };
+  }
+  // Speak callback for speechScheduler.drainSpeechQueue (Pass 9B-2): the
+  // scheduler has already decided whether, who, and why -- this only builds
+  // the observer-safe packet, asks the provider to word it, and validates
+  // the result. Returning null (unavailable/error/invalid) leaves the entry
+  // queued for retry per the scheduler's own exhaustion policy; this never
+  // invents fallback speech.
+  async presentObservationReport(entry, run) {
+    const requestId = `speech-queue-${entry.id}`;
+    const providerSetting = this.settings().provider;
+    const configured = ["openai", "auto", "local", "groq", "gemini", "openrouter"].includes(providerSetting);
+    const { dialogueProvider, providerUnavailable } = this.acquireLocalDialogueProvider({ requestId, route: "speechScheduler/observation-report", configured });
+    if (providerUnavailable) return null;
+    try {
+      const packet = buildObservationReportPacket({ run, observer_id: entry.observer_id, feature_id: entry.feature_id, purpose: entry.purpose, disposition: entry.disposition });
+      const candidateRaw = await dialogueProvider.presentLocal(structuredClone(packet));
+      const validation = validateLocalDialogue(packet, candidateRaw, run);
+      if (!validation.ok) {
+        this.log(`observation report validateLocalDialogue failed: code=${validation.code}, candidate=${JSON.stringify(candidateRaw)}`);
+        return null;
+      }
+      return validation.candidate.speech;
+    } catch (providerError) {
+      this.log(`observation report language assistance unavailable for ${entry.observer_id}: ${providerError.message}`);
+      return null;
+    }
+  }
+  // Fire-and-forget continuation that runs the live speak() path against the
+  // speech queue without blocking the synchronous turn that scheduled it
+  // (mirrors submitQ4Communication's canonical-then-hosted split). Re-checks
+  // the run_id staleness guard both before touching the queue and again
+  // before persisting, exactly like presentHostedLocalDialogue -- a run that
+  // moved on in the interim (save/reload, new turn) must never be committed
+  // into by a report scheduled against an earlier state of it.
+  // Complete busy authority for this world, equivalent to commandBusy() but
+  // usable from inside our own transactionContext.run() wrapper: commandBusy
+  // exempts the current AsyncLocalStorage store's own world_id ("I'm not
+  // busy relative to myself"), which is meaningless here -- autonomous
+  // speech is never the transaction a player turn is waiting on, so it must
+  // see naturalTurnInflight/communicationTurnInflight exactly as they are.
+  autonomousSpeechBlocked(world_id) {
+    return this.naturalTurnInflight.has(world_id) || this.communicationTurnInflight.has(world_id);
+  }
+  // B1: transactionContext is an AsyncLocalStorage marker, not a lock, so a
+  // player turn can start and finish entirely during the provider's await.
+  // Gated twice: once before starting the drain (don't even begin a
+  // provider call into a busy world) and once per-entry via canCommit(),
+  // re-checked by drainSpeechQueue immediately after speak() resolves and
+  // before any commit side effect. A busy/stale world at that point is a
+  // postponement -- the entry is left queued for the next opportunity,
+  // never marked failed.
+  processAutonomousSpeech(world_id, expectedRunId) {
+    return Promise.resolve().then(async () => {
+      try {
+        if (this.autonomousSpeechBlocked(world_id)) return;
+        await this.transactionContext.run(world_id, async () => {
+          if (this.autonomousSpeechBlocked(world_id)) return;
+          const world = this.getWorld(world_id);
+          if (!world || outcomes.isRetired(world)) return;
+          const entry = this.session(world_id, "field-researcher");
+          if (!entry?.run || entry.run.run_id !== expectedRunId) {
+            this.log(`stale autonomous speech continuation discarded: operation ${expectedRunId} superseded`);
+            return;
+          }
+          const result = await speechScheduler.drainSpeechQueue(entry.run, world, {
+            communicationTurnInflight: this.autonomousSpeechBlocked(world_id),
+            speak: (queueEntry, r) => this.presentObservationReport(queueEntry, r),
+            canCommit: () => !this.autonomousSpeechBlocked(world_id) && this.session(world_id, "field-researcher") === entry && entry.run.run_id === expectedRunId
+          });
+          if (result.drained.length === 0) return;
+          const stillCurrent = this.session(world_id, "field-researcher");
+          if (stillCurrent !== entry || stillCurrent.run?.run_id !== expectedRunId) {
+            this.log(`stale autonomous speech result discarded: operation ${expectedRunId} superseded before commit`);
+            return;
+          }
+          try {
+            this.persistSession(world, "field-researcher", entry);
+          } catch (persistError) {
+            this.log(`autonomous speech persistence failed: ${persistError.message}`);
+            return; // no notification on a failed/rolled-back commit
+          }
+          // Notify only if the player actually heard one of the committed
+          // reports (S2/listener gating carries through to the refresh
+          // signal itself, not just the projected content).
+          const playerId = entry.run.session?.startup?.player?.observer_id ?? null;
+          if (playerId && result.drained.some((event) => event.listeners?.includes(playerId))) {
+            try { this.notifyProjectionChanged(world_id); }
+            catch (notifyError) { this.log(`projection-changed notification failed: ${notifyError.message}`); }
+          }
+        });
+      } catch (error) {
+        this.log(`autonomous speech continuation failed: ${error.message}`);
+      }
+    });
+  }
+  // C: gives any report postponed by B1's canCommit guard another
+  // opportunity right after the player turn that blocked it finishes.
+  // Fire-and-forget, single extra attempt -- not a loop, not a second
+  // scheduler.
+  giveAutonomousSpeechAnotherChance(world_id) {
+    try {
+      const entry = this.session(world_id, "field-researcher");
+      if (entry?.run?.run_id) this.processAutonomousSpeech(world_id, entry.run.run_id);
+    } catch (error) {
+      this.log(`autonomous speech follow-up scheduling failed: ${error.message}`);
+    }
+  }
+  async presentHostedLocalDialogue({ world_id }, canonical, { configured, requestId: callRequestId }) {
+    const contexts = canonical._local_dialogue_contexts ?? (canonical._local_dialogue_context ? [canonical._local_dialogue_context] : []);
+    delete canonical._local_dialogue_contexts;
+    delete canonical._local_dialogue_context;
+    if (contexts.length === 0) return canonical;
+    const requestId = contexts[0].requestId ?? callRequestId ?? `desktop-local-${world_id}-${Date.now()}`;
 
     let currentWorld = this.getWorld(world_id);
     if (!currentWorld || outcomes.isRetired(currentWorld)) {
       return publicError("WORLD_RETIRED", "This world is a read-only historical record.");
     }
     let currentEntry = this.session(world_id, "field-researcher");
-    if (!currentEntry || currentEntry.run?.run_id !== context.runId) {
-      this.log(`stale dialogue completion discarded: operation ${context.runId} superseded`);
+    if (!currentEntry || currentEntry.run?.run_id !== contexts[0].runId) {
+      this.log(`stale dialogue completion discarded: operation ${contexts[0].runId} superseded`);
       return publicError("OPERATION_SUPERSEDED", "The operation changed before the response could be delivered.");
     }
 
-    let provider;
-    let candidateRaw;
-    let packet;
-    let unavailable = !this.localDialogueProvider && (!configured || (isManualHosted && !key));
-    if (!unavailable) {
-      try {
-        provider = this.localDialogueProvider ?? this.providerPool.createAutoProvider({ requestId, route: "submitQ4Communication/local-dialogue" });
-        this.recordInterpretationProvenance({ request_id: requestId, route: "submitQ4Communication/local-dialogue", event: "provider-selected", input: "player-supplied", provider: provider.name, model: provider.model ?? "injected", provider_invoked: false, response_classification: "not-yet-observed", canonical_resolution: "communication-runtime -> personnel-continuity -> presentation-validation", observer_projection: "local-dialogue-packet@v1" });
-        if (typeof provider.presentLocal !== "function") throw new Error("local dialogue provider unavailable");
-        packet = buildLocalDialoguePacket(context);
-        candidateRaw = await provider.presentLocal(structuredClone(packet));
-      } catch (providerError) {
-        unavailable = true;
-        this.log(`LOCAL language assistance unavailable: ${providerError.message}`);
+    const { provider, dialogueProvider, providerUnavailable } = this.acquireLocalDialogueProvider({ requestId, route: "submitQ4Communication/local-dialogue", configured });
+
+    const prepared = [];
+    for (const context of contexts) {
+      // Same-turn ordering (owner order: Austin, Brady, Guillermo, ...):
+      // by the time a later responder's packet is built, earlier responders
+      // in THIS canonical turn have already been fully resolved (validated
+      // candidate-or-fallback, never a raw/uncommitted candidate). Exposing
+      // those already-accepted lines prevents later responders from
+      // duplicating a greeting or acting as if nobody has spoken yet, without
+      // letting the model choose or alter any canonical fact.
+      context.same_turn_prior_responses = prepared.map((item) => ({
+        speaker_id: item.context.speaker?.personnel_id ?? item.context.speaker?.id ?? null,
+        speaker_name: item.context.speaker?.first_name ?? item.context.speaker?.display_name ?? null,
+        text: item.speech ?? null
+      }));
+      let packet = null;
+      let candidateRaw = null;
+      let unavailable = providerUnavailable;
+      let validation = { ok:false, code:"LOCAL_PROVIDER_UNAVAILABLE" };
+      let selectedProvider = provider?.name ?? (unavailable ? "unavailable" : "injected-local-dialogue-provider");
+      if (!unavailable) {
+        try {
+          packet = buildLocalDialoguePacket(context);
+          this.recordInterpretationProvenance({ request_id: requestId, route: "submitQ4Communication/local-dialogue", event: "provider-selected", input: "player-supplied", provider:selectedProvider, model:provider.model ?? "injected", provider_invoked:false, response_classification:"not-yet-observed", canonical_resolution:"communication-runtime -> deterministic-response-owners -> personnel-continuity -> presentation-validation", observer_projection:"local-dialogue-packet@v1", responder_id:context.speaker?.personnel_id ?? context.speaker?.id });
+          candidateRaw = await dialogueProvider.presentLocal(structuredClone(packet));
+          const providerExecution = provider.getExecutions?.().at(-1) ?? null;
+          selectedProvider = providerExecution?.selected_provider ?? provider.name ?? selectedProvider;
+          validation = validateLocalDialogue(packet, candidateRaw);
+        } catch (providerError) {
+          unavailable = true;
+          validation = { ok:false, code:"LOCAL_PROVIDER_UNAVAILABLE" };
+          this.log(`LOCAL language assistance unavailable for ${context.speaker?.first_name ?? "responder"}: ${providerError.message}`);
+        }
       }
+      const fallbackSpeech = context.fallback_text ? context.fallback_text.replace(/^[^:]+:\s*/, "") : context.fallback_text;
+      const speech = validation.ok ? validation.candidate.speech : fallbackSpeech;
+      const presentationSource = validation.ok ? (selectedProvider === "local" ? "local-model" : "hosted-model") : "deterministic-fallback";
+      prepared.push({ context, packet, candidateRaw, validation, unavailable, selectedProvider, speech, presentationSource });
     }
 
     currentWorld = this.getWorld(world_id);
@@ -1419,9 +1657,9 @@ class DesktopService {
       return publicError("WORLD_RETIRED", "This world is a read-only historical record.");
     }
     currentEntry = this.session(world_id, "field-researcher");
-    if (!currentEntry || currentEntry.run?.run_id !== context.runId) {
-      this.log(`stale dialogue completion discarded: operation ${context.runId} superseded`);
-      const oldRun = currentWorld.runs?.[context.runId];
+    if (!currentEntry || currentEntry.run?.run_id !== contexts[0].runId) {
+      this.log(`stale dialogue completion discarded: operation ${contexts[0].runId} superseded`);
+      const oldRun = currentWorld.runs?.[contexts[0].runId];
       if (oldRun?.expedition?.communication_receipts) {
         const oldReceipt = oldRun.expedition.communication_receipts.find((r) => r.id === requestId);
         if (oldReceipt && oldReceipt.status === "pending") {
@@ -1436,78 +1674,72 @@ class DesktopService {
       return publicError("REQUEST_CANCELED", "The communication was canceled before finalization.");
     }
 
-    const validation = unavailable ? { ok: false } : validateLocalDialogue(packet, candidateRaw);
-
     const beforeWorld = clone(currentWorld);
     const beforeRun = clone(currentEntry.run);
     const beforePhase = clone(currentEntry.phase);
-
-    if (!validation.ok) {
-      this.log(`validateLocalDialogue failed: code=${validation.code}, candidate=${JSON.stringify(candidateRaw)}`);
-      canonical.result.provider_unavailable = true;
-      canonical.result.presentation_source = "deterministic-fallback";
-      canonical.result.public_reason = unavailable
-        ? `Language assistance is unavailable. Deterministic response: ${context.fallback_text}`
-        : `Language assistance returned an invalid response and was rejected. Deterministic response: ${context.fallback_text}`;
-      const fallbackSpeech = context.fallback_text ? context.fallback_text.replace(/^[^:]+:\s*/, "") : context.fallback_text;
-      if (context.interaction && fallbackSpeech) {
-        context.interaction.presentation.response = fallbackSpeech;
-        context.interaction.presentation.source = "deterministic-fallback";
-        q4Interactions.updatePresentation(currentEntry.run.expedition, context.interaction.id, {
-          response: fallbackSpeech,
-          source: "deterministic-fallback",
-          response_speaker: context.speaker?.first_name ?? context.speaker?.display_name ?? null,
-          response_speaker_id: context.speaker?.personnel_id ?? context.speaker?.id ?? null
-        });
-      }
-      if (context.speaker && fallbackSpeech) {
-        personnelContinuity.recordDialogueMemory(currentWorld, {
-          run_id: currentEntry.run.run_id,
-          identity: context.speaker.personnel_id ?? context.speaker.id,
-          player_text: context.player_text,
-          response: fallbackSpeech,
-          source: "local-communication",
-          sender: currentEntry.run.session.startup.player.observer_id,
-          at: currentEntry.run.expedition.clock?.interval ?? 0
-        });
-        presentationBus.emit(currentEntry.run, {
-          type: presentationBus.EVENT_TYPES.DIALOGUE,
-          source: presentationBus.SOURCES.CANONICAL,
-          speaker: context.speaker.first_name ?? context.speaker.display_name ?? "Teammate",
-          channel: "LOCAL",
-          text: fallbackSpeech
-        });
-      }
-    } else {
-      const providerExecution = provider.getExecutions?.().at(-1) ?? null;
-      const selectedProvider = providerExecution?.selected_provider ?? provider.name;
-      const presentationSource = selectedProvider === "local" ? "local-model" : "hosted-model";
-      canonical.result.presentation_source = presentationSource;
-      canonical.result.hosted_request = { request_id: requestId, provider:selectedProvider, hosted:selectedProvider !== "local", status: "completed" };
-      canonical.result.public_reason = `${context.speaker.display_name}: ${validation.candidate.speech}`;
-      context.interaction.presentation.response = validation.candidate.speech;
-      context.interaction.presentation.source = presentationSource;
-      q4Interactions.updatePresentation(currentEntry.run.expedition, context.interaction.id, {
-        response: validation.candidate.speech,
-        source:presentationSource,
-        response_speaker: context.speaker.first_name ?? context.speaker.display_name ?? null,
-        response_speaker_id: context.speaker.personnel_id ?? context.speaker.id ?? null
-      });
+    const committedResponses = [];
+    for (const item of prepared) {
+      const context = item.context;
+      if (!item.validation.ok) this.log(`validateLocalDialogue failed: code=${item.validation.code}, candidate=${JSON.stringify(item.candidateRaw)}`);
+      if (!item.speech) continue;
       personnelContinuity.recordDialogueMemory(currentWorld, {
         run_id: currentEntry.run.run_id,
         identity: context.speaker.personnel_id ?? context.speaker.id,
         player_text: context.player_text,
-        response: validation.candidate.speech,
+        response: item.speech,
         source: "local-communication",
         sender: currentEntry.run.session.startup.player.observer_id,
         at: currentEntry.run.expedition.clock?.interval ?? 0
       });
-      presentationBus.emit(currentEntry.run, {
-        type: presentationBus.EVENT_TYPES.DIALOGUE,
-        source: presentationBus.SOURCES.AI_PERFORMANCE,
-        speaker: context.speaker.first_name ?? context.speaker.display_name ?? "Teammate",
+      const responseEvent = presentationBus.createDialogueEvent({
+        submission_id: requestId,
+        speaker_id: context.speaker.personnel_id ?? context.speaker.id,
+        speaker_name: context.speaker.first_name ?? context.speaker.display_name ?? "Teammate",
+        speaker_title: context.speaker.role ?? null,
+        recipient_type: (context.recipient_type ?? (context.is_group ? "group" : "direct")) === "group" ? "group" : (context.recipient_type ?? (context.is_group ? "group" : "direct")) === "none" ? "none" : "direct",
+        recipient_id: (context.recipient_type ?? (context.is_group ? "group" : "direct")) === "group" ? (currentEntry.run?.scenario && cq4Day1Opener.isOpener(currentEntry.run.scenario) ? "@table" : "@team") : (context.recipient_type ?? "direct") === "none" ? null : currentEntry.run.session.startup.player.observer_id,
+        recipient_name: (context.recipient_type ?? (context.is_group ? "group" : "direct")) === "group" ? (cq4Day1Opener.isOpener(currentEntry.run.scenario) ? "Assembly Table" : "Team") : (context.recipient_type ?? "direct") === "none" ? null : "YOU",
+        listeners: [currentEntry.run.session.startup.player.observer_id, ...(context.interaction?.listeners ?? []).filter((id) => id !== (context.speaker.personnel_id ?? context.speaker.id))],
         channel: "LOCAL",
-        text: validation.candidate.speech
+        text: item.speech,
+        kind: "speech",
+        source: item.validation.ok ? presentationBus.SOURCES.AI_PERFORMANCE : presentationBus.SOURCES.DETERMINISTIC,
+        interval: currentEntry.run.expedition.clock?.interval ?? 0,
+        delivery: "delivered"
+      });
+      currentEntry.run.expedition.dialogue_history ??= [];
+      currentEntry.run.expedition.dialogue_history.push(responseEvent);
+      presentationBus.emit(currentEntry.run, responseEvent);
+      committedResponses.push({
+        order:committedResponses.length,
+        speaker_id:responseEvent.speaker_id,
+        speaker_name:responseEvent.speaker_name,
+        text:item.speech,
+        source:item.presentationSource,
+        committed_event_id:responseEvent.id
+      });
+    }
+
+    const first = prepared[0];
+    const allModel = prepared.length > 0 && prepared.every((item) => item.validation.ok);
+    const allFallback = prepared.every((item) => !item.validation.ok);
+    if (prepared.some((item) => item.unavailable)) canonical.result.provider_unavailable = true;
+    else delete canonical.result.provider_unavailable;
+    canonical.result.presentation_source = allModel ? first.presentationSource : allFallback ? "deterministic-fallback" : "mixed-model-fallback";
+    canonical.result.public_reason = committedResponses.map((item) => `${item.speaker_name}: ${item.text}`).join(" ") || "Your message is heard. No further response is required.";
+    if (allFallback && first) {
+      canonical.result.public_reason = first.unavailable
+        ? `Language assistance is unavailable. Deterministic response: ${first.context.fallback_text}`
+        : `Language assistance returned an invalid response and was rejected. Deterministic response: ${first.context.fallback_text}`;
+    }
+    canonical.result.hosted_request = { request_id:requestId, provider:first?.selectedProvider ?? "unavailable", hosted:first?.selectedProvider !== "local", status:"completed", responder_count:committedResponses.length };
+    if (first?.context?.interaction) {
+      q4Interactions.updatePresentation(currentEntry.run.expedition, first.context.interaction.id, {
+        response: committedResponses[0]?.text ?? null,
+        source: canonical.result.presentation_source,
+        response_speaker: committedResponses[0]?.speaker_name ?? null,
+        response_speaker_id: committedResponses[0]?.speaker_id ?? null,
+        responses: committedResponses
       });
     }
 
@@ -1545,6 +1777,37 @@ class DesktopService {
       return publicError("PERSISTENCE_COMMIT_FAILED", "Your message was delivered, but the reply could not be saved. Retry this message to finish saving the reply.");
     }
 
+    this.recordDialogueWordsmithTrace({
+      developer_only:true,
+      request_id:requestId,
+      provider_used:first?.selectedProvider ?? "unavailable",
+      player_event_id:contexts[0]?.player_event_id ?? null,
+      deterministic_responders:contexts.map((context, order) => ({ order, speaker_id:context.speaker?.personnel_id ?? context.speaker?.id, speaker_name:context.speaker?.first_name ?? context.speaker?.display_name })),
+      // Development-only diagnosis of what actually happened for this responder:
+      // was the provider ready, did it produce a candidate, did validation
+      // accept or reject it (and why), and what finally got said. Never
+      // surfaced to the player -- gated by developerMode in
+      // recordDialogueWordsmithTrace / getDialogueWordsmithTrace, and
+      // redacted before storage.
+      wordsmiths:prepared.map((item, order) => ({
+        order,
+        responder_id:item.context.speaker?.personnel_id ?? item.context.speaker?.id,
+        provider_ready:!item.unavailable,
+        speech_act:item.packet?.player_speech_act?.speech_act ?? null,
+        response_purpose:item.packet?.authorized_response?.purpose ?? null,
+        wordsmith_packet:item.packet ? JSON.parse(JSON.stringify(item.packet)) : null,
+        raw_candidate:item.candidateRaw,
+        candidate_produced:Boolean(item.candidateRaw),
+        validator_accepted:item.validation.ok,
+        rejection_reason:item.validation.ok ? null : (item.validation.code ?? null),
+        fallback_used:!item.validation.ok,
+        output_source:item.presentationSource,
+        committed_event_id:committedResponses[order]?.committed_event_id ?? null
+      })),
+      committed_event_ids:committedResponses.map((item) => item.committed_event_id),
+      canonical_commit_order:[contexts[0]?.player_event_id, ...committedResponses.map((item) => item.committed_event_id)].filter(Boolean)
+    });
+
     canonical.projection = this.projectionFor(currentWorld, "field-researcher", currentEntry);
     return canonical;
   }
@@ -1573,39 +1836,38 @@ class DesktopService {
               }
             });
             const interaction = entry.run?.expedition?.interaction_history?.find((item) => item.submission_id === recorded.id || item.id === recorded.interaction_id);
-            const targetWorkerId = recorded.target_worker_id ?? interaction?.response_speaker_id;
-            const speaker = entry.run?.expedition?.team?.members?.find((m) => (m.personnel_id ?? m.id) === targetWorkerId) ?? null;
-            const person = speaker ? history.character(world, speaker.personnel_id ?? speaker.id) : null;
             // Delivery and attitude changes were committed already. Reuse the original
             // authorization without calling react() or recording the utterance again.
-            const originalReaction = person?.continuity?.reaction_history?.find((item) =>
-              item.event_id === recorded.cached_result?.result?.message?.id && item.at === entry.run.run_id);
-            const category = recorded.response_category ?? originalReaction?.category;
-            const reaction = category ? { category } : null;
-            const fallbackText = recorded.fallback_text ?? recorded.public_reason ?? (speaker ? `${speaker.first_name}: Understood.` : "Understood.");
-            if (!speaker || !person || !interaction || !reaction) {
+            const savedContexts = recorded.response_contexts?.length ? recorded.response_contexts : [{ target_worker_id:recorded.target_worker_id ?? interaction?.response_speaker_id, response_category:recorded.response_category, fallback_text:recorded.fallback_text }];
+            const recoveredContexts = savedContexts.map((saved) => {
+              const speaker = entry.run?.expedition?.team?.members?.find((m) => (m.personnel_id ?? m.id) === saved.target_worker_id) ?? null;
+              const person = speaker ? history.character(world, speaker.personnel_id ?? speaker.id) : null;
+              const originalReaction = person?.continuity?.reaction_history?.find((item) => item.event_id === recorded.cached_result?.result?.message?.id && item.at === entry.run.run_id);
+              const category = saved.response_category ?? originalReaction?.category;
+              if (!speaker || !person || !category) return null;
+              return {
+                run:entry.run,
+                runId:entry.run.run_id,
+                player_text:recorded.text,
+                speaker,
+                person,
+                reaction:{ category },
+                fallback_text:saved.fallback_text ?? `${speaker.first_name}: Understood.`,
+                interaction,
+                world,
+                entry,
+                requestId:recorded.id,
+                player_event_id:recorded.player_event_id ?? null,
+                interpretation:interpretDialogueUtterance(recorded.text, { isGroup:interaction?.recipient_type === "group" }),
+                is_group:interaction?.recipient_type === "group",
+                recipient_type:interaction?.recipient_type ?? null,
+                resuming:true
+              };
+            }).filter(Boolean);
+            if (!interaction || recoveredContexts.length !== savedContexts.length) {
               return publicError("DIALOGUE_RECOVERY_UNAVAILABLE", "Your message was delivered, but its original reply context is unavailable. The unfinished reply has been preserved.");
             }
-            if (speaker && person) {
-              Object.defineProperty(res, "_local_dialogue_context", {
-                configurable: true,
-                enumerable: false,
-                value: {
-                  run: entry.run,
-                  runId: entry.run.run_id,
-                  player_text: recorded.text,
-                  speaker,
-                  person,
-                  reaction,
-                  fallback_text: fallbackText,
-                  interaction,
-                  world,
-                  entry,
-                  requestId: recorded.id,
-                  resuming: true
-                }
-              });
-            }
+            Object.defineProperty(res, "_local_dialogue_contexts", { configurable:true, enumerable:false, value:recoveredContexts });
             res.projection = this.projectionFor(world, "field-researcher", entry);
             return res;
           }
@@ -1663,11 +1925,17 @@ class DesktopService {
         }
       }
 
-      const BROADCAST_TERMS = new Set(["team", "teammate", "teammates", "all", "everyone", "broadcast", "room", "local", "anyone", "crew"]);
-      const isBroadcast = !rawTarget || BROADCAST_TERMS.has(rawTarget.toLowerCase());
+      const isOpenerBriefing = cq4Day1Opener.isOpener(entry.run?.scenario) && entry.phase?.phase_id === "BRIEFING";
+      const GROUP_TERMS = new Set(["@table", "table", "team", "teammate", "teammates", "all", "everyone", "broadcast", "room", "local", "anyone", "crew", "group"]);
+      const explicitGroupTarget = Boolean(rawTarget && GROUP_TERMS.has(rawTarget.toLowerCase()));
+      const inferredRecipientType = inferLocalRecipientType(message, { explicitTarget: rawTarget && !explicitGroupTarget ? rawTarget : null });
+      let isGroup = explicitGroupTarget || (!rawTarget && inferredRecipientType === "group");
 
       let peer = null;
       let recipients = [];
+      let recipient_type = "none";
+      let target_id = null;
+      let target_name = null;
 
       if (channel === "local") {
         const localPeers = coworkers.filter((member) => {
@@ -1675,7 +1943,7 @@ class DesktopService {
           return member.status === "active" && q4Personnel.observerStatus(member, record, entry.phase?.phase_id, entry.run.spatial, playerId).local_eligible;
         });
 
-        if (isBroadcast) {
+        if (isGroup) {
           if (localPeers.length === 0) {
             const reason = "No nearby participating personnel can hear this transmission.";
             communicationRuntime.local(expedition, { sender: playerId, recipients: ["unconfirmed teammate"], text: message, eligible: false, failure_reason: reason });
@@ -1689,7 +1957,10 @@ class DesktopService {
             return publicError("LOCAL_TARGET_UNAVAILABLE", reason);
           }
           recipients = localPeers;
-        } else {
+          recipient_type = "group";
+          target_id = isOpenerBriefing ? "@table" : "@team";
+          target_name = isOpenerBriefing ? "Assembly Table" : "Team";
+        } else if (rawTarget) {
           const targetNorm = rawTarget.toLowerCase();
           const activeMatches = coworkers.filter((member) => {
             const record = history.character(world, member.personnel_id ?? member.id);
@@ -1765,17 +2036,63 @@ class DesktopService {
           }
 
           recipients = [peer];
+          recipient_type = "direct";
+          target_id = peer.personnel_id ?? peer.id;
+          target_name = peer.first_name ?? peer.display_name;
+        } else {
+          // Untargeted utterance: spoken aloud into the room. No individual or
+          // group was addressed by the player's own words. A short, purely
+          // reactive follow-up ("What?", "Huh?") may inherit the conversational
+          // scope of the immediately preceding LOCAL exchange at this same
+          // location -- it must never collapse to "pick the first eligible
+          // teammate and pretend the player addressed them directly."
+          const isBareFollowUp = BARE_FOLLOWUP_PATTERN.test(message.trim());
+          const priorLocal = isBareFollowUp
+            ? [...(expedition.interaction_history ?? [])].reverse().find((item) => item.channel === "local" && item.speaker_id === playerId)
+            : null;
+          const sameLocationAsPrior = priorLocal && priorLocal.location_id === (entry.run.spatial?.player_location ?? null);
+          const priorGroupIds = sameLocationAsPrior && priorLocal.recipient_type === "group" ? new Set(priorLocal.recipient_ids ?? []) : null;
+          const inheritedGroup = priorGroupIds ? localPeers.filter((member) => priorGroupIds.has(member.personnel_id ?? member.id)) : [];
+          const inheritedDirect = sameLocationAsPrior && priorLocal.recipient_type === "direct" && priorLocal.recipient_id
+            ? localPeers.find((member) => (member.personnel_id ?? member.id) === priorLocal.recipient_id) ?? null
+            : null;
+
+          if (inheritedGroup.length > 0) {
+            recipients = inheritedGroup;
+            recipient_type = "group";
+            isGroup = true;
+            target_id = priorLocal.recipient_id ?? (isOpenerBriefing ? "@table" : "@team");
+            target_name = isOpenerBriefing ? "Assembly Table" : "Team";
+          } else if (inheritedDirect) {
+            recipients = [inheritedDirect];
+            recipient_type = "direct";
+            isGroup = false;
+            target_id = inheritedDirect.personnel_id ?? inheritedDirect.id;
+            target_name = inheritedDirect.first_name ?? inheritedDirect.display_name;
+          } else {
+            // Genuine untargeted scope: heard by everyone present, addressed
+            // to no one. Nobody is spoken TO; any reaction stays room-scoped.
+            recipients = [];
+            recipient_type = "none";
+            target_id = null;
+            target_name = null;
+          }
         }
-         const deliveredLocal = communicationRuntime.local(expedition, { sender: playerId, recipients: recipients.map((member) => member.personnel_id ?? member.id), text: message, eligible: true });
+
+        const deliveredRecipients = recipients.length > 0 ? recipients.map((member) => member.personnel_id ?? member.id) : localPeers.map((member) => member.personnel_id ?? member.id);
+        const deliveredLocal = communicationRuntime.local(expedition, { sender: playerId, recipients: deliveredRecipients, text: message, eligible: true });
         phenomenonEcology.recordSpeech(world, entry.run, { speaker:playerId, text:message, location_id:entry.run.spatial.player_location });
-        if (/\b(route|corridor|passage|location|map|survey|where)\b/i.test(message) && entry.run.survey_frontier) for (const recipient of recipients) surveyFrontier.share(entry.run.survey_frontier, recipient.personnel_id ?? recipient.id, playerId, { at: expedition.clock.interval });
+        if (/\b(route|corridor|passage|location|map|survey|where)\b/i.test(message) && entry.run.survey_frontier) for (const recipient of (recipients.length > 0 ? recipients : localPeers)) surveyFrontier.share(entry.run.survey_frontier, recipient.personnel_id ?? recipient.id, playerId, { at: expedition.clock.interval });
         const request = /\b(hand|pass|give|bring|transfer)\b/i.test(message);
         const isQuestion = /\?$/.test(message.trim()) || /^(?:what|where|who|when|why|how|can you|could you|do you|is there|are there|will you)\b/i.test(message.trim());
         const isWarning = /\b(?:look out|watch out|careful|warning|danger|hazard|stop)\b/i.test(message);
         const importance = request ? 58 : isWarning ? 75 : 85;
         const risk = isWarning ? 70 : 0;
         const isDisclosure = /\b(?:nervous|afraid|scared|prefer|call me|tight spaces|dark|claustrophobic|worried)\b/i.test(message);
-        for (const recipient of recipients) {
+        // Bounded interpretation — deterministic speech act classification for the wordsmith pipeline.
+        // Separate from the regex flags above which feed the existing reactionContext API.
+        const localInterpretation = interpretDialogueUtterance(message, { isGroup });
+        for (const recipient of (recipients.length > 0 ? recipients : localPeers)) {
           const recId = recipient.personnel_id ?? recipient.id;
           recipient.last_communication = { channel: "LOCAL", direction: "received", at: expedition.clock.interval, message_id: deliveredLocal.message.id };
           recipient.known_information ??= [];
@@ -1811,13 +2128,28 @@ class DesktopService {
         }
         const requestedEquipment = request ? Object.values(expedition.equipment ?? {}).find((item) => [item.id, item.label, item.type].filter(Boolean).some((value) => message.toLowerCase().includes(String(value).toLowerCase()) || String(value).toLowerCase().split(/\s+/).some((term) => term.length > 4 && message.toLowerCase().includes(term)))) : null;
         const equipmentHolder = requestedEquipment ? expedition.team.members.find((member) => member.personnel_id === requestedEquipment.holder) : null;
-        const responses = recipients.map((recipient) => {
-          const recipientPerson = history.character(world, recipient.personnel_id ?? recipient.id);
+
+        let chosen = null;
+        let response = "";
+        let responseBody = "";
+        let chosenId = null;
+        let responseListeners = [];
+        let interactionTargets = [];
+        let recipientIds = [];
+        const playerListeners = localPeers.map((p) => p.personnel_id ?? p.id);
+        interactionTargets = recipient_type === "none" ? ["Room / Untargeted"] : (isGroup ? ["Assembly Table"] : recipients.map((r) => r.display_name));
+        recipientIds = recipient_type === "none" ? [] : recipients.map((r) => r.personnel_id ?? r.id);
+
+        const heardPeers = recipient_type === "none" ? localPeers : recipients;
+        const equipmentKnowledgeQuestion = localInterpretation?.speech_act === "group_question" && localInterpretation?.topic === "equipment" && /\b(?:carry|carrying|holding|have|got|equipment|gear|kit|manifest)\b/i.test(message);
+        const responseCandidates = heardPeers.map((recipient) => {
+          const recId = recipient.personnel_id ?? recipient.id;
+          const recipientPerson = history.character(world, recId);
           const reactionContext = personnelContinuity.reactionContext({
             world,
             run: entry.run,
             phase: entry.phase?.phase_id,
-            worker_id: recipient.personnel_id,
+            worker_id: recId,
             player_id: playerId,
             event: {
               id: deliveredLocal.message.id,
@@ -1827,66 +2159,160 @@ class DesktopService {
               operational_importance: importance,
               perceived_risk: risk,
               is_question: isQuestion,
-              observed_by: [recipient.personnel_id],
-              delivered_to: [recipient.personnel_id],
-              participants: [playerId, recipient.personnel_id]
+              observed_by: [recId],
+              delivered_to: [recId],
+              participants: [playerId, recId]
             }
           });
           const reaction = personnelContinuity.react(world, reactionContext);
-          const knownAnswer = personnelContinuity.presentKnownAnswer(entry.run, recipient.personnel_id, message, world);
-          const response = request ? (requestedEquipment?.holder === recipient.personnel_id ? `${recipient.first_name}: I hear the request. The ${requestedEquipment.label.toLowerCase()} remains with me until we complete a physical handoff.` : requestedEquipment?.holder === playerId ? `${recipient.first_name}: You already hold the ${requestedEquipment.label.toLowerCase()}.` : equipmentHolder ? `${recipient.first_name}: ${equipmentHolder.first_name} has the ${requestedEquipment.label.toLowerCase()}; a physical handoff still has to happen in person.` : `${recipient.first_name}: I hear the request, but I cannot confirm that equipment in my custody.`) : knownAnswer ?? personnelContinuity.presentReaction(recipientPerson, reaction.reaction, message, playerId);
-          return { recipient, person:recipientPerson, reaction_context:reactionContext, reaction:reaction.reaction, text:response };
+          const knownAnswer = personnelContinuity.presentKnownAnswer(entry.run, recId, message, world);
+          const heldEquipment = Object.values(expedition.equipment ?? {}).filter((item) => item.holder === recId);
+          const equipmentAnswer = equipmentKnowledgeQuestion && heldEquipment.length > 0
+            ? `${recipient.first_name}: I've got ${heldEquipment.map((item) => item.label.toLowerCase()).join(" and ")}.`
+            : null;
+          const socialGroupAnswer = localInterpretation?.speech_act === "group_question" && localInterpretation?.topic === "social"
+            ? `${recipient.first_name}: Doing all right.`
+            : null;
+          const ambiguityAnswer = localInterpretation?.speech_act === "ambiguous"
+            ? `${recipient.first_name}: What exactly do you mean?`
+            : null;
+          const resp = request
+            ? (requestedEquipment?.holder === recId ? `${recipient.first_name}: I hear the request. The ${requestedEquipment.label.toLowerCase()} remains with me until we complete a physical handoff.` : requestedEquipment?.holder === playerId ? `${recipient.first_name}: You already hold the ${requestedEquipment.label.toLowerCase()}.` : equipmentHolder ? `${recipient.first_name}: ${equipmentHolder.first_name} has the ${requestedEquipment.label.toLowerCase()}; a physical handoff still has to happen in person.` : `${recipient.first_name}: I hear the request, but I cannot confirm that equipment in my custody.`)
+            : equipmentAnswer ?? socialGroupAnswer ?? knownAnswer ?? ambiguityAnswer ?? personnelContinuity.presentReaction(recipientPerson, reaction.reaction, message, playerId, localInterpretation?.speech_act ?? null);
+          return {
+            id: recId,
+            recipient,
+            person: recipientPerson,
+            reaction_context: reactionContext,
+            reaction: reaction.reaction,
+            text: resp,
+            response_eligible: Boolean(reaction.reaction && resp),
+            has_relevant_knowledge: Boolean(equipmentAnswer || knownAnswer)
+          };
         });
-        const addressed = peer ? responses.find((item) => (item.recipient.personnel_id ?? item.recipient.id) === (peer.personnel_id ?? peer.id)) : null;
-        const namedInMessage = recipients.find((m) => [m.first_name, m.last_name, m.display_name].filter(Boolean).some((n) => new RegExp(`\\b${String(n).replace(/[.*+?^${}()|[\\]\\\\]/g, "\\$&")}\\b`, "i").test(message)));
-        const roleInMessage = recipients.find((m) => { const role = String(m.role ?? "").toLowerCase(); return role && role.split(/\s+/).some((w) => w.length > 3 && new RegExp(`\\b${w}\\b`, "i").test(message)); });
-        const addressedRecipient = addressed ?? (namedInMessage ? responses.find((item) => item.recipient.personnel_id === (namedInMessage.personnel_id ?? namedInMessage.id)) : (roleInMessage ? responses.find((item) => item.recipient.personnel_id === (roleInMessage.personnel_id ?? roleInMessage.id)) : null));
-        const equipmentRespondent = requestedEquipment && equipmentHolder ? responses.find((item) => item.recipient.personnel_id === equipmentHolder.personnel_id) : null;
-        const chosen = addressedRecipient ?? equipmentRespondent ?? responses.find((item) => item.reaction && item.text) ?? responses[0];
-        const response = chosen?.text || "";
-        personnelContinuity.recordSharedHistory(world, { run_id: entry.run.run_id, participants: [playerId, ...recipients.map((recipient) => recipient.personnel_id ?? recipient.id)], kind: "local-communication", refs: { message_id: deliveredLocal.message.id, geography_shared: /\b(route|corridor|passage|location|map|survey|where)\b/i.test(message) }, at: expedition.clock.interval });
-        const interactionTargets = recipients.map(recipient => recipient.display_name);
-        const responseBody = response.replace(new RegExp(`^${String(chosen?.recipient?.first_name ?? "").replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}:\\s*`, "i"), "");
-        const recipientIds = recipients.map((r) => r.personnel_id ?? r.id);
-        const chosenId = chosen?.recipient?.personnel_id ?? chosen?.recipient?.id ?? null;
-        const playerListeners = [...recipientIds];
-        const responseListeners = [playerId, ...recipientIds.filter((id) => id !== chosenId)];
 
-        const interaction = q4Interactions.record(expedition, { channel, speaker: "You", speaker_id: playerId, targets: interactionTargets, recipient_ids: recipientIds, listeners: playerListeners, player_text: message, attempted_behavior: "speak with nearby participating personnel", eligibility: "eligible", delivery: "heard", time_cost: 0, canonical_effects: ["communication.local.delivered"], response_speaker: chosen?.recipient?.first_name ?? chosen?.recipient?.display_name ?? null, response_speaker_id: chosenId, response_listeners: responseListeners, location_id: entry.run.spatial?.player_location ?? null, submission_id: requestId, presentation: { result: "heard", response:responseBody } });
+        const ownerIds = resolveResponseOwners({ recipient_type, interpretation:localInterpretation, player_text:message, candidates:responseCandidates });
+        const authorizedResponses = ownerIds.map((id) => responseCandidates.find((candidate) => candidate.id === id)).filter(Boolean);
+        for (const item of authorizedResponses) {
+          item.body = String(item.text ?? "").replace(new RegExp(`^${String(item.recipient?.first_name ?? "").replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}:\\s*`, "i"), "");
+          item.listeners = [playerId, ...localPeers.map((p) => p.personnel_id ?? p.id).filter((id) => id !== item.id)];
+        }
+        chosen = authorizedResponses[0] ?? null;
+        chosenId = chosen?.id ?? null;
+        response = authorizedResponses.map((item) => item.text).join(" ");
+        responseBody = chosen?.body ?? "";
+        responseListeners = chosen?.listeners ?? [];
+
+        if (recipients.length > 0) {
+          personnelContinuity.recordSharedHistory(world, { run_id: entry.run.run_id, participants: [playerId, ...recipients.map((recipient) => recipient.personnel_id ?? recipient.id)], kind: "local-communication", refs: { message_id: deliveredLocal.message.id, geography_shared: /\b(route|corridor|passage|location|map|survey|where)\b/i.test(message) }, at: expedition.clock.interval });
+        }
+
+        const providerSetting = this.settings().provider;
+        const configured = ["openai", "auto", "local", "groq", "gemini", "openrouter"].includes(providerSetting);
+        const willBeHosted = authorizedResponses.length > 0 && channel === "local" && (configured || Boolean(this.localDialogueProvider));
+        const responseOwners = authorizedResponses.map((item, index) => ({
+          order: index,
+          speaker_id: item.id,
+          speaker_name: item.recipient.first_name ?? item.recipient.display_name ?? "Coworker"
+        }));
+        const projectedResponses = willBeHosted ? [] : authorizedResponses.map((item, index) => ({
+          order: index,
+          speaker_id: item.id,
+          speaker_name: item.recipient.first_name ?? item.recipient.display_name ?? "Coworker",
+          text: item.body,
+          source: "deterministic"
+        }));
+
+        const interaction = q4Interactions.record(expedition, {
+          channel,
+          speaker: "You",
+          speaker_id: playerId,
+          targets: interactionTargets,
+          recipient_type,
+          recipient_id: target_id,
+          recipient_ids: recipientIds,
+          listeners: playerListeners,
+          player_text: message,
+          attempted_behavior: recipient_type === "none" ? "speak aloud to the room" : (isGroup ? "address the group" : "speak with a nearby teammate"),
+          eligibility: "eligible",
+          delivery: "heard",
+          time_cost: 0,
+          canonical_effects: ["communication.local.delivered"],
+          response_speaker: chosen?.recipient?.first_name ?? chosen?.recipient?.display_name ?? null,
+          response_speaker_id: chosenId,
+          response_owners: responseOwners,
+          responses: projectedResponses,
+          response_listeners: responseListeners,
+          location_id: entry.run.spatial?.player_location ?? null,
+          submission_id: requestId,
+          presentation: { result: "heard", response: responseBody || null }
+        });
         q4Trajectories.noteCommunication({ world, expedition, run_id: entry.run.run_id, channel: "local", delivered: true, text: message });
         const cycle = bootstrap.resolveOperationalCycle(entry.run, "LOCAL", 0, "local-communication");
         if (cq4Day1Opener.isOpener(entry.run.scenario)) {
           const commDuration = cq4Day1Opener.getActionDuration("COMMUNICATE", { length: message.length > 100 ? "extended" : message.length < 25 ? "brief" : "normal" });
           cq4Day1Opener.advanceSimulationTime(entry.run, commDuration);
         }
-        presentationBus.emit(entry.run, {
-          type: presentationBus.EVENT_TYPES.DIALOGUE,
-          source: presentationBus.SOURCES.DETERMINISTIC,
-          speaker: "You",
+
+        // 1. Commit canonical player dialogue event FIRST
+        const playerDialogueEvent = presentationBus.createDialogueEvent({
+          submission_id: requestId,
+          speaker_id: playerId,
+          speaker_name: "YOU",
+          speaker_title: "EXPEDITION LEAD",
+          recipient_type,
+          recipient_id: target_id,
+          recipient_name: target_name,
+          listeners: playerListeners,
           channel: "LOCAL",
-          text: message
+          text: message,
+          kind: "speech",
+          source: presentationBus.SOURCES.DETERMINISTIC,
+          interval: expedition.clock.interval,
+          delivery: "delivered"
         });
-        if (response) {
-          presentationBus.emit(entry.run, {
-            type: presentationBus.EVENT_TYPES.DIALOGUE,
-            source: presentationBus.SOURCES.DETERMINISTIC,
-            speaker: chosen?.recipient?.first_name ?? chosen?.recipient?.display_name ?? "Teammate",
+        entry.run.expedition.dialogue_history ??= [];
+        entry.run.expedition.dialogue_history.push(playerDialogueEvent);
+        presentationBus.emit(entry.run, playerDialogueEvent);
+
+        // 2. Commit authorized coworker responses in deterministic owner order.
+        // The response's displayed recipient scope follows the PLAYER's actual
+        // recipient_type, never a "someone answered" inference -- a room-scoped
+        // ("none") utterance that happens to draw one deterministic reaction
+        // must not be rendered as if the player had addressed that person directly.
+        const coworkerRecipientType = recipient_type === "group" ? "group" : recipient_type === "direct" ? "direct" : "none";
+        const coworkerRecipientId = coworkerRecipientType === "group" ? (isOpenerBriefing ? "@table" : "@team") : coworkerRecipientType === "direct" ? playerId : null;
+        const coworkerRecipientName = coworkerRecipientType === "group" ? (isOpenerBriefing ? "Assembly Table" : "Team") : coworkerRecipientType === "direct" ? "YOU" : null;
+        if (!willBeHosted) for (const authorized of authorizedResponses) {
+          const coworkerDialogueEvent = presentationBus.createDialogueEvent({
+            submission_id: requestId,
+            speaker_id: authorized.id,
+            speaker_name: authorized.recipient?.first_name ?? authorized.recipient?.display_name ?? "Coworker",
+            speaker_title: authorized.recipient?.role ?? null,
+            recipient_type: coworkerRecipientType,
+            recipient_id: coworkerRecipientId,
+            recipient_name: coworkerRecipientName,
+            listeners: authorized.listeners,
             channel: "LOCAL",
-            text: responseBody
+            text: authorized.body,
+            kind: "speech",
+            source: presentationBus.SOURCES.DETERMINISTIC,
+            interval: expedition.clock.interval,
+            delivery: "delivered"
           });
+          entry.run.expedition.dialogue_history.push(coworkerDialogueEvent);
+          presentationBus.emit(entry.run, coworkerDialogueEvent);
         }
+
         if (entry.run?.spatial && ["FIELD_OPERATION", "RETURN"].includes(entry.phase?.phase_id)) {
           const spatialDefLocal = bootstrap.spatialDefinitionFor(entry.run.spatial_pack_id);
           try { decisionScheduler.scheduleDecisions(entry.run, spatialDefLocal, world); } catch (schedulerError) { this.log(`decision scheduler non-fatal: ${schedulerError.message}`); }
+          try { this.processAutonomousSpeech(world.world_id, entry.run.run_id); } catch (speechSchedulerError) { this.log(`speech scheduler non-fatal: ${speechSchedulerError.message}`); }
         }
-        const publicReason = response || "Your message is heard. No further response is required.";
+        const publicReason = response || (recipient_type === "none" ? (isOpenerBriefing ? "You speak aloud to the room. Nobody at the table responds." : "You speak aloud. Nobody responds.") : "Your message is heard. No further response is required.");
         const scene = this.sceneFor(entry, "field-researcher", { scene_type: "delta", accepted: true, action: "LOCAL", public_reason: publicReason }, world);
         const output = { ok: true, result: { outcome: "delivered", public_reason: publicReason, message: { id: deliveredLocal.message.id, state: deliveredLocal.message.state }, mission_updates: cycle.mission_updates, scene }, projection: this.projectionFor(world, "field-researcher", entry) };
-        const authorized = chosen?.reaction && chosen.text ? chosen : (responses.find((item) => item.reaction && item.text) ?? null);
         if (requestId) {
-          const providerSetting = this.settings().provider;
-          const configured = ["openai", "auto", "local", "groq", "gemini", "openrouter"].includes(providerSetting);
-          const willBeHosted = Boolean(authorized) && channel === "local" && (configured || Boolean(this.localDialogueProvider));
           const receipt = {
             id: requestId,
             submission_id: requestId,
@@ -1903,9 +2329,16 @@ class DesktopService {
             scene: clone(scene),
             cached_result: { ok: true, result: clone(output.result) },
             interaction_id: interaction?.id ?? null,
-            target_worker_id: authorized?.recipient?.personnel_id ?? chosen?.recipient?.personnel_id ?? chosen?.recipient?.id ?? null,
-            response_category: authorized?.reaction?.category ?? null,
-            fallback_text: authorized?.text ?? response
+            target_worker_id: authorizedResponses[0]?.id ?? null,
+            response_category: authorizedResponses[0]?.reaction?.category ?? null,
+            fallback_text: authorizedResponses[0]?.text ?? response,
+            player_event_id: playerDialogueEvent.id,
+            response_owners: responseOwners,
+            response_contexts: authorizedResponses.map((authorized) => ({
+              target_worker_id: authorized.id,
+              response_category: authorized.reaction?.category ?? null,
+              fallback_text: authorized.text
+            }))
           };
           entry.run.expedition.communication_receipts ??= [];
           entry.run.expedition.communication_receipts.push(receipt);
@@ -1918,7 +2351,7 @@ class DesktopService {
           entry.run._world = world; entry.phase = beforePhase;
           return publicError("PERSISTENCE_COMMIT_FAILED", "The action could not be saved and was not committed. Check the operation record storage before retrying.");
         }
-        if (authorized) Object.defineProperty(output, "_local_dialogue_context", { configurable:true, enumerable:false, value:{ run:entry.run, runId:entry.run.run_id, player_text:message, speaker:authorized.recipient, person:authorized.person, reaction_context:authorized.reaction_context, reaction:authorized.reaction, fallback_text:authorized.text, interaction, world, entry, requestId } });
+        if (authorizedResponses.length > 0) Object.defineProperty(output, "_local_dialogue_contexts", { configurable:true, enumerable:false, value:authorizedResponses.map((authorized) => ({ run:entry.run, runId:entry.run.run_id, player_text:message, speaker:authorized.recipient, person:authorized.person, reaction_context:authorized.reaction_context, reaction:authorized.reaction, fallback_text:authorized.text, interaction, world, entry, requestId, player_event_id:playerDialogueEvent.id, interpretation:localInterpretation, is_group:isGroup, recipient_type })) });
         return output;
       }
       const radio = expedition.equipment?.["survey-radio"];
@@ -2013,6 +2446,23 @@ class DesktopService {
           : cq4Day1Opener.getActionDuration("COMMUNICATE", { length: message.length > 100 ? "extended" : message.length < 25 ? "brief" : "normal" });
         cq4Day1Opener.advanceSimulationTime(entry.run, duration);
       }
+      const radioPlayerEvent = presentationBus.createDialogueEvent({
+        submission_id: requestId,
+        speaker_id: playerId,
+        speaker_name: "YOU",
+        speaker_title: "EXPEDITION LEAD",
+        recipient_type: "broadcast",
+        recipient_id: "standard-operations",
+        recipient_name: "STANDARD DESK",
+        channel: "STANDARD",
+        text: message,
+        kind: "radio",
+        source: presentationBus.SOURCES.DETERMINISTIC,
+        interval: expedition.clock.interval,
+        delivery: actuallyDelivered ? "delivered" : "not-delivered"
+      });
+      entry.run.expedition.dialogue_history ??= [];
+      entry.run.expedition.dialogue_history.push(radioPlayerEvent);
       presentationBus.emit(entry.run, {
         type: presentationBus.EVENT_TYPES.RADIO,
         source: presentationBus.SOURCES.DETERMINISTIC,
@@ -2022,6 +2472,22 @@ class DesktopService {
         text: message
       });
       if (radioCheckPhase && resolvedMessage.state === "acknowledged") {
+        const standardAckEvent = presentationBus.createDialogueEvent({
+          submission_id: requestId,
+          speaker_id: "standard-operations",
+          speaker_name: "STANDARD DESK",
+          speaker_title: "Operations Authority",
+          recipient_type: "broadcast",
+          recipient_id: playerId,
+          recipient_name: "YOU",
+          channel: "STANDARD",
+          text: "Standard acknowledgment received for Radio check.",
+          kind: "radio",
+          source: presentationBus.SOURCES.DETERMINISTIC,
+          interval: expedition.clock.interval,
+          delivery: "delivered"
+        });
+        entry.run.expedition.dialogue_history.push(standardAckEvent);
         presentationBus.emit(entry.run, {
           type: presentationBus.EVENT_TYPES.RADIO,
           source: presentationBus.SOURCES.DETERMINISTIC,
@@ -2034,6 +2500,7 @@ class DesktopService {
       if (entry.run?.spatial && ["FIELD_OPERATION", "RETURN"].includes(entry.phase?.phase_id)) {
         const spatialDefRadio = bootstrap.spatialDefinitionFor(entry.run.spatial_pack_id);
         try { decisionScheduler.scheduleDecisions(entry.run, spatialDefRadio, world); } catch (schedulerError) { this.log(`decision scheduler non-fatal: ${schedulerError.message}`); }
+        try { this.processAutonomousSpeech(world.world_id, entry.run.run_id); } catch (speechSchedulerError) { this.log(`speech scheduler non-fatal: ${speechSchedulerError.message}`); }
       }
       const publicReason = resolvedMessage.state === "delayed" ? resolvedMessage.interference?.public_description ?? "The transmission is delayed; no delivery confirmation has been received." : actuallyDelivered ? "The transmission was delivered. Standard acknowledgment remains separately recorded." : "The transmission is queued; delivery has not been confirmed.";
       const scene = this.sceneFor(entry, "field-researcher", { scene_type: "delta", accepted: true, action: "STANDARD", public_reason: publicReason }, world);
@@ -2509,6 +2976,7 @@ class DesktopService {
       if (entry.kind === "bootstrap" && entry.run.spatial && ["FIELD_OPERATION", "RETURN"].includes(entry.phase?.phase_id)) {
         const spatialDef = bootstrap.spatialDefinitionFor(entry.run.spatial_pack_id);
         try { decisionScheduler.scheduleDecisions(entry.run, spatialDef, world); } catch (schedulerError) { this.log(`decision scheduler non-fatal: ${schedulerError.message}`); }
+        try { this.processAutonomousSpeech(world.world_id, entry.run.run_id); } catch (speechSchedulerError) { this.log(`speech scheduler non-fatal: ${speechSchedulerError.message}`); }
       }
       try {
         if (mortality?.player_deceased) this.persistTerminalRetirement(world, mode, entry);
@@ -2648,7 +3116,7 @@ class DesktopService {
     }
     const promise = Promise.resolve().then(() => this.transactionContext.run(world_id, () => this.submitNaturalInternal({ ...input, request_id:requestId, input_fingerprint:fingerprint })));
     this.naturalTurnInflight.set(world_id, { id:requestId, fingerprint, promise });
-    try { return await promise; } finally { this.naturalTurnInflight.delete(world_id); }
+    try { return await promise; } finally { this.naturalTurnInflight.delete(world_id); this.giveAutonomousSpeechAnotherChance(world_id); }
   }
   async submitNaturalInternal({ world_id, mode, text, request_id, input_fingerprint }) {
     let world = null; let entry = null; let beforeRun = null; let beforeWorld = null; let beforePhase = null;
@@ -2886,6 +3354,7 @@ class DesktopService {
           if (entry.run?.spatial && ["FIELD_OPERATION", "RETURN"].includes(entry.phase?.phase_id)) {
             const spatialDefNat = bootstrap.spatialDefinitionFor(entry.run.spatial_pack_id);
             try { decisionScheduler.scheduleDecisions(entry.run, spatialDefNat, world); } catch (schedulerError) { this.log(`decision scheduler non-fatal: ${schedulerError.message}`); }
+            try { this.processAutonomousSpeech(world.world_id, entry.run.run_id); } catch (speechSchedulerError) { this.log(`speech scheduler non-fatal: ${speechSchedulerError.message}`); }
           }
           try {
             this.persistSession(world, mode, entry);
@@ -3031,6 +3500,7 @@ class DesktopService {
     }
   }
   shutdown() {
+    try { this.dialogueRuntime?.shutdown()?.catch(() => {}); } catch {}
     try { this.inferenceAppliance?.shutdown(); } catch {}
     for (const [key, entry] of this.sessions) { const [worldId, mode] = key.split(":"); if (this.recoveredWorlds.has(worldId)) continue; try { this.persistSession(this.getWorld(worldId), mode, entry); } catch (error) { this.log(`shutdown save failed: ${error.message}`); } }
     return { ok: true };

@@ -6,9 +6,11 @@
 const canonicalLedger = require("./canonical-world-ledger");
 const { projectLiveScene, projectObserverState } = require("./live-scene-projection");
 const { isParticipantOrListener, heardInitiatingUtterance, heardResponseUtterance, getAttitude, retrieveRelevantMemories } = require("./q4-personnel-continuity");
+const { interpretUtterance, resolveResponsePurpose, selectRelevantContext, resolveReportPurpose } = require("./dialogue-interpretation");
 
 const PACKET_VERSION = "yellow-beast-local-dialogue-packet@v1";
 const CANDIDATE_VERSION = "yellow-beast-local-dialogue-candidate@v1";
+const REPORT_PACKET_VERSION = "yellow-beast-observation-report-packet@v1";
 const FORBIDDEN_METADATA = /\b(?:canonical[_ -]?geometry|euclidean[_ -]?relation|overlap[_ -]?depth|future[_ -]?(?:event|schedule)|random[_ -]?seed|provider[_ -]?(?:model|metadata|prompt)|migration|debug|semantic[_ -]?(?:id|identifier)|canonical[_ -]?(?:family|type))\b/i;
 const FORBIDDEN_INTERNAL_ID = /\b(?:q4|yb-personnel|coordinated|open-passage|utility-room|clear-q4|actor|object|node|edge|fixture|entity)-[a-z0-9][a-z0-9:-]{3,}\b/i;
 const INVENTED_PLAYER = /\byou (?:say|said|speak|spoke|ask|asked|reply|replied|answer|answered|decide|decided|realize|realized|conclude|concluded|notice|noticed|walk|walked|run|ran|move|moved|arrive|arrived|turn|turned|reach|reached|inspect|inspected|measure|measured|photograph|photographed|take|took|use|used)\b/i;
@@ -53,34 +55,64 @@ function getRecentDialogue(expedition, playerId, speakerId, limit = 6, pendingIn
     const heardResp = heardResponseUtterance(entry, speakerId);
     if (!heardInit && !heardResp) continue;
 
-    results.push({
-      id: entry.id,
-      player_text: heardInit ? (entry.player_text ?? null) : null,
-      response: heardResp ? (entry.presentation?.response ?? entry.response ?? null) : null,
-      speaker: heardResp ? (entry.response_speaker ?? null) : null
-    });
+    // A committed group turn may carry several responders in
+    // entry.responses[] (canonical owner order). Represent each committed
+    // response as its own row rather than collapsing to the first one, so a
+    // later responder can see the full heard exchange, not just one line of
+    // it. The player utterance is attached once, to the first row, so it is
+    // never duplicated across responder rows.
+    const committed = heardResp && Array.isArray(entry.responses) && entry.responses.length > 0
+      ? entry.responses
+      : null;
+    if (committed) {
+      committed.forEach((item, index) => {
+        results.push({
+          id: entry.id,
+          player_text: index === 0 && heardInit ? (entry.player_text ?? null) : null,
+          response: item.text ?? null,
+          speaker: item.speaker_name ?? null
+        });
+      });
+    } else {
+      results.push({
+        id: entry.id,
+        player_text: heardInit ? (entry.player_text ?? null) : null,
+        response: heardResp ? (entry.presentation?.response ?? entry.response ?? null) : null,
+        speaker: heardResp ? (entry.response_speaker ?? null) : null
+      });
+    }
   }
   return results.slice(-limit);
 }
 
 function buildLocalDialoguePacket(context) {
-  const { run, player_text, speaker, person, reaction_context, reaction } = context;
+  const { run, player_text, speaker, person, reaction_context, reaction, interpretation: suppliedInterpretation } = context;
   const playerId = run.session.startup.player.observer_id;
   const speakerId = speaker.personnel_id ?? speaker.id;
+  const isGroup = context.is_group ?? false;
 
-  // Project the speaker's own observer mini-shell
+  // ── 1. Bounded interpretation (prefer supplied; derive if absent) ──────
+  const interpretation = (suppliedInterpretation?.version)
+    ? suppliedInterpretation
+    : interpretUtterance(String(player_text ?? "").trim(), { isGroup });
+
+  // ── 2. Response purpose — deterministic, not left to the model ─────────
+  const response_purpose = resolveResponsePurpose(interpretation, reaction?.category ?? "acknowledgment");
+
+  // ── 3. Observer projections ────────────────────────────────────────────
   const speakerProjected = projectObserverState(run, speakerId, "coworker-mini-shell");
   if (!speakerProjected.ok) throw new Error(speakerProjected.error?.code ?? "SPEAKER_OBSERVER_SHELL_UNAVAILABLE");
 
-  // Verify speaker and player are co-located in speaking range
   const playerProjected = projectLiveScene(run, { observer_id: playerId });
   if (!playerProjected.ok) throw new Error(playerProjected.error?.code ?? "PLAYER_LIVE_SCENE_UNAVAILABLE");
   const visibleSpeaker = playerProjected.packet.visible_personnel.find((item) => item.observer_id === speakerId);
   if (!visibleSpeaker) throw new Error("LOCAL_SPEAKER_NOT_VISIBLE");
 
+  // ── 4. Memory / fact retrieval with relevance filtering ───────────────
   const publicContinuity = person?.continuity ?? {};
   const recentDialogue = getRecentDialogue(run.expedition, playerId, speakerId, 6, context.interaction?.id);
-  const relevantMemories = retrieveRelevantMemories(person, run.expedition, {
+
+  const rawRelevantMemories = retrieveRelevantMemories(person, run.expedition, {
     queryText: player_text,
     speakerId,
     playerId,
@@ -88,14 +120,22 @@ function buildLocalDialoguePacket(context) {
     excludeRecent: recentDialogue
   });
 
-  const baseMemories = (person?.continuity?.dialogue_memories ?? []).slice(-10).map((m) => ({
+  const knownFacts = (speaker.known_information ?? []).filter((f) => f.kind !== "reported-knowledge" || f.source === "direct-observation");
+  const { relevant_memories, relevant_facts, forbidden_topics } = selectRelevantContext(
+    interpretation,
+    rawRelevantMemories,
+    knownFacts
+  );
+
+  // ── 5. Combine memories (relevant first, then recent base) ────────────
+  const baseMemories = (person?.continuity?.dialogue_memories ?? []).slice(-6).map((m) => ({
     player_text: m.player_text,
     response: m.response,
     sender: m.sender
   }));
 
   const memoryMap = new Map();
-  for (const rm of relevantMemories) {
+  for (const rm of relevant_memories) {
     const key = rm.id || `${rm.player_text}:${rm.response}`;
     memoryMap.set(key, {
       player_text: rm.player_text,
@@ -106,12 +146,11 @@ function buildLocalDialoguePacket(context) {
   }
   for (const bm of baseMemories) {
     const key = bm.id || `${bm.player_text}:${bm.response}`;
-    if (!memoryMap.has(key)) {
-      memoryMap.set(key, bm);
-    }
+    if (!memoryMap.has(key)) memoryMap.set(key, bm);
   }
   const combinedMemories = [...memoryMap.values()];
 
+  // ── 6. Relationship ───────────────────────────────────────────────────
   const attitude = getAttitude(person, playerId);
   const relationship = attitude ? {
     trust: attitude.trust,
@@ -120,6 +159,16 @@ function buildLocalDialoguePacket(context) {
     sentiment: attitude.sentiment,
     recent_attribution: attitude.attributions?.at(-1)?.reason ?? null
   } : null;
+
+  // ── 7. Assemble the model-facing packet ───────────────────────────────
+  // INVARIANT: Raw run object MUST NOT appear in any enumerable field.
+  // _run is strictly non-enumerable and used only by validators.
+
+  // Social speech acts receive a reduced operational context. The model only
+  // needs speaker identity and the social situation; visible objects, held
+  // equipment, current task, and qualifications anchor responses to factual
+  // content and are inappropriate for purely social exchanges.
+  const isSocialAct = ["joke_or_sarcasm", "greeting", "introduction", "acknowledgment", "social_observation"].includes(interpretation.speech_act);
 
   const packet = {
     version: PACKET_VERSION,
@@ -131,15 +180,29 @@ function buildLocalDialoguePacket(context) {
       player_speech_or_action_invention: "forbidden",
       hidden_state: "structurally-absent"
     },
-    player_message: { text: String(player_text ?? "").trim().slice(0, 2000), state: "delivered", channel: "LOCAL" },
+    player_message: {
+      text: String(player_text ?? "").trim().slice(0, 2000),
+      state: "delivered",
+      channel: "LOCAL"
+    },
+    // ── Bounded interpretation (model is told what kind of exchange this is) ──
+    player_speech_act: {
+      speech_act: interpretation.speech_act,
+      topic: interpretation.topic,
+      tone: interpretation.tone,
+      literal_question: interpretation.literal_question,
+      confidence: interpretation.confidence
+    },
     speaker: {
       observer_id: speakerId,
       known_identity: visibleSpeaker.known_identity,
       role: visibleSpeaker.role_if_known,
       visible_condition: visibleSpeaker.visible_condition,
-      current_task: reaction_context?.worker?.task ?? null,
-      held_equipment: reaction_context?.equipment ?? [],
-      qualifications: reaction_context?.worker?.qualifications ?? [],
+      // Operational task/equipment/qualifications suppressed for social acts
+      // to prevent the model from converting social remarks into briefings.
+      current_task: isSocialAct ? null : (reaction_context?.worker?.task ?? null),
+      held_equipment: isSocialAct ? [] : (reaction_context?.equipment ?? []),
+      qualifications: isSocialAct ? [] : (reaction_context?.worker?.qualifications ?? []),
       characterization: {
         archetype: person?.archetype ?? null,
         personality: person?.personality ?? null,
@@ -149,27 +212,133 @@ function buildLocalDialoguePacket(context) {
       tendencies: person?.continuity?.tendencies ?? reaction_context?.worker?.tendencies ?? {},
       relationship,
       memories: combinedMemories,
-      relevant_memories: relevantMemories.map((rm) => ({
+      relevant_memories: relevant_memories.map((rm) => ({
         player_text: rm.player_text,
         response: rm.response,
         sender: rm.sender ?? rm.speaker,
         at: rm.at
       })),
       recent_dialogue: recentDialogue,
-      shared_history: (publicContinuity.shared_history ?? []).filter((item) => item.participants?.includes(playerId)).slice(-4).map((item) => ({ kind: item.kind }))
+      shared_history: (publicContinuity.shared_history ?? [])
+        .filter((item) => item.participants?.includes(playerId))
+        .slice(-4)
+        .map((item) => ({ kind: item.kind }))
     },
+    // ── Relevant known facts (pre-filtered by selectRelevantContext) ──────
+    known_facts: relevant_facts.map((f) => ({
+      kind: f.kind ?? "reported-knowledge",
+      text: String(f.text ?? "").slice(0, 400)
+    })),
+    // ── Topics excluded from this response (model must not invent these) ──
+    forbidden_knowledge: forbidden_topics.length > 0 ? forbidden_topics : null,
+    // ── Already-accepted responses from earlier responders THIS canonical
+    // turn (owner order). Read-only: committed speech only, never a raw or
+    // uncommitted candidate. Lets a later responder avoid a verbatim repeat
+    // without being able to choose whether it responds or alter any fact.
+    same_turn_prior_responses: Array.isArray(context.same_turn_prior_responses)
+      ? context.same_turn_prior_responses.map((item) => ({
+          speaker_id: item.speaker_id ?? null,
+          speaker_name: item.speaker_name ?? null,
+          text: item.text ?? null
+        }))
+      : [],
     visible_context: {
       location: speakerProjected.packet.physical.location,
       environment: playerProjected.packet.visible_environment,
-      visible_objects: speakerProjected.packet.physical.visible_objects
+      // Visible objects suppressed for social acts: the object list provides
+      // operational texture that is irrelevant to social exchanges and can
+      // anchor the model to equipment/fixture details inappropriately.
+      visible_objects: isSocialAct ? [] : speakerProjected.packet.physical.visible_objects
     },
-    speaker_shell: speakerProjected.packet,
+    // speaker_shell elided for social acts (it duplicates the reduced speaker
+    // block and carries the full visible object list). Preserved for informational
+    // acts where the model may need location and equipment provenance detail.
+    speaker_shell: isSocialAct ? null : speakerProjected.packet,
     authorized_response: {
       category: reaction?.category ?? "acknowledgment",
-      purpose: reaction?.category === "warning" ? "state a bounded immediate warning" : reaction?.category === "question" ? "answer the question if known or ask a relevant clarification" : reaction?.category === "uncertainty" ? "state uncertainty without inventing facts" : "acknowledge the player's message and respond in character without inventing facts",
+      purpose: response_purpose,
       new_factual_claims: "forbidden"
     }
   };
+
+  const cloned = structuredClone(packet);
+
+  // _run is non-enumerable — never serialized, never JSON.stringify'd,
+  // never visible to the model. Used only by validateLocalDialogue.
+  Object.defineProperty(cloned, "_run", { configurable: true, enumerable: false, value: run });
+
+  // _dialogue_trace is non-enumerable, dev-only context for pipeline introspection.
+  Object.defineProperty(cloned, "_dialogue_trace", {
+    configurable: true,
+    enumerable: false,
+    value: Object.freeze({
+      raw_utterance: String(player_text ?? "").trim(),
+      interpretation: { ...interpretation },
+      response_purpose,
+      forbidden_topics,
+      relevant_facts_count: relevant_facts.length,
+      relevant_memories_count: relevant_memories.length,
+      reaction_category: reaction?.category ?? null
+    })
+  });
+
+  return deepFreeze(cloned);
+}
+
+// Sibling of buildLocalDialoguePacket for an autonomous NPC observation
+// report. Deliberately separate: the player-response packet requires
+// player_text and throws when the player cannot see the speaker, but an
+// autonomous report may legitimately be spoken with the player absent or
+// elsewhere. Everything the report says is authorized before this packet is
+// built (speech-scheduler.js's queue entry) -- the model only wordsmiths it.
+function buildObservationReportPacket(context) {
+  const { run, observer_id, feature_id, purpose, disposition } = context;
+  const member = canonicalLedger.getObserverMember(run, observer_id);
+  const speakerProjected = projectObserverState(run, observer_id, "coworker-mini-shell");
+  if (!speakerProjected.ok) throw new Error(speakerProjected.error?.code ?? "SPEAKER_OBSERVER_SHELL_UNAVAILABLE");
+
+  const obsEntry = run.observation_state?.observers?.[observer_id]?.features?.[feature_id] ?? null;
+  const kind = String(feature_id).split(":")[0];
+  const canonicalId = String(feature_id).slice(kind.length + 1);
+
+  const playerId = run.session?.startup?.player?.observer_id ?? null;
+  const heardHistory = playerId ? getRecentDialogue(run.expedition, playerId, observer_id, 4) : [];
+
+  const packet = {
+    version: REPORT_PACKET_VERSION,
+    audience: "autonomous-npc-report",
+    authority_contract: {
+      presentation: "candidate-only",
+      report_authorization: "speech-scheduler-only",
+      canonical_mutation: "forbidden",
+      player_speech_or_action_invention: "forbidden",
+      hidden_state: "structurally-absent"
+    },
+    speaker: {
+      observer_id,
+      known_identity: member?.first_name ?? member?.display_name ?? null,
+      role: member?.role ?? null
+    },
+    channel: "LOCAL",
+    physical_situation: {
+      location: speakerProjected.packet.physical.location,
+      visible_objects: speakerProjected.packet.physical.visible_objects
+    },
+    authorized_observation: {
+      kind,
+      subject: canonicalId,
+      state: obsEntry?.state ?? "RECOGNIZED",
+      recognized_via: obsEntry?.recognition?.qualification ?? null
+    },
+    report_purpose: {
+      purpose,
+      disposition,
+      wording_instruction: resolveReportPurpose(purpose)
+    },
+    heard_history: heardHistory,
+    forbidden_knowledge: ["canonical_geometry", "future_events", "other_observers_private_state", "provider_metadata"]
+  };
+
   const cloned = structuredClone(packet);
   Object.defineProperty(cloned, "_run", { configurable: true, enumerable: false, value: run });
   return deepFreeze(cloned);
@@ -419,8 +588,10 @@ function validateLocalDialogue(packet, candidate, runValue = null) {
 module.exports = {
   PACKET_VERSION,
   CANDIDATE_VERSION,
+  REPORT_PACKET_VERSION,
   getRecentDialogue,
   buildLocalDialoguePacket,
+  buildObservationReportPacket,
   validateLocalDialogue,
   validateDialogueClaims,
   validateSemanticClaims

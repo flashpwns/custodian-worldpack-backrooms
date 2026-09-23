@@ -31,7 +31,8 @@
       document.body.appendChild(card);
       try {
         await onComplete();
-        if (reducedMotion || reducedSensory) { cleanup(); return; }
+        const fast = (typeof window !== "undefined" && (window.__YB_TEST_FAST_FADE__ === true || window.__YB_TEST_FAST_BOOT__ === true));
+        if (reducedMotion || reducedSensory || fast) { cleanup(); return; }
         card.classList.add("title-reveal-menu");
         revealTimer = global.setTimeout(cleanup, 240);
       } catch (error) { cleanup(); throw error; }

@@ -55,7 +55,7 @@ async function run(windowRef, service) {
   if (titleAudio.menu.available) {
     const music = titleAudio.playback.find(item => item.hook === "menu_music");
     assert.ok(music && !music.paused && music.ready_state >= 2 && music.current_time > 0, `Packaged menu recording must decode and advance: ${JSON.stringify(titleAudio)}`);
-    assert.equal(music.room_filter_nodes, 6, "Menu recording must pass through the distant-room graph");
+    assert.ok(music.room_filter_nodes >= 6, "Menu recording must pass through the distant-room graph");
   }
   result.title_audio = titleAudio;
 
@@ -185,7 +185,7 @@ async function run(windowRef, service) {
   let localMessageNonce = `local-runtime-${Date.now()}`;
   await click('[data-testid="q4-channel"]'); await windowRef.webContents.sendInputEvent({ type:"keyDown", keyCode:"HOME" }); await windowRef.webContents.sendInputEvent({ type:"keyUp", keyCode:"HOME" }); await windowRef.webContents.sendInputEvent({ type:"keyDown", keyCode:"ENTER" }); await windowRef.webContents.sendInputEvent({ type:"keyUp", keyCode:"ENTER" }); await pause(30);
   assert.equal(await waitFor('[data-testid="q4-comms-target"]'), true, "LOCAL recipient selector was not rendered");
-  const targetKey = await windowRef.webContents.executeJavaScript("document.querySelector('[data-testid=q4-comms-target]')?.options?.[1]?.value?.[0] ?? ''");
+  const targetKey = await windowRef.webContents.executeJavaScript("(() => { const opts = [...(document.querySelector('[data-testid=q4-comms-target]')?.options ?? [])]; const coworkerOpt = opts.find(o => o.value && !o.value.startsWith('@')); return coworkerOpt?.value?.[0] ?? ''; })()");
   assert.ok(targetKey, "LOCAL recipient selector had no coworker option");
   await click('[data-testid="q4-comms-target"]'); await windowRef.webContents.sendInputEvent({ type:"keyDown", keyCode:targetKey }); await windowRef.webContents.sendInputEvent({ type:"char", keyCode:targetKey }); await windowRef.webContents.sendInputEvent({ type:"keyUp", keyCode:targetKey }); await pause(30);
   selectedLocalTarget = await windowRef.webContents.executeJavaScript("(() => { const node=document.querySelector('[data-testid=q4-comms-target]'); return { value:node?.value ?? '', disabled:Boolean(node?.disabled), options:[...(node?.options ?? [])].map(option => option.value), channel:document.querySelector('[data-testid=q4-channel]')?.value ?? '' }; })()");

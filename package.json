@@ -164,6 +164,10 @@
       "docs/ai-interface-contract.md",
       "docs/ai-provider.md"
     ],
+    "extraResources": [
+      { "from": "resources/llama", "to": "llama", "filter": ["**/*"] },
+      { "from": "resources/model", "to": "model", "filter": ["**/*"] }
+    ],
     "mac": {
       "target": [
         "zip"

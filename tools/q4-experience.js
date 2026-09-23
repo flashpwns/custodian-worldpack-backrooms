@@ -159,7 +159,7 @@ const evidence = (expedition?.evidence ?? []).map((item) => ({ id: item.id, miss
     standard: { available: standardAvailable, state: radioState.state, state_label: radioModel.label(expedition), endpoint: "Standard", operator: world ? standardOperator.projection(world) : null, unavailable_reason: standardAvailable ? null : standardReason, history: standardHistory }
   };
   const checkIn = timeModel.status(expedition);
-  const communication = communicationRuntime.project(expedition);
+  const communication = communicationRuntime.project(expedition, { playerId });
   const operationalClock = operationalTime.project(expedition);
   const hazardView = run.spatial_pack_id ? hazardRuntime.project(run, bootstrap.dynamicsDefinitionFor(run.spatial_pack_id)) : [];
   const location = run.spatial ? spatialRuntime.currentLocation(run.spatial, bootstrap.spatialDefinitionFor(run.spatial_pack_id)) : null;

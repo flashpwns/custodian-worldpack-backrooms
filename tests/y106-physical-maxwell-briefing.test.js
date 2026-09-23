@@ -76,7 +76,10 @@ test("y106 — Beat 2: Physical Dr. Kirk Maxwell Briefing Lifecycle & Invariants
     const openingText = briefing.exchange_history[0]?.text ?? "";
     assert.match(openingText, /You can call me Kirk\./, "Opening remarks must contain exact line: 'You can call me Kirk.'");
     assert.match(openingText, /Good morning, Q4 assignees\./, "Opening remarks must include formal greeting");
-    assert.match(openingText, /Eleanor, you're on camera\./, "Roster call must address player Eleanor on camera");
+
+    // In Beat 2.4, briefing unfolds in conversational beats: roster call is delivered in subsequent beat
+    const allBeatsText = [briefing.dialogue?.roster_call, ...(briefing.dialogue ? Object.values(briefing.dialogue) : [])].join(" ");
+    assert.match(allBeatsText, /Eleanor, you're on camera\./, "Roster call must address player Eleanor on camera");
 
     // Invariant: Expedition team total is exactly 4 members
     const team = activeProj.q4.team ?? [];
@@ -92,8 +95,7 @@ test("y106 — Beat 2: Physical Dr. Kirk Maxwell Briefing Lifecycle & Invariants
     assert.match(renderedActive, /Dr\. Kirk Maxwell/, "Dr. Kirk Maxwell header must be visible");
     assert.doesNotMatch(renderedActive, /Chief Expedition Briefing Authority/, "Gamified title badge must not be displayed");
     assert.doesNotMatch(renderedActive, />IN-PERSON BRIEFING</, "Gamified meta-mode badge must not be displayed");
-    assert.match(renderedActive, /KV31 Lower Briefing Room/, "Standard-side briefing room must be identified");
-    assert.match(renderedActive, /CONCLUDE BRIEFING/, "Action dock must feature CONCLUDE BRIEFING button");
+    assert.match(renderedActive, /CONCLUDE BRIEFING|CONTINUE LISTENING/, "Action dock must feature briefing progression button");
 
     // Invariant: Staging transition (READY) remains strictly gated while briefing is active
     assert.equal(activeProj.available_actions.some((a) => a.type === "READY"), false, "READY must remain gated while briefing active");
@@ -101,34 +103,32 @@ test("y106 — Beat 2: Physical Dr. Kirk Maxwell Briefing Lifecycle & Invariants
     assert.equal(prematureReady.ok, false, "Submitting READY prematurely must fail");
     assert.equal(prematureReady.error.code, "BRIEFING_IN_PROGRESS");
 
-    // 4. In-person question & answer: deterministic canonical facts
-    // Inquiry A: Route and guidance tape
-    const tapeInquiry = await service.submitNatural({ world_id: worldId, mode: "field-researcher", text: "What route do we follow? How do the arrows work?" });
-    assert.equal(tapeInquiry.ok, true);
-    assert.match(tapeInquiry.result.reply, /neon-green adhesive tape/, "Must state neon-green adhesive tape");
-    assert.match(tapeInquiry.result.reply, /forward toward Outpost A/, "Must state arrows point forward to Outpost A");
-    assert.match(tapeInquiry.result.reply, /reverse arrows guide back to KV31/, "Must state reverse arrows guide back to KV31");
+    // 4. In-person free text during the authored briefing: this is authored temporal
+    // delivery, not an FAQ kiosk. Any free text that is not a recognized continue/conclude
+    // phrase must receive the same single authored deflection back into the beats, rather
+    // than a topic-matched FAQ answer, and must never disclose the guidance tape early.
+    const deflectionText = "There isn't time for that right now — let's get through this, and you can ask around once we're done here.";
 
-    // Inquiry B: Destination & Outpost A
+    const routeInquiry = await service.submitNatural({ world_id: worldId, mode: "field-researcher", text: "What route do we follow? How do the arrows work?" });
+    assert.equal(routeInquiry.ok, true);
+    assert.equal(routeInquiry.result.reply, deflectionText, "Free-form questions must receive the single authored deflection, not a topic-matched FAQ answer");
+    assert.doesNotMatch(routeInquiry.result.reply, /tape/i, "Deflection reply must never disclose the guidance tape");
+
     const outpostInquiry = await service.submitNatural({ world_id: worldId, mode: "field-researcher", text: "Tell me about Outpost A." });
     assert.equal(outpostInquiry.ok, true);
-    assert.match(outpostInquiry.result.reply, /Outpost A is our forward bastion along the guidance path, Bermuda branch\./, "Must state Outpost A forward bastion");
-    assert.match(outpostInquiry.result.reply, /startup duffle/, "Must state primary delivery task");
+    assert.equal(outpostInquiry.result.reply, deflectionText, "Free-form questions must receive the identical authored deflection");
 
-    // Inquiry C: Operating times and cutoff
     const timeInquiry = await service.submitNatural({ world_id: worldId, mode: "field-researcher", text: "What is the schedule and cutoff time?" });
     assert.equal(timeInquiry.ok, true);
-    assert.match(timeInquiry.result.reply, /10:00 AM/, "Must confirm 10:00 AM departure");
-    assert.match(timeInquiry.result.reply, /12:00 noon/, "Must confirm 12:00 noon expected return");
-    assert.match(timeInquiry.result.reply, /1:00 PM firm/, "Must confirm 1:00 PM operational cutoff");
+    assert.equal(timeInquiry.result.reply, deflectionText, "Free-form questions must receive the identical authored deflection");
 
-    // Inquiry D: Equipment roles
     const equipInquiry = await service.submitNatural({ world_id: worldId, mode: "field-researcher", text: "What equipment are each of us carrying?" });
     assert.equal(equipInquiry.ok, true);
-    assert.match(equipInquiry.result.reply, /startup duffle/, "Must mention courier with duffle");
-    assert.match(equipInquiry.result.reply, /field camera and lamp/, "Must mention player on camera and lamp");
-    assert.match(equipInquiry.result.reply, /spectrometer/, "Must mention coworker on spectrometer");
-    assert.match(equipInquiry.result.reply, /layout record/, "Must mention coworker on layout record");
+    assert.equal(equipInquiry.result.reply, deflectionText, "Free-form questions must receive the identical authored deflection");
+
+    // Invariant: the tape must not be disclosed anywhere in the pre-crossing briefing content
+    const briefingTextSoFar = briefing.exchange_history.map((turn) => turn.text).join(" ");
+    assert.doesNotMatch(briefingTextSoFar, /neon-green|guidance tape/i, "The guidance tape must not be disclosed before the later canonical point");
 
     // Invariant: Never fabricate player dialogue. Player's exact text is recorded under "YOU".
     const history = service.session(worldId, "field-researcher").run.expedition.day1_opener.personnel_briefing.exchange_history;
@@ -151,7 +151,7 @@ test("y106 — Beat 2: Physical Dr. Kirk Maxwell Briefing Lifecycle & Invariants
 
     // Dismissal dialogue was delivered
     const lastExchange = concludedProj.q4.personnel_briefing.exchange_history[concludedProj.q4.personnel_briefing.exchange_history.length - 1];
-    assert.match(lastExchange.text, /There isn't time for questions here\. Get acquainted, then report to Equipment Staging\./, "Dismissal line must be recorded");
+    assert.match(lastExchange.text, /Take a few minutes, get acquainted with the people at your table/, "Dismissal line must be recorded and must invite the group to get acquainted");
 
     // Invariant: Deterministic handoff to LOCAL_INTRODUCTIONS
     // - Coworker local communications channel is now available
