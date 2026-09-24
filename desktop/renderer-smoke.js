@@ -108,7 +108,9 @@ async function run(windowRef, service) {
   await click('#settings button[type="submit"]'); await waitForText('#settings-message', "saved and applied");
   const localSaved = await windowRef.webContents.executeJavaScript("window.yellowBeast.getSettings()");
   assert.equal(localSaved.settings.provider, "local");
-  assert.equal(localSaved.settings.local_model, localNonce);
+  // Settings schema v8: the managed inference appliance owns the local model; a typed model name is
+  // accepted by the form but never persisted, so no save can point the runtime at an unpinned model.
+  assert.equal(localSaved.settings.local_model, require("../tools/ai-local-model-provider").LOCAL_PROVIDER_SPEC.defaultModel);
 
   // These are test-only keys in the launcher's isolated profile. Never send
   // them to a provider: this section proves native storage/menu interactions.
@@ -412,6 +414,6 @@ async function run(windowRef, service) {
     assert.equal(service.getWorld(world.id).q4_operations.terminal_outcome.outcome, "catastrophic-failure");
     console.log(JSON.stringify({ catastrophic_native_record:"passed", newspaper:"visible", title_return:"passed", reopen_terminal:"passed" }));
   }
-  console.log(JSON.stringify({ renderer_settings_smoke:"passed", packaged_native_input:"passed", provider_manager:"native_local_select_and_hosted_key_lifecycle_verified", local_model:localNonce, natural_command:naturalCommandEvidence, local_recipient:selectedLocalTarget.value, controls:controls.length }, null, 2)); await pause(20); app.exit(0);
+  console.log(JSON.stringify({ renderer_settings_smoke:"passed", packaged_native_input:"passed", provider_manager:"native_local_select_and_hosted_key_lifecycle_verified", local_model_override_ignored:localNonce, natural_command:naturalCommandEvidence, local_recipient:selectedLocalTarget.value, controls:controls.length }, null, 2)); await pause(20); app.exit(0);
 }
 module.exports = { run };
