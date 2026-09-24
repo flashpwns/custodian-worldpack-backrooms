@@ -1,8 +1,8 @@
-Gemma 4 E4B instruction-tuned (GGUF, Q4_K_M) -- model weights used by the Yellow Beast local dialogue runtime
-Model: google/gemma-4-E4B-it by Google DeepMind (https://huggingface.co/google/gemma-4-E4B-it), distributed under the Apache License, Version 2.0
-(https://ai.google.dev/gemma/docs/gemma_4_license). Use is also subject to Google's Gemma Prohibited Use Policy.
-GGUF quantization: https://huggingface.co/unsloth/gemma-4-E4B-it-GGUF (revision bfc15c382204943c3a8fff0c750b94ae2364d7a3), by Unsloth.
+Qwen3-4B (GGUF, Q4_K_M) -- model weights used by the Yellow Beast local dialogue runtime
+Copyright Alibaba Cloud / Qwen Team. Distributed under the Apache License, Version 2.0.
+Upstream: https://huggingface.co/Qwen/Qwen3-4B-GGUF (revision bc640142c66e1fdd12af0bd68f40445458f3869b)
 The weights are redistributed unmodified apart from format/quantization by the upstream publisher.
+
 
                                  Apache License
                            Version 2.0, January 2004
