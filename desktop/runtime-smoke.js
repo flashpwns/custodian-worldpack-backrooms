@@ -21,7 +21,15 @@ async function run(service) {
   for (let waited = 0; waited < 240000; waited += 500) {
     status = service.getInferenceApplianceStatus().appliance;
     if (status.state === "READY" && status.endpoint) break;
-    if (["REPAIR_REQUIRED", "UNSUPPORTED"].includes(status.state)) throw new Error(`local dialogue runtime failed: ${status.state}`);
+    if (status.state === "UNSUPPORTED" && status.hardware?.supported === false) {
+      // Below the on-device hardware floor the packaged application correctly declines local wording and
+      // dialogue uses the same-plan deterministic fallback. Reported as such -- never as READY.
+      service.shutdown();
+      await pause(500);
+      console.log(JSON.stringify({ runtime_smoke: "below-hardware-floor", state: status.state, memory_gb: status.hardware.memory_gb, arch: status.hardware.arch }));
+      return;
+    }
+    if (["REPAIR_REQUIRED", "UNSUPPORTED"].includes(status.state)) throw new Error(`local dialogue runtime failed: ${status.state} (${status.message ?? "no status message"})`);
     await pause(500);
   }
   if (status?.state !== "READY") throw new Error(`local dialogue runtime did not reach READY (${status?.state})`);

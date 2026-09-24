@@ -69,5 +69,12 @@ if (runtimePinned) {
   const runtime = runIsolated("runtime", "--runtime-smoke", /runtime_smoke/, 300000);
   const orphans = serverPids().filter((pid) => !pidsBefore.has(pid));
   assert.deepEqual(orphans, [], `packaged app left orphan runtime process(es): ${orphans.join(",")}`);
-  console.log(JSON.stringify({ packaged_runtime: "passed", runtime_binary_bundled: true, model_matches_pin: true, ready_loopback: true, orphan_processes: 0, profile: runtime.profile }, null, 2));
+  // A build machine below the product's on-device floor (e.g. a 7 GB CI runner) cannot boot the model; the
+  // app then truthfully reports UNSUPPORTED and uses deterministic dialogue. Bundling and pin integrity
+  // were still verified above; the READY + loopback proof requires supported hardware.
+  const belowFloor = /"runtime_smoke":"below-hardware-floor"/.test(runtime.output);
+  const floorReport = belowFloor ? JSON.parse(runtime.output.match(/\{"runtime_smoke":"below-hardware-floor"[^\n]*\}/)[0]) : null;
+  console.log(JSON.stringify(belowFloor
+    ? { packaged_runtime: "hardware-below-floor", runtime_binary_bundled: true, model_matches_pin: true, ready_loopback: "not-exercised", memory_gb: floorReport.memory_gb, orphan_processes: 0, profile: runtime.profile }
+    : { packaged_runtime: "passed", runtime_binary_bundled: true, model_matches_pin: true, ready_loopback: true, orphan_processes: 0, profile: runtime.profile }, null, 2));
 } else console.log(JSON.stringify({ packaged_runtime: "not-bundled", reason: `no pinned local runtime for ${require("./fetch-runtime-resources").platformKey()}` }, null, 2));
