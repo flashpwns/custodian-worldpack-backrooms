@@ -16,7 +16,7 @@
 //  - Wording lives in dialogue-fallback; nothing in this module reads wording.
 //  - planResponses consumes owners; it never adds, removes or reorders speakers.
 
-const { interpretUtterance, detectTopic, parseNamedAddress, LANGUAGE_PATTERNS: LP } = require("./dialogue-interpretation");
+const { interpretUtterance, detectTopic, parseNamedAddress, selfStateQuery, LANGUAGE_PATTERNS: LP } = require("./dialogue-interpretation");
 const canonLexicon = require("./canon-lexicon");
 
 const DISCOURSE_VERSION = "yellow-beast-dialogue-discourse@v2";
@@ -36,7 +36,12 @@ const DISCOURSE_FUNCTIONS = Object.freeze([
   // Bounded additions so every utterance lands on an explicit function.
   "check_in", "make_request", "make_statement",
   // The player asks whether listeners heard the PLAYER's own preceding words.
-  "ask_heard_confirmation"
+  "ask_heard_confirmation",
+  // "What's next?": the current procedure, from canonical phase/briefing authority only.
+  "ask_next_step",
+  // "Why?" / "What makes you say that?": the reason for the speaker's own preceding line, taken from
+  // the semantic basis that line was authorized with -- never a rationale invented afterwards.
+  "ask_explanation"
 ]);
 
 const EXPECTED_SHAPES = Object.freeze({
@@ -60,7 +65,9 @@ const EXPECTED_SHAPES = Object.freeze({
   check_in: "short_social_acknowledgment",
   make_request: "brief_request_response",
   make_statement: "brief_conversational_response",
-  ask_heard_confirmation: "brief_hearing_confirmation"
+  ask_heard_confirmation: "brief_hearing_confirmation",
+  ask_next_step: "brief_procedure_answer",
+  ask_explanation: "brief_basis_explanation"
 });
 
 const REQUESTED_CONTENT = Object.freeze({
@@ -70,13 +77,15 @@ const REQUESTED_CONTENT = Object.freeze({
   ask_personal_experience: "personal_experience",
   clarify_previous: "preceding_exchange",
   request_repetition: "preceding_utterance",
-  ask_heard_confirmation: "hearing_confirmation"
+  ask_heard_confirmation: "hearing_confirmation",
+  ask_next_step: "current_procedure",
+  ask_explanation: "basis_of_preceding_line"
 });
 
 // Functions whose reply is socially obliged once the speaker heard the line,
 // independent of the salience-based reaction system and of any wording.
 const ANSWERABLE_QUESTIONS = new Set(["ask_factual", "ask_personal_experience", "challenge", "make_request"]);
-const OBLIGATING_FUNCTIONS = new Set(["invite_self_description", "ask_role_or_assignment", "clarify_previous", "request_repetition", "ambiguous_reference"]);
+const OBLIGATING_FUNCTIONS = new Set(["invite_self_description", "ask_role_or_assignment", "clarify_previous", "request_repetition", "ambiguous_reference", "ask_next_step", "ask_explanation"]);
 
 /**
  * Pure deterministic eligibility rule (listener state is the caller's input;
@@ -98,6 +107,11 @@ function frameObligatesResponse(frame, responder_id = null, { recipient_type = n
   }
   // Greetings and introductions are socially answered by someone who heard them.
   if (fn === "greet" || fn === "introduce_self") return true;
+  // A question about the listeners' own feelings, asked of them directly or as a group, is theirs to
+  // answer (each answer is individual; ownership decides how many speak).
+  if (fn === "check_in" && (recipient_type === "group" || recipient_type === "direct")) return true;
+  // Answering a clarification ("Which thing?" -> "I mean the camera.") obliges the one who asked it.
+  if (frame?.resumed_question?.responder_ids?.length && fn !== "ask_item_ownership") return frame.resumed_question.responder_ids.includes(responder_id);
   // "Did anyone hear what I said?" is answered by a listener who heard it; the
   // per-listener hearing check belongs to the caller (listener state, not wording).
   if (fn === "ask_heard_confirmation") return true;
@@ -124,7 +138,16 @@ const scopeOf = (recipientType) => (recipientType === "direct" ? "direct" : reci
  * count as exchanges. Only same-location turns within `max_interval_gap`
  * simulation intervals count, at most `window` of them.
  */
-function deriveDiscourseState({ interaction_history = [], dialogue_history = [], player_id, location_id = null, current_interval = null, window = RECENT_TURN_WINDOW, max_interval_gap = MAX_INTERVAL_GAP, equipment = null } = {}) {
+function deriveDiscourseState({ interaction_history = [], dialogue_history = [], player_id, location_id = null, current_interval = null, window = RECENT_TURN_WINDOW, max_interval_gap = MAX_INTERVAL_GAP, equipment = null, receipts = [] } = {}) {
+  // WHY each committed line was said: the plan it was authorized with, persisted in the turn's
+  // communication receipt (never the wording). Keyed by submission, then speaker.
+  const basisBySubmission = new Map();
+  for (const receipt of receipts ?? []) {
+    if (!receipt?.id || !Array.isArray(receipt.response_contexts)) continue;
+    const bases = {};
+    for (const context of receipt.response_contexts) if (context?.target_worker_id && context.response_plan) bases[context.target_worker_id] = responseBasisFromPlan(context.response_plan, context.semantic_frame ?? null);
+    basisBySubmission.set(receipt.id, bases);
+  }
   const bySubmission = new Map();
   for (const event of dialogue_history ?? []) {
     if (!event?.submission_id) continue;
@@ -153,7 +176,8 @@ function deriveDiscourseState({ interaction_history = [], dialogue_history = [],
     const interval = intervalOf(item.submission_id);
     if (current_interval != null && interval != null && current_interval - interval > max_interval_gap) break; // stale
 
-    const responses = committed.map((e) => ({ speaker_id: e.speaker_id, speaker_name: e.speaker_name ?? null, text: cap(e.text) }));
+    const bases = basisBySubmission.get(item.submission_id) ?? {};
+    const responses = committed.map((e) => ({ speaker_id: e.speaker_id, speaker_name: e.speaker_name ?? null, text: cap(e.text), basis: bases[e.speaker_id] ?? null }));
     const responderIds = [...new Set(committed.map((e) => e.speaker_id))];
     const playerText = isPlayerTurn ? cap(item.player_text) : null;
     // Interpretation of a prior turn uses the same residual-utterance rule as the
@@ -193,11 +217,15 @@ function deriveDiscourseState({ interaction_history = [], dialogue_history = [],
     const priorFrame = buildSemanticFrame({ text: residual, recipient_type: turn.recipient_type ?? "none", equipment: equipment ?? {}, discourse: { pending_question: openQuestion, last_item_referent: itemSoFar, turns: [] } });
     const priorItem = (priorFrame.referents ?? []).find((ref) => ref.type === "equipment" && ref.resolved) ?? null;
     turn.discourse_function = priorFrame.discourse_function ?? null;
+    turn.resolved_utterance = priorFrame.resolved_utterance ?? null;
     turn.item_referent = priorItem ? { id: priorItem.id, label: priorItem.label } : null;
-    turn.awaiting_clarification = Boolean(priorFrame.unresolved_reference) && committedCount > 0;
+    // The reply itself is the authority on whether a clarification was asked: its recorded basis when
+    // the receipt exists, the re-derived frame otherwise (older saves).
+    const recordedBases = turn.responses.map((r) => r.basis).filter(Boolean);
+    turn.awaiting_clarification = committedCount > 0 && (recordedBases.length ? recordedBases.some((b) => b.kind === "clarification") : Boolean(priorFrame.unresolved_reference));
     if (turn.item_referent) itemSoFar = turn.item_referent;
     openQuestion = turn.awaiting_clarification && QUESTION_FUNCTIONS_RESUMABLE.has(turn.discourse_function)
-      ? { discourse_function: turn.discourse_function, player_text: turn.player_text, interaction_id: turn.interaction_id, responder_ids: [...turn.responder_ids] }
+      ? { discourse_function: turn.discourse_function, player_text: priorFrame.resolved_utterance ?? turn.player_text, interaction_id: turn.interaction_id, responder_ids: [...turn.responder_ids] }
       : null;
   }
 
@@ -229,12 +257,17 @@ function deriveDiscourseState({ interaction_history = [], dialogue_history = [],
     last_responder_ids: last?.responder_ids ?? [],
     last_response_texts: (last?.responses ?? []).map((r) => r.text),
     pending_question: pending,
+    // The player's immediately preceding question when it was ANSWERED (not clarified): the target of an
+    // explicit self-repair ("I mean for the day").
+    last_question: last && last.kind === "player_exchange" && !last.awaiting_clarification && (last.responses ?? []).length && QUESTION_FUNCTIONS_RESUMABLE.has(last.discourse_function)
+      ? { discourse_function: last.discourse_function, player_text: last.resolved_utterance ?? last.player_text, interaction_id: last.interaction_id, responder_ids: [...last.responder_ids] }
+      : null,
     last_item_referent: lastItem
   });
 }
 
 // Questions a clarification exchange can be resumed into once the missing referent is named.
-const QUESTION_FUNCTIONS_RESUMABLE = new Set(["ask_item_ownership", "make_request", "ask_factual", "ambiguous_reference"]);
+const QUESTION_FUNCTIONS_RESUMABLE = new Set(["ask_item_ownership", "make_request", "ask_factual", "ambiguous_reference", "ask_next_step", "ask_personal_experience", "ask_explanation", "check_in"]);
 
 // ─── 2. Scope inheritance ───────────────────────────────────────────────────
 /**
@@ -305,6 +338,11 @@ function resolveAntecedent({ discourse_function, discourse, referents = [] } = {
     while (index > 0 && ["clarify_previous", "request_repetition"].includes(turns[index]?.discourse_function) && turns[index - 1]?.responses?.length) index -= 1;
     const target = turns[index] ?? last;
     return resolveFromTurn(discourse_function, target);
+  }
+  if (discourse_function === "ask_explanation") {
+    // "Why?" asks about the immediately preceding heard replies -- never an older topic.
+    if (!last || !(last.responses ?? []).length) return { type: "none", resolved: false, reason: "no_preceding_reply" };
+    return { ...resolveFromTurn(discourse_function, last), type: "prior_response" };
   }
   const item = referents.find((r) => r.type === "equipment");
   if (item) return { type: "equipment_entity", resolved: item.resolved !== false, entity_id: item.id ?? null };
@@ -401,10 +439,15 @@ function buildSemanticFrame({ text, recipient_type = "none", interpretation = nu
   const isQuestion = LP.question_like.test(raw);
 
   const ownership = LP.item_ownership.test(raw) && LP.item_noun.test(raw);
+  // A question about the listener's OWN current feeling: answered from canonical self-state.
+  const selfQuery = selfStateQuery(raw);
 
   if (LP.bare_reaction.test(raw)) fn = "clarify_previous";
   else if (LP.repetition_request.test(raw)) fn = "request_repetition";
   else if (LP.heard_confirmation.test(raw)) fn = "ask_heard_confirmation";
+  else if (LP.explanation_request.test(raw)) fn = "ask_explanation";
+  else if (LP.next_step.test(raw)) fn = "ask_next_step";
+  else if (selfQuery && !ownership) fn = "check_in";
   else if (LP.ambiguous_reference.test(raw)) { fn = "ambiguous_reference"; unresolved = true; }
   else if (ownership) fn = "ask_item_ownership";
   else if (LP.invite_self_description.test(raw)) fn = "invite_self_description";
@@ -451,7 +494,7 @@ function buildSemanticFrame({ text, recipient_type = "none", interpretation = nu
   // ── Anaphora: "Who has it?" / "Is it here?" points back to the last resolved item of THIS
   // conversation (canonical antecedent), never to a guess. No antecedent -> clarification.
   let resumed = null;
-  if (!referents.length && isQuestion && LP.item_anaphor.test(raw) && !["clarify_previous", "request_repetition", "ask_heard_confirmation"].includes(fn)) {
+  if (!referents.length && isQuestion && LP.item_anaphor.test(raw) && !["clarify_previous", "request_repetition", "ask_heard_confirmation", "ask_explanation", "ask_next_step", "check_in"].includes(fn)) {
     const ante = discourse?.last_item_referent ?? null;
     const item2 = ante ? Object.values(equipment ?? {}).find((entry) => entry && (entry.id === ante.id)) ?? null : null;
     if (item2) {
@@ -479,11 +522,28 @@ function buildSemanticFrame({ text, recipient_type = "none", interpretation = nu
     }
   }
 
+  // ── Repair of an open clarification in general ("What's next?" -> "What do you mean?" -> "I mean for
+  // the day"; "Is that door open?" -> "Which door?" -> "No, the other one."). The fragment NARROWS the
+  // open question: the question is re-framed with the fragment added, by the same rules as any turn. If
+  // it still does not resolve, the result is another clarification -- never a guess, never a fresh
+  // disconnected statement.
+  // The same holds for an explicit self-repair of the player's own just-ANSWERED question ("What's next?"
+  // -> answer -> "I mean for the day"): the question is re-asked, narrowed.
+  const repairTarget = pending ?? (LP.self_repair_lead.test(raw) ? discourse?.last_question ?? null : null);
+  if (repairTarget && !resumed && repairTarget.player_text && LP.repair_fragment.test(raw) && ["make_statement", "acknowledge", "ambiguous_reference", "make_request", "express_uncertainty", "social_observation"].includes(fn)) {
+    const core = raw.replace(LP.repair_lead, "").replace(/[.!?\s]+$/, "").trim();
+    const combined = `${String(repairTarget.player_text).replace(/[?.!\s]+$/, "")} ${core}?`;
+    const reframed = buildSemanticFrame({ text: combined, recipient_type, discourse: { ...(discourse ?? {}), pending_question: null, last_question: null }, equipment, scope_inherited, spatial_selection, temporal_anchors, now });
+    if (!["make_statement", "acknowledge"].includes(reframed.discourse_function)) {
+      return Object.freeze({ ...reframed, resolved_utterance: combined, resumed_question: { player_text: repairTarget.player_text, interaction_id: repairTarget.interaction_id, responder_ids: [...(repairTarget.responder_ids ?? [])] } });
+    }
+  }
+
   // ── Spatial deixis: "that door" / "What's this?" is resolved only by a deterministic selection
   // (player-selected target / future spatial runtime event); otherwise it stays unresolved and the
   // turn becomes a clarification. Prose intuition never resolves it.
   const deictic = raw.match(LP.deictic_object);
-  if ((deictic || LP.bare_demonstrative.test(raw)) && !referents.some((ref) => ref.resolved) && !["clarify_previous", "request_repetition", "ask_heard_confirmation", "close_topic", "greet", "introduce_self", "acknowledge", "joke_or_sarcasm", "warn"].includes(fn)) {
+  if ((deictic || LP.bare_demonstrative.test(raw)) && !referents.some((ref) => ref.resolved) && !["clarify_previous", "request_repetition", "ask_heard_confirmation", "close_topic", "greet", "introduce_self", "acknowledge", "joke_or_sarcasm", "warn", "ask_explanation", "ask_next_step", "check_in"].includes(fn)) {
     const noun = deictic ? deictic[1].toLowerCase() : null;
     const selection = resolveSpatialSelection(spatial_selection, noun);
     if (selection) referents.push({ type: "spatial", id: selection.entity_id, label: selection.label, kind: selection.kind, resolved: true, source: "spatial_selection" });
@@ -522,13 +582,19 @@ function buildSemanticFrame({ text, recipient_type = "none", interpretation = nu
     request_kind: fn === "make_request" ? ((LP.handoff_request.test(raw) || LP.take_grab.test(raw)) && referents.some((ref) => ref.type === "equipment") ? "handoff" : (LP.order_imperative.test(raw) ? "order" : "general")) : null,
     temporal_reference: temporal,
     resumed_question: resumed,
+    // "Are you excited?": which feeling was asked about; the answer comes from canonical self-state.
+    self_state_query: fn === "check_in" ? selfQuery : null,
+    // "What's next (for the day)?": the span of procedure asked about, when stated.
+    procedure_scope: fn === "ask_next_step" ? (/\b(?:for (?:the day|today)|today|this morning)\b/i.test(raw) ? "day" : "current") : null,
+    // The utterance actually framed (a repair fragment combined with the question it narrows).
+    resolved_utterance: null,
     tone: interp.tone,
     confidence: interp.confidence,
     unresolved_reference: unresolved
   };
 
   frame.antecedent = resolveAntecedent({ discourse_function: fn, discourse, referents });
-  if (!frame.antecedent.resolved && (fn === "clarify_previous" || fn === "request_repetition" || fn === "ask_heard_confirmation")) {
+  if (!frame.antecedent.resolved && (fn === "clarify_previous" || fn === "request_repetition" || fn === "ask_heard_confirmation" || fn === "ask_explanation")) {
     // Nothing to clarify or repeat: never guess. Degrade to a clarification request.
     frame.unresolved_reference = true;
     frame.expected_response_shape = EXPECTED_SHAPES.ambiguous_reference;
@@ -633,7 +699,7 @@ function toKnownAnswerFact(resolved) {
   return null;
 }
 
-function buildSelfKnowledge({ person = null, member = null, task = null, held_equipment = [], relationships = [], known_facts = [], known_answer = null, names = {}, equipment = {}, player_id = null, custody_known = {}, self_state = null } = {}) {
+function buildSelfKnowledge({ person = null, member = null, task = null, held_equipment = [], relationships = [], known_facts = [], known_answer = null, names = {}, equipment = {}, player_id = null, custody_known = {}, self_state = null, procedure = null } = {}) {
   const source = person ?? member ?? {};
   const substrate = source.identity_substrate ?? null;
   return Object.freeze({
@@ -651,6 +717,8 @@ function buildSelfKnowledge({ person = null, member = null, task = null, held_eq
     custody_known: { ...custody_known },
     // Canonical self-state (from the emotional-state authority): what a check-in answer may say.
     self_state: self_state ? { state: self_state.state, affect: [...(self_state.affect ?? [])] } : null,
+    // The current procedure THIS speaker knows (from canonical phase/briefing authority), or null.
+    procedure: procedure ? { current_step: procedure.current_step ?? null, next_step: procedure.next_step ?? null, source: procedure.source ?? null } : null,
     known_facts: known_facts.map((f) => ({ kind: f.kind ?? null, text: cap(f.text, FACT_TEXT_CAP) })).filter((f) => f.text)
   });
 }
@@ -682,8 +750,52 @@ const PURPOSES = Object.freeze({
   check_in: "answer the social check-in briefly for yourself only; add no operational facts",
   make_request: "respond to the request in character using only supplied required_facts",
   make_statement: "respond conversationally only if warranted; do not interrogate",
-  ask_heard_confirmation: "confirm plainly that you heard what they just said; you may briefly acknowledge what they said but add no interpretation, urgency, motive or action, and do not ask whether anyone heard you"
+  ask_heard_confirmation: "confirm plainly that you heard what they just said; you may briefly acknowledge what they said but add no interpretation, urgency, motive or action, and do not ask whether anyone heard you",
+  ask_next_step: "state the current next step exactly as supplied; if none is supplied, ask what they mean; do not invent a plan",
+  ask_explanation: "explain your previous line using only the supplied basis; do not invent a reason, experience, danger or plan"
 });
+
+/**
+ * The answer a canonical self-state gives to a question about one feeling. Canonical affect is the only
+ * authority: an ordinary state holds no elevated feeling (so "excited?" / "nervous?" is "not especially"),
+ * and a moved state answers with what actually moved.
+ */
+function selfStateAnswer(query, selfState) {
+  if (!query || !selfState) return null;
+  const keys = (selfState.affect ?? []).map((a) => (/tired/i.test(a) ? "tired" : /tense|stress/i.test(a) ? "tense" : /pressed|time/i.test(a) ? "pressed" : null)).filter(Boolean);
+  const affected = selfState.state === "affected" && keys.length > 0;
+  let answer;
+  if (query.asked === "wellbeing") answer = affected ? "affected" : "fine";
+  else if (query.asked === "tense" || query.asked === "tired") answer = keys.includes(query.asked) ? "yes" : (affected ? "affected_instead" : "not_especially");
+  else answer = affected ? "affected_instead" : "not_especially"; // positive affect is never canonically established
+  return Object.freeze({ asked: query.asked, polarity: query.polarity, answer, affect: affected ? keys : [] });
+}
+
+/**
+ * WHY a committed line was authorized, derived from the plan it was worded from (persisted in the turn's
+ * receipt). This is the only thing an explanation request may explain; wording is never the basis.
+ */
+function responseBasisFromPlan(plan, frame = null) {
+  if (!plan) return null;
+  const fn = plan.discourse_function;
+  const facts = plan.required_facts ?? [];
+  const value = (key) => facts.find((f) => f.key === key)?.value ?? null;
+  if (value("explanation_basis")) return value("explanation_basis");
+  if (fn === "check_in" || value("self_state")) {
+    const self = value("self_state");
+    if (self) return { kind: "self_state", state: self.state, affect: [...(self.affect ?? [])], answer: value("self_state_answer")?.answer ?? null };
+  }
+  if (value("current_procedure")) return { kind: "briefing_instruction", ...value("current_procedure") };
+  if (value("item_holder")) return { kind: "custody", ...value("item_holder") };
+  if (value("known_answer") || facts.some((f) => f.key === "known_fact")) return { kind: "known_information", facts: facts.filter((f) => f.key === "known_fact").map((f) => f.value?.text).filter(Boolean).slice(0, 2), known_answer: value("known_answer") };
+  if (value("heard_confirmation")) return { kind: "heard", heard: value("heard_confirmation").heard !== false };
+  if (value("antecedent_responses")) return { kind: "restatement" };
+  if (value("request_disposition")) return { kind: "request_policy", disposition: value("request_disposition").disposition };
+  if (value("name") || value("role") || value("current_assignment")) return { kind: "assignment", role: value("role"), assignment: value("current_assignment") };
+  if (plan.may_ask_clarifying_question) return { kind: "clarification" };
+  if (["ask_factual", "ask_personal_experience", "challenge", "ask_next_step"].includes(fn)) return { kind: "no_known_fact", past_perception: Boolean(frame?.past_perception) };
+  return { kind: "social", discourse_function: fn };
+}
 
 /** Known facts relevant to the frame's topic; an unknown topic dumps nothing. */
 function selectKnownFacts(frame, knownFacts = [], limit = 3) {
@@ -774,6 +886,19 @@ function planResponses({ frame, owner_ids = [], responders = {}, names = {} } = 
     }
     // A check-in, or a remark about the speaker's own look, is answered from canonical self-state only.
     if ((fn === "check_in" || (fn === "social_observation" && frame.about_addressee)) && self?.self_state) required.push({ key: "self_state", value: self.self_state });
+    // A question about ONE feeling ("Excited?", "Nervous?") gets the stance that canonical state gives.
+    if (fn === "check_in" && frame.self_state_query && self?.self_state) required.push({ key: "self_state_answer", value: selfStateAnswer(frame.self_state_query, self.self_state) });
+    if (fn === "ask_next_step") {
+      // Only a procedure this speaker canonically knows answers "what's next"; otherwise it is asked about.
+      if (self?.procedure?.next_step) required.push({ key: "current_procedure", value: { ...self.procedure, scope: frame.procedure_scope ?? "current" } });
+    }
+    if (fn === "ask_explanation") {
+      const ante = frame.antecedent ?? {};
+      const own = ante.resolved ? repairTargets(ante.responses ?? [], responder_id).find((r) => r.speaker_id === responder_id) ?? null : null;
+      if (own) required.push({ key: "explanation_basis", value: own.basis ?? { kind: "unavailable" } });
+      else if (ante.resolved) required.push({ key: "explanation_basis", value: { kind: "not_own_line", speaker_name: repairTargets(ante.responses ?? [], responder_id)[0]?.speaker_name ?? null } });
+      forbidden.push("invented_rationale");
+    }
 
     planned.push({
       responder_id,
@@ -787,7 +912,7 @@ function planResponses({ frame, owner_ids = [], responders = {}, names = {} } = 
       forbidden_claims: forbidden,
       // An unresolved time ("before Maxwell left") is asked about only when no authorized fact answers
       // the question anyway (a known answer already fixes which event is meant).
-      may_ask_clarifying_question: fn === "ambiguous_reference" || Boolean(frame?.unresolved_reference) || (Boolean(frame?.temporal_reference) && !frame.temporal_reference.resolved && ["ask_factual", "ask_personal_experience"].includes(fn) && required.length === 0),
+      may_ask_clarifying_question: fn === "ambiguous_reference" || Boolean(frame?.unresolved_reference) || (Boolean(frame?.temporal_reference) && !frame.temporal_reference.resolved && ["ask_factual", "ask_personal_experience"].includes(fn) && required.length === 0) || (fn === "ask_next_step" && required.length === 0),
       same_turn_prior_responses: planned.map((p) => p.responder_id),
       // STYLE-ONLY: shapes wording, never a factual claim.
       style_hints: { ...(self?.identity_style ?? {}) }
@@ -817,7 +942,9 @@ function toAuthorizedContribution(plan, frame, { names = {} } = {}) {
     temporal_reference: frame?.temporal_reference ? { expression: frame.temporal_reference.expression, resolved: Boolean(frame.temporal_reference.resolved) } : null,
     // The question a clarification answer resumes ("Who has the thing?"), so the reply answers IT.
     resumed_question: frame?.resumed_question?.player_text ?? null,
-    antecedent: !["clarify_previous", "request_repetition"].includes(plan.discourse_function)
+    self_state_query: frame?.self_state_query ? { asked: frame.self_state_query.asked, polarity: frame.self_state_query.polarity } : null,
+    procedure_scope: frame?.procedure_scope ?? null,
+    antecedent: !["clarify_previous", "request_repetition", "ask_explanation"].includes(plan.discourse_function)
       ? null
       : { type: ante.type, resolved: Boolean(ante.resolved), ...(ante.resolved && ante.responses ? { player_text: ante.player_text ?? null, responses: repairTargets(ante.responses, plan.responder_id).map((r) => ({ speaker_name: r.speaker_name ?? names[r.speaker_id] ?? null, text: r.text })) } : {}) },
     required_facts: plan.required_facts,
@@ -831,13 +958,18 @@ function toAuthorizedContribution(plan, frame, { names = {} } = {}) {
 }
 
 // ─── 7. Dev trace (concise; never player-facing, never canonical) ───────────
-function formatDiscourseTrace({ raw_utterance, utterance = null, recipient_scope, frame, discourse_summary, owner_ids = [], plans = [], grounded_facts = [], provider_result = null, fallback_used = null, committed_event_ids = null } = {}) {
+function formatDiscourseTrace({ raw_utterance, utterance = null, recipient_scope, frame, discourse_summary, owner_ids = [], plans = [], grounded_facts = [], provider_result = null, fallback_used = null, committed_event_ids = null, request_id = null, listener_ids = null } = {}) {
   return JSON.stringify({
+    request_id: request_id ?? undefined,
     utterance: raw_utterance,
     residual: utterance && utterance !== raw_utterance ? utterance : undefined,
     scope: recipient_scope,
     frame: frame ? { fn: frame.discourse_function, speech_act: frame.speech_act, topic: frame.topic, shape: frame.expected_response_shape, requested: frame.requested_content, unresolved: frame.unresolved_reference, inherited: frame.scope_inherited, conf: frame.confidence } : null,
-    antecedent: frame?.antecedent ? { type: frame.antecedent.type, resolved: frame.antecedent.resolved } : null,
+    listeners: listener_ids ?? undefined,
+    antecedent: frame?.antecedent ? { type: frame.antecedent.type, resolved: frame.antecedent.resolved, basis: (frame.antecedent.responses ?? []).map((r) => r.basis?.kind ?? null).filter(Boolean) } : null,
+    resolved_utterance: frame?.resolved_utterance ?? undefined,
+    resumed: frame?.resumed_question ? true : undefined,
+    self_state_query: frame?.self_state_query ?? undefined,
     discourse: discourse_summary ? { thread: discourse_summary.thread_state, topic: discourse_summary.current_topic, prev_topic: discourse_summary.previous_topic, last_responders: discourse_summary.last_responder_ids } : null,
     owners: owner_ids,
     plans: plans.map((p) => ({ responder: p.responder_id, fn: p.discourse_function, purpose: p.purpose, required: p.required_facts.map((f) => f.key), clarify: p.may_ask_clarifying_question })),
@@ -916,6 +1048,8 @@ module.exports = {
   buildSemanticFrame,
   summarizeDiscourse,
   buildSelfKnowledge,
+  selfStateAnswer,
+  responseBasisFromPlan,
   presentAssignment,
   planResponses,
   selectKnownFacts,

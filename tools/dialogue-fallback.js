@@ -65,6 +65,52 @@ function presentSelfState(selfState, style = {}) {
   return CHECK_IN_BY_TEMPERAMENT[style.conversational_temperament] ?? "Doing all right.";
 }
 
+// A question about one feeling, answered from canonical state. "not_especially": an ordinary state holds
+// no elevated feeling either way -- a stance, never "I don't know" (a speaker has access to themselves).
+const NOT_ESPECIALLY_LINES = ["Not especially. I feel all right about it.", "Can't say I feel much either way.", "Not really. Just feeling normal about it.", "Not especially, no."];
+const YES_AFFECT_LINES = Object.freeze({ tired: "Yeah, a bit tired, honestly.", tense: "A little on edge, yes." });
+function presentSelfStateAnswer(answer, selfState, style = {}, prior = []) {
+  if (!answer) return null;
+  if (answer.answer === "yes") return YES_AFFECT_LINES[answer.asked] ?? presentSelfState(selfState, style);
+  if (answer.answer === "affected_instead" || answer.answer === "affected") return presentSelfState(selfState, style);
+  if (answer.answer === "not_especially") return variant(NOT_ESPECIALLY_LINES[0], NOT_ESPECIALLY_LINES.slice(1), prior);
+  return variant(CHECK_IN_BY_TEMPERAMENT[style.conversational_temperament] ?? "Doing all right.", Object.values(CHECK_IN_BY_TEMPERAMENT), prior);
+}
+
+// "Why?" about one's own previous line: says only the basis that line was authorized with.
+function presentExplanation(basis, style = {}) {
+  if (!basis) return "Sorry, what do you mean?";
+  switch (basis.kind) {
+    case "self_state":
+      if (basis.state === "affected" && (basis.affect ?? []).length) return `${presentSelfState({ state: "affected", affect: basis.affect }, style).replace(/^Honestly\? /, "")} That's all.`;
+      return "Just how I feel right now. Nothing out of the ordinary.";
+    case "no_known_fact":
+      return basis.past_perception ? "I just didn't notice anything." : "I just don't have anything to go on.";
+    case "clarification":
+      return "I wasn't sure what you meant.";
+    case "briefing_instruction":
+      return `That's what we were told at ${basis.source ?? "the briefing"}.`;
+    case "custody":
+      return basis.holder_is_self ? "Because it's with me." : (basis.holder_known === false ? "I just don't know who has it." : "That's where it is, as far as I know.");
+    case "known_information":
+      return "That's just what I know about it.";
+    case "assignment":
+      return "That's my assignment.";
+    case "heard":
+      return basis.heard ? "I heard you say it." : "I just didn't catch it.";
+    case "restatement":
+      return "I'm only repeating what was said.";
+    case "request_policy":
+      return basis.disposition === "requires_structured_handoff" ? "Things only change hands through a proper handoff." : "I'm just saying I heard you.";
+    case "not_own_line":
+      return basis.speaker_name ? `You'd have to ask ${basis.speaker_name}.` : "That wasn't me.";
+    case "social":
+      return basis.discourse_function === "joke_or_sarcasm" ? "Just joking." : "No particular reason.";
+    default:
+      return "I just meant what I said.";
+  }
+}
+
 const GREET_BY_EXPRESSION = { "dryly observant": "Hey.", "quietly friendly": "Hi there.", "carefully polite": "Good morning.", "plain-spoken": "Hey.", "wry under pressure": "Well, hello." };
 const GREET_ALTERNATES = ["Hello.", "Morning.", "Hi."];
 const INTRODUCE_BY_EXPRESSION = { "dryly observant": "Good to meet you, I think.", "quietly friendly": "Good to meet you.", "carefully polite": "Pleasure to meet you.", "plain-spoken": "Good to meet you.", "wry under pressure": "Well, nice to meet you." };
@@ -144,7 +190,20 @@ function presentFallback({ frame, plan = null, prior = [] } = {}) {
     case "joke_or_sarcasm":
       return JOKE_BY_EXPRESSION[style.social_expression] ?? JOKE_BY_TEMPERAMENT[style.conversational_temperament] ?? "Ha.";
     case "check_in":
+      if (fact(plan, "self_state_answer")) return presentSelfStateAnswer(fact(plan, "self_state_answer"), fact(plan, "self_state"), style, prior);
       return presentSelfState(fact(plan, "self_state"), style) ?? (CHECK_IN_BY_TEMPERAMENT[style.conversational_temperament] ?? "Doing all right.");
+    case "ask_next_step": {
+      const procedure = fact(plan, "current_procedure");
+      // No canonical procedure this speaker knows: ask what "next" means, never guess a plan.
+      if (!procedure?.next_step) return "Sorry, next for what?";
+      const steps = procedure.current_step ? `${sentence(procedure.current_step)}, then ${sentence(procedure.next_step)}` : sentence(procedure.next_step);
+      // Asked about the whole day: only what was actually said is known -- never an invented schedule.
+      if (procedure.scope === "day") return `For today, all we've been told is to ${steps}.`;
+      return `We ${steps}.`;
+    }
+    case "ask_explanation":
+      if (!frame.antecedent?.resolved) return "Sorry, what do you mean?";
+      return presentExplanation(fact(plan, "explanation_basis"), style);
     case "challenge": {
       const facts = (plan?.required_facts ?? []).filter((f) => f.key === "known_fact");
       return facts.length ? `${upperFirst(sentence(facts[0].value.text))}.` : "I'm only going by what I know.";
@@ -286,4 +345,4 @@ function presentReportFallback({ contribution } = {}) {
   return generic;
 }
 
-module.exports = { presentFallback, presentStaleSafeFallback, presentReportFallback, presentSelfState, renderKnownAnswer, COMMIT_SENSITIVE_FACTS };
+module.exports = { presentFallback, presentStaleSafeFallback, presentReportFallback, presentSelfState, presentSelfStateAnswer, presentExplanation, renderKnownAnswer, COMMIT_SENSITIVE_FACTS };

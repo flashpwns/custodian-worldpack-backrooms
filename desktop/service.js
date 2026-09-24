@@ -120,6 +120,19 @@ function dialogueTemporalAnchors(run) {
   if (crossing) anchors.crossing = { interval: Number(crossing.at.interval), source: `facility_operations.${crossing.id}` };
   return anchors;
 }
+// The current procedure a listener canonically knows ("What's next?"). The only authority today is the
+// opener's concluded briefing: its dismissal, heard at the table, opens introductions and sends the team
+// on to the briefing room's canonical next destination. It holds only while the listener is still where
+// that instruction was given; UI text is never consulted.
+function dialogueProcedureContext(run, memberId) {
+  const opener = run?.expedition?.day1_opener;
+  const briefing = opener?.personnel_briefing;
+  if (!opener || opener.beat !== cq4Day1Opener.BEATS.LOCAL_INTRODUCTIONS || briefing?.status !== "concluded") return null;
+  const room = briefing.room_id ?? null;
+  const destination = room ? canonLexicon.CANONICAL_LOCATIONS[room]?.known_destination ?? null : null;
+  if (!destination || canonicalLedger.getPersonnelLocation(run, memberId) !== room) return null;
+  return { current_step: "get acquainted with the team", next_step: `report to ${destination}`, source: "the briefing" };
+}
 function safeId(value) { return typeof value === "string" && /^[a-z0-9][a-z0-9_-]{0,100}$/i.test(value); }
 function friendlyName(value) { return typeof value === "string" && value.trim().length > 0 && value.trim().length <= 80; }
 function ensureDirectory(directory) { fs.mkdirSync(directory, { recursive: true }); }
@@ -1877,6 +1890,7 @@ class DesktopService {
     if (prepared.some((item) => item.unavailable)) canonical.result.provider_unavailable = true;
     else delete canonical.result.provider_unavailable;
     canonical.result.presentation_source = allModel ? first.presentationSource : allFallback ? "deterministic-fallback" : "mixed-model-fallback";
+    if (this.developerMode) this.log(`[YB:COMMIT_TRACE] ${JSON.stringify({ request_id: requestId, presentation_source: canonical.result.presentation_source, committed: committedResponses.map((item) => ({ speaker: item.speaker_name, text: item.text })), revalidation: prepared.map((item) => ({ speaker: item.context.speaker?.first_name ?? null, ok: item.context_check?.ok ?? null, code: item.context_check?.code ?? null, cancelled: Boolean(item.context_check?.cancel) })) })}`);
     canonical.result.public_reason = committedResponses.map((item) => `${item.speaker_name}: ${item.text}`).join(" ") || "Your message is heard. No further response is required.";
     if (allFallback && first) {
       // Built from what was actually COMMITTED (after revalidation/cancellation), never from a
@@ -2037,7 +2051,7 @@ class DesktopService {
                 const recoveredNames = Object.fromEntries([...(entry.run.expedition.team.members ?? []).map((m) => [m.personnel_id ?? m.id, m.first_name ?? m.display_name ?? null]), [entry.run.session?.startup?.player?.observer_id, "you"]]);
                 const recoveredId = speaker.personnel_id ?? speaker.id;
                 recoveredFrame = dialogueDiscourse.buildSemanticFrame({ text: stripNamedAddress(recorded.text, recorded.target), recipient_type: recoveredRecipientType ?? "none", equipment: equipmentNow });
-                [recoveredPlan] = dialogueDiscourse.planResponses({ frame: recoveredFrame, owner_ids: [recoveredId], responders: { [recoveredId]: { self: dialogueDiscourse.buildSelfKnowledge({ person, member: speaker, held_equipment: Object.values(equipmentNow).filter((item) => item.holder === recoveredId), known_facts: (speaker.known_information ?? []).filter((fact) => fact.kind !== "reported-knowledge" || fact.source === "direct-observation"), names: recoveredNames, equipment: equipmentNow, player_id: entry.run.session?.startup?.player?.observer_id, custody_known: Object.fromEntries((recoveredFrame.referents ?? []).filter((ref) => ref.type === "equipment" && ref.resolved && ref.id).map((ref) => [ref.id, observerContextCompiler.resolveCustodyKnowledge(entry.run, recoveredId, ref.id).known])), self_state: canonicalLedger.describeSelfState(speaker) }) } }, names: recoveredNames });
+                [recoveredPlan] = dialogueDiscourse.planResponses({ frame: recoveredFrame, owner_ids: [recoveredId], responders: { [recoveredId]: { self: dialogueDiscourse.buildSelfKnowledge({ person, member: speaker, held_equipment: Object.values(equipmentNow).filter((item) => item.holder === recoveredId), known_facts: (speaker.known_information ?? []).filter((fact) => fact.kind !== "reported-knowledge" || fact.source === "direct-observation"), names: recoveredNames, equipment: equipmentNow, player_id: entry.run.session?.startup?.player?.observer_id, custody_known: Object.fromEntries((recoveredFrame.referents ?? []).filter((ref) => ref.type === "equipment" && ref.resolved && ref.id).map((ref) => [ref.id, observerContextCompiler.resolveCustodyKnowledge(entry.run, recoveredId, ref.id).known])), self_state: canonicalLedger.describeSelfState(speaker), procedure: dialogueProcedureContext(entry.run, recoveredId) }) } }, names: recoveredNames });
                 recoveredContribution = dialogueDiscourse.toAuthorizedContribution(recoveredPlan, recoveredFrame, { names: recoveredNames });
               }
               return {
@@ -2154,7 +2168,9 @@ class DesktopService {
         player_id: playerId,
         location_id: entry.run.spatial?.player_location ?? null,
         current_interval: expedition.clock?.interval ?? null,
-        equipment: expedition.equipment
+        equipment: expedition.equipment,
+        // Why each prior reply was said (its authorized plan), for "why?" and open clarifications.
+        receipts: expedition.communication_receipts ?? []
       });
 
       if (channel === "local") {
@@ -2419,7 +2435,7 @@ class DesktopService {
           // Custody this listener can know comes ONLY from the observer/knowledge authority
           // (self, witnessed handoff, or unchanged institutional issuance).
           const custodyKnown = Object.fromEntries((semanticFrame.referents ?? []).filter((ref) => ref.type === "equipment" && ref.resolved && ref.id).map((ref) => [ref.id, observerContextCompiler.resolveCustodyKnowledge(entry.run, recId, ref.id).known]));
-          selfKnowledgeById[recId] = dialogueDiscourse.buildSelfKnowledge({ person: recipientPerson, member: recipient, task: reactionContext?.worker?.task ?? null, held_equipment: heldEquipment, known_facts: knownFacts, known_answer: knownAnswerFact, names: spokenNames, equipment: expedition.equipment, player_id: playerId, custody_known: custodyKnown, self_state: canonicalLedger.describeSelfState(recipient) });
+          selfKnowledgeById[recId] = dialogueDiscourse.buildSelfKnowledge({ person: recipientPerson, member: recipient, task: reactionContext?.worker?.task ?? null, held_equipment: heldEquipment, known_facts: knownFacts, known_answer: knownAnswerFact, names: spokenNames, equipment: expedition.equipment, player_id: playerId, custody_known: custodyKnown, self_state: canonicalLedger.describeSelfState(recipient), procedure: dialogueProcedureContext(entry.run, recId) });
           // "Did anyone hear what I just said?" is answered only by someone who actually heard that line.
           const heardTheAskedLine = semanticFrame.discourse_function !== "ask_heard_confirmation" || !semanticFrame.antecedent?.resolved || (semanticFrame.antecedent.listener_ids ?? []).includes(recId);
           // Topic-matched known facts use the SAME selection the plan uses.
@@ -2440,7 +2456,7 @@ class DesktopService {
             // Eligibility: listener state (heardPeers) + reaction salience OR the
             // deterministic semantic duty of the frame. Never wording.
             response_eligible: heardTheAskedLine && (Boolean(reaction.reaction) || dialogueDiscourse.frameObligatesResponse(semanticFrame, recId, { recipient_type, holder_present: !requestedEquipment || heardPeers.some((peer) => (peer.personnel_id ?? peer.id) === requestedEquipment.holder) })),
-            has_relevant_knowledge: Boolean(equipmentRelevant || (knownAnswerFact && dialogueDiscourse.KNOWN_ANSWER_FUNCTIONS.includes(semanticFrame.discourse_function)) || topicFactsKnown)
+            has_relevant_knowledge: Boolean(equipmentRelevant || (knownAnswerFact && dialogueDiscourse.KNOWN_ANSWER_FUNCTIONS.includes(semanticFrame.discourse_function)) || topicFactsKnown || (semanticFrame.discourse_function === "ask_next_step" && selfKnowledgeById[recId]?.procedure))
           };
         });
 
@@ -2462,7 +2478,7 @@ class DesktopService {
           item.text = planned ? `${first}: ${planned}` : item.legacy_wording();
           priorTexts.push(planned ?? "");
         }
-        if (this.developerMode) this.log(`[YB:DISCOURSE_TRACE] ${dialogueDiscourse.formatDiscourseTrace({ raw_utterance: message, utterance, recipient_scope: semanticFrame.target_scope, frame: semanticFrame, discourse_summary: discourseSummary, owner_ids: ownerIds, plans: responsePlans, grounded_facts: responsePlans.flatMap((plan) => plan.required_facts.map((fact) => `${plan.responder_id}:${fact.key}`)) })}`);
+        if (this.developerMode) this.log(`[YB:DISCOURSE_TRACE] ${dialogueDiscourse.formatDiscourseTrace({ request_id: requestId, listener_ids: heardPeers.map((peer) => peer.personnel_id ?? peer.id), raw_utterance: message, utterance, recipient_scope: semanticFrame.target_scope, frame: semanticFrame, discourse_summary: discourseSummary, owner_ids: ownerIds, plans: responsePlans, grounded_facts: responsePlans.flatMap((plan) => plan.required_facts.map((fact) => `${plan.responder_id}:${fact.key}`)) })}`);
         for (const item of authorizedResponses) {
           item.body = String(item.text ?? "").replace(new RegExp(`^${String(item.recipient?.first_name ?? "").replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}:\\s*`, "i"), "");
           item.listeners = [playerId, ...localPeers.map((p) => p.personnel_id ?? p.id).filter((id) => id !== item.id)];
@@ -2573,6 +2589,7 @@ class DesktopService {
           entry.run.expedition.dialogue_history.push(coworkerDialogueEvent);
           presentationBus.emit(entry.run, coworkerDialogueEvent);
         }
+        if (this.developerMode && !willBeHosted && authorizedResponses.length) this.log(`[YB:COMMIT_TRACE] ${JSON.stringify({ request_id: requestId, presentation_source: "deterministic", committed: authorizedResponses.map((item) => ({ speaker: item.recipient?.first_name ?? null, text: item.body })) })}`);
 
         if (entry.run?.spatial && ["FIELD_OPERATION", "RETURN"].includes(entry.phase?.phase_id)) {
           const spatialDefLocal = bootstrap.spatialDefinitionFor(entry.run.spatial_pack_id);

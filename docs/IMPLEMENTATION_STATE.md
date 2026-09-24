@@ -1,5 +1,21 @@
 # Yellow Beast Implementation State
 
+## Human-Acceptance Dialogue Reproduction Repair — 2026-09-24
+
+- **Evidence**: Jack's first natural Electron conversation after the freeze audit, with developer traces from `~/Library/Application Support/Electron/yellow-beast/logs/desktop.log`. In that run Gemma produced exactly what each plan authorized and the validator accepted it, so every defect was in deterministic planning.
+- **Fixed (general mechanisms, no phrase special-casing)**:
+  - **Questions about a listener's own feeling** ("Are you all excited?", "Nervous?", "You seem tense, everything alright?") are now `check_in` with a `self_state_query`. The plan adds `self_state_answer`, the stance canonical affect gives. An ordinary state is "not especially", never "I don't know". Invented affect and self-access denial are rejected.
+  - **"Why?" / "What makes you say that?" / "How come?"** is now `ask_explanation`. The reason is the recorded basis of the speaker's own previous line, reconstructed via `responseBasisFromPlan` from that turn's persisted communication receipt; it survives a cold reload. Invented rationale is rejected.
+  - **"What's next?"** is now `ask_next_step`. It is answered from canonical authority only: the concluded briefing, the `LOCAL_INTRODUCTIONS` beat, the speaker's location, and the room's `known_destination` in the canon lexicon. With no such authority it is clarified. UI text is never consulted.
+  - **Repair fragments** ("I mean for the day", "No, the other one") now narrow the open clarification, or the player's just-answered question when explicitly self-repaired, by re-framing it. An unresolved repair clarifies again.
+  - **Group policy**: everyone answers a group greeting and a group question about their own feelings. One speaker answers shared-knowledge or task questions. One answers untargeted remarks. Only the addressee answers a direct question.
+  - **Dev traces**: with `YELLOW_BEAST_DEVELOPER_MODE=1` the `[YB:...]` traces also go to the terminal. They now carry the request id, listeners, the antecedent's recorded basis, and a `[YB:COMMIT_TRACE]`.
+- **Verification**:
+  - `tests/ed25-human-acceptance-dialogue.test.js`: 11/11.
+  - Full per-file run: 1214 pass / 80 fail across 33 files. Every failing test fails identically on the audit base, so nothing is newly failing.
+  - The real pinned model (Gemma 4 E4B) is semantically correct on the exact human sequence and on the generalization cases.
+- **Not changed**: the turn-feedback strip renders `result.public_reason` (a "Speaker: line" string) when a result has no `scene.narration`. That is the likely source of the one-off stray "Sydney: I don't know." line. It is not reproduced, so presentation is unchanged.
+
 ## Final Dialogue Engine Audit, Model Ascension & Freeze-Readiness Pass — 2026-09-24
 
 - **Source truth**: branch `opener-human-green-2026-09-19`; audit base `1c3d106`. CI repairs landed separately during the pass (`800c77d`, `63e1d40`, `df6d107`, `acde934`, `446d044`). Scope: the LOCAL dialogue engine only. The facility map, Maxwell briefing, equipment staging, threshold flow, audio, UI styling, cinematics and Godot were not changed.

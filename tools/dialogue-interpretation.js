@@ -141,6 +141,40 @@ const QUESTION_LIKE_PATTERN = /\?\s*$|^(?:who|what|where|when|why|how|which|are|
 // An item transfer asked for with take/grab ("Take the camera.") -- a handoff once an item resolves.
 const TAKE_GRAB_PATTERN = /\b(?:take|grab)\b/i;
 // Canonical event anchors a temporal expression may name (resolved against recorded events only).
+// A question about the ADDRESSEE'S OWN current feeling ("Are you all excited?", "Nervous?", "You seem
+// tense, everything alright?"). The answer is the speaker's canonical self-state, never an outside fact.
+// Each affect term maps to the class code compares against that state; readiness ("ready", "all set")
+// stays the momentary-state rule above.
+const SELF_STATE_AFFECT_TERMS = Object.freeze({
+  positive: /\b(?:excited|eager|looking forward|psyched|pumped|thrilled|stoked|happy|glad)\b/i,
+  tense: /\b(?:nervous|anxious|worried|scared|afraid|tense|uneasy|stressed|on edge|jittery|freaked(?: out)?)\b/i,
+  tired: /\b(?:tired|exhausted|worn out|sleepy|wiped)\b/i,
+  wellbeing: /\b(?:okay|ok|alright|all right|feeling|holding up|doing (?:okay|ok|alright|all right|good|fine))\b/i
+});
+const SELF_STATE_ADDRESSEE_PATTERN = /\b(?:you|y'?all|everyone|everybody|anyone|anybody)\b/i;
+// "okay with that" / "all right to carry" ask agreement or permission, not how someone feels.
+const SELF_STATE_NOT_FEELING_PATTERN = /\b(?:okay|ok|alright|all right|fine|happy|glad)\s+(?:with|to|about|if)\b|\b(?:is|are) (?:it|that|this|the)\b/i;
+function selfStateQuery(raw) {
+  const text = String(raw ?? "").trim();
+  if (!QUESTION_LIKE_PATTERN.test(text)) return null;
+  const leadingAffect = /^(?:so\s+|still\s+)?(?:excited|nervous|tired|scared|worried|okay|ok|alright|all right|ready)\b/i.test(text);
+  if (!SELF_STATE_ADDRESSEE_PATTERN.test(text) && !leadingAffect) return null;
+  if (SELF_STATE_NOT_FEELING_PATTERN.test(text)) return null;
+  for (const affect of ["positive", "tense", "tired", "wellbeing"]) {
+    if (SELF_STATE_AFFECT_TERMS[affect].test(text)) return Object.freeze({ asked: affect, polarity: /^(?:how|what)\b/i.test(text) ? "open" : "yes_no" });
+  }
+  return null;
+}
+// "What's next?" / "What do we do now?": the CURRENT procedure. Only a canonical procedure context can
+// answer it; without one it is a clarification. Never every "next".
+const NEXT_STEP_PATTERN = /^(?:so,?\s+|okay,?\s+|ok,?\s+|alright,?\s+|and\s+)?(?:what(?:'s| is)|whats)\s+(?:next|the plan|the next step|our next step|up next|on the agenda)\b|^(?:so,?\s+|okay,?\s+|and\s+)?what (?:now|next)\b|\bwhat (?:do|should|are) we (?:do|doing|supposed to do|supposed to be doing)(?:\s+(?:now|next|today))?[\s?!.]*$|\bwhere (?:do|should) we (?:go|head)(?:\s+(?:now|next))?[\s?!.]*$|\bwhat happens (?:now|next)\b/i;
+// "Why?" / "What makes you say that?": asks the reason for the immediately preceding line.
+const EXPLANATION_REQUEST_PATTERN = /^(?:but\s+|so\s+|and\s+|oh,?\s+)?(?:why(?: not| is that| do you (?:say|think) (?:that|so)| would you say that)?|why'?s that|how come|what makes you (?:say|think) (?:that|so|it)|how do you know(?: that)?|what do you base that on)(?:,\s*[A-Za-z][\w'-]*)?[\s?!.]*$/i;
+// A fragment that narrows an open clarification ("I mean for the day", "No, the other one").
+const REPAIR_FRAGMENT_PATTERN = /^(?:i mean|i meant|no,?\s+(?:i mean|the|that|this|for|after|before)|not that|the other|for (?:the day|today|now)|like,?\s|after\b|before\b|(?:the|that|this|my|your|our)\s)/i;
+const REPAIR_LEAD_PATTERN = /^(?:i mean|i meant|no,?\s+i mean|no,?|like,?)\s*/i;
+// An explicit self-repair of one's own just-answered question ("I mean for the day").
+const SELF_REPAIR_LEAD_PATTERN = /^(?:i mean|i meant|no,?\s+i mean(?:t)?)\b/i;
 const TEMPORAL_ANCHOR_PATTERNS = Object.freeze({
   briefing: /\bbriefing\b/i,
   crossing: /\b(?:cross(?:ed|ing)?|threshold|went through|came through)\b/i,
@@ -184,7 +218,13 @@ const LANGUAGE_PATTERNS = Object.freeze({
   custody_predicate: CUSTODY_PREDICATE_PATTERN,
   question_like: QUESTION_LIKE_PATTERN,
   take_grab: TAKE_GRAB_PATTERN,
-  temporal_anchors: TEMPORAL_ANCHOR_PATTERNS
+  temporal_anchors: TEMPORAL_ANCHOR_PATTERNS,
+  next_step: NEXT_STEP_PATTERN,
+  explanation_request: EXPLANATION_REQUEST_PATTERN,
+  repair_fragment: REPAIR_FRAGMENT_PATTERN,
+  repair_lead: REPAIR_LEAD_PATTERN,
+  self_repair_lead: SELF_REPAIR_LEAD_PATTERN,
+  self_state_affect_terms: SELF_STATE_AFFECT_TERMS
 });
 
 const GROUP_VOCATIVES = Object.freeze(["team", "teammate", "teammates", "all", "everyone", "everybody", "broadcast", "room", "local", "anyone", "crew", "table", "group"]);
@@ -435,6 +475,27 @@ function resolveResponseOwners({ recipient_type, interpretation, player_text, ca
     // named by one deterministic listener instead of leaving the question unanswered.
     return (holder.length ? holder : eligible.slice(0, 1)).map((candidate) => candidate.id);
   }
+  // A question about each listener's OWN feeling asked of the group ("Are you all excited?") has an
+  // inherently individual answer: every eligible present listener gets one, like a group greeting.
+  // Asked of the room at no one ("Excited?"), one listener answers.
+  if (fn === "check_in") return recipient_type === "group" ? eligible.map((candidate) => candidate.id) : eligible.slice(0, 1).map((candidate) => candidate.id);
+  // Answering a clarification: the one who asked it answers the now-narrowed question.
+  const clarifiers = new Set(frame?.resumed_question?.responder_ids ?? []);
+  if (clarifiers.size && fn !== "ask_item_ownership") {
+    const clarifier = eligible.find((candidate) => clarifiers.has(candidate.id));
+    if (clarifier) return [clarifier.id];
+  }
+  // "What's next?" is shared procedural knowledge: one speaker who knows it (spokesperson), never a chorus.
+  if (fn === "ask_next_step") {
+    const knower = eligible.find((candidate) => candidate.has_relevant_knowledge) ?? eligible[0];
+    return [knower.id];
+  }
+  // "Why?" is answered by whoever said the line being questioned (first in canonical order).
+  if (fn === "ask_explanation" && !frame?.unresolved_reference) {
+    const said = new Set(frame.antecedent?.responder_ids ?? []);
+    const speaker = eligible.find((candidate) => said.has(candidate.id));
+    return speaker ? [speaker.id] : [];
+  }
   if ((fn === "clarify_previous" || fn === "request_repetition") && !frame?.unresolved_reference) {
     // The people who spoke in the preceding exchange own its clarification;
     // the first of them (canonical order) answers. If none remain eligible,
@@ -662,6 +723,7 @@ module.exports = {
   SPEECH_ACTS,
   TOPICS,
   BARE_REACTION_PATTERN: BARE_REACTION_PATTERNS,
+  selfStateQuery,
   LANGUAGE_PATTERNS: LANGUAGE_PATTERNS_FULL,
   GROUP_VOCATIVES,
   parseNamedAddress,
