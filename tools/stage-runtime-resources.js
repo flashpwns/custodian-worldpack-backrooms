@@ -26,7 +26,14 @@ function sha256File(file) {
   return hash.digest("hex");
 }
 
-function stage({ vendor = path.join(root, "vendor"), out = path.join(root, "resources") } = {}) {
+function stage({ vendor = path.join(root, "vendor"), out = path.join(root, "resources"), platform = `${process.platform}-${process.arch}` } = {}) {
+  // The pin names the one platform its runtime asset serves. Elsewhere nothing is staged (explicitly, not
+  // silently): that platform's package ships deterministic dialogue only. Empty resource directories keep
+  // the packaging configuration's extraResources satisfied.
+  if (pin.llama_cpp?.platform && pin.llama_cpp.platform !== platform) {
+    for (const dir of ["llama", "model"]) { fs.rmSync(path.join(out, dir), { recursive: true, force: true }); fs.mkdirSync(path.join(out, dir), { recursive: true }); }
+    return { skipped: true, reason: `no pinned local runtime for ${platform}`, out };
+  }
   const llamaSrc = path.join(vendor, "llama");
   const modelSrc = path.join(vendor, "model", MODEL_FILENAME);
   if (!fs.existsSync(path.join(llamaSrc, "llama-server"))) throw new Error(`local dialogue runtime missing: ${llamaSrc}/llama-server (see tools/local-runtime-pin.json)`);

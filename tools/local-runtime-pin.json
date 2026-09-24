@@ -3,6 +3,7 @@
     "repository": "ggml-org/llama.cpp",
     "tag": "b11146",
     "asset": "llama-b11146-bin-macos-arm64.tar.gz",
+    "platform": "darwin-arm64",
     "asset_sha256": "1ad3f9eff80edb9dbef4259ad564d1720612ef7eea48fa4afed0e54f5f3d5711",
     "url": "https://github.com/ggml-org/llama.cpp/releases/download/b11146/llama-b11146-bin-macos-arm64.tar.gz",
     "extract_to": "vendor/llama"
