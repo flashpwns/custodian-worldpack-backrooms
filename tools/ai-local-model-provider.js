@@ -1,6 +1,6 @@
 "use strict";
 
-const { LOCAL_DIALOGUE_WORDING_LINES, renderContributionTask } = require("./dialogue-prompt-contract");
+const { LOCAL_DIALOGUE_WORDING_LINES, LOCAL_DIALOGUE_SYSTEM_TEXT, renderContributionTask } = require("./dialogue-prompt-contract");
 
 const crypto = require("node:crypto");
 const {
@@ -8,7 +8,8 @@ const {
   INTENT_SCHEMA,
   LIVING_INTERPRETATION_SCHEMA,
   LIVING_PRESENTATION_SCHEMA,
-  LOCAL_DIALOGUE_SCHEMA
+  LOCAL_DIALOGUE_SCHEMA,
+  LOCAL_DIALOGUE_SPEECH_SCHEMA
 } = require("./ai-hosted-transport");
 
 const LOCAL_PROVIDER_SPEC = Object.freeze({
@@ -93,13 +94,18 @@ function localSystemInstructions(taskInstructions) {
 // parameters at the top level of the request body rather than nested under an
 // "options" object. num_ctx moves to the daemon's --ctx-size launch flag
 // (fixed for the whole process) instead of being sent per-request.
+// Runaway guard for LOCAL dialogue, not a length rule: the validator rejects any speech over 600
+// characters (~150 tokens), and the JSON envelope adds ~35. Tokens past this bound could only produce
+// a candidate the validator must reject, so generating them is pure latency. Natural EOS ends every
+// accepted reply well before it.
+const LOCAL_DIALOGUE_MAX_TOKENS = 256;
 function generationOptions(kind) {
   const interpretation = kind === "intent" || kind === "living-interpretation";
   return {
     temperature: interpretation ? 0 : 0.45,
     top_p: interpretation ? 0.8 : 0.9,
     repeat_penalty: 1.08,
-    max_tokens: interpretation ? 1800 : 900
+    max_tokens: interpretation ? 1800 : (kind === "local-dialogue" ? LOCAL_DIALOGUE_MAX_TOKENS : 900)
   };
 }
 
@@ -169,7 +175,7 @@ function createLocalModelProvider({
     try { onInvocation(event); } catch {}
   }
 
-  async function request(kind, taskInstructions, payload, format, { userContent = null } = {}) {
+  async function request(kind, taskInstructions, payload, format, { userContent = null, systemContent = null } = {}) {
     const invocationId = `local-invocation-${++invocationSequence}`;
     const startedAt = Date.now();
     const common = {
@@ -195,7 +201,7 @@ function createLocalModelProvider({
         body:JSON.stringify({
           model:resolvedModel,
           messages:[
-            { role:"system", content:localSystemInstructions(taskInstructions) },
+            { role:"system", content:systemContent ?? localSystemInstructions(taskInstructions) },
             { role:"user", content:userContent ?? `Required JSON schema:\n${JSON.stringify(format.schema)}\n\nObserver-safe input packet:\n${JSON.stringify(payload)}` }
           ],
           response_format:{
@@ -267,10 +273,13 @@ function createLocalModelProvider({
       return sanitizeLocalLivingPresentationCandidate(candidate);
     },
     async presentLocal(packet) {
+      // Plan-carrying packets (every production packet) are worded from the rendered capsule +
+      // contribution under the compact dialogue system prompt; nothing else about the packet is sent.
+      const planned = Boolean(packet?.authorized_contribution && packet?.context_capsule);
       const candidate = await request("local-dialogue", [
         ...LOCAL_DIALOGUE_WORDING_LINES,
         "Without authorized_contribution (legacy callers only): fulfil authorized_response.purpose using only facts supplied in the packet; every semantic_claim.text must be an exact contiguous phrase copied from speech."
-      ].join("\n"), packet, { schema:LOCAL_DIALOGUE_SCHEMA }, { userContent: renderContributionTask(packet) });
+      ].join("\n"), packet, { schema: planned ? LOCAL_DIALOGUE_SPEECH_SCHEMA : LOCAL_DIALOGUE_SCHEMA }, { userContent: renderContributionTask(packet), systemContent: planned ? LOCAL_DIALOGUE_SYSTEM_TEXT : null });
       // Small local models often copy unused facts into the claim list even
       // when those facts never appear in their speech. Removing such claims
       // cannot authorize prose; the canonical validator still checks every
@@ -304,6 +313,7 @@ async function inspectLocalModel({ endpoint = LOCAL_PROVIDER_SPEC.defaultEndpoin
 }
 
 module.exports = {
+  LOCAL_DIALOGUE_MAX_TOKENS,
   LOCAL_PROVIDER_SPEC,
   normalizeLocalEndpoint,
   createLocalModelProvider,

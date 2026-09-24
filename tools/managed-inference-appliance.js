@@ -16,7 +16,9 @@ const APPLIANCE_STATES = Object.freeze({
   UNSUPPORTED: "UNSUPPORTED"
 });
 
-const REQUIRED_RAM_BYTES = 6 * 1024 * 1024 * 1024; // 6 GB minimum (8 GB system)
+// On-device wording targets 16 GB machines: the pinned model peaks near 5.2 GB resident. Below this the
+// appliance reports UNSUPPORTED and dialogue uses the same-plan deterministic fallback (never swapping).
+const REQUIRED_RAM_BYTES = 12 * 1024 * 1024 * 1024;
 const REQUIRED_DISK_BYTES = 2.5 * 1024 * 1024 * 1024; // 2.5 GB free disk space
 const DEFAULT_MODEL_NAME = "yellow-beast-local-v1";
 
@@ -76,10 +78,14 @@ class ManagedInferenceAppliance {
     overrideDiskFree,
     overrideArch,
     developerMode = process.env.YELLOW_BEAST_DEVELOPER_MODE === "1",
-    spawnFn = spawn
+    spawnFn = spawn,
+    // Told when a READY daemon exits on its own (crash, OOM kill), so the owner can respawn at once
+    // instead of discovering the loss on the next dialogue request.
+    onUnexpectedExit = null
   } = {}) {
     this.appDataPath = appDataPath || os.tmpdir();
     this.logger = logger;
+    this.onUnexpectedExit = typeof onUnexpectedExit === "function" ? onUnexpectedExit : null;
     this.overrideTotalMem = overrideTotalMem;
     this.overrideDiskFree = overrideDiskFree;
     this.overrideArch = overrideArch;
@@ -183,7 +189,7 @@ class ManagedInferenceAppliance {
 
     if (!this.hardware.supportedRam) {
       this.state = APPLIANCE_STATES.UNSUPPORTED;
-      this.statusMessage = `Insufficient system memory (${this.hardware.totalMemGb} GB detected). At least 8 GB of RAM is required for on-device processing.`;
+      this.statusMessage = `Insufficient system memory (${this.hardware.totalMemGb} GB detected). At least 16 GB of RAM is required for on-device processing.`;
       return false;
     }
 
@@ -431,9 +437,30 @@ class ManagedInferenceAppliance {
     return this.startDevStubDaemon(config);
   }
 
+  // A hard crash of the application (SIGKILL, power loss) skips every exit hook, and macOS gives the
+  // child no parent-death signal, so a multi-GB llama-server could outlive it until reboot. Each spawn
+  // records its pid; the next start terminates that process ONLY if it is still alive and its command
+  // line is this appliance's own binary serving this appliance's own model.
+  daemonPidFile() { return path.join(this.rootDir, "daemon.pid.json"); }
+  async reapStaleDaemon(binaryPath, modelPath) {
+    let record = null;
+    try { record = JSON.parse(fs.readFileSync(this.daemonPidFile(), "utf8")); } catch { return { reaped: false }; }
+    try { fs.rmSync(this.daemonPidFile(), { force: true }); } catch {}
+    const pid = Number(record?.pid);
+    if (!Number.isInteger(pid) || pid <= 1 || pid === process.pid || process.platform === "win32") return { reaped: false };
+    const command = await new Promise((resolve) => execFile("ps", ["-o", "command=", "-p", String(pid)], (err, out) => resolve(err ? "" : String(out).trim())));
+    if (!command || !command.includes(binaryPath) || !command.includes(modelPath)) return { reaped: false };
+    try { process.kill(pid, "SIGTERM"); } catch { return { reaped: false }; }
+    for (let i = 0; i < 20; i++) { await new Promise((r) => setTimeout(r, 100)); try { process.kill(pid, 0); } catch { return { reaped: true, pid }; } }
+    try { process.kill(pid, "SIGKILL"); } catch {}
+    this.logger(`Reaped stale local processing engine (pid ${pid}) left by an earlier session.`);
+    return { reaped: true, pid };
+  }
+
   async startSpawnedDaemon(config) {
     const binaryPath = this.resolveBinaryPath();
     const modelPath = config.model_path || this.resolveModelPath();
+    try { await this.reapStaleDaemon(binaryPath, modelPath); } catch {}
     let requestedPort;
     try { requestedPort = await findFreePort(); } catch { requestedPort = 0; }
 
@@ -448,7 +475,13 @@ class ManagedInferenceAppliance {
           "--alias", DEFAULT_MODEL_NAME,
           "--host", "127.0.0.1",
           "--port", String(requestedPort),
-          "--ctx-size", "8192",
+          // Production prompts are <= ~800 tokens and replies <= 256; 4096 covers them with headroom and
+          // halves the KV cache versus 8192 (measured -0.35..0.65 GB resident, no latency cost).
+          "--ctx-size", "4096",
+          // llama.cpp's host-RAM prompt cache defaults to 8 GiB. Dialogue prompts differ after the shared
+          // system prefix (which slot-level prefix reuse already covers), so the cache bought no latency
+          // in measurement while letting this process grow by gigabytes on a 16 GB machine. Disabled.
+          "--cache-ram", "0",
           "--no-webui"
         ], { stdio: ["ignore", "pipe", "pipe"] });
       } catch (err) {
@@ -461,6 +494,7 @@ class ManagedInferenceAppliance {
       this.activeChild = child;
       this.activePid = child.pid ?? null;
       this.usingDevStub = false;
+      try { if (child.pid) fs.writeFileSync(this.daemonPidFile(), JSON.stringify({ pid: child.pid, binary: binaryPath, model: modelPath, started_at: new Date().toISOString() })); } catch {}
 
       const timeoutTimer = setTimeout(() => {
         finish({ ok: false, error: new Error("Local processing engine did not report ready in time.") });
@@ -512,9 +546,16 @@ class ManagedInferenceAppliance {
           this.statusMessage = `Local processing engine exited unexpectedly (code ${code}).`;
           finish({ ok: false, error: new Error(`llama-server exited with code ${code}`) });
         }
-        this.activeChild = null;
-        this.activePort = null;
-        this.activePid = null;
+        // Only the child we are still tracking counts: stopDaemon() clears activeChild before it kills.
+        const crashedWhileReady = settled && this.activeChild === child && this.state === APPLIANCE_STATES.READY;
+        if (this.activeChild === child) { this.activeChild = null; this.activePort = null; this.activePid = null; }
+        if (crashedWhileReady) {
+          // The status must not keep claiming READY with no process behind it.
+          this.state = APPLIANCE_STATES.REPAIR_REQUIRED;
+          this.statusMessage = `Local processing engine stopped unexpectedly (code ${code}).`;
+          this.logger(`Appliance daemon exited unexpectedly while ready (code ${code}).`);
+          try { this.onUnexpectedExit?.({ code }); } catch {}
+        }
       });
     });
   }
@@ -590,6 +631,7 @@ class ManagedInferenceAppliance {
       this.activeChild = null;
       await this.terminateChild(child);
     }
+    try { fs.rmSync(this.daemonPidFile(), { force: true }); } catch {}
     this.activePort = null;
     this.activePid = null;
   }
@@ -660,6 +702,25 @@ class ManagedInferenceAppliance {
       req.on("timeout", () => { req.destroy(); resolve({ ok: false, code: "TIMEOUT" }); });
       req.on("error", (err) => resolve({ ok: false, code: "CONNECTION_FAILED", error: err.message }));
     });
+  }
+
+  // Crash recovery: restart the daemon on the already-installed model. Integrity follows loadState()'s
+  // rule -- the size+mtime recorded at the last full verification must still match; any drift (or a
+  // missing record) falls back to a full hash and pin check via repair(). Explicit repair always hashes.
+  async respawn() {
+    let config = null;
+    try { config = JSON.parse(fs.readFileSync(this.configFile, "utf8")); } catch { config = null; }
+    const modelFile = this.hasBundledAssets() ? this.resolveModelPath() : null;
+    let stat = null;
+    try { stat = modelFile ? fs.statSync(modelFile) : null; } catch { stat = null; }
+    const unchanged = Boolean(config?.installed && stat && config.model_path && path.resolve(config.model_path) === path.resolve(modelFile) && config.model_size === stat.size && config.model_mtime_ms === stat.mtimeMs && config.checksum);
+    if (!unchanged) return this.repair();
+    await this.stopDaemon();
+    const startResult = await this.startDaemon({ model: DEFAULT_MODEL_NAME, checksum: config.checksum, model_path: modelFile });
+    if (!startResult.ok) return this.repair();
+    this.state = APPLIANCE_STATES.READY;
+    this.statusMessage = "Local language processing is ready and active.";
+    return { ok: true, status: this.getStatus(), respawned: true };
   }
 
   async repair() {

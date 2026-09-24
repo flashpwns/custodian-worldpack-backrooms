@@ -13,7 +13,8 @@ const PLAYER = "p-jack";
 const VERSION = "yellow-beast-local-dialogue-candidate@v1";
 const NAMES = { "c-nora": "Nora", "c-omar": "Omar", [PLAYER]: "you" };
 const EQUIPMENT = { cam: { id: "cam", label: "35mm field camera", type: "35mm-camera", holder: PLAYER } };
-const RESP = { "c-nora": { self: D.buildSelfKnowledge({ person: { first_name: "Nora", role: "field medical doctor" }, names: NAMES }) }, "c-omar": { self: D.buildSelfKnowledge({ person: { first_name: "Omar", role: "survey technician" }, names: NAMES }) } };
+// custody_known: the observer authority's grant (the service always supplies it); without it custody is unknown.
+const RESP = { "c-nora": { self: D.buildSelfKnowledge({ person: { first_name: "Nora", role: "field medical doctor" }, names: NAMES, custody_known: { cam: true } }) }, "c-omar": { self: D.buildSelfKnowledge({ person: { first_name: "Omar", role: "survey technician" }, names: NAMES, custody_known: { cam: true } }) } };
 
 const discourseAfter = (playerText, lines, recipient_type = "group") => D.deriveDiscourseState({
   interaction_history: [{ id: "i1", channel: "local", speaker_id: PLAYER, source: "player", delivery: "heard", submission_id: "s1", player_text: playerText, recipient_type, recipient_id: null, recipient_ids: ["c-nora", "c-omar"], location_id: "hall" }],

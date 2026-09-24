@@ -117,7 +117,10 @@ test("ED-1.6 F — a direct ownership question to a non-holder is still answered
     // deterministic wording never claims the item
     assert.equal(D.frameObligatesResponse({ discourse_function: "ask_item_ownership", referents: [{ type: "equipment", resolved: true, holder: "c-nora" }] }, "c-omar", { recipient_type: "direct" }), true);
     assert.equal(D.frameObligatesResponse({ discourse_function: "ask_item_ownership", referents: [{ type: "equipment", resolved: true, holder: "c-nora" }] }, "c-omar", { recipient_type: "group" }), false);
-    const plan = D.planResponses({ frame: { discourse_function: "ask_item_ownership", referents: [{ type: "equipment", resolved: true, label: "Field camera", holder: "c-nora" }] }, owner_ids: ["c-omar"], names: { "c-nora": "Nora" } })[0];
+    // The observer authority grants Omar knowledge of the camera's holder; without that grant custody is unknown.
+    const plan = D.planResponses({ frame: { discourse_function: "ask_item_ownership", referents: [{ type: "equipment", id: "cam", resolved: true, label: "Field camera", holder: "c-nora" }] }, owner_ids: ["c-omar"], responders: { "c-omar": { self: { custody_known: { cam: true } } } }, names: { "c-nora": "Nora" } })[0];
+    const ungranted = D.planResponses({ frame: { discourse_function: "ask_item_ownership", referents: [{ type: "equipment", id: "cam", resolved: true, label: "Field camera", holder: "c-nora" }] }, owner_ids: ["c-omar"], names: { "c-nora": "Nora" } })[0];
+    assert.equal(F.presentFallback({ frame: { discourse_function: "ask_item_ownership", referents: [] }, plan: ungranted }), "I don't know who has the field camera.", "no observer grant: custody stays unknown (fail closed)");
     assert.equal(F.presentFallback({ frame: { discourse_function: "ask_item_ownership", referents: [] }, plan }), "The field camera is with Nora.");
   } finally { cleanup(state); }
 });

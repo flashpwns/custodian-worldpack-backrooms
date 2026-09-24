@@ -33,13 +33,37 @@ const JOKE_BY_TEMPERAMENT = {
   "talkative when uneasy": "Ha, right? Ha.",
   "deadpan": "Wonderful."
 };
+// Ordinary canonical self-state only: none of these asserts a mood the simulation does not hold.
 const CHECK_IN_BY_TEMPERAMENT = {
   "brief and direct": "I'm fine.",
   "measured and reflective": "Managing, thanks.",
   "warm but guarded": "I'm all right.",
-  "talkative when uneasy": "Could be better, could be worse.",
+  "talkative when uneasy": "Doing all right, thanks.",
   "deadpan": "Can't complain."
 };
+// Canonically moved self-state, worded plainly (the affect system decided it; wording only says it).
+const AFFECT_WORDING = Object.freeze({ tired: "tired", tense: "a bit on edge", pressed: "feeling the clock" });
+function affectKeys(affect = []) {
+  const keys = [];
+  for (const item of affect) {
+    if (/tired/i.test(item)) keys.push("tired");
+    else if (/tense|stress/i.test(item)) keys.push("tense");
+    else if (/pressed|time/i.test(item)) keys.push("pressed");
+  }
+  return [...new Set(keys)];
+}
+/** Answer about oneself from the plan's canonical self_state; null when the plan carries none. */
+function presentSelfState(selfState, style = {}) {
+  if (!selfState) return null;
+  const keys = affectKeys(selfState.affect);
+  if (selfState.state === "affected" && keys.length) {
+    const order = ["tired", "tense", "pressed"].filter((key) => keys.includes(key));
+    const said = order.map((key) => AFFECT_WORDING[key]);
+    const list = said.length > 1 ? `${said.slice(0, -1).join(", ")} and ${said.at(-1)}` : said[0];
+    return `Honestly? ${upperFirst(list)}.`;
+  }
+  return CHECK_IN_BY_TEMPERAMENT[style.conversational_temperament] ?? "Doing all right.";
+}
 
 const GREET_BY_EXPRESSION = { "dryly observant": "Hey.", "quietly friendly": "Hi there.", "carefully polite": "Good morning.", "plain-spoken": "Hey.", "wry under pressure": "Well, hello." };
 const GREET_ALTERNATES = ["Hello.", "Morning.", "Hi."];
@@ -47,7 +71,10 @@ const INTRODUCE_BY_EXPRESSION = { "dryly observant": "Good to meet you, I think.
 const INTRODUCE_ALTERNATES = ["Nice to meet you.", "Glad to meet you."];
 const ACK_BY_TEMPERAMENT = { "brief and direct": "Got it.", "measured and reflective": "Understood.", "warm but guarded": "Okay.", "talkative when uneasy": "Sounds good.", "deadpan": "Noted." };
 const ACK_ALTERNATES = ["Understood.", "Okay.", "Noted."];
-const OBSERVATION_BY_TEMPERAMENT = { "brief and direct": "I'm fine.", "measured and reflective": "Managing, thanks.", "warm but guarded": "I'm all right.", "talkative when uneasy": "Could be better, could be worse.", "deadpan": "Can't complain." };
+// A reaction to a remark that is not about the speaker: no state, no agreement that something was seen.
+const OBSERVATION_BY_TEMPERAMENT = { "brief and direct": "Fair enough.", "measured and reflective": "Hm. Maybe so.", "warm but guarded": "Could be.", "talkative when uneasy": "Hm. Fair enough.", "deadpan": "Noted." };
+// Acknowledging an order/request that conversation does not perform: heard, neither accepted nor refused.
+const HEARD_REQUEST_LINES = ["Heard you.", "I hear you.", "Heard."];
 
 const HEARD_BY_TEMPERAMENT = { "brief and direct": "Heard you.", "measured and reflective": "Yes, I heard you.", "warm but guarded": "I heard you.", "talkative when uneasy": "Yeah, I heard you, I did.", "deadpan": "Loud and clear." };
 const HEARD_ALTERNATES = ["Yeah, I heard you.", "I heard you.", "Loud and clear."];
@@ -117,7 +144,7 @@ function presentFallback({ frame, plan = null, prior = [] } = {}) {
     case "joke_or_sarcasm":
       return JOKE_BY_EXPRESSION[style.social_expression] ?? JOKE_BY_TEMPERAMENT[style.conversational_temperament] ?? "Ha.";
     case "check_in":
-      return CHECK_IN_BY_TEMPERAMENT[style.conversational_temperament] ?? "Doing all right.";
+      return presentSelfState(fact(plan, "self_state"), style) ?? (CHECK_IN_BY_TEMPERAMENT[style.conversational_temperament] ?? "Doing all right.");
     case "challenge": {
       const facts = (plan?.required_facts ?? []).filter((f) => f.key === "known_fact");
       return facts.length ? `${upperFirst(sentence(facts[0].value.text))}.` : "I'm only going by what I know.";
@@ -133,10 +160,13 @@ function presentFallback({ frame, plan = null, prior = [] } = {}) {
       if (held?.length) return `I've got ${lowerList(held)}.`;
       // An equipment referent that did not resolve is a clarification, never ignorance.
       if ((frame.referents ?? []).some((r) => r.type === "equipment" && !r.resolved)) return "Which thing do you mean?";
+      // A time the simulation cannot anchor (and no fact answers) is asked about, never guessed.
+      if (frame.temporal_reference && !frame.temporal_reference.resolved && plan?.may_ask_clarifying_question) return "Sorry, when do you mean?";
       // A wh-question with nothing authorized is an honest "don't know"; a
       // yes/no question with nothing authorized makes no claim either way.
       if (frame.addressee_state) return "Yeah, I think so.";
-      return frame.question_form === "yes_no" ? "Not that I know of." : "I don't know.";
+      if (frame.past_perception) return "Not that I noticed.";
+      return frame.question_form === "yes_no" ? "I couldn't say." : "I don't know.";
     }
     case "clarify_previous":
     case "request_repetition": {
@@ -152,8 +182,13 @@ function presentFallback({ frame, plan = null, prior = [] } = {}) {
       const said = fact(plan, "antecedent_player_text");
       return said ? `You said, "${sentence(said)}."` : "Sorry, what are you asking me to go back over?";
     }
-    case "ambiguous_reference":
+    case "ambiguous_reference": {
+      const spatial = (frame.referents ?? []).find((r) => r.type === "spatial" && !r.resolved && r.noun && !["thing", "one"].includes(r.noun));
+      if (spatial) return `Sorry, which ${spatial.noun} do you mean?`;
+      if ((frame.referents ?? []).some((r) => r.reason === "no_antecedent")) return "Sorry, what are you asking about?";
+      if (frame.temporal_reference && !frame.temporal_reference.resolved) return "Sorry, when do you mean?";
       return "Sorry, which thing do you mean?";
+    }
     case "ask_heard_confirmation": {
       if (!frame.antecedent?.resolved) return "Sorry, hear what?";
       const heard = fact(plan, "heard_confirmation");
@@ -167,11 +202,14 @@ function presentFallback({ frame, plan = null, prior = [] } = {}) {
     case "acknowledge":
       return variant(ACK_BY_TEMPERAMENT[style.conversational_temperament] ?? "Understood.", ACK_ALTERNATES, prior);
     case "social_observation":
+      // About the speaker: the canonical self-state answers it; without that fact no state is claimed.
+      if (frame.about_addressee && fact(plan, "self_state")) return presentSelfState(fact(plan, "self_state"), style);
       return OBSERVATION_BY_TEMPERAMENT[style.conversational_temperament] ?? "Fair enough.";
     case "warn":
-      return "Understood. I'll be careful.";
+      // A heard warning is acknowledged; no promise of future conduct is invented.
+      return variant(ACK_BY_TEMPERAMENT[style.conversational_temperament] ?? "Got it.", ["Got it.", "Heard."], prior);
     case "express_uncertainty":
-      return "Noted. Not knowing yet is fair.";
+      return "Fair enough.";
     case "close_topic":
       return "All right.";
     case "make_statement": {
@@ -180,14 +218,18 @@ function presentFallback({ frame, plan = null, prior = [] } = {}) {
     }
     case "make_request": {
       const holder = fact(plan, "item_holder");
+      const disposition = fact(plan, "request_disposition");
       const unresolved = (frame.referents ?? []).some((r) => r.type === "equipment" && !r.resolved);
       if (unresolved) return "Which thing do you mean?";
-      if (!holder) return "I'm not sure that's mine to hand over.";
+      // Orders and general requests: conversation performs nothing, so the reply only acknowledges.
+      if (disposition && disposition.kind !== "handoff") return variant(HEARD_REQUEST_LINES[0], HEARD_REQUEST_LINES.slice(1), prior);
+      if (!holder) return "I'm not sure who has that.";
       const label = String(holder.label).toLowerCase();
       if (holder.holder_is_self) return `The ${label} is still with me until we do a proper handoff.`;
-      if (holder.holder_name === "you") return `You already have the ${label}.`;
+      if (holder.holder_name === "you") return `Handing over the ${label} would take a proper handoff.`;
+      if (holder.holder_known === false) return `I'm not sure who has the ${label}.`;
       if (holder.holder_name) return `${holder.holder_name} has the ${label}. That would have to happen in person.`;
-      return "I'm not sure that's mine to hand over.";
+      return "I'm not sure who has that.";
     }
     default:
       return null;
@@ -244,4 +286,4 @@ function presentReportFallback({ contribution } = {}) {
   return generic;
 }
 
-module.exports = { presentFallback, presentStaleSafeFallback, presentReportFallback, renderKnownAnswer, COMMIT_SENSITIVE_FACTS };
+module.exports = { presentFallback, presentStaleSafeFallback, presentReportFallback, presentSelfState, renderKnownAnswer, COMMIT_SENSITIVE_FACTS };

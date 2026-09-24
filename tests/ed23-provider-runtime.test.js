@@ -31,7 +31,7 @@ test("runtime pin — one shipped model, exact source, license and disabled reas
   assert.equal(pin.model.license, "Apache-2.0");
   assert.match(pin.model.revision, /^[0-9a-f]{40}$/);
   assert.match(pin.model.sha256, /^[0-9a-f]{64}$/);
-  assert.match(pin.model.url, /^https:\/\/huggingface\.co\/Qwen\/Qwen3-4B-GGUF\/resolve\/[0-9a-f]{40}\//, "official upstream, revision-pinned");
+  assert.match(pin.model.url, /^https:\/\/huggingface\.co\/unsloth\/gemma-4-E4B-it-GGUF\/resolve\/[0-9a-f]{40}\//, "official upstream, revision-pinned");
   assert.equal(pin.model.internal_filename, "yellow-beast-local-v1.gguf", "the player-facing runtime never carries the upstream model name");
 });
 

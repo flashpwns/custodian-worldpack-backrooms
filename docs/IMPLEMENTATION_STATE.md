@@ -1,5 +1,48 @@
 # Yellow Beast Implementation State
 
+## Final Dialogue Engine Audit, Model Ascension & Freeze-Readiness Pass — 2026-09-24
+
+- **Source truth**: branch `opener-human-green-2026-09-19`; audit base `1c3d106`. CI repairs landed separately during the pass (`800c77d`, `63e1d40`, `df6d107`, `acde934`, `446d044`). Scope: the LOCAL dialogue engine only. The facility map, Maxwell briefing, equipment staging, threshold flow, audio, UI styling, cinematics and Godot were not changed.
+- **Authority (now enforced end to end)**: interpretation → semantic frame → response owners → response plan → authorized contribution → observer-safe capsule → model *or* same-plan fallback → validation → pre-commit revalidation → commit → persist. The provider receives only the rendered capsule and contribution, under a compact system prompt, and must return `{"speech": ...}` through a JSON schema. The service fails closed (`DIALOGUE_PLAN_REQUIRED`) for any packet without a contribution and capsule, including autonomous reports.
+- **Proven defects fixed**:
+  - Custody answers are fail-closed: a holder is stated only when that listener's knowledge authority grants it.
+  - Check-ins and remarks about the speaker come from canonical self-state (`describeSelfState`). Affect moves only through sourced `applyAffectEvent`, and reading emotional state no longer writes it.
+  - Anaphora, fragment resumption of an open question, and noun-aware clarification are handled. Spatial deixis needs a canonical selection (`tools/spatial-event-contract.js`). Temporal references resolve against recorded anchors (briefing, crossing) or are clarified.
+  - Requests and orders are heard, never accepted. `request_disposition` records `order_routing: not_routed`.
+  - Map knowledge no longer transfers on keywords like "where" or "route", and a disclosure requires the first person.
+  - Pre-commit revalidation also covers fallback text, and all-fallback public reasons are built from committed lines.
+  - Validator holes closed: invented directives, situation assessments, duties, rationale, history, custody outside the plan, request acceptance, "you" as a vocative, and the PLAYER label in any case or as a name.
+  - Runtime:
+    - `--cache-ram 0`: the default 8 GiB host prompt cache inflated the footprint.
+    - `--ctx-size 4096`.
+    - Stale daemons are reaped.
+    - Crash-while-ready triggers an immediate respawn on the verified install.
+    - A healthy daemon is never killed for a request-level failure, and the pool's stale local cooldown clears once the supervisor is ready.
+    - Unrecoverable restarts are bounded at 3.
+- **Prompt**: mean prompt tokens fell from 1274 to 621 (real tokenizer). Completion tokens fell from 42 to 16 on the 4B, and nothing hits the generation ceiling.
+- **Model ascension**: memory budget ≤ 6.0 GB peak RSS for the dialogue server on a 16 GB machine. Production path, ctx 4096, 6 samples, 168 generations each:
+
+  | Model | Accept | Invented | Peak RSS | Latency mean / p90 | Group turn |
+  |---|---|---|---|---|---|
+  | Qwen3-4B | 66.1% | 15 | 3.18 GB | 1.86 / 2.23 s | 5.9 s |
+  | Gemma 4 E4B | 82.7% | 5 | 5.17 GB | 2.63 / 3.35 s | 8.4 s |
+  | Qwen3-8B | 78.6% | 9 | 5.59 GB | 3.28 / 4.03 s | 10.2 s |
+
+  - Qwen3.5-9B was worse (63.1% accept, 10 inventions).
+  - Qwen3-14B fails both budget and latency (6.2 s per line, 18.6 s groups).
+  - **Selected: Gemma 4 E4B Q4_K_M** (Apache-2.0; `tools/local-runtime-pin.json`, `docs/licenses/Gemma-4-Apache-2.0.txt`).
+  - Wording stays serial (`DIALOGUE_WORDING_CONCURRENCY = 1`): parallel slots halve tokens/s, and the group-turn gain did not justify the contention.
+  - Final confirmation on the final code: Gemma 4 E4B at 82.7% accept, 4 inventions, 0 echo, 0 malformed, peak RSS 5.37 GB, latency 2.54 / 3.27 s, group turn 8.1 s, no ceiling hits, 12/12 autonomous reports model-worded. On the 21-turn human-like sequence, 18 of 21 turns were model-worded; every rejection was a real violation (a counter-question, a situation assessment, a same-turn duplicate opening).
+- **Freeze invariant (real models)**: fallback-only, Gemma 4 E4B and Qwen3-4B produce the identical canonical-semantics digest over a 15-turn production sequence. This covers the dialogue records, interactions, plans, knowledge, custody, attitudes, memories, affect, survey state and speech queue.
+- **Crash recovery** (SIGKILL of the live daemon; time to the first model candidate): 38.5 s, 8 respawns and 27 fallback turns before; 5.6 s, 1 respawn and 2 fallback turns after. No orphan server either way.
+- **Verification**: Every `tests/*.test.js` file was run in this tree and in the untouched audit-base snapshot. Now: 1203 pass / 80 fail across 33 files. Baseline: 1172 / 81 across 34 files. **No test newly fails**, `tests/ed24-freeze-invariants.test.js` passes 30/30, and one baseline failure (y57 Electron settings) now passes. The focused dialogue/runtime suites (ed1-ed24, y102, y108-y111, y166-y174, y97, y76, y78) show zero new failures. `node --check` and `git diff --check` are clean. `npm test` cannot run its aggregate while the inventory is inconsistent: the runner short-circuits and then crashes while formatting. It behaves identically at the audit base. The inventory has 53 errors versus 51 at baseline; the only additions are ed24 lacking a manifest entry and required-test authority, the same state as ed1-ed23. The renderer smoke (`--reference-expedition`) passes locally. `npm run desktop:build` produced a 5.16 GB arm64 zip with Gemma staged and its SHA matching the pin. `npm run desktop:verify` then passed the offline smoke, the packaged renderer interaction, and the packaged runtime: READY on loopback on a 16 GiB machine, model matching the pin, 0 orphan processes. One earlier verify run hit a one-off blank renderer during the renderer smoke and did not reproduce on the same build. On hardware below the on-device floor (the 7 GB GitHub macOS runner), the runtime smoke now reports `hardware-below-floor` instead of claiming READY.
+- **Known, not changed (owner decisions or pre-existing)**:
+  - The CI `validate` raw-media provenance assertion (~35 runtime media without provenance records).
+  - The verification inventory was already inconsistent before this pass (protected-hash and manifest entries for the ed*/y166+ suites).
+  - Packaged size: the model alone is 4.98 GB, well above GitHub's 2 GiB release-asset limit, so a distribution channel is an owner decision.
+  - The `--day1-opener` renderer smoke (not run in CI) stops at the facility-broadcast presentation. Before the settings-v8 fix it failed even earlier.
+  - Pre-existing test failures are unchanged by this pass: 80 tests across 33 files, all failing with identical names on the audit base. In the dialogue and runtime area they are y73 (26), y36 (2), y37 (1), y108 (1, audio high-pass), y97 (1, pool candidates), y76 (1, hosted interpretation), y78 (2; the test reads a Promise synchronously, and its semantics pass when awaited). The same failing test names appear on the audit base.
+
 ## Assembly Table LOCAL Dialogue Presentation & Group Response Pass — 2026-09-21
 
 - Normal Assembly Table dialogue remains in the right-side communications rail; the center column remains map/reconstruction space, apart from the existing authored Maxwell presentation.

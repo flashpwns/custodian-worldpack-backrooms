@@ -114,7 +114,41 @@ const ITEM_NOUN_PATTERN = /\b(?:kit|gear|equipment|radio|camera|light|duffle|spe
 const ROLE_OR_ASSIGNMENT_PATTERN = /\bwhat(?:'s| is| are)? (?:your|their) (?:role|job|assignment|task|duty|duties)\b|\bwhat do you (?:do|handle)\b|\bwhat are you (?:doing|working on|assigned to|responsible for)\b|\bwhat(?:'s| is) (?:your )?(?:job|role) here\b/i;
 const CLOSE_TOPIC_PATTERN = /^(?:never ?mind|forget (?:it|that)|nothing|it'?s nothing|drop it|that'?s all|that'?s it|no worries|don'?t worry about it)[\s.!]*$/i;
 const CHALLENGE_PATTERN = /\b(?:are you sure|that'?s (?:wrong|not right)|you'?re wrong|i don'?t (?:buy|believe)|prove it|doesn'?t (?:add up|make sense))\b/i;
-const CHECK_IN_PATTERN = /\bhow(?:'s| is| are) (?:everyone|everybody|you all|all of you|you guys|you doing|you holding up)\b/i;
+// A check-in asks about the addressee's own condition ("How are you holding up?", "You okay?",
+// "Are you tired?"). Its answer is the speaker's canonical self-state, never a guess.
+const CHECK_IN_PATTERN = /\bhow(?:'s| is| are) (?:everyone|everybody|you all|all of you|you guys|you doing|you holding up|you feeling)\b|^(?:are |is )?(?:you|everyone|everybody|y'?all|you all|you guys)\s+(?:doing\s+)?(?:okay|ok|alright|all right|good|holding up|tired|exhausted|scared|nervous|worried|stressed|hanging in(?: there)?)(?:\s+(?:there|now|still))?[\s?!.]*$/i;
+// Addressee-directed yes/no whose predicate is a MOMENTARY readiness state ("Are you ready?",
+// "All set?"). Past perception, presence, plans and affect are never momentary state.
+const ADDRESSEE_READINESS_PATTERN = /\b(?:ready|all set|set|good to go|with me)\b/i;
+const NOT_MOMENTARY_STATE_PATTERN = /\b(?:did|were|was|earlier|before|yesterday|ago|last|ever|already|see|saw|seen|hear|heard|notice\w*|find|found|check\w*|coming|going|gonna|will|know|been|remember|think|tell|any|carry\w*|have|got|route|outpost|tired|exhausted|scared|afraid|nervous|worried|stressed)\b/i;
+// A bare imperative addressed to a coworker ("Wait here.", "Take the camera."). LOCAL wording never
+// performs it: the structured order authority does, so its disposition is decided by code.
+const ORDER_IMPERATIVE_PATTERN = /^(?:(?:please|hey|okay|ok|alright|right),?\s+)?(?:wait|stay|hold|come|follow|go|head|move|take|grab|bring|carry|check|look at|tell|give|hand|pass|get|keep|help|open|close|photograph|measure|mark|radio|call|stand|sit|watch|stop)\b(?![^.!]*\?)/i;
+// Spatial deixis that names a thing only by pointing at it ("that door", "What's this?", "Did you
+// hear that?"). Code resolves it from a deterministic selection or it stays unresolved.
+const DEICTIC_OBJECT_PATTERN = /\b(?:that|this|those|these)\s+(door(?:way)?|room|thing|one|light|lamp|sound|noise|wall|corridor|hall(?:way)?|passage|opening|stairs?|stairway|box|bag|case|panel|markings?|marks?|sign|hole|pit|vent|machine|console|shape|figure)\b/i;
+const BARE_DEMONSTRATIVE_PATTERN = /^(?:what(?:'s| is| was)?|(?:did|can|could|do) you (?:see|hear|notice|smell))\s+(?:that|this)(?:\s+(?:over )?there)?[\s?!.]*$/i;
+// An item pronoun in a custody/location predicate ("Who has it?", "Is it here?").
+const ITEM_ANAPHOR_PATTERN = /\b(?:who|where)(?:'s| is| has| had)?\b[^.?!]*\bit\b|\b(?:is|was) it (?:here|there|with|on|in)\b|\b(?:have|has|got|seen|see|find|found|carry|carrying|holding|take|took|grab|bring|hand|pass|give)\b[^.?!]*\b(?:it|that one|this one)\b/i;
+// A reference to an earlier time or event ("earlier", "before we crossed", "just now").
+const TEMPORAL_REFERENCE_PATTERN = /\b(?:earlier|just now|a (?:minute|moment|second|while) ago|last time|this morning|yesterday|(?:before|after|when|while|since) (?:we|you|i|he|she|they|the|maxwell|briefing|crossing)\b[^.?!]*)/i;
+// The speaker's own past perception ("Did you see anything?", "Have you noticed...").
+const PAST_PERCEPTION_PATTERN = /\b(?:did|have|had) you (?:see|seen|hear|heard|notice|noticed|spot|spotted|catch|smell)\b/i;
+// A remark about the addressee's own look or manner ("You look nervous.").
+const ABOUT_ADDRESSEE_PATTERN = /\byou(?:'re| are)? (?:look|looking|seem|seeming|sound|sounding|appear)\b/i;
+// Question form of the whole utterance (a trailing "?" or a leading question word).
+const QUESTION_LIKE_PATTERN = /\?\s*$|^(?:who|what|where|when|why|how|which|are|is|do|does|did|can|could|will|would|have|has|should|was|were)\b/i;
+// An item transfer asked for with take/grab ("Take the camera.") -- a handoff once an item resolves.
+const TAKE_GRAB_PATTERN = /\b(?:take|grab)\b/i;
+// Canonical event anchors a temporal expression may name (resolved against recorded events only).
+const TEMPORAL_ANCHOR_PATTERNS = Object.freeze({
+  briefing: /\bbriefing\b/i,
+  crossing: /\b(?:cross(?:ed|ing)?|threshold|went through|came through)\b/i,
+  maxwell_departure: /\bmaxwell (?:left|leaving|went)\b/i,
+  separation: /\b(?:apart|split up|separated)\b/i
+});
+// A question about where an item is or who holds it ("Is the camera here?", "Have you seen the radio?").
+const CUSTODY_PREDICATE_PATTERN = /\b(?:where|here|with (?:you|me|him|her|them)|who(?:'s| is| has)?|has|have|got|carrying|holding|seen)\b/i;
 const BACKGROUND_PATTERN = /\b(?:your (?:background|training|education|trade)|where (?:are|were) you from|what did you (?:study|do) before|where did you (?:train|study)|how did you (?:get into|end up in) (?:this|the field|surveying))\b/i;
 const REQUEST_CUE_PATTERN = /\b(?:can|could|would|will) you\b|\bplease\b|\bi need\b|\blet me\b/i;
 const HANDOFF_REQUEST_PATTERN = /\b(?:hand|pass|give|bring|transfer)\b/i;
@@ -137,7 +171,20 @@ const LANGUAGE_PATTERNS = Object.freeze({
   background: BACKGROUND_PATTERN,
   request_cue: REQUEST_CUE_PATTERN,
   handoff_request: HANDOFF_REQUEST_PATTERN,
-  heard_confirmation: HEARD_CONFIRMATION_PATTERN
+  heard_confirmation: HEARD_CONFIRMATION_PATTERN,
+  addressee_readiness: ADDRESSEE_READINESS_PATTERN,
+  not_momentary_state: NOT_MOMENTARY_STATE_PATTERN,
+  order_imperative: ORDER_IMPERATIVE_PATTERN,
+  deictic_object: DEICTIC_OBJECT_PATTERN,
+  bare_demonstrative: BARE_DEMONSTRATIVE_PATTERN,
+  item_anaphor: ITEM_ANAPHOR_PATTERN,
+  temporal_reference: TEMPORAL_REFERENCE_PATTERN,
+  past_perception: PAST_PERCEPTION_PATTERN,
+  about_addressee: ABOUT_ADDRESSEE_PATTERN,
+  custody_predicate: CUSTODY_PREDICATE_PATTERN,
+  question_like: QUESTION_LIKE_PATTERN,
+  take_grab: TAKE_GRAB_PATTERN,
+  temporal_anchors: TEMPORAL_ANCHOR_PATTERNS
 });
 
 const GROUP_VOCATIVES = Object.freeze(["team", "teammate", "teammates", "all", "everyone", "everybody", "broadcast", "room", "local", "anyone", "crew", "table", "group"]);

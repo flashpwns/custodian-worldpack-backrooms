@@ -232,7 +232,10 @@ test("ED-1.5 J — 'Nora, what?' is a direct clarification, not a factual questi
 
 test("ED-1.5 K/L — tightened language recognition", () => {
   const fn = (t) => frameFor(t).discourse_function;
-  assert.equal(fn("What was that noise?"), "ask_factual");
+  // "that noise" points at something only a deterministic selection could resolve: it is a clarification
+  // (Part 7 spatial deixis), and still never a repair of the previous line.
+  assert.equal(fn("What was that noise?"), "ambiguous_reference");
+  assert.notEqual(fn("What was that noise?"), "clarify_previous");
   assert.notEqual(fn("Can you repeat the route?"), "request_repetition");
   assert.equal(fn("Can you repeat that?"), "request_repetition");
   assert.equal(fn("Could you say it again?"), "request_repetition");

@@ -172,6 +172,7 @@ const HISTORY_TAIL = Object.freeze({ repair: 2 });
 const REPAIR_LIKE = new Set(["clarify_previous", "request_repetition", "ask_heard_confirmation"]);
 const CUSTODY_CHANGING_EVENTS = new Set(["handed-over", "hand-over", "receive", "assign", "retrieve", "carry", "store", "place", "drop", "dropped", "recovered", "state-lost"]);
 const MAX_HEARD_TURNS = 6;
+const RELEVANCE_GENERIC = new Set(["field", "survey", "record", "device", "equipment", "gear", "kit", "item", "thing", "things", "stuff", "who", "whos", "anyone", "anybody", "everyone", "everybody", "does", "know", "yes", "yeah", "okay", "right", "just", "really", "think", "have", "got", "portable", "materials"]);
 const LINE_CAP = 180;
 
 const normalizeId = (id) => String(id ?? "").replace(/^personnel-/, "");
@@ -330,7 +331,11 @@ function compileObserverDialogueContext({
   // factual/personal/ownership questions get only topic- or referent-relevant rows.
   const tailSize = ["ask_factual", "ask_personal_experience", "ask_item_ownership"].includes(fn) ? 0 : HISTORY_TAIL.repair;
   const topic = frame?.topic && frame.topic !== "unknown" ? frame.topic : null;
-  const queryWords = contentWords([utterance, ...(frame?.referents ?? []).map((ref) => ref.label)].filter(Boolean).join(" "));
+  // Relevance words: the utterance's specific content words plus each resolved item's HEAD noun. Generic
+  // words ("field", "who", "equipment") admit nothing on their own -- "field camera" must not pull in
+  // every line that says "field researcher".
+  const itemHeads = (frame?.referents ?? []).filter((ref) => ref.resolved && ref.label).map((ref) => contentWords(ref.label).slice(-1)[0]).filter(Boolean);
+  const queryWords = [...new Set([...contentWords(utterance ?? "").filter((w) => !RELEVANCE_GENERIC.has(w)), ...itemHeads])];
   const relevantText = (text) => (topic && detectTopic(text) === topic) || queryWords.some((q) => contentWords(text).some((w) => sameStem(q, w)));
   const picked = new Set(tailSize ? heardAll.slice(-tailSize) : []);
   for (const row of [...heardAll].reverse()) { if (picked.size >= MAX_HEARD_TURNS) break; if (!picked.has(row) && relevantText(row.text)) picked.add(row); }
@@ -367,6 +372,8 @@ function compileObserverDialogueContext({
     introductions_occurred: heardAll.some((row) => row.is_player && (interpretUtterance(row.text).speech_act === "introduction" || /\bmy name is\b|\bcall me\b/i.test(row.text))),
     participants: [...new Set(heardAll.map((row) => (row.is_player ? "PLAYER" : (row.is_self ? speakerName : row.speaker_name))).filter(Boolean))],
     unresolved_repair: Boolean(frame?.unresolved_reference),
+    // A clarification answer resumes the player's earlier question (derived from heard history).
+    resuming_question: frame?.resumed_question?.player_text ? clip(frame.resumed_question.player_text, 200) : null,
     heard_turn_count: heardTurns.length
   };
   if (purpose === "response") prov("conversation", AUTHORITY.HEARD_COMMUNICATION, "dialogue_history+semantic_frame");
@@ -456,13 +463,7 @@ function compileObserverDialogueContext({
   // Relationship: only a recorded, attributed attitude. Neutral conversation is valid and emits no affect.
   const human = { affect: [], circumstances: [], relationship: null, ordinary: false };
   if (purpose === "response") {
-    const base = canonicalLedger.DEFAULT_EMOTIONAL_STATE;
-    const state = member.emotional_state ?? null;
-    const moved = (key) => state && typeof state[key] === "number" && Math.abs(state[key] - base[key]) >= 0.2;
-    if (moved("stress") && state.stress > base.stress) human.affect.push("tense and under some stress");
-    if (moved("urgency") && state.urgency > (base.urgency ?? 0.2)) human.affect.push("feeling pressed for time");
-    if (moved("fatigue") && state.fatigue > base.fatigue) human.affect.push("tired");
-    if (moved("trust_player") && state.trust_player < base.trust_player) human.affect.push("guarded with PLAYER");
+    human.affect.push(...canonicalLedger.describeSelfState(member).affect);
     if (human.affect.length) prov("human_context.affect", AUTHORITY.SELF_KNOWLEDGE, "member.emotional_state");
     const lastPlayerText = lastPlayerRow?.text ?? null;
     if (fn === "joke_or_sarcasm") human.circumstances.push("PLAYER just made a joke.");

@@ -21,9 +21,10 @@ const EQUIPMENT = {
 };
 const NAMES = { "c-nora": "Nora", "c-omar": "Omar", "c-diego": "Diego", [PLAYER]: "you" };
 const SELF = {
-  "c-nora": D.buildSelfKnowledge({ person: { first_name: "Nora", role: "field medical doctor" }, names: NAMES }),
-  "c-omar": D.buildSelfKnowledge({ person: { first_name: "Omar", role: "survey technician" }, names: NAMES }),
-  "c-diego": D.buildSelfKnowledge({ person: { first_name: "Diego", role: "field technician" }, names: NAMES })
+  // custody_known: the observer authority's grant (the service always supplies it); without it custody is unknown.
+  "c-nora": D.buildSelfKnowledge({ person: { first_name: "Nora", role: "field medical doctor" }, names: NAMES, custody_known: { cam: true, radio: true } }),
+  "c-omar": D.buildSelfKnowledge({ person: { first_name: "Omar", role: "survey technician" }, names: NAMES, custody_known: { cam: true, radio: true } }),
+  "c-diego": D.buildSelfKnowledge({ person: { first_name: "Diego", role: "field technician" }, names: NAMES, custody_known: { cam: true, radio: true } })
 };
 const RESP = Object.fromEntries(Object.entries(SELF).map(([id, self]) => [id, { self }]));
 function contributionFor(text, { recipient_type = "direct", owner = "c-omar", discourse = null } = {}) {

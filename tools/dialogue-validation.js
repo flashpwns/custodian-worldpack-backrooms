@@ -34,7 +34,7 @@ const sentences = (speech) => String(speech).split(/(?<=[.!?])\s+/).filter((s) =
 
 const LACK = /\b(?:don'?t (?:know|have)|do not (?:know|have)|no idea|not sure|can'?t say|couldn'?t say|nothing (?:established|to (?:tell|share|say|add))|nothing (?:on|about) that|haven'?t|never|no (?:record|information|experience)|not certain|unsure|not aware|have no)\b/i;
 const INVENTED_EXPERIENCE = /\b(?:first (?:time|day|week|expedition|trip)|i(?:'ve| have) (?:been|done|worked|served|gone)|been (?:in|down|there|here) (?:before|already)|years? (?:of|in|on)|done this before|second time|again this time)\b/i;
-const BIOGRAPHY = /\b(?:grew up|hometown|born (?:in|and)|my (?:family|wife|husband|kids?|children|parents?|mother|father|brother|sister|dog|cat)|graduated|degree|college|university|high school|used to (?:work|live)|back home|i(?:'m| am) from|where i'?m from|years of experience|i(?:'ve| have) been (?:doing|working) (?:this|here))\b/gi;
+const BIOGRAPHY = /\b(?:grew up|hometown|i live|live with|lives with|born (?:in|and)|my (?:family|wife|husband|kids?|children|parents?|mother|father|brother|sister|dog|cat)|graduated|degree|college|university|high school|used to (?:work|live)|back home|i(?:'m| am) from|where i'?m from|years of experience|i(?:'ve| have) been (?:doing|working) (?:this|here))\b/gi;
 const FUTURE_KNOWLEDGE = /\b(?:you(?:'ll| will) (?:find|regret|die)|(?:it|this|that) (?:will|is going to) (?:go wrong|fail|end badly|happen)|something (?:bad )?(?:is going to|will) happen|i know how this ends)\b/i;
 const STATE_MUTATION = /\b(?:here you go|here(?:'s| is) (?:the|your)|i(?:'ve| have) (?:just )?(?:handed|given|passed|moved|opened|closed|taken|dropped)|i (?:just )?(?:handed|gave|passed|opened|closed|took|moved)\b)/i;
 const SPEAKING_FOR_OTHERS = /\b(?:we(?:'re| are) all|all of us|we all|everyone(?:'s| is| feels| here)|the others (?:are|feel|think))\b/i;
@@ -43,31 +43,40 @@ const MISSION_TERMS = /\b(?:outpost|cutoff|duffle|manifest|route|guidance tape|b
 // Generic service-assistant framing is never a coworker's voice.
 const ASSISTANT_PERSONA = /\b(?:how (?:can|may|could|might) i (?:help|assist|be of (?:service|assistance|help))|what can i do for you|(?:is|was) there (?:anything|something) (?:i|else i) (?:can|could) (?:help|do|assist)|anything (?:else )?(?:i|that i) (?:can|could) (?:help|assist)(?: you)? with|(?:can|may|could) i (?:help|assist) you|(?:i(?:'m| am) )?(?:here|happy|glad|ready) to (?:help|assist)(?: you)?|let me know if you need (?:anything|any help|something)|at your service|how may i serve)\b/i;
 // An honest, non-absolute statement that nothing is known ("not that I know of").
-const LACK_SAFE = /\b(?:don'?t know|do not know|no idea|no clue|not sure|can'?t say|couldn'?t say|can'?t tell you|couldn'?t tell you|not that i (?:know|recall|remember)|don'?t (?:recall|remember)|nothing (?:on|about) that|nothing to (?:add|say|tell)|haven'?t (?:heard|been told)|i wouldn'?t know|unsure|not certain|i'?d rather not)\b/i;
+const LACK_SAFE = /\b(?:don'?t know|do not know|no idea|no clue|not sure|can'?t say|couldn'?t say|can'?t tell you|couldn'?t tell you|not that i (?:know|recall|remember|noticed|saw|heard)|didn'?t (?:notice|see|catch) anything|don'?t (?:recall|remember)|nothing (?:on|about) that|nothing to (?:add|say|tell)|haven'?t (?:heard|been told)|i wouldn'?t know|unsure|not certain|i'?d rather not)\b/i;
 const ABSOLUTE_EXPERIENCE_CLAIM = /\b(?:never|no experience|first time|haven'?t been|have not been|been (?:here|there|in|down)|seen (?:this|the|it) before|done this)\b/i;
 // Functions whose reply is a plain answer/reaction, not a question back.
-const NO_COUNTER_QUESTION = new Set(["report_observation", "greet", "introduce_self", "acknowledge", "close_topic", "joke_or_sarcasm", "social_observation", "warn", "invite_self_description", "ask_role_or_assignment", "ask_item_ownership", "ask_personal_experience", "ask_factual", "request_repetition", "clarify_previous", "ask_heard_confirmation"]);
+const NO_COUNTER_QUESTION = new Set(["report_observation", "greet", "introduce_self", "acknowledge", "close_topic", "joke_or_sarcasm", "social_observation", "warn", "invite_self_description", "ask_role_or_assignment", "ask_item_ownership", "ask_personal_experience", "ask_factual", "request_repetition", "clarify_previous", "ask_heard_confirmation", "check_in", "make_request"]);
 const CLARIFY_CUE = /\b(?:(?:what|which)\b[^?]*\b(?:referring|referencing|talking about)|mean|which|what (?:do|are|exactly|thing|part|item)|sorry|pardon|huh|not sure what|didn'?t (?:catch|follow|get)|come again|say again)\b/i;
 const MAX_WORDS = Object.freeze({ report_observation: 22, greet: 6, introduce_self: 10, acknowledge: 9, close_topic: 9, joke_or_sarcasm: 10, social_observation: 10, check_in: 14, warn: 14, express_uncertainty: 16, ask_heard_confirmation: 16 });
 const META_PLAYER = /\b(?:the|this) player\b|\bplayer'?s (?:words|line|message|text)\b/i;
-// The capsule labels the person spoken to "PLAYER"; that label is orientation, never speech.
-const PLAYER_LABEL = /\bPLAYER\b/;
-// A purpose/motive clause the plan never supplied ("...to make sure everything was accounted for").
-const INVENTED_RATIONALE = /\b(?:to make sure|to ensure|in order to|so (?:that )?(?:we|i|they|it)\b|because\b|to see (?:if|whether)|to (?:verify|confirm|double-check)\b)/i;
-// A yes/no question about the addressee's own momentary state ("Are you ready?",
-// "You okay?") may be answered briefly; questions about knowledge/experience may not.
-const isSelfStateAnswer = (question, speech) => Boolean(question)
-  && /\byou(?:'re| are)?\b/i.test(question)
-  && !/\b(?:know|seen|been|heard|remember|think|tell|any|carry|carrying|have|got|route|outpost)\b/i.test(question)
-  && words(speech).length <= 6
-  && /^\s*(?:yes|yeah|yep|yup|no|nope|sure|ready|okay|ok|fine|all set|i am|i'm|not really|kind of|sort of)\b/i.test(speech);
+// The capsule labels the person spoken to "PLAYER"; that label is orientation, never speech -- in any case,
+// whether shouted, used as a name ("Morning, Player.") or as an address ("Hey player"). Ordinary uses
+// such as "team player" are not the label.
+const PLAYER_LABEL = /\bPLAYER\b|\S\s+Player\b/;
+const PLAYER_ADDRESS = /,\s*player\b|^\s*player\s*[,!.?]|\b(?:hey|hi|hello|morning|evening|thanks|sorry|okay|yes|no)[,!]?\s+player\b/i;
+// A purpose/motive clause the plan never supplied ("...to make sure everything was accounted for",
+// "staying with the lead to monitor health conditions").
+const INVENTED_RATIONALE = /\b(?:to make sure|to ensure|in order to|so (?:that )?(?:we|i|they|it)\b|because\b|to see (?:if|whether)|to (?:verify|confirm|double-check|monitor|keep (?:an eye|track|watch)|watch over|look after|support|assist|protect|document)\b)/i;
+// A course of action nobody authorized ("We should check with the leader.", "Let's move when we're ready.").
+const INVENTED_DIRECTIVE = /\b(?:we should|we(?:'ll| will)? (?:need|have) to|we(?:'d| had) better|you should|you(?:'d| had) better|let'?s|check with|ask (?:the|your|our) (?:lead|leader|boss|supervisor)|talk to (?:the|your|our))\b/i;
+// An assessment of the situation the plan does not supply ("Everything's good here.").
+const SITUATION_ASSESSMENT = /\b(?:everything(?:'s| is| seems| looks)|it(?:'s| is) all|things(?:'re| are)) (?:good|fine|okay|ok|alright|all right|under control|normal|safe|quiet|clear|going (?:well|fine|smoothly)|on track)\b|\b(?:all|everything)(?:'s| is)? on track\b/i;
+// An invented duty or purpose for being present ("I'm here to keep everyone safe.").
+const INVENTED_DUTY = /\b(?:here to|my job(?:'s| is) to|i(?:'m| am) (?:supposed|meant) to|keep(?:ing)? (?:everyone|everybody|us|you|the team) safe)\b/i;
+// Items a coworker may name as someone's custody; used to keep custody talk inside the plan.
+const CUSTODY_ITEM_WORDS = /\b(?:camera|radio|transceiver|lamp|light|worklight|duffle|bag|spectrometer|instrument|recorder|record|kit|markers?)\b/gi;
+// "you" used as if it were a name ("Good morning, you.", "What are you talking about, you?").
+const VOCATIVE_YOU = /,\s*you\s*[.!?]*\s*$|,\s*you\s*[.!?]\s+\S/i;
 const SENSORY_INVENTION = /\b(?:smell\w*|hear|heard|hearing|sound\w*|glow\w*|hum|humming|hums|moving|moves|breath\w*|whisper\w*|voices?|bleed\w*|scream\w*|shadows?|vibrat\w*|pulsing|pulses|cold|warm|hot|dying|dead|blood|flicker\w*|buzz\w*|watching|following)\b/i;
 // Agreeing that a sarcastic remark is true takes it literally.
 const SARCASM_AGREES = /\b(?:you'?re (?:not wrong|right|correct)|not wrong about|that'?s (?:true|right|correct|a relief)|(?:i )?agree(?:d)?|absolutely|indeed|good point|fair point)\b/i;
 // A reaction that supplies no fact must not narrate events, history or experience of its own.
 // A reaction that supplies no fact must not invent what the speaker is currently doing or waiting for.
 const INVENTED_ACTIVITY = /\b(?:just|still|currently|busy)\s+(?:waiting|trying|working|checking|charging|getting|making|keeping|looking|going|doing)\b|\bwaiting (?:for|on)\b|\btrying to\b/i;
-const INVENTED_HISTORY = /\bi(?:'ve| have) (?:seen|been|done|worked|had)\b|\bi was\b|\bagain\b|\b(?:last|that) (?:time|week|year|day)\b|\bused to\b|\bi remember\b|\bever\b/i;
+const INVENTED_HISTORY = /\bi(?:'ve| have) (?:seen|been|done|worked|had)\b|\bi was\b|\bagain\b|\b(?:last|that) (?:time|week|year|day)\b|\bused to\b|\bi remember\b|\bever\b|\b(?:didn'?t|did not|haven'?t|barely|hardly) (?:sleep|slept|rest(?:ed)?|eat(?:en)?)\b|\b(?:no|little|not much) sleep\b/i;
+// Words of the internal plan/packet that must never surface as speech (any function).
+const PLAN_VOCAB = /\b(?:disposition|authorized|contribution|self[_ ]state|antecedent|required facts?|item[_ ]holder|heard[_ ]confirmation|known[_ ]answer)\b/i;
 // A wry aside must not itself assert a safety/danger state ("most dangerous thing...", "we'd all die").
 const DANGER_EVALUATION = /\b(?:danger\w*|unsafe|deadly|risk\w*|hazard\w*|threat\w*|trap|die|dying|death|hurt|injur\w*|kill\w*|emergency|disaster|catastroph\w*)\b/i;
 const SARCASM_LITERAL_AGREEMENT = /\b(?:looks?|seems?|is|are|feels?|sounds?)\s+(?:pretty |really |quite |very |perfectly |totally )?(?:safe|fine|secure|okay|harmless)\b|\bsafety protocols?\b|\bnothing to worry\b/i;
@@ -82,7 +91,12 @@ const INVENTED_URGENCY = /\b(?:urgent\w*|emergency|alarm\w*|panic\w*|hurry|immed
 const HEARD_COMMITMENT = /\bi(?:'ll| will| can| could| should)\b(?!\s+hear)|\blet me\b|\bon it\b|consider it done|\bwill do\b/i;
 // LOCAL wording cannot create an instruction/commitment: orders and promises with consequences go through
 // the structured order path (q4-local-intent), never through the wording of a reply.
-const COMMITMENT_CLAIM = /\b(?:i'?ll|i will|i(?:'m| am) going to|i can do that|let me (?:go|get|check|handle|take|grab|do)|on it\b|will do\b|you got it|sure thing|consider it done|i promise|count on me)\b/i;
+const COMMITMENT_CLAIM = /\b(?:i'?ll|i will|i(?:'m| am) going to|i can do that|let me (?:go|get|check|handle|take|grab|do)|on it\b|will do\b|you got it|sure thing|consider it done|i promise|count on me|give me (?:a |one )?(?:sec|second|minute|moment)|right away|on my way|coming right up|no problem|i(?:'m| am) on it)\b/i;
+// A request/order that conversation does not perform is acknowledged, never accepted or complied with.
+const REQUEST_ACCEPTANCE = /^\s*(?:sure|okay|ok|yes|yeah|yep|yup|alright|all right|of course|absolutely|you bet|roger|copy(?: that)?|understood|will do|sounds good|got it|fine|certainly)\b|\b(?:sounds good|good idea|let'?s|i'?m with you|right behind you|we(?:'ll| will| can)|will wait|i(?:'ll| will) wait)\b/i;
+// Words that state a feeling or strain; a check-in may state one only when canonical self-state holds it.
+const SELF_STATE_CLAIM = /\b(?:tired|exhausted|worn(?: out)?|wiped|drained|beat|stress\w*|tense|on edge|nervous|anxious|worried|scared|afraid|uneasy|rough|could be better|not great|been better|not (?:so|too) good|hanging in)\b/i;
+const SELF_STATE_SYNONYMS = Object.freeze({ tired: /\b(?:tired|exhausted|worn|wiped|drained|beat|fatigue\w*)\b/i, tense: /\b(?:tense|stress\w*|on edge|uneasy|nervous|anxious|keyed up)\b/i, pressed: /\b(?:clock|time|rush\w*|hurr\w*|pressed)\b/i });
 const opener = (text) => words(text).slice(0, 2).join(" ");
 const OPENER_FUNCTIONS = new Set(["greet", "introduce_self", "acknowledge", "check_in", "joke_or_sarcasm", "social_observation"]);
 const REPAIR_FUNCTIONS = new Set(["clarify_previous", "request_repetition"]);
@@ -130,10 +144,29 @@ function validateContribution(contribution, rawSpeech, { player_text = null } = 
 
   // Assistant persona: a coworker never offers generic service.
   if (fn !== "make_request" && ASSISTANT_PERSONA.test(speech)) return reject(CODES.FORBIDDEN, "assistant-style service offer");
-  if (META_PLAYER.test(speech) || PLAYER_LABEL.test(speech)) return reject(CODES.FORBIDDEN, "refers to the player as a game construct");
-  if (["joke_or_sarcasm", "social_observation", "greet", "introduce_self", "acknowledge", "close_topic", "check_in"].includes(fn) && INVENTED_HISTORY.test(speech)) return reject(CODES.FORBIDDEN, "narrates history or experience the plan does not supply");
+  if (META_PLAYER.test(speech) || PLAYER_LABEL.test(speech) || PLAYER_ADDRESS.test(speech)) return reject(CODES.FORBIDDEN, "refers to the player as a game construct");
+  const noFacts = !(contribution.required_facts ?? []).length && !(contribution.optional_facts ?? []).length;
+  if ((["joke_or_sarcasm", "social_observation", "greet", "introduce_self", "acknowledge", "close_topic", "check_in"].includes(fn) || (noFacts && ["ask_factual", "ask_personal_experience", "challenge", "make_statement", "ambiguous_reference"].includes(fn))) && INVENTED_HISTORY.test(speech)) return reject(CODES.FORBIDDEN, "narrates history or experience the plan does not supply");
   if (["joke_or_sarcasm", "social_observation", "greet", "introduce_self", "acknowledge", "close_topic", "check_in"].includes(fn) && INVENTED_ACTIVITY.test(speech)) return reject(CODES.FORBIDDEN, "invents what the speaker is doing or waiting for");
   if (fn !== "report_observation" && fn !== "warn" && COMMITMENT_CLAIM.test(speech)) return reject(CODES.FORBIDDEN, "creates a commitment or instruction the simulation does not hold");
+  if (VOCATIVE_YOU.test(speech)) return reject(CODES.SHAPE, "addresses the person as \"you\" as if it were a name");
+  if (PLAN_VOCAB.test(speech)) return reject(CODES.FORBIDDEN, "internal bookkeeping vocabulary");
+  // A suggested course of action is new content unless the plan (or the player's own words) supplied it.
+  if (fn !== "report_observation" && fn !== "warn") {
+    const directive = speech.match(INVENTED_DIRECTIVE);
+    if (directive && !allowedBlob.includes(directive[0].toLowerCase()) && !(player_text && player_text.toLowerCase().includes(directive[0].toLowerCase()))) return reject(CODES.FORBIDDEN, `invented suggestion or plan: "${directive[0]}"`);
+  }
+  if (fn !== "report_observation" && SITUATION_ASSESSMENT.test(speech) && !SITUATION_ASSESSMENT.test(allowedBlob)) return reject(CODES.FORBIDDEN, "asserts a state of the situation the plan does not supply");
+  if (INVENTED_DUTY.test(speech) && !allowedBlob.includes(speech.match(INVENTED_DUTY)[0].toLowerCase())) return reject(CODES.FORBIDDEN, `invented duty or purpose: "${speech.match(INVENTED_DUTY)[0]}"`);
+  // Custody talk stays inside the plan: naming who holds an item the plan does not mention is an
+  // unauthorized fact for this turn, even when it happens to be true.
+  for (const marker of claimMarkers(speech)) {
+    if (marker.kind !== "possession") continue;
+    const parts = regionParts(speech, claimMarkers(speech), claimMarkers(speech).findIndex((m) => m.start === marker.start)) ?? [];
+    for (const item of parts.join(" ").match(CUSTODY_ITEM_WORDS) ?? []) {
+      if (!allowedBlob.includes(item.toLowerCase().replace(/s$/, ""))) return reject(CODES.FORBIDDEN, `states custody of an item the plan does not mention: "${item}"`);
+    }
+  }
   // A rationale the authorized facts do not contain is an invented motive.
   if (fn !== "report_observation" && fn !== "make_request") {
     const why = speech.match(INVENTED_RATIONALE);
@@ -300,6 +333,23 @@ function validateContribution(contribution, rawSpeech, { player_text = null } = 
       }
       break;
     }
+    case "check_in":
+    case "social_observation": {
+      const self = requiredValue(contribution, "self_state")[0];
+      if (!self) break;
+      if (self.state !== "affected") {
+        if (SELF_STATE_CLAIM.test(speech)) return reject(CODES.FORBIDDEN, "states a feeling or strain canonical self-state does not hold");
+      } else {
+        const keys = (self.affect ?? []).map((a) => (/tired/i.test(a) ? "tired" : /tense|stress/i.test(a) ? "tense" : /pressed|time/i.test(a) ? "pressed" : null)).filter(Boolean);
+        if (keys.length && !keys.some((key) => SELF_STATE_SYNONYMS[key].test(speech))) return reject(CODES.UNMET, "does not express the canonical self-state the plan supplies");
+      }
+      break;
+    }
+    case "make_request": {
+      const disposition = requiredValue(contribution, "request_disposition")[0];
+      if (disposition && REQUEST_ACCEPTANCE.test(speech)) return reject(CODES.FORBIDDEN, "accepts or complies with a request the simulation has not performed");
+      break;
+    }
     case "ask_factual":
     case "challenge": {
       const supplied = [
@@ -310,8 +360,9 @@ function validateContribution(contribution, rawSpeech, { player_text = null } = 
       ].filter(Boolean);
       if (supplied.length) {
         if (!supplied.some((text) => coverage(speech, text) >= 0.5)) return reject(CODES.UNMET, "does not express an authorized fact");
-      } else if (fn === "ask_factual" && contribution.question_form === "yes_no" && (contribution.addressee_state || isSelfStateAnswer(player_text, speech)) && words(speech).length <= 6 && /^\s*(?:yes|yeah|yep|yup|no|nope|sure|ready|okay|ok|fine|all set|i am|i'm|i think so|not really|kind of|sort of)\b/i.test(speech)) {
-        // "Are you ready?" -> "Ready." : the addressee's own momentary state, no world fact.
+      } else if (fn === "ask_factual" && contribution.addressee_state && words(speech).length <= 6 && /^\s*(?:yes|yeah|yep|yup|no|nope|sure|ready|okay|ok|fine|all set|i am|i'm|i think so|not really|kind of|sort of)\b/i.test(speech)) {
+        // "Are you ready?" -> "Ready." : the addressee's own momentary READINESS (decided by the
+        // semantic frame, the one authority), never a past observation, presence, plan or feeling.
       } else if (fn === "ask_factual" && !LACK_SAFE.test(speech) && !contribution.may_ask_clarifying_question) {
         return reject(CODES.UNMET, "no fact is authorized; the speaker must say they do not know");
       }
@@ -320,7 +371,9 @@ function validateContribution(contribution, rawSpeech, { player_text = null } = 
     default:
       break;
   }
-  if (contribution.expected_response_shape === "short_social_acknowledgment" && (sents.length > 2 || speech.length > 220)) return reject(CODES.SHAPE, "short social acknowledgment expected");
+  // Style-only runaway guard: length, not sentence count ("Tense. Tired. Under stress." is three natural
+  // fragments of one short answer; the per-function word caps above bound brevity).
+  if (contribution.expected_response_shape === "short_social_acknowledgment" && speech.length > 220) return reject(CODES.SHAPE, "short social acknowledgment expected");
   return { ok: true };
 }
 
@@ -340,10 +393,10 @@ const NEGATED_BEFORE = /\b(?:not|never|isn'?t|aren'?t|no)\s*$/i;
 function claimMarkers(speech) {
   const markers = [];
   const push = (regex, build) => { for (const match of speech.matchAll(regex)) markers.push({ start: match.index, end: match.index + match[0].length, ...build(match) }); };
-  push(/\bi(?:'ve| have)(?: got)?\b|\bi(?:'m| am) (?:holding|carrying)\b|\bi (?:hold|carry|took)\b/gi, () => ({ subject: "first", kind: "possession", side: "after" }));
+  push(/\bi(?:'ve| have)(?: still)?(?: got)?\b|\bi(?:'m| am)(?: still)? (?:holding|carrying)\b|\bi (?:still )?(?:hold|carry|took)\b/gi, () => ({ subject: "first", kind: "possession", side: "after" }));
   push(/\b([A-Z][a-z]+)(?:'s (?:holding|carrying|got)|(?: has| have| is holding| is carrying| holds| carries| took))\b/g, (m) => ({ subject: "named", name: m[1], kind: "possession", side: "after" }));
   push(/\b(?:she|he)(?:'s (?:holding|carrying|got)| has| holds| carries| is holding)\b/gi, () => ({ subject: "pronoun", kind: "possession", side: "after" }));
-  push(/\byou(?:'ve| have| are holding| hold)\b/gi, () => ({ subject: "player", kind: "possession", side: "after" }));
+  push(/\byou(?:'ve| have)(?: still)?(?: got)?\b|\byou(?:'re| are)(?: still)? (?:holding|carrying)\b|\byou (?:still )?(?:hold|carry)\b/gi, () => ({ subject: "player", kind: "possession", side: "after" }));
   push(/\b(?:is |are )?(?:with me|in my (?:hands|custody|bag))\b/gi, () => ({ subject: "first", kind: "possession", side: "before" }));
   // "the camera's with Nora" / "the camera is with you": the item is the LAST noun phrase before the marker.
   push(/(?:'s|\bis|\bare)\s+with\s+(you|[A-Z][a-z]+)\b/g, (m) => ({ ...(m[1].toLowerCase() === "you" ? { subject: "player" } : { subject: "named", name: m[1] }), kind: "possession", side: "before", lastOnly: true }));
@@ -425,7 +478,7 @@ function validateOwnershipClaims(speech, { run, speakerId }) {
 function validateUniversalWording(rawSpeech) {
   const speech = String(rawSpeech ?? "");
   if (ASSISTANT_PERSONA.test(speech)) return reject(CODES.FORBIDDEN, "assistant-style service offer");
-  if (META_PLAYER.test(speech) || PLAYER_LABEL.test(speech)) return reject(CODES.FORBIDDEN, "refers to the player as a game construct");
+  if (META_PLAYER.test(speech) || PLAYER_LABEL.test(speech) || PLAYER_ADDRESS.test(speech)) return reject(CODES.FORBIDDEN, "refers to the player as a game construct");
   return validateOntology(speech);
 }
 

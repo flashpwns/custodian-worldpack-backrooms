@@ -449,8 +449,8 @@ function clamp01(v) {
 function getCoworkerEmotionalState(run, memberId) {
   const member = getObserverMember(run, memberId);
   if (!member) return null;
-  member.emotional_state ??= { ...DEFAULT_EMOTIONAL_STATE };
-  return clone(member.emotional_state);
+  // A read never writes: compiling a context must not create canonical state as a side effect.
+  return clone(member.emotional_state ?? { ...DEFAULT_EMOTIONAL_STATE });
 }
 
 function updateCoworkerEmotionalState(run, memberId, updates = {}) {
@@ -463,6 +463,49 @@ function updateCoworkerEmotionalState(run, memberId, updates = {}) {
     }
   }
   return clone(member.emotional_state);
+}
+
+/**
+ * The ONE reading of canonical emotional state for dialogue: which dimensions have moved materially
+ * from the default, as plain phrases. Pure (never writes defaults onto the member). Both the
+ * observer-safe capsule and the response plan read this, so model and fallback say the same thing.
+ */
+function describeSelfState(member) {
+  const base = DEFAULT_EMOTIONAL_STATE;
+  const state = member?.emotional_state ?? null;
+  // Compared at the ledger's own 2-decimal precision (clamp01), so 0.35 vs 0.15 is a 0.20 move, not 0.1999...
+  const moved = (key) => state && typeof state[key] === "number" && Math.round(Math.abs(state[key] - base[key]) * 100) >= 20;
+  const affect = [];
+  if (moved("stress") && state.stress > base.stress) affect.push("tense and under some stress");
+  if (moved("urgency") && state.urgency > base.urgency) affect.push("feeling pressed for time");
+  if (moved("fatigue") && state.fatigue > base.fatigue) affect.push("tired");
+  if (moved("trust_player") && state.trust_player < base.trust_player) affect.push("guarded with PLAYER");
+  return Object.freeze({ state: affect.length ? "affected" : "ordinary", affect: Object.freeze(affect) });
+}
+
+// Deterministic affect writer interface. Only a canonical, simulation-classified event may move
+// emotional state, by a bounded, code-owned delta; language (player or model wording) never does.
+// No current gameplay system emits these yet: until one does, affect stays at its defaults and
+// every dialogue surface says the conversation is ordinary (fail closed).
+const AFFECT_EVENTS = Object.freeze({
+  prolonged_stress_exposure: Object.freeze({ stress: +0.25 }),
+  high_stress_event: Object.freeze({ stress: +0.35, urgency: +0.2 }),
+  physical_exertion: Object.freeze({ fatigue: +0.2 }),
+  injury: Object.freeze({ stress: +0.3, fatigue: +0.15 }),
+  rest: Object.freeze({ fatigue: -0.25, stress: -0.1 }),
+  successful_return: Object.freeze({ stress: -0.3, urgency: -0.2 }),
+  interpersonal_conflict_with_player: Object.freeze({ trust_player: -0.25, stress: +0.1 })
+});
+function applyAffectEvent(run, memberId, { kind, at = null, source = null } = {}) {
+  const delta = AFFECT_EVENTS[kind];
+  if (!delta) return { ok: false, code: "AFFECT_EVENT_UNKNOWN" };
+  if (typeof source !== "string" || !source.trim()) return { ok: false, code: "AFFECT_EVENT_SOURCE_REQUIRED" };
+  const member = getObserverMember(run, memberId);
+  if (!member) return { ok: false, code: "AFFECT_EVENT_MEMBER_UNKNOWN" };
+  const current = { ...DEFAULT_EMOTIONAL_STATE, ...(member.emotional_state ?? {}) };
+  const next = Object.fromEntries(Object.entries(delta).map(([key, change]) => [key, current[key] + change]));
+  const state = updateCoworkerEmotionalState(run, memberId, next);
+  return { ok: true, kind, at, source, emotional_state: state };
 }
 
 function formatCoworkerEmotionalSummary(emotionalState) {
@@ -580,6 +623,9 @@ module.exports = {
   progressCoworkerTask,
   getCoworkerEmotionalState,
   updateCoworkerEmotionalState,
+  describeSelfState,
+  applyAffectEvent,
+  AFFECT_EVENTS,
   formatCoworkerEmotionalSummary,
   recordEquipmentTransfer,
   recordCustodyObserved,

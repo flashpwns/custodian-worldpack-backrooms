@@ -124,7 +124,7 @@ const scopeOf = (recipientType) => (recipientType === "direct" ? "direct" : reci
  * count as exchanges. Only same-location turns within `max_interval_gap`
  * simulation intervals count, at most `window` of them.
  */
-function deriveDiscourseState({ interaction_history = [], dialogue_history = [], player_id, location_id = null, current_interval = null, window = RECENT_TURN_WINDOW, max_interval_gap = MAX_INTERVAL_GAP } = {}) {
+function deriveDiscourseState({ interaction_history = [], dialogue_history = [], player_id, location_id = null, current_interval = null, window = RECENT_TURN_WINDOW, max_interval_gap = MAX_INTERVAL_GAP, equipment = null } = {}) {
   const bySubmission = new Map();
   for (const event of dialogue_history ?? []) {
     if (!event?.submission_id) continue;
@@ -174,12 +174,40 @@ function deriveDiscourseState({ interaction_history = [], dialogue_history = [],
       responses,
       interval,
       topic: detectTopic(residual ?? responses.map((r) => r.text).join(" ")),
-      discourse_function: isPlayerTurn ? buildSemanticFrame({ text: residual, recipient_type: item.recipient_type ?? "none" }).discourse_function : null
+      _residual: residual,
+      _committed: committed.length
     });
+  }
+
+  // Each prior player turn is re-framed CHRONOLOGICALLY with the open question and item antecedent as
+  // they stood at that point, so a resumed fragment ("The camera.") reconstructs exactly as it was
+  // framed live -- including after a cold reload. Everything is derived from persisted history.
+  let openQuestion = null;
+  let itemSoFar = null;
+  for (const turn of turns) {
+    const residual = turn._residual;
+    const committedCount = turn._committed;
+    delete turn._residual;
+    delete turn._committed;
+    if (turn.kind !== "player_exchange") { turn.discourse_function = null; turn.item_referent = null; turn.awaiting_clarification = false; openQuestion = null; continue; }
+    const priorFrame = buildSemanticFrame({ text: residual, recipient_type: turn.recipient_type ?? "none", equipment: equipment ?? {}, discourse: { pending_question: openQuestion, last_item_referent: itemSoFar, turns: [] } });
+    const priorItem = (priorFrame.referents ?? []).find((ref) => ref.type === "equipment" && ref.resolved) ?? null;
+    turn.discourse_function = priorFrame.discourse_function ?? null;
+    turn.item_referent = priorItem ? { id: priorItem.id, label: priorItem.label } : null;
+    turn.awaiting_clarification = Boolean(priorFrame.unresolved_reference) && committedCount > 0;
+    if (turn.item_referent) itemSoFar = turn.item_referent;
+    openQuestion = turn.awaiting_clarification && QUESTION_FUNCTIONS_RESUMABLE.has(turn.discourse_function)
+      ? { discourse_function: turn.discourse_function, player_text: turn.player_text, interaction_id: turn.interaction_id, responder_ids: [...turn.responder_ids] }
+      : null;
   }
 
   const last = turns[turns.length - 1] ?? null;
   const previous = turns[turns.length - 2] ?? null;
+  // Open question: the immediately preceding player question was answered with a clarification
+  // request, so a short follow-up naming the thing resumes THAT question (question -> clarification
+  // -> answer). Derived from persisted history only; nothing is stored.
+  const pending = openQuestion;
+  const lastItem = itemSoFar;
   const participants = new Set();
   for (const turn of turns) {
     for (const id of turn.recipient_ids) participants.add(id);
@@ -199,9 +227,14 @@ function deriveDiscourseState({ interaction_history = [], dialogue_history = [],
     active_participants: [...participants],
     last_player_utterance: last?.player_text ?? null,
     last_responder_ids: last?.responder_ids ?? [],
-    last_response_texts: (last?.responses ?? []).map((r) => r.text)
+    last_response_texts: (last?.responses ?? []).map((r) => r.text),
+    pending_question: pending,
+    last_item_referent: lastItem
   });
 }
+
+// Questions a clarification exchange can be resumed into once the missing referent is named.
+const QUESTION_FUNCTIONS_RESUMABLE = new Set(["ask_item_ownership", "make_request", "ask_factual", "ambiguous_reference"]);
 
 // ─── 2. Scope inheritance ───────────────────────────────────────────────────
 /**
@@ -278,6 +311,59 @@ function resolveAntecedent({ discourse_function, discourse, referents = [] } = {
   return { type: "none", resolved: true };
 }
 
+// ─── 3b. Temporal / event reference ─────────────────────────────────────────
+// Canonical anchors a caller may supply ({ key: { interval } }), recognized by the interpretation
+// module's anchor phrasings. An expression whose anchor is not canonical stays UNRESOLVED: code never
+// picks "which time you meant".
+const TEMPORAL_ANCHOR_KEYWORDS = LP.temporal_anchors;
+/**
+ * Deterministic resolution of a temporal expression to an interval window over canonical history.
+ * `anchors`: { key: { interval } } from canonical event records; `now`: current interval.
+ * Returns null when the text has no temporal expression.
+ */
+function resolveTemporalReference({ text, anchors = null, now = null, discourse = null } = {}) {
+  const match = String(text ?? "").match(LP.temporal_reference);
+  if (!match) return null;
+  const expression = match[0].trim();
+  const current = Number.isFinite(Number(now)) && now !== null ? Number(now) : null;
+  const done = (value) => Object.freeze({ expression, ...value });
+  if (/^(?:just now|a (?:minute|moment|second|while) ago)/i.test(expression)) {
+    const last = discourse?.last_turn?.interval ?? current;
+    return done({ kind: "recent", resolved: true, anchor: "last_exchange", window: Object.freeze({ from: last, to: current }) });
+  }
+  if (/^(?:earlier|this morning)/i.test(expression)) return done({ kind: "operation_so_far", resolved: true, anchor: "operation_start", window: Object.freeze({ from: 0, to: current }) });
+  if (/^(?:last time|yesterday)/i.test(expression)) return done({ kind: "prior_operation", resolved: false, anchor: null, reason: "no_cross_operation_anchor", window: null });
+  const relation = expression.match(/^(before|after|when|while|since)\b/i)?.[1]?.toLowerCase() ?? null;
+  for (const [key, pattern] of Object.entries(TEMPORAL_ANCHOR_KEYWORDS)) {
+    if (!pattern.test(expression)) continue;
+    const at = Number(anchors?.[key]?.interval);
+    if (anchors?.[key] && Number.isFinite(at)) {
+      const window = relation === "before" ? { from: 0, to: at } : (relation === "after" || relation === "since") ? { from: at, to: current } : { from: at, to: at };
+      return done({ kind: "anchored", relation, anchor: key, resolved: true, window: Object.freeze(window) });
+    }
+    return done({ kind: "anchored", relation, anchor: key, resolved: false, reason: "anchor_not_canonical", window: null });
+  }
+  return done({ kind: "anchored", relation, anchor: null, resolved: false, reason: "anchor_unrecognized", window: null });
+}
+
+// ─── 3c. Spatial selection (the future spatial runtime's reference event) ─────
+const GENERIC_DEICTIC_NOUNS = new Set(["thing", "one", "shape", "figure"]);
+/**
+ * A deterministic selection supplied by the caller -- a player-selected target today, a
+ * spatial_reference_selected event from the spatial runtime later -- resolves "that <noun>" only when
+ * it is well-formed and compatible with the noun. Renderer state is never a selection.
+ */
+function resolveSpatialSelection(selection, noun = null) {
+  if (!selection || typeof selection !== "object") return null;
+  const { entity_id: entityId, kind, label } = selection;
+  if (typeof entityId !== "string" || !entityId || typeof kind !== "string" || !kind || typeof label !== "string" || !label.trim()) return null;
+  if (noun && !GENERIC_DEICTIC_NOUNS.has(noun)) {
+    const stem = noun.replace(/s$/, "").replace(/way$/, "");
+    if (!kind.toLowerCase().includes(stem) && !label.toLowerCase().includes(stem)) return null;
+  }
+  return Object.freeze({ entity_id: entityId, kind, label: label.trim() });
+}
+
 /** A repair turn concerns the responder's OWN preceding line when it has one; otherwise only the last heard line. Never every speaker's lines. */
 function repairTargets(responses = [], responder_id = null) {
   const own = responses.filter((r) => r.speaker_id === responder_id);
@@ -305,13 +391,14 @@ function resolveFromTurn(discourse_function, last) {
  * Deterministic frame for the RESIDUAL utterance (named address already
  * stripped by the caller). `discourse` may be null (context-free classification).
  */
-function buildSemanticFrame({ text, recipient_type = "none", interpretation = null, discourse = null, equipment = {}, scope_inherited = false } = {}) {
+function buildSemanticFrame({ text, recipient_type = "none", interpretation = null, discourse = null, equipment = {}, scope_inherited = false, spatial_selection = null, temporal_anchors = null, now = null } = {}) {
   const raw = String(text ?? "").trim();
   const interp = interpretation?.version ? interpretation : interpretUtterance(raw, { isGroup: recipient_type === "group" });
   const referents = [];
   let fn = null;
   let unresolved = false;
   let background = false;
+  const isQuestion = LP.question_like.test(raw);
 
   const ownership = LP.item_ownership.test(raw) && LP.item_noun.test(raw);
 
@@ -327,6 +414,7 @@ function buildSemanticFrame({ text, recipient_type = "none", interpretation = nu
   else if (LP.challenge.test(raw)) fn = "challenge";
   else if (LP.check_in.test(raw)) fn = "check_in";
   else if (LP.handoff_request.test(raw) && LP.request_cue.test(raw)) fn = "make_request";
+  else if (!isQuestion && interp.speech_act !== "warning" && LP.order_imperative.test(raw)) fn = "make_request";
   else {
     switch (interp.speech_act) {
       case "greeting": fn = "greet"; break;
@@ -344,10 +432,14 @@ function buildSemanticFrame({ text, recipient_type = "none", interpretation = nu
     }
   }
 
+  // A question about an item's whereabouts/holder ("Is the camera here?", "Have you seen the radio?")
+  // is an ownership question once the item resolves, whatever its surface form.
+  const custodyQuestion = isQuestion && LP.custody_predicate.test(raw) && LP.item_noun.test(raw) && ["ask_factual", "ask_personal_experience"].includes(fn);
   // The single canonical item resolution for this utterance.
-  const item = resolveEquipmentReferent(raw, equipment, { loose: fn === "ask_item_ownership" || fn === "make_request" || LP.handoff_request.test(raw) });
+  const item = resolveEquipmentReferent(raw, equipment, { loose: fn === "ask_item_ownership" || fn === "make_request" || custodyQuestion || LP.handoff_request.test(raw) });
   if (item.status === "unique") {
     referents.push({ type: "equipment", id: item.item.id, label: item.item.label ?? item.item.id, holder: item.item.holder ?? null, resolved: true });
+    if (custodyQuestion) fn = "ask_item_ownership";
   } else if (item.status === "ambiguous") {
     referents.push({ type: "equipment", id: null, label: null, holder: null, resolved: false, reason: "multiple_matches" });
     unresolved = true;
@@ -355,6 +447,55 @@ function buildSemanticFrame({ text, recipient_type = "none", interpretation = nu
     referents.push({ type: "equipment", id: null, label: null, holder: null, resolved: false, reason: "no_canonical_match" });
     unresolved = true;
   }
+
+  // ── Anaphora: "Who has it?" / "Is it here?" points back to the last resolved item of THIS
+  // conversation (canonical antecedent), never to a guess. No antecedent -> clarification.
+  let resumed = null;
+  if (!referents.length && isQuestion && LP.item_anaphor.test(raw) && !["clarify_previous", "request_repetition", "ask_heard_confirmation"].includes(fn)) {
+    const ante = discourse?.last_item_referent ?? null;
+    const item2 = ante ? Object.values(equipment ?? {}).find((entry) => entry && (entry.id === ante.id)) ?? null : null;
+    if (item2) {
+      referents.push({ type: "equipment", id: item2.id, label: item2.label ?? item2.id, holder: item2.holder ?? null, resolved: true, source: "antecedent" });
+      if (["ask_factual", "ask_personal_experience", "ambiguous_reference"].includes(fn)) { fn = "ask_item_ownership"; unresolved = false; }
+    } else {
+      referents.push({ type: "equipment", id: null, label: null, holder: null, resolved: false, reason: "no_antecedent" });
+      fn = "ambiguous_reference"; unresolved = true;
+    }
+  }
+
+  // ── Open question resumed: the previous question drew a clarification request and this short
+  // follow-up names the missing item ("Who has the thing?" -> "Which thing?" -> "The camera.").
+  const pending = discourse?.pending_question ?? null;
+  if (pending && !isQuestion && raw.split(/\s+/).length <= 6 && ["make_statement", "acknowledge", "make_request", "ambiguous_reference"].includes(fn)) {
+    const named = resolveEquipmentReferent(raw, equipment, { loose: true });
+    const underlying = pending.discourse_function === "ambiguous_reference"
+      ? (LP.item_ownership.test(pending.player_text ?? "") || LP.custody_predicate.test(pending.player_text ?? "") ? "ask_item_ownership" : (LP.handoff_request.test(pending.player_text ?? "") ? "make_request" : null))
+      : pending.discourse_function;
+    if (named.status === "unique" && underlying) {
+      referents.length = 0;
+      referents.push({ type: "equipment", id: named.item.id, label: named.item.label ?? named.item.id, holder: named.item.holder ?? null, resolved: true, source: "clarification_answer" });
+      fn = underlying; unresolved = false;
+      resumed = { player_text: pending.player_text, interaction_id: pending.interaction_id, responder_ids: [...(pending.responder_ids ?? [])] };
+    }
+  }
+
+  // ── Spatial deixis: "that door" / "What's this?" is resolved only by a deterministic selection
+  // (player-selected target / future spatial runtime event); otherwise it stays unresolved and the
+  // turn becomes a clarification. Prose intuition never resolves it.
+  const deictic = raw.match(LP.deictic_object);
+  if ((deictic || LP.bare_demonstrative.test(raw)) && !referents.some((ref) => ref.resolved) && !["clarify_previous", "request_repetition", "ask_heard_confirmation", "close_topic", "greet", "introduce_self", "acknowledge", "joke_or_sarcasm", "warn"].includes(fn)) {
+    const noun = deictic ? deictic[1].toLowerCase() : null;
+    const selection = resolveSpatialSelection(spatial_selection, noun);
+    if (selection) referents.push({ type: "spatial", id: selection.entity_id, label: selection.label, kind: selection.kind, resolved: true, source: "spatial_selection" });
+    else {
+      referents.push({ type: "spatial", id: null, label: null, noun, resolved: false, reason: "deictic_unresolved" });
+      if (isQuestion || fn === "make_request") { fn = "ambiguous_reference"; unresolved = true; }
+    }
+  }
+
+  // ── Temporal / event reference ("earlier", "before we crossed"): resolved deterministically
+  // against canonical anchors, or left unresolved (the plan then claims nothing about that time).
+  const temporal = LP.temporal_reference.test(raw) ? resolveTemporalReference({ text: raw, anchors: temporal_anchors, now, discourse }) : null;
 
   const frame = {
     version: DISCOURSE_VERSION,
@@ -368,8 +509,19 @@ function buildSemanticFrame({ text, recipient_type = "none", interpretation = nu
     expected_response_shape: EXPECTED_SHAPES[fn],
     literal_question: fn === "ambiguous_reference" ? false : interp.literal_question,
     question_form: /^(?:who|what|where|when|why|how|which)\b/i.test(raw) ? "wh" : (/^(?:are|is|do|does|did|can|could|will|would|have|has|should|was|were)\b/i.test(raw) ? "yes_no" : null),
-    // A yes/no question about the addressee's own momentary state ("Are you ready?").
-    addressee_state: question_form_yes_no(raw) && /\byou(?:'re| are)?\b/i.test(raw) && !/\b(?:know|seen|been|heard|remember|think|tell|any|carry|carrying|have|got|route|outpost)\b/i.test(raw),
+    // A yes/no question about the addressee's own momentary READINESS ("Are you ready?", "All set?").
+    // Past perception, presence, plans and feelings are never momentary state: a "yes" to them
+    // would assert an observation, commitment or affect nothing canonical supports.
+    addressee_state: (question_form_yes_no(raw) && /\byou(?:'re| are)?\b/i.test(raw) || /^(?:all set|ready|good to go)\b/i.test(raw)) && LP.addressee_readiness.test(raw) && !LP.not_momentary_state.test(raw),
+    // The speaker's own past perception is asked about ("Did you see anything?").
+    past_perception: LP.past_perception.test(raw),
+    // A remark about the addressee's own look/manner ("You look nervous.").
+    about_addressee: fn === "social_observation" && LP.about_addressee.test(raw),
+    // What a request asks for: an item handoff, an action (order), or something general. Code decides
+    // what that request means in conversation (see planResponses); wording never accepts it.
+    request_kind: fn === "make_request" ? ((LP.handoff_request.test(raw) || LP.take_grab.test(raw)) && referents.some((ref) => ref.type === "equipment") ? "handoff" : (LP.order_imperative.test(raw) ? "order" : "general")) : null,
+    temporal_reference: temporal,
+    resumed_question: resumed,
     tone: interp.tone,
     confidence: interp.confidence,
     unresolved_reference: unresolved
@@ -481,7 +633,7 @@ function toKnownAnswerFact(resolved) {
   return null;
 }
 
-function buildSelfKnowledge({ person = null, member = null, task = null, held_equipment = [], relationships = [], known_facts = [], known_answer = null, names = {}, equipment = {}, player_id = null, custody_known = {} } = {}) {
+function buildSelfKnowledge({ person = null, member = null, task = null, held_equipment = [], relationships = [], known_facts = [], known_answer = null, names = {}, equipment = {}, player_id = null, custody_known = {}, self_state = null } = {}) {
   const source = person ?? member ?? {};
   const substrate = source.identity_substrate ?? null;
   return Object.freeze({
@@ -497,6 +649,8 @@ function buildSelfKnowledge({ person = null, member = null, task = null, held_eq
     known_answer,
     // equipment id -> whether THIS speaker can know its holder (observer authority).
     custody_known: { ...custody_known },
+    // Canonical self-state (from the emotional-state authority): what a check-in answer may say.
+    self_state: self_state ? { state: self_state.state, affect: [...(self_state.affect ?? [])] } : null,
     known_facts: known_facts.map((f) => ({ kind: f.kind ?? null, text: cap(f.text, FACT_TEXT_CAP) })).filter((f) => f.text)
   });
 }
@@ -559,7 +713,8 @@ function planResponses({ frame, owner_ids = [], responders = {}, names = {} } = 
     // Custody the responder cannot know stays unknown: the plan names the holder only
     // when the observer/knowledge authority allows this speaker to know it.
     const holderFact = (ref) => {
-      const known = ref.holder === responder_id || self?.custody_known?.[ref.id] !== false;
+      // Fail closed: custody is known only through self-custody or an explicit observer-authority grant.
+      const known = ref.holder === responder_id || self?.custody_known?.[ref.id] === true;
       return { label: ref.label, holder_name: known ? (names[ref.holder] ?? null) : null, holder_is_self: ref.holder === responder_id, ...(known ? {} : { holder_known: false }) };
     };
 
@@ -609,8 +764,16 @@ function planResponses({ frame, owner_ids = [], responders = {}, names = {} } = 
     } else if (fn === "make_statement") {
       if (self?.known_answer) required.push({ key: "known_answer", value: self.known_answer });
     } else if (fn === "make_request") {
-      for (const ref of frame.referents ?? []) if (ref.resolved) required.push({ key: "item_holder", value: holderFact(ref) });
+      for (const ref of frame.referents ?? []) if (ref.resolved && ref.type === "equipment") required.push({ key: "item_holder", value: holderFact(ref) });
+      // What the request MEANS is decided here, never by wording. LOCAL conversation performs no
+      // handoff or order: a handoff needs the structured transfer, an order the structured order
+      // authority. Until one of those resolves it, the reply acknowledges without committing.
+      const kind = frame.request_kind ?? "general";
+      required.push({ key: "request_disposition", value: { kind, disposition: kind === "handoff" ? "requires_structured_handoff" : "heard_no_commitment", order_routing: "not_routed" } });
+      forbidden.push("acceptance_or_commitment");
     }
+    // A check-in, or a remark about the speaker's own look, is answered from canonical self-state only.
+    if ((fn === "check_in" || (fn === "social_observation" && frame.about_addressee)) && self?.self_state) required.push({ key: "self_state", value: self.self_state });
 
     planned.push({
       responder_id,
@@ -622,7 +785,9 @@ function planResponses({ frame, owner_ids = [], responders = {}, names = {} } = 
       required_facts: required,
       optional_facts: optional,
       forbidden_claims: forbidden,
-      may_ask_clarifying_question: fn === "ambiguous_reference" || Boolean(frame?.unresolved_reference),
+      // An unresolved time ("before Maxwell left") is asked about only when no authorized fact answers
+      // the question anyway (a known answer already fixes which event is meant).
+      may_ask_clarifying_question: fn === "ambiguous_reference" || Boolean(frame?.unresolved_reference) || (Boolean(frame?.temporal_reference) && !frame.temporal_reference.resolved && ["ask_factual", "ask_personal_experience"].includes(fn) && required.length === 0),
       same_turn_prior_responses: planned.map((p) => p.responder_id),
       // STYLE-ONLY: shapes wording, never a factual claim.
       style_hints: { ...(self?.identity_style ?? {}) }
@@ -646,7 +811,12 @@ function toAuthorizedContribution(plan, frame, { names = {} } = {}) {
     topic: frame?.topic ?? null,
     question_form: frame?.question_form ?? null,
     addressee_state: Boolean(frame?.addressee_state),
-    referents: (frame?.referents ?? []).map((ref) => ({ type: ref.type, label: ref.label ?? null, resolved: Boolean(ref.resolved), ...(ref.reason ? { reason: ref.reason } : {}) })),
+    referents: (frame?.referents ?? []).map((ref) => ({ type: ref.type, label: ref.label ?? null, resolved: Boolean(ref.resolved), ...(ref.reason ? { reason: ref.reason } : {}), ...(ref.noun ? { noun: ref.noun } : {}) })),
+    past_perception: Boolean(frame?.past_perception),
+    about_addressee: Boolean(frame?.about_addressee),
+    temporal_reference: frame?.temporal_reference ? { expression: frame.temporal_reference.expression, resolved: Boolean(frame.temporal_reference.resolved) } : null,
+    // The question a clarification answer resumes ("Who has the thing?"), so the reply answers IT.
+    resumed_question: frame?.resumed_question?.player_text ?? null,
     antecedent: !["clarify_previous", "request_repetition"].includes(plan.discourse_function)
       ? null
       : { type: ante.type, resolved: Boolean(ante.resolved), ...(ante.resolved && ante.responses ? { player_text: ante.player_text ?? null, responses: repairTargets(ante.responses, plan.responder_id).map((r) => ({ speaker_name: r.speaker_name ?? names[r.speaker_id] ?? null, text: r.text })) } : {}) },
@@ -740,6 +910,9 @@ module.exports = {
   resolveRecipientScope,
   resolveEquipmentReferent,
   resolveAntecedent,
+  resolveTemporalReference,
+  resolveSpatialSelection,
+  TEMPORAL_ANCHOR_KEYWORDS,
   buildSemanticFrame,
   summarizeDiscourse,
   buildSelfKnowledge,

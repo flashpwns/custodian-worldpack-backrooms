@@ -97,6 +97,29 @@ const DEFAULT_SETTINGS = Object.freeze({ version: 8, input_mode: "natural", prov
 // It cannot invent a target or capability: recognised phrases only select an
 // action already available in the active, observer-safe session.
 function publicError(code, message) { return { ok: false, error: { code, message } }; }
+// Bounded concurrency for wording already-authorized same-turn replies (see presentHostedLocalDialogue).
+// 1 = serial. Chosen from measurement on the pinned runtime, not assumed.
+const DIALOGUE_WORDING_CONCURRENCY = 1;
+// Consecutive runtime restarts that end without a ready runtime before automatic recovery stops.
+const MAX_UNRECOVERED_DIALOGUE_RESTARTS = 3;
+/** Runs thunks with at most `limit` in flight; results keep the thunks' order. */
+async function boundedAll(thunks, limit) {
+  const results = new Array(thunks.length);
+  let next = 0;
+  const worker = async () => { while (next < thunks.length) { const i = next++; results[i] = await thunks[i](); } };
+  await Promise.all(Array.from({ length: Math.max(1, Math.min(limit, thunks.length)) }, worker));
+  return results;
+}
+// Canonical event anchors a temporal reference in dialogue may resolve against ("after the briefing",
+// "before we crossed"). Only recorded events count; a missing anchor leaves the reference unresolved.
+function dialogueTemporalAnchors(run) {
+  const anchors = {};
+  const briefing = run?.expedition?.day1_opener?.one_shot_events?.maxwell_opening_briefing;
+  if (briefing?.consumed && Number.isFinite(Number(briefing.at_interval))) anchors.briefing = { interval: Number(briefing.at_interval), source: "day1_opener.one_shot_events.maxwell_opening_briefing" };
+  const crossing = (run?.expedition?.facility_operations?.events ?? []).find((event) => event?.type === "THRESHOLD_CROSSING" && Number.isFinite(Number(event.at?.interval)));
+  if (crossing) anchors.crossing = { interval: Number(crossing.at.interval), source: `facility_operations.${crossing.id}` };
+  return anchors;
+}
 function safeId(value) { return typeof value === "string" && /^[a-z0-9][a-z0-9_-]{0,100}$/i.test(value); }
 function friendlyName(value) { return typeof value === "string" && value.trim().length > 0 && value.trim().length <= 80; }
 function ensureDirectory(directory) { fs.mkdirSync(directory, { recursive: true }); }
@@ -125,7 +148,8 @@ function sessionRuntimeCandidate(entry) {
 function redactDiagnostic(value) { if (Array.isArray(value)) return value.map(redactDiagnostic); if (value && typeof value === "object") return Object.fromEntries(Object.entries(value).map(([key, item]) => [key, /key|token|password|secret|credential/i.test(key) ? "[redacted]" : redactDiagnostic(item)])); return typeof value === "string" ? value.replace(/\b(?:sk|rk|pk)-[A-Za-z0-9_-]+\b/g, "[redacted]") : value; }
 
 class DesktopService {
-  constructor({ appDataPath = null, paths = null, logger = null, credentials = null, evidenceMediaProviders = {}, livingTurnProvider = null, localDialogueProvider = null, defaultQ4Scenario = "procedural-survey", developerMode = process.env.YELLOW_BEAST_DEVELOPER_MODE === "1", nowFn = null, notifyProjectionChanged = null } = {}) {
+  constructor({ appDataPath = null, paths = null, logger = null, credentials = null, evidenceMediaProviders = {}, livingTurnProvider = null, localDialogueProvider = null, defaultQ4Scenario = "procedural-survey", developerMode = process.env.YELLOW_BEAST_DEVELOPER_MODE === "1", nowFn = null, notifyProjectionChanged = null, dialogueWordingConcurrency = DIALOGUE_WORDING_CONCURRENCY } = {}) {
+    this.dialogueWordingConcurrency = Number.isInteger(dialogueWordingConcurrency) && dialogueWordingConcurrency > 0 ? dialogueWordingConcurrency : 1;
     // Pass 9C-2: the only main->renderer push in the app. Electron's IPC here
     // is otherwise invoke/response only (see preload.js), so an autonomous
     // report committed after a request has already returned would otherwise
@@ -158,13 +182,18 @@ class DesktopService {
     this.authorityRegistry = createAuthorityRegistry();
     this.livingTurnProvider = livingTurnProvider;
     this.localDialogueProvider = localDialogueProvider;
+    this.dialogueRestartFailures = 0;
+    this.dialogueRestartBackoffMs = 2000;
     this.defaultQ4Scenario = cq4Day1Opener.isOpener(defaultQ4Scenario)
       ? "day1-opener"
       : (defaultQ4Scenario === "reference-expedition" ? "reference-expedition" : "procedural-survey");
     this.inferenceAppliance = new ManagedInferenceAppliance({
       appDataPath: this.paths.root,
       developerMode: this.developerMode,
-      logger: (msg) => this.log(`[InferenceAppliance] ${msg}`)
+      logger: (msg) => this.log(`[InferenceAppliance] ${msg}`),
+      // A runtime that dies mid-session is respawned immediately (same single-flight path as a
+      // supervisor-requested restart); dialogue meanwhile uses the same-plan deterministic fallback.
+      onUnexpectedExit: () => this.requestDialogueRuntimeRestart()
     });
     this.providerPool = new ProviderPool({
       credentials: this.credentials,
@@ -182,22 +211,46 @@ class DesktopService {
       endpointFn: () => this.inferenceAppliance.getStatus().endpoint,
       model: LOCAL_PROVIDER_SPEC.defaultModel,
       // DEGRADED/FAILED only ever *ask* for a respawn; process ownership
-      // (spawn/kill) stays entirely inside the appliance. repair() is the
-      // appliance's own "stop, re-verify, restart daemon" entry point.
-      onRestartRequested: () => {
-        try {
-          const state = this.inferenceAppliance.state;
-          if ((state === "READY" || state === "REPAIR_REQUIRED") && !this.dialogueRepairInFlight) {
-            // One repair at a time; when the appliance has respawned the runtime the supervisor re-checks it,
-            // so a runtime that died mid-session returns to model wording without a restart of the application.
-            this.dialogueRepairInFlight = this.inferenceAppliance.repair().catch(() => null).then(async () => {
-              this.dialogueRepairInFlight = null;
-              try { await this.dialogueRuntime.retry(); } catch {}
-            });
-          }
-        } catch {}
-      }
+      // (spawn/kill) stays entirely inside the appliance. respawn() is the
+      // appliance's own "stop, re-check integrity, restart daemon" entry point
+      // (a full repair() whenever the installed model's record has drifted).
+      onRestartRequested: () => this.requestDialogueRuntimeRestart()
     });
+  }
+
+  // One restart at a time; when the appliance has respawned the runtime the supervisor re-checks it, so
+  // a runtime that died mid-session returns to model wording without restarting the application.
+  // A DEGRADED supervisor over a daemon that still answers its health check is a request-level failure:
+  // the daemon is kept (respawning it would only restart the outage) and only re-checked. Once the
+  // supervisor confirms readiness, the pool's local cooldown -- earned against the previous daemon or
+  // port -- is cleared so the next turn is worded by the model again.
+  // A runtime that cannot come back (a broken install) is retried a bounded number of times with backoff,
+  // then left to the deterministic fallback instead of re-verifying the model forever.
+  requestDialogueRuntimeRestart({ state: supervisorState = null } = {}) {
+    try {
+      const state = this.inferenceAppliance?.state;
+      if ((state === "READY" || state === "REPAIR_REQUIRED") && !this.dialogueRepairInFlight && !this.shuttingDown && this.dialogueRestartFailures < MAX_UNRECOVERED_DIALOGUE_RESTARTS) {
+        this.dialogueRepairInFlight = (async () => {
+          const healthy = state === "READY" && supervisorState !== "failed" && (await this.inferenceAppliance.healthcheck().catch(() => null))?.ok === true;
+          if (!healthy && !this.shuttingDown) await this.inferenceAppliance.respawn().catch(() => null);
+          let status = null;
+          try { status = await this.dialogueRuntime?.retry(); } catch {}
+          return status;
+        })().then((status) => {
+          this.dialogueRepairInFlight = null;
+          if (status?.ready) {
+            this.dialogueRestartFailures = 0;
+            this.providerPool?.resetHealth("local");
+            return;
+          }
+          this.dialogueRestartFailures += 1;
+          if (this.dialogueRestartFailures < MAX_UNRECOVERED_DIALOGUE_RESTARTS && !this.shuttingDown) {
+            const timer = setTimeout(() => this.requestDialogueRuntimeRestart({ state: "failed" }), this.dialogueRestartBackoffMs * this.dialogueRestartFailures);
+            timer.unref?.();
+          }
+        });
+      }
+    } catch {}
   }
 
   // Kicks off dialogue runtime warmup without blocking startup. Intended to
@@ -1443,7 +1496,7 @@ class DesktopService {
     if (this.recoveredWorlds.has(world_id)) return publicError("PERSISTENCE_RECOVERY_READ_ONLY", "Restore the recovered operation record before communicating.");
     const requestId = input.request_id ?? input.submission_id ?? `desktop-comms-${crypto.randomUUID()}`;
     const cleanText = typeof text === "string" ? text.trim() : "";
-    const fingerprint = crypto.createHash("sha256").update(JSON.stringify([world_id, channel, target ?? null, cleanText])).digest("hex");
+    const fingerprint = crypto.createHash("sha256").update(JSON.stringify([world_id, channel, target ?? null, cleanText, ...(input.spatial_selection ? [input.spatial_selection] : [])])).digest("hex");
 
     if (typeof requestId !== "string" || !requestId.trim() || requestId.length > 160) {
       return publicError("REQUEST_ID_INVALID", "The communication reference is invalid. Submit the message again.");
@@ -1511,9 +1564,10 @@ class DesktopService {
   // Speak callback for speechScheduler.drainSpeechQueue (Pass 9B-2): the
   // scheduler has already decided whether, who, and why -- this only builds
   // the observer-safe packet, asks the provider to word it, and validates
-  // the result. Returning null (unavailable/error/invalid) leaves the entry
-  // queued for retry per the scheduler's own exhaustion policy; this never
-  // invents fallback speech.
+  // the result. When the provider is unavailable or its wording is rejected,
+  // the SAME plan is worded by the deterministic report fallback (it states
+  // only the authorized observation). null is returned only when no packet
+  // can be built, which leaves the entry to the scheduler's exhaustion policy.
   async presentObservationReport(entry, run, phaseId = null) {
     const requestId = `speech-queue-${entry.id}`;
     const providerSetting = this.settings().provider;
@@ -1535,6 +1589,7 @@ class DesktopService {
     };
     const { dialogueProvider, providerUnavailable } = this.acquireLocalDialogueProvider({ requestId, route: "speechScheduler/observation-report", configured });
     if (providerUnavailable) return fallback("provider unavailable");
+    if (!packet.authorized_contribution || !packet.context_capsule) return fallback("no authorized contribution");
     try {
       const candidateRaw = await dialogueProvider.presentLocal(structuredClone(packet));
       const validation = validateLocalDialogue(packet, candidateRaw, run);
@@ -1652,20 +1707,10 @@ class DesktopService {
 
     const { provider, dialogueProvider, providerUnavailable } = this.acquireLocalDialogueProvider({ requestId, route: "submitQ4Communication/local-dialogue", configured });
 
-    const prepared = [];
-    for (const context of contexts) {
-      // Same-turn ordering (owner order: Austin, Brady, Guillermo, ...):
-      // by the time a later responder's packet is built, earlier responders
-      // in THIS canonical turn have already been fully resolved (validated
-      // candidate-or-fallback, never a raw/uncommitted candidate). Exposing
-      // those already-accepted lines prevents later responders from
-      // duplicating a greeting or acting as if nobody has spoken yet, without
-      // letting the model choose or alter any canonical fact.
-      context.same_turn_prior_responses = prepared.map((item) => ({
-        speaker_id: item.context.speaker?.personnel_id ?? item.context.speaker?.id ?? null,
-        speaker_name: item.context.speaker?.first_name ?? item.context.speaker?.display_name ?? null,
-        text: item.speech ?? null
-      }));
+    // Wording one owner's already-authorized contribution. `prior` is the lines ACCEPTED earlier in this
+    // canonical turn (names + text only); it shapes wording, never who speaks or what is true.
+    const wordOne = async (context, prior) => {
+      context.same_turn_prior_responses = prior;
       let packet = null;
       let candidateRaw = null;
       let unavailable = providerUnavailable;
@@ -1674,6 +1719,8 @@ class DesktopService {
       if (!unavailable) {
         try {
           packet = buildLocalDialoguePacket(context);
+          // Hard model-input boundary: only a plan-carrying packet may be worded by a provider.
+          if (!packet.authorized_contribution || !packet.context_capsule) throw Object.assign(new Error("dialogue packet carries no authorized contribution"), { code: "DIALOGUE_PLAN_REQUIRED" });
           this.recordInterpretationProvenance({ request_id: requestId, route: "submitQ4Communication/local-dialogue", event: "provider-selected", input: "player-supplied", provider:selectedProvider, model:provider.model ?? "injected", provider_invoked:false, response_classification:"not-yet-observed", canonical_resolution:"communication-runtime -> deterministic-response-owners -> personnel-continuity -> presentation-validation", observer_projection:"local-dialogue-packet@v1", responder_id:context.speaker?.personnel_id ?? context.speaker?.id });
           candidateRaw = await dialogueProvider.presentLocal(structuredClone(packet));
           const providerExecution = provider.getExecutions?.().at(-1) ?? null;
@@ -1685,6 +1732,33 @@ class DesktopService {
           this.log(`LOCAL language assistance unavailable for ${context.speaker?.first_name ?? "responder"}: ${providerError.message}`);
         }
       }
+      return { context, packet, candidateRaw, validation, unavailable, selectedProvider };
+    };
+    const acceptedPrior = (items) => items.map((item) => ({
+      speaker_id: item.context.speaker?.personnel_id ?? item.context.speaker?.id ?? null,
+      speaker_name: item.context.speaker?.first_name ?? item.context.speaker?.display_name ?? null,
+      text: item.speech ?? null
+    }));
+    // Inference scheduling is NOT speech scheduling. Owners, their order and their plans were fixed by
+    // code before any wording is requested, and every packet below is compiled from the same canonical
+    // snapshot (nothing mutates canonical state until the commit loop), so independent owners may be
+    // worded concurrently. Acceptance and commit still run strictly in canonical owner order; completion
+    // order is never observed.
+    const concurrency = Math.min(this.dialogueWordingConcurrency, contexts.length);
+    const concurrent = !providerUnavailable && concurrency > 1
+      ? await boundedAll(contexts.map((context) => () => wordOne(context, [])), concurrency)
+      : null;
+    const prepared = [];
+    for (const [index, context] of contexts.entries()) {
+      const prior = acceptedPrior(prepared);
+      let result = concurrent ? concurrent[index] : await wordOne(context, prior);
+      if (concurrent && result.validation.ok && prior.length) {
+        // Same-turn coordination is judged against the lines accepted BEFORE this owner. A collision gets
+        // one sequential re-wording that sees those lines (the serial behaviour); nothing else changes.
+        const view = { ...result.packet, authorized_contribution: { ...result.packet.authorized_contribution, same_turn_prior_responses: prior.map(({ speaker_name, text }) => ({ speaker_name, text })) } };
+        if (!validateLocalDialogue(view, result.candidateRaw, result.packet._run).ok) result = await wordOne(context, prior);
+      }
+      const { packet, candidateRaw, validation, unavailable, selectedProvider } = result;
       let fallbackSpeech = context.fallback_text ? context.fallback_text.replace(/^[^:]+:\s*/, "") : context.fallback_text;
       // Variant selection uses the lines actually ACCEPTED earlier this turn,
       // from the SAME frame/plan snapshot the model received.
@@ -1732,7 +1806,9 @@ class DesktopService {
       const check = observerContextCompiler.revalidateContext({ run: currentEntry.run, capsule: item.packet._capsule, speech: item.speech, speakerId: speakerKey, submissionId: requestId, plan: item.context.response_plan ?? null, phaseId: currentEntry.phase?.phase_id ?? null });
       item.context_check = check;
       if (check.ok) continue;
-      if (!item.validation.ok && !check.cancel) continue; // a deterministic fallback asserts nothing the model added
+      // A deterministic fallback is worded from the SAME plan snapshot as the model, so it can be just as
+      // stale (e.g. custody changed while the provider was generating). Revalidation therefore applies to
+      // whatever text would be committed, never only to model wording.
       if (check.cancel) {
         // The speaker is no longer a participant in this exchange: the reply is cancelled, not reworded.
         this.log(`pre-commit revalidation cancelled reply for ${item.context.speaker?.first_name ?? "responder"}: ${check.code}`);
@@ -1803,9 +1879,12 @@ class DesktopService {
     canonical.result.presentation_source = allModel ? first.presentationSource : allFallback ? "deterministic-fallback" : "mixed-model-fallback";
     canonical.result.public_reason = committedResponses.map((item) => `${item.speaker_name}: ${item.text}`).join(" ") || "Your message is heard. No further response is required.";
     if (allFallback && first) {
+      // Built from what was actually COMMITTED (after revalidation/cancellation), never from a
+      // pre-commit fallback snapshot that may have gone stale or been cancelled.
+      const committedText = committedResponses.map((item) => `${item.speaker_name}: ${item.text}`).join(" ") || "Your message is heard. No further response is required.";
       canonical.result.public_reason = first.unavailable
-        ? `Language assistance is unavailable. Deterministic response: ${first.context.fallback_text}`
-        : `Language assistance returned an invalid response and was rejected. Deterministic response: ${first.context.fallback_text}`;
+        ? `Language assistance is unavailable. Deterministic response: ${committedText}`
+        : `Language assistance returned an invalid response and was rejected. Deterministic response: ${committedText}`;
     }
     canonical.result.hosted_request = { request_id:requestId, provider:first?.selectedProvider ?? "unavailable", hosted:first?.selectedProvider !== "local", status:"completed", responder_count:committedResponses.length };
     if (first?.context?.interaction) {
@@ -1912,7 +1991,7 @@ class DesktopService {
     canonical.projection = this.projectionFor(currentWorld, "field-researcher", currentEntry);
     return canonical;
   }
-  submitQ4CommunicationCanonical({ world_id, channel, text, target = null, request_id = null, input_fingerprint = null }) {
+  submitQ4CommunicationCanonical({ world_id, channel, text, target = null, request_id = null, input_fingerprint = null, spatial_selection = null }) {
     if (this.commandBusy(world_id)) return publicError("SESSION_BUSY", "Wait for the current action to finish before changing this operation.");
     if (outcomes.isRetired(this.getWorld(world_id))) return publicError("WORLD_RETIRED", "This world is a read-only historical record.");
     let entry = null; let world = null; let beforeRun = null; let beforeWorld = null; let beforePhase = null;
@@ -1922,7 +2001,7 @@ class DesktopService {
       beforeRun = clone(entry.run); beforeWorld = clone(world); beforePhase = clone(entry.phase);
       const requestId = request_id ?? null;
       const cleanText = typeof text === "string" ? text.trim() : "";
-      const fingerprint = input_fingerprint ?? crypto.createHash("sha256").update(JSON.stringify([world_id, channel, target ?? null, cleanText])).digest("hex");
+      const fingerprint = input_fingerprint ?? crypto.createHash("sha256").update(JSON.stringify([world_id, channel, target ?? null, cleanText, ...(spatial_selection ? [spatial_selection] : [])])).digest("hex");
       if (requestId && entry.run?.expedition?.communication_receipts) {
         const recorded = entry.run.expedition.communication_receipts.find((receipt) => receipt.id === requestId);
         if (recorded) {
@@ -1958,7 +2037,7 @@ class DesktopService {
                 const recoveredNames = Object.fromEntries([...(entry.run.expedition.team.members ?? []).map((m) => [m.personnel_id ?? m.id, m.first_name ?? m.display_name ?? null]), [entry.run.session?.startup?.player?.observer_id, "you"]]);
                 const recoveredId = speaker.personnel_id ?? speaker.id;
                 recoveredFrame = dialogueDiscourse.buildSemanticFrame({ text: stripNamedAddress(recorded.text, recorded.target), recipient_type: recoveredRecipientType ?? "none", equipment: equipmentNow });
-                [recoveredPlan] = dialogueDiscourse.planResponses({ frame: recoveredFrame, owner_ids: [recoveredId], responders: { [recoveredId]: { self: dialogueDiscourse.buildSelfKnowledge({ person, member: speaker, held_equipment: Object.values(equipmentNow).filter((item) => item.holder === recoveredId), known_facts: (speaker.known_information ?? []).filter((fact) => fact.kind !== "reported-knowledge" || fact.source === "direct-observation"), names: recoveredNames, equipment: equipmentNow, player_id: entry.run.session?.startup?.player?.observer_id, custody_known: Object.fromEntries((recoveredFrame.referents ?? []).filter((ref) => ref.type === "equipment" && ref.resolved && ref.id).map((ref) => [ref.id, observerContextCompiler.resolveCustodyKnowledge(entry.run, recoveredId, ref.id).known])) }) } }, names: recoveredNames });
+                [recoveredPlan] = dialogueDiscourse.planResponses({ frame: recoveredFrame, owner_ids: [recoveredId], responders: { [recoveredId]: { self: dialogueDiscourse.buildSelfKnowledge({ person, member: speaker, held_equipment: Object.values(equipmentNow).filter((item) => item.holder === recoveredId), known_facts: (speaker.known_information ?? []).filter((fact) => fact.kind !== "reported-knowledge" || fact.source === "direct-observation"), names: recoveredNames, equipment: equipmentNow, player_id: entry.run.session?.startup?.player?.observer_id, custody_known: Object.fromEntries((recoveredFrame.referents ?? []).filter((ref) => ref.type === "equipment" && ref.resolved && ref.id).map((ref) => [ref.id, observerContextCompiler.resolveCustodyKnowledge(entry.run, recoveredId, ref.id).known])), self_state: canonicalLedger.describeSelfState(speaker) }) } }, names: recoveredNames });
                 recoveredContribution = dialogueDiscourse.toAuthorizedContribution(recoveredPlan, recoveredFrame, { names: recoveredNames });
               }
               return {
@@ -2074,7 +2153,8 @@ class DesktopService {
         dialogue_history: entry.run.expedition.dialogue_history,
         player_id: playerId,
         location_id: entry.run.spatial?.player_location ?? null,
-        current_interval: expedition.clock?.interval ?? null
+        current_interval: expedition.clock?.interval ?? null,
+        equipment: expedition.equipment
       });
 
       if (channel === "local") {
@@ -2226,20 +2306,24 @@ class DesktopService {
         const deliveredRecipients = recipients.length > 0 ? recipients.map((member) => member.personnel_id ?? member.id) : localPeers.map((member) => member.personnel_id ?? member.id);
         const deliveredLocal = communicationRuntime.local(expedition, { sender: playerId, recipients: deliveredRecipients, text: message, eligible: true });
         phenomenonEcology.recordSpeech(world, entry.run, { speaker:playerId, text:message, location_id:entry.run.spatial.player_location });
-        if (/\b(route|corridor|passage|location|map|survey|where)\b/i.test(message) && entry.run.survey_frontier) for (const recipient of (recipients.length > 0 ? recipients : localPeers)) surveyFrontier.share(entry.run.survey_frontier, recipient.personnel_id ?? recipient.id, playerId, { at: expedition.clock.interval });
+        // Map knowledge never moves because a line merely contains "where"/"route": a knowledge
+        // transfer needs communicated content (Doctrine 4.10, 7.19). Route sharing belongs to the
+        // structured report path, not to keyword matching over speech.
         const request = /\b(hand|pass|give|bring|transfer)\b/i.test(message);
         const isQuestion = /\?$/.test(message.trim()) || /^(?:what|where|who|when|why|how|can you|could you|do you|is there|are there|will you)\b/i.test(message.trim());
         const isWarning = /\b(?:look out|watch out|careful|warning|danger|hazard|stop)\b/i.test(message);
         const importance = request ? 58 : isWarning ? 75 : 85;
         const risk = isWarning ? 70 : 0;
-        const isDisclosure = /\b(?:nervous|afraid|scared|prefer|call me|tight spaces|dark|claustrophobic|worried)\b/i.test(message);
+        // A disclosure is the player's own first-person preference or concern ("I prefer...", "I get nervous
+        // in the dark"); a keyword about the world ("It's dark in here.") discloses nothing about them.
+        const isDisclosure = /\b(?:i prefer|i(?:'d| would) rather|(?:please )?call me)\b|\b(?:i(?:'m| am)|i feel|i get|makes me|i hate|i don'?t like)\b[^.?!]{0,40}\b(?:nervous|afraid|scared|tight spaces|dark|claustrophobic|worried)\b/i.test(message);
         // Bounded interpretation — deterministic speech act classification for the wordsmith pipeline.
         // Separate from the regex flags above which feed the existing reactionContext API.
         const localInterpretation = interpretDialogueUtterance(utterance, { isGroup });
         // ED-1: deterministic semantic frame (discourse function, referents,
         // antecedent). Code decides the conversational situation; the model
         // never chooses any part of it.
-        const semanticFrame = dialogueDiscourse.buildSemanticFrame({ text: utterance, recipient_type, interpretation: localInterpretation, discourse: discourseState, equipment: expedition.equipment, scope_inherited: inheritedScope });
+        const semanticFrame = dialogueDiscourse.buildSemanticFrame({ text: utterance, recipient_type, interpretation: localInterpretation, discourse: discourseState, equipment: expedition.equipment, scope_inherited: inheritedScope, spatial_selection, temporal_anchors: dialogueTemporalAnchors(entry.run), now: expedition.clock?.interval ?? null });
         const discourseSummary = dialogueDiscourse.summarizeDiscourse(discourseState, semanticFrame);
         for (const recipient of (recipients.length > 0 ? recipients : localPeers)) {
           const recId = recipient.personnel_id ?? recipient.id;
@@ -2335,7 +2419,7 @@ class DesktopService {
           // Custody this listener can know comes ONLY from the observer/knowledge authority
           // (self, witnessed handoff, or unchanged institutional issuance).
           const custodyKnown = Object.fromEntries((semanticFrame.referents ?? []).filter((ref) => ref.type === "equipment" && ref.resolved && ref.id).map((ref) => [ref.id, observerContextCompiler.resolveCustodyKnowledge(entry.run, recId, ref.id).known]));
-          selfKnowledgeById[recId] = dialogueDiscourse.buildSelfKnowledge({ person: recipientPerson, member: recipient, task: reactionContext?.worker?.task ?? null, held_equipment: heldEquipment, known_facts: knownFacts, known_answer: knownAnswerFact, names: spokenNames, equipment: expedition.equipment, player_id: playerId, custody_known: custodyKnown });
+          selfKnowledgeById[recId] = dialogueDiscourse.buildSelfKnowledge({ person: recipientPerson, member: recipient, task: reactionContext?.worker?.task ?? null, held_equipment: heldEquipment, known_facts: knownFacts, known_answer: knownAnswerFact, names: spokenNames, equipment: expedition.equipment, player_id: playerId, custody_known: custodyKnown, self_state: canonicalLedger.describeSelfState(recipient) });
           // "Did anyone hear what I just said?" is answered only by someone who actually heard that line.
           const heardTheAskedLine = semanticFrame.discourse_function !== "ask_heard_confirmation" || !semanticFrame.antecedent?.resolved || (semanticFrame.antecedent.listener_ids ?? []).includes(recId);
           // Topic-matched known facts use the SAME selection the plan uses.
@@ -3696,6 +3780,7 @@ class DesktopService {
     }
   }
   shutdown() {
+    this.shuttingDown = true;
     try { this.dialogueRuntime?.shutdown()?.catch(() => {}); } catch {}
     try { this.inferenceAppliance?.shutdown(); } catch {}
     for (const [key, entry] of this.sessions) { const [worldId, mode] = key.split(":"); if (this.recoveredWorlds.has(worldId)) continue; try { this.persistSession(this.getWorld(worldId), mode, entry); } catch (error) { this.log(`shutdown save failed: ${error.message}`); } }

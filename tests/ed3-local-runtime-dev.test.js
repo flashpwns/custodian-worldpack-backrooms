@@ -106,7 +106,7 @@ test("ED-3 — pinned runtime metadata records exact release, checksums and the 
   const pin = require("../tools/local-runtime-pin.json");
   assert.equal(pin.llama_cpp.tag, "b11146");
   assert.match(pin.llama_cpp.asset_sha256, /^[0-9a-f]{64}$/);
-  assert.equal(pin.model.repository, "Qwen/Qwen3-4B-GGUF");
+  assert.equal(pin.model.repository, "unsloth/gemma-4-E4B-it-GGUF");
   assert.match(pin.model.revision, /^[0-9a-f]{40}$/);
   assert.equal(pin.model.quantization, "Q4_K_M");
   assert.equal(pin.model.internal_filename, "yellow-beast-local-v1.gguf");

@@ -29,6 +29,33 @@ const LOCAL_DIALOGUE_WORDING_LINES = Object.freeze([
   "Return semantic_claims as an empty array."
 ]);
 
+// Compact system prompt for plan-carrying LOCAL dialogue (the production path). Turn-specific rules
+// travel only with the turn that needs them (renderContributionTask); nothing here repeats them, and
+// no field names of the internal packet appear (the model sees rendered sections, not JSON).
+const LOCAL_DIALOGUE_SYSTEM_LINES = Object.freeze([
+  "You speak as one coworker in a workplace conversation. Who speaks, what happened, what you know and what you may say were decided before you speak; you only choose the words.",
+  "You are a real person in the room, not an assistant, narrator, guide or help desk. Never offer help or services.",
+  "WHAT YOU ARE ALLOWED TO SAY controls meaning: say those facts and nothing beyond them. The other sections only orient you; never mention something just because it appears there.",
+  "Never invent facts, events, observations, experience, biography, feelings, motives, urgency, plans, promises or actions, and never speak for other people. Your voice and current state may colour how you say it, never what you say.",
+  "Talk to the person as \"you\". Do not repeat, quote or echo their words unless you are asked to say something again.",
+  "Sound like ordinary speech in your own voice: plain, brief, natural. Vary your wording; never copy phrases from these instructions.",
+  "Reply with exactly one JSON object and nothing else."
+]);
+const LOCAL_DIALOGUE_SYSTEM_TEXT = LOCAL_DIALOGUE_SYSTEM_LINES.join("\n");
+
+// Turn-specific constraints worth stating in words (the rest of COMMON_FORBIDDEN is already the
+// system prompt's general rule, so repeating it per turn only adds tokens).
+const FORBIDDEN_WORDING = Object.freeze({
+  unrequested_mission_briefing: "bring up mission details nobody asked about",
+  unrelated_task_offer: "offer to do tasks",
+  new_factual_claims: "add anything new beyond that line",
+  unrequested_interpretation: "interpret what they meant",
+  invented_urgency: "add urgency",
+  acceptance_or_commitment: "agree to, accept, promise or refuse it",
+  unsupported_sensory_claims: "describe sounds, smells or sensations you were not given",
+  invented_anomaly_properties: "say what it is, what caused it or whether it is dangerous"
+});
+
 /**
  * Compact, plain-language rendering of the SAME authorized_contribution the
  * packet carries, for small local models that drown in a raw JSON packet and
@@ -86,7 +113,7 @@ function renderContextSections(capsule) {
   const where = [
     scene.location_name ? `You are in the ${scene.location_name}${scene.phase ? ` (${scene.phase})` : ""}.` : (scene.phase ? `Current phase: ${scene.phase}.` : null),
     people.length ? `With you: ${people.join(", ")}.` : null,
-    hasPlayer ? "PLAYER is the person you are talking to: say \"you\" to them, never \"them\" or \"PLAYER\"." : null,
+    hasPlayer ? "PLAYER is the person talking with you. Speak to them directly; never call them \"PLAYER\", and do not use \"you\" as if it were their name." : null,
     capsule.current_utterance ? (c.recipient_scope === "you" ? "PLAYER is speaking to you directly." : c.recipient_scope === "group" ? "PLAYER is speaking to the whole group." : "PLAYER spoke aloud to the room, to no one in particular.") : null,
     c.current_topic ? `Topic: ${spoken(c.current_topic)}${c.previous_topic && c.previous_topic !== c.current_topic ? ` (before: ${spoken(c.previous_topic)})` : ""}.` : null,
     c.introductions_occurred ? "Introductions have already happened." : null
@@ -123,10 +150,13 @@ function renderContributionTask(packet) {
   // how: the shape of this turn. allowed: the facts the turn may state.
   const how = [];
   const allowed = [];
-  how.push(`What kind of turn this is: ${c.discourse_function}.`);
-  how.push(`Your task: ${c.purpose}.`);
-  if (c.expected_response_shape) how.push(`Shape of your reply: ${String(c.expected_response_shape).replace(/_/g, " ")}.`);
-  if (c.requested_content) how.push(`Content requested: ${String(c.requested_content).replace(/_/g, " ")}.`);
+  if (!capsule) {
+    // Legacy rendering (no capsule): unchanged surface for callers that predate the bridge.
+    how.push(`What kind of turn this is: ${c.discourse_function}.`);
+    how.push(`Your task: ${c.purpose}.`);
+    if (c.expected_response_shape) how.push(`Shape of your reply: ${String(c.expected_response_shape).replace(/_/g, " ")}.`);
+    if (c.requested_content) how.push(`Content requested: ${String(c.requested_content).replace(/_/g, " ")}.`);
+  } else how.push(`Your task: ${c.purpose}.`);
   // A remembered/observed answer is shown as the plain statement it means, so a small
   // model states it instead of echoing the question. Same fact, no new authority.
   const showFact = (f) => {
@@ -135,6 +165,17 @@ function renderContributionTask(packet) {
     if (f.key === "name") return `name: your own name is ${j(f.value)}; say it`;
     if (f.key === "role") return `role: you are ${/^[aeiou]/i.test(String(f.value)) ? "an" : "a"} ${String(f.value).toLowerCase()}; say so`;
     if (f.key === "current_assignment") return `current_assignment: you are ${String(f.value).replace(/^./, (ch) => ch.toLowerCase())}; say so in plain words`;
+    if (f.key === "self_state") {
+      const affect = (f.value?.affect ?? []).filter((a) => !/guarded/i.test(a));
+      return f.value?.state === "affected" && affect.length
+        ? `How you are right now: ${affect.join(" and ")}. Say so plainly, for yourself only.`
+        : "How you are right now: nothing is wrong. Answer that you are doing all right, for yourself only; do not claim to be tired, stressed or worried.";
+    }
+    if (f.key === "request_disposition") {
+      return f.value?.kind === "handoff"
+        ? "About the request: nothing changes hands just by talking; a handoff only happens as a proper in-person transfer, so do not hand anything over, accept or promise."
+        : "About the request: this is not something you do or promise just by talking. Only acknowledge that you heard it, without agreeing, accepting, promising or refusing.";
+    }
     if (f.key === "item_holder") {
       const item = `the ${String(f.value?.label ?? "item").toLowerCase()}`;
       if (f.value?.holder_known === false) return `item_holder: you do NOT know who has ${item}; say you don't know`;
@@ -144,7 +185,8 @@ function renderContributionTask(packet) {
     }
     return `${f.key}: ${j(f.value)}`;
   };
-  const req = isReport ? [] : (c.required_facts ?? []).map(showFact);
+  const REPAIR_KEYS = new Set(["antecedent_player_text", "antecedent_responses"]);
+  const req = isReport ? [] : (c.required_facts ?? []).filter((f) => !(capsule && REPAIR_KEYS.has(f.key))).map(showFact);
   if (isReport) {
     const obs = c.required_facts?.find((f) => f.key === "observation")?.value;
     const subject = obs?.subject;
@@ -153,10 +195,19 @@ function renderContributionTask(packet) {
     else allowed.push(subject ? `You noticed: ${phrase}. Say so the way a person would, in your own words. Use plain everyday words only; never mention purposes, states, recognition, findings or assignments as terms.` : "You noticed something worth mentioning but there is nothing more specific you may say. Say so in a few plain words.");
   }
   const opt = (c.optional_facts ?? []).map((f) => `${f.key}: ${j(f.value)}`);
-  if (!isReport) allowed.push(req.length ? `Facts you must state (and may not go beyond):\n- ${req.join("\n- ")}` : "You have no facts to state. Do not invent any.");
+  const repairing = capsule && ["clarify_previous", "request_repetition"].includes(c.discourse_function) && c.antecedent?.resolved;
+  if (!isReport && !repairing) allowed.push(req.length ? `Facts you must state (and may not go beyond):\n- ${req.join("\n- ")}` : "You have no facts to state. Do not invent any.");
+  else if (repairing && req.length) allowed.push(`Facts you must state (and may not go beyond):\n- ${req.join("\n- ")}`);
   if (opt.length) allowed.push(`Facts you may add if natural:\n- ${opt.join("\n- ")}`);
   if (c.antecedent?.resolved && c.antecedent.responses?.length) allowed.push(`The line being repaired/referred to (say it again or clarify it, in your words):\n- ${c.antecedent.responses.map((r) => `${r.speaker_name ?? "someone"}: ${j(r.text)}`).join("\n- ")}`);
-  if (c.may_ask_clarifying_question) how.push("If the reference is unclear, ask ONE short question about which thing they mean.");
+  if (c.may_ask_clarifying_question) {
+    const noun = (c.referents ?? []).find((r) => r.type === "spatial" && !r.resolved && r.noun && !["thing", "one"].includes(r.noun))?.noun;
+    const when = c.temporal_reference && !c.temporal_reference.resolved;
+    how.push(noun ? `You cannot tell which ${noun} they mean. Ask ONE short question about which ${noun}.` : when ? `You cannot tell which time "${c.temporal_reference.expression}" means. Ask ONE short question about when they mean.` : "If the reference is unclear, ask ONE short question about which thing they mean.");
+  }
+  if (capsule && repairing) how.push("Say your own earlier line again in your own words. Do not answer a new question and do not say you did not understand.");
+  if (capsule && c.resumed_question) how.push(`They are answering your question about which thing they meant. Answer their earlier question now: ${j(c.resumed_question)}`);
+  if (capsule && !isReport && !req.length && ["ask_factual", "ask_personal_experience", "challenge"].includes(c.discourse_function) && !c.may_ask_clarifying_question) how.push(c.past_perception ? "Nothing you noticed is supplied: say plainly that you didn't notice anything, in your own words." : (c.addressee_state ? "They are asking whether you are ready; a brief yes or no about yourself is fine." : "No fact answers this: say plainly that you don't know, in your own words. Never ask the question back."));
   if ((c.same_turn_prior_responses ?? []).length) how.push(`Others already replied this turn:\n- ${c.same_turn_prior_responses.map((r) => `${r.speaker_name ?? "someone"}: ${j(r.text)}`).join("\n- ")}\nDo NOT reuse their opening words or sentence shape, and do not repeat what they already said; say it your own way.`);
   if (c.discourse_function === "joke_or_sarcasm") how.push("Their remark is a joke or sarcasm, not a literal claim. React with a short wry or dry aside in your own words. Do NOT agree it is really safe, evaluate it literally, give advice, or redirect to work.");
   if (["invite_self_description", "ask_role_or_assignment"].includes(c.discourse_function)) how.push("Say your name/role, and your assignment as what you are doing right now in plain words. Never say you are 'here to' do something.");
@@ -167,9 +218,13 @@ function renderContributionTask(packet) {
   if (!capsule && (c.recent_context ?? []).length) how.push(`Relevant recent exchange: ${j(c.recent_context)}`);
   if (!capsule && (c.relevant_memories ?? []).length) how.push(`Relevant memory: ${j(c.relevant_memories)}`);
   if (!capsule && c.style_hints && Object.keys(c.style_hints).length) how.push(`Tone only (never facts): ${j(c.style_hints)}`);
-  if (capsule) how.push("Delivery may carry the voice and current human context above, but never adds a fact, feeling, motive or state they do not establish.");
-  if ((c.forbidden_claims ?? []).length) how.push(`Never: ${c.forbidden_claims.map((x) => String(x).replace(/_/g, " ")).join(", ")}.`);
-  const output = `Reply as ${name ?? "the coworker"} in ${isReport ? "one short spoken sentence" : "one or two short spoken sentences"}. Return JSON: {"version":"yellow-beast-local-dialogue-candidate@v1","observer_id":${j(packet.speaker?.observer_id ?? "")},"speech":"<what you say>","semantic_claims":[]}`;
+  if (!capsule && (c.forbidden_claims ?? []).length) how.push(`Never: ${c.forbidden_claims.map((x) => String(x).replace(/_/g, " ")).join(", ")}.`);
+  const specific = capsule ? (c.forbidden_claims ?? []).map((x) => FORBIDDEN_WORDING[x]).filter(Boolean) : [];
+  if (specific.length) how.push(`Do not ${[...new Set(specific)].join(", or ")}.`);
+  // Plan-carrying packets: the model returns wording only; code owns every identifier and claim.
+  const output = capsule
+    ? `Reply as ${name ?? "the coworker"} in ${isReport ? "one short spoken sentence" : "one or two short spoken sentences"}. Return JSON: {"speech":"<what you say>"}`
+    : `Reply as ${name ?? "the coworker"} in ${isReport ? "one short spoken sentence" : "one or two short spoken sentences"}. Return JSON: {"version":"yellow-beast-local-dialogue-candidate@v1","observer_id":${j(packet.speaker?.observer_id ?? "")},"speech":"<what you say>","semantic_claims":[]}`;
 
   if (!capsule) return [...now, ...how.slice(0, 4), ...allowed, ...how.slice(4), output].join("\n");
   const s = renderContextSections(capsule);
@@ -192,4 +247,4 @@ function renderContributionTask(packet) {
 /** Rough prompt size for budget checks (characters / 4). */
 const approximateTokens = (text) => Math.ceil(String(text ?? "").length / 4);
 
-module.exports = { renderContributionTask, renderContextSections, renderVoice, renderHumanContext, approximateTokens, LOCAL_DIALOGUE_WORDING_LINES, LOCAL_DIALOGUE_WORDING_TEXT: LOCAL_DIALOGUE_WORDING_LINES.join(" ") };
+module.exports = { renderContributionTask, renderContextSections, renderVoice, renderHumanContext, approximateTokens, LOCAL_DIALOGUE_WORDING_LINES, LOCAL_DIALOGUE_WORDING_TEXT: LOCAL_DIALOGUE_WORDING_LINES.join(" "), LOCAL_DIALOGUE_SYSTEM_LINES, LOCAL_DIALOGUE_SYSTEM_TEXT };
