@@ -236,7 +236,7 @@
     high.Q.value = 0.707;
     const low = ctx.createBiquadFilter(); low.type = "lowpass"; low.frequency.value = 4000;
     low.Q.value = 0.707;
-    const mid = ctx.createBiquadFilter(); mid.type = "peaking"; mid.frequency.value = 1500; mid.Q.value = 1.1; mid.gain.value = 5;
+    const mid = ctx.createBiquadFilter(); mid.type = "peaking"; mid.frequency.value = 1500; mid.Q.value = 1.1; mid.gain.value = 1;
     const saturation = ctx.createWaveShaper();
     const curve = new Float32Array(2049);
     for (let i = 0; i < curve.length; i++) {
@@ -249,14 +249,27 @@
     const compression = ctx.createDynamicsCompressor();
     compression.threshold.value = -20; compression.knee.value = 12; compression.ratio.value = 2.5;
     compression.attack.value = 0.008; compression.release.value = 0.18;
-    const dry = ctx.createGain(); dry.gain.value = 0.88;
-    const wet = ctx.createGain(); wet.gain.value = 0.12;
+    const dry = ctx.createGain(); dry.gain.value = 0.35;
+    const wet = ctx.createGain(); wet.gain.value = 0.65;
     const room = ctx.createConvolver();
-    const impulse = ctx.createBuffer(1, Math.ceil(ctx.sampleRate * 0.14), ctx.sampleRate);
+    // Centered speaker with a diffuse room return, matching the supplied 6:15
+    // reference's distant presentation. This graph belongs only to menu_music.
+    const impulse = ctx.createBuffer(2, Math.ceil(ctx.sampleRate * 1.2), ctx.sampleRate);
+    room.normalize = false;
     for (let channel = 0; channel < impulse.numberOfChannels; channel++) {
       const samples = impulse.getChannelData(channel);
-      for (let i = 0; i < samples.length; i++) samples[i] = Math.sin(i * 1.71) * Math.pow(1 - i / samples.length, 5) * 0.035;
-      for (const [seconds, gain] of [[0.018, 0.22], [0.041, 0.12], [0.073, 0.06]]) samples[Math.floor(seconds * ctx.sampleRate)] += gain;
+      let seed = 1729 + channel * 7919;
+      const onset = Math.floor(ctx.sampleRate * (0.024 + channel * 0.007));
+      for (let i = onset; i < samples.length; i++) {
+        seed = (Math.imul(seed, 1664525) + 1013904223) >>> 0;
+        const seconds = (i - onset) / ctx.sampleRate;
+        samples[i] = (seed / 2147483648 - 1) * Math.exp(-6.91 * seconds / 0.85) * 0.045;
+      }
+      for (const [seconds, gain] of [[0.029, 0.6], [0.053, 0.42], [0.089, 0.3], [0.137, 0.18]]) {
+        samples[Math.floor((seconds + channel * 0.009) * ctx.sampleRate)] += gain;
+      }
+      const energy = Math.sqrt(samples.reduce((sum, value) => sum + value * value, 0));
+      for (let i = 0; i < samples.length; i++) samples[i] /= energy;
     }
     room.buffer = impulse;
     source.connect(mono).connect(high).connect(mid).connect(saturation).connect(low).connect(compression);

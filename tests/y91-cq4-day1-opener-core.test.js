@@ -114,8 +114,10 @@ test("y91 — CQ4 Day 1 Opener: Dr. Kirk Maxwell Institutional Briefing and Arch
       archetype: "first-day-observer",
       personality: "nervous-first-day",
       primary_task: "verbal-recall",
-      identity_substrate: canonicalWorld.characters[coworker1.personnel_id].identity_substrate
-    }, "The hosted dialogue packet must carry only this speaker's authored characterization");
+      // ED-1.5: identity reaches the model as STYLE keys only; factual substrate
+      // fields (region, tenure, etc.) are exposed solely as plan-authorized facts.
+      style: Object.fromEntries(["social_expression", "conversational_temperament", "social_tendency", "behavioral_disposition"].map((key) => [key, canonicalWorld.characters[coworker1.personnel_id].identity_substrate[key]]))
+    }, "The hosted dialogue packet must carry only this speaker's authored characterization, style-only");
 
     // 3. Initial equipment distribution
     // Coworker 2 holds startup-materials-duffle
@@ -157,7 +159,7 @@ test("y91 — CQ4 Day 1 Opener: Introductions Exit and Staging Flow", async () =
     service.submitAction({ world_id: world.id, mode: "field-researcher", action: "COMPLETE_BROADCAST" });
 
     // 1. Chat in BRIEFING
-    const chat = service.submitQ4Communication({
+    const chat = await service.submitQ4Communication({
       world_id: world.id,
       channel: "local",
       text: "Everyone ready for today?",

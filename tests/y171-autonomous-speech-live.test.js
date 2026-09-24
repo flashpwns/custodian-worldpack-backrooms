@@ -62,7 +62,7 @@ test("A: valid injected provider produces canonical committed speech, listener k
   let receivedPacket = null;
   service.localDialogueProvider = {
     name: "test-provider",
-    presentLocal: async (packet) => { receivedPacket = packet; return validSpeechCandidate(speaker, "Found something odd with the apparatus."); }
+    presentLocal: async (packet) => { receivedPacket = packet; return validSpeechCandidate(speaker, "Found the Threshold."); }
   };
 
   const result = await speechScheduler.drainSpeechQueue(run, run._world, {
@@ -81,7 +81,7 @@ test("A: valid injected provider produces canonical committed speech, listener k
   assert.ok(run.expedition.speech_queue.spoken[`${speaker}|${entry.feature_id}`], "a suppression marker must be written on commit");
 });
 
-test("B: malformed provider response commits nothing and preserves the queue entry for retry", async () => {
+test("B: malformed provider response falls back from the SAME plan and commits once", async () => {
   const service = buildBareService();
   const { run, speaker } = fixtureWithQueuedReport("y171-b");
   service.localDialogueProvider = {
@@ -93,13 +93,12 @@ test("B: malformed provider response commits nothing and preserves the queue ent
     speak: (queueEntry, r) => service.presentObservationReport(queueEntry, r)
   });
 
-  assert.equal(result.drained.length, 0);
-  assert.equal((run.expedition.dialogue_history ?? []).length, 0, "no canonical dialogue event on invalid candidate");
-  assert.equal(run.expedition.speech_queue.entries.length, 1, "the queue entry survives a first invalid attempt");
-  assert.equal(run.expedition.speech_queue.entries[0].attempts, 1);
+  assert.equal(result.drained.length, 1, "an authorized speech act is never dropped");
+  assert.equal(result.drained[0].text, "I'm at the Threshold now.", "deterministic wording from the authorized observation only");
+  assert.equal(run.expedition.speech_queue.entries.length, 0);
 });
 
-test("C: provider unavailable is treated identically -- observation and queue survive", async () => {
+test("C: provider unavailable uses the same-plan fallback", async () => {
   const service = buildBareService();
   const { run } = fixtureWithQueuedReport("y171-c");
   service.localDialogueProvider = null; // no injected override
@@ -110,22 +109,20 @@ test("C: provider unavailable is treated identically -- observation and queue su
     speak: (queueEntry, r) => service.presentObservationReport(queueEntry, r)
   });
 
-  assert.equal(result.drained.length, 0);
-  assert.equal(run.expedition.speech_queue.entries.length, 1);
-  assert.equal(run.expedition.speech_queue.entries[0].attempts, 1);
+  assert.equal(result.drained.length, 1);
+  assert.equal(result.drained[0].text, "I'm at the Threshold now.");
+  assert.equal(run.expedition.speech_queue.entries.length, 0);
 });
 
-test("D: retry exhaustion silences the report; observation and knowledge remain intact, no fabricated fallback", async () => {
+test("D: a provider error still commits the deterministic same-plan report; observation truth is untouched", async () => {
   const service = buildBareService();
   const { run, speaker } = fixtureWithQueuedReport("y171-d");
   service.localDialogueProvider = { name: "test-provider", presentLocal: async () => { throw new Error("model down"); } };
 
   await speechScheduler.drainSpeechQueue(run, run._world, { speak: (e, r) => service.presentObservationReport(e, r) });
-  assert.equal(run.expedition.speech_queue.entries.length, 1);
-  await speechScheduler.drainSpeechQueue(run, run._world, { speak: (e, r) => service.presentObservationReport(e, r) });
-
-  assert.equal(run.expedition.speech_queue.entries.length, 0, "exhaustion removes the entry -- silence");
-  assert.equal((run.expedition.dialogue_history ?? []).length, 0, "no fabricated fallback dialogue was committed");
+  assert.equal(run.expedition.speech_queue.entries.length, 0);
+  assert.equal((run.expedition.dialogue_history ?? []).length, 1);
+  assert.equal(run.expedition.dialogue_history[0].text, "I'm at the Threshold now.");
   assert.equal(run.observation_state.observers[speaker].features["landmark:threshold-apparatus"].state, "RECOGNIZED", "observation truth is untouched by provider failure");
 });
 
@@ -151,12 +148,12 @@ test("F: an explicitly injected provider bypasses appliance readiness gating but
   // "there is ..." trips the unsupported-factual-speech gate with no
   // semantic_claims array -- proves injection bypasses readiness, not
   // validation.
-  service.localDialogueProvider = { name: "injected", presentLocal: async () => validSpeechCandidate(speaker, "there is definitely something wrong here") };
+  service.localDialogueProvider = { name: "injected", presentLocal: async () => validSpeechCandidate(speaker, "There is definitely something wrong here and it is dangerous.") };
 
   const result = await speechScheduler.drainSpeechQueue(run, run._world, { speak: (e, r) => service.presentObservationReport(e, r) });
   assert.equal(wrapCalled, false, "an explicitly injected provider must not be routed through the supervisor");
-  assert.equal(result.drained.length, 0, "validation is still enforced even for an injected provider");
-  assert.equal(run.expedition.speech_queue.entries[0].attempts, 1);
+  assert.equal(result.drained.length, 1);
+  assert.equal(result.drained[0].text, "I'm at the Threshold now.", "an invented anomaly property is rejected and replaced by the same-plan fallback");
 });
 
 test("G: a player LOCAL turn in flight prevents an autonomous commit", async () => {

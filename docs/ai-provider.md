@@ -2,7 +2,7 @@
 
 YB-13 ships with the deterministic offline mock provider used by tests and `npm run play -- --natural "..."`. No network provider or credentials are required.
 
-The desktop also supports a fully local generative provider through Ollama. Select **Local model · Ollama** in Settings. The default is `qwen3.5:9b` at `http://127.0.0.1:11434`; both values can be changed in the same screen. The adapter rejects non-loopback addresses, sends no API key, disables remote storage, and requests schema-constrained JSON from Ollama's native `/api/chat` endpoint. Install Ollama, start its local server, and run `ollama pull qwen3.5:9b` once. Model files then remain on the device.
+The desktop also supports a fully local generative provider: the managed on-device runtime (llama.cpp `llama-server` plus a pinned model recorded in `tools/local-runtime-pin.json`). It is installed, started, warmed and stopped by the application (`tools/managed-inference-appliance.js`), binds only to `127.0.0.1`, has its web UI disabled, needs no API key and makes no network request during play. No separate runtime such as Ollama is required or used. The adapter rejects non-loopback addresses and sends no API key.
 
 Local generation and deterministic offline play are separate modes. **Offline deterministic** uses no model. **Local model** uses an on-device model for natural-language interpretation, resolved scene prose, and authorized NPC dialogue. If a local interpretation cannot be reached or validated, the turn fails without mutation. If presentation fails after an accepted canonical action, the committed action remains and Yellow Beast uses its deterministic presentation fallback.
 

@@ -87,12 +87,12 @@ test("4. an unseen feature (no observation_state bucket entry) is omitted from l
   const { run, player } = bootstrapFixture("y169-unseen-projection");
   const projected = liveScene.projectLiveScene(run, { observer_id: player });
   assert.equal(projected.ok, true);
-  assert.ok(projected.packet.available_action_context.visible_targets.some((t) => t.label === "Threshold apparatus"));
+  assert.ok(projected.packet.available_action_context.visible_targets.some((t) => t.label === "The Threshold"));
 
   delete run.observation_state.observers[player].features["landmark:threshold-apparatus"];
   const after = liveScene.projectLiveScene(run, { observer_id: player });
   assert.equal(after.ok, true);
-  assert.ok(!after.packet.available_action_context.visible_targets.some((t) => t.label === "Threshold apparatus"));
+  assert.ok(!after.packet.available_action_context.visible_targets.some((t) => t.label === "The Threshold"));
 });
 
 test("5. a noticed feature is visible in projection only to observers whose own observation actually crossed the notice threshold for it", () => {
@@ -110,11 +110,11 @@ test("5. a noticed feature is visible in projection only to observers whose own 
   const coworkerProjection = liveScene.projectLiveScene(run, { observer_id: coworker });
   assert.equal(coworkerProjection.ok, true);
   const coworkerState = observationAuthority.stateOf(run, coworker, "landmark:threshold-apparatus");
-  const coworkerSeesIt = coworkerProjection.packet.available_action_context.visible_targets.some((t) => t.label === "Threshold apparatus");
+  const coworkerSeesIt = coworkerProjection.packet.available_action_context.visible_targets.some((t) => t.label === "The Threshold");
   assert.equal(coworkerSeesIt, coworkerState === "RECOGNIZED", "coworker projection must track the coworker's own bucket, not the player's");
 
   const playerProjection = liveScene.projectLiveScene(run, { observer_id: player });
-  assert.ok(playerProjection.packet.available_action_context.visible_targets.some((t) => t.label === "Threshold apparatus"));
+  assert.ok(playerProjection.packet.available_action_context.visible_targets.some((t) => t.label === "The Threshold"));
 });
 
 test("6. a remembered feature (noticed previously, not currently visible) projects with present:false", () => {
@@ -135,12 +135,12 @@ test("6. a remembered feature (noticed previously, not currently visible) projec
 test("7. compileObserverContext output never contains an unseen canonical feature", () => {
   const { run, player } = bootstrapFixture("y169-context-compiler");
   const before = observerContextCompiler.compileObserverContext(run, player);
-  assert.ok(before.perception.visible.some((line) => line.startsWith("Threshold apparatus")));
+  assert.ok(before.perception.visible.some((line) => line.startsWith("The Threshold")));
 
   delete run.observation_state.observers[player].features["landmark:threshold-apparatus"];
   const after = observerContextCompiler.compileObserverContext(run, player);
-  assert.ok(!after.perception.visible.some((line) => line.startsWith("Threshold apparatus")));
-  assert.ok(!after.available_referents.object.includes("Threshold apparatus"));
+  assert.ok(!after.perception.visible.some((line) => line.startsWith("The Threshold")));
+  assert.ok(!after.available_referents.object.includes("The Threshold"));
 });
 
 test("8. the direct-observation ledger invariant holds, and catches a bucket/known_information mismatch", () => {

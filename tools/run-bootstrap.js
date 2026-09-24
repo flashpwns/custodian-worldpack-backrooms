@@ -809,6 +809,8 @@ function act(runValue, verb, target) {
     }
 
     spatialRuntime.syncEquipment(run.spatial, run.expedition);
+    // Everyone positioned to see the handoff (both parties and anyone in the same place) observes it.
+    canonicalLedger.recordCustodyObserved(run, { equipment_id: itemKey, holder_id: transacted.item.current_holder, from: transacted.item.current_holder === targetHolder ? player : targetHolder });
     event(run.expedition, "equipment.transferred", { item: itemKey, from: transacted.item.current_holder === targetHolder ? player : targetHolder, to: transacted.item.current_holder });
     const cycle = resolveOperationalCycle(run, "TRANSFER", 1, "equipment-transfer");
     return {

@@ -1,6 +1,7 @@
 "use strict";
 
 const crypto = require("node:crypto");
+const { LOCAL_DIALOGUE_WORDING_TEXT } = require("./dialogue-prompt-contract");
 const { INTENT_VERSION } = require("./ai-adapter");
 const { PROPOSAL_VERSION } = require("./ai-interpreter-boundary");
 const { PRESENTATION_VERSION } = require("./ai-living-turn");
@@ -509,7 +510,7 @@ function createHostedProvider({
     async presentLocal(packet) {
       return request(
         "local-dialogue",
-        "Return only an untrusted LOCAL dialogue candidate spoken by the single authorized coworker in the packet. Give that coworker a concise, distinct voice grounded in their supplied characterization, tendencies, relationship, memories, identity, role, condition, current task, equipment, qualifications, and shared history. Fulfil only the authorized response purpose. Do not invent facts, observations, knowledge, actions, other speakers, quoted player speech, or any player action or dialogue. Return semantic_claims as an empty array when the line makes no factual claim. For every factual claim, add one semantic_claim whose text is the exact supporting phrase from speech and whose remaining fields identify the supplied canonical fact; use null for fields that do not apply.",
+        `Return only an untrusted LOCAL dialogue candidate spoken by the single authorized coworker in the packet. ${LOCAL_DIALOGUE_WORDING_TEXT}`,
         packet,
         { type: "json_schema", name: "yellow_beast_local_dialogue", strict: true, schema: LOCAL_DIALOGUE_SCHEMA }
       );

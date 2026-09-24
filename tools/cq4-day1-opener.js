@@ -164,7 +164,7 @@ function triggerCatastrophicEnding(world, entry) {
   presentationBus.emit(run, {
     type: "threshold_nonfunctional",
     speaker: "FACILITY",
-    text: "The Threshold apparatus is dead. The magnetic aperture has completely collapsed."
+    text: "The Threshold is dead. The magnetic aperture has completely collapsed."
   });
   presentationBus.emit(run, {
     type: "character_panic",
@@ -206,13 +206,13 @@ function triggerCatastrophicEnding(world, entry) {
     ok: false,
     error: {
       code: "THRESHOLD_NONFUNCTIONAL",
-      message: "The Threshold apparatus is completely dark and unresponsive. The aperture has collapsed. Operational cutoff exceeded."
+      message: "The Threshold is completely dark and unresponsive. The aperture has collapsed. Operational cutoff exceeded."
     },
     result: {
-      public_reason: "The Threshold apparatus is dead. Standard line is unresponsive. Egress is impossible.",
+      public_reason: "The Threshold is dead. Standard line is unresponsive. Egress is impossible.",
       catastrophic_ending: clone(opener.catastrophic_ending)
     },
-    public_reason: "The Threshold apparatus is dead. Standard line is unresponsive. Egress is impossible.",
+    public_reason: "The Threshold is dead. Standard line is unresponsive. Egress is impossible.",
     run
   };
 }

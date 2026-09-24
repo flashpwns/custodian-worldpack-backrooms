@@ -1,0 +1,36 @@
+{
+  "llama_cpp": {
+    "repository": "ggml-org/llama.cpp",
+    "tag": "b11146",
+    "asset": "llama-b11146-bin-macos-arm64.tar.gz",
+    "asset_sha256": "1ad3f9eff80edb9dbef4259ad564d1720612ef7eea48fa4afed0e54f5f3d5711",
+    "url": "https://github.com/ggml-org/llama.cpp/releases/download/b11146/llama-b11146-bin-macos-arm64.tar.gz",
+    "extract_to": "vendor/llama"
+  },
+  "model": {
+    "name": "Qwen3-4B",
+    "repository": "Qwen/Qwen3-4B-GGUF",
+    "revision": "bc640142c66e1fdd12af0bd68f40445458f3869b",
+    "quantization": "Q4_K_M",
+    "source_filename": "Qwen3-4B-Q4_K_M.gguf",
+    "internal_filename": "yellow-beast-local-v1.gguf",
+    "sha256": "7485fe6f11af29433bc51cab58009521f205840f5b4ae3a32fa7f92e8534fdf5",
+    "bytes": 2497280256,
+    "license": "Apache-2.0",
+    "license_notice": "docs/licenses/Qwen3-Apache-2.0.txt",
+    "url": "https://huggingface.co/Qwen/Qwen3-4B-GGUF/resolve/bc640142c66e1fdd12af0bd68f40445458f3869b/Qwen3-4B-Q4_K_M.gguf",
+    "target": "vendor/model/yellow-beast-local-v1.gguf",
+    "request_options": {
+      "chat_template_kwargs": {
+        "enable_thinking": false
+      },
+      "sampling": {
+        "dialogue": {
+          "temperature": 0.8,
+          "top_p": 0.95,
+          "top_k": 40
+        }
+      }
+    }
+  }
+}

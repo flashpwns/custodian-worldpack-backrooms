@@ -128,9 +128,11 @@
       const responseText = item.coworker_response ?? item.response;
       let responseSpeaker = item.response_speaker ?? item.coworker ?? (isLocal ? (item.targets?.[0] ?? "Coworker") : "STANDARD DESK");
       if (isLocal && responseText && !(item.responses?.length)) {
+        // Untargeted canonical speech is room speech, not direct address.
+        const isUntargeted = item.recipient_type === "none" || item.targets?.[0] === "Room / Untargeted";
         if (isGroup) {
           responseSpeaker = `${responseSpeaker} → Assembly Table`;
-        } else {
+        } else if (!isUntargeted) {
           responseSpeaker = `${responseSpeaker} → YOU`;
         }
       }

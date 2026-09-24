@@ -25,7 +25,10 @@ const { LOCAL_PROVIDER_SPEC } = require("../tools/ai-local-model-provider");
 const { ManagedInferenceAppliance } = require("../tools/managed-inference-appliance");
 const { createDialogueRuntimeSupervisor } = require("../tools/dialogue-runtime-supervisor");
 const { buildLocalDialoguePacket, buildObservationReportPacket, validateLocalDialogue } = require("../tools/ai-local-dialogue");
-const { interpretUtterance: interpretDialogueUtterance, inferLocalRecipientType, resolveResponseOwners, BARE_REACTION_PATTERN: BARE_FOLLOWUP_PATTERN } = require("../tools/dialogue-interpretation");
+const { interpretUtterance: interpretDialogueUtterance, inferLocalRecipientType, resolveResponseOwners, stripNamedAddress, parseNamedAddress } = require("../tools/dialogue-interpretation");
+const dialogueDiscourse = require("../tools/dialogue-discourse");
+const dialogueFallback = require("../tools/dialogue-fallback");
+const observerContextCompiler = require("../tools/observer-context-compiler");
 const referenceExpedition = require("../tools/reference-expedition");
 const cq4Day1Opener = require("../tools/cq4-day1-opener");
 const interpretiveDirector = require("../tools/interpretive-director");
@@ -184,7 +187,14 @@ class DesktopService {
       onRestartRequested: () => {
         try {
           const state = this.inferenceAppliance.state;
-          if (state === "READY" || state === "REPAIR_REQUIRED") this.inferenceAppliance.repair().catch(() => {});
+          if ((state === "READY" || state === "REPAIR_REQUIRED") && !this.dialogueRepairInFlight) {
+            // One repair at a time; when the appliance has respawned the runtime the supervisor re-checks it,
+            // so a runtime that died mid-session returns to model wording without a restart of the application.
+            this.dialogueRepairInFlight = this.inferenceAppliance.repair().catch(() => null).then(async () => {
+              this.dialogueRepairInFlight = null;
+              try { await this.dialogueRuntime.retry(); } catch {}
+            });
+          }
         } catch {}
       }
     });
@@ -194,7 +204,17 @@ class DesktopService {
   // be called once from main.js after the window/service are constructed so
   // warmup overlaps the title/cinematic sequence instead of gating it.
   startDialogueRuntime() {
-    try { this.dialogueRuntime?.start().catch(() => {}); } catch {}
+    // The player never manages the runtime: when the application ships (or the dev tree holds) the pinned
+    // runtime and model, a fresh profile installs them silently before the supervisor warms the daemon.
+    const ready = (async () => {
+      try {
+        const appliance = this.inferenceAppliance;
+        if (appliance?.state === "NOT_INSTALLED" && appliance.hasBundledAssets()) await appliance.install();
+      } catch (error) { this.log(`local dialogue runtime install failed: ${error.message}`); }
+      try { await this.dialogueRuntime?.start(); } catch {}
+    })();
+    ready.catch(() => {});
+    return ready;
   }
 
   recordAttemptChain(summary) {
@@ -1494,24 +1514,43 @@ class DesktopService {
   // the result. Returning null (unavailable/error/invalid) leaves the entry
   // queued for retry per the scheduler's own exhaustion policy; this never
   // invents fallback speech.
-  async presentObservationReport(entry, run) {
+  async presentObservationReport(entry, run, phaseId = null) {
     const requestId = `speech-queue-${entry.id}`;
     const providerSetting = this.settings().provider;
     const configured = ["openai", "auto", "local", "groq", "gemini", "openrouter"].includes(providerSetting);
-    const { dialogueProvider, providerUnavailable } = this.acquireLocalDialogueProvider({ requestId, route: "speechScheduler/observation-report", configured });
-    if (providerUnavailable) return null;
+    let packet = null;
     try {
-      const packet = buildObservationReportPacket({ run, observer_id: entry.observer_id, feature_id: entry.feature_id, purpose: entry.purpose, disposition: entry.disposition });
+      packet = buildObservationReportPacket({ run, observer_id: entry.observer_id, feature_id: entry.feature_id, purpose: entry.purpose, disposition: entry.disposition, phase_id: phaseId });
+    } catch (packetError) {
+      this.log(`observation report packet unavailable for ${entry.observer_id}: ${packetError.message}`);
+      return null;
+    }
+    // The scheduler already authorized WHETHER/WHO/WHEN. From here the SAME plan
+    // feeds model wording, semantic validation and the same-plan fallback; an
+    // authorized speech act is never silently dropped.
+    const fallback = (reason) => {
+      const text = dialogueFallback.presentReportFallback({ contribution: packet.authorized_contribution });
+      this.log(`observation report fallback for ${entry.observer_id}: ${reason}`);
+      return text ?? null;
+    };
+    const { dialogueProvider, providerUnavailable } = this.acquireLocalDialogueProvider({ requestId, route: "speechScheduler/observation-report", configured });
+    if (providerUnavailable) return fallback("provider unavailable");
+    try {
       const candidateRaw = await dialogueProvider.presentLocal(structuredClone(packet));
       const validation = validateLocalDialogue(packet, candidateRaw, run);
       if (!validation.ok) {
         this.log(`observation report validateLocalDialogue failed: code=${validation.code}, candidate=${JSON.stringify(candidateRaw)}`);
-        return null;
+        return fallback(validation.code);
       }
+      // Same pre-commit revalidation as player-directed replies: the report must still
+      // belong to this run and speaker, and anything commit-sensitive it asserts must hold now.
+      const check = observerContextCompiler.revalidateContext({ run, capsule: packet._capsule, speech: validation.candidate.speech, speakerId: entry.observer_id, phaseId });
+      if (this.developerMode) this.log(`[YB:CONTEXT_TRACE] ${JSON.stringify({ path: "autonomous-report", context: observerContextCompiler.describeCapsule(packet._capsule), candidate: candidateRaw?.speech ?? null, validator: "accepted", revalidation: { ok: check.ok, code: check.code ?? null } })}`);
+      if (!check.ok) return fallback(check.code);
       return validation.candidate.speech;
     } catch (providerError) {
       this.log(`observation report language assistance unavailable for ${entry.observer_id}: ${providerError.message}`);
-      return null;
+      return fallback("provider error");
     }
   }
   // Fire-and-forget continuation that runs the live speak() path against the
@@ -1553,7 +1592,7 @@ class DesktopService {
           }
           const result = await speechScheduler.drainSpeechQueue(entry.run, world, {
             communicationTurnInflight: this.autonomousSpeechBlocked(world_id),
-            speak: (queueEntry, r) => this.presentObservationReport(queueEntry, r),
+            speak: (queueEntry, r) => this.presentObservationReport(queueEntry, r, entry.phase?.phase_id ?? null),
             canCommit: () => !this.autonomousSpeechBlocked(world_id) && this.session(world_id, "field-researcher") === entry && entry.run.run_id === expectedRunId
           });
           if (result.drained.length === 0) return;
@@ -1646,7 +1685,13 @@ class DesktopService {
           this.log(`LOCAL language assistance unavailable for ${context.speaker?.first_name ?? "responder"}: ${providerError.message}`);
         }
       }
-      const fallbackSpeech = context.fallback_text ? context.fallback_text.replace(/^[^:]+:\s*/, "") : context.fallback_text;
+      let fallbackSpeech = context.fallback_text ? context.fallback_text.replace(/^[^:]+:\s*/, "") : context.fallback_text;
+      // Variant selection uses the lines actually ACCEPTED earlier this turn,
+      // from the SAME frame/plan snapshot the model received.
+      if (context.semantic_frame && context.response_plan && prepared.length) {
+        const replanned = dialogueFallback.presentFallback({ frame: context.semantic_frame, plan: context.response_plan, prior: prepared.map((item) => item.speech).filter(Boolean) });
+        if (replanned) fallbackSpeech = replanned;
+      }
       const speech = validation.ok ? validation.candidate.speech : fallbackSpeech;
       const presentationSource = validation.ok ? (selectedProvider === "local" ? "local-model" : "hosted-model") : "deterministic-fallback";
       prepared.push({ context, packet, candidateRaw, validation, unavailable, selectedProvider, speech, presentationSource });
@@ -1672,6 +1717,36 @@ class DesktopService {
     const receipt = currentEntry.run?.expedition?.communication_receipts?.find((r) => r.id === requestId);
     if (receipt && receipt.status === "canceled") {
       return publicError("REQUEST_CANCELED", "The communication was canceled before finalization.");
+    }
+
+    // PRE-COMMIT REVALIDATION. The provider awaits above can span other canonical
+    // changes. A candidate must still belong to this world/run/speaker/turn/plan, and any
+    // commit-sensitive fact its wording asserts (custody, presence, location, phase,
+    // assignment) must still hold in CURRENT canonical state. Otherwise the stale wording
+    // is never committed: the same turn/owner/purpose is worded by the deterministic
+    // fallback, which withholds the stale value. Nothing about the turn itself changes.
+    for (const item of prepared) {
+      item.context_check = null;
+      if (!item.speech || !item.packet?._capsule) continue;
+      const speakerKey = item.context.speaker?.personnel_id ?? item.context.speaker?.id;
+      const check = observerContextCompiler.revalidateContext({ run: currentEntry.run, capsule: item.packet._capsule, speech: item.speech, speakerId: speakerKey, submissionId: requestId, plan: item.context.response_plan ?? null, phaseId: currentEntry.phase?.phase_id ?? null });
+      item.context_check = check;
+      if (check.ok) continue;
+      if (!item.validation.ok && !check.cancel) continue; // a deterministic fallback asserts nothing the model added
+      if (check.cancel) {
+        // The speaker is no longer a participant in this exchange: the reply is cancelled, not reworded.
+        this.log(`pre-commit revalidation cancelled reply for ${item.context.speaker?.first_name ?? "responder"}: ${check.code}`);
+        item.validation = { ok: false, code: "LOCAL_CONTEXT_TURN_CANCELLED", reason: check.code };
+        item.speech = null;
+        item.presentationSource = "cancelled";
+        continue;
+      }
+      const priorSpeech = prepared.filter((other) => other !== item).map((other) => other.speech).filter(Boolean);
+      const safe = item.context.semantic_frame ? dialogueFallback.presentStaleSafeFallback({ frame: item.context.semantic_frame, plan: item.context.response_plan, prior: priorSpeech }) : null;
+      this.log(`pre-commit revalidation rejected candidate for ${item.context.speaker?.first_name ?? "responder"}: ${check.code}${check.stale?.length ? ` (${check.stale.map((entry) => entry.kind).join(", ")})` : ""}`);
+      item.validation = { ok: false, code: "LOCAL_CONTEXT_STALE", reason: check.code };
+      item.speech = safe ?? "I'm not sure right now.";
+      item.presentationSource = "deterministic-fallback";
     }
 
     const beforeWorld = clone(currentWorld);
@@ -1794,7 +1869,18 @@ class DesktopService {
         responder_id:item.context.speaker?.personnel_id ?? item.context.speaker?.id,
         provider_ready:!item.unavailable,
         speech_act:item.packet?.player_speech_act?.speech_act ?? null,
+        semantic_frame:item.context.semantic_frame ?? null,
+        response_plan:item.context.response_plan ?? null,
+        authorized_contribution:item.packet?.authorized_contribution ?? null,
+        discourse_function:item.packet?.authorized_contribution?.discourse_function ?? null,
+        requested_content:item.packet?.authorized_contribution?.requested_content ?? null,
+        expected_response_shape:item.packet?.authorized_contribution?.expected_response_shape ?? null,
+        required_fields:(item.packet?.authorized_contribution?.required_facts ?? []).map((f) => f.key),
+        optional_fields:(item.packet?.authorized_contribution?.optional_facts ?? []).map((f) => f.key),
+        validation_reason:item.validation.ok ? null : (item.validation.reason ?? null),
         response_purpose:item.packet?.authorized_response?.purpose ?? null,
+        context_trace:item.packet?._dialogue_trace?.context ?? null,
+        context_revalidation:item.context_check ? { ok:item.context_check.ok, code:item.context_check.code ?? null, stale:(item.context_check.stale ?? []).map((entry) => entry.kind) } : null,
         wordsmith_packet:item.packet ? JSON.parse(JSON.stringify(item.packet)) : null,
         raw_candidate:item.candidateRaw,
         candidate_produced:Boolean(item.candidateRaw),
@@ -1807,6 +1893,21 @@ class DesktopService {
       committed_event_ids:committedResponses.map((item) => item.committed_event_id),
       canonical_commit_order:[contexts[0]?.player_event_id, ...committedResponses.map((item) => item.committed_event_id)].filter(Boolean)
     });
+
+    // DEV-ONLY console trace, gated the same as recordDialogueWordsmithTrace
+    // (developerMode). Reuses the same `prepared` data the trace above is
+    // built from -- no second tracing system, never player-visible, never
+    // written to canonical state.
+    if (this.developerMode) {
+      for (const item of prepared) {
+        const ctx = item.context;
+        const ownerName = ctx.speaker?.first_name ?? ctx.speaker?.display_name ?? ctx.speaker?.personnel_id ?? ctx.speaker?.id ?? "unknown";
+        this.log(`[YB:DIALOGUE_TRACE] text=${JSON.stringify(ctx.player_text)} recipient_type=${ctx.recipient_type ?? (ctx.is_group ? "group" : "direct")} inherited_scope=${ctx.inherited_scope ? "yes" : "no"} response_owner=${ownerName} speech_act=${item.packet?.player_speech_act?.speech_act ?? "n/a"} discourse_function=${ctx.semantic_frame?.discourse_function ?? "n/a"} plan_shape=${ctx.response_plan?.expected_response_shape ?? "n/a"} purpose=${JSON.stringify(item.packet?.authorized_response?.purpose ?? null)} provider_ready=${!item.unavailable} candidate_produced=${Boolean(item.candidateRaw)} validator_accepted=${item.validation.ok} rejection_reason=${item.validation.ok ? "none" : (item.validation.code ?? "unknown")} validation_reason=${JSON.stringify(item.validation.ok ? null : (item.validation.reason ?? null))} requested_content=${item.packet?.authorized_contribution?.requested_content ?? "n/a"} required_facts=${JSON.stringify((item.packet?.authorized_contribution?.required_facts ?? []).map((f) => f.key))} optional_facts=${JSON.stringify((item.packet?.authorized_contribution?.optional_facts ?? []).map((f) => f.key))} candidate=${JSON.stringify(item.candidateRaw?.speech ?? null)} fallback_used=${!item.validation.ok} output_source=${item.presentationSource}`);
+        // One dev-only context trace: what the speaker was allowed to know, by category and
+        // provenance. Omitted facts are named by reason only; their values are never printed.
+        if (item.packet?._dialogue_trace?.context) this.log(`[YB:CONTEXT_TRACE] ${JSON.stringify({ speaker: ownerName, context: item.packet._dialogue_trace.context, response_plan_fact_keys: (item.packet?.authorized_contribution?.required_facts ?? []).map((f) => f.key), revalidation: item.context_check ? { ok: item.context_check.ok, code: item.context_check.code ?? null } : null, candidate: item.candidateRaw?.speech ?? null, validator: item.validation.ok ? "accepted" : (item.validation.code ?? "rejected"), fallback_source: item.validation.ok ? null : (item.validation.code === "LOCAL_CONTEXT_STALE" ? "stale-safe-plan-fallback" : "same-plan-fallback") })}`);
+      }
+    }
 
     canonical.projection = this.projectionFor(currentWorld, "field-researcher", currentEntry);
     return canonical;
@@ -1843,8 +1944,23 @@ class DesktopService {
               const speaker = entry.run?.expedition?.team?.members?.find((m) => (m.personnel_id ?? m.id) === saved.target_worker_id) ?? null;
               const person = speaker ? history.character(world, speaker.personnel_id ?? speaker.id) : null;
               const originalReaction = person?.continuity?.reaction_history?.find((item) => item.event_id === recorded.cached_result?.result?.message?.id && item.at === entry.run.run_id);
-              const category = saved.response_category ?? originalReaction?.category;
+              const category = saved.response_category ?? originalReaction?.category ?? (saved.semantic_frame ? "acknowledgment" : null);
               if (!speaker || !person || !category) return null;
+              // Recovery retains the exact frame/plan/contribution the turn was
+              // authorized with. Only a receipt written before snapshots existed
+              // is re-derived (context-free), never via the pre-ED-1 path.
+              const recoveredRecipientType = saved.recipient_type ?? interaction?.recipient_type ?? null;
+              let recoveredFrame = saved.semantic_frame ?? null;
+              let recoveredPlan = saved.response_plan ?? null;
+              let recoveredContribution = saved.authorized_contribution ?? null;
+              if (!recoveredFrame || !recoveredPlan) {
+                const equipmentNow = entry.run.expedition.equipment ?? {};
+                const recoveredNames = Object.fromEntries([...(entry.run.expedition.team.members ?? []).map((m) => [m.personnel_id ?? m.id, m.first_name ?? m.display_name ?? null]), [entry.run.session?.startup?.player?.observer_id, "you"]]);
+                const recoveredId = speaker.personnel_id ?? speaker.id;
+                recoveredFrame = dialogueDiscourse.buildSemanticFrame({ text: stripNamedAddress(recorded.text, recorded.target), recipient_type: recoveredRecipientType ?? "none", equipment: equipmentNow });
+                [recoveredPlan] = dialogueDiscourse.planResponses({ frame: recoveredFrame, owner_ids: [recoveredId], responders: { [recoveredId]: { self: dialogueDiscourse.buildSelfKnowledge({ person, member: speaker, held_equipment: Object.values(equipmentNow).filter((item) => item.holder === recoveredId), known_facts: (speaker.known_information ?? []).filter((fact) => fact.kind !== "reported-knowledge" || fact.source === "direct-observation"), names: recoveredNames, equipment: equipmentNow, player_id: entry.run.session?.startup?.player?.observer_id, custody_known: Object.fromEntries((recoveredFrame.referents ?? []).filter((ref) => ref.type === "equipment" && ref.resolved && ref.id).map((ref) => [ref.id, observerContextCompiler.resolveCustodyKnowledge(entry.run, recoveredId, ref.id).known])) }) } }, names: recoveredNames });
+                recoveredContribution = dialogueDiscourse.toAuthorizedContribution(recoveredPlan, recoveredFrame, { names: recoveredNames });
+              }
               return {
                 run:entry.run,
                 runId:entry.run.run_id,
@@ -1858,9 +1974,15 @@ class DesktopService {
                 entry,
                 requestId:recorded.id,
                 player_event_id:recorded.player_event_id ?? null,
-                interpretation:interpretDialogueUtterance(recorded.text, { isGroup:interaction?.recipient_type === "group" }),
-                is_group:interaction?.recipient_type === "group",
-                recipient_type:interaction?.recipient_type ?? null,
+                interpretation:saved.interpretation ?? interpretDialogueUtterance(stripNamedAddress(recorded.text, recorded.target), { isGroup:interaction?.recipient_type === "group" }),
+                semantic_frame:recoveredFrame,
+                response_plan:recoveredPlan,
+                authorized_contribution:recoveredContribution,
+                discourse_summary:saved.discourse_summary ?? null,
+                is_group:saved.is_group ?? interaction?.recipient_type === "group",
+                recipient_type:recoveredRecipientType,
+                inherited_scope:Boolean(saved.inherited_scope),
+                phase_id:entry.phase?.phase_id ?? null,
                 resuming:true
               };
             }).filter(Boolean);
@@ -1911,24 +2033,28 @@ class DesktopService {
       if (!message) return publicError("COMMUNICATION_EMPTY", "Say or transmit something before sending it.");
       const expedition = entry.run.expedition; const playerId = entry.run.session.startup.player.observer_id; const coworkers = expedition.team.members.filter((member) => member.personnel_id !== playerId);
       let rawTarget = typeof target === "string" ? target.trim() : (target && typeof target === "object" ? (target.id ?? target.name ?? target.personnel_id ?? null) : null);
-      if (!rawTarget) {
-        const addressMatch = message.match(/^(?:@([A-Za-z0-9'-]+(?:\s+[A-Za-z0-9'-]+)?)|([A-Za-z0-9'-]+(?:\s+[A-Za-z0-9'-]+)?)\s*[,:])\s*(.*)$/);
-        if (addressMatch) {
-          const candidate = (addressMatch[1] || addressMatch[2]).trim();
-          const candNorm = candidate.toLowerCase();
-          const isBroadcastWord = ["team", "teammate", "teammates", "all", "everyone", "broadcast", "room", "local", "anyone", "crew"].includes(candNorm);
-          const allWorldChars = Object.values(world.characters ?? {});
-          const matchesKnown = isBroadcastWord || coworkers.some(m => [m.first_name, m.last_name, m.display_name, m.personnel_id, m.id, ...(m.aliases ?? [])].filter(Boolean).some(s => String(s).toLowerCase() === candNorm)) || allWorldChars.some(c => [c.first_name, c.last_name, c.display_name, c.identity, c.id, ...(c.aliases ?? [])].filter(Boolean).some(s => String(s).toLowerCase() === candNorm));
-          if (matchesKnown) {
-            rawTarget = candidate;
-          }
-        }
-      }
+      // ONE named-address parser for live interpretation, recipient resolution
+      // and prior-turn reconstruction. A vocative counts only when it names a
+      // known person or a group term; an explicit (UI-selected) target keeps
+      // precedence and is never replaced by a vocative.
+      const allWorldChars = Object.values(world.characters ?? {});
+      const isKnownAddressName = (candidate) => {
+        const candNorm = String(candidate).toLowerCase();
+        return coworkers.some((m) => [m.first_name, m.last_name, m.display_name, m.personnel_id, m.id, ...(m.aliases ?? [])].filter(Boolean).some((name) => String(name).toLowerCase() === candNorm))
+          || allWorldChars.some((c) => [c.first_name, c.last_name, c.display_name, c.identity, c.id, ...(c.aliases ?? [])].filter(Boolean).some((name) => String(name).toLowerCase() === candNorm));
+      };
+      const targetMember = rawTarget ? coworkers.find((m) => [m.personnel_id, m.id, m.first_name, m.display_name].filter(Boolean).some((n) => String(n).toLowerCase() === String(rawTarget).replace(/^@/, "").toLowerCase())) : null;
+      const address = parseNamedAddress(message, { explicit_target: rawTarget || null, is_known: isKnownAddressName, name_tokens: targetMember ? [targetMember.first_name, targetMember.last_name, ...String(targetMember.display_name ?? "").split(/\s+/)].filter(Boolean) : [] });
+      if (!rawTarget && address.address_type !== "none") rawTarget = address.explicit_target_name;
 
       const isOpenerBriefing = cq4Day1Opener.isOpener(entry.run?.scenario) && entry.phase?.phase_id === "BRIEFING";
       const GROUP_TERMS = new Set(["@table", "table", "team", "teammate", "teammates", "all", "everyone", "broadcast", "room", "local", "anyone", "crew", "group"]);
       const explicitGroupTarget = Boolean(rawTarget && GROUP_TERMS.has(rawTarget.toLowerCase()));
-      const inferredRecipientType = inferLocalRecipientType(message, { explicitTarget: rawTarget && !explicitGroupTarget ? rawTarget : null });
+      // Interpretation sees only the residual utterance: a vocative naming the
+      // explicit target ("Nora, what?") is address, not content. The explicit
+      // target itself is unchanged and keeps precedence.
+      const utterance = address.residual_text;
+      const inferredRecipientType = inferLocalRecipientType(utterance, { explicitTarget: rawTarget && !explicitGroupTarget ? rawTarget : null });
       let isGroup = explicitGroupTarget || (!rawTarget && inferredRecipientType === "group");
 
       let peer = null;
@@ -1936,6 +2062,20 @@ class DesktopService {
       let recipient_type = "none";
       let target_id = null;
       let target_name = null;
+      // DEV-ONLY diagnostic flag: did this turn's scope come from inheriting
+      // the immediately preceding LOCAL exchange (bare follow-up continuity)
+      // rather than a fresh explicit/group address? Never read for canonical
+      // routing -- surfaced only in the [YB:DIALOGUE_TRACE] dev trace below.
+      let inheritedScope = false;
+      // ED-1: bounded discourse context DERIVED from canonical interaction and
+      // dialogue history (same location only). Read-only; nothing persisted.
+      const discourseState = dialogueDiscourse.deriveDiscourseState({
+        interaction_history: expedition.interaction_history,
+        dialogue_history: entry.run.expedition.dialogue_history,
+        player_id: playerId,
+        location_id: entry.run.spatial?.player_location ?? null,
+        current_interval: expedition.clock?.interval ?? null
+      });
 
       if (channel === "local") {
         const localPeers = coworkers.filter((member) => {
@@ -2046,15 +2186,17 @@ class DesktopService {
           // scope of the immediately preceding LOCAL exchange at this same
           // location -- it must never collapse to "pick the first eligible
           // teammate and pretend the player addressed them directly."
-          const isBareFollowUp = BARE_FOLLOWUP_PATTERN.test(message.trim());
-          const priorLocal = isBareFollowUp
-            ? [...(expedition.interaction_history ?? [])].reverse().find((item) => item.channel === "local" && item.speaker_id === playerId)
-            : null;
-          const sameLocationAsPrior = priorLocal && priorLocal.location_id === (entry.run.spatial?.player_location ?? null);
-          const priorGroupIds = sameLocationAsPrior && priorLocal.recipient_type === "group" ? new Set(priorLocal.recipient_ids ?? []) : null;
-          const inheritedGroup = priorGroupIds ? localPeers.filter((member) => priorGroupIds.has(member.personnel_id ?? member.id)) : [];
-          const inheritedDirect = sameLocationAsPrior && priorLocal.recipient_type === "direct" && priorLocal.recipient_id
-            ? localPeers.find((member) => (member.personnel_id ?? member.id) === priorLocal.recipient_id) ?? null
+          const inheritedScopeResolution = dialogueDiscourse.resolveRecipientScope({
+            text: utterance,
+            discourse: discourseState,
+            present_ids: localPeers.map((member) => member.personnel_id ?? member.id)
+          });
+          const priorLocal = inheritedScopeResolution.inherited ? discourseState.last_turn : null;
+          const inheritedGroup = inheritedScopeResolution.recipient_type === "group"
+            ? localPeers.filter((member) => inheritedScopeResolution.recipient_ids.includes(member.personnel_id ?? member.id))
+            : [];
+          const inheritedDirect = inheritedScopeResolution.recipient_type === "direct"
+            ? localPeers.find((member) => (member.personnel_id ?? member.id) === inheritedScopeResolution.recipient_ids[0]) ?? null
             : null;
 
           if (inheritedGroup.length > 0) {
@@ -2063,12 +2205,14 @@ class DesktopService {
             isGroup = true;
             target_id = priorLocal.recipient_id ?? (isOpenerBriefing ? "@table" : "@team");
             target_name = isOpenerBriefing ? "Assembly Table" : "Team";
+            inheritedScope = true;
           } else if (inheritedDirect) {
             recipients = [inheritedDirect];
             recipient_type = "direct";
             isGroup = false;
             target_id = inheritedDirect.personnel_id ?? inheritedDirect.id;
             target_name = inheritedDirect.first_name ?? inheritedDirect.display_name;
+            inheritedScope = true;
           } else {
             // Genuine untargeted scope: heard by everyone present, addressed
             // to no one. Nobody is spoken TO; any reaction stays room-scoped.
@@ -2091,7 +2235,12 @@ class DesktopService {
         const isDisclosure = /\b(?:nervous|afraid|scared|prefer|call me|tight spaces|dark|claustrophobic|worried)\b/i.test(message);
         // Bounded interpretation — deterministic speech act classification for the wordsmith pipeline.
         // Separate from the regex flags above which feed the existing reactionContext API.
-        const localInterpretation = interpretDialogueUtterance(message, { isGroup });
+        const localInterpretation = interpretDialogueUtterance(utterance, { isGroup });
+        // ED-1: deterministic semantic frame (discourse function, referents,
+        // antecedent). Code decides the conversational situation; the model
+        // never chooses any part of it.
+        const semanticFrame = dialogueDiscourse.buildSemanticFrame({ text: utterance, recipient_type, interpretation: localInterpretation, discourse: discourseState, equipment: expedition.equipment, scope_inherited: inheritedScope });
+        const discourseSummary = dialogueDiscourse.summarizeDiscourse(discourseState, semanticFrame);
         for (const recipient of (recipients.length > 0 ? recipients : localPeers)) {
           const recId = recipient.personnel_id ?? recipient.id;
           recipient.last_communication = { channel: "LOCAL", direction: "received", at: expedition.clock.interval, message_id: deliveredLocal.message.id };
@@ -2126,8 +2275,14 @@ class DesktopService {
             });
           }
         }
-        const requestedEquipment = request ? Object.values(expedition.equipment ?? {}).find((item) => [item.id, item.label, item.type].filter(Boolean).some((value) => message.toLowerCase().includes(String(value).toLowerCase()) || String(value).toLowerCase().split(/\s+/).some((term) => term.length > 4 && message.toLowerCase().includes(term)))) : null;
+        // The ONE canonical item resolution is semanticFrame.referents. A
+        // uniquely resolved referent may drive knowledge/owner selection and
+        // handoff wording; an ambiguous or unmatched item never claims ownership.
+        const equipmentReferent = semanticFrame.referents.find((ref) => ref.type === "equipment" && ref.resolved) ?? null;
+        const requestedEquipment = equipmentReferent ? (expedition.equipment?.[equipmentReferent.id] ?? Object.values(expedition.equipment ?? {}).find((item) => item.id === equipmentReferent.id) ?? null) : null;
         const equipmentHolder = requestedEquipment ? expedition.team.members.find((member) => member.personnel_id === requestedEquipment.holder) : null;
+        const unresolvedItemNamed = semanticFrame.referents.some((ref) => ref.type === "equipment" && !ref.resolved);
+        const spokenNames = Object.fromEntries([...(expedition.team.members ?? []).map((member) => [member.personnel_id ?? member.id, member.first_name ?? member.display_name ?? null]), [playerId, "you"]]);
 
         let chosen = null;
         let response = "";
@@ -2141,7 +2296,8 @@ class DesktopService {
         recipientIds = recipient_type === "none" ? [] : recipients.map((r) => r.personnel_id ?? r.id);
 
         const heardPeers = recipient_type === "none" ? localPeers : recipients;
-        const equipmentKnowledgeQuestion = localInterpretation?.speech_act === "group_question" && localInterpretation?.topic === "equipment" && /\b(?:carry|carrying|holding|have|got|equipment|gear|kit|manifest)\b/i.test(message);
+        const equipmentKnowledgeQuestion = ["group_question", "factual_question"].includes(localInterpretation?.speech_act) && localInterpretation?.topic === "equipment" && /\b(?:carry|carrying|holding|holds|have|has|got|equipment|gear|kit|manifest|assigned|responsible)\b/i.test(message);
+        const selfKnowledgeById = {};
         const responseCandidates = heardPeers.map((recipient) => {
           const recId = recipient.personnel_id ?? recipient.id;
           const recipientPerson = history.character(world, recId);
@@ -2165,34 +2321,64 @@ class DesktopService {
             }
           });
           const reaction = personnelContinuity.react(world, reactionContext);
-          const knownAnswer = personnelContinuity.presentKnownAnswer(entry.run, recId, message, world);
+          // ONE known-answer authority: the structured answer decides relevance
+          // here AND becomes a plan fact (toKnownAnswerFact) that the fallback
+          // and the model both read. No wording function is involved.
+          const knownAnswerFact = dialogueDiscourse.toKnownAnswerFact(personnelContinuity.resolveKnownAnswer(entry.run, recId, message, world));
           const heldEquipment = Object.values(expedition.equipment ?? {}).filter((item) => item.holder === recId);
-          const equipmentAnswer = equipmentKnowledgeQuestion && heldEquipment.length > 0
-            ? `${recipient.first_name}: I've got ${heldEquipment.map((item) => item.label.toLowerCase()).join(" and ")}.`
-            : null;
-          const socialGroupAnswer = localInterpretation?.speech_act === "group_question" && localInterpretation?.topic === "social"
-            ? `${recipient.first_name}: Doing all right.`
-            : null;
-          const ambiguityAnswer = localInterpretation?.speech_act === "ambiguous"
-            ? `${recipient.first_name}: What exactly do you mean?`
-            : null;
-          const resp = request
-            ? (requestedEquipment?.holder === recId ? `${recipient.first_name}: I hear the request. The ${requestedEquipment.label.toLowerCase()} remains with me until we complete a physical handoff.` : requestedEquipment?.holder === playerId ? `${recipient.first_name}: You already hold the ${requestedEquipment.label.toLowerCase()}.` : equipmentHolder ? `${recipient.first_name}: ${equipmentHolder.first_name} has the ${requestedEquipment.label.toLowerCase()}; a physical handoff still has to happen in person.` : `${recipient.first_name}: I hear the request, but I cannot confirm that equipment in my custody.`)
-            : equipmentAnswer ?? socialGroupAnswer ?? knownAnswer ?? ambiguityAnswer ?? personnelContinuity.presentReaction(recipientPerson, reaction.reaction, message, playerId, localInterpretation?.speech_act ?? null);
+          // Knowledge relevance (not wording): a uniquely resolved item is
+          // relevant only to its canonical holder; an ambiguous/unmatched item
+          // is relevant to nobody; a generic "what are we carrying?" keeps the
+          // prior behavior (each holder of gear).
+          const equipmentRelevant = equipmentKnowledgeQuestion && !unresolvedItemNamed && (requestedEquipment ? requestedEquipment.holder === recId : heldEquipment.length > 0);
+          const knownFacts = (recipient.known_information ?? []).filter((fact) => fact.kind !== "reported-knowledge" || fact.source === "direct-observation");
+          // Custody this listener can know comes ONLY from the observer/knowledge authority
+          // (self, witnessed handoff, or unchanged institutional issuance).
+          const custodyKnown = Object.fromEntries((semanticFrame.referents ?? []).filter((ref) => ref.type === "equipment" && ref.resolved && ref.id).map((ref) => [ref.id, observerContextCompiler.resolveCustodyKnowledge(entry.run, recId, ref.id).known]));
+          selfKnowledgeById[recId] = dialogueDiscourse.buildSelfKnowledge({ person: recipientPerson, member: recipient, task: reactionContext?.worker?.task ?? null, held_equipment: heldEquipment, known_facts: knownFacts, known_answer: knownAnswerFact, names: spokenNames, equipment: expedition.equipment, player_id: playerId, custody_known: custodyKnown });
+          // "Did anyone hear what I just said?" is answered only by someone who actually heard that line.
+          const heardTheAskedLine = semanticFrame.discourse_function !== "ask_heard_confirmation" || !semanticFrame.antecedent?.resolved || (semanticFrame.antecedent.listener_ids ?? []).includes(recId);
+          // Topic-matched known facts use the SAME selection the plan uses.
+          const topicFactsKnown = (["ask_factual", "challenge"].includes(semanticFrame.discourse_function) ? dialogueDiscourse.selectKnownFacts(semanticFrame, knownFacts) : []).length > 0;
+          // Wording is deferred: it runs only for already-authorized owners and
+          // can influence neither eligibility, owner count nor scope.
+          // Last-resort legacy wording for a discourse function the plan-aware
+          // fallback does not cover. Every current function is covered, so this
+          // is not reached on plan-carrying turns.
+          const legacyWording = () => personnelContinuity.presentReaction(recipientPerson, reaction.reaction, message, playerId, localInterpretation?.speech_act ?? null);
           return {
             id: recId,
             recipient,
             person: recipientPerson,
             reaction_context: reactionContext,
             reaction: reaction.reaction,
-            text: resp,
-            response_eligible: Boolean(reaction.reaction && resp),
-            has_relevant_knowledge: Boolean(equipmentAnswer || knownAnswer)
+            legacy_wording: legacyWording,
+            // Eligibility: listener state (heardPeers) + reaction salience OR the
+            // deterministic semantic duty of the frame. Never wording.
+            response_eligible: heardTheAskedLine && (Boolean(reaction.reaction) || dialogueDiscourse.frameObligatesResponse(semanticFrame, recId, { recipient_type, holder_present: !requestedEquipment || heardPeers.some((peer) => (peer.personnel_id ?? peer.id) === requestedEquipment.holder) })),
+            has_relevant_knowledge: Boolean(equipmentRelevant || (knownAnswerFact && dialogueDiscourse.KNOWN_ANSWER_FUNCTIONS.includes(semanticFrame.discourse_function)) || topicFactsKnown)
           };
         });
 
-        const ownerIds = resolveResponseOwners({ recipient_type, interpretation:localInterpretation, player_text:message, candidates:responseCandidates });
+        const ownerIds = resolveResponseOwners({ recipient_type, interpretation:localInterpretation, player_text:utterance, candidates:responseCandidates, frame:semanticFrame });
         const authorizedResponses = ownerIds.map((id) => responseCandidates.find((candidate) => candidate.id === id)).filter(Boolean);
+        // Per-owner response plan over the ALREADY-authorized owners; the
+        // planner never adds, removes or reorders speakers.
+        const responsePlans = dialogueDiscourse.planResponses({ frame: semanticFrame, owner_ids: authorizedResponses.map((item) => item.id), responders: Object.fromEntries(Object.entries(selfKnowledgeById).map(([id, self]) => [id, { self }])), names: spokenNames });
+        const priorTexts = [];
+        for (const item of authorizedResponses) {
+          item.response_plan = responsePlans.find((plan) => plan.responder_id === item.id) ?? null;
+          item.authorized_contribution = dialogueDiscourse.toAuthorizedContribution(item.response_plan, semanticFrame, { names: spokenNames });
+          item.semantic_frame = semanticFrame;
+          item.discourse_summary = discourseSummary;
+          // Fallback wording, AFTER owners, from the SAME plan snapshot the model
+          // receives (frame + plan facts + style hints + earlier same-turn lines).
+          const planned = dialogueFallback.presentFallback({ frame: semanticFrame, plan: item.response_plan, prior: priorTexts });
+          const first = item.recipient.first_name ?? item.recipient.display_name;
+          item.text = planned ? `${first}: ${planned}` : item.legacy_wording();
+          priorTexts.push(planned ?? "");
+        }
+        if (this.developerMode) this.log(`[YB:DISCOURSE_TRACE] ${dialogueDiscourse.formatDiscourseTrace({ raw_utterance: message, utterance, recipient_scope: semanticFrame.target_scope, frame: semanticFrame, discourse_summary: discourseSummary, owner_ids: ownerIds, plans: responsePlans, grounded_facts: responsePlans.flatMap((plan) => plan.required_facts.map((fact) => `${plan.responder_id}:${fact.key}`)) })}`);
         for (const item of authorizedResponses) {
           item.body = String(item.text ?? "").replace(new RegExp(`^${String(item.recipient?.first_name ?? "").replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}:\\s*`, "i"), "");
           item.listeners = [playerId, ...localPeers.map((p) => p.personnel_id ?? p.id).filter((id) => id !== item.id)];
@@ -2337,7 +2523,17 @@ class DesktopService {
             response_contexts: authorizedResponses.map((authorized) => ({
               target_worker_id: authorized.id,
               response_category: authorized.reaction?.category ?? null,
-              fallback_text: authorized.text
+              fallback_text: authorized.text,
+              // Retry/recovery snapshot: the exact frame, plan and contribution
+              // this turn was authorized with. Never re-derived after the fact.
+              semantic_frame: clone(authorized.semantic_frame),
+              response_plan: clone(authorized.response_plan),
+              authorized_contribution: clone(authorized.authorized_contribution),
+              discourse_summary: clone(authorized.discourse_summary),
+              interpretation: clone(localInterpretation),
+              is_group: isGroup,
+              recipient_type,
+              inherited_scope: inheritedScope
             }))
           };
           entry.run.expedition.communication_receipts ??= [];
@@ -2351,7 +2547,7 @@ class DesktopService {
           entry.run._world = world; entry.phase = beforePhase;
           return publicError("PERSISTENCE_COMMIT_FAILED", "The action could not be saved and was not committed. Check the operation record storage before retrying.");
         }
-        if (authorizedResponses.length > 0) Object.defineProperty(output, "_local_dialogue_contexts", { configurable:true, enumerable:false, value:authorizedResponses.map((authorized) => ({ run:entry.run, runId:entry.run.run_id, player_text:message, speaker:authorized.recipient, person:authorized.person, reaction_context:authorized.reaction_context, reaction:authorized.reaction, fallback_text:authorized.text, interaction, world, entry, requestId, player_event_id:playerDialogueEvent.id, interpretation:localInterpretation, is_group:isGroup, recipient_type })) });
+        if (authorizedResponses.length > 0) Object.defineProperty(output, "_local_dialogue_contexts", { configurable:true, enumerable:false, value:authorizedResponses.map((authorized) => ({ run:entry.run, runId:entry.run.run_id, player_text:message, speaker:authorized.recipient, person:authorized.person, reaction_context:authorized.reaction_context, reaction:authorized.reaction, fallback_text:authorized.text, interaction, world, entry, requestId, player_event_id:playerDialogueEvent.id, interpretation:localInterpretation, semantic_frame:authorized.semantic_frame, response_plan:authorized.response_plan, authorized_contribution:authorized.authorized_contribution, discourse_summary:authorized.discourse_summary, is_group:isGroup, recipient_type, inherited_scope:inheritedScope, phase_id:entry.phase?.phase_id ?? null })) });
         return output;
       }
       const radio = expedition.equipment?.["survey-radio"];

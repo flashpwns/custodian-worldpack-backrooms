@@ -8,6 +8,13 @@ Yellow Beast Alpha bundles the Custodian framework and its resolved runtime depe
 - fast-uri — BSD-3-Clause
 - json-schema-traverse — MIT
 
+## Local dialogue runtime (bundled)
+
+The application ships an on-device wording runtime; it is started, verified and stopped by the application and never reaches the network during play.
+
+- llama.cpp (`llama-server`, ggml libraries; release b11146) — MIT, Copyright (c) 2023-2026 The ggml authors. Full text: `docs/licenses/llama.cpp-MIT.txt` (also shipped beside the runtime).
+- Qwen3-4B, Q4_K_M GGUF (Qwen/Qwen3-4B-GGUF, revision bc640142c66e1fdd12af0bd68f40445458f3869b; SHA-256 7485fe6f11af29433bc51cab58009521f205840f5b4ae3a32fa7f92e8534fdf5) — Apache-2.0, Copyright Alibaba Cloud / Qwen Team. Full text: `docs/licenses/Qwen3-Apache-2.0.txt` (also shipped beside the model). Pinned in `tools/local-runtime-pin.json`.
+
 Yellow Beast is an unofficial fan project and is not affiliated with Kane Pixels.
 
 ## Owner-supplied Day One menu recordings

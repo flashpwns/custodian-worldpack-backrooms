@@ -1,5 +1,7 @@
 "use strict";
 
+const { LOCAL_DIALOGUE_WORDING_LINES, renderContributionTask } = require("./dialogue-prompt-contract");
+
 const crypto = require("node:crypto");
 const {
   classifyProviderError,
@@ -143,15 +145,23 @@ function sanitizeLocalLivingPresentationCandidate(candidate) {
   };
 }
 
+function pinnedRequestOptions() {
+  try { return structuredClone(require("./local-runtime-pin.json").model?.request_options ?? {}); } catch { return {}; }
+}
+
 function createLocalModelProvider({
   endpoint = LOCAL_PROVIDER_SPEC.defaultEndpoint,
   model = LOCAL_PROVIDER_SPEC.defaultModel,
   timeout = 120000,
   fetchImpl = globalThis.fetch,
-  onInvocation = null
+  onInvocation = null,
+  // Per-model chat-template/sampling options (e.g. disabling a hybrid model's reasoning mode); the runtime pin is the authority.
+  requestOptions = pinnedRequestOptions()
 } = {}) {
   const resolvedEndpoint = normalizeLocalEndpoint(endpoint);
   const resolvedModel = typeof model === "string" && model.trim() ? model.trim() : LOCAL_PROVIDER_SPEC.defaultModel;
+  // `sampling.dialogue` (from the runtime pin) tunes wording variety per model; every other option is a plain body extra.
+  const { sampling = {}, ...bodyExtras } = requestOptions ?? {};
   let invocationSequence = 0;
 
   function report(event) {
@@ -159,7 +169,7 @@ function createLocalModelProvider({
     try { onInvocation(event); } catch {}
   }
 
-  async function request(kind, taskInstructions, payload, format) {
+  async function request(kind, taskInstructions, payload, format, { userContent = null } = {}) {
     const invocationId = `local-invocation-${++invocationSequence}`;
     const startedAt = Date.now();
     const common = {
@@ -186,14 +196,16 @@ function createLocalModelProvider({
           model:resolvedModel,
           messages:[
             { role:"system", content:localSystemInstructions(taskInstructions) },
-            { role:"user", content:`Required JSON schema:\n${JSON.stringify(format.schema)}\n\nObserver-safe input packet:\n${JSON.stringify(payload)}` }
+            { role:"user", content:userContent ?? `Required JSON schema:\n${JSON.stringify(format.schema)}\n\nObserver-safe input packet:\n${JSON.stringify(payload)}` }
           ],
           response_format:{
             type:"json_schema",
             json_schema:{ name:format.name || kind.replace(/-/g, "_"), strict:true, schema:format.schema }
           },
           stream:false,
-          ...generationOptions(kind)
+          ...bodyExtras,
+          ...generationOptions(kind),
+          ...(kind === "local-dialogue" ? (sampling.dialogue ?? {}) : {})
         })
       }, { fetchImpl, timeout });
       responseReceived = true;
@@ -256,14 +268,9 @@ function createLocalModelProvider({
     },
     async presentLocal(packet) {
       const candidate = await request("local-dialogue", [
-        "Write one concise response by the single authorized coworker. Fulfil only authorized_response.purpose.",
-        "Answer the player's social or personal meaning directly. Do not add scene description, atmospheric detail, or an unrelated observation to dialogue.",
-        "Prefer speech with no factual world claim; then semantic_claims must be an empty array.",
-        "When a factual answer is necessary, use only facts explicitly supplied in the packet. Every semantic_claim.text must be an exact contiguous phrase copied from speech. Never list a claim that the speech does not state.",
-        "For direct-observation claims, target must be the exact supplied visible target label. For reported-claim, proposition must match the supplied remembered or reported proposition. Never use null for a field required to prove the selected claim type.",
-        "Do not echo the player's sentence as a quotation. Natural paraphrase is allowed when the packet supplies the memory.",
-        "Keep remembered preferences attributed to the player: their first-person I does not become the coworker's I. State the supplied preference itself (for example, 'Short, clear instructions when you feel nervous. Understood.'). Do not narrate player acts using 'you asked', 'you said', or 'you told'; do not invent a preference absent from this speaker's supplied memories."
-      ].join("\n"), packet, { schema:LOCAL_DIALOGUE_SCHEMA });
+        ...LOCAL_DIALOGUE_WORDING_LINES,
+        "Without authorized_contribution (legacy callers only): fulfil authorized_response.purpose using only facts supplied in the packet; every semantic_claim.text must be an exact contiguous phrase copied from speech."
+      ].join("\n"), packet, { schema:LOCAL_DIALOGUE_SCHEMA }, { userContent: renderContributionTask(packet) });
       // Small local models often copy unused facts into the claim list even
       // when those facts never appear in their speech. Removing such claims
       // cannot authorize prose; the canonical validator still checks every

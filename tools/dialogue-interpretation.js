@@ -54,7 +54,10 @@ const SARCASM_PATTERNS = [
   /\bsounds?\s+(?:totally|completely|absolutely)\s+(?:normal|fine|safe|good)\b/i
 ];
 
-const GREETING_PATTERNS = /^(?:hey|hi|hello|good (?:morning|afternoon|evening)|howdy|yo|greetings)[\s!.,?]*$/i;
+// A greeting may carry a trailing group/plain vocative ("Goodmorning, y'all").
+const GREETING_VOCATIVE = "(?:y'?all|you all|everyone|everybody|all|guys|gang|folks|team|crew|there|friends)";
+const GREETING_HEAD = "(?:hey|hi|hello|hiya|good ?(?:morning|afternoon|evening|day)|morning|howdy|yo|greetings)";
+const GREETING_PATTERNS = new RegExp(`^${GREETING_HEAD}(?:[\\s,!.-]+${GREETING_VOCATIVE})?[\\s!.,?]*$`, "i");
 
 const INTRODUCTION_PATTERNS = /\b(?:I'?m|My name is|Call me|I am|You can call me)\s+[A-Z][A-Za-z'-]*/;
 
@@ -92,11 +95,110 @@ const REQUEST_PATTERNS = /(?:\b(?:can you|could you|would you|please|pass me|han
 // question. Anchored so a real question sharing the lead word ("What is the
 // time?") is unaffected: only the bare word/phrase plus trailing punctuation
 // matches.
-const BARE_REACTION_PATTERNS = /^(?:what|huh|sorry|pardon|really|come again|say (?:that )?again|what was that|wait,?\s+what)[\s?!.]*$/i;
+const BARE_REACTION_PATTERNS = /^(?:what|huh|sorry|pardon|excuse me|eh|hm+|really|come again|say (?:that )?again|what was that|wait,?\s+what|sorry,?\s+what|what do you mean(?: by (?:that|it|this))?|wait,?\s+what do you mean|what does that mean|what(?:'s| is) that supposed to mean|how so|meaning what|you mean\??)[\s?!.]*$/i;
 
-const GROUP_ADDRESS_PATTERNS = /(?:^|\b)(?:@?(?:table|team|everyone|everybody|all|crew|teammates?|folks)|anybody|anyone|does anyone|you all|all of you)(?:\b|$)/i;
-const GROUP_GREETING_PATTERNS = /^(?:hey|hi|hello|good (?:morning|afternoon|evening)|howdy|yo|greetings)[\s,!-]+(?:everyone|everybody|all|team|crew|folks|you all)[\s!.,?]*$/i;
+// Conversational repetition/clarification requests -- "Can you repeat that?",
+// "Could you say that again?", "I didn't catch that" -- are the same reflex
+// clarification as a bare "What?", just phrased as a full sentence. Unlike
+// BARE_REACTION_PATTERNS this is not anchored to the whole message, since the
+// request is typically wrapped in "can/could you ..." phrasing. Anchored
+// narrowly to repetition/hearing language so it never claims a genuine
+// factual or task question ("can you check the route again?" stays a request).
+const REPETITION_REQUEST_PATTERNS = /\b(?:can|could|would) you (?:repeat|say)(?: that| it)? again\b|\b(?:can|could|would) you (?:repeat|say) (?:that|it|what you (?:just )?said|your (?:last|previous) (?:statement|line|answer))\b|\b(?:repeat|say) (?:what you (?:just )?said|your (?:last|previous) (?:statement|line|answer))\b|\bsay (?:that )?again\b|\bsay again\b|\bone more time\b|\bdidn'?t (?:catch|hear|quite catch|quite hear) (?:that|you)\b|\bcome again\b|\bwhat was that[\s?!.]*$|\bwhat did you (?:just )?say[\s?!.]*$/i;
+
+// ─── Frame-level language cues (single owner of linguistic recognition) ─────
+// dialogue-discourse consumes these; it defines no patterns of its own.
+const INVITE_SELF_DESCRIPTION_PATTERN = /\b(?:tell|telling|share|sharing|say|talk|describe)\b[^.?!]*\b(?:about\s+)?(?:yourself|yourselves)\b|\bintroduce (?:yourself|yourselves)\b|\bwho are you (?:all|guys|folks)\b/i;
+const ITEM_OWNERSHIP_PATTERN = /\b(?:who|which of you)\b[^.?!]*\b(?:assigned|has|have|had|holding|holds|carrying|carries|responsible for|got|took|issued)\b|\bwho(?:'s| is| was) (?:assigned|carrying|holding|responsible)\b/i;
+const ITEM_NOUN_PATTERN = /\b(?:kit|gear|equipment|radio|camera|light|duffle|spectrometer|instrument|recorder|device|record|carry|carrying|issued|assigned)\b/i;
+const ROLE_OR_ASSIGNMENT_PATTERN = /\bwhat(?:'s| is| are)? (?:your|their) (?:role|job|assignment|task|duty|duties)\b|\bwhat do you (?:do|handle)\b|\bwhat are you (?:doing|working on|assigned to|responsible for)\b|\bwhat(?:'s| is) (?:your )?(?:job|role) here\b/i;
+const CLOSE_TOPIC_PATTERN = /^(?:never ?mind|forget (?:it|that)|nothing|it'?s nothing|drop it|that'?s all|that'?s it|no worries|don'?t worry about it)[\s.!]*$/i;
+const CHALLENGE_PATTERN = /\b(?:are you sure|that'?s (?:wrong|not right)|you'?re wrong|i don'?t (?:buy|believe)|prove it|doesn'?t (?:add up|make sense))\b/i;
+const CHECK_IN_PATTERN = /\bhow(?:'s| is| are) (?:everyone|everybody|you all|all of you|you guys|you doing|you holding up)\b/i;
+const BACKGROUND_PATTERN = /\b(?:your (?:background|training|education|trade)|where (?:are|were) you from|what did you (?:study|do) before|where did you (?:train|study)|how did you (?:get into|end up in) (?:this|the field|surveying))\b/i;
+const REQUEST_CUE_PATTERN = /\b(?:can|could|would|will) you\b|\bplease\b|\bi need\b|\blet me\b/i;
+const HANDOFF_REQUEST_PATTERN = /\b(?:hand|pass|give|bring|transfer)\b/i;
+// "Did anyone hear what I just said?" / "Can you hear me?": the player asks whether
+// the listeners heard the PLAYER's own words. Deliberately excludes a bare "hear that?"
+// (a question about a sound in the world, not about the player's speech).
+const HEARD_CONFIRMATION_PATTERN = /\b(?:did|do|does|can|could)\s+(?:anyone|anybody|any\s+of\s+you|everyone|everybody|you(?:\s+(?:guys|all))?|y'?all|someone|somebody|one\s+of\s+you)\s+(?:even\s+|actually\s+|really\s+)?(?:just\s+)?(?:hear|catch|get)\s+(?:what\s+i\s+(?:just\s+)?(?:said|told|say)|me\b|my\s+(?:last|previous)\s+(?:line|statement|message))|\bhear(?:d)?\s+what\s+i\s+(?:just\s+)?(?:said|told)\b|\b(?:you|y'?all|anyone)\s+(?:guys\s+)?hear\s+me\b/i;
+
+const LANGUAGE_PATTERNS = Object.freeze({
+  invite_self_description: INVITE_SELF_DESCRIPTION_PATTERN,
+  repetition_request: REPETITION_REQUEST_PATTERNS,
+  bare_reaction: BARE_REACTION_PATTERNS,
+  ambiguous_reference: null, // assigned below (defined after this block)
+  item_ownership: ITEM_OWNERSHIP_PATTERN,
+  item_noun: ITEM_NOUN_PATTERN,
+  role_or_assignment: ROLE_OR_ASSIGNMENT_PATTERN,
+  close_topic: CLOSE_TOPIC_PATTERN,
+  challenge: CHALLENGE_PATTERN,
+  check_in: CHECK_IN_PATTERN,
+  background: BACKGROUND_PATTERN,
+  request_cue: REQUEST_CUE_PATTERN,
+  handoff_request: HANDOFF_REQUEST_PATTERN,
+  heard_confirmation: HEARD_CONFIRMATION_PATTERN
+});
+
+const GROUP_VOCATIVES = Object.freeze(["team", "teammate", "teammates", "all", "everyone", "everybody", "broadcast", "room", "local", "anyone", "crew", "table", "group"]);
+
+/**
+ * THE named-address parser. Live interpretation, recipient resolution and
+ * prior-turn reconstruction all use it. It never mutates stored text; it
+ * returns the residual utterance that interpretation must see.
+ *
+ * Forms: "Nora, what?"  "Nora: what?"  "@Nora what?"  "@Nora, what?"  and a
+ * UI-selected target (explicit_target) with or without a repeated vocative.
+ * A vocative naming someone OTHER than the explicit target is not stripped
+ * (explicit-target precedence is never weakened).
+ *
+ * @param {string} text
+ * @param {{ explicit_target?: string|null, is_known?: (name:string)=>boolean, resolve_id?: (name:string)=>string|null }} opts
+ * @returns {{ explicit_target_id, explicit_target_name, residual_text, address_type, source }}
+ */
+function parseNamedAddress(text, { explicit_target = null, is_known = () => false, resolve_id = () => null, name_tokens = [] } = {}) {
+  const raw = String(text ?? "").trim();
+  const chipWords = explicit_target ? String(explicit_target).replace(/^@/, "").toLowerCase().split(/\s+/) : null;
+  const targetTokens = chipWords ? [...chipWords, ...name_tokens.map((t) => String(t).toLowerCase())] : [];
+  // A bare "@Nora can you…" mention may consume only tokens that belong to the
+  // selected target's name; a delimited vocative ("Nora Vance: …") may also carry
+  // extra name words because the delimiter already ends the address.
+  const acceptable = (name, { delimited = false } = {}) => {
+    const words = name.toLowerCase().split(/\s+/);
+    if (chipWords) return words.every((w) => targetTokens.includes(w)) || (delimited && chipWords.every((w) => words.includes(w)));
+    return GROUP_VOCATIVES.includes(name.toLowerCase()) || is_known(name);
+  };
+  const done = (name, residual, source) => {
+    const group = GROUP_VOCATIVES.includes(String(name).toLowerCase());
+    return { explicit_target_id: group ? null : resolve_id(name), explicit_target_name: name, residual_text: residual, address_type: group ? "group" : "direct", source };
+  };
+  const none = () => (explicit_target
+    ? { explicit_target_id: resolve_id(explicit_target), explicit_target_name: explicit_target, residual_text: raw, address_type: GROUP_VOCATIVES.includes(String(explicit_target).toLowerCase()) ? "group" : "direct", source: "chip" }
+    : { explicit_target_id: null, explicit_target_name: null, residual_text: raw, address_type: "none", source: "none" });
+
+  const punct = raw.match(/^@?([A-Za-z0-9'-]+(?:\s+[A-Za-z0-9'-]+)?)\s*[,:]\s*([\s\S]+)$/);
+  if (punct && acceptable(punct[1].trim(), { delimited: true })) return done(explicit_target ?? punct[1].trim(), punct[2].trim(), explicit_target ? "chip" : "vocative");
+  if (raw.startsWith("@")) {
+    const tokens = raw.slice(1).trim().split(/\s+/);
+    for (const k of [2, 1]) {
+      if (tokens.length <= k) continue;
+      const name = tokens.slice(0, k).join(" ");
+      if (acceptable(name)) return done(explicit_target ?? name, tokens.slice(k).join(" "), explicit_target ? "chip" : "mention");
+    }
+  }
+  return none();
+}
+
+/** Compatibility wrapper: residual text for an already-resolved explicit target. */
+function stripNamedAddress(text, target = null) {
+  if (!target) return String(text ?? "").trim();
+  return parseNamedAddress(text, { explicit_target: target }).residual_text;
+}
+
+const GROUP_ADDRESS_PATTERNS = /(?:^|\b)(?:@?(?:table|team|everyone|everybody|all|crew|teammates?|folks)|anybody|anyone|does anyone|you all|all of you|yourselves|you guys|you folks|y'all)(?:\b|$)/i;
+const GROUP_GREETING_PATTERNS = new RegExp(`^${GREETING_HEAD}[\\s,!-]+${GREETING_VOCATIVE}[\\s!.,?]*$`, "i");
 const AMBIGUOUS_REFERENCE_PATTERNS = /\b(?:the thing|that thing|do the thing|over there|you know what|whatever it is|that stuff)\b/i;
+// wire the late-defined pattern into the shared table
 const SOCIAL_UNTARGETED_PATTERNS = /\b(?:i(?:'m| am) (?:so )?(?:tired|exhausted|beat)|fuck,? i(?:'m| am) tired|this sucks|long day|long morning)\b/i;
 
 /**
@@ -145,6 +247,8 @@ function detectTone(text, speechAct) {
  * @param {{ isGroup?: boolean }} opts
  * @returns {{ version, speech_act, topic, tone, literal_question, confidence }}
  */
+const UNINTELLIGIBLE_EXEMPT = /^(?:what|where|who|when|why|how|which|is|are|do|does|did|can|could|will|would|have|has|should|was|were|anyone|anybody|ready|okay|ok|right|good|fine|nervous|tired|scared|afraid|alone|safe|clear|done|sure|well|cold|hungry|worried|tense|calm)\b/i;
+
 function interpretUtterance(text, { isGroup = false } = {}) {
   const raw = String(text ?? "").trim();
   if (!raw) {
@@ -161,11 +265,17 @@ function interpretUtterance(text, { isGroup = false } = {}) {
   // low-confidence ambiguous before any question/group-question branch can
   // claim them. Recipient scope (who this inherits from) is resolved by the
   // caller, not here; this module only judges the language.
-  if (BARE_REACTION_PATTERNS.test(raw)) {
+  if (BARE_REACTION_PATTERNS.test(raw) || REPETITION_REQUEST_PATTERNS.test(raw)) {
     return make("ambiguous", "unknown", "uncertain", looksQuestion, 0.4);
   }
 
-  if (groupAddress && AMBIGUOUS_REFERENCE_PATTERNS.test(raw)) {
+  // Unresolved ambiguous reference ("the thing by the thing") is a language
+  // property of the utterance itself, independent of whether it was addressed
+  // to the group or to one person -- gating this on groupAddress let a
+  // direct/untargeted ambiguous reference fall through to unrelated
+  // classifiers (e.g. matching PERSONAL_QUESTION_PATTERNS on "you know...")
+  // and fabricate an answer instead of asking for clarification.
+  if (AMBIGUOUS_REFERENCE_PATTERNS.test(raw)) {
     return make("ambiguous", detectTopic(raw), "uncertain", looksQuestion, 0.72);
   }
 
@@ -222,6 +332,12 @@ function interpretUtterance(text, { isGroup = false } = {}) {
     return make("factual_question", detectTopic(raw), "neutral", true, 0.82);
   }
 
+  // A one/two-word "question" that names nothing recognizable ("Blorp?") is
+  // unintelligible: ask for clarification rather than answer a guessed meaning.
+  if (looksQuestion && !UNINTELLIGIBLE_EXEMPT.test(raw) && (raw.match(/[A-Za-z']+/g) ?? []).length <= 2) {
+    return make("ambiguous", "unknown", "uncertain", true, 0.45);
+  }
+
   // Generic question not matched above
   if (looksQuestion) {
     return make("factual_question", detectTopic(raw), "neutral", true, 0.65);
@@ -241,7 +357,7 @@ function interpretUtterance(text, { isGroup = false } = {}) {
  * ordered by canonical team order and filtered to personnel who heard the line.
  * The model never participates in this decision.
  */
-function resolveResponseOwners({ recipient_type, interpretation, player_text, candidates = [] } = {}) {
+function resolveResponseOwners({ recipient_type, interpretation, player_text, candidates = [], frame = null } = {}) {
   const eligible = candidates.filter((candidate) => candidate?.response_eligible && candidate?.id);
   if (recipient_type === "direct") return eligible.slice(0, 1).map((candidate) => candidate.id);
   if (eligible.length === 0) return [];
@@ -250,24 +366,61 @@ function resolveResponseOwners({ recipient_type, interpretation, player_text, ca
   const topic = interpretation?.topic ?? "unknown";
   const text = String(player_text ?? "");
 
+  // Discourse-function ownership (ED-1). Consumes the deterministic frame; it
+  // never widens beyond the already-eligible candidates.
+  const fn = frame?.discourse_function ?? null;
+  if (fn === "ask_heard_confirmation") {
+    // One listener who actually heard the line confirms it; never a chorus.
+    return eligible.slice(0, 1).map((candidate) => candidate.id);
+  }
+  if (fn === "invite_self_description") {
+    // Fan-out only for GROUP scope; an untargeted singular "yourself" is
+    // answered by one listener, never by everyone.
+    return recipient_type === "group" ? eligible.map((candidate) => candidate.id) : eligible.slice(0, 1).map((candidate) => candidate.id);
+  }
+  if (fn === "ask_item_ownership") {
+    // Holder-only when the referent resolves uniquely; an ambiguous or
+    // unmatched item has no ownership responder (direct scope is handled above).
+    const ref = (frame.referents ?? []).find((item) => item.type === "equipment");
+    if (!ref?.resolved || !ref.holder) return [];
+    const holder = eligible.filter((candidate) => candidate.id === ref.holder).slice(0, 1);
+    // A holder who is not a present coworker (the player, or someone away) is
+    // named by one deterministic listener instead of leaving the question unanswered.
+    return (holder.length ? holder : eligible.slice(0, 1)).map((candidate) => candidate.id);
+  }
+  if ((fn === "clarify_previous" || fn === "request_repetition") && !frame?.unresolved_reference) {
+    // The people who spoke in the preceding exchange own its clarification;
+    // the first of them (canonical order) answers. If none remain eligible,
+    // the normal scope rules below decide.
+    const last = new Set(frame.antecedent?.responder_ids ?? []);
+    const prior = eligible.find((candidate) => last.has(candidate.id));
+    if (prior) return [prior.id];
+  }
+
+  // Deterministic relevance/knowledge preference: when the utterance is a
+  // genuine question and a candidate's already-computed known facts / held
+  // equipment make them the relevant knower (has_relevant_knowledge, set by
+  // the caller from canonical facts -- never guessed here), that candidate
+  // owns the response instead of whoever happens to be first in team order.
+  // Applies regardless of recipient scope so an untargeted factual question
+  // does not default to "first eligible teammate". If nobody has relevant
+  // knowledge this has no effect -- the normal scope-specific rules below
+  // decide, and no expert is invented.
+  if ((act === "factual_question" || act === "group_question") && eligible.some((candidate) => candidate.has_relevant_knowledge)) {
+    return eligible.filter((candidate) => candidate.has_relevant_knowledge).map((candidate) => candidate.id);
+  }
+
   if (recipient_type === "group") {
     if (act === "greeting") return eligible.map((candidate) => candidate.id);
     if (act === "group_question" && topic === "social" && /\b(?:everyone|everybody|you all|all of you)\b/i.test(text)) {
       return eligible.map((candidate) => candidate.id);
     }
-    if (act === "group_question" && topic === "equipment") {
-      const informed = eligible.filter((candidate) => candidate.has_relevant_knowledge);
-      return (informed.length ? informed : eligible.slice(0, 1)).map((candidate) => candidate.id);
-    }
-    if (act === "group_question") {
-      const informed = eligible.filter((candidate) => candidate.has_relevant_knowledge);
-      return (informed.length ? informed : eligible.slice(0, 1)).map((candidate) => candidate.id);
-    }
+    if (act === "group_question") return eligible.slice(0, 1).map((candidate) => candidate.id);
     if (act === "joke_or_sarcasm") return eligible.slice(0, 2).map((candidate) => candidate.id);
     return eligible.slice(0, 1).map((candidate) => candidate.id);
   }
 
-  if (["warning", "uncertainty", "joke_or_sarcasm", "social_observation", "factual_question", "personal_question", "request", "ambiguous"].includes(act)) {
+  if (["warning", "uncertainty", "joke_or_sarcasm", "social_observation", "factual_question", "personal_question", "request", "ambiguous", "greeting", "introduction"].includes(act)) {
     return eligible.slice(0, 1).map((candidate) => candidate.id);
   }
   if (act === "statement" && SOCIAL_UNTARGETED_PATTERNS.test(text)) {
@@ -275,6 +428,8 @@ function resolveResponseOwners({ recipient_type, interpretation, player_text, ca
   }
   return [];
 }
+
+const LANGUAGE_PATTERNS_FULL = Object.freeze({ ...LANGUAGE_PATTERNS, ambiguous_reference: AMBIGUOUS_REFERENCE_PATTERNS });
 
 function make(speech_act, topic, tone, literal_question, confidence) {
   return Object.freeze({
@@ -460,7 +615,12 @@ module.exports = {
   SPEECH_ACTS,
   TOPICS,
   BARE_REACTION_PATTERN: BARE_REACTION_PATTERNS,
+  LANGUAGE_PATTERNS: LANGUAGE_PATTERNS_FULL,
+  GROUP_VOCATIVES,
+  parseNamedAddress,
+  stripNamedAddress,
   interpretUtterance,
+  detectTopic,
   inferLocalRecipientType,
   resolveResponseOwners,
   resolveResponsePurpose,

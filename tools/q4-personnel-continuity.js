@@ -477,18 +477,22 @@ function presentReaction(person, reaction, playerText = "", targetId = null, spe
     // "question" category: factual question only — if hosted AI is unavailable
     question: isFactualQ
       ? (personality === "veteran-doctor" ? "What exactly are you asking me to verify?" : "Which part do you need me to check?")
-      : "Understood.",
+      : (speechAct === "ambiguous" ? "Sorry — could you say that again?" : "Understood."),
     uncertainty: "I can't confirm more than what I can observe from here."
   };
   return `${name}: ${lines[reaction.category] ?? "Understood."}`;
 }
 
-function presentKnownAnswer(run, workerId, playerText = "", world = null) {
+// Semantic decision: does this worker have a relevant known answer for the
+// utterance, and what is it? Returns structured data only (no wording), so
+// callers can decide relevance/ownership without consulting a string producer.
+function resolveKnownAnswer(run, workerId, playerText = "", world = null) {
   const text = String(playerText ?? "");
+  const member = memberFor(run, workerId);
+  const person = world?.characters?.[workerId] ?? (run?._world?.characters?.[workerId]);
+  const name = member?.first_name ?? member?.display_name ?? person?.first_name ?? "Assigned teammate";
   const recallMatch = /\b(?:remember|recall|what did i (?:say|tell|ask)|my (?:communication |working )?preference|call me)\b/i.test(text);
   if (recallMatch) {
-    const member = memberFor(run, workerId);
-    const person = world?.characters?.[workerId] ?? (run?._world?.characters?.[workerId]);
     const memories = [
       ...(member?.known_information ?? []).filter((i) => i.kind === "reported-knowledge" || i.text),
       ...(person?.continuity?.dialogue_memories ?? [])
@@ -496,35 +500,37 @@ function presentKnownAnswer(run, workerId, playerText = "", world = null) {
     if (memories.length > 0) {
       const preferMemory = memories.find((m) => /\b(?:call me|prefer|name|casey|tight spaces|nervous)\b/i.test(m.text || m.player_text || ""));
       const chosen = preferMemory ?? memories.at(-1);
-      const name = member?.first_name ?? member?.display_name ?? person?.first_name ?? "Assigned teammate";
-      const rawText = chosen.text || chosen.player_text || "";
-      return `${name}: I remember what you told me: “${rawText}”.`;
+      return { kind: "recalled-player-statement", name, text: chosen.text || chosen.player_text || "" };
     }
   }
 
-  if (/\b(?:what was your (?:reply|response)|what did you (?:say|reply|answer)|recall your reply)\b/i.test(text)) {
-    const member = memberFor(run, workerId);
-    const person = world?.characters?.[workerId] ?? (run?._world?.characters?.[workerId]);
+  if (/\b(?:what was your (?:reply|response)|what did you (?:say|reply|answer)(?!\s+(?:to|about)\s+(?!me\b)\w)|recall your reply)\b/i.test(text)) {
     const retrieved = retrieveRelevantMemories(person, run?.expedition, { queryText: text, speakerId: workerId, playerId: run?.session?.startup?.player?.observer_id, limit: 1 });
-    if (retrieved.length > 0 && retrieved[0].response) {
-      const name = member?.first_name ?? member?.display_name ?? person?.first_name ?? "Assigned teammate";
-      return `${name}: I replied: “${retrieved[0].response}”.`;
-    }
+    if (retrieved.length > 0 && retrieved[0].response) return { kind: "recalled-own-reply", name, text: retrieved[0].response };
   }
 
   if (!/\b(?:what happened|what did you (?:find|see|observe)|while (?:we were )?(?:apart|separated)|report what happened)\b/i.test(text)) return null;
-  const member = memberFor(run, workerId);
   if (!member) return null;
-  const direct = (member.known_information ?? []).filter((item) => item.source === "direct-observation").at(-1) ?? null;
+  const direct = (member.known_information ?? []).filter((item) => item.source === "direct-observation" && item.kind !== "custody-observed").at(-1) ?? null;
   const condition = (member.condition_history ?? []).at(-1) ?? null;
   if (!direct && !condition) return null;
-  const name = member.first_name ?? member.display_name ?? "Assigned teammate";
+  return { kind: "own-report", name, direct, condition };
+}
+
+// Wording for a resolved known answer. Never consulted for eligibility, owners
+// or relevance.
+function presentKnownAnswer(run, workerId, playerText = "", world = null) {
+  const answer = resolveKnownAnswer(run, workerId, playerText, world);
+  if (!answer) return null;
+  if (answer.kind === "recalled-player-statement") return `${answer.name}: I remember what you told me: \u201c${answer.text}\u201d.`;
+  if (answer.kind === "recalled-own-reply") return `${answer.name}: I replied: \u201c${answer.text}\u201d.`;
+  const { direct, condition } = answer;
   const clauses = [];
   if (direct?.kind === "location-investigated" && direct.location) clauses.push(`I checked the ${String(direct.location).replace(/-/g, " ")}.`);
   else if (direct?.target) clauses.push(`I inspected ${String(direct.target).replace(/-/g, " ")}.`);
   if (condition?.reason) clauses.push(`I was ${String(condition.reason).replace(/[.!?]+$/, "")}.`);
   if (condition?.condition && String(condition.condition).toLowerCase() !== "normal") clauses.push(`My current condition is ${String(condition.condition).replace(/-/g, " ")}.`);
-  return `${name}: ${clauses.join(" ")}`;
+  return `${answer.name}: ${clauses.join(" ")}`;
 }
 
 function decisionContext({ world, run, phase, worker_id, request = {} }) {
@@ -558,4 +564,4 @@ function publicRecord(person, playerId = null) {
   return { role: person.role, qualifications: clone(continuity.qualifications ?? qualifications(person)), status: person.status, assignment_count: person.assignment_history?.length ?? 0, shared_assignment_count: shared.filter((fact) => fact.kind === "served-together").length, relevant_history: shared.slice(-4).map((fact) => ({ kind: fact.kind, refs: clone(fact.refs) })) };
 }
 
-module.exports = { VERSION, tendencies, qualifications, samePersonnel, isParticipantOrListener, heardInitiatingUtterance, heardResponseUtterance, defaultAttitude, getAttitude, recordAttitudeChange, retrieveRelevantMemories, ensurePerson, ensureTeam, recordSharedHistory, recordCustody, recordDialogueMemory, reactionContext, salience, react, presentReaction, presentKnownAnswer, decisionContext, decide, publicRecord };
+module.exports = { VERSION, tendencies, qualifications, samePersonnel, isParticipantOrListener, heardInitiatingUtterance, heardResponseUtterance, defaultAttitude, getAttitude, recordAttitudeChange, retrieveRelevantMemories, ensurePerson, ensureTeam, recordSharedHistory, recordCustody, recordDialogueMemory, reactionContext, salience, react, presentReaction, resolveKnownAnswer, presentKnownAnswer, decisionContext, decide, publicRecord };

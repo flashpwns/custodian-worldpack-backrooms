@@ -95,7 +95,7 @@ test("y111 — deterministic direct, group, untargeted, silence, and ambiguous r
     events = newEvents(session, before);
     assert.equal(events[0].recipient_type, "group");
     assert.equal(events.length, 2);
-    assert.match(events[1].text, /what exactly/i);
+    assert.match(events[1].text, /which thing do you mean/i);
   } finally {
     fs.rmSync(state.root, { recursive:true, force:true });
   }
@@ -114,6 +114,7 @@ test("y111 — silence still commits zero dialogue events", () => {
 });
 
 test("y111 — direct and group model wordsmith traces prove provider, packets, candidates, fallback state, and ordered committed IDs", async () => {
+  let greetN = 0;
   const provider = {
     name:"trace-wordsmith",
     model:"trace-v1",
@@ -121,7 +122,7 @@ test("y111 — direct and group model wordsmith traces prove provider, packets, 
       return {
         version:"yellow-beast-local-dialogue-candidate@v1",
         observer_id:packet.speaker.observer_id,
-        speech:packet.player_speech_act.speech_act === "greeting" ? "Morning." : "Ready."
+        speech:packet.player_speech_act.speech_act === "greeting" ? ["Morning.", "Hey.", "Hello."][greetN++ % 3] : "Ready."
       };
     }
   };
@@ -154,7 +155,7 @@ test("y111 — direct and group model wordsmith traces prove provider, packets, 
     assert.equal(group.provider_used, "trace-wordsmith");
     assert.deepEqual(group.deterministic_responders.map((item) => item.speaker_id), coworkers.map((member) => member.personnel_id));
     assert.equal(group.wordsmiths.length, 3);
-    assert.ok(group.wordsmiths.every((item) => item.fallback_used === false && item.raw_candidate.speech === "Morning."));
+    assert.ok(group.wordsmiths.every((item) => item.fallback_used === false && ["Morning.", "Hey.", "Hello."].includes(item.raw_candidate.speech)));
     assert.deepEqual(group.wordsmiths.map((item) => item.committed_event_id), group.committed_event_ids);
     assert.equal(group.canonical_commit_order[0], group.player_event_id);
     assert.deepEqual(group.canonical_commit_order.slice(1), group.committed_event_ids);
@@ -297,6 +298,7 @@ test("y111 — Acceptance J: an explicit UI-selected target overrides inherited 
 
 // ─── Acceptance K: recent dialogue reflects all committed group responses ───
 test("y111 — Acceptance K: recent_dialogue in a later wordsmith packet includes all committed group responses in canonical order", async () => {
+  let recentN = 0;
   const provider = {
     name:"trace-recent",
     model:"trace-recent-v1",
@@ -304,7 +306,7 @@ test("y111 — Acceptance K: recent_dialogue in a later wordsmith packet include
       return {
         version:"yellow-beast-local-dialogue-candidate@v1",
         observer_id:packet.speaker.observer_id,
-        speech:"Morning."
+        speech:["Morning.", "Hey.", "Hello."][recentN++ % 3]
       };
     }
   };
@@ -316,15 +318,127 @@ test("y111 — Acceptance K: recent_dialogue in a later wordsmith packet include
     newEvents(session, before);
 
     before = session.run.expedition.dialogue_history.length;
-    await service.submitQ4Communication({ world_id:worldId, channel:"local", target:coworkers[0].first_name, text:"Are you ready?", request_id:"k-direct" });
+    await service.submitQ4Communication({ world_id:worldId, channel:"local", target:coworkers[0].first_name, text:"Alright, thanks.", request_id:"k-direct" });
     newEvents(session, before);
 
     const traceResult = service.getDialogueWordsmithTrace({ limit:10 });
     const direct = traceResult.traces.find((trace) => trace.request_id === "k-direct");
-    const recent = direct.wordsmiths[0].wordsmith_packet.speaker.recent_dialogue;
-    const priorResponseTexts = recent.filter((item) => item.response).map((item) => item.response);
-    assert.equal(priorResponseTexts.length, coworkers.length, "recent dialogue must carry every committed responder from the prior group turn, not just the first");
-    assert.deepEqual(priorResponseTexts, coworkers.map(() => "Morning."));
+    // ED-2: history is no longer a top-level bag; the exchange-continuing tail
+    // (last two committed rows) reaches the model only inside the contribution.
+    const packet = direct.wordsmiths[0].wordsmith_packet;
+    assert.deepEqual(packet.speaker.recent_dialogue, []);
+    const priorResponseTexts = packet.authorized_contribution.recent_context.filter((item) => item.response).map((item) => item.response);
+    assert.deepEqual(priorResponseTexts, ["Hey.", "Hello."], "the last two committed responders of the prior group turn, in canonical order");
+  } finally {
+    fs.rmSync(state.root, { recursive:true, force:true });
+  }
+});
+
+// ─── Live-path repair regression: conversational clarification must not leak
+// the old task-oriented "Which part do you need me to check?" fallback, and
+// unresolved ambiguous references must not fabricate shared experience. Both
+// go through service.submitQ4Communication -- the same production path
+// Electron calls -- not a simplified mock of the interpretation layer alone.
+test("y111 — Live-path repair B: direct 'Can you repeat that?' gets conversational clarification, not the old task fallback", async () => {
+  const state = setup("y111-livepath-repeat");
+  try {
+    const { service, worldId, session, coworkers } = state;
+    const before = session.run.expedition.dialogue_history.length;
+    await service.submitQ4Communication({ world_id:worldId, channel:"local", target:coworkers[0].first_name, text:"Can you repeat that?" });
+    const events = newEvents(session, before);
+    assert.equal(events.length, 2);
+    assert.equal(events[0].recipient_type, "direct");
+    assert.equal(events[1].speaker_id, coworkers[0].personnel_id ?? coworkers[0].id);
+    assert.doesNotMatch(events[1].text, /which part do you need me to check/i);
+    assert.doesNotMatch(events[1].text, /what exactly are you asking me to verify/i);
+  } finally {
+    fs.rmSync(state.root, { recursive:true, force:true });
+  }
+});
+
+test("y111 — Live-path repair D: an unresolved ambiguous reference asks for clarification instead of inventing shared experience", async () => {
+  const state = setup("y111-livepath-ambiguous-ref");
+  try {
+    const { service, worldId, session, coworkers } = state;
+    const before = session.run.expedition.dialogue_history.length;
+    await service.submitQ4Communication({ world_id:worldId, channel:"local", target:coworkers[1].first_name, text:"You know the thing by the thing?" });
+    const events = newEvents(session, before);
+    assert.equal(events.length, 2);
+    assert.doesNotMatch(events[1].text, /first time for me too/i);
+    assert.doesNotMatch(events[1].text, /nothing i can confirm/i);
+    assert.match(events[1].text, /which thing do you mean/i);
+  } finally {
+    fs.rmSync(state.root, { recursive:true, force:true });
+  }
+});
+
+test("y111 — Live-path repair C: an equipment-ownership question naming a specific item resolves to its actual canonical holder, not team order", async () => {
+  const state = setup("y111-livepath-ownership");
+  try {
+    const { service, worldId, session, coworkers } = state;
+    const equipment = session.run.expedition.equipment;
+    const spectrometerHolderId = equipment["mass-spectrometer"].holder;
+    const holder = coworkers.find((m) => (m.personnel_id ?? m.id) === spectrometerHolderId);
+    assert.ok(holder, "a coworker must hold the mass spectrometer in this scenario");
+
+    const before = session.run.expedition.dialogue_history.length;
+    await service.submitQ4Communication({ world_id:worldId, channel:"local", text:"Who has the mass spectrometer?" });
+    const events = newEvents(session, before);
+    assert.equal(events[0].recipient_type, "none");
+    assert.equal(events.length, 2, "only the actual holder answers an item-specific ownership question");
+    assert.equal(events[1].speaker_id, spectrometerHolderId, "the responder must be the canonical holder, not whoever is first in team order");
+    assert.match(events[1].text, /mass spectrometer/i);
+  } finally {
+    fs.rmSync(state.root, { recursive:true, force:true });
+  }
+});
+
+// ─── Case A verification pass: "group scope lost -> collapses to direct
+// Angelica" vs "group scope preserved, one clarifier authorized to answer"
+// are different claims. This asserts the former never happens, without
+// asserting a specific responder count -- the accepted deterministic policy
+// for an ambiguous group reaction may authorize exactly one clarifier, and
+// that is not itself a bug. Checks BOTH the canonical dialogue_history event
+// (what presentation-bus emits/renders) and the interaction_history row
+// (what q4-interactions projects) so a divergence between the two -- scope
+// preserved in one but not the other -- cannot hide.
+test("y111 — Case A: 'Hello, everyone.' then untargeted 'What?' preserves GROUP scope in both dialogue event and interaction row, never becomes direct-to-YOU", async () => {
+  const state = setup("y111-case-a-verify");
+  try {
+    const { service, worldId, session, coworkers } = state;
+    const coworkerIds = coworkers.map((m) => m.personnel_id ?? m.id);
+
+    let before = session.run.expedition.dialogue_history.length;
+    await service.submitQ4Communication({ world_id:worldId, channel:"local", text:"Hello, everyone." });
+    let events = newEvents(session, before);
+    assert.equal(events[0].recipient_type, "group");
+    assert.ok(events.slice(1).length > 0, "the group greeting must draw at least one reply to establish prior scope");
+
+    const beforeIhCount = session.run.expedition.interaction_history.length;
+    before = session.run.expedition.dialogue_history.length;
+    const res = await service.submitQ4Communication({ world_id:worldId, channel:"local", text:"What?" });
+    assert.equal(res.ok, true);
+    events = newEvents(session, before);
+
+    // 1. Canonical dialogue_history (presentation-bus / renderer source of truth)
+    const playerEvt = events[0];
+    assert.equal(playerEvt.recipient_type, "group", "player follow-up must stay group-scoped, not collapse to none/direct");
+    assert.notEqual(playerEvt.recipient_type, "direct");
+
+    const replies = events.slice(1);
+    assert.ok(replies.length >= 1, "the accepted ambiguous-in-group policy must still authorize at least one clarifier");
+    for (const reply of replies) {
+      assert.equal(reply.recipient_type, "group", "coworker reply metadata must stay group-scoped");
+      assert.notEqual(reply.recipient_type, "direct", "a group-scoped reply must never be recorded as recipient_type 'direct'");
+      assert.notEqual(reply.recipient_name, "YOU", "a group-scoped reply must never render as if addressed directly to the player");
+      assert.ok(coworkerIds.includes(reply.speaker_id), "the responder must be one of the originally-eligible group participants, not an invented actor");
+    }
+
+    // 2. interaction_history / q4-interactions projected row (separate data path)
+    const newInteractions = session.run.expedition.interaction_history.slice(beforeIhCount);
+    assert.equal(newInteractions.length, 1, "one interaction row is committed per player turn");
+    assert.equal(newInteractions[0].recipient_type, "group", "the interaction row must carry the same group scope as the dialogue event, not diverge from it");
+    assert.notEqual(newInteractions[0].recipient_type, "direct");
   } finally {
     fs.rmSync(state.root, { recursive:true, force:true });
   }

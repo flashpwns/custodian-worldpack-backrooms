@@ -46,7 +46,22 @@ function runIsolated(label, flags, expected, timeout) {
   }
 }
 
+// The shipped application must contain its own pinned dialogue runtime + model (no machine-specific paths).
+const resources = path.join(path.dirname(executable), "..", "Resources");
+const runtimeBinary = path.join(resources, "llama", "llama-server");
+const runtimeModel = path.join(resources, "model", require("./managed-inference-appliance").MODEL_FILENAME);
+assert.ok(fs.existsSync(runtimeBinary), `packaged runtime missing: ${runtimeBinary}`);
+assert.ok(fs.existsSync(runtimeModel), `packaged model missing: ${runtimeModel}`);
+assert.equal(require("./stage-runtime-resources").sha256File(runtimeModel), require("./local-runtime-pin.json").model.sha256, "packaged model differs from the pin");
+const serverPids = () => { try { return execFileSync("pgrep", ["-f", runtimeBinary], { encoding: "utf8" }).split(/\s+/).filter(Boolean); } catch { return []; } };
+const pidsBefore = new Set(serverPids());
 const desktop = runIsolated("desktop", "--desktop-smoke", /desktop_smoke/, 60000);
 console.log(JSON.stringify({ desktop_artifact: executable, version: packagedBuild.version, commit: packagedBuild.commit, built_at: packagedBuild.built_at, offline_smoke: "passed", profile: desktop.profile, profile_cleaned: true, production_files_hashed: beforeProduction.length, production_unchanged: true }, null, 2));
 const renderer = runIsolated("renderer", ["--renderer-smoke", "--reference-expedition"], /renderer_settings_smoke/, 90000);
 console.log(JSON.stringify({ packaged_renderer_interaction: "passed", profile: renderer.profile, profile_cleaned: true, production_unchanged: true }, null, 2));
+
+// Packaged LOCAL DIALOGUE RUNTIME: starts from bundled resources, reaches READY, answers on loopback, leaves no orphan.
+const runtime = runIsolated("runtime", "--runtime-smoke", /runtime_smoke/, 300000);
+const orphans = serverPids().filter((pid) => !pidsBefore.has(pid));
+assert.deepEqual(orphans, [], `packaged app left orphan runtime process(es): ${orphans.join(",")}`);
+console.log(JSON.stringify({ packaged_runtime: "passed", runtime_binary_bundled: true, model_matches_pin: true, ready_loopback: true, orphan_processes: 0, profile: runtime.profile }, null, 2));

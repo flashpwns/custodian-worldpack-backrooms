@@ -2,7 +2,7 @@
 
 // Internal runtime supervisor for the local dialogue backend.
 //
-// This module has no opinion about which backend is configured (Ollama today,
+// This module has no opinion about which backend is configured (the managed llama.cpp runtime today,
 // something else later) and does not bundle or install anything. It only
 // answers one question — "can the configured local backend take a dialogue
 // request right now?" — and keeps that answer current via a small state

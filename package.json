@@ -45,6 +45,7 @@
     "institution-report": "node tools/institution-report.js",
     "gameplay-report": "node tools/gameplay-report.js",
     "desktop:dev": "electron desktop/main.js",
+    "desktop:local-install": "electron tools/local-install-dev.js",
     "desktop:build": "node tools/build-desktop.js",
     "desktop:package": "npm run desktop:build",
     "desktop:verify": "node tools/verify-desktop-artifact.js",

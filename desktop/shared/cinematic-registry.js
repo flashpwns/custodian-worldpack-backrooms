@@ -312,7 +312,7 @@
         type: "threshold_aperture_collapse",
         status: "dead",
         error_code: "THRESHOLD_NONFUNCTIONAL",
-        reason: "The Threshold apparatus is completely dark and unresponsive. The aperture has collapsed. Operational cutoff exceeded."
+        reason: "The Threshold is completely dark and unresponsive. The aperture has collapsed. Operational cutoff exceeded."
       },
       asset_interface: {
         asset_id: "cinematic.catastrophic_threshold_failure",

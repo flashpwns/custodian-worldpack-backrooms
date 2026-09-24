@@ -19,10 +19,32 @@ const APPLIANCE_STATES = Object.freeze({
 const REQUIRED_RAM_BYTES = 6 * 1024 * 1024 * 1024; // 6 GB minimum (8 GB system)
 const REQUIRED_DISK_BYTES = 2.5 * 1024 * 1024 * 1024; // 2.5 GB free disk space
 const DEFAULT_MODEL_NAME = "yellow-beast-local-v1";
+
+// Streaming SHA-256: multi-GB models exceed Node's single-Buffer read limit, so never readFileSync a model.
+function sha256File(file) {
+  const hash = crypto.createHash("sha256");
+  const fd = fs.openSync(file, "r");
+  try {
+    const chunk = Buffer.allocUnsafe(8 * 1024 * 1024);
+    for (;;) {
+      const n = fs.readSync(fd, chunk, 0, chunk.length, null);
+      if (n === 0) break;
+      hash.update(n === chunk.length ? chunk : chunk.subarray(0, n));
+    }
+  } finally { fs.closeSync(fd); }
+  return hash.digest("hex");
+}
+
+// The runtime pin (tools/local-runtime-pin.json) is the authority on which model file the application may run.
+function pinnedModelChecksum() {
+  try { return require("./local-runtime-pin.json").model?.sha256 ?? null; } catch { return null; }
+}
 // Single internal model asset contract. Not player-visible.
 const MODEL_FILENAME = "yellow-beast-local-v1.gguf";
 const DAEMON_START_TIMEOUT_MS = 30000;
 const STOP_GRACE_MS = 4000;
+// READY means: server responding + model loaded + one tiny inference completed.
+const WARMUP_TIMEOUT_MS = 90000;
 
 function findFreePort() {
   return new Promise((resolve, reject) => {
@@ -38,6 +60,12 @@ function findFreePort() {
 
 function safeParseJson(text) {
   try { return JSON.parse(text); } catch { return null; }
+}
+
+// Electron sets process.resourcesPath in dev too (pointing inside the Electron
+// binary); only a packaged app (not process.defaultApp) ships bundled assets there.
+function packagedResourcesPath() {
+  return process.resourcesPath && !process.defaultApp ? process.resourcesPath : null;
 }
 
 class ManagedInferenceAppliance {
@@ -96,24 +124,31 @@ class ManagedInferenceAppliance {
   // --- Bundled asset resolution -------------------------------------------------
 
   resolveBinaryPath() {
-    const base = process.resourcesPath
+    const base = packagedResourcesPath()
       ? path.join(process.resourcesPath, "llama")
       : path.join(__dirname, "..", "vendor", "llama");
     const name = process.platform === "win32" ? "llama-server.exe" : "llama-server";
     return path.join(base, name);
   }
 
-  resolveModelPath() {
-    if (this.developerMode && process.env.YELLOW_BEAST_LOCAL_MODEL_PATH) {
-      return process.env.YELLOW_BEAST_LOCAL_MODEL_PATH;
-    }
-    const base = process.resourcesPath
+  // The application's own bundled model (packaged resources, or vendor/ in a dev tree).
+  bundledModelPath() {
+    const base = packagedResourcesPath()
       ? path.join(process.resourcesPath, "model")
       : path.join(__dirname, "..", "vendor", "model");
     return path.join(base, MODEL_FILENAME);
   }
 
+  resolveModelPath() {
+    if (this.developerMode && process.env.YELLOW_BEAST_LOCAL_MODEL_PATH) {
+      return process.env.YELLOW_BEAST_LOCAL_MODEL_PATH;
+    }
+    return this.bundledModelPath();
+  }
+
   hasBundledAssets() {
+    // Test seam: force the loopback stub even when real vendor/ assets exist.
+    if (process.env.YELLOW_BEAST_LOCAL_RUNTIME === "stub") return false;
     try { return fs.existsSync(this.resolveBinaryPath()) && fs.existsSync(this.resolveModelPath()); }
     catch { return false; }
   }
@@ -193,7 +228,7 @@ class ManagedInferenceAppliance {
         const stat = fs.statSync(modelFile);
         let corrupted = false;
         if (config.model_size == null || config.model_mtime_ms == null || stat.size !== config.model_size || stat.mtimeMs !== config.model_mtime_ms) {
-          const hash = crypto.createHash("sha256").update(fs.readFileSync(modelFile)).digest("hex");
+          const hash = sha256File(modelFile);
           if (config.checksum && hash !== config.checksum) {
             corrupted = true;
           } else {
@@ -307,7 +342,8 @@ class ManagedInferenceAppliance {
       checkCanceled();
 
       const stat = fs.statSync(modelFile);
-      const calculatedChecksum = crypto.createHash("sha256").update(fs.readFileSync(modelFile)).digest("hex");
+      const calculatedChecksum = sha256File(modelFile);
+      this.assertPinnedModel(modelFile, calculatedChecksum);
 
       this.installProgress = 85;
       onProgress({ progress: 85, stage: "verifying" });
@@ -368,6 +404,13 @@ class ManagedInferenceAppliance {
     return modelFile;
   }
 
+  // Only the application's own bundled model is held to the pin; a developer-supplied override path is not.
+  assertPinnedModel(modelFile, checksum) {
+    if (path.resolve(modelFile) !== path.resolve(this.bundledModelPath())) return;
+    const pinned = pinnedModelChecksum();
+    if (pinned && checksum !== pinned) throw Object.assign(new Error("The local processing asset does not match the pinned version."), { code: "CHECKSUM_MISMATCH" });
+  }
+
   cancelInstall() {
     if (this.state !== APPLIANCE_STATES.INSTALLING) return false;
     if (this.installAbortController) {
@@ -402,6 +445,7 @@ class ManagedInferenceAppliance {
       try {
         child = this.spawnFn(binaryPath, [
           "--model", modelPath,
+          "--alias", DEFAULT_MODEL_NAME,
           "--host", "127.0.0.1",
           "--port", String(requestedPort),
           "--ctx-size", "8192",
@@ -423,17 +467,32 @@ class ManagedInferenceAppliance {
       }, DAEMON_START_TIMEOUT_MS);
       if (timeoutTimer.unref) timeoutTimer.unref();
 
+      let warming = false;
       const onLine = (line) => {
-        const match = /listening[^0-9]*(\d{2,5})\b/i.exec(line) || /127\.0\.0\.1:(\d{2,5})/.exec(line);
+        const match = /127\.0\.0\.1:(\d{2,5})\b/.exec(line) || /listening[^0-9]*(\d{4,5})\b/i.exec(line);
         if (!match) return;
         const port = Number.parseInt(match[1], 10);
         if (!Number.isInteger(port) || port <= 0) return;
+        if (warming) return;
+        warming = true;
         clearTimeout(timeoutTimer);
         this.activePort = port;
-        this.state = APPLIANCE_STATES.READY;
-        this.statusMessage = `Local processing active on 127.0.0.1:${port}.`;
-        this.logger(`Appliance daemon listening on 127.0.0.1:${port}`);
-        finish({ ok: true, port });
+        this.logger(`Appliance daemon listening on 127.0.0.1:${port}; warming up`);
+        this.warmup().then((warm) => {
+          if (settled) return;
+          if (!warm.ok) {
+            this.state = APPLIANCE_STATES.REPAIR_REQUIRED;
+            this.statusMessage = `Local processing engine failed its warmup check: ${warm.error}`;
+            this.logger(`Appliance warmup failed: ${warm.error}`);
+            try { child.kill("SIGTERM"); } catch {}
+            finish({ ok: false, error: new Error(warm.error) });
+            return;
+          }
+          this.state = APPLIANCE_STATES.READY;
+          this.statusMessage = `Local processing active on 127.0.0.1:${port}.`;
+          this.logger(`Appliance warmup succeeded (${warm.ms}ms); READY on 127.0.0.1:${port}`);
+          finish({ ok: true, port });
+        });
       };
       const onChunk = (chunk) => String(chunk).split(/\r?\n/).forEach(onLine);
       child.stdout?.on("data", onChunk);
@@ -556,6 +615,36 @@ class ManagedInferenceAppliance {
     }
   }
 
+  // Bounded: health polling (model load) then one 1-token completion.
+  async warmup({ timeoutMs = WARMUP_TIMEOUT_MS } = {}) {
+    const started = Date.now();
+    const deadline = started + timeoutMs;
+    while (Date.now() < deadline) {
+      const health = await this.healthcheck({ timeoutMs: 2000 });
+      if (health.ok) break;
+      if (!this.activeChild && !this.usingDevStub) return { ok: false, error: "engine exited during startup" };
+      await new Promise((r) => setTimeout(r, 250));
+    }
+    if (Date.now() >= deadline) return { ok: false, error: "engine did not become healthy in time" };
+    const postData = JSON.stringify({ model: DEFAULT_MODEL_NAME, messages: [{ role: "user", content: "Reply with one word." }], max_tokens: 4, temperature: 0, stream: false });
+    return new Promise((resolve) => {
+      const remaining = Math.max(1000, deadline - Date.now());
+      const req = http.request({ hostname: "127.0.0.1", port: this.activePort, path: "/v1/chat/completions", method: "POST", headers: { "Content-Type": "application/json", "Content-Length": Buffer.byteLength(postData) }, timeout: remaining }, (res) => {
+        let data = "";
+        res.on("data", (chunk) => { data += chunk; });
+        res.on("end", () => {
+          const parsed = safeParseJson(data);
+          if (res.statusCode === 200 && parsed?.choices?.length) resolve({ ok: true, ms: Date.now() - started });
+          else resolve({ ok: false, error: `warmup inference returned ${res.statusCode}` });
+        });
+      });
+      req.on("timeout", () => { req.destroy(); resolve({ ok: false, error: "warmup inference timed out" }); });
+      req.on("error", (err) => resolve({ ok: false, error: err.message }));
+      req.write(postData);
+      req.end();
+    });
+  }
+
   async healthcheck({ timeoutMs = 2000 } = {}) {
     if (!this.activePort) return { ok: false, code: "NOT_RUNNING" };
     return new Promise((resolve) => {
@@ -579,7 +668,13 @@ class ManagedInferenceAppliance {
 
     const modelFile = this.hasBundledAssets() ? this.resolveModelPath() : this.writeDevStubModelAsset(null);
     const stat = fs.statSync(modelFile);
-    const checksum = crypto.createHash("sha256").update(fs.readFileSync(modelFile)).digest("hex");
+    const checksum = sha256File(modelFile);
+    try { this.assertPinnedModel(modelFile, checksum); }
+    catch (err) {
+      this.state = APPLIANCE_STATES.REPAIR_REQUIRED;
+      this.statusMessage = `Repair failed: ${err.message}`;
+      return { ok: false, error: { code: err.code || "CHECKSUM_MISMATCH", message: this.statusMessage } };
+    }
 
     const startResult = await this.startDaemon({ model: DEFAULT_MODEL_NAME, checksum, model_path: modelFile });
     if (!startResult.ok) {

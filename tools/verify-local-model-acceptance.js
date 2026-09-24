@@ -39,7 +39,7 @@ async function verifyLocalModel({
   keepProfile = process.env.YELLOW_BEAST_KEEP_LOCAL_PROFILE === "1"
 } = {}) {
   const runtime = await inspectLocalModel({ endpoint, model, timeout:5000 });
-  assert.equal(runtime.runtime_available, true, `Ollama is not reachable at ${endpoint}`);
+  assert.equal(runtime.runtime_available, true, `The local dialogue runtime is not reachable at ${endpoint}`);
   assert.equal(runtime.model_available, true, `Model ${model} is not installed`);
 
   const root = fs.mkdtempSync(path.join(os.tmpdir(), "yb-local-acceptance-"));

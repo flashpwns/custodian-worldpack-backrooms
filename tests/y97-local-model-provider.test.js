@@ -1,5 +1,8 @@
 "use strict";
 
+// These tests exercise the loopback stub lifecycle, independent of any real vendor/ runtime on the machine.
+process.env.YELLOW_BEAST_LOCAL_RUNTIME = "stub";
+
 const test = require("node:test");
 const assert = require("node:assert/strict");
 const fs = require("node:fs");

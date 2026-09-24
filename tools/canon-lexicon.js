@@ -27,7 +27,7 @@ const CANONICAL_LOCATIONS = Object.freeze({
   "threshold-room": {
     id: "threshold-room",
     display_name: "KV31 Threshold Room",
-    institutional_context: "Staffed boundary chamber containing the Project KV31 Threshold apparatus",
+    institutional_context: "Staffed boundary chamber containing the Project KV31 Threshold",
     known_destination: "Threshold-Side Entry",
     phase: "THRESHOLD"
   },
@@ -101,7 +101,46 @@ const CANONICAL_EQUIPMENT = Object.freeze({
   }
 });
 
+// Canonical ENTITY ontology: what a named world concept IS, independent of what any observer
+// currently knows about its state. Model-facing text may phrase these naturally but may never
+// rename them or change their class. Classes reuse the project's existing categories; this is
+// the one lexicon-level table, not a second ontology.
+const ENTITY_CLASSES = Object.freeze(["person", "fixed_location", "room", "structural_feature", "fixed_transition", "equipment", "carried_item", "communication_system", "institutional_procedure", "mission_phase", "anomaly", "observation", "event"]);
+const CANONICAL_ENTITIES = Object.freeze({
+  threshold: Object.freeze({
+    id: "threshold",
+    display_name: "the Threshold",
+    bare_name: "Threshold",
+    entity_class: "fixed_transition",
+    spatial_status: "fixed",
+    portable: false,
+    inventory_capable: false,
+    custody_capable: false,
+    crossable: true,
+    connects: Object.freeze(["STANDARD", "the Complex"]),
+    affordances: Object.freeze(["cross", "approach", "inspect"]),
+    // Worldpack ids/landmarks that ARE this entity (internal identifiers; never model wording).
+    source_ids: Object.freeze(["threshold-apparatus", "threshold"]),
+    // "the Threshold" the gate -- not "Threshold Room" / "Threshold-Side Entry" / "Threshold Approach".
+    mention: /\bthe threshold\b(?![- ]+(?:room|side|approach))/i,
+    definition: "The Threshold is ASYNC's fixed gate between STANDARD and the Complex. It is part of the facility: it cannot be carried, held, handed over or found like an object."
+  })
+});
+const normalizeEntityRef = (ref) => String(ref ?? "").toLowerCase().replace(/^[a-z]+:/, "").trim();
+/** The canonical entity a worldpack id/label denotes, or null. */
+function resolveCanonicalEntity(ref) {
+  const key = normalizeEntityRef(ref);
+  if (!key) return null;
+  return Object.values(CANONICAL_ENTITIES).find((entity) => entity.source_ids.includes(key) || entity.display_name.toLowerCase() === key || entity.bare_name.toLowerCase() === key) ?? null;
+}
+/** Canonical entities a piece of text mentions BY THEIR CANONICAL NAME. */
+function entitiesMentioned(text) {
+  return Object.values(CANONICAL_ENTITIES).filter((entity) => entity.mention.test(String(text ?? "")));
+}
+
 const FORBIDDEN_TERMINOLOGY = Object.freeze([
+  { pattern: /\bthreshold\s+apparatus\b/i, replacement: "the Threshold", reason: "Invented substitute for a canonical fixed transition; the Threshold is a fixed gate, not an apparatus or object" },
+  { pattern: /\b(?:portal|gateway|dimensional|transition)\s+(?:device|machine|apparatus)\b/i, replacement: "the Threshold", reason: "Generic substitute for the canonical Threshold" },
   { pattern: /\bthreshold\s+side\b(?!-entry)/i, replacement: "Threshold-Side Entry", reason: "Fuzzy colloquialism; use exact location Threshold-Side Entry or Complex side" },
   { pattern: /\bfacility\s+side\b/i, replacement: "KV31 Threshold Room", reason: "Vague location improvisation; use KV31 Threshold Room or controlled facility" },
   { pattern: /\bsafe\s+side\b/i, replacement: "controlled facility", reason: "Gamey/vague term; use controlled facility or KV31 Threshold Room" },
@@ -135,6 +174,10 @@ module.exports = {
   VERSION,
   CANONICAL_LOCATIONS,
   CANONICAL_EQUIPMENT,
+  ENTITY_CLASSES,
+  CANONICAL_ENTITIES,
+  resolveCanonicalEntity,
+  entitiesMentioned,
   FORBIDDEN_TERMINOLOGY,
   getLocationDescriptor
 };

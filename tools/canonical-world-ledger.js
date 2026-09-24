@@ -521,6 +521,27 @@ function recordObservationMade(run, { observer, target, location, interval = nul
   });
 }
 
+// A custody change is a direct observation for everyone who was in a position to
+// see it (the parties and anyone standing in the same place). Each observer's OWN
+// known_information gets the record; nobody else's does, so custody that changes
+// out of sight stays unknown to them until they observe or are told.
+function recordCustodyObserved(run, { equipment_id, holder_id, from = null, observers = null, interval = null } = {}) {
+  const at = interval ?? run.expedition?.clock?.interval ?? 0;
+  const actorLocation = getPersonnelLocation(run, holder_id) ?? getPersonnelLocation(run, from);
+  const witnesses = new Set([holder_id, from].filter(Boolean));
+  for (const member of run.expedition?.team?.members ?? []) {
+    const id = member.personnel_id ?? member.id;
+    if (Array.isArray(observers) ? observers.includes(id) : (actorLocation && getPersonnelLocation(run, id) === actorLocation)) witnesses.add(id);
+  }
+  for (const id of witnesses) {
+    const member = getObserverMember(run, id);
+    if (!member) continue;
+    member.known_information ??= [];
+    member.known_information.push({ kind: "custody-observed", source: "direct-observation", equipment_id, holder_id, from, at, is_direct_witness: true });
+  }
+  return [...witnesses];
+}
+
 function recordRadioTransmission(run, { channel, sender, recipients = [], listeners = [], text = null, interval = null }) {
   return recordCausalTransition(run, {
     kind: "radio_transmission",
@@ -561,6 +582,8 @@ module.exports = {
   updateCoworkerEmotionalState,
   formatCoworkerEmotionalSummary,
   recordEquipmentTransfer,
+  recordCustodyObserved,
+  DEFAULT_EMOTIONAL_STATE,
   recordLocationEntered,
   recordObservationMade,
   recordRadioTransmission

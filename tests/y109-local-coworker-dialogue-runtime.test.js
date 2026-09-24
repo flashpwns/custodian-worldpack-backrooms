@@ -491,7 +491,7 @@ test("y109 — Acceptance B: group greeting with a successful mock model — lat
       return {
         version: "yellow-beast-local-dialogue-candidate@v1",
         observer_id: packet.speaker.observer_id,
-        speech: packet.same_turn_prior_responses.length === 0 ? "Morning." : `Also morning, after ${packet.same_turn_prior_responses.length}.`
+        speech: packet.authorized_contribution.same_turn_prior_responses.length === 0 ? "Morning." : `Also morning, after ${packet.authorized_contribution.same_turn_prior_responses.length}.`
       };
     }
   };
@@ -506,11 +506,13 @@ test("y109 — Acceptance B: group greeting with a successful mock model — lat
 
     // Owner order (Austin/first) sees no prior responses; each later owner sees
     // every already-accepted earlier response from THIS canonical turn, and only those.
-    assert.deepEqual(group.wordsmiths[0].wordsmith_packet.same_turn_prior_responses, []);
+    assert.deepEqual(group.wordsmiths[0].wordsmith_packet.authorized_contribution.same_turn_prior_responses, []);
+    assert.equal("same_turn_prior_responses" in group.wordsmiths[0].wordsmith_packet, false, "one model-visible authority for same-turn wording");
     for (let i = 1; i < group.wordsmiths.length; i += 1) {
-      const priors = group.wordsmiths[i].wordsmith_packet.same_turn_prior_responses;
+      const priors = group.wordsmiths[i].wordsmith_packet.authorized_contribution.same_turn_prior_responses;
       assert.equal(priors.length, i, `responder ${i} must see exactly the ${i} earlier accepted responses`);
-      assert.deepEqual(priors.map((p) => p.speaker_id), group.wordsmiths.slice(0, i).map((w) => w.responder_id));
+      assert.deepEqual(priors.map((p) => p.speaker_name), group.deterministic_responders.slice(0, i).map((r) => r.speaker_name));
+      assert.ok(priors.every((p) => !("speaker_id" in p)), "no ids in model-visible prior responses");
       assert.ok(priors.every((p) => typeof p.text === "string" && p.text.length > 0), "prior responses must carry committed text, never a raw/uncommitted candidate");
     }
   } finally {
