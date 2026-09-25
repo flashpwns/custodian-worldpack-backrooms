@@ -85,7 +85,12 @@ function presentExplanation(basis, style = {}) {
       if (basis.state === "affected" && (basis.affect ?? []).length) return `${presentSelfState({ state: "affected", affect: basis.affect }, style).replace(/^Honestly\? /, "")} That's all.`;
       return "Just how I feel right now. Nothing out of the ordinary.";
     case "no_known_fact":
-      return basis.past_perception ? "I just didn't notice anything." : "I just don't have anything to go on.";
+      if (basis.uncertainty === "not_told") return "Because nobody's told me.";
+      if (basis.uncertainty === "no_established_personal_history") return "I just can't think of a time I have.";
+      if (basis.uncertainty === "no_established_opinion") return "I just haven't formed a view on it.";
+      return basis.past_perception || basis.uncertainty === "did_not_perceive" ? "I just didn't notice anything." : "I just don't have anything to go on.";
+    case "observation":
+      return "I saw it myself.";
     case "clarification":
       return "I wasn't sure what you meant.";
     case "briefing_instruction":
@@ -184,8 +189,8 @@ function presentFallback({ frame, plan = null, prior = [] } = {}) {
       const recalled = renderKnownAnswer(fact(plan, "known_answer"));
       if (recalled) return recalled;
       const experience = fact(plan, "prior_expedition_experience");
-      // Nothing established is "not that I know of", never a claim of no experience.
-      return experience ? `${upperFirst(sentence(experience))}.` : "Not that I know of.";
+      // Nothing established is "not that I can think of", never a claim of no experience.
+      return experience ? `${upperFirst(sentence(experience))}.` : "Not that I can think of.";
     }
     case "joke_or_sarcasm":
       return JOKE_BY_EXPRESSION[style.social_expression] ?? JOKE_BY_TEMPERAMENT[style.conversational_temperament] ?? "Ha.";
@@ -201,8 +206,12 @@ function presentFallback({ frame, plan = null, prior = [] } = {}) {
       if (procedure.scope === "day") return `For today, all we've been told is to ${steps}.`;
       return `We ${steps}.`;
     }
+    case "ask_opinion":
+      return variant("No real opinion on it yet.", ["Hard to say yet.", "Haven't really formed a view.", "Couldn't say yet."], prior);
     case "ask_explanation":
       if (!frame.antecedent?.resolved) return "Sorry, what do you mean?";
+      // A bare "When?"/"Where?" after a line that had nothing behind it: nothing more is known either.
+      if (frame.explanation_aspect && fact(plan, "explanation_basis")?.kind === "no_known_fact") return "I don't know that either.";
       return presentExplanation(fact(plan, "explanation_basis"), style);
     case "challenge": {
       const facts = (plan?.required_facts ?? []).filter((f) => f.key === "known_fact");
@@ -225,6 +234,7 @@ function presentFallback({ frame, plan = null, prior = [] } = {}) {
       // yes/no question with nothing authorized makes no claim either way.
       if (frame.addressee_state) return "Yeah, I think so.";
       if (frame.past_perception) return "Not that I noticed.";
+      if (fact(plan, "uncertainty")?.kind === "not_told") return "Nobody's told me.";
       return frame.question_form === "yes_no" ? "I couldn't say." : "I don't know.";
     }
     case "clarify_previous":

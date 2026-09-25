@@ -43,12 +43,12 @@ const MISSION_TERMS = /\b(?:outpost|cutoff|duffle|manifest|route|guidance tape|b
 // Generic service-assistant framing is never a coworker's voice.
 const ASSISTANT_PERSONA = /\b(?:how (?:can|may|could|might) i (?:help|assist|be of (?:service|assistance|help))|what can i do for you|(?:is|was) there (?:anything|something) (?:i|else i) (?:can|could) (?:help|do|assist)|anything (?:else )?(?:i|that i) (?:can|could) (?:help|assist)(?: you)? with|(?:can|may|could) i (?:help|assist) you|(?:i(?:'m| am) )?(?:here|happy|glad|ready) to (?:help|assist)(?: you)?|let me know if you need (?:anything|any help|something)|at your service|how may i serve)\b/i;
 // An honest, non-absolute statement that nothing is known ("not that I know of").
-const LACK_SAFE = /\b(?:don'?t know|do not know|no idea|no clue|not sure|can'?t say|couldn'?t say|can'?t tell you|couldn'?t tell you|not that i (?:know|recall|remember|noticed|saw|heard)|didn'?t (?:notice|see|catch) anything|don'?t (?:recall|remember)|nothing (?:on|about) that|nothing to (?:add|say|tell)|haven'?t (?:heard|been told)|i wouldn'?t know|unsure|not certain|i'?d rather not)\b/i;
+const LACK_SAFE = /\b(?:don'?t know|do not know|no idea|no clue|not sure|can'?t say|couldn'?t say|can'?t tell you|couldn'?t tell you|not that i (?:know|recall|remember|noticed|saw|heard)|didn'?t (?:notice|see|catch) anything|don'?t (?:recall|remember)|nothing (?:on|about) that|nothing to (?:add|say|tell)|haven'?t (?:heard|been told)|(?:nobody|no one)(?:'s| has) told me|not that i can think of|can'?t think of|i wouldn'?t know|unsure|not certain|i'?d rather not)\b/i;
 const ABSOLUTE_EXPERIENCE_CLAIM = /\b(?:never|no experience|first time|haven'?t been|have not been|been (?:here|there|in|down)|seen (?:this|the|it) before|done this)\b/i;
 // Functions whose reply is a plain answer/reaction, not a question back.
-const NO_COUNTER_QUESTION = new Set(["report_observation", "greet", "introduce_self", "acknowledge", "close_topic", "joke_or_sarcasm", "social_observation", "warn", "invite_self_description", "ask_role_or_assignment", "ask_item_ownership", "ask_personal_experience", "ask_factual", "request_repetition", "clarify_previous", "ask_heard_confirmation", "check_in", "make_request", "ask_explanation", "ask_next_step"]);
+const NO_COUNTER_QUESTION = new Set(["report_observation", "greet", "introduce_self", "acknowledge", "close_topic", "joke_or_sarcasm", "social_observation", "warn", "invite_self_description", "ask_role_or_assignment", "ask_item_ownership", "ask_personal_experience", "ask_factual", "request_repetition", "clarify_previous", "ask_heard_confirmation", "check_in", "make_request", "ask_explanation", "ask_next_step", "ask_opinion"]);
 const CLARIFY_CUE = /\b(?:(?:what|which)\b[^?]*\b(?:referring|referencing|talking about)|mean|which|what (?:do|are|exactly|thing|part|item)|sorry|pardon|huh|not sure what|didn'?t (?:catch|follow|get)|come again|say again)\b/i;
-const MAX_WORDS = Object.freeze({ report_observation: 22, greet: 6, introduce_self: 10, acknowledge: 9, close_topic: 9, joke_or_sarcasm: 10, social_observation: 10, check_in: 14, warn: 14, express_uncertainty: 16, ask_heard_confirmation: 16, ask_explanation: 24, ask_next_step: 24 });
+const MAX_WORDS = Object.freeze({ report_observation: 22, greet: 6, introduce_self: 10, acknowledge: 9, close_topic: 9, joke_or_sarcasm: 10, social_observation: 10, check_in: 14, warn: 14, express_uncertainty: 16, ask_heard_confirmation: 16, ask_explanation: 24, ask_next_step: 24, ask_opinion: 14 });
 const META_PLAYER = /\b(?:the|this) player\b|\bplayer'?s (?:words|line|message|text)\b/i;
 // The capsule labels the person spoken to "PLAYER"; that label is orientation, never speech -- in any case,
 // whether shouted, used as a name ("Morning, Player.") or as an address ("Hey player"). Ordinary uses
@@ -91,7 +91,7 @@ const INVENTED_URGENCY = /\b(?:urgent\w*|emergency|alarm\w*|panic\w*|hurry|immed
 const HEARD_COMMITMENT = /\bi(?:'ll| will| can| could| should)\b(?!\s+hear)|\blet me\b|\bon it\b|consider it done|\bwill do\b/i;
 // LOCAL wording cannot create an instruction/commitment: orders and promises with consequences go through
 // the structured order path (q4-local-intent), never through the wording of a reply.
-const COMMITMENT_CLAIM = /\b(?:i'?ll|i will|i(?:'m| am) going to|i can do that|let me (?:go|get|check|handle|take|grab|do)|on it\b|will do\b|you got it|sure thing|consider it done|i promise|count on me|give me (?:a |one )?(?:sec|second|minute|moment)|right away|on my way|coming right up|no problem|i(?:'m| am) on it)\b/i;
+const COMMITMENT_CLAIM = /\b(?:i'?ll|i will|i(?:'m| am) going to|i can do that|let me (?:go|get|check|handle|take|grab|do)|^\s*on it\b|will do\b|you got it|sure thing|consider it done|i promise|count on me|give me (?:a |one )?(?:sec|second|minute|moment)|right away|on my way|coming right up|no problem|i(?:'m| am) on it)\b/i;
 // A request/order that conversation does not perform is acknowledged, never accepted or complied with.
 const REQUEST_ACCEPTANCE = /^\s*(?:sure|okay|ok|yes|yeah|yep|yup|alright|all right|of course|absolutely|you bet|roger|copy(?: that)?|understood|will do|sounds good|got it|fine|certainly)\b|\b(?:sounds good|good idea|let'?s|i'?m with you|right behind you|we(?:'ll| will| can)|will wait|i(?:'ll| will) wait)\b/i;
 // Words that state a feeling or strain; a check-in may state one only when canonical self-state holds it.
@@ -105,11 +105,22 @@ const REPAIR_FUNCTIONS = new Set(["clarify_previous", "request_repetition"]);
 const POSITIVE_AFFECT_CLAIM = /\b(?:excited|thrilled|pumped|psyched|stoked|eager|can'?t wait|looking forward)\b/i;
 const NEGATED_FEELING = /\b(?:not|n't|no|never|hardly)\b(?:\s+(?:especially|really|particularly|that|too|very|all that|much|at all|feeling|feel))*\s+(?:\w+\s+)?(?=\w)/gi;
 const withoutNegatedFeelings = (speech) => String(speech).replace(new RegExp(`${NEGATED_FEELING.source}(?:excited|thrilled|pumped|psyched|stoked|eager|nervous|anxious|worried|scared|afraid|tense|uneasy|stressed|on edge|tired|exhausted)\\b`, "gi"), " ");
+// How an explanation voices each kind of basis. Voicing a DIFFERENT kind than the recorded one is an
+// invented reason ("I saw it myself" when the speaker merely had nothing to go on).
+const BASIS_VOICES = Object.freeze({
+  observation: /\b(?:i saw|i noticed|i spotted|saw it (?:myself|with my own)|seen it myself)\b/i,
+  briefing_instruction: /\b(?:briefing|maxwell|kirk|we were told|they told us|instruct\w*)\b/i,
+  no_known_fact: /\b(?:(?:nobody|no one)(?:'s| has) told|nothing to go on|can'?t think of a time)\b/i,
+  self_state: /\b(?:how i feel|i(?:'m| am) feeling|i feel (?:like|that|exactly|fine|all right|normal)|my (?:mood|feelings?))\b/i,
+  custody: /\b(?:it'?s with (?:me|you)|(?:you|i)(?:'ve| have) got it|has it|holding it)\b/i
+});
+// Words any explanation may use without adding a reason of its own.
+const EXPLANATION_FRAME_WORDS = Object.freeze(["said", "say", "saying", "because", "just", "mean", "meant", "meaning", "feel", "feeling", "right", "now", "really", "honestly", "nothing", "ordinary", "normal", "particular", "particularly", "especially", "either", "way", "much", "reason", "that", "what", "think", "time", "know", "idea", "anything", "sure", "clear", "told", "nobody", "one", "haven't", "hasn't", "don't", "didn't", "can't", "couldn't", "wasn't", "notice", "noticed", "see", "saw", "tell", "catch", "follow", "asking", "asked", "view", "opinion", "formed", "yet", "fine", "okay", "alright", "all", "well", "good", "much", "going", "genuinely", "simply", "exactly", "moment", "put", "answer", "answered", "question"]);
 // "I don't know" about one's own feelings: a speaker has access to themselves.
 // ("Can't say I feel much either way" is the idiom for a stance, not a denial.)
 const SELF_ACCESS_DENIAL = /\b(?:don'?t know|do not know|no idea|not sure|no clue)\b|\b(?:can'?t|couldn'?t) say\b(?!\s+(?:that\s+)?i\b)/i;
 // Ways of saying "I have nothing to go on" (the basis of an honest no-fact answer).
-const NO_BASIS = /\b(?:nothing to go on|don'?t have (?:anything|much|any)|haven'?t (?:got|heard|been told|seen)|no(?:body|\s+one)(?:'s| has) (?:told|said|mentioned)|not been told|don'?t know (?:anything|much)|didn'?t (?:notice|see|catch)|nothing (?:about|on) (?:it|that)|no idea|no information|don'?t know)\b/i;
+const NO_BASIS = /\b(?:nothing to go on|can'?t think of|haven'?t (?:formed|thought|decided)|don'?t have (?:anything|much|any)|haven'?t (?:got|heard|been told|seen)|no(?:body|\s+one)(?:'s| has) (?:told|said|mentioned)|not been told|don'?t know (?:anything|much)|didn'?t (?:notice|see|catch)|nothing (?:about|on) (?:it|that)|no idea|no information|don'?t know)\b/i;
 const SOCIAL_NO_TASK = new Set(["report_observation", "greet", "introduce_self", "acknowledge", "joke_or_sarcasm", "social_observation", "check_in", "close_topic", "clarify_previous", "request_repetition", "ambiguous_reference", "invite_self_description", "ask_role_or_assignment", "ask_item_ownership", "ask_personal_experience"]);
 const OTHERS_APPLY = new Set(["report_observation", "check_in", "invite_self_description", "ask_role_or_assignment", "ask_personal_experience", "greet", "introduce_self"]);
 
@@ -144,7 +155,8 @@ function validateOntology(rawSpeech) {
  */
 function validateContribution(contribution, rawSpeech, { player_text = null } = {}) {
   if (!contribution) return { ok: true };
-  const speech = String(rawSpeech ?? "").trim();
+  // Typographic apostrophes/quotes ("We’ll") are normalized so no rule is bypassed by punctuation style.
+  const speech = String(rawSpeech ?? "").replace(/[\u2018\u2019\u02bc]/g, "'").replace(/[\u201c\u201d]/g, '"').trim();
   const ontology = validateOntology(speech);
   if (!ontology.ok) return ontology;
   const fn = contribution.discourse_function;
@@ -155,7 +167,8 @@ function validateContribution(contribution, rawSpeech, { player_text = null } = 
   // Assistant persona: a coworker never offers generic service.
   if (fn !== "make_request" && ASSISTANT_PERSONA.test(speech)) return reject(CODES.FORBIDDEN, "assistant-style service offer");
   if (META_PLAYER.test(speech) || PLAYER_LABEL.test(speech) || PLAYER_ADDRESS.test(speech)) return reject(CODES.FORBIDDEN, "refers to the player as a game construct");
-  const noFacts = !(contribution.required_facts ?? []).length && !(contribution.optional_facts ?? []).length;
+  // The uncertainty descriptor (which kind of not-knowing applies) is not an answering fact.
+  const noFacts = !(contribution.required_facts ?? []).some((f) => f.key !== "uncertainty") && !(contribution.optional_facts ?? []).length;
   const explainedBasis = fn === "ask_explanation" ? (requiredValue(contribution, "explanation_basis")[0] ?? null) : null;
   if ((["joke_or_sarcasm", "social_observation", "greet", "introduce_self", "acknowledge", "close_topic", "check_in"].includes(fn) || (noFacts && ["ask_factual", "ask_personal_experience", "challenge", "make_statement", "ambiguous_reference"].includes(fn)) || (explainedBasis && ["self_state", "no_known_fact", "social", "clarification", "unavailable"].includes(explainedBasis.kind))) && INVENTED_HISTORY.test(speech)) return reject(CODES.FORBIDDEN, "narrates history or experience the plan does not supply");
   if (["joke_or_sarcasm", "social_observation", "greet", "introduce_self", "acknowledge", "close_topic", "check_in"].includes(fn) && INVENTED_ACTIVITY.test(speech)) return reject(CODES.FORBIDDEN, "invents what the speaker is doing or waiting for");
@@ -202,6 +215,8 @@ function validateContribution(contribution, rawSpeech, { player_text = null } = 
   if (NO_COUNTER_QUESTION.has(fn) && !contribution.may_ask_clarifying_question && speech.includes("?")) return reject(CODES.SHAPE, "answers with a question");
 
   if (fn === "joke_or_sarcasm") {
+    // Agreeing with sarcasm and then asserting a world fact ("Yeah, it's got a good buffer zone").
+    if (/^\s*(?:yeah|yes|yep|sure|right|totally|definitely)\b[,.!]?\s+(?:it|there|this place|that)(?:'s| is| has| have)\b/i.test(speech)) return reject(CODES.SHAPE, "takes a sarcastic remark literally and asserts a fact");
     if (SARCASM_LITERAL_AGREEMENT.test(speech) || SARCASM_AGREES.test(speech)) return reject(CODES.SHAPE, "takes a sarcastic remark literally");
     if (DANGER_EVALUATION.test(speech)) return reject(CODES.FORBIDDEN, "asserts a safety or danger state the plan does not supply");
     if (LACK_SAFE.test(speech)) return reject(CODES.SHAPE, "answers a remark as if it were a question");
@@ -364,6 +379,11 @@ function validateContribution(contribution, rawSpeech, { player_text = null } = 
       }
       break;
     }
+    case "ask_opinion": {
+      // No canonical opinion exists: a stance of having none yet, never an invented view.
+      if (requiredValue(contribution, "uncertainty")[0]?.kind === "no_established_opinion" && !/\b(?:(?:no|(?:don'?t|do not) have (?:a|an|any)|haven'?t got (?:a|an|any))(?: real| particular| strong)? (?:opinion|view|take|thoughts?)|not sure|don'?t know|hard to say|haven'?t (?:really )?(?:thought|decided|formed)|no idea|couldn'?t say|can'?t say|too early)\b/i.test(speech)) return reject(CODES.UNMET, "no opinion is authorized; the speaker has none yet");
+      break;
+    }
     case "ask_next_step": {
       const procedure = requiredValue(contribution, "current_procedure")[0];
       if (procedure?.next_step && coverage(speech, procedure.next_step) < 0.5) return reject(CODES.UNMET, "does not state the supplied next step");
@@ -374,6 +394,8 @@ function validateContribution(contribution, rawSpeech, { player_text = null } = 
       const basis = explainedBasis ?? { kind: "unavailable" };
       const asserted = withoutNegatedFeelings(speech);
       if (POSITIVE_AFFECT_CLAIM.test(asserted)) return reject(CODES.FORBIDDEN, "claims a feeling canonical self-state does not hold");
+      // Explaining an answer that had no established history: no history of either polarity may appear.
+      if (basis.uncertainty === "no_established_personal_history" && /\b(?:i(?:'ve| have)(?: never|n'?t|not)? been|never been|first time|been there|i was there)\b/i.test(speech)) return reject(CODES.FORBIDDEN, "asserts personal history the plan does not hold");
       if (basis.kind === "self_state") {
         if (basis.state !== "affected" && SELF_STATE_CLAIM.test(asserted)) return reject(CODES.FORBIDDEN, "states a feeling or strain canonical self-state does not hold");
         if (/^\W*(?:i\s+)?(?:don'?t know|no idea|not sure|dunno)\W*$/i.test(speech)) return reject(CODES.UNMET, "a speaker knows why they said how they feel");
@@ -381,8 +403,20 @@ function validateContribution(contribution, rawSpeech, { player_text = null } = 
         if (!NO_BASIS.test(speech)) return reject(CODES.UNMET, "the reason is only that the speaker has nothing to go on");
       } else if (basis.kind === "briefing_instruction") {
         if (!/\b(?:briefing|maxwell|kirk|told|instruct\w*|orders?)\b/i.test(speech)) return reject(CODES.UNMET, "the reason is the briefing instruction");
+      } else if (basis.kind === "custody") {
+        if (!/\b(?:as far as i know|where it is|with (?:you|me|him|her|them)|(?:has|have|got) it|holding it|assign\w*|saw|told)\b/i.test(speech) && coverage(speech, String(basis.label ?? "")) < 0.5) return reject(CODES.UNMET, "the reason is what the speaker knows about where the item is");
       } else if (basis.kind === "clarification") {
         if (!/\b(?:sure|meant|mean|tell|follow|catch|clear|unclear|understand)\b/i.test(speech)) return reject(CODES.UNMET, "the reason is that the speaker was not sure what was meant");
+      }
+      for (const [kind, voice] of Object.entries(BASIS_VOICES)) {
+        if (kind !== basis.kind && voice.test(speech) && !(BASIS_VOICES[basis.kind]?.test(speech))) return reject(CODES.FORBIDDEN, `explains a different basis (${kind}) than the recorded one (${basis.kind})`);
+      }
+      // A reason that is only a feeling, a lack of basis, an unclear question or small talk adds almost no
+      // content of its own: new subject matter beyond the basis is an invented reason.
+      if (["self_state", "no_known_fact", "clarification", "social", "unavailable"].includes(basis.kind)) {
+        const allowedWords = new Set([...contentWords(JSON.stringify(basis)), ...contentWords(allowedBlob), ...EXPLANATION_FRAME_WORDS]);
+        const novel = contentWords(speech).filter((w) => ![...allowedWords].some((k) => sameStem(k, w)));
+        if (novel.length > 2) return reject(CODES.FORBIDDEN, `invented rationale beyond the basis: "${novel.slice(0, 4).join(" ")}"`);
       }
       // Any other reason (danger, plans, experience) is an invented rationale.
       if (DANGER_EVALUATION.test(speech) && !/danger|safe|risk/i.test(JSON.stringify(basis))) return reject(CODES.FORBIDDEN, "invented rationale: a safety or danger state the basis does not hold");
@@ -391,6 +425,8 @@ function validateContribution(contribution, rawSpeech, { player_text = null } = 
     case "make_request": {
       const disposition = requiredValue(contribution, "request_disposition")[0];
       if (disposition && REQUEST_ACCEPTANCE.test(speech)) return reject(CODES.FORBIDDEN, "accepts or complies with a request the simulation has not performed");
+      // Conversation never performs the requested action: wording may not report it as done.
+      if (disposition?.requested_action && /\b(?:done|all set|it'?s with (?:him|her|them|you|me) now|handed (?:it |that )?over|gave (?:it|him|her|them)|passed (?:it|him|her)|here you go|there you go|took care of it|moved it|i'?m waiting here|staying put)\b/i.test(speech)) return reject(CODES.FORBIDDEN, "reports the requested action as done; it has not happened");
       break;
     }
     case "ask_factual":
@@ -406,6 +442,9 @@ function validateContribution(contribution, rawSpeech, { player_text = null } = 
       } else if (fn === "ask_factual" && contribution.addressee_state && words(speech).length <= 6 && /^\s*(?:yes|yeah|yep|yup|no|nope|sure|ready|okay|ok|fine|all set|i am|i'm|i think so|not really|kind of|sort of)\b/i.test(speech)) {
         // "Are you ready?" -> "Ready." : the addressee's own momentary READINESS (decided by the
         // semantic frame, the one authority), never a past observation, presence, plan or feeling.
+      } else if (fn === "ask_factual" && requiredValue(contribution, "uncertainty")[0]?.kind === "did_not_perceive" && !/\b(?:didn'?t|did not|haven'?t|have not|never) (?:notice|see|hear|catch|spot|smell)|not that i (?:noticed|saw|heard)|nothing\b/i.test(speech)) {
+        // One's own perception is self-knowledge: "didn't notice", never an outside-fact "I don't know".
+        return reject(CODES.UNMET, "the speaker knows what they perceived: say they did not notice anything");
       } else if (fn === "ask_factual" && !LACK_SAFE.test(speech) && !contribution.may_ask_clarifying_question) {
         return reject(CODES.UNMET, "no fact is authorized; the speaker must say they do not know");
       }

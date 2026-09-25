@@ -378,6 +378,11 @@ function compileObserverDialogueContext({
   };
   if (purpose === "response") prov("conversation", AUTHORITY.HEARD_COMMUNICATION, "dialogue_history+semantic_frame");
 
+  // An explanation of a custody answer ("How do you know?") is about that custody as a whole: if it
+  // changes before commit, the explanation is stale whatever words it used.
+  const explained = (contribution?.required_facts ?? []).find((f) => f.key === "explanation_basis")?.value ?? null;
+  if (purpose === "response" && explained?.kind === "custody" && explained.equipment_id) commitSensitive.push({ kind: "custody", equipment_id: explained.equipment_id, holder_id: holderOf(run, explained.equipment_id), label: String(explained.label ?? explained.equipment_id).toLowerCase(), whole_turn: true });
+
   // ── RELEVANT KNOWN STATE (authority path AND relevance, else omitted) ────
   const knownState = [];
   const push = (item, path, authority, source_ref, opts) => { knownState.push(item); prov(path, authority, source_ref, opts); };
@@ -544,6 +549,7 @@ const sameStamp = (a, b) => (a == null && b == null) || (a != null && b != null 
 /** Does the wording assert something about this commit-sensitive subject? */
 function speechAsserts(run, descriptor, speech) {
   const text = String(speech ?? "");
+  if (descriptor.whole_turn) return true;
   switch (descriptor.kind) {
     case "custody": {
       const holderNames = [descriptor.holder_id, holderOf(run, descriptor.equipment_id)].map((id) => canonicalLedger.getObserverMember(run, id)).filter(Boolean).map(firstName).filter(Boolean);

@@ -101,10 +101,10 @@ test("ED-2 B/C — plan-carrying packets carry style only; no personality lore c
     assert.deepEqual(packet.speaker.tendencies, {});
     assert.equal(packet.speaker.relationship, null);
     assert.equal(packet.speaker.role, null);
-    assert.deepEqual(packet.authorized_contribution.required_facts, []);
+    assert.deepEqual(packet.authorized_contribution.required_facts, [{ key: "uncertainty", value: { kind: "no_established_personal_history" } }], "no experience fact is authorized");
     // the candidate that invents "first time" is rejected; the honest fallback is committed
     const spoken = coworkerEvents(state, before)[0];
-    assert.equal(spoken.text, "Not that I know of.");
+    assert.equal(spoken.text, "Not that I can think of.");
     const trace = state.service.getDialogueWordsmithTrace({ limit: 5 }).traces.at(-1).wordsmiths[0];
     assert.equal(trace.validator_accepted, false);
     assert.equal(trace.fallback_used, true);

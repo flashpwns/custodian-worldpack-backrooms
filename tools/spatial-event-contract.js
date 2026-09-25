@@ -35,6 +35,16 @@ const SPATIAL_EVENT_TYPES = Object.freeze({
   portal_discovered: Object.freeze(["observer_id", "connection_id"]),
   movement_segment_completed: Object.freeze(["actor_id", "segment_id"])
 });
+// Optional fields a type may carry. A selection may say WHERE the player was pointing (a canonical
+// anchor/location id, never coordinates), which canonical candidates were visible, a canonical spatial
+// relation ("beside" another entity) and the renderer's selection revision. All are INPUT: the
+// resolver below checks each against canonical state.
+const OPTIONAL_FIELDS = Object.freeze({
+  spatial_reference_selected: Object.freeze(["anchor_id", "candidate_ids", "relation", "relation_target_id", "revision"])
+});
+const SPATIAL_RELATIONS = Object.freeze(["at", "beside", "behind", "in_front_of", "on", "under", "near", "inside"]);
+// A selection older than this many simulation intervals is stale and never resolves a reference.
+const MAX_SELECTION_AGE = 2;
 // Common envelope every event carries; `at` is canonical simulation time (interval), never wall time.
 const ENVELOPE = Object.freeze(["type", "at", "event_id", "source"]);
 // Renderer state is never truth.
@@ -50,8 +60,12 @@ function validateSpatialEvent(event) {
   if (!Number.isFinite(event.at)) return reject("SPATIAL_EVENT_TIME_INVALID");
   for (const key of Object.keys(event)) {
     if (RENDERER_FIELDS.includes(key)) return reject("SPATIAL_EVENT_RENDERER_STATE", key);
-    if (!ENVELOPE.includes(key) && !required.includes(key)) return reject("SPATIAL_EVENT_FIELD_UNKNOWN", key);
+    if (!ENVELOPE.includes(key) && !required.includes(key) && !(OPTIONAL_FIELDS[event.type] ?? []).includes(key)) return reject("SPATIAL_EVENT_FIELD_UNKNOWN", key);
   }
+  if (event.candidate_ids !== undefined && (!Array.isArray(event.candidate_ids) || event.candidate_ids.some((id) => typeof id !== "string" || !id.trim()))) return reject("SPATIAL_EVENT_FIELD_INVALID", "candidate_ids");
+  if (event.relation !== undefined && !SPATIAL_RELATIONS.includes(event.relation)) return reject("SPATIAL_EVENT_FIELD_INVALID", "relation");
+  if (event.revision !== undefined && !Number.isInteger(event.revision)) return reject("SPATIAL_EVENT_FIELD_INVALID", "revision");
+  for (const key of ["anchor_id", "relation_target_id"]) if (event[key] !== undefined && (typeof event[key] !== "string" || !event[key].trim())) return reject("SPATIAL_EVENT_FIELD_INVALID", key);
   for (const key of required) {
     if (typeof event[key] !== "string" || !event[key].trim()) return reject("SPATIAL_EVENT_FIELD_MISSING", key);
   }
@@ -63,6 +77,43 @@ function toSpatialSelection(event) {
   const valid = validateSpatialEvent(event);
   if (!valid.ok || event.type !== "spatial_reference_selected") return null;
   return Object.freeze({ entity_id: event.entity_id, kind: event.entity_kind, label: event.label });
+}
+
+/**
+ * A renderer selection checked against CANONICAL spatial state before it may resolve any reference:
+ * the observer exists and is somewhere; the selected entity is a canonical person, item or place the
+ * observer can currently perceive (same location); any anchor/relation target is canonical and present;
+ * a supplied candidate set contains the selection; and the selection is not stale. Accepts the full
+ * event or the legacy {entity_id, kind, label} shape (then the player is the observer, now the time).
+ */
+function resolveSpatialReferenceSelection(run, input, { observer_id = null, now = null } = {}) {
+  if (!input || typeof input !== "object") return reject("SPATIAL_SELECTION_MISSING");
+  const current = Number.isFinite(Number(now)) ? Number(now) : Number(run?.expedition?.clock?.interval ?? 0);
+  const event = input.type ? input : { type: "spatial_reference_selected", at: current, observer_id: observer_id ?? run?.session?.startup?.player?.observer_id ?? "", entity_id: input.entity_id, entity_kind: input.kind ?? input.entity_kind, label: input.label };
+  const valid = validateSpatialEvent(event);
+  if (!valid.ok) return valid;
+  if (event.type !== "spatial_reference_selected") return reject("SPATIAL_EVENT_TYPE_MISMATCH");
+  if (event.at > current || current - event.at > MAX_SELECTION_AGE) return reject("SPATIAL_SELECTION_STALE");
+  const where = (id) => canonicalLedger.getPersonnelLocation(run, id);
+  const here = where(event.observer_id);
+  if (!here) return reject("SPATIAL_SELECTION_OBSERVER_UNPLACED");
+  const presentHere = (id) => {
+    if (!id) return false;
+    if (where(id)) return where(id) === here;
+    const equipment = run?.expedition?.equipment ?? {};
+    const item = equipment[id] ?? Object.values(equipment).find((entry) => entry?.id === id) ?? null;
+    if (item) return (item.holder && where(item.holder) === here) || run?.spatial?.equipment_locations?.[id] === here;
+    // A place: the room itself, or a discovered/known connection from it.
+    // (discovered_connections is keyed by connection id; tolerate a list shape too.)
+    const connections = run?.spatial?.discovered_connections ?? {};
+    const known = Array.isArray(connections) ? connections.map((c) => c?.id ?? c) : Object.keys(connections);
+    return id === here || known.includes(id);
+  };
+  if (!presentHere(event.entity_id)) return reject("SPATIAL_SELECTION_NOT_PERCEIVABLE", event.entity_id);
+  if (event.anchor_id && event.anchor_id !== here && !presentHere(event.anchor_id)) return reject("SPATIAL_SELECTION_ANCHOR_INVALID", event.anchor_id);
+  if (event.relation_target_id && !presentHere(event.relation_target_id)) return reject("SPATIAL_SELECTION_RELATION_TARGET_INVALID", event.relation_target_id);
+  if (event.candidate_ids && !event.candidate_ids.includes(event.entity_id)) return reject("SPATIAL_SELECTION_NOT_AMONG_CANDIDATES");
+  return Object.freeze({ ok: true, selection: Object.freeze({ entity_id: event.entity_id, kind: event.entity_kind, label: event.label, observer_id: event.observer_id, location_id: here, anchor_id: event.anchor_id ?? null, relation: event.relation ?? null, relation_target_id: event.relation_target_id ?? null, at: event.at, revision: event.revision ?? null }) });
 }
 
 /**
@@ -86,4 +137,4 @@ function recordWitnessedHandoff(run, event) {
   return Object.freeze({ ok: true, entry: Object.freeze({ ...entry }) });
 }
 
-module.exports = { VERSION, SPATIAL_EVENT_TYPES, RENDERER_FIELDS, validateSpatialEvent, toSpatialSelection, recordWitnessedHandoff };
+module.exports = { VERSION, SPATIAL_EVENT_TYPES, OPTIONAL_FIELDS, SPATIAL_RELATIONS, MAX_SELECTION_AGE, RENDERER_FIELDS, validateSpatialEvent, toSpatialSelection, resolveSpatialReferenceSelection, recordWitnessedHandoff };

@@ -1326,7 +1326,10 @@ async function submitTurn(kind, request) {
     }
     // Apply acoustic scene derived from canonical simulation state
     applyAcousticScene(current.projection?.acoustic_scene);
-    const message = renderMessage(result, kind === "natural");
+    // Coworker speech belongs to the LOCAL transcript alone. A communication turn that committed dialogue
+    // (presentation_source set) is not echoed into the feedback strip as a stray "Name: line".
+    const dialoguePresented = kind === "communication" && Boolean(result.result?.presentation_source);
+    const message = dialoguePresented ? "" : renderMessage(result, kind === "natural");
     if (kind === "structured" || result.result?.executed) presentation.clearDraft(context);
     const assistance = result.result?.language_assistance?.message;
     play(`${message}${assistance ? ` ${assistance}` : ""}`.trim(), "result");

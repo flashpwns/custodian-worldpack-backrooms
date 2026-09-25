@@ -1102,6 +1102,9 @@ function concludePersonnelBriefing(run) {
   const briefing = opener.personnel_briefing;
 
   briefing.status = "concluded";
+  // Maxwell leaves the room when the briefing concludes: recorded once, in simulation time, so later
+  // references ("before Maxwell left") can anchor to a canonical event instead of a guess.
+  if (!Number.isFinite(Number(briefing.concluded_at_interval))) briefing.concluded_at_interval = Number(run.expedition.clock?.interval ?? 0);
   briefing.exchange_history ??= [];
 
   const dismissalText = briefing.dialogue?.dismissal || "That's the briefing. Take a few minutes, get acquainted with the people at your table, and report to Equipment Staging when you're ready.";

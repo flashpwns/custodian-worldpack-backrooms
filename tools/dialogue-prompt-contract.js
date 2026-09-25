@@ -134,6 +134,16 @@ function renderContextSections(capsule) {
   return out;
 }
 
+// Which kind of not-knowing a no-fact answer is (decided by the plan); the model words that kind.
+const UNCERTAINTY_GUIDE = Object.freeze({
+  did_not_perceive: "You did not notice anything like that: say so plainly.",
+  no_established_personal_history: "Nothing tells you whether you have or haven't: answer the way a person does who can't think of a time (for example, not that you can think of). Never claim you have, or that you never have.",
+  background_not_shared: "You would rather not get into your background: say so politely.",
+  not_told: "Nobody has told you that: say so plainly (you haven't been told), without guessing.",
+  no_established_opinion: "You have no particular view on it yet: say so briefly; never invent an opinion.",
+  procedure_not_known: "You do not know what comes next: say so plainly.",
+  no_established_fact: "No fact answers this: say plainly that you don't know, in your own words. Never ask the question back."
+});
 function renderContributionTask(packet) {
   const c = packet?.authorized_contribution;
   if (!c) return null;
@@ -180,9 +190,11 @@ function renderContributionTask(packet) {
     }
     if (f.key === "explanation_basis") {
       const b = f.value ?? {};
+      const noFactWhy = { did_not_perceive: "you simply did not notice anything", not_told: "nobody has told you", no_established_personal_history: "you can't think of a time you have", no_established_opinion: "you just haven't formed a view on it" }[b.uncertainty] ?? (b.past_perception ? "you simply did not notice anything" : "you simply have nothing to go on");
       const why = {
         self_state: b.state === "affected" ? `it is just how you feel right now (${(b.affect ?? []).join(" and ")})` : "it is just how you feel right now; nothing out of the ordinary",
-        no_known_fact: b.past_perception ? "you simply did not notice anything" : "you simply have nothing to go on",
+        no_known_fact: noFactWhy,
+        observation: "it is what you saw yourself",
         clarification: "you were not sure what they meant",
         briefing_instruction: `it is what you were all told at ${b.source ?? "the briefing"}`,
         custody: b.holder_is_self ? "the item is with you" : (b.holder_known === false ? "you do not know who has it" : "that is where it is, as far as you know"),
@@ -203,9 +215,10 @@ function renderContributionTask(packet) {
         : "How you are right now: nothing is wrong. Answer that you are doing all right, for yourself only; do not claim to be tired, stressed or worried.";
     }
     if (f.key === "request_disposition") {
-      return f.value?.kind === "handoff"
+      const wanted = f.value?.requested_action ? ` (they asked for: ${f.value.requested_action.action.replace(/_/g, " ")}${f.value.requested_action.object ? ` of the ${String(f.value.requested_action.object).toLowerCase()}` : ""}${f.value.requested_action.recipient ? ` to ${f.value.requested_action.recipient}` : ""}; it has NOT happened)` : "";
+      return (f.value?.kind === "handoff"
         ? "About the request: nothing changes hands just by talking; a handoff only happens as a proper in-person transfer, so do not hand anything over, accept or promise."
-        : "About the request: this is not something you do or promise just by talking. Only acknowledge that you heard it, without agreeing, accepting, promising or refusing.";
+        : "About the request: this is not something you do or promise just by talking. Only acknowledge that you heard it, without agreeing, accepting, promising or refusing.") + wanted;
     }
     if (f.key === "item_holder") {
       const item = `the ${String(f.value?.label ?? "item").toLowerCase()}`;
@@ -219,7 +232,8 @@ function renderContributionTask(packet) {
   const REPAIR_KEYS = new Set(["antecedent_player_text", "antecedent_responses"]);
   const stance = (c.required_facts ?? []).find((f) => f.key === "self_state_answer")?.value;
   const stanceCovers = stance && ["not_especially", "yes", "fine"].includes(stance.answer);
-  const req = isReport ? [] : (c.required_facts ?? []).filter((f) => !(capsule && REPAIR_KEYS.has(f.key)) && !(stanceCovers && f.key === "self_state")).map(showFact);
+  const uncertainty = (c.required_facts ?? []).find((f) => f.key === "uncertainty")?.value?.kind ?? null;
+  const req = isReport ? [] : (c.required_facts ?? []).filter((f) => !(capsule && REPAIR_KEYS.has(f.key)) && !(stanceCovers && f.key === "self_state") && f.key !== "uncertainty").map(showFact);
   if (isReport) {
     const obs = c.required_facts?.find((f) => f.key === "observation")?.value;
     const subject = obs?.subject;
@@ -241,7 +255,7 @@ function renderContributionTask(packet) {
   if (capsule && repairing) how.push("Say your own earlier line again in your own words. Do not answer a new question and do not say you did not understand.");
   if (capsule && c.resumed_question) how.push(`They are answering your question about what they meant. Answer their earlier question now: ${j(c.resumed_question)}`);
   if (c.discourse_function === "ask_next_step" && c.may_ask_clarifying_question) how.push(`Nothing tells you what "next" means here. Ask ONE short question about what they mean.`);
-  if (capsule && !isReport && !req.length && ["ask_factual", "ask_personal_experience", "challenge"].includes(c.discourse_function) && !c.may_ask_clarifying_question) how.push(c.past_perception ? "Nothing you noticed is supplied: say plainly that you didn't notice anything, in your own words." : (c.addressee_state ? "They are asking whether you are ready; a brief yes or no about yourself is fine." : "No fact answers this: say plainly that you don't know, in your own words. Never ask the question back."));
+  if (capsule && !isReport && !req.length && ["ask_factual", "ask_personal_experience", "challenge", "ask_opinion"].includes(c.discourse_function) && !c.may_ask_clarifying_question) how.push(c.addressee_state ? "They are asking whether you are ready; a brief yes or no about yourself is fine." : (UNCERTAINTY_GUIDE[uncertainty] ?? (c.past_perception ? UNCERTAINTY_GUIDE.did_not_perceive : UNCERTAINTY_GUIDE.no_established_fact)));
   if ((c.same_turn_prior_responses ?? []).length) how.push(`Others already replied this turn:\n- ${c.same_turn_prior_responses.map((r) => `${r.speaker_name ?? "someone"}: ${j(r.text)}`).join("\n- ")}\nDo NOT reuse their opening words or sentence shape, and do not repeat what they already said; say it your own way.`);
   if (c.discourse_function === "joke_or_sarcasm") how.push("Their remark is a joke or sarcasm, not a literal claim. React with a short wry or dry aside in your own words. Do NOT agree it is really safe, evaluate it literally, give advice, or redirect to work.");
   if (["invite_self_description", "ask_role_or_assignment"].includes(c.discourse_function)) how.push("Say your name/role, and your assignment as what you are doing right now in plain words. Never say you are 'here to' do something.");

@@ -4,7 +4,7 @@ const VERSION = "yellow-beast-q4-interaction-envelope@v2";
 const CHANNELS = Object.freeze(["action", "local", "standard"]);
 const clone = (value) => structuredClone(value);
 
-function record(expedition, { channel, speaker = "You", speaker_id = null, targets = [], recipient_type = null, recipient_id = null, recipient_ids = [], listeners = [], player_text = null, attempted_behavior = null, eligibility = "eligible", delivery = "not-applicable", time_cost = 0, canonical_effects = [], observer_knowledge = [], presentation = {}, response_speaker = null, response_speaker_id = null, response_owners = [], responses = [], response_listeners = [], location_id = null, submission_id = null, source = "player" }) {
+function record(expedition, { channel, speaker = "You", speaker_id = null, targets = [], recipient_type = null, recipient_id = null, recipient_ids = [], listeners = [], player_text = null, attempted_behavior = null, eligibility = "eligible", delivery = "not-applicable", time_cost = 0, canonical_effects = [], observer_knowledge = [], presentation = {}, response_speaker = null, response_speaker_id = null, response_owners = [], responses = [], response_listeners = [], location_id = null, submission_id = null, source = "player", requested_action = null }) {
   if (!expedition || !CHANNELS.includes(channel)) throw new Error("Q4 interaction requires a supported channel");
   expedition.interaction_history ??= [];
   const interaction = {
@@ -37,7 +37,10 @@ function record(expedition, { channel, speaker = "You", speaker_id = null, targe
     response_owners: clone(response_owners),
     responses: clone(responses),
     response_listeners: [...response_listeners],
-    location_id
+    location_id,
+    // A player request for someone to DO something, as structured intent (never executed by
+    // conversation). Internal: publicEntry does not project it.
+    ...(requested_action ? { requested_action: clone(requested_action) } : {})
   };
   expedition.interaction_history.push(interaction);
   expedition.clock ??= {};

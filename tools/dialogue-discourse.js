@@ -41,7 +41,9 @@ const DISCOURSE_FUNCTIONS = Object.freeze([
   "ask_next_step",
   // "Why?" / "What makes you say that?": the reason for the speaker's own preceding line, taken from
   // the semantic basis that line was authorized with -- never a rationale invented afterwards.
-  "ask_explanation"
+  "ask_explanation",
+  // "What do you think?": the listener's own opinion -- only a canonical opinion may be stated.
+  "ask_opinion"
 ]);
 
 const EXPECTED_SHAPES = Object.freeze({
@@ -67,7 +69,8 @@ const EXPECTED_SHAPES = Object.freeze({
   make_statement: "brief_conversational_response",
   ask_heard_confirmation: "brief_hearing_confirmation",
   ask_next_step: "brief_procedure_answer",
-  ask_explanation: "brief_basis_explanation"
+  ask_explanation: "brief_basis_explanation",
+  ask_opinion: "brief_opinion_stance"
 });
 
 const REQUESTED_CONTENT = Object.freeze({
@@ -79,7 +82,8 @@ const REQUESTED_CONTENT = Object.freeze({
   request_repetition: "preceding_utterance",
   ask_heard_confirmation: "hearing_confirmation",
   ask_next_step: "current_procedure",
-  ask_explanation: "basis_of_preceding_line"
+  ask_explanation: "basis_of_preceding_line",
+  ask_opinion: "own_opinion"
 });
 
 // Functions whose reply is socially obliged once the speaker heard the line,
@@ -110,6 +114,10 @@ function frameObligatesResponse(frame, responder_id = null, { recipient_type = n
   // A question about the listeners' own feelings, asked of them directly or as a group, is theirs to
   // answer (each answer is individual; ownership decides how many speak).
   if (fn === "check_in" && (recipient_type === "group" || recipient_type === "direct")) return true;
+  // So is any question whose answer is each listener's own (experience, opinion, role).
+  if (["ask_personal_experience", "ask_opinion", "ask_role_or_assignment"].includes(fn) && (recipient_type === "group" || recipient_type === "direct")) return true;
+  // A requested action is acknowledged (never performed) by someone who heard it.
+  if (fn === "make_request" && frame?.requested_action) return true;
   // Answering a clarification ("Which thing?" -> "I mean the camera.") obliges the one who asked it.
   if (frame?.resumed_question?.responder_ids?.length && fn !== "ask_item_ownership") return frame.resumed_question.responder_ids.includes(responder_id);
   // "Did anyone hear what I said?" is answered by a listener who heard it; the
@@ -177,7 +185,8 @@ function deriveDiscourseState({ interaction_history = [], dialogue_history = [],
     if (current_interval != null && interval != null && current_interval - interval > max_interval_gap) break; // stale
 
     const bases = basisBySubmission.get(item.submission_id) ?? {};
-    const responses = committed.map((e) => ({ speaker_id: e.speaker_id, speaker_name: e.speaker_name ?? null, text: cap(e.text), basis: bases[e.speaker_id] ?? null }));
+    // An autonomous report only ever voices the speaker's own authorized observation.
+    const responses = committed.map((e) => ({ speaker_id: e.speaker_id, speaker_name: e.speaker_name ?? null, text: cap(e.text), basis: bases[e.speaker_id] ?? (isReport ? { kind: "observation" } : null) }));
     const responderIds = [...new Set(committed.map((e) => e.speaker_id))];
     const playerText = isPlayerTurn ? cap(item.player_text) : null;
     // Interpretation of a prior turn uses the same residual-utterance rule as the
@@ -231,6 +240,19 @@ function deriveDiscourseState({ interaction_history = [], dialogue_history = [],
 
   const last = turns[turns.length - 1] ?? null;
   const previous = turns[turns.length - 2] ?? null;
+  // Topic stack: distinct conversational topics in order, each with its latest question (derived from
+  // history, never stored and never chosen by the model). A topic is the resolved item, the procedure,
+  // the speakers' own states, or the detected subject.
+  const topicKeyOf = (turn) => (turn.item_referent ? `item:${turn.item_referent.id}` : turn.discourse_function === "ask_next_step" ? "procedure" : turn.discourse_function === "check_in" ? "self_state" : turn.topic ?? null);
+  const topicStack = [];
+  for (const turn of turns) {
+    if (turn.kind !== "player_exchange" || ["clarify_previous", "request_repetition", "ask_explanation", "ask_heard_confirmation", "acknowledge", "close_topic"].includes(turn.discourse_function)) continue;
+    const key = topicKeyOf(turn);
+    if (!key || key === "unknown") continue;
+    const existing = topicStack.findIndex((entry) => entry.topic === key);
+    if (existing >= 0) topicStack.splice(existing, 1);
+    topicStack.push({ topic: key, question: turn.resolved_utterance ?? turn.player_text, interaction_id: turn.interaction_id, closed: turn.discourse_function === "close_topic" });
+  }
   // Open question: the immediately preceding player question was answered with a clarification
   // request, so a short follow-up naming the thing resumes THAT question (question -> clarification
   // -> answer). Derived from persisted history only; nothing is stored.
@@ -257,6 +279,8 @@ function deriveDiscourseState({ interaction_history = [], dialogue_history = [],
     last_responder_ids: last?.responder_ids ?? [],
     last_response_texts: (last?.responses ?? []).map((r) => r.text),
     pending_question: pending,
+    topic_stack: topicStack,
+    current_topic_key: topicStack.at(-1)?.topic ?? null,
     // The player's immediately preceding question when it was ANSWERED (not clarified): the target of an
     // explicit self-repair ("I mean for the day").
     last_question: last && last.kind === "player_exchange" && !last.awaiting_clarification && (last.responses ?? []).length && QUESTION_FUNCTIONS_RESUMABLE.has(last.discourse_function)
@@ -370,8 +394,16 @@ function resolveTemporalReference({ text, anchors = null, now = null, discourse 
     return done({ kind: "recent", resolved: true, anchor: "last_exchange", window: Object.freeze({ from: last, to: current }) });
   }
   if (/^(?:earlier|this morning)/i.test(expression)) return done({ kind: "operation_so_far", resolved: true, anchor: "operation_start", window: Object.freeze({ from: 0, to: current }) });
+  if (/^(?:today|for the day)/i.test(expression)) return done({ kind: "operation_day", resolved: true, anchor: "operation_start", window: Object.freeze({ from: 0, to: current }) });
+  // "When you said that": the preceding heard exchange is the canonical anchor.
+  if (/^when (?:you|he|she|they) said/i.test(expression)) {
+    const at = discourse?.last_turn?.interval ?? null;
+    return at != null ? done({ kind: "utterance", resolved: true, anchor: "prior_utterance", window: Object.freeze({ from: at, to: at }) }) : done({ kind: "utterance", resolved: false, anchor: "prior_utterance", reason: "no_prior_utterance", window: null });
+  }
+  // A future event ("when we get back") is not in canonical history: never guessed.
+  if (/^(?:when|after|until|once) we (?:get|come|go|head)\b/i.test(expression)) return done({ kind: "future", resolved: false, anchor: null, reason: "future_event_not_canonical", window: null });
   if (/^(?:last time|yesterday)/i.test(expression)) return done({ kind: "prior_operation", resolved: false, anchor: null, reason: "no_cross_operation_anchor", window: null });
-  const relation = expression.match(/^(before|after|when|while|since)\b/i)?.[1]?.toLowerCase() ?? null;
+  const relation = expression.match(/^(before|after|when|while|since|until)\b/i)?.[1]?.toLowerCase() ?? null;
   for (const [key, pattern] of Object.entries(TEMPORAL_ANCHOR_KEYWORDS)) {
     if (!pattern.test(expression)) continue;
     const at = Number(anchors?.[key]?.interval);
@@ -429,8 +461,26 @@ function resolveFromTurn(discourse_function, last) {
  * Deterministic frame for the RESIDUAL utterance (named address already
  * stripped by the caller). `discourse` may be null (context-free classification).
  */
-function buildSemanticFrame({ text, recipient_type = "none", interpretation = null, discourse = null, equipment = {}, scope_inherited = false, spatial_selection = null, temporal_anchors = null, now = null } = {}) {
-  const raw = String(text ?? "").trim();
+function buildSemanticFrame({ text, recipient_type = "none", interpretation = null, discourse = null, equipment = {}, scope_inherited = false, spatial_selection = null, temporal_anchors = null, now = null, people = [] } = {}) {
+  // Leading discourse markers ("Anyway, ...") carry no content; an explicit topic return ("Back to X, ...")
+  // is recorded, and classification sees the rest of the utterance.
+  let raw = String(text ?? "").trim();
+  let topicReturn = false;
+  for (let guard = 0; guard < 3; guard += 1) {
+    const before = raw;
+    raw = raw.replace(LP.discourse_marker, "");
+    if (LP.topic_return.test(raw)) { raw = raw.replace(LP.topic_return, ""); topicReturn = true; }
+    if (raw === before) break;
+  }
+  raw = raw.replace(/^[,\s]+/, "") || String(text ?? "").trim();
+  // "Back to what we were talking about": the most recent earlier topic's question is asked again.
+  if (topicReturn && LP.topic_return_generic.test(raw)) {
+    const earlier = [...(discourse?.topic_stack ?? [])].reverse().find((entry) => entry.topic !== discourse?.current_topic_key && entry.question) ?? null;
+    if (earlier) {
+      const reframed = buildSemanticFrame({ text: earlier.question, recipient_type, discourse: { ...(discourse ?? {}), pending_question: null, last_question: null }, equipment, scope_inherited, spatial_selection, temporal_anchors, now, people });
+      return Object.freeze({ ...reframed, topic_return: { topic: earlier.topic, question: earlier.question }, resolved_utterance: earlier.question });
+    }
+  }
   const interp = interpretation?.version ? interpretation : interpretUtterance(raw, { isGroup: recipient_type === "group" });
   const referents = [];
   let fn = null;
@@ -442,10 +492,12 @@ function buildSemanticFrame({ text, recipient_type = "none", interpretation = nu
   // A question about the listener's OWN current feeling: answered from canonical self-state.
   const selfQuery = selfStateQuery(raw);
 
-  if (LP.bare_reaction.test(raw)) fn = "clarify_previous";
+  if (LP.explanation_request.test(raw) || LP.bare_wh_followup.test(raw)) fn = "ask_explanation";
+  else if (LP.bare_reaction.test(raw)) fn = "clarify_previous";
   else if (LP.repetition_request.test(raw)) fn = "request_repetition";
   else if (LP.heard_confirmation.test(raw)) fn = "ask_heard_confirmation";
-  else if (LP.explanation_request.test(raw)) fn = "ask_explanation";
+  else if (LP.opinion_question.test(raw)) fn = "ask_opinion";
+  else if (LP.personal_experience.test(raw) && !ownership && !LP.past_perception.test(raw)) fn = "ask_personal_experience";
   else if (LP.next_step.test(raw)) fn = "ask_next_step";
   else if (selfQuery && !ownership) fn = "check_in";
   else if (LP.ambiguous_reference.test(raw)) { fn = "ambiguous_reference"; unresolved = true; }
@@ -511,8 +563,10 @@ function buildSemanticFrame({ text, recipient_type = "none", interpretation = nu
   const pending = discourse?.pending_question ?? null;
   if (pending && !isQuestion && raw.split(/\s+/).length <= 6 && ["make_statement", "acknowledge", "make_request", "ambiguous_reference"].includes(fn)) {
     const named = resolveEquipmentReferent(raw, equipment, { loose: true });
+    // The open question keeps its own function; an unspecific one ("You know the thing by the thing?")
+    // becomes a question about the now-named item, whose canonical fact is its custody.
     const underlying = pending.discourse_function === "ambiguous_reference"
-      ? (LP.item_ownership.test(pending.player_text ?? "") || LP.custody_predicate.test(pending.player_text ?? "") ? "ask_item_ownership" : (LP.handoff_request.test(pending.player_text ?? "") ? "make_request" : null))
+      ? (LP.handoff_request.test(pending.player_text ?? "") && !LP.item_ownership.test(pending.player_text ?? "") ? "make_request" : "ask_item_ownership")
       : pending.discourse_function;
     if (named.status === "unique" && underlying) {
       referents.length = 0;
@@ -582,6 +636,15 @@ function buildSemanticFrame({ text, recipient_type = "none", interpretation = nu
     request_kind: fn === "make_request" ? ((LP.handoff_request.test(raw) || LP.take_grab.test(raw)) && referents.some((ref) => ref.type === "equipment") ? "handoff" : (LP.order_imperative.test(raw) ? "order" : "general")) : null,
     temporal_reference: temporal,
     resumed_question: resumed,
+    // A request for someone to DO something: the structured intent a future action authority consumes.
+    // Conversation never performs it (see planResponses).
+    requested_action: fn === "make_request" ? requestedAction(raw, referents, people) : null,
+    // Information only an institution/instruction supplies (a schedule, a time): not knowing it is "not told".
+    asks_institutional_info: LP.institutional_info.test(raw),
+    // "Back to the camera, ...": an explicit return to an earlier topic.
+    topic_return: topicReturn ? { topic: null, question: null } : null,
+    // "Where?" / "When?": which aspect of the previous line was asked about.
+    explanation_aspect: fn === "ask_explanation" && LP.bare_wh_followup.test(raw) ? raw.replace(/[\s?!.]+$/, "").toLowerCase() : null,
     // "Are you excited?": which feeling was asked about; the answer comes from canonical self-state.
     self_state_query: fn === "check_in" ? selfQuery : null,
     // "What's next (for the day)?": the span of procedure asked about, when stated.
@@ -600,6 +663,34 @@ function buildSemanticFrame({ text, recipient_type = "none", interpretation = nu
     frame.expected_response_shape = EXPECTED_SHAPES.ambiguous_reference;
   }
   return Object.freeze(frame);
+}
+
+/**
+ * The structured intent of a request ("Give Roy the camera", "Wait here"). Code resolves the object and
+ * the named person against canonical equipment and personnel; nothing is executed here.
+ */
+const ACTION_VERBS = Object.freeze([
+  ["transfer_item", /\b(?:give|hand|pass|bring|take|grab|toss)\b/i],
+  ["hold_position", /\b(?:wait|stay|hold (?:on|up|here)|stop)\b/i],
+  ["follow", /\b(?:come with|follow|come here|come on)\b/i],
+  ["move", /\b(?:go|head|move|walk|run|get over)\b/i],
+  ["inspect", /\b(?:check|look at|inspect|examine)\b/i],
+  ["report", /\b(?:tell|report|radio|call)\b/i]
+]);
+function requestedAction(raw, referents = [], people = []) {
+  const action = ACTION_VERBS.find(([, pattern]) => pattern.test(raw))?.[0] ?? "general";
+  const item = referents.find((ref) => ref.type === "equipment" && ref.resolved) ?? null;
+  const named = (people ?? []).filter((person) => person?.id && person?.name && new RegExp(`\\b${String(person.name).replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\b`, "i").test(raw));
+  // "Give Roy the camera": Roy is the RECIPIENT; the actor is whoever is asked (the addressee).
+  const recipient = /\b(?:me|myself)\b/i.test(raw) ? { id: "player", name: "you" } : (action === "transfer_item" && named[0] ? { id: named[0].id, name: named[0].name } : null);
+  return Object.freeze({
+    action,
+    object: item ? { id: item.id, label: item.label } : null,
+    recipient,
+    actor_id: item?.holder && action === "transfer_item" ? item.holder : null,
+    status: "not_executed",
+    reason: "no_action_authority"
+  });
 }
 
 /** Thread state + summary for the current turn. */
@@ -752,7 +843,8 @@ const PURPOSES = Object.freeze({
   make_statement: "respond conversationally only if warranted; do not interrogate",
   ask_heard_confirmation: "confirm plainly that you heard what they just said; you may briefly acknowledge what they said but add no interpretation, urgency, motive or action, and do not ask whether anyone heard you",
   ask_next_step: "state the current next step exactly as supplied; if none is supplied, ask what they mean; do not invent a plan",
-  ask_explanation: "explain your previous line using only the supplied basis; do not invent a reason, experience, danger or plan"
+  ask_explanation: "explain your previous line using only the supplied basis; do not invent a reason, experience, danger or plan",
+  ask_opinion: "give your own view only as supplied; with no view supplied, say you have no particular opinion yet, without inventing one"
 });
 
 /**
@@ -775,6 +867,22 @@ function selfStateAnswer(query, selfState) {
  * WHY a committed line was authorized, derived from the plan it was worded from (persisted in the turn's
  * receipt). This is the only thing an explanation request may explain; wording is never the basis.
  */
+/**
+ * Which KIND of not-knowing a no-fact answer is (deterministic, from the frame): a person who did not
+ * perceive something, was not told, has no established history or opinion, or faces an unclear
+ * referent says so differently. The model words the kind; it never picks it.
+ */
+function uncertaintyKind(frame, fn) {
+  if (frame?.unresolved_reference) return "referent_unclear";
+  if (frame?.temporal_reference && !frame.temporal_reference.resolved) return "time_unclear";
+  if (frame?.past_perception) return "did_not_perceive";
+  if (fn === "ask_personal_experience") return frame?.requested_content === "background" ? "background_not_shared" : "no_established_personal_history";
+  if (fn === "ask_opinion") return "no_established_opinion";
+  if (fn === "ask_next_step") return "procedure_not_known";
+  if (frame?.asks_institutional_info) return "not_told";
+  return "no_established_fact";
+}
+
 function responseBasisFromPlan(plan, frame = null) {
   if (!plan) return null;
   const fn = plan.discourse_function;
@@ -786,14 +894,14 @@ function responseBasisFromPlan(plan, frame = null) {
     if (self) return { kind: "self_state", state: self.state, affect: [...(self.affect ?? [])], answer: value("self_state_answer")?.answer ?? null };
   }
   if (value("current_procedure")) return { kind: "briefing_instruction", ...value("current_procedure") };
-  if (value("item_holder")) return { kind: "custody", ...value("item_holder") };
+  if (value("item_holder")) return { kind: "custody", ...value("item_holder"), equipment_id: (frame?.referents ?? []).find((ref) => ref.type === "equipment" && ref.resolved)?.id ?? null };
   if (value("known_answer") || facts.some((f) => f.key === "known_fact")) return { kind: "known_information", facts: facts.filter((f) => f.key === "known_fact").map((f) => f.value?.text).filter(Boolean).slice(0, 2), known_answer: value("known_answer") };
   if (value("heard_confirmation")) return { kind: "heard", heard: value("heard_confirmation").heard !== false };
   if (value("antecedent_responses")) return { kind: "restatement" };
-  if (value("request_disposition")) return { kind: "request_policy", disposition: value("request_disposition").disposition };
+  if (value("request_disposition")) return { kind: "request_policy", disposition: value("request_disposition").disposition, requested_action: value("request_disposition").requested_action ?? null };
   if (value("name") || value("role") || value("current_assignment")) return { kind: "assignment", role: value("role"), assignment: value("current_assignment") };
   if (plan.may_ask_clarifying_question) return { kind: "clarification" };
-  if (["ask_factual", "ask_personal_experience", "challenge", "ask_next_step"].includes(fn)) return { kind: "no_known_fact", past_perception: Boolean(frame?.past_perception) };
+  if (["ask_factual", "ask_personal_experience", "challenge", "ask_next_step", "ask_opinion"].includes(fn)) return { kind: "no_known_fact", past_perception: Boolean(frame?.past_perception), uncertainty: value("uncertainty")?.kind ?? uncertaintyKind(frame, fn) };
   return { kind: "social", discourse_function: fn };
 }
 
@@ -881,7 +989,8 @@ function planResponses({ frame, owner_ids = [], responders = {}, names = {} } = 
       // handoff or order: a handoff needs the structured transfer, an order the structured order
       // authority. Until one of those resolves it, the reply acknowledges without committing.
       const kind = frame.request_kind ?? "general";
-      required.push({ key: "request_disposition", value: { kind, disposition: kind === "handoff" ? "requires_structured_handoff" : "heard_no_commitment", order_routing: "not_routed" } });
+      const action = frame.requested_action ? { action: frame.requested_action.action, object: frame.requested_action.object?.label ?? null, recipient: frame.requested_action.recipient ? (names[frame.requested_action.recipient.id] ?? frame.requested_action.recipient.name) : null, status: "not_executed" } : null;
+      required.push({ key: "request_disposition", value: { kind, disposition: kind === "handoff" ? "requires_structured_handoff" : "heard_no_commitment", order_routing: "not_routed", ...(action ? { requested_action: action } : {}) } });
       forbidden.push("acceptance_or_commitment");
     }
     // A check-in, or a remark about the speaker's own look, is answered from canonical self-state only.
@@ -892,6 +1001,8 @@ function planResponses({ frame, owner_ids = [], responders = {}, names = {} } = 
       // Only a procedure this speaker canonically knows answers "what's next"; otherwise it is asked about.
       if (self?.procedure?.next_step) required.push({ key: "current_procedure", value: { ...self.procedure, scope: frame.procedure_scope ?? "current" } });
     }
+    // No fact answers an answerable question: which KIND of not-knowing it is (the model words that kind).
+    if (["ask_factual", "ask_personal_experience", "challenge", "ask_opinion"].includes(fn) && !required.length && !(frame.addressee_state)) required.push({ key: "uncertainty", value: { kind: uncertaintyKind(frame, fn) } });
     if (fn === "ask_explanation") {
       const ante = frame.antecedent ?? {};
       const own = ante.resolved ? repairTargets(ante.responses ?? [], responder_id).find((r) => r.speaker_id === responder_id) ?? null : null;
@@ -912,7 +1023,8 @@ function planResponses({ frame, owner_ids = [], responders = {}, names = {} } = 
       forbidden_claims: forbidden,
       // An unresolved time ("before Maxwell left") is asked about only when no authorized fact answers
       // the question anyway (a known answer already fixes which event is meant).
-      may_ask_clarifying_question: fn === "ambiguous_reference" || Boolean(frame?.unresolved_reference) || (Boolean(frame?.temporal_reference) && !frame.temporal_reference.resolved && ["ask_factual", "ask_personal_experience"].includes(fn) && required.length === 0) || (fn === "ask_next_step" && required.length === 0),
+      // (The uncertainty descriptor states which kind of not-knowing applies; it is not an answering fact.)
+      may_ask_clarifying_question: fn === "ambiguous_reference" || Boolean(frame?.unresolved_reference) || (Boolean(frame?.temporal_reference) && !frame.temporal_reference.resolved && ["ask_factual", "ask_personal_experience"].includes(fn) && required.every((f) => f.key === "uncertainty")) || (fn === "ask_next_step" && required.length === 0),
       same_turn_prior_responses: planned.map((p) => p.responder_id),
       // STYLE-ONLY: shapes wording, never a factual claim.
       style_hints: { ...(self?.identity_style ?? {}) }

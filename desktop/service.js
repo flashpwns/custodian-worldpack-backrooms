@@ -33,6 +33,8 @@ const referenceExpedition = require("../tools/reference-expedition");
 const cq4Day1Opener = require("../tools/cq4-day1-opener");
 const interpretiveDirector = require("../tools/interpretive-director");
 const canonLexicon = require("../tools/canon-lexicon");
+const spatialEvents = require("../tools/spatial-event-contract");
+const { renderContributionTask } = require("../tools/dialogue-prompt-contract");
 const canonLinter = require("../tools/canon-linter");
 const canonicalLedger = require("../tools/canonical-world-ledger");
 const { buildSafeScene, fallbackNarration } = require("../tools/scene-presentation");
@@ -116,6 +118,8 @@ function dialogueTemporalAnchors(run) {
   const anchors = {};
   const briefing = run?.expedition?.day1_opener?.one_shot_events?.maxwell_opening_briefing;
   if (briefing?.consumed && Number.isFinite(Number(briefing.at_interval))) anchors.briefing = { interval: Number(briefing.at_interval), source: "day1_opener.one_shot_events.maxwell_opening_briefing" };
+  const concluded = run?.expedition?.day1_opener?.personnel_briefing;
+  if (concluded?.status === "concluded" && Number.isFinite(Number(concluded.concluded_at_interval))) anchors.maxwell_departure = { interval: Number(concluded.concluded_at_interval), source: "day1_opener.personnel_briefing.concluded_at_interval" };
   const crossing = (run?.expedition?.facility_operations?.events ?? []).find((event) => event?.type === "THRESHOLD_CROSSING" && Number.isFinite(Number(event.at?.interval)));
   if (crossing) anchors.crossing = { interval: Number(crossing.at.interval), source: `facility_operations.${crossing.id}` };
   return anchors;
@@ -1890,7 +1894,18 @@ class DesktopService {
     if (prepared.some((item) => item.unavailable)) canonical.result.provider_unavailable = true;
     else delete canonical.result.provider_unavailable;
     canonical.result.presentation_source = allModel ? first.presentationSource : allFallback ? "deterministic-fallback" : "mixed-model-fallback";
-    if (this.developerMode) this.log(`[YB:COMMIT_TRACE] ${JSON.stringify({ request_id: requestId, presentation_source: canonical.result.presentation_source, committed: committedResponses.map((item) => ({ speaker: item.speaker_name, text: item.text })), revalidation: prepared.map((item) => ({ speaker: item.context.speaker?.first_name ?? null, ok: item.context_check?.ok ?? null, code: item.context_check?.code ?? null, cancelled: Boolean(item.context_check?.cancel) })) })}`);
+    if (this.developerMode) {
+      // One bounded record per turn: what was committed and why, never hidden world state.
+      const after = (() => { try { const d = dialogueDiscourse.deriveDiscourseState({ interaction_history: currentEntry.run.expedition.interaction_history, dialogue_history: currentEntry.run.expedition.dialogue_history, player_id: currentEntry.run.session.startup.player.observer_id, location_id: currentEntry.run.spatial?.player_location ?? null, current_interval: currentEntry.run.expedition.clock?.interval ?? null, equipment: currentEntry.run.expedition.equipment, receipts: currentEntry.run.expedition.communication_receipts ?? [] }); return { topic: d.current_topic_key, topic_stack: d.topic_stack.map((t) => t.topic), open_question: d.pending_question?.player_text ?? null, last_question: d.last_question?.player_text ?? null }; } catch { return null; } })();
+      this.log(`[YB:COMMIT_TRACE] ${JSON.stringify({
+        request_id: requestId,
+        provider: first?.selectedProvider ?? null,
+        presentation_source: canonical.result.presentation_source,
+        committed: committedResponses.map((item) => ({ event_id: item.committed_event_id, speaker: item.speaker_name, source: item.source, text: item.text })),
+        turns: prepared.map((item) => ({ speaker: item.context.speaker?.first_name ?? null, basis: dialogueDiscourse.responseBasisFromPlan(item.context.response_plan, item.context.semantic_frame)?.kind ?? null, prompt_tokens_est: item.packet ? Math.ceil(String(renderContributionTask(item.packet) ?? "").length / 4) : null, candidate: item.validation?.ok ? "accepted" : (item.validation?.code ?? null), reason: item.validation?.ok ? null : (item.validation?.reason ?? null), revalidation: { ok: item.context_check?.ok ?? null, code: item.context_check?.code ?? null, cancelled: Boolean(item.context_check?.cancel) } })),
+        discourse_after: after
+      })}`);
+    }
     canonical.result.public_reason = committedResponses.map((item) => `${item.speaker_name}: ${item.text}`).join(" ") || "Your message is heard. No further response is required.";
     if (allFallback && first) {
       // Built from what was actually COMMITTED (after revalidation/cancellation), never from a
@@ -2339,7 +2354,12 @@ class DesktopService {
         // ED-1: deterministic semantic frame (discourse function, referents,
         // antecedent). Code decides the conversational situation; the model
         // never chooses any part of it.
-        const semanticFrame = dialogueDiscourse.buildSemanticFrame({ text: utterance, recipient_type, interpretation: localInterpretation, discourse: discourseState, equipment: expedition.equipment, scope_inherited: inheritedScope, spatial_selection, temporal_anchors: dialogueTemporalAnchors(entry.run), now: expedition.clock?.interval ?? null });
+        // A renderer/spatial-runtime selection is INPUT: it resolves "that door" only after the contract
+        // has checked it against canonical spatial state; otherwise the reference stays unresolved.
+        const selectionCheck = spatial_selection ? spatialEvents.resolveSpatialReferenceSelection(entry.run, spatial_selection, { observer_id: playerId, now: expedition.clock?.interval ?? null }) : null;
+        const validatedSelection = selectionCheck?.ok ? selectionCheck.selection : null;
+        if (selectionCheck && !selectionCheck.ok && this.developerMode) this.log(`[YB:SPATIAL_TRACE] ${JSON.stringify({ request_id: requestId, rejected: selectionCheck.code, detail: selectionCheck.detail ?? null })}`);
+        const semanticFrame = dialogueDiscourse.buildSemanticFrame({ text: utterance, recipient_type, interpretation: localInterpretation, discourse: discourseState, equipment: expedition.equipment, scope_inherited: inheritedScope, spatial_selection: validatedSelection, temporal_anchors: dialogueTemporalAnchors(entry.run), now: expedition.clock?.interval ?? null, people: coworkers.map((member) => ({ id: member.personnel_id ?? member.id, name: member.first_name ?? null })) });
         const discourseSummary = dialogueDiscourse.summarizeDiscourse(discourseState, semanticFrame);
         for (const recipient of (recipients.length > 0 ? recipients : localPeers)) {
           const recId = recipient.personnel_id ?? recipient.id;
@@ -2527,6 +2547,9 @@ class DesktopService {
           response_speaker: chosen?.recipient?.first_name ?? chosen?.recipient?.display_name ?? null,
           response_speaker_id: chosenId,
           response_owners: responseOwners,
+          // A player request for someone to DO something, as structured intent. Conversation never
+          // performs it (status not_executed); a future action authority consumes it from here.
+          ...(semanticFrame.requested_action ? { requested_action: clone(semanticFrame.requested_action) } : {}),
           responses: projectedResponses,
           response_listeners: responseListeners,
           location_id: entry.run.spatial?.player_location ?? null,

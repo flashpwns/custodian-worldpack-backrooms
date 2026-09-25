@@ -505,8 +505,11 @@ function resolveKnownAnswer(run, workerId, playerText = "", world = null) {
   }
 
   if (/\b(?:what was your (?:reply|response)|what did you (?:say|reply|answer)(?!\s+(?:to|about)\s+(?!me\b)\w)|recall your reply)\b/i.test(text)) {
-    const retrieved = retrieveRelevantMemories(person, run?.expedition, { queryText: text, speakerId: workerId, playerId: run?.session?.startup?.player?.observer_id, limit: 1 });
-    if (retrieved.length > 0 && retrieved[0].response) return { kind: "recalled-own-reply", name, text: retrieved[0].response };
+    // Only the worker's OWN recorded replies are "what I said". Interactions merely heard carry someone
+    // else's reply and must never be recalled as one's own.
+    const retrieved = retrieveRelevantMemories(person, run?.expedition, { queryText: text, speakerId: workerId, playerId: run?.session?.startup?.player?.observer_id, limit: 8 })
+      .filter((memory) => memory.source === "character-dialogue-memory" && memory.response);
+    if (retrieved.length > 0) return { kind: "recalled-own-reply", name, text: retrieved[0].response };
   }
 
   if (!/\b(?:what happened|what did you (?:find|see|observe)|while (?:we were )?(?:apart|separated)|report what happened)\b/i.test(text)) return null;

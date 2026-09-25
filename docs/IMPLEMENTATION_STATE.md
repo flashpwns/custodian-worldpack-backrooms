@@ -1,5 +1,28 @@
 # Yellow Beast Implementation State
 
+## Human-Conversation Semantics Convergence Pass — 2026-09-24
+
+- **Starting point**: HEAD `256a0d7`, which already fixed Jack's reproduction; that reproduction ran on the code before it. A fresh trace of the current production path found the remaining gaps below.
+- **Fixed (deterministic; no new model authority)**:
+  - **False recall.** Listeners who merely heard a line recalled it as their own reply ("I replied: …" from three people). `resolveKnownAnswer` now uses only the worker's own recorded replies.
+  - **Unspecific narrowing.** "You know the thing by the thing?" → "I mean the camera." now resumes as a question about the named item. Spatial and temporal fragments ("By the table.", "After the briefing.") also narrow an open clarification.
+  - **Explanations.** "What are you basing that on?", "What do you mean by that?", "Why not?" and bare "Where?"/"When?" are explanation requests on the prior line. An explanation may voice only its recorded basis; the validator rejects a different basis, invented reasons, and history of either polarity.
+  - **Topic stack.** Discourse markers ("Anyway, …") no longer block classification. A derived topic stack in `deriveDiscourseState` supports "back to what we were talking about" and survives a cold reload.
+  - **Group policy.** Everyone answers group greetings and group questions whose answer is individual (own feelings, experience, opinion, role, including "any/each of you"). One spokesperson answers shared facts and procedure. One listener answers untargeted remarks and requests. Only the addressee answers a direct question.
+  - **Kinds of not-knowing.** The plan now distinguishes `did_not_perceive`, `not_told`, `no_established_personal_history`, `no_established_opinion`, `procedure_not_known`, `no_established_fact`, `referent_unclear` and `time_unclear`. The model words the kind; it never picks it. The new `ask_opinion` answers only from canonical opinion, currently always "no view yet".
+  - **Temporal references.** Maxwell's departure is recorded canonically (`personnel_briefing.concluded_at_interval`). "When you said that" anchors to the prior exchange and "today"/"for the day" to the operation. Future events ("when we get back") and unrecorded anchors are clarified.
+  - **Requested actions.** A request produces structured intent `{action, object, recipient, actor_id, status: not_executed, reason: no_action_authority}` on the canonical interaction record, internal and not projected. Nothing executes. Wording may not accept the request or report it done.
+  - **Spatial selections.** `resolveSpatialReferenceSelection` checks a renderer selection against canonical spatial state (observer placement, perceivable entity, anchor, relation target, candidate set, staleness). The service now validates selections before they resolve deixis; previously it trusted them.
+  - **Stale explanations.** A custody explanation registers that custody as whole-turn commit-sensitive.
+  - **Traces.** `[YB:COMMIT_TRACE]` adds event ids, provider, per-line source, basis, estimated prompt tokens, validator reason, revalidation and the discourse state after the turn. `[YB:SPATIAL_TRACE]` records rejected selections.
+  - **Validator.** Typographic apostrophes are normalized (Qwen's "We’ll" bypassed rules). A bare "On it" no longer false-matches inside "opinion on it". Sarcasm answered with agreement plus a world fact is rejected. Own perception is "didn't notice", never "I don't know".
+  - **Presentation.** Model-worded communication turns carried the committed "Name: line" as result narration, which `renderer.js` played into `#interaction-feedback` outside the LOCAL transcript. That is the stray "Sydney: I don't know." line. Communication turns that committed dialogue no longer echo it.
+- **Verification**:
+  - `tests/ed26-conversation-semantics.test.js` passes 15/15: stateful branching, bounded properties, provider independence (fallback, malformed, throwing, wording), cold reload, stale state, temporal, uncertainty, action and spatial contracts, trace, sequences A–F, real-model findings and presentation.
+  - Full per-file run: 1229 pass / 80 fail across 33 files. Every failure is identical on the audit base, so nothing is newly failing.
+  - Real models on the production path: fallback-only, Gemma 4 E4B and Qwen3-4B share semantic digest `0c6582df6118f576` over 17 turns.
+- **Not changed**: the raw-media provenance `validate` rule (owner decision; no media or policy edits). The ed24–ed26 suites are unregistered in the protected verification authority, like ed1–ed23.
+
 ## Human-Acceptance Dialogue Reproduction Repair — 2026-09-24
 
 - **Evidence**: Jack's first natural Electron conversation after the freeze audit, with developer traces from `~/Library/Application Support/Electron/yellow-beast/logs/desktop.log`. In that run Gemma produced exactly what each plan authorized and the validator accepted it, so every defect was in deterministic planning.

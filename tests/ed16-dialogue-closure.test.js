@@ -168,9 +168,9 @@ test("ED-1.6 H/I/J — facts offered for self-description, background and experi
 
   const experience = plan("Have you been in there before?", "direct");
   assert.equal(experience.frame.requested_content, "personal_experience");
-  assert.deepEqual(experience.plan.required_facts, []);
+  assert.deepEqual(experience.plan.required_facts, [{ key: "uncertainty", value: { kind: "no_established_personal_history" } }], "no experience fact; only which kind of not-knowing applies");
   assert.deepEqual(experience.plan.optional_facts, [], "async_tenure is not expedition experience");
-  assert.equal(F.presentFallback(experience), "Not that I know of.");
+  assert.equal(F.presentFallback(experience), "Not that I can think of.");
 });
 
 // ── K: prior-turn reclassification ──────────────────────────────────────────

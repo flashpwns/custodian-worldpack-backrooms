@@ -304,14 +304,15 @@ test("ED-1.5 — plans own fact selection; fallback respects the plan", () => {
   assert.deepEqual(time.plan.required_facts.map((f) => f.value.text), ["The departure cutoff is at one o'clock."]);
   assert.equal(F.presentFallback(time), "The departure cutoff is at one o'clock.");
   const none = plan("Where did Kirk go?", { facts });
-  assert.equal(none.plan.required_facts.length, 0);
+  // No answering fact; only the descriptor of which kind of not-knowing applies.
+  assert.deepEqual(none.plan.required_facts, [{ key: "uncertainty", value: { kind: "no_established_fact" } }]);
   assert.equal(F.presentFallback(none), "I don't know.");
   assert.doesNotMatch(F.presentFallback(none), /which part|check/i);
 
   // personal experience: no invented "first time"
   const personal = plan("Have you been in there before?");
   assert.doesNotMatch(F.presentFallback(personal), /first time/i);
-  assert.match(F.presentFallback(personal), /not that i know of|don't know/i);
+  assert.match(F.presentFallback(personal), /not that i (?:know of|can think of)|don't know/i);
   const withExp = plan("Have you been in there before?", { person: { prior_expedition_experience: "Two prior surveys of the lower levels" } });
   assert.equal(F.presentFallback(withExp), "Two prior surveys of the lower levels.");
 

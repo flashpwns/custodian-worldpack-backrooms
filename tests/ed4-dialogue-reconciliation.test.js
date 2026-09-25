@@ -115,7 +115,7 @@ test("ED-4 — the model task is a projection of the contribution only, framed a
 test("ED-4 — humane fallback wording preserves semantics without database phrasing", () => {
   const fb = (t, o = {}) => { const p = plan(t, o); return F.presentFallback({ frame: p.frame, plan: p.plan }); };
   assert.equal(fb("Where is the exit?"), "I don't know.");
-  assert.equal(fb("Have you been there before?"), "Not that I know of.");
+  assert.equal(fb("Have you been there before?"), "Not that I can think of.");
   assert.equal(fb("You know the thing by the thing?", { recipient_type: "none" }), "Sorry, which thing do you mean?");
   assert.equal(fb("Who has the field camera?", { owner: "c-nora" }), "You've got the 35mm field camera.");
   for (const t of ["Where is the exit?", "Have you been there before?", "Can you repeat that?", "Huh?"]) assert.doesNotMatch(fb(t), /established|confirmed|information|records?\b/i, t);

@@ -131,7 +131,7 @@ const BARE_DEMONSTRATIVE_PATTERN = /^(?:what(?:'s| is| was)?|(?:did|can|could|do
 // An item pronoun in a custody/location predicate ("Who has it?", "Is it here?").
 const ITEM_ANAPHOR_PATTERN = /\b(?:who|where)(?:'s| is| has| had)?\b[^.?!]*\bit\b|\b(?:is|was) it (?:here|there|with|on|in)\b|\b(?:have|has|got|seen|see|find|found|carry|carrying|holding|take|took|grab|bring|hand|pass|give)\b[^.?!]*\b(?:it|that one|this one)\b/i;
 // A reference to an earlier time or event ("earlier", "before we crossed", "just now").
-const TEMPORAL_REFERENCE_PATTERN = /\b(?:earlier|just now|a (?:minute|moment|second|while) ago|last time|this morning|yesterday|(?:before|after|when|while|since) (?:we|you|i|he|she|they|the|maxwell|briefing|crossing)\b[^.?!]*)/i;
+const TEMPORAL_REFERENCE_PATTERN = /\b(?:earlier|just now|a (?:minute|moment|second|while) ago|last time|this morning|yesterday|today|for the day|when (?:you|he|she|they) said (?:that|it)|(?:before|after|when|while|since|until) (?:we|you|i|he|she|they|the|maxwell|kirk|briefing|crossing)\b[^.?!]*)/i;
 // The speaker's own past perception ("Did you see anything?", "Have you noticed...").
 const PAST_PERCEPTION_PATTERN = /\b(?:did|have|had) you (?:see|seen|hear|heard|notice|noticed|spot|spotted|catch|smell)\b/i;
 // A remark about the addressee's own look or manner ("You look nervous.").
@@ -169,16 +169,31 @@ function selfStateQuery(raw) {
 // answer it; without one it is a clarification. Never every "next".
 const NEXT_STEP_PATTERN = /^(?:so,?\s+|okay,?\s+|ok,?\s+|alright,?\s+|and\s+)?(?:what(?:'s| is)|whats)\s+(?:next|the plan|the next step|our next step|up next|on the agenda)\b|^(?:so,?\s+|okay,?\s+|and\s+)?what (?:now|next)\b|\bwhat (?:do|should|are) we (?:do|doing|supposed to do|supposed to be doing)(?:\s+(?:now|next|today))?[\s?!.]*$|\bwhere (?:do|should) we (?:go|head)(?:\s+(?:now|next))?[\s?!.]*$|\bwhat happens (?:now|next)\b/i;
 // "Why?" / "What makes you say that?": asks the reason for the immediately preceding line.
-const EXPLANATION_REQUEST_PATTERN = /^(?:but\s+|so\s+|and\s+|oh,?\s+)?(?:why(?: not| is that| do you (?:say|think) (?:that|so)| would you say that)?|why'?s that|how come|what makes you (?:say|think) (?:that|so|it)|how do you know(?: that)?|what do you base that on)(?:,\s*[A-Za-z][\w'-]*)?[\s?!.]*$/i;
+const EXPLANATION_REQUEST_PATTERN = /^(?:but\s+|so\s+|and\s+|oh,?\s+)?(?:why(?: not| is that| do you (?:say|think) (?:that|so)| would you say that)?|why'?s that|how come|what makes you (?:say|think) (?:that|so|it)|how do you know(?: that)?|what do you base that on|what are you basing (?:that|it) on|based on what|what'?s that based on|what do you mean by (?:that|it))(?:,\s*[A-Za-z][\w'-]*)?[\s?!.]*$/i;
+// A bare wh-follow-up ("Where?", "When?") asks about the immediately preceding line.
+const BARE_WH_FOLLOWUP_PATTERN = /^(?:where|when|who|which one|how)[\s?!.]*$/i;
+// Leading discourse markers carry no content ("Anyway, what's next?"); classification sees the rest.
+const DISCOURSE_MARKER_PATTERN = /^(?:anyway|anyways|so|okay|ok|alright|all right|well|right|oh|um|uh|also|and|but)\b[,.!]?\s+/i;
+// An explicit return to an earlier topic ("Back to the camera, ...", "Anyway, back to what we were saying").
+const TOPIC_RETURN_PATTERN = /^(?:(?:going |getting |to get )?back to|as i was saying,?|returning to)\s*/i;
+const TOPIC_RETURN_GENERIC_PATTERN = /^(?:what we were (?:talking about|saying)|the (?:earlier|previous|other|first) (?:thing|question|topic)|that|it|before|earlier)[\s?!.,]*$/i;
+// "Have you (ever) been...?" / "Have any of you worked...?": the listener's own past experience.
+const PERSONAL_EXPERIENCE_PATTERN = /\b(?:have|has|had) (?:you|any of you|each of you|either of you|all of you|you all|you guys|y'?all|anyone|anybody)(?: here)?(?: ever)? (?:been|done|worked|seen|used|gone|tried)\b/i;
+// "What do you think?" / "What's your take?": asks the listener's own opinion.
+const OPINION_QUESTION_PATTERN = /\bwhat do (?:you|each of you|all of you|you all|you guys|y'?all|any of you) think\b|\bwhat(?:'s| is) your (?:take|opinion|view|read)\b|\bhow do you feel about\b|\bany thoughts\b/i;
+// Information only an institution/instruction would supply (schedules, times, who is in charge).
+const INSTITUTIONAL_INFO_PATTERN = /\b(?:what time|when (?:do|are|will|should) we|schedule|cutoff|deadline|how long (?:do|will|are|should) we|who(?:'s| is) in charge|departure|leave at)\b/i;
 // A fragment that narrows an open clarification ("I mean for the day", "No, the other one").
-const REPAIR_FRAGMENT_PATTERN = /^(?:i mean|i meant|no,?\s+(?:i mean|the|that|this|for|after|before)|not that|the other|for (?:the day|today|now)|like,?\s|after\b|before\b|(?:the|that|this|my|your|our)\s)/i;
+const REPAIR_FRAGMENT_PATTERN = /^(?:i mean|i meant|no,?\s+(?:i mean|the|that|this|for|after|before)|not that|the other|for (?:the day|today|now)|like,?\s|after\b|before\b|(?:the|that|this|my|your|our)\s|(?:by|near|next to|beside|behind|in front of|under|over by|at|on)\s)/i;
 const REPAIR_LEAD_PATTERN = /^(?:i mean|i meant|no,?\s+i mean|no,?|like,?)\s*/i;
 // An explicit self-repair of one's own just-answered question ("I mean for the day").
 const SELF_REPAIR_LEAD_PATTERN = /^(?:i mean|i meant|no,?\s+i mean(?:t)?)\b/i;
+// Canonical events a temporal reference may anchor to. Future gameplay extends this by recording a
+// canonical event and adding its phrase here -- never by special-casing dialogue. Most specific first.
 const TEMPORAL_ANCHOR_PATTERNS = Object.freeze({
+  maxwell_departure: /\b(?:maxwell|kirk|dr\.? maxwell|the doctor) (?:left|leaving|went|departed)\b/i,
   briefing: /\bbriefing\b/i,
   crossing: /\b(?:cross(?:ed|ing)?|threshold|went through|came through)\b/i,
-  maxwell_departure: /\bmaxwell (?:left|leaving|went)\b/i,
   separation: /\b(?:apart|split up|separated)\b/i
 });
 // A question about where an item is or who holds it ("Is the camera here?", "Have you seen the radio?").
@@ -224,6 +239,13 @@ const LANGUAGE_PATTERNS = Object.freeze({
   repair_fragment: REPAIR_FRAGMENT_PATTERN,
   repair_lead: REPAIR_LEAD_PATTERN,
   self_repair_lead: SELF_REPAIR_LEAD_PATTERN,
+  bare_wh_followup: BARE_WH_FOLLOWUP_PATTERN,
+  discourse_marker: DISCOURSE_MARKER_PATTERN,
+  topic_return: TOPIC_RETURN_PATTERN,
+  topic_return_generic: TOPIC_RETURN_GENERIC_PATTERN,
+  opinion_question: OPINION_QUESTION_PATTERN,
+  personal_experience: PERSONAL_EXPERIENCE_PATTERN,
+  institutional_info: INSTITUTIONAL_INFO_PATTERN,
   self_state_affect_terms: SELF_STATE_AFFECT_TERMS
 });
 
@@ -282,7 +304,7 @@ function stripNamedAddress(text, target = null) {
   return parseNamedAddress(text, { explicit_target: target }).residual_text;
 }
 
-const GROUP_ADDRESS_PATTERNS = /(?:^|\b)(?:@?(?:table|team|everyone|everybody|all|crew|teammates?|folks)|anybody|anyone|does anyone|you all|all of you|yourselves|you guys|you folks|y'all)(?:\b|$)/i;
+const GROUP_ADDRESS_PATTERNS = /(?:^|\b)(?:@?(?:table|team|everyone|everybody|all|crew|teammates?|folks)|anybody|anyone|does anyone|you all|all of you|any of you|each of you|either of you|both of you|yourselves|you guys|you folks|y'all)(?:\b|$)/i;
 const GROUP_GREETING_PATTERNS = new RegExp(`^${GREETING_HEAD}[\\s,!-]+${GREETING_VOCATIVE}[\\s!.,?]*$`, "i");
 const AMBIGUOUS_REFERENCE_PATTERNS = /\b(?:the thing|that thing|do the thing|over there|you know what|whatever it is|that stuff)\b/i;
 // wire the late-defined pattern into the shared table
@@ -444,6 +466,8 @@ function interpretUtterance(text, { isGroup = false } = {}) {
  * ordered by canonical team order and filtered to personnel who heard the line.
  * The model never participates in this decision.
  */
+// Questions whose answer belongs to each listener personally (never a shared fact).
+const INDIVIDUAL_ANSWER_FUNCTIONS = new Set(["ask_personal_experience", "ask_opinion", "ask_role_or_assignment"]);
 function resolveResponseOwners({ recipient_type, interpretation, player_text, candidates = [], frame = null } = {}) {
   const eligible = candidates.filter((candidate) => candidate?.response_eligible && candidate?.id);
   if (recipient_type === "direct") return eligible.slice(0, 1).map((candidate) => candidate.id);
@@ -479,6 +503,14 @@ function resolveResponseOwners({ recipient_type, interpretation, player_text, ca
   // inherently individual answer: every eligible present listener gets one, like a group greeting.
   // Asked of the room at no one ("Excited?"), one listener answers.
   if (fn === "check_in") return recipient_type === "group" ? eligible.map((candidate) => candidate.id) : eligible.slice(0, 1).map((candidate) => candidate.id);
+  // Other questions whose answer is each listener's own (experience, opinion, role) are answered by each
+  // listener when the group is addressed; otherwise by one.
+  if (INDIVIDUAL_ANSWER_FUNCTIONS.has(fn) && !frame?.resumed_question) return recipient_type === "group" ? eligible.map((candidate) => candidate.id) : [(eligible.find((candidate) => candidate.has_relevant_knowledge) ?? eligible[0]).id];
+  // A requested action is acknowledged by the one asked to act (if present and eligible), else one listener.
+  if (fn === "make_request" && frame?.requested_action) {
+    const actor = eligible.find((candidate) => candidate.id === frame.requested_action.actor_id);
+    return [(actor ?? eligible[0]).id];
+  }
   // Answering a clarification: the one who asked it answers the now-narrowed question.
   const clarifiers = new Set(frame?.resumed_question?.responder_ids ?? []);
   if (clarifiers.size && fn !== "ask_item_ownership") {
