@@ -400,11 +400,14 @@ test("Ontology A — the Threshold reaches the model as \"the Threshold\", never
   assert.match(prompt, /fixed gate, not an object/);
   const state = setup("ed22-onto-a");
   try {
-    // Ontology truth is not observer knowledge: no delivered Day-1 source tells these coworkers what the
-    // Threshold is, so its definition never enters their reply context (canonical-knowledge CANON_NOT_GRANTED).
+    // Ontology truth enters reply context only as the speaker's GRANT: since the 2026-09-25 owner
+    // ratification, baseline induction tells every Day-1 expedition member what the Threshold is (a fixed
+    // crossing), so the granted proposition -- not broader canon text -- is what reaches the model.
     const { capsule } = compile(state, state.ids[0], "Is the Threshold cleared for crossing?");
-    assert.equal(capsule.known_state.find((k) => k.kind === "definition"), undefined);
-    assert.doesNotMatch(blob(capsule), /apparatus/i);
+    const definition = capsule.known_state.find((k) => k.kind === "definition");
+    assert.ok(definition, "the granted definition enters");
+    assert.match(definition.text, /fixed crossing between Standard and the Complex/);
+    assert.doesNotMatch(blob(capsule), /apparatus|portal/i);
   } finally { cleanup(state); }
 });
 
@@ -427,8 +430,8 @@ test("Ontology C/D/E — knowing what the Threshold is is not knowing its state;
   try {
     const [a, b] = state.ids;
     const first = compile(state, a, "Is the Threshold cleared for crossing?");
-    assert.ok(!first.capsule.known_state.some((k) => k.kind === "definition"), "C: canon does not grant these coworkers what it is (no source)");
-    assert.ok(!first.capsule.known_state.some((k) => /cleared|active|collapsed|dead|dark/i.test(k.text) && k.kind !== "definition"), "C: but not its current state");
+    assert.ok(first.capsule.known_state.some((k) => k.kind === "definition"), "C: baseline induction grants what it IS");
+    assert.ok(!first.capsule.known_state.some((k) => /cleared|active|collapsed|dead|dark|energi/i.test(k.text)), "C: but never its current state");
     // D: hidden canonical state changes; nothing surfaces.
     const before = first.capsule._internal.fingerprint;
     state.run.expedition.day1_opener.cutoff_exceeded = true;
@@ -440,7 +443,7 @@ test("Ontology C/D/E — knowing what the Threshold is is not knowing its state;
     const told = compile(state, a, "Is the Threshold cleared for crossing?");
     const item = told.capsule.known_state.find((k) => k.kind === "reported");
     assert.ok(item && item.epistemic === "told" && /cleared for crossing/.test(item.text));
-    assert.ok(!told.capsule.known_state.some((k) => k.kind === "definition"), "being told its state grants its state (as report), not its definition");
+    assert.ok(told.capsule.known_state.filter((k) => k.kind === "definition").every((k) => !/cleared/i.test(k.text)), "being told its state grants its state (as report); the definition never carries state");
   } finally { cleanup(state); }
 });
 

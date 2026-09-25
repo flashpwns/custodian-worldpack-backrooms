@@ -19,6 +19,25 @@ const lowerFirst = (text) => text.replace(/^([A-Z])(?=[a-z])/, (m) => m.toLowerC
 const upperFirst = (text) => text.replace(/^([a-z])/, (m) => m.toUpperCase());
 const lowerList = (items) => items.map((item) => String(item).toLowerCase()).join(" and ");
 
+/**
+ * Safe quotation of an earlier line (presentation only; the quoted content is never rewritten): one
+ * outer pair of double quotes, inner double quotes become single quotes, a line already wrapped in quotes
+ * is not wrapped twice, and the line's own closing punctuation stays inside the quotes (no `."."`).
+ *   quoteLine('I said, "Hey."') -> '"I said, \'Hey.\'"'
+ */
+function quoteLine(text) {
+  let inner = String(text ?? "").replace(/\s+/g, " ").trim();
+  // Unwrap one existing outer pair so it is not doubled.
+  const wrapped = inner.match(/^["“”](.*)["“”]$/);
+  if (wrapped && !/["“”]/.test(wrapped[1])) inner = wrapped[1].trim();
+  inner = inner.replace(/["“”]/g, "'");
+  if (!inner) return '""';
+  const closed = /[.!?…]['’]?$/.test(inner) ? inner : `${inner}.`;
+  return `"${closed}"`;
+}
+/** "<lead> "<line>"" with correct terminal punctuation (the quote already ends the sentence). */
+const saidLine = (lead, text) => `${lead} ${quoteLine(text)}`;
+
 const JOKE_BY_EXPRESSION = {
   "dryly observant": "Reassuring, isn't it.",
   "quietly friendly": "Ha. Fair enough.",
@@ -96,9 +115,22 @@ function presentExplanation(basis, style = {}) {
     case "briefing_instruction":
       return `That's what we were told at ${basis.source ?? "the briefing"}.`;
     case "custody":
-      return basis.holder_is_self ? "Because it's with me." : (basis.holder_known === false ? "I just don't know who has it." : "That's where it is, as far as I know.");
-    case "known_information":
-      return "That's just what I know about it.";
+      if (basis.holder_is_self) return "Because it's with me.";
+      if (basis.holder_known === false) return "I just don't know who has it.";
+      if (basis.known_by === "briefing") return "Maxwell said so at the briefing.";
+      if (basis.known_by === "seen") return "I can see it from here.";
+      if (basis.known_by === "seen_earlier") return "That's where I last saw it.";
+      return "That's where it is, as far as I know.";
+    case "known_information": {
+      const p = basis.provenance ?? [];
+      const said = p.includes("briefing") ? "Maxwell told us at the briefing." : p.includes("observed") ? "I saw it myself." : p.includes("heard") && basis.heard_from?.length ? `${basis.heard_from.join(" and ")} said so.` : p.includes("self") ? "That's my own assignment." : p.includes("baseline_field_procedure") ? "That's basic field training." : p.includes("baseline_induction") ? "That's the basic orientation everyone assigned here gets." : "That's just what I know about it.";
+      return basis.partial ? `${said} Nobody's said anything about the rest.` : said;
+    }
+    case "custody_history":
+      if (!basis.holder_name) return "I just don't know who had it before.";
+      return basis.basis === "briefing" ? "Maxwell said so at the briefing." : `I saw it with ${basis.holder_is_self ? "me" : basis.holder_name} earlier.`;
+    case "heard_report":
+      return basis.speakers?.length ? `I heard ${basis.speakers.join(" and ")} say it.` : "I heard it said.";
     case "assignment":
       return "That's my assignment.";
     case "heard":
@@ -151,7 +183,7 @@ function presentMeaning(meaning, style = {}) {
 /** A recent exchange, accounted for with only what the speaker perceived; no motive is ever supplied. */
 function presentConversationEvent(event) {
   if (!event) return null;
-  if (event.responded) return event.own_reply ? `I did answer. I said, "${sentence(event.own_reply)}."` : "I did answer you.";
+  if (event.responded) return event.own_reply ? `I did answer. ${saidLine("I said,", event.own_reply)}` : "I did answer you.";
   if (event.reason === "did_not_hear") return "Sorry, I didn't hear you then.";
   if (event.reason === "another_answered" && event.others_responded?.length) return `${event.others_responded.join(" and ")} answered you then.`;
   return "You're right, I didn't answer. Sorry about that.";
@@ -176,8 +208,8 @@ const variant = (primary, alternates, prior = []) => [primary, ...alternates].fi
 
 function renderKnownAnswer(known) {
   if (!known) return null;
-  if (known.kind === "recalled-player-statement") return `I remember what you told me: “${sentence(known.text)}”.`;
-  if (known.kind === "recalled-own-reply") return `I replied: “${sentence(known.text)}”.`;
+  if (known.kind === "recalled-player-statement") return saidLine("I remember what you told me:", known.text);
+  if (known.kind === "recalled-own-reply") return saidLine("I replied:", known.text);
   if (known.kind === "own-report") {
     const clauses = [];
     if (known.checked_location) clauses.push(`I checked the ${known.checked_location}.`);
@@ -189,19 +221,75 @@ function renderKnownAnswer(known) {
   return null;
 }
 
+// What a partially known answer leaves out, said plainly (never a guess at it).
+const GAP_WORDING = Object.freeze({
+  purpose_and_contents: "What's in them, or what they're actually for beyond that, nobody's told me.",
+  purpose: "What it's actually for beyond that, nobody's told me.",
+  contents: "What's actually in them, nobody's told me.",
+  origin: "Where it came from or why it's there, nobody's told me.",
+  history: "Beyond that, I don't know anything about the company.",
+  mechanism: "How it actually works, nobody's told me.",
+  command: "Beyond that, I don't know who's in charge.",
+  acquaintance: "That's all I know of him.",
+  current_state: "What state it's in right now, I don't know."
+});
+function presentPartial(known, gap) {
+  const statements = (known.statements ?? []).slice(0, 2);
+  if (gap.concept === "person_relation") return `Only from the briefing. ${statements.find((x) => /authority|briefing/i.test(x)) ?? statements[0]}`;
+  const gapLine = GAP_WORDING[gap.missing] ?? "Beyond that, nobody's told me.";
+  return `${statements.join(" ")} ${gapLine}`.trim();
+}
+/** What someone said, attributed; a player's claim is quoted back as theirs, never endorsed. */
+function presentReported(reported) {
+  const claims = reported.claims ?? [];
+  if (!claims.length) return "I didn't hear that.";
+  // One sentence per speaker; a player's claim is quoted back as theirs.
+  const bySpeaker = [];
+  for (const c of claims) {
+    const key = c.epistemic === "player_claim" ? "you" : (c.speaker_name ?? "Someone");
+    const entry = bySpeaker.find((e) => e.key === key) ?? (bySpeaker.push({ key, items: [] }), bySpeaker.at(-1));
+    entry.items.push(c);
+  }
+  const lines = bySpeaker.map((e) => (e.key === "you"
+    ? e.items.slice(-2).map((c) => saidLine("You said,", c.quote)).join(" ")
+    : `${e.key} said ${e.items.slice(0, 3).map((c) => sentence(c.reported)).join(", and that ")}.`));
+  if (lines.length === 2 && bySpeaker.every((e) => e.key !== "you")) return `${lines[0].replace(/\.$/, "")}, but ${lines[1]}`;
+  return lines.slice(-2).join(" ");
+}
+
 function presentFallback({ frame, plan = null, prior = [] } = {}) {
   const fn = frame?.discourse_function;
   const style = plan?.style_hints ?? {};
 
   // Knowledge answers: exactly the granted statements (provenance kept in the plan), or a truthful unknown.
+  // PARTIAL knowledge says both what is known and that the asked detail is not.
   const known = fact(plan, "known_concept");
   if (known && !plan?.may_ask_clarifying_question) {
+    const gap = fact(plan, "knowledge_gap");
     const said = (known.statements ?? []).slice(0, 2).join(" ");
-    return known.concept === "institution_purpose" ? `All I know is what we were told. ${said}` : said;
+    if (gap) return presentPartial(known, gap);
+    const onlyBriefing = known.concept === "institution_purpose" && (known.provenance ?? []).every((p) => p === "briefing");
+    const limit = known.limit ? ` ${/\b(?:him|her)\b/.test(known.limit) ? "Beyond that, I don't know much about him." : "That's about all I know."}` : "";
+    return `${onlyBriefing ? "All I know is what we were told. " : ""}${said}${limit}`;
   }
-  if (["ask_institution_purpose", "ask_mission_objective", "ask_person_identity", "ask_assignment_purpose", "ask_entity_definition"].includes(fn) || (fn === "ask_role_or_assignment" && fact(plan, "uncertainty"))) {
+  const reported = fact(plan, "reported_speech");
+  if (reported && !plan?.may_ask_clarifying_question) return presentReported(reported);
+  if (fn === "ask_reported_speech") {
+    if (plan?.may_ask_clarifying_question) return clarifyFor(plan, "Sorry, who do you mean?");
+    const u = fact(plan, "uncertainty");
+    const who = u?.speaker_name === "you" ? "you" : (u?.speaker_name ?? "them");
+    return u?.kind === "not_heard_on_topic" ? `I didn't hear ${who} say anything about that.` : `I didn't hear ${who} say that.`;
+  }
+  if (fn === "ask_current_action" && fact(plan, "current_action")) {
+    const activity = fact(plan, "current_action").activity;
+    return activity ? `I'm ${lowerFirst(sentence(activity))}.` : "Nothing in particular right now.";
+  }
+  if (["ask_institution_purpose", "ask_mission_objective", "ask_person_identity", "ask_assignment_purpose", "ask_entity_definition", "ask_location_purpose", "ask_current_action"].includes(fn) || (fn === "ask_role_or_assignment" && fact(plan, "uncertainty"))) {
     if (plan?.may_ask_clarifying_question) return clarifyFor(plan, "Sorry, which do you mean?");
-    return fact(plan, "uncertainty")?.kind === "unknown_person" ? "I don't know who that is." : "Nobody's told me that.";
+    const kind = fact(plan, "uncertainty")?.kind;
+    if (kind === "unknown_person") return "I don't know who that is.";
+    if (kind === "current_state_unknown") return "I don't know what state it's in right now.";
+    return "Nobody's told me that.";
   }
   switch (fn) {
     case "invite_self_description":
@@ -220,6 +308,13 @@ function presentFallback({ frame, plan = null, prior = [] } = {}) {
       return parts.join(" ");
     }
     case "ask_item_ownership": {
+      const past = fact(plan, "item_holder_history");
+      if (past) {
+        const label = String(past.label ?? "it").toLowerCase();
+        if (!past.holder_name) return `I don't know who had the ${label} before.`;
+        const who = past.holder_is_self ? "me" : past.holder_name;
+        return `${past.when === "at the briefing" ? "At the briefing" : "Earlier"}, the ${label} was with ${who}.`;
+      }
       const holder = fact(plan, "item_holder");
       if (holder) {
         if (holder.holder_is_self) return `I've got the ${String(holder.label).toLowerCase()}.`;
@@ -250,6 +345,8 @@ function presentFallback({ frame, plan = null, prior = [] } = {}) {
       return presentSelfState(fact(plan, "self_state"), style) ?? (CHECK_IN_BY_TEMPERAMENT[style.conversational_temperament] ?? "Doing all right.");
     case "ask_next_step": {
       const procedure = fact(plan, "current_procedure");
+      const notTold = fact(plan, "uncertainty");
+      if (notTold?.kind === "next_step_not_told") return `Right now it's ${sentence(notTold.current_step)}. Nobody's said what comes after that.`;
       // No canonical procedure this speaker knows: ask what "next" means, never guess a plan.
       if (!procedure?.next_step) return "Sorry, next for what?";
       const steps = procedure.current_step ? `${sentence(procedure.current_step)}, then ${sentence(procedure.next_step)}` : sentence(procedure.next_step);
@@ -303,10 +400,10 @@ function presentFallback({ frame, plan = null, prior = [] } = {}) {
       const other = responses.slice(-1)[0] ?? null;
       // Repair targets the immediately preceding heard line, not the old topic.
       const lead = fn === "clarify_previous" ? "I just said," : "I said,";
-      if (own) return `${lead} "${sentence(own.text)}."`;
-      if (other) return `${other.speaker_name ?? "Someone"} said, "${sentence(other.text)}."`;
+      if (own) return saidLine(lead, own.text);
+      if (other) return saidLine(`${other.speaker_name ?? "Someone"} said,`, other.text);
       const said = fact(plan, "antecedent_player_text");
-      return said ? `You said, "${sentence(said)}."` : "Sorry, what are you asking me to go back over?";
+      return said ? saidLine("You said,", said) : "Sorry, what are you asking me to go back over?";
     }
     case "ambiguous_reference": {
       const spatial = (frame.referents ?? []).find((r) => r.type === "spatial" && !r.resolved && r.noun && !["thing", "one"].includes(r.noun));
@@ -341,6 +438,8 @@ function presentFallback({ frame, plan = null, prior = [] } = {}) {
     case "make_statement": {
       // The player's answer to one's own "Why?" is heard as their claim, acknowledged, never confirmed.
       if (fact(plan, "stated_reason")) return variant("Okay, fair enough.", ["All right, got it.", "Okay."], prior);
+      // A claim about the world is theirs: heard, not endorsed.
+      if (fact(plan, "player_claim")) return variant("Huh. If you say so.", ["Huh. Okay.", "Hm. All right."], prior);
       const recalled = renderKnownAnswer(fact(plan, "known_answer"));
       return recalled ?? variant(ACK_BY_TEMPERAMENT[style.conversational_temperament] ?? "Understood.", ACK_ALTERNATES, prior);
     }
@@ -414,4 +513,4 @@ function presentReportFallback({ contribution } = {}) {
   return generic;
 }
 
-module.exports = { presentMeaning, presentConversationEvent, CLARIFY_BY_SLOT, presentFallback, presentStaleSafeFallback, presentReportFallback, presentSelfState, presentSelfStateAnswer, presentExplanation, renderKnownAnswer, COMMIT_SENSITIVE_FACTS };
+module.exports = { quoteLine, presentPartial, presentReported, presentMeaning, presentConversationEvent, CLARIFY_BY_SLOT, presentFallback, presentStaleSafeFallback, presentReportFallback, presentSelfState, presentSelfStateAnswer, presentExplanation, renderKnownAnswer, COMMIT_SENSITIVE_FACTS };

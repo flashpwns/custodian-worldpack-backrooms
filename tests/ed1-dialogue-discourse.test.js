@@ -121,7 +121,8 @@ test("ED-1 D — 'Who was assigned the medical kit?' binds the canonical item an
   assert.equal(frame.referents[0].holder, "c-nora");
   assert.equal(frame.unresolved_reference, false);
   const plans = D.planResponses({ frame, owner_ids: ["c-nora"], responders: RESP, names: NAMES });
-  assert.deepEqual(plans[0].required_facts[0].value, { label: "Medical kit", holder_name: "Nora", holder_is_self: true });
+  // The holder fact also records HOW the speaker knows it (here: it is their own custody), for "How do you know?".
+  assert.deepEqual(plans[0].required_facts[0].value, { label: "Medical kit", holder_name: "Nora", holder_is_self: true, known_by: "self" });
   assert.equal(F.presentFallback({ frame, plan: plans[0] }), "I've got the medical kit.");
   // Unknown item: never invent a holder.
   const unknown = frameFor("Who was assigned the oxygen tank?");

@@ -80,6 +80,11 @@ const SARCASM_AGREES = /\b(?:you'?re (?:not wrong|right|correct)|not wrong about
 const INVENTED_ACTIVITY = /\b(?:just|still|currently|busy)\s+(?:waiting|trying|working|checking|charging|getting|making|keeping|looking|going|doing|bringing|carrying|grabbing|packing|sorting|setting|finishing|heading|preparing|organizing|recording|writing|logging)\b|\bwaiting (?:for|on)\b|\btrying to\b|\bi(?:'m| am) (?:keeping|recording|noting|writing|logging|taking) (?:a |the )?(?:note|record|track|down|it|that|this)\b|\b(?:keeping|making) (?:a |the )?(?:verbal )?(?:record|note) of (?:that|it|this)\b/i;
 const INVENTED_HISTORY = /\bi(?:'ve| have) (?:seen|been|done|worked|had)\b|\bi was\b|\bagain\b|\b(?:last|that) (?:time|week|year|day)\b|\bused to\b|\bi remember\b|\bever\b|\b(?:didn'?t|did not|haven'?t|barely|hardly) (?:sleep|slept|rest(?:ed)?|eat(?:en)?)\b|\b(?:no|little|not much) sleep\b/i;
 // Words of the internal plan/packet that must never surface as speech (any function).
+const PERCEPTION_CLAIM = /\bi (?:saw|noticed|spotted|smelled|glimpsed|caught sight of)\b|\bi heard (?:something|some|a |noises?|sounds?|voices?)\b|\bi(?:'ve| have) (?:seen|noticed|spotted)\b/i;
+// Affirming a claim ("Yeah, it is.", "That's right.", "Makes sense.") -- never for a player's world claim.
+const PLAYER_CLAIM_ENDORSEMENT = /^\s*(?:yes|yeah|yep|yup|right|true|exactly|correct|indeed|definitely|of course|sure)\b|\b(?:that'?s (?:right|true|correct)|makes sense|i know|it (?:is|really is)|sure is|good to know|interesting,? (?:so|then))\b/i;
+// Saying what is NOT known alongside a partial answer.
+const PARTIAL_LACK = /\b(?:(?:nobody|no one)(?:'s| has) (?:told|said|mentioned)|haven'?t been told|not been told|don'?t know|do not know|no idea|not sure|beyond that|that'?s (?:all|about all) (?:i know|i've got|we were told)|all i know|only (?:know|from)|couldn'?t (?:say|tell)|can'?t (?:say|tell)|wasn'?t told|weren'?t told|didn'?t say|never said|no one said|nobody said)\b/i;
 const PLAN_VOCAB = /\b(?:disposition|authorized|contribution|self[_ ]state|antecedent|required facts?|item[_ ]holder|heard[_ ]confirmation|known[_ ]answer)\b/i;
 // A wry aside must not itself assert a safety/danger state ("most dangerous thing...", "we'd all die").
 const DANGER_EVALUATION = /\b(?:danger\w*|unsafe|deadly|risk\w*|hazard\w*|threat\w*|trap|die|dying|death|hurt|injur\w*|kill\w*|emergency|disaster|catastroph\w*)\b/i;
@@ -133,7 +138,7 @@ const OTHERS_APPLY = new Set(["report_observation", "check_in", "invite_self_des
 // operation). Each such term in speech must be licensed by the plan (required/optional facts, the line in
 // question, same-turn accepted lines) or by the player's own words -- what the speaker KNOWS is not what
 // this turn authorizes them to SAY.
-const OPERATIONAL_TERMS = /\b(?:cameras?|photo\w*|radios?|transceiver|lamps?|flashlights?|worklights?|duffle|bags?|materials?|startup|spectrometer|layout|records?|recording|recall|verbal|observations?|deliver(?:y|ing|ed|ies)?|reconnaissance|recon|outposts?|bermuda|staging|threshold|complex|standard|kv31|briefing|briefed|manifest|cutoff|deadline|noon|\d{1,2}(?::\d{2})?\s*(?:a\.?m\.?|p\.?m\.?)|\d{1,2}:\d{2}|tape|routes?|procedures?|protocols?|missions?|objectives?|assignments?|maxwell|kirk|async|equipment|gear|expedition(?! lead)|survey\w*|compil\w*|courier|layouts?)\b/gi;
+const OPERATIONAL_TERMS = /\b(?:cameras?|photo\w*|radios?|transceiver|lamps?|flashlights?|worklights?|duffle|bags?|materials?|startup|spectrometer|layout|records?|recording|recall|verbal|observations?|deliver(?:y|ing|ed|ies)?|reconnaissance|recon|outposts?|bermuda|staging|threshold|complex|standard|kv31|briefing|briefed|manifest|cutoff|deadline|noon|\d{1,2}(?::\d{2})?\s*(?:a\.?m\.?|p\.?m\.?)|\d{1,2}:\d{2}|tape|routes?|procedures?|protocols?|missions?|objectives?|assignments?|maxwell|kirk|async|equipment|gear|expedition(?! lead)|survey\w*|compil\w*|courier|layouts?|deploy\w*|departure|depart\w*|(?:at|by|before|until) (?:ten|eleven|twelve|one|two|three)(?: o'?clock)?)\b/gi;
 // A first-person report of what one is doing ("Just compiling the layout record.", "Focused on the materials.").
 const ACTIVITY_CLAIM = /\b(?:i(?:'m| am)|we(?:'re| are)|just|currently|busy|still)\s+(?:\w+ly\s+)?(\w{3,}ing)\b|\bfocused on\b/gi;
 const SAFE_ACTIVITY = new Set(["doing", "feeling", "getting", "going", "saying", "asking", "hanging", "managing", "holding", "kidding", "joking", "wondering", "being", "meaning", "thinking", "glad", "morning", "nothing", "something", "anything", "everything"]);
@@ -183,8 +188,12 @@ function knownAnswerText(value) {
 // found, taken, carried, held, handed over or used like a tool, and no generic substitute noun
 // ("apparatus", "device", "machine", "portal") may replace its name.
 const OBJECT_VERBS = "(?:pick(?:ed|s|ing)?|grab(?:bed|s|bing)?|took|take|taking|carry|carried|carrying|carries|hold|held|holding|holds|hand(?:ed|ing)?|gave|give|giving|pocket(?:ed)?|brought|bring|found|find|finding|got|has|have|had|using|used|use|uses|lost|dropped|drop)";
+// Canonical terminology in NPC speech: the Threshold is never a "portal", a "gate device" or a handheld
+// thing. (The player's own synonyms are understood by interpretation; coworkers keep institutional terms.)
+const NON_CANONICAL_TERMS = /\bportals?\b|\bgate\s+device\b|\bhandheld\s+threshold\b|\bthreshold\s+(?:device|gadget|unit)\b|\bdimensional\s+(?:gate|door|rift)\b|\bthe\s+backrooms\b/i;
 function validateOntology(rawSpeech) {
   const speech = String(rawSpeech ?? "");
+  if (NON_CANONICAL_TERMS.test(speech)) return reject(CODES.FORBIDDEN, `non-canonical terminology: "${speech.match(NON_CANONICAL_TERMS)[0]}"`);
   for (const entity of Object.values(canonLexicon.CANONICAL_ENTITIES)) {
     if (entity.portable) continue;
     const name = entity.bare_name;
@@ -197,7 +206,7 @@ function validateOntology(rawSpeech) {
 /**
  * @returns {{ok:true}|{ok:false, code:string, reason:string}}
  */
-function validateContribution(contribution, rawSpeech, { player_text = null } = {}) {
+function validateContribution(contribution, rawSpeech, { player_text = null, speaker_name = null } = {}) {
   if (!contribution) return { ok: true };
   // Typographic apostrophes/quotes ("We’ll") are normalized so no rule is bypassed by punctuation style.
   const speech = String(rawSpeech ?? "").replace(/[\u2018\u2019\u02bc]/g, "'").replace(/[\u201c\u201d]/g, '"').trim();
@@ -216,13 +225,26 @@ function validateContribution(contribution, rawSpeech, { player_text = null } = 
   const explainedBasis = fn === "ask_explanation" ? (requiredValue(contribution, "explanation_basis")[0] ?? null) : null;
   if ((["joke_or_sarcasm", "social_observation", "greet", "introduce_self", "acknowledge", "close_topic", "check_in"].includes(fn) || (noFacts && ["ask_factual", "ask_personal_experience", "challenge", "make_statement", "ambiguous_reference"].includes(fn)) || (explainedBasis && ["self_state", "no_known_fact", "social", "clarification", "unavailable"].includes(explainedBasis.kind))) && INVENTED_HISTORY.test(speech)) return reject(CODES.FORBIDDEN, "narrates history or experience the plan does not supply");
   if ((["joke_or_sarcasm", "social_observation", "greet", "introduce_self", "acknowledge", "close_topic", "check_in"].includes(fn) || (noFacts && fn === "make_statement")) && INVENTED_ACTIVITY.test(speech)) return reject(CODES.FORBIDDEN, "invents what the speaker is doing or waiting for");
+  // A social acknowledgment claims no experience of its own ("First day for me too", "I've done this before").
+  if (["greet", "introduce_self", "acknowledge"].includes(fn) && (INVENTED_EXPERIENCE.test(speech) || /\b(?:for me too|me too|same here|my first)\b/i.test(speech))) return reject(CODES.FORBIDDEN, "a social acknowledgment claims experience the plan does not supply");
   // A greeting or acknowledgment does not report what the speaker is doing ("Hi. I'm compiling the record.").
   if (["greet", "introduce_self", "acknowledge", "close_topic", "joke_or_sarcasm"].includes(fn) && /\bi(?:'m| am) (?!doing\b|feeling\b|going to\b|getting by\b|not\b)\w+ing\b/i.test(speech)) return reject(CODES.FORBIDDEN, "a social line reports an activity the plan does not supply");
   // The player just answered this speaker's own clarification: the reply may not claim not to follow it.
   if (contribution.resumed_question && !contribution.may_ask_clarifying_question && /\b(?:(?:don'?t|do not) (?:know|understand|get)|not sure|no idea) what you(?:'re| are)? (?:mean|meant|asking|referring|talking)\b|\bwhat do you mean\b/i.test(speech)) return reject(CODES.UNMET, "the player answered the clarification; do not ask or deny it again");
   if (fn !== "report_observation" && fn !== "warn" && COMMITMENT_CLAIM.test(speech)) return reject(CODES.FORBIDDEN, "creates a commitment or instruction the simulation does not hold");
   if (VOCATIVE_YOU.test(speech)) return reject(CODES.SHAPE, "addresses the person as \"you\" as if it were a name");
+  // A speaker never addresses themselves by their own name ("Ann, I'm a field technician.").
+  const ownName = speaker_name ?? requiredValue(contribution, "name")[0] ?? null;
+  if (ownName && new RegExp(`^\\s*${String(ownName).split(/\s+/)[0].replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\s*[,!:]`, "i").test(speech)) return reject(CODES.SHAPE, "addresses themselves by their own name");
+  // The player's claim about the world is heard as theirs; a coworker never affirms or restates it as fact.
+  if (requiredValue(contribution, "player_claim").length) {
+    if (PLAYER_CLAIM_ENDORSEMENT.test(speech)) return reject(CODES.FORBIDDEN, "endorses the player's claim as true");
+    if (player_text && coverage(speech, player_text) >= 0.4 && !/\b(?:you said|if you say so|so you say|you think)\b/i.test(speech)) return reject(CODES.FORBIDDEN, "restates the player's claim as fact");
+  }
   if (PLAN_VOCAB.test(speech)) return reject(CODES.FORBIDDEN, "internal bookkeeping vocabulary");
+  // A first-person perception ("I saw something strange") is an observation claim: only a plan that carries
+  // an observation (or custody the speaker saw) licenses one.
+  if (fn !== "report_observation" && PERCEPTION_CLAIM.test(speech) && !/observ|"known_by":"seen|"kind":"observation"|own-report/.test(allowedBlob)) return reject(CODES.FORBIDDEN, `claims a perception the plan does not supply: "${speech.match(PERCEPTION_CLAIM)[0]}"`);
   // A suggested course of action is new content unless the plan (or the player's own words) supplied it.
   if (fn !== "report_observation" && fn !== "warn") {
     const directive = speech.match(INVENTED_DIRECTIVE);
@@ -298,6 +320,15 @@ function validateContribution(contribution, rawSpeech, { player_text = null } = 
       const parts = regionParts(speech, markers, i);
       if (parts && parts.some((part) => coverage(part, holderFact.label) >= 0.5 || (headNoun && contentWords(part).some((w) => sameStem(w, headNoun))))) return reject(CODES.CONTRADICTION, "first-person custody claim for an item the plan assigns elsewhere");
     }
+  }
+
+  // A2. Earlier custody: the reply says who had it THEN, never a different (or first-person) holder.
+  const pastHolder = requiredValue(contribution, "item_holder_history")[0];
+  if (pastHolder?.holder_name) {
+    const firstPerson = /\b(?:i had|i was (?:holding|carrying)|i(?:'d| had) (?:it|the)|it was (?:with me|mine)|with me)\b/i.test(speech);
+    if (!pastHolder.holder_is_self && firstPerson) return reject(CODES.CONTRADICTION, "claims the speaker had the item earlier; the earlier holder was someone else");
+    const holder = pastHolder.holder_is_self ? /\b(?:i|me|mine)\b/i : pastHolder.holder_name === "you" ? /\byou\b/i : new RegExp(`\\b${String(pastHolder.holder_name).replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\b`, "i");
+    if (!holder.test(speech)) return reject(CODES.UNMET, "does not state who had the item earlier");
   }
 
   // B. Forbidden claims that can be decided reliably.
@@ -466,11 +497,17 @@ function validateContribution(contribution, rawSpeech, { player_text = null } = 
       } else if (basis.kind === "briefing_instruction") {
         if (!/\b(?:briefing|maxwell|kirk|told|instruct\w*|orders?)\b/i.test(speech)) return reject(CODES.UNMET, "the reason is the briefing instruction");
       } else if (basis.kind === "custody") {
-        if (!/\b(?:as far as i know|where it is|with (?:you|me|him|her|them)|(?:has|have|got) it|holding it|assign\w*|saw|told)\b/i.test(speech) && coverage(speech, String(basis.label ?? "")) < 0.5) return reject(CODES.UNMET, "the reason is what the speaker knows about where the item is");
+        if (!/\b(?:as far as i know|where it is|with (?:you|me|him|her|them)|(?:has|have|got) it|holding it|assign\w*|saw|see|seen|told|said|briefing)\b/i.test(speech) && coverage(speech, String(basis.label ?? "")) < 0.5) return reject(CODES.UNMET, "the reason is what the speaker knows about where the item is");
+        if (basis.known_by === "briefing" && /\b(?:i saw|i see|i noticed|i watched)\b/i.test(speech)) return reject(CODES.CONTRADICTION, "claims to have seen what the speaker only heard at the briefing");
       } else if (basis.kind === "clarification") {
         if (!/\b(?:sure|meant|mean|tell|follow|catch|clear|unclear|understand)\b/i.test(speech)) return reject(CODES.UNMET, "the reason is that the speaker was not sure what was meant");
       }
       for (const [kind, voice] of Object.entries(BASIS_VOICES)) {
+        // Custody known FROM the briefing roster is explained by the briefing; custody seen, by seeing.
+        if (basis.kind === "custody" && ((kind === "briefing_instruction" && basis.known_by === "briefing") || (kind === "observation" && /^seen/.test(basis.known_by ?? "")))) continue;
+        // A knowledge answer is explained by where its known part came from.
+        if (basis.kind === "known_information" && ((kind === "briefing_instruction" && (basis.provenance ?? []).includes("briefing")) || (kind === "observation" && (basis.provenance ?? []).includes("observed")) || (kind === "no_known_fact" && basis.partial))) continue;
+        if (basis.kind === "custody_history" && ((kind === "briefing_instruction" && basis.basis === "briefing") || (kind === "observation" && basis.basis === "observed"))) continue;
         if (kind !== basis.kind && voice.test(speech) && !(BASIS_VOICES[basis.kind]?.test(speech))) return reject(CODES.FORBIDDEN, `explains a different basis (${kind}) than the recorded one (${basis.kind})`);
       }
       // A reason that is only a feeling, a lack of basis, an unclear question or small talk adds almost no
@@ -489,12 +526,38 @@ function validateContribution(contribution, rawSpeech, { player_text = null } = 
     case "ask_person_identity":
     case "ask_assignment_purpose":
     case "ask_entity_definition":
+    case "ask_location_purpose":
+    case "ask_current_action":
     case "ask_role_or_assignment_known": {
       if (contribution.may_ask_clarifying_question) break;
       const known = requiredValue(contribution, "known_concept")[0];
+      const gap = requiredValue(contribution, "knowledge_gap")[0];
       if (known) {
         if (!(known.statements ?? []).some((text) => coverage(speech, text) >= 0.5)) return reject(CODES.UNMET, "does not state the known fact");
+        if (gap) {
+          // Partial knowledge: the known part AND the bounded unknown; the known part never stands in for
+          // the missing one (a destination is not a purpose).
+          if (!PARTIAL_LACK.test(speech)) return reject(CODES.UNMET, "partial knowledge: say what is not known as well as what is");
+          if (/purpose/.test(String(gap.missing)) && /\b(?:they(?:'re| are)|it(?:'s| is)|those are|that'?s|these are) (?:just |all |basically )?for (?:outpost|the outpost|bermuda|delivery|delivering)\b/i.test(speech)) return reject(CODES.CONTRADICTION, "states the destination as the purpose");
+        }
+      } else if (fn === "ask_current_action" && requiredValue(contribution, "current_action").length) {
+        // Own current activity (or none): nothing more to check here.
       } else if (!LACK_SAFE.test(speech) && !/\b(?:nobody|no one)(?:'s| has) (?:told|said)|haven'?t been told|don'?t know (?:who|what|that)\b/i.test(speech)) return reject(CODES.UNMET, "nothing is known: say you haven't been told / don't know");
+      break;
+    }
+    case "ask_reported_speech": {
+      if (contribution.may_ask_clarifying_question) break;
+      const reported = requiredValue(contribution, "reported_speech")[0];
+      if (!reported) {
+        if (!/\b(?:didn'?t|did not|never) (?:hear|catch)\b|\bnot that i (?:heard|recall|remember)\b|\bdon'?t (?:recall|remember)\b/i.test(speech)) return reject(CODES.UNMET, "the speaker did not hear it and must say so");
+        break;
+      }
+      // Attributed, never adopted: the speaker is named (or "you said"), and the reported content appears.
+      const claims = reported.claims ?? [];
+      const attributed = claims.some((c) => (c.epistemic === "player_claim" ? /\byou (?:said|told|mentioned)\b/i.test(speech) : new RegExp(`\\b${String(c.speaker_name ?? "").replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\b`, "i").test(speech) && /\b(?:said|says|told|mentioned|according to)\b/i.test(speech)));
+      if (!attributed) return reject(CODES.UNMET, "reported speech must be attributed to whoever said it");
+      if (!claims.some((c) => coverage(speech, c.reported ?? c.quote ?? "") >= 0.4)) return reject(CODES.UNMET, "does not report what was said");
+      if (claims.some((c) => c.epistemic === "player_claim") && PLAYER_CLAIM_ENDORSEMENT.test(speech)) return reject(CODES.FORBIDDEN, "endorses the player's claim as true");
       break;
     }
     case "ask_meaning": {

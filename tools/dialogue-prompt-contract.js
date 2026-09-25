@@ -53,7 +53,8 @@ const FORBIDDEN_WORDING = Object.freeze({
   invented_urgency: "add urgency",
   acceptance_or_commitment: "agree to, accept, promise or refuse it",
   unsupported_sensory_claims: "describe sounds, smells or sensations you were not given",
-  invented_anomaly_properties: "say what it is, what caused it or whether it is dangerous"
+  invented_anomaly_properties: "say what it is, what caused it or whether it is dangerous",
+  confirming_player_claims: "agree that what they claimed is true, or repeat it as fact"
 });
 
 /**
@@ -144,7 +145,11 @@ const UNCERTAINTY_GUIDE = Object.freeze({
   no_established_opinion: "You have no particular view on it yet: say so briefly; never invent an opinion.",
   procedure_not_known: "You do not know what comes next: say so plainly.",
   unknown_person: "You don't know who that is: say so plainly. Never guess.",
-  no_established_fact: "No fact answers this: say plainly that you don't know, in your own words. Never ask the question back."
+  no_established_fact: "No fact answers this: say plainly that you don't know, in your own words. Never ask the question back.",
+  current_state_unknown: "You know what it is, but not what state it is in right now: say plainly you don't know its current state.",
+  did_not_hear_speaker: "You did not hear that person say it: say so plainly. Never guess what they said.",
+  not_heard_on_topic: "You did not hear that person say anything about that: say so plainly. Never guess.",
+  next_step_not_told: "You know where things stand, but nobody has said what comes next: say so plainly."
 });
 function renderContributionTask(packet) {
   const c = packet?.authorized_contribution;
@@ -178,10 +183,24 @@ function renderContributionTask(packet) {
     if (f.key === "role") return `role: you are ${/^[aeiou]/i.test(String(f.value)) ? "an" : "a"} ${String(f.value).toLowerCase()}; say so`;
     if (f.key === "current_assignment") return `current_assignment: in your own words to them, "I'm ${String(f.value).replace(/^./, (ch) => ch.toLowerCase())}"; say exactly that, plainly`;
     if (f.key === "known_concept") {
-      const how = { briefing: "what Maxwell told you all at the briefing", self: "about yourself", observed: "what you saw yourself", heard: "what someone told you", recorded: "what the records show" };
+      const how = { briefing: "what Maxwell told you all at the briefing", self: "about yourself", observed: "what you saw yourself", heard: "what someone told you", recorded: "what the records show", baseline_induction: "basic orientation every expedition member gets", baseline_field_procedure: "basic field training" };
       const src = (f.value?.provenance ?? []).map((p) => how[p]).filter(Boolean).join("; ");
-      return `What you know about this${src ? ` (${src})` : ""} -- say only this, plainly, in your own words, adding nothing:\n  ${(f.value?.statements ?? []).map((x) => j(x)).join("\n  ")}`;
+      return `What you know about this${src ? ` (${src})` : ""} -- say only this, plainly, in your own words, adding nothing:\n  ${(f.value?.statements ?? []).map((x) => j(x)).join("\n  ")}${f.value?.limit ? `\n  (You know nothing about ${f.value.limit}; you may say that's about all you know.)` : ""}`;
     }
+    if (f.key === "knowledge_gap") {
+      const missing = { purpose_and_contents: "what is in them or what they are actually for", purpose: "what it is actually for", contents: "what is actually in them", origin: "where it came from or why it exists", history: "anything more about the company", mechanism: "how it actually works", command: "who is in charge beyond that", acquaintance: "anything about them personally", current_state: "what state it is in right now" }[f.value?.missing] ?? "the rest of what they asked";
+      return `What you do NOT know: ${missing}. Say plainly that nobody has told you that (after the part you do know). Never guess it, and never present what you know (a destination, a name) as if it answered it.`;
+    }
+    if (f.key === "reported_speech") {
+      const lines = (f.value?.claims ?? []).map((c) => (c.epistemic === "player_claim" ? `they themselves said: ${j(c.quote)} (their own claim, not something you know)` : `${c.speaker_name ?? "someone"} said: ${j(c.reported)}`));
+      return `What you heard said -- report it as theirs ("<name> said ..."), plainly, without agreeing, correcting or adding to it:\n  ${lines.join("\n  ")}`;
+    }
+    if (f.key === "player_claim") return "They just told you something as a claim. It is THEIR claim, not something you know: acknowledge it briefly (for example, \"huh, if you say so\"). Do not agree it is true, repeat it as fact, or add to it.";
+    if (f.key === "item_holder_history") {
+      const item = `the ${String(f.value?.label ?? "item").toLowerCase()}`;
+      return f.value?.holder_name ? `Who had ${item} ${f.value.when === "at the briefing" ? "at the briefing" : "earlier"} (not now): ${f.value.holder_is_self ? "you" : f.value.holder_name}. Say that, as the past.` : `You do not know who had ${item} before: say so.`;
+    }
+    if (f.key === "current_action") return f.value?.activity ? `What you are doing right now: ${j(f.value.activity)}. Say so briefly.` : "You are not doing anything in particular right now: say so briefly.";
     if (f.key === "utterance_meaning") {
       const m = f.value ?? {};
       if (!m.own) return `They are asking what ${m.speaker_name === "you" ? "they themselves" : (m.speaker_name ?? "someone else")} meant by ${j(m.quoted ?? m.line)}. You did not say it: say only that ${m.speaker_name === "you" ? "it was their own words" : `they would have to ask ${m.speaker_name ?? "that person"}`}. Do not interpret it.`;
@@ -219,8 +238,10 @@ function renderContributionTask(packet) {
         observation: "it is what you saw yourself",
         clarification: "you were not sure what they meant",
         briefing_instruction: `it is what you were all told at ${b.source ?? "the briefing"}`,
-        custody: b.holder_is_self ? "the item is with you" : (b.holder_known === false ? "you do not know who has it" : "that is where it is, as far as you know"),
-        known_information: "it is what you know about it",
+        custody: b.holder_is_self ? "the item is with you" : (b.holder_known === false ? "you do not know who has it" : b.known_by === "briefing" ? "Maxwell said so at the briefing (you did not see it yourself)" : b.known_by === "seen" ? "you can see it" : b.known_by === "seen_earlier" ? "that is where you last saw it" : "that is where it is, as far as you know"),
+        known_information: `${(b.provenance ?? []).includes("briefing") ? "Maxwell told you all at the briefing" : (b.provenance ?? []).includes("observed") ? "you saw it yourself" : (b.provenance ?? []).includes("heard") && b.heard_from?.length ? `${b.heard_from.join(" and ")} said so` : (b.provenance ?? []).includes("self") ? "it is about your own assignment" : (b.provenance ?? []).includes("baseline_field_procedure") ? "it is basic field training" : (b.provenance ?? []).includes("baseline_induction") ? "it is the basic orientation everyone assigned here gets" : "it is what you know about it"}${b.partial ? "; and nobody has told you the rest" : ""}`,
+        custody_history: b.basis === "briefing" ? "Maxwell said so at the briefing" : "you saw it then",
+        heard_report: `you heard ${(b.speakers ?? []).join(" and ") || "it"} say it`,
         assignment: "it is your assignment",
         heard: b.heard ? "you heard them say it" : "you did not catch it",
         restatement: "you were only repeating what was said",
@@ -278,7 +299,7 @@ function renderContributionTask(packet) {
   if (capsule && repairing) how.push("Say your own earlier line again in your own words. Do not answer a new question and do not say you did not understand.");
   if (capsule && c.resumed_question) how.push(`${c.answered_slot ? `They answered your question (the ${{ temporal: "time", location: "place", referent: "thing", spatial_selection: "one", person: "person", reason: "reason", yes_no: "yes or no", topic: "point" }[c.answered_slot] ?? "point"} they meant). ` : "They are answering your question about what they meant. "}Answer their earlier question now: ${j(c.resumed_question)}`);
   if (c.discourse_function === "ask_next_step" && c.may_ask_clarifying_question) how.push(`Nothing tells you what "next" means here. Ask ONE short question about what they mean.`);
-  if (capsule && !isReport && !req.length && ["ask_factual", "ask_personal_experience", "challenge", "ask_opinion", "ask_institution_purpose", "ask_mission_objective", "ask_person_identity", "ask_assignment_purpose", "ask_entity_definition", "ask_role_or_assignment"].includes(c.discourse_function) && !c.may_ask_clarifying_question) how.push(c.addressee_state ? "They are asking whether you are ready; a brief yes or no about yourself is fine." : (UNCERTAINTY_GUIDE[uncertainty] ?? (c.past_perception ? UNCERTAINTY_GUIDE.did_not_perceive : UNCERTAINTY_GUIDE.no_established_fact)));
+  if (capsule && !isReport && !req.length && ["ask_factual", "ask_personal_experience", "challenge", "ask_opinion", "ask_institution_purpose", "ask_mission_objective", "ask_person_identity", "ask_assignment_purpose", "ask_entity_definition", "ask_role_or_assignment", "ask_reported_speech", "ask_location_purpose", "ask_next_step"].includes(c.discourse_function) && !c.may_ask_clarifying_question) how.push(c.addressee_state ? "They are asking whether you are ready; a brief yes or no about yourself is fine." : (UNCERTAINTY_GUIDE[uncertainty] ?? (c.past_perception ? UNCERTAINTY_GUIDE.did_not_perceive : UNCERTAINTY_GUIDE.no_established_fact)));
   if ((c.same_turn_prior_responses ?? []).length) how.push(`Others already replied this turn:\n- ${c.same_turn_prior_responses.map((r) => `${r.speaker_name ?? "someone"}: ${j(r.text)}`).join("\n- ")}\nDo NOT reuse their opening words or sentence shape, and do not repeat what they already said; say it your own way.`);
   if (c.discourse_function === "joke_or_sarcasm") how.push("Their remark is a joke or sarcasm, not a literal claim. React with a short wry or dry aside in your own words. Do NOT agree it is really safe, evaluate it literally, give advice, or redirect to work.");
   if (["invite_self_description", "ask_role_or_assignment"].includes(c.discourse_function)) how.push("Say your name/role, and your assignment as what you are doing right now in plain words. Never say you are 'here to' do something.");

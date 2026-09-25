@@ -1,5 +1,57 @@
 # Yellow Beast Implementation State
 
+## Day-1 Canon Ratification + Knowledge Completion + Dialogue Convergence Pass — 2026-09-25
+
+- **Owner decisions applied (this pass).**
+  - The playable Maxwell briefing is ratified Day-1 authored canon. Its label changed from `legacy_unreconciled_briefing_material` to `ratified-day1-authored-canon`, under the mission record's own `cq4-day1-locked-design-law`, and the mission record now says so too.
+  - Baseline induction and baseline field procedure were granted to every CQ4 Day-1 expedition member.
+  - Also granted: the one-sentence ASYNC description, Maxwell's identity and authority, the startup-material semantics (destination is not purpose), and minimal definitions of verbal recall and the layout record.
+  - Full record: `docs/dialogue/DAY1_KNOWLEDGE_MATRIX.md`.
+- **Conflict recorded, not resolved (doctrine rule 3).** The crossing radio check's timing disagrees across sources.
+  - After crossing: the owner's field-procedure wording and the runtime opener (`CROSS` → `STANDARD_RADIO_CHECK`, ≥ 2 s hold).
+  - Before crossing: `mission.procedures[1-2]`, `reporting.check_ins[0]` and the undelivered `briefing_authority.threshold_sendoff`.
+  - The sendoff is therefore not ratified, and no text was changed.
+  - Not established anywhere: a green-tape return-marker procedure.
+- **Knowledge (tools/canonical-knowledge.js).**
+  - Provenance classes: `baseline_induction`, `baseline_field_procedure`, `briefing`, `self`, `observed`, `heard`, `remembered`, `own_speech`, plus attributed `player_claim`.
+  - Grants carry a facet. Queries return `known`, `partial` (the asked facet is missing: `missing_requested_detail`) or an unknown with its internal class.
+  - HEARD knowledge is general. It comes from the plan that authorized each line (the wording is never re-parsed) and reaches only that line's listeners. It keeps its reporting chain ("Daisy said Maxwell said"). It is merged as a `supports` entry when the listener already knows the fact.
+  - Player claims are remembered and counted, and are never promoted.
+  - Other additions: current vs historical custody, presence, where the team stands, and a current procedure recomputed from canonical state.
+  - Briefing beats stamp `at_interval`; a partial briefing grants only the delivered beats.
+- **Interpretation and planning.**
+  - Identity, role, authority, relation and presence are distinct concepts. So are definition and current state, and so are the origin, mechanism, contents, destination, custody and history facets.
+  - Reported speech: "What did Clint say…?", "Didn't Maxwell say noon?", "Who said…?", "What did I say…?", and one's own speech.
+  - Current action and location purpose are recognized.
+  - "That doctor" resolves only by event salience; otherwise the reply asks which doctor.
+  - Address corrections ("No, I meant Brady.", "Not Daisy.", "The other one.") re-ask the question of the intended person and never change facts.
+  - Self-introductions get one short acknowledgment from each teammate.
+  - Untargeted shared questions go to the least-recently-spoken knower. This is derived from `dialogue_history`, so it is reload-stable, and knowledge always beats rotation.
+- **Tier 2.**
+  - Optional `addressee_text_span`: a verbatim span, resolved by code to a single present coworker. A subject mention or a duplicate name fails closed.
+  - Optional `anchor_candidate`: a closed choice among the previous line's authorized facts.
+  - Six new intents.
+  - An accepted reading is the interpretation of the player's line, never knowledge.
+- **Validator.**
+  - Partial answers must state the unknown part, and a destination may never stand in for a purpose.
+  - Reported speech must be attributed.
+  - Player claims are never affirmed.
+  - Rejected outright: the non-canonical terms "portal", "gate device" and "the backrooms"; social acknowledgments that claim experience; unlicensed schedule or deployment terms and perception claims; and a speaker addressing themselves by name (seen in the real Gemma run).
+- **Fallback.** Quotation is safe: one outer pair of double quotes, no doubled terminal punctuation.
+- **Tests.**
+  - New `tests/ed29-day1-knowledge-convergence.test.js`.
+  - ed1, ed4, ed22 and ed28 were updated where they encoded the pre-ratification policy or the older plan shape. Each update is justified in the pass report.
+  - ed27, ed28 and ed29 were registered in the verification inventory through the documented mechanism (new entries only).
+- **Tier 2 latency.**
+  - The static intent menu moved into the system prefix, so the runtime's prefix cache reuses it. The model is asked for compact one-line JSON.
+  - Warm advisory calls: median 1.86 s, p90 2.28 s (12-line benchmark on real Gemma 4 E4B), down from 3.48 s / 4.27 s. The first call after a cache miss takes about 3.0 s.
+  - At most one advisory call per player turn, and none when Tier 1 typed the line.
+- **Real model.**
+  - Gemma 4 E4B ran the owner's 20-turn sequence plus 12 natural variants through the production service.
+  - The deterministic semantics differ only where advisory interpretation is allowed to change understanding (V2 and the resulting spokesperson rotation).
+  - Two real-model wording defects were fixed as validator rules and are covered by ed29 regressions: self-address by name, and moving earlier custody onto the speaker.
+- **Not in scope.** The known raw-media provenance failure in CI `validate` (`desktop/assets/audio/*.mp3`) is a separate governance issue and was not touched.
+
 ## Semantic Interpretation + Canonical Knowledge Convergence Pass — 2026-09-25
 
 - **Evidence**: Jack's unscripted Electron run.

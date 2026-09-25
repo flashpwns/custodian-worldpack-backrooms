@@ -479,13 +479,16 @@ function compileObserverDialogueContext({
   // Ontology truth is not observer knowledge: in a reply, a definition enters context only when this
   // speaker holds a knowledge grant for that entity (canonical-knowledge). A report keeps the class of
   // what the observer actually sees.
+  // The definition that enters is the one the speaker was GRANTED (its proposition), never broader canon text.
+  const grantedDefinition = new Map();
   if (purpose === "response") {
-    const granted = new Set(require("./canonical-knowledge").knowledgeFor(run, sid).filter((f) => f.concept === "entity_definition").map((f) => f.entity_id));
-    for (const id of [...mentioned.keys()]) if (!granted.has(id)) { mentioned.delete(id); omitted.push({ path: "known_state.definition", reason: "knowledge_not_granted" }); }
+    for (const f of require("./canonical-knowledge").knowledgeFor(run, sid).filter((g) => g.concept === "entity_definition" && g.facet === "definition")) if (!grantedDefinition.has(f.entity_id)) grantedDefinition.set(f.entity_id, f);
+    for (const id of [...mentioned.keys()]) if (!grantedDefinition.has(id)) { mentioned.delete(id); omitted.push({ path: "known_state.definition", reason: "knowledge_not_granted" }); }
   }
   for (const entity of mentioned.values()) {
-    definitions.push({ kind: "definition", epistemic: EPISTEMIC.RECORDED, text: entity.definition, entity: entityFacts(entity) });
-    prov("known_state.definition", AUTHORITY.INSTITUTIONAL_KNOWLEDGE, `canon-lexicon.entity.${entity.id}`);
+    const granted = grantedDefinition.get(entity.id) ?? null;
+    definitions.push({ kind: "definition", epistemic: EPISTEMIC.RECORDED, text: granted?.statement ?? entity.definition, entity: entityFacts(entity) });
+    prov("known_state.definition", AUTHORITY.INSTITUTIONAL_KNOWLEDGE, granted ? `canonical-knowledge.${granted.key} (${granted.provenance})` : `canon-lexicon.entity.${entity.id}`);
   }
   const cappedKnown = [...definitions, ...knownState].slice(0, 5);
 

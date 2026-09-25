@@ -826,6 +826,21 @@
       "file": "tests/y99-cq4-day1-beatmap-conformance.test.js",
       "status": "included",
       "tier": "aggregate"
+    },
+    {
+      "file": "tests/ed27-conversational-pragmatics.test.js",
+      "status": "included",
+      "tier": "aggregate"
+    },
+    {
+      "file": "tests/ed28-semantic-knowledge.test.js",
+      "status": "included",
+      "tier": "aggregate"
+    },
+    {
+      "file": "tests/ed29-day1-knowledge-convergence.test.js",
+      "status": "included",
+      "tier": "aggregate"
     }
   ],
   "report_tools": [

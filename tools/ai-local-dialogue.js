@@ -660,7 +660,8 @@ function validateLocalDialogue(packet, candidate, runValue = null) {
   const contribution = packet?.authorized_contribution ?? null;
   const universal = contribution ? { ok: true } : validateUniversalWording(speech);
   if (!universal.ok) return universal;
-  const semantic = validateContribution(contribution, speech, { player_text: packet?.player_message?.text ?? null });
+  const speakerName = packet?.context_capsule?.actor?.name ?? (typeof packet?.speaker?.known_identity === "string" ? packet.speaker.known_identity : packet?.speaker?.known_identity?.name ?? null);
+  const semantic = validateContribution(contribution, speech, { player_text: packet?.player_message?.text ?? null, speaker_name: speakerName });
   if (!semantic.ok) return semantic;
   const named = validateNamedPeople(packet, speech);
   if (!named.ok) return named;

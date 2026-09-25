@@ -121,10 +121,12 @@ test("ED-4 — humane fallback wording preserves semantics without database phra
   for (const t of ["Where is the exit?", "Have you been there before?", "Can you repeat that?", "Huh?"]) assert.doesNotMatch(fb(t), /established|confirmed|information|records?\b/i, t);
 });
 
-test("ED-4 — ownership: untargeted greetings/introductions get one responder; a non-present holder is named by a listener", () => {
+test("ED-4 — ownership: untargeted greetings get one responder, self-introductions one short ack each; a non-present holder is named by a listener", () => {
   const cands = ["c-nora", "c-omar"].map((id) => ({ id, response_eligible: true }));
   const owners = (text, frame, recipient_type = "none") => I.resolveResponseOwners({ recipient_type, interpretation: I.interpretUtterance(text), player_text: text, candidates: cands, frame });
-  assert.deepEqual(owners("I'm Jack.", D.buildSemanticFrame({ text: "I'm Jack.", recipient_type: "none" })), ["c-nora"]);
+  // Owner policy 2026-09-25 (Hole 8): the player introducing themself to the present team gets one short
+  // acknowledgment from each present teammate.
+  assert.deepEqual(owners("I'm Jack.", D.buildSemanticFrame({ text: "I'm Jack.", recipient_type: "none" })), ["c-nora", "c-omar"]);
   assert.deepEqual(owners("Hey.", D.buildSemanticFrame({ text: "Hey.", recipient_type: "none" })), ["c-nora"]);
   const camera = D.buildSemanticFrame({ text: "Who has the field camera?", recipient_type: "none", equipment: EQUIPMENT });
   assert.deepEqual(owners("Who has the field camera?", camera), ["c-nora"], "holder is the player, so one listener answers");

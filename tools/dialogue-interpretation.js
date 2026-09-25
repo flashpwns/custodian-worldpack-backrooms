@@ -59,7 +59,7 @@ const GREETING_VOCATIVE = "(?:y'?all|you all|everyone|everybody|all|guys|gang|fo
 const GREETING_HEAD = "(?:hey|hi|hello|hiya|good ?(?:morning|afternoon|evening|day)|morning|howdy|yo|greetings)";
 const GREETING_PATTERNS = new RegExp(`^${GREETING_HEAD}(?:[\\s,!.-]+${GREETING_VOCATIVE})?[\\s!.,?]*$`, "i");
 
-const INTRODUCTION_PATTERNS = /\b(?:I'?m|My name is|Call me|I am|You can call me)\s+[A-Z][A-Za-z'-]*/;
+const INTRODUCTION_PATTERNS = /\b(?:I'?m|My name is|Call me|I am|You can call me)\s+(?:[A-Z][A-Za-z'-]*|your (?:new )?(?:expedition lead|lead|team lead|camera operator|teammate|coworker|colleague)\b|the new (?:guy|girl|one|hire|person|camera operator|expedition lead|lead)\b|new here\b)/;
 
 const ACKNOWLEDGMENT_PATTERNS = /^(?:got it|understood|copy|roger|alright|all right|okay|ok|sure|noted|good to know|thanks|thank you|appreciate it)[\s!.,]*$/i;
 
@@ -173,7 +173,7 @@ const EXPLANATION_REQUEST_PATTERN = /^(?:but\s+|so\s+|and\s+|oh,?\s+)?(?:why(?: 
 // A bare wh-follow-up ("Where?", "When?") asks about the immediately preceding line.
 const BARE_WH_FOLLOWUP_PATTERN = /^(?:where|when|who|which one|how)[\s?!.]*$/i;
 // Leading discourse markers carry no content ("Anyway, what's next?"); classification sees the rest.
-const DISCOURSE_MARKER_PATTERN = /^(?:anyway|anyways|so|okay|ok|alright|all right|well|right|oh|um|uh|also|and|but)\b[,.!]?\s+/i;
+const DISCOURSE_MARKER_PATTERN = /^(?:(?:anyway|anyways|so|okay|ok|alright|all right|well|right|oh|um|uh|also|and|but)\b[,.!]?|like,)\s+/i;
 // An explicit return to an earlier topic ("Back to the camera, ...", "Anyway, back to what we were saying").
 const TOPIC_RETURN_PATTERN = /^(?:(?:going |getting |to get )?back to|as i was saying,?|returning to)\s*/i;
 const TOPIC_RETURN_GENERIC_PATTERN = /^(?:what we were (?:talking about|saying)|the (?:earlier|previous|other|first) (?:thing|question|topic)|that|it|before|earlier)[\s?!.,]*$/i;
@@ -217,11 +217,36 @@ const SEMANTIC_INTENT_PATTERNS = Object.freeze({
   // "What is your (specific) job?", "What do you do (here)?", "What are you supposed to be doing?"
   role_or_assignment: new RegExp(`\\bwhat(?:\\s+exactly)?(?:'s|\\s+is|\\s+are|\\s+was)?\\s+(?:exactly\\s+)?${POSSESSOR}\\s+(?:specific |exact |actual |main |particular |official |own )?${JOB_NOUN}\\b|\\bwhat (?:do|does) (?:you|[A-Z][a-z]+) (?:actually |exactly |even |really |normally |usually )?(?:do|handle|work on)(?:\\s+(?:here|around here|on (?:this|the) team|today|exactly|for (?:work|a living)))?[\\s?!.,]*(?:then|anyway|exactly)?[\\s?!.,]*$|\\bwhat (?:are|is) (?:you|[A-Z][a-z]+) (?:supposed|meant|assigned|scheduled|here) to (?:be )?(?:doing|do|handle|work on)\\b|\\bwhat (?:are|is) (?:you|[A-Z][a-z]+) (?:in charge of|responsible for|assigned to)\\b|\\btell me (?:about|more about) ${POSSESSOR} (?:job|role|work|assignment)\\b`, "i"),
   // "What do we actually do around here?", "What is this place for?", "What does ASYNC do?", "What are we here for?"
-  institution_purpose: new RegExp(`\\bwhat(?:'s| is)?(?: it)?(?: that)? (?:(?:do|does) )?(?:we|y'?all|you guys|you all|you people|they|async|a-sync|this (?:place|company|outfit|facility)|the company) (?:actually |really |even |exactly |all |ever )?do\\b(?!\\s+(?:now|next|first|then|after))|\\bwhat(?:'s| is) (?:this place|this company|this outfit|this facility|async|a-sync)(?:\\s+(?:for|about|all about|exactly|anyway))?[\\s?!.]*$|\\bwhat (?:are|am) (?:we|i) (?:(?:even|actually|really) )?(?:here for|doing here)\\b|\\bwhy are we (?:even |all )?here\\b`, "i"),
+  institution_purpose: new RegExp(`\\bwhat(?:'s| is)?(?: it)?(?: that)? (?:(?:do|does) )?(?:we|y'?all|you guys|you all|you people|people|folks|everyone|everybody|they|async|a-sync|this (?:place|company|outfit|facility)|the company) (?:actually |really |even |exactly |all |ever |usually |normally )?do\\b(?!\\s+(?:now|next|first|then|after))|\\bwhat(?:'s| is) (?:this place|this company|this outfit|this facility|async|a-sync)(?:\\s+(?:for|about|all about|exactly|anyway))?[\\s?!.]*$|\\bwhat (?:are|am) (?:we|i) (?:(?:even|actually|really) )?(?:here for|doing here)\\b|\\bwhy are we (?:even |all )?here\\b`, "i"),
   // "What are we doing today?", "What's the mission?", "What are we going into the Complex to do today?"
-  mission_objective: /\bwhat(?:'s| is| are)? (?:the |our |today's |this )(?:mission|assignment|objective|goal|job today|task today|plan for today)\b|\bwhat (?:are|is) we (?:doing|supposed to (?:be )?do(?:ing)?|here to do) today\b|\bwhat (?:are|is) we (?:going|heading|headed|gonna go) (?:in(?:to)?|to|down) (?:the complex|there|the outpost)\b|\bwhat (?:are|is) we (?:going|gonna) (?:to )?do (?:in |into |down |over )?(?:the complex|there|today)\b|\bwhy are we going (?:in(?:to)?|to|down)\b/i,
+  mission_objective: /\bwhat(?:'s| is| are)? (?:the |our |today's |this )(?:mission|assignment|objective|goal|job today|task today|plan for today)\b|\bwhat(?:'s| is) today's (?:job|task|work|assignment|mission|plan)\b|\bwhat (?:are|is) we (?:doing|supposed to (?:be )?do(?:ing)?|here to do)(?: (?:here|out here|in there))? today\b|\bwhat(?:'s| is) (?:the |our )?(?:job|task|work) (?:for )?today\b|\bwhat (?:are|is) we (?:going|heading|headed|gonna go) (?:in(?:to)?|to|down) (?:the complex|there|the outpost)\b|\bwhat (?:are|is) we (?:going|gonna) (?:to )?do (?:in |into |down |over )?(?:the complex|there|today)\b|\bwhy are we going (?:in(?:to)?|to|down)\b/i,
   // "Where are we supposed to go next?", "Where are we headed?", "What happens after this?", "What's the next step?"
   next_step: /\bwhere (?:are|do|should|shall|will|am) (?:we|i) (?:supposed to |meant to |going to |gonna |expected to )?(?:go|head|be going|be heading|report)(?: to)?(?:\s+(?:next|now|after this|from here|after that))?\b|\bwhere (?:are we|we're|am i) (?:headed|heading|going|off to)\b|\bwhat happens (?:next|now|after this|after that)\b|\bwhat(?:'s| is) (?:the )?next (?:step|thing|stop)\b|\bwhat(?:'s| is) after this\b|\bwhat do we do (?:next|now|after this|from here)\b|\bwhat now\b/i,
+  // "What does Maxwell do?", "What's his job?", "What is Maxwell's role?" (a person's ROLE, not who they are)
+  person_role: /\bwhat(?:'s| is| was)? (?:his|her|their|maxwell's|kirk's|dr\.? maxwell's) (?:actual |exact |specific |main |official )?(?:job|role|position|function|title|deal)\b|\bwhat (?:does|did) (?:he|she|maxwell|kirk|dr\.? maxwell|dr\.? kirk maxwell|the doctor|that doctor) (?:actually |exactly |even |really |normally |usually )?do\b/i,
+  // "Why is he briefing us?", "Who's in charge here?", "Who do we report to?" (AUTHORITY, not identity)
+  person_authority: /\bwhy (?:is|was|did|does) (?:he|she|maxwell|kirk|dr\.? maxwell|the doctor|that doctor|that guy) (?:the one )?(?:brief(?:ing|ed|s)?|giv(?:ing|e) (?:us )?the briefing|in charge)\b|\bwho(?:'s| is| was) (?:in charge|running (?:this|things|the show)|the boss|our boss|in command|our supervisor|responsible for (?:us|this|the briefing))\b|\bwho do we (?:answer|report) to\b|\bwhat (?:authority|say) does (?:he|she|maxwell|kirk) have\b/i,
+  // "Do you know Maxwell?", "Have you met him before?" (RELATION to the person)
+  person_relation: /\b(?:do|did) you (?:(?:already|actually|personally|really) )?know (?:him|her|them|maxwell|kirk|dr\.? maxwell|[A-Z][a-z]+)(?: (?:personally|well|at all|from before))?[\s?!.]*$|\bhave you (?:ever )?(?:met|worked with|known) (?:him|her|maxwell|kirk|dr\.? maxwell|[A-Z][a-z]+)\b|\bhow (?:well )?do you know (?:him|her|maxwell|kirk|[A-Z][a-z]+)\b/i,
+  // "How does the Threshold work?", "How does that work?" (MECHANISM, not definition)
+  mechanism: /\bhow (?:does|do) (?:the |this |that |a )?[A-Za-z][\w -]{1,40}? (?:actually |even |really )?work\b|\bhow (?:does|do) (?:it|that|this) (?:actually |even |really )?work\b|\bhow (?:was|is) (?:the |this |that )?[A-Za-z][\w -]{1,30}? (?:made|built|powered)\b/i,
+  // "Is the Threshold on right now?", "Is the Threshold active?" (CURRENT STATE, not definition)
+  entity_state: /^(?:so,?\s+|and\s+|but\s+)?(?:is|are) (?:the |that |this )?[A-Za-z][\w -]{1,40}? (?:on|off|open|closed|active|running|working|energi[sz]ed|live|powered(?: up)?|operational|ready|safe|stable)(?: (?:right )?now| today| at the moment)?[\s?!.]*$|\bwho(?:'s| is) (?:at|in|by|near) the threshold\b/i,
+  // "What are you doing right now?" (CURRENT ACTION, not the assignment)
+  current_action: /\bwhat (?:are|is) (?:you|[A-Z][a-z]+) (?:doing|up to)(?: right)? (?:now|at the moment|currently)\b|\bwhat(?:'re| are) you (?:up to|doing) right now\b|\bwhat (?:are|is) (?:you|[A-Z][a-z]+) (?:currently|busy) doing\b/i,
+  // "What is this room for?" (LOCATION purpose)
+  location_purpose: /\bwhat(?:'s| is| was) (?:this|that|the) (?:room|briefing room|space|area|table)(?: (?:here|used))? (?:for|used for)\b|\bwhat (?:do|did) (?:we|they|people) (?:use|do in) (?:this|that|the) (?:room|space)\b|\bwhat happens in (?:this|that|the) room\b/i,
+  // "Is Maxwell here?" (current presence) / "Was Maxwell just here?" / "Where did he go?" (recent presence).
+  person_presence: /^(?:so,?\s+|and\s+|wait,?\s+)?(?:is|was) (?:he|she|maxwell|kirk|dr\.? maxwell|[A-Z][a-z]+) (?:still |just |even )?(?:here|around|in here|in the room|with us|nearby)\b|\bwhere did (?:he|she|maxwell|kirk|dr\.? maxwell|[A-Z][a-z]+) go\b/i,
+  // "Are we on Standard?" / "Are we in the Complex yet?" (CURRENT STATE of where we are, not a definition).
+  where_we_are: /^(?:so,?\s+|and\s+|wait,?\s+)?(?:are|am|is) (?:we|i|you|the team) (?:still |already |even )?(?:on|in|at|inside|over on|on the) (?:the )?(standard(?: side)?|the complex|complex)\b/i,
+  // Facets of an entity beyond its definition (never answered by the definition itself):
+  facet_origin: /\bwhy does (?:the |it |that )?[\w -]*\bexist\b|\bwho (?:built|made|created|designed|found)\b|\bwhere did (?:the |it |that )?[\w -]*come from\b|\bhow did (?:the |it |that )?[\w -]*(?:get there|start|begin)\b/i,
+  facet_mechanism: /\bwhat (?:powers|runs|drives|operates|fuels)\b/i,
+  facet_contents: /\bwhat(?:'s| is| are)? (?:in|inside) (?:them|it|those|these|there|the [\w -]+?)[\s?!.]*$|\bwhat(?:'s| is) (?:actually )?in (?:the|those|these|them)\b|\bwhat do (?:they|those|the [\w -]+) (?:contain|have in them)\b/i,
+  facet_destination: /\bwhere (?:do|does|are|is|will) (?:they|it|(?:the|those|these|that|this|our|your) [\w -]+?) (?:go|going|headed|heading|being (?:delivered|taken|sent)|supposed to go|end up|get delivered)\b/i,
+  facet_custody: /\bwho(?:'s| is| was) (?:delivering|carrying|taking|bringing|handling) (?:them|those|these|it|the [\w -]+)\b/i,
+  facet_history: /\bwhat(?:'s| is) (?:the )?(?:history|background|story) (?:of|behind) (?:async|a-sync|the company|this place)\b|\bhow long has (?:async|a-sync|the company|this place) been\b|\bwho (?:runs|owns|founded) (?:async|a-sync|the company|this place)\b/i,
   // "Who is Kirk?", "Who's that Maxwell guy?", "Who was that doctor briefing us?"
   person_identity: new RegExp(`${LEAD}who(?:'s| is| was| were)\\b`, "i"),
   // "What are the startup materials for?", "What are those for?", "Why are you carrying that?"
@@ -296,12 +321,61 @@ const SLOT_ANSWER_PATTERNS = Object.freeze({
   temporal: /^(?:just now|earlier|then|before that|back then|a (?:minute|moment|second|while) ago|at the (?:start|beginning|briefing)|during the briefing|today|this morning|(?:when|after|before|while|until|since)\b)/i
 });
 
+// "What did Clint say the materials were for?" / "Didn't Maxwell say noon?" / "Who said we were going to
+// Equipment Staging?" / "What did I say Maxwell told me?": a question about what someone SAID (reported
+// speech). Only the speaker reference is recognized here; dialogue-discourse resolves it and the topic.
+const REPORTED_SPEECH_FORMS = [
+  // "What did Clint say (about X / the materials were for)?", "What did Daisy tell us about the camera?"
+  /^(?:so,?\s+|and\s+|wait,?\s+|hey,?\s+|remind me,?\s+)?what (?:did|was it) (i|he|she|they|[A-Za-z][a-z'-]+) (?:just )?(?:say|said|tell (?:us|me|you|them|everyone)|told (?:us|me|you)|mention(?:ed)?)\b\s*(?:that\s+)?([\s\S]*?)[\s?!.]*$/i,
+  // "Didn't Clint say those go to Outpost A?", "Didn't Maxwell say noon?"
+  /^(?:so,?\s+|and\s+|wait,?\s+|but\s+)?(?:didn'?t|did not|did) (he|she|they|[A-Za-z][a-z'-]+) (?:just )?(?:say|tell (?:us|me)|mention)\b\s*(?:that\s+)?([\s\S]*?)[\s?!.]*$/i,
+  // "Who said we were going to Equipment Staging?", "Who told us about the tape?"
+  /^(?:so,?\s+|and\s+|wait,?\s+)?who (?:said|told (?:us|me|you)|mentioned)\b\s*(?:that\s+)?([\s\S]*?)[\s?!.]*$/i
+];
+const REPORTED_SPEAKER_STOP = new Set(["you", "we", "it", "that", "this", "there", "everyone", "anyone", "somebody", "someone"]);
+function reportedSpeechRequest(raw) {
+  const text = String(raw ?? "").trim();
+  for (const [index, pattern] of REPORTED_SPEECH_FORMS.entries()) {
+    const match = text.match(pattern);
+    if (!match) continue;
+    if (index === 2) return Object.freeze({ speaker_ref: null, topic_text: String(match[1] ?? "").trim() || null });
+    const speaker = match[1].toLowerCase();
+    if (REPORTED_SPEAKER_STOP.has(speaker)) continue;
+    // "What did you say?" is a repetition request, handled elsewhere (speaker "you" is never matched here).
+    return Object.freeze({ speaker_ref: speaker, topic_text: String(match[2] ?? "").trim() || null });
+  }
+  return null;
+}
+
+// "No, I said Brady." / "I meant Brady." / "Not Daisy." / "I was asking Clint." / "No, the other one.": a
+// correction of the CONVERSATIONAL target of the player's previous line (never of any identity fact).
+const ADDRESS_CORRECTION_FORMS = [
+  ["retarget", /^(?:no,?\s+|nope,?\s+|sorry,?\s+|oh,?\s+|wait,?\s+)?(?:i said|i meant|i was asking|i was talking to|i was asking for|i asked|i'?m asking|i am asking|i wanted)\s+([A-Za-z][a-z'-]+)(?:,?\s+not\s+[A-Za-z][a-z'-]+)?[\s.!]*$/i],
+  ["retarget", /^(?:no,?|nope,?|sorry,?)\s+([A-Za-z][a-z'-]+)[\s.!]*$/i],
+  ["retarget", /^(?:no,?\s+)?(?:i meant|i was asking)\s+([A-Za-z][a-z'-]+),?\s+not\s+[A-Za-z][a-z'-]+[\s.!]*$/i],
+  ["exclude", /^(?:no,?\s+)?not\s+([A-Za-z][a-z'-]+)[\s.!]*$/i],
+  ["other", /^(?:no,?\s+|nope,?\s+)?(?:i meant |i was asking )?the other one[\s.!]*$/i]
+];
+/** A correction of who the previous line addressed: { kind, name|null }, or null. Names are checked by the caller. */
+function addressCorrection(raw) {
+  const text = String(raw ?? "").trim();
+  for (const [kind, pattern] of ADDRESS_CORRECTION_FORMS) {
+    const match = text.match(pattern);
+    if (!match) continue;
+    const name = kind === "other" ? null : match[1];
+    if (name && /^(?:thanks|thank|problem|worries|way|idea|one|thing|that|this|it|i|me|you|sir|ma'?am|really|okay|ok)$/i.test(name)) continue;
+    return Object.freeze({ kind, name });
+  }
+  return null;
+}
+
 // "What recording?" -- a bare noun question (anchored by discourse to a prior line's authorized facts).
 // One to three words, a noun phrase only ("What recording?", "Which record?", "What layout record?").
 const BARE_NOUN_QUESTION = /^(?:what|which)\s+((?:[a-z-]+\s+){0,2}[a-z-]+)[\s?!.]*$/i;
-const NOT_A_NOUN = /\b(?:time|now|next|else|happened|happens|for|is|are|was|were|am|be|do|does|did|about|then|so|if|kind|way|heck|hell|exactly|you|we|they|it|that|this|he|she|i|me|up|going|mean|meant)\b/i;
+const NOT_A_NOUN = /\b(?:the|a|an|those|these|time|now|next|else|happened|happens|for|is|are|was|were|am|be|do|does|did|about|then|so|if|kind|way|heck|hell|exactly|you|we|they|it|that|this|he|she|i|me|up|going|mean|meant)\b/i;
 // "Who was that doctor briefing us?" describes the person by the briefing; "that doctor/guy" alone is a description.
-const BRIEFING_PERSON_DESCRIPTION = /\bdoctor\b[^?.!]*\bbrief|\bbrief\w*\b[^?.!]*\bdoctor\b/i;
+// A person described BY the briefing event itself ("the doctor who briefed us", "the guy who gave the talk").
+const BRIEFING_PERSON_DESCRIPTION = /\bdoctor\b[^?.!]*\bbrief|\bbrief\w*\b[^?.!]*\bdoctor\b|\b(?:guy|man|woman|person|fellow|lady|one|who)\b[^?.!]{0,20}\b(?:briefed us|gave (?:us )?(?:the|that|this|our) (?:talk|briefing|brief|presentation|orientation|speech)|ran the briefing|led the briefing|did the briefing|was (?:just )?briefing us)\b/i;
 const PERSON_DESCRIPTION = /\b(?:doctor|guy|man|woman|person|lady|fellow)\b/i;
 const WHO_IS_NAME = /\b[Ww]ho(?:'s| is| was)\s+(?:that |this |the )?([A-Z][a-z]+)\b/;
 
@@ -313,6 +387,31 @@ const LANGUAGE_PATTERNS = Object.freeze({
   person_description: PERSON_DESCRIPTION,
   who_is_name: WHO_IS_NAME,
   response_event: RESPONSE_EVENT_PATTERN,
+  // Third-person pronouns that point at a salient person ("What's his job?", "Why is he briefing us?").
+  person_pronoun: /\b(?:he|him|his|she|her|hers)\b/i,
+  // Time words naming the schedule a line stated ("Didn't Maxwell say noon?").
+  schedule_words: /\b(?:noon|time|departure|depart|leave|leaving|cutoff|cut-off|back by|return(?:ing)?|10(?::00)?|ten|twelve|one o'?clock|1:00)\b/i,
+  // "Who's in charge?" asks overall command, not one person's briefing authority.
+  command_words: /\b(?:in charge|running|boss|in command|supervisor|answer to|report to)\b/i,
+  // "What does Standard mean?" -> the term asked about.
+  means_what: /^(?:so,?\s+|and\s+|wait,?\s+)?what (?:does|do) (?:the (?:word |term )?)?["'“]?([A-Za-z][\w -]{1,40}?)["'”]? (?:even |actually |exactly )?mean[\s?!.]*$/i,
+  pronoun_term: /^(?:that|it|this|those|these|you|he|she|they)$/i,
+  // "What does that mean?" right after a line.
+  that_means: /^(?:so,?\s+|and\s+|wait,?\s+|sorry,?\s+)?what(?:'s| does| do) (?:that|it|this) (?:even |actually |exactly )?mean\b[\s?!.]*$/i,
+  // A declarative that asserts something about the world (a player's claim), and its self-intro exception.
+  claim_predicate: /\b(?:is|are|was|were|isn'?t|aren'?t|told me|said|says|means|has|have)\b/i,
+  self_statement_lead: /^(?:i'?m|i am|my name)\b/i,
+  // "Who HAD the camera earlier?": custody at an earlier time.
+  custody_past: /\b(?:had|was (?:carrying|holding)|were (?:carrying|holding)|used to have)\b/i,
+  custody_earlier: /\b(?:earlier|before|at first|at the briefing|originally|previously|this morning)\b/i,
+  // A bare name answering "who do you mean?" after a correction.
+  bare_name: /^[A-Za-z][a-z'-]+$/,
+  // "What did Maxwell tell us to do after introductions?": procedure words in a reported-speech topic.
+  procedure_words: /\b(?:do|next|after|report(?:ing)? to|go (?:to|next)|head(?:ed)? to|supposed to)\b/i,
+  // A "where" question asks a location.
+  where_question: /^(?:so,?\s+|and\s+)?where\b/i,
+  // "that doctor" / "the guy who just left": a description that may pick out a recently departed speaker.
+  departed_person_description: /\b(?:that|the) (?:doctor|guy|man|woman|person|lady|fellow)(?: (?:who|that) (?:just )?(?:left|briefed us|was (?:just )?(?:here|talking)|gave (?:us )?the briefing|was briefing us))?\b|\bthe (?:doctor|guy|man|person) who (?:just )?left\b/i,
   event_reference: EVENT_REFERENCE_PATTERN,
   slot_answers: SLOT_ANSWER_PATTERNS,
   invite_self_description: INVITE_SELF_DESCRIPTION_PATTERN,
@@ -653,11 +752,25 @@ function interpretUtterance(text, { isGroup = false } = {}) {
  * The model never participates in this decision.
  */
 // Questions whose answer belongs to each listener personally (never a shared fact).
-const INDIVIDUAL_ANSWER_FUNCTIONS = new Set(["ask_personal_experience", "ask_opinion", "ask_role_or_assignment"]);
+const INDIVIDUAL_ANSWER_FUNCTIONS = new Set(["ask_personal_experience", "ask_opinion", "ask_role_or_assignment", "ask_current_action"]);
+/**
+ * The spokesperson for a SHARED answer (several present people know the same thing): deterministic and
+ * socially reasonable -- the eligible knower who spoke least recently (canonical dialogue history), ties in
+ * canonical team order. Reproducible, survives reload, never a model choice, and no one becomes the
+ * room's permanent spokesperson just by sorting first. Candidates without a record keep team order.
+ */
+function spokesperson(pool = []) {
+  if (!pool.length) return null;
+  const seq = (c) => (Number.isFinite(c?.last_spoke_seq) ? c.last_spoke_seq : -1);
+  return pool.reduce((best, c) => (seq(c) < seq(best) ? c : best), pool[0]);
+}
 function resolveResponseOwners({ recipient_type, interpretation, player_text, candidates = [], frame = null } = {}) {
   const eligible = candidates.filter((candidate) => candidate?.response_eligible && candidate?.id);
   if (recipient_type === "direct") return eligible.slice(0, 1).map((candidate) => candidate.id);
   if (eligible.length === 0) return [];
+  // The player introducing themself to the team: each present teammate may acknowledge ONCE, briefly (a
+  // narrow social policy -- not "every group statement gets everyone").
+  if (frame?.discourse_function === "introduce_self" && !frame?.resumed_question) return eligible.map((candidate) => candidate.id);
 
   const act = interpretation?.speech_act ?? "ambiguous";
   const topic = interpretation?.topic ?? "unknown";
@@ -699,14 +812,24 @@ function resolveResponseOwners({ recipient_type, interpretation, player_text, ca
   // Knowledge questions (who someone is, what an assignment is for, what today is about): the person asked
   // about answers for themselves; an assignment/item question goes to the one whose assignment it is;
   // otherwise ONE spokesperson who canonically knows it (never a chorus of the same fact).
-  const knowledgeQuestion = ["ask_institution_purpose", "ask_mission_objective", "ask_person_identity", "ask_assignment_purpose", "ask_entity_definition"].includes(fn) || (fn === "ask_role_or_assignment" && frame?.knowledge_query?.subject && frame.knowledge_query.subject !== "addressee");
+  const knowledgeQuestion = ["ask_institution_purpose", "ask_mission_objective", "ask_person_identity", "ask_assignment_purpose", "ask_entity_definition", "ask_location_purpose"].includes(fn) || (fn === "ask_role_or_assignment" && frame?.knowledge_query?.subject && frame.knowledge_query.subject !== "addressee");
   if (knowledgeQuestion && !frame?.resumed_question) {
     const about = frame?.knowledge_query?.entity?.id ?? null;
     const selfAnswer = eligible.find((candidate) => candidate.id === about);
     if (selfAnswer && ["ask_person_identity", "ask_role_or_assignment"].includes(fn)) return [selfAnswer.id];
     const owner = fn === "ask_assignment_purpose" ? eligible.find((candidate) => candidate.owns_entity) : null;
     if (owner) return [owner.id];
-    return [(eligible.find((candidate) => candidate.has_relevant_knowledge) ?? eligible[0]).id];
+    const knowers = eligible.filter((candidate) => candidate.has_relevant_knowledge);
+    return [(spokesperson(knowers) ?? spokesperson(eligible)).id];
+  }
+  // A claim the player makes about the world is acknowledged by one listener (never confirmed).
+  if (fn === "make_statement" && frame?.player_claim && recipient_type !== "group") return [spokesperson(eligible).id];
+  // "What did Clint say ...?": someone who HEARD it answers -- preferably not the one being quoted.
+  if (fn === "ask_reported_speech" && !frame?.resumed_question) {
+    const quoted = frame?.knowledge_query?.speaker_id ?? null;
+    const knowers = eligible.filter((candidate) => candidate.has_relevant_knowledge);
+    const others = knowers.filter((candidate) => candidate.id !== quoted);
+    return [(spokesperson(others) ?? spokesperson(knowers) ?? spokesperson(eligible.filter((candidate) => candidate.id !== quoted)) ?? eligible[0]).id];
   }
   // "Why didn't you (all) answer?": each addressed listener accounts for their own part; asked of the room,
   // one listener answers.
@@ -727,7 +850,7 @@ function resolveResponseOwners({ recipient_type, interpretation, player_text, ca
   }
   // "What's next?" is shared procedural knowledge: one speaker who knows it (spokesperson), never a chorus.
   if (fn === "ask_next_step") {
-    const knower = eligible.find((candidate) => candidate.has_relevant_knowledge) ?? eligible[0];
+    const knower = spokesperson(eligible.filter((candidate) => candidate.has_relevant_knowledge)) ?? spokesperson(eligible);
     return [knower.id];
   }
   // "Why?" is answered by whoever said the line being questioned (first in canonical order).
@@ -976,8 +1099,11 @@ module.exports = {
   detectTopic,
   inferLocalRecipientType,
   resolveResponseOwners,
+  spokesperson,
   resolveResponsePurpose,
   selectRelevantContext,
   buildMaxwellWordsmithHints,
-  resolveReportPurpose
+  resolveReportPurpose,
+  reportedSpeechRequest,
+  addressCorrection
 };

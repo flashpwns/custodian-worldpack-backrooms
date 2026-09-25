@@ -115,7 +115,10 @@
       "tests/y96-comms-targeting-and-absent-recipients.test.js",
       "tests/y97-local-model-provider.test.js",
       "tests/y98-opening-beats-1-4.test.js",
-      "tests/y99-cq4-day1-beatmap-conformance.test.js"
+      "tests/y99-cq4-day1-beatmap-conformance.test.js",
+      "tests/ed27-conversational-pragmatics.test.js",
+      "tests/ed28-semantic-knowledge.test.js",
+      "tests/ed29-day1-knowledge-convergence.test.js"
     ],
     "long-world": [
       "tests/profile-model.test.js",
@@ -343,7 +346,10 @@
     "tests/y108-beat-2-4-convergence-repair.test.js": "27c5a4969890e384d1a459a3a17f29732117ff0669a9f780eb45c70a5d7e3639",
     "tests/y109-local-coworker-dialogue-runtime.test.js": "947e8203a6662e3ebcf46517e1d6f4085f78436d1a270f5e24e24eb06bd9cca1",
     "tests/y110-dialogue-interpretation.test.js": "544e69cd056b690ef8eeafaa458c7efdcc793371332953defcaeebc4b4c101b4",
-    "tests/y111-local-group-dialogue-pass.test.js": "16a083d628b75832471b05f7ebfcbf3b44afb01601657eee8d3dd3355a318fe0"
+    "tests/y111-local-group-dialogue-pass.test.js": "16a083d628b75832471b05f7ebfcbf3b44afb01601657eee8d3dd3355a318fe0",
+    "tests/ed27-conversational-pragmatics.test.js": "1606a930f7925c83dd5033ddd4324a3e96970ddb06f0ce2c8b215b8e915f6eff",
+    "tests/ed28-semantic-knowledge.test.js": "0861502692ed1931f077d8348b1d51002c2dc61df531b1959c9fc49b4e177910",
+    "tests/ed29-day1-knowledge-convergence.test.js": "e5e8382a90799ac99aa62ba2004830a1c18be5ba3a89a9bb0417363212636e17"
   },
   "verification_core_hashes": {
     "tools/verification-inventory.js": "0f27da4645f1d85e48b52133475371bbbce55072807b6900108c3a1afd344f3b",

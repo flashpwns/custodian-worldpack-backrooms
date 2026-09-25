@@ -23,6 +23,13 @@ function briefingListeners(run, briefing) {
 }
 // Which authored beat a delivered line is (the knowledge grants read beats by key, never by parsing prose).
 const BRIEFING_BEAT_KEYS = Object.freeze(["intro", "mission_statement", "schedule", "roster_call"]);
+// Canon status of the playable Maxwell briefing (greeting, intro, mission statement, schedule, roster call,
+// dismissal). Ratified by the project owner on 2026-09-25 as current Day-1 authored canon under the same
+// locked design law as the mission record; see docs/dialogue/DAY1_KNOWLEDGE_MATRIX.md#canon-ratification.
+// The undelivered briefing_authority.threshold_sendoff is NOT covered (it conflicts with the crossing order).
+const BRIEFING_AUTHORITY_STATUS = "ratified-day1-authored-canon";
+const BRIEFING_AUTHORITY_PROVENANCE = "cq4-day1-locked-design-law";
+const LEGACY_BRIEFING_STATUS = "legacy_unreconciled_briefing_material";
 
 const BEATS = Object.freeze({
   FACILITY_BROADCAST: "FACILITY_BROADCAST",
@@ -327,7 +334,9 @@ function mission({ run_id = null, seed = "day1-opener", staffing = null } = {}) 
     authority: {
       classification: "authoritative-canonical-opener",
       source_claim_ids: [],
-      provenance: "cq4-day1-locked-design-law"
+      provenance: BRIEFING_AUTHORITY_PROVENANCE,
+      // The mission record and the briefing agree: the delivered briefing is ratified Day-1 canon.
+      briefing_status: BRIEFING_AUTHORITY_STATUS
     },
     rationale: authored.rationale,
     site: clone(authored.site),
@@ -442,7 +451,8 @@ function instantiate(run) {
       dismissal: dialogue.dismissal
     },
     text: [dialogue.greeting, dialogue.intro, dialogue.mission_statement, rosterCall, dialogue.dismissal].join(" "),
-    authority_status: "legacy_unreconciled_briefing_material",
+    authority_status: BRIEFING_AUTHORITY_STATUS,
+    authority_provenance: BRIEFING_AUTHORITY_PROVENANCE,
     status: "pending",
     exchange_history: [],
     facts_communicated: {
@@ -456,6 +466,12 @@ function instantiate(run) {
       team_size: 4
     }
   };
+  // Saves made before ratification carry the legacy label; the authored scene itself is unchanged.
+  const savedBriefing = run.expedition.day1_opener.personnel_briefing;
+  if (savedBriefing && (savedBriefing.authority_status === LEGACY_BRIEFING_STATUS || !savedBriefing.authority_status)) {
+    savedBriefing.authority_status = BRIEFING_AUTHORITY_STATUS;
+    savedBriefing.authority_provenance = BRIEFING_AUTHORITY_PROVENANCE;
+  }
   run.expedition.day1_opener.esd_handoff ??= {
     status: "introductions-open",
     destination: "Equipment Services Division",
@@ -967,6 +983,7 @@ function startPersonnelBriefing(run) {
       text: firstBeat,
       beat_key: BRIEFING_BEAT_KEYS[0],
       listeners: briefingListeners(run, briefing),
+      at_interval: Number(run.expedition.clock?.interval ?? 0),
       at: new Date().toISOString()
     });
 
@@ -1029,6 +1046,7 @@ function interactPersonnelBriefing(run, input = "") {
         text: nextBeatText,
         beat_key: BRIEFING_BEAT_KEYS[briefing.current_beat_index] ?? null,
         listeners: briefingListeners(run, briefing),
+        at_interval: Number(run.expedition.clock?.interval ?? 0),
         at: new Date().toISOString()
       });
       presentationBus.emit(run, {
@@ -1134,6 +1152,7 @@ function concludePersonnelBriefing(run) {
       text: dismissalText,
       beat_key: "dismissal",
       listeners: briefingListeners(run, briefing),
+      at_interval: Number(run.expedition.clock?.interval ?? 0),
       at: new Date().toISOString()
     });
   }
@@ -1172,6 +1191,8 @@ function advancePersonnelBriefingBeat(run) {
 }
 
 module.exports = {
+  BRIEFING_AUTHORITY_STATUS,
+  BRIEFING_AUTHORITY_PROVENANCE,
   briefingListeners,
   BRIEFING_BEAT_KEYS,
   VERSION,

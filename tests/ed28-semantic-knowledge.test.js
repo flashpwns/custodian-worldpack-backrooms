@@ -110,18 +110,26 @@ test("knowledge — every grant is sourced; briefing knowledge goes only to list
     assert.equal(q(present, "schedule").status, "known");
     assert.equal(q(present, "current_procedure").status, "known");
     assert.equal(q(present, "person_identity", { id: "dr-kirk-maxwell", kind: "person" }).status, "known");
-    // Not in the room: none of it.
-    for (const concept of ["mission_objective", "schedule", "current_procedure"]) assert.equal(q(absent, concept).status, "not_established", `${concept} never reaches someone who was not there`);
-    assert.equal(q(absent, "person_identity", { id: "dr-kirk-maxwell", kind: "person" }).status, "not_established");
-    // Canon that exists but is not granted: a truthful unknown with its reason.
-    for (const id of ["threshold", "standard", "complex"]) {
+    // Not in the room: none of the BRIEFING (baseline orientation is theirs regardless).
+    const keys = (actor) => K.knowledgeFor(state.run, actor).map((f) => f.key);
+    for (const key of ["mission_statement", "operational_window", "briefing_dismissal", "briefed_assignment", "maxwell_address_form", "startup_material_destination"]) assert.ok(!keys(absent).includes(key), `${key} never reaches someone who was not there`);
+    for (const concept of ["schedule", "current_procedure"]) assert.equal(q(absent, concept).status, "not_established", `${concept} never reaches someone who was not there`);
+    assert.deepEqual(q(absent, "mission_objective").facts.map((f) => f.provenance), ["baseline_induction"], "only the baseline 'expedition into the Complex'");
+    assert.ok(q(absent, "person_identity", { id: "dr-kirk-maxwell", kind: "person" }).facts.every((f) => f.provenance === "baseline_induction"), "Maxwell's identity by baseline only; 'call me Kirk' was never heard");
+    // Owner-ratified baseline induction (2026-09-25): definitions, never current state.
+    for (const id of ["threshold", "standard", "complex", "local"]) {
       const result = q(present, "entity_definition", { id, kind: "entity" });
-      assert.equal(result.status, "not_established", id);
-      assert.equal(result.unknown_reason, K.UNKNOWN_CLASS.CANON_NOT_GRANTED, id);
+      assert.equal(result.status, "known", id);
+      assert.ok(result.facts.every((f) => f.provenance === "baseline_induction"), id);
+      // Definition is not current state: any current state comes from observation, never from the definition.
+      const current = q(present, "entity_state", { id, kind: "entity" });
+      assert.ok(current.status === "not_established" || current.facts.every((f) => f.provenance === "observed" && f.key !== `${id}_definition`), `${id}: definition is not current state`);
     }
-    assert.equal(q(present, "institution_purpose").status, "known", "'what do we do around here' is answered by what they were told about today");
-    assert.equal(q(present, "institution_purpose", { id: "async", kind: "institution" }).status, "not_established", "what ASYNC as a whole does is not established by any delivered source");
-    assert.equal(q(present, "entity_definition", { id: "async", kind: "institution" }).unknown_reason, K.UNKNOWN_CLASS.MISSING_STRUCTURE);
+    assert.equal(q(present, "institution_purpose").status, "known");
+    const async = q(present, "institution_purpose", { id: "async", kind: "institution" });
+    assert.equal(async.status, "known");
+    assert.match(async.facts[0].statement, /^ASYNC organizes and supports controlled research, documentation, logistics and expedition operations related to the Complex\.$/);
+    assert.ok(async.bounded_unknown, "nothing beyond the one authorized sentence");
     // Unbriefed carry capacity / field light holder are not knowledge.
     const briefed = K.briefedCustody(state.run, present);
     const equipment = state.run.expedition.equipment;
@@ -135,12 +143,14 @@ test("knowledge — a briefing concluded early grants only what was said; heard 
   const short = setup("ed28-short", garbage(), { beats: 0 });
   try {
     const actor = short.ids[0];
-    assert.equal(K.queryKnowledge(short.run, { actor_id: actor, concept: "mission_objective" }).status, "not_established", "the mission statement was never delivered");
+    assert.ok(!K.queryKnowledge(short.run, { actor_id: actor, concept: "mission_objective" }).facts.some((f) => f.key === "mission_statement"), "the mission statement was never delivered");
     assert.equal(K.queryKnowledge(short.run, { actor_id: actor, concept: "current_procedure" }).status, "known", "the dismissal was");
     // A coworker hears another's self-description: known BY REPORT (heard), never first-hand.
     const [a, b] = short.names;
     await turn(short, `${a}, tell me about yourself.`);
-    const report = K.knowledgeFor(short.run, short.ids[1]).find((f) => f.key === "heard_self_description" && f.entity_id === short.ids[0]);
+    // Heard propositions are general now (ed29); a self-description yields heard role/assignment grants.
+    const report = K.knowledgeFor(short.run, short.ids[1]).find((f) => ["heard_role", "heard_current_assignment"].includes(f.key) && f.speaker_id === short.ids[0]);
+    assert.ok(K.heardSelfDescriptions(short.run, short.ids[1]).some((h) => h.person_id === short.ids[0]), "compatibility view");
     assert.ok(report, `${b} heard ${a}`);
     assert.equal(report.epistemic_mode, "heard");
     assert.match(report.proposition, new RegExp(`^${a} said`));
@@ -153,13 +163,15 @@ test("knowledge answers — owners, provenance, truthful unknowns, non-present e
   try {
     const kirk = await turn(state, "Who is Kirk?");
     assert.equal(kirk.fn, "ask_person_identity");
-    assert.deepEqual(fact(kirk.plan(), "known_concept").provenance.sort(), ["briefing", "observed"]);
+    assert.deepEqual(fact(kirk.plan(), "known_concept").provenance.sort(), ["baseline_induction", "briefing"]);
     assert.equal(kirk.owners.length, 1, "one spokesperson, never a chorus of the same fact");
     const bob = await turn(state, "Who is Bob?");
     assert.equal(fact(bob.plan(), "uncertainty").kind, "unknown_person", "an unknown name stays unknown; nothing is invented");
     const threshold = await turn(state, "What is the Threshold?");
-    assert.equal(fact(threshold.plan(), "uncertainty").kind, "not_told");
-    assert.match(threshold.spoken[0].text, /told/i);
+    assert.match(fact(threshold.plan(), "known_concept").statements[0], /fixed crossing between Standard and the Complex/);
+    const how = await turn(state, "How does the Threshold work?");
+    assert.equal(fact(how.plan(), "knowledge_gap").missing, "mechanism", "the definition is known; the mechanism is not");
+    assert.match(how.spoken[0].text, /told/i);
     const doctor = await turn(state, "Who was that doctor?");
     assert.equal(doctor.plan().may_ask_clarifying_question, true, "two canonical people fit; ask which");
     const next = await turn(state, "Where are we supposed to go next?");
@@ -274,7 +286,7 @@ test("advisory — one call per generic player turn, none for Tier 1 turns; pers
     assert.equal(story.interaction.interpretation.advice.intent, "person_identity");
     assert.equal(story.trace.pragmatics.advisory_validation, "accepted");
     assert.equal(story.trace.pragmatics.resolved_semantic_concept, "person_identity");
-    assert.ok(story.trace.pragmatics.knowledge_results[0].facts.every((f) => /:(?:briefing|observed)$/.test(f)), "trace carries keys + provenance only");
+    assert.ok(story.trace.pragmatics.knowledge_results[0].facts.every((f) => /^[a-z_]+:(?:briefing|observed|baseline_induction)$/.test(f)), "trace carries keys + provenance only");
     // Re-framing that turn from persisted history (as after a reload) uses the persisted advice.
     const discourse = D.deriveDiscourseState({ interaction_history: state.run.expedition.interaction_history, dialogue_history: state.run.expedition.dialogue_history, player_id: state.playerId, location_id: state.run.spatial.player_location, current_interval: state.run.expedition.clock.interval, equipment: state.run.expedition.equipment, receipts: state.run.expedition.communication_receipts, entities: K.entityIndex(state.run) });
     assert.equal(discourse.turns.at(-1).discourse_function, "ask_person_identity");

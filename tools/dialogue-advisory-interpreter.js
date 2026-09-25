@@ -12,7 +12,7 @@
 // Malformed, unsupported or low-confidence output is rejected (the Tier 1 reading stands).
 
 const ADVISORY_VERSION = "yellow-beast-dialogue-advisory@v1";
-const INTENTS = Object.freeze(["self_description", "role_or_assignment", "institution_purpose", "mission_objective", "next_step", "person_identity", "assignment_purpose", "entity_definition", "item_ownership", "personal_experience", "self_state", "opinion", "explanation", "social_statement", "greeting", "request", "factual_other", "unclear"]);
+const INTENTS = Object.freeze(["self_description", "role_or_assignment", "institution_purpose", "mission_objective", "next_step", "person_identity", "person_role", "person_authority", "person_relation", "assignment_purpose", "entity_definition", "reported_speech", "current_action", "location_purpose", "item_ownership", "personal_experience", "self_state", "opinion", "explanation", "social_statement", "greeting", "request", "factual_other", "unclear"]);
 const SPEECH_ACTS = Object.freeze(["question", "statement", "request", "greeting", "reaction", "unclear"]);
 const RELATIONS = Object.freeze(["new_topic", "follow_up", "answer", "repair", "none"]);
 const TONES = Object.freeze(["neutral", "friendly", "uncertain", "sarcastic", "urgent", "frustrated"]);
@@ -30,6 +30,12 @@ const ADVISORY_SCHEMA = Object.freeze({
     intent: { type: "string", enum: [...INTENTS] },
     addressee_mentions: { type: "array", maxItems: 3, items: { type: "string" } },
     referent_text: { type: ["string", "null"] },
+    // Hole 7: the words (if any) the line uses to ADDRESS someone. Language only: code resolves it against
+    // present personnel; the model never returns ids or chooses who answers.
+    addressee_text_span: { type: ["string", "null"] },
+    // Hole 3: when the line asks about something from the previous line, WHICH of the numbered candidates
+    // (the facts that previous line was authorized with). A closed choice: it can never name a new referent.
+    anchor_candidate: { type: ["integer", "null"], minimum: 1, maximum: 6 },
     discourse_relation: { type: "string", enum: [...RELATIONS] },
     tone: { type: "string", enum: [...TONES] },
     confidence: { type: "number", minimum: 0, maximum: 1 }
@@ -44,6 +50,12 @@ const INTENT_GUIDE = Object.freeze({
   mission_objective: "asks what today's trip or assignment is about",
   next_step: "asks what happens next or where to go next",
   person_identity: "asks who a named or described person is",
+  person_role: "asks what a named or described person does (their job or role)",
+  person_authority: "asks why a person is in charge of something, or who is in charge",
+  person_relation: "asks whether the listener knows or has met a person",
+  reported_speech: "asks what someone said or told them",
+  current_action: "asks what the listener is doing right now",
+  location_purpose: "asks what a room or place is for",
   assignment_purpose: "asks what a named thing or task is for, or why someone is doing it",
   entity_definition: "asks what a named place or thing is",
   item_ownership: "asks who has or carries an item",
@@ -58,23 +70,33 @@ const INTENT_GUIDE = Object.freeze({
   unclear: "cannot tell what is meant"
 });
 
+// The STATIC part of the prompt (instructions + the intent menu) lives in the system message, so the
+// local runtime's prefix cache reuses it on every call; only the line itself is new per turn (latency).
 const ADVISORY_SYSTEM_TEXT = [
   "You classify the LANGUAGE of one line a person said in a workplace conversation. You do not answer it.",
   "Choose the intent that best describes what the line is asking or doing. Copy referent_text and addressee_mentions EXACTLY from the line (a short span), or use null / [] when there is none.",
   "referent_text: the name of the person, place, item or task the line is about, copied exactly.",
   "confidence: how sure you are of the intent (0 to 1). Say unclear when you cannot tell.",
-  "Reply with exactly one JSON object and nothing else."
+  `Intents:\n${INTENTS.map((intent) => `- ${intent}: ${INTENT_GUIDE[intent]}`).join("\n")}`,
+  "Reply with exactly one compact JSON object on a single line, with no spaces or line breaks between fields, and nothing else."
 ].join("\n");
 
-/** The whole prompt: the line, the previous line (context for follow-ups), and the intent menu. No facts. */
-function buildAdvisoryPrompt({ utterance, previous_line = null }) {
-  const menu = INTENTS.map((intent) => `- ${intent}: ${INTENT_GUIDE[intent]}`).join("\n");
+/**
+ * The per-turn prompt: the line, the previous line (context for follow-ups) and -- only when code needs
+ * them -- the addressee question and the closed list of anchor candidates. No facts.
+ */
+function buildAdvisoryPrompt({ utterance, previous_line = null, ask_addressee = false, anchor_candidates = [] }) {
+  const anchors = (anchor_candidates ?? []).slice(0, 6);
+  const fields = ['"intent":...', '"referent_text":...', '"confidence":...'];
+  if (ask_addressee) fields.push('"addressee_text_span":...');
+  if (anchors.length) fields.push('"anchor_candidate":...');
   return [
     previous_line ? `Previous line in the conversation: ${JSON.stringify(String(previous_line).slice(0, 200))}` : null,
     `The line to classify: ${JSON.stringify(String(utterance).slice(0, 400))}`,
-    `Intents:\n${menu}`,
-    'Return JSON: {"intent":..., "referent_text":..., "confidence":...}'
-  ].filter(Boolean).join("\n\n");
+    ask_addressee ? "addressee_text_span: if the line speaks TO someone by name, copy that name exactly from the line; otherwise null." : null,
+    anchors.length ? `anchor_candidate: if the line asks about one of these things from the previous line, its number; otherwise null.\n${anchors.map((a, i) => `${i + 1}. ${String(a).slice(0, 80)}`).join("\n")}` : null,
+    `Return JSON: {${fields.join(",")}}`
+  ].filter(Boolean).join("\n");
 }
 
 const within = (span, text) => String(text).toLowerCase().includes(String(span).toLowerCase().trim());
@@ -84,7 +106,7 @@ const within = (span, text) => String(text).toLowerCase().includes(String(span).
  * { accepted: true, intent, speech_act, addressee_mentions, referent_text, discourse_relation, tone, confidence }
  * or { accepted: false, reason }. Nothing outside the allowlist, and no text the player did not say.
  */
-function validateAdvisory(raw, utterance) {
+function validateAdvisory(raw, utterance, { anchor_count = 0 } = {}) {
   if (!raw || typeof raw !== "object" || Array.isArray(raw)) return { accepted: false, reason: "malformed" };
   const keys = Object.keys(raw);
   if (keys.some((k) => !ADVISORY_SCHEMA.properties[k])) return { accepted: false, reason: "unsupported_field" };
@@ -97,23 +119,27 @@ function validateAdvisory(raw, utterance) {
   if (mentions.length > 3 || mentions.some((m) => m.length > MAX_SPAN || !within(m, utterance))) return { accepted: false, reason: "addressee_not_in_utterance" };
   const referent = typeof raw.referent_text === "string" && raw.referent_text.trim() ? raw.referent_text.trim() : null;
   if (referent && (referent.length > MAX_SPAN || !within(referent, utterance))) return { accepted: false, reason: "referent_not_in_utterance" };
-  return Object.freeze({ version: ADVISORY_VERSION, accepted: true, intent: raw.intent, speech_act: raw.speech_act ?? null, addressee_mentions: mentions.map((m) => m.trim()), referent_text: referent, discourse_relation: raw.discourse_relation ?? null, tone: raw.tone ?? null, confidence: Math.round(confidence * 100) / 100 });
+  const addressee = typeof raw.addressee_text_span === "string" && raw.addressee_text_span.trim() ? raw.addressee_text_span.trim() : null;
+  if (addressee && (addressee.length > 40 || !within(addressee, utterance) || /[^A-Za-z .'-]/.test(addressee))) return { accepted: false, reason: "addressee_not_in_utterance" };
+  const anchor = raw.anchor_candidate == null ? null : Number(raw.anchor_candidate);
+  if (anchor != null && (!Number.isInteger(anchor) || anchor < 1 || anchor > anchor_count)) return { accepted: false, reason: "anchor_out_of_range" };
+  return Object.freeze({ version: ADVISORY_VERSION, accepted: true, intent: raw.intent, speech_act: raw.speech_act ?? null, addressee_mentions: mentions.map((m) => m.trim()), referent_text: referent, addressee_text_span: addressee, anchor_candidate: anchor, discourse_relation: raw.discourse_relation ?? null, tone: raw.tone ?? null, confidence: Math.round(confidence * 100) / 100 });
 }
 
 /**
  * Ask the provider for an advisory reading, bounded by a timeout. Never throws: an unavailable, failing,
  * slow or invalid provider yields { accepted: false, reason }.
  */
-async function requestAdvisory(provider, { utterance, previous_line = null, timeout_ms = 8000 } = {}) {
+async function requestAdvisory(provider, { utterance, previous_line = null, ask_addressee = false, anchor_candidates = [], timeout_ms = 8000 } = {}) {
   if (!provider || typeof provider.interpretDialogue !== "function") return { accepted: false, reason: "advisory_unavailable", latency_ms: 0 };
   const started = Date.now();
   let timer = null;
   try {
     const raw = await Promise.race([
-      provider.interpretDialogue({ system: ADVISORY_SYSTEM_TEXT, user: buildAdvisoryPrompt({ utterance, previous_line }), schema: ADVISORY_SCHEMA }),
+      provider.interpretDialogue({ system: ADVISORY_SYSTEM_TEXT, user: buildAdvisoryPrompt({ utterance, previous_line, ask_addressee, anchor_candidates }), schema: ADVISORY_SCHEMA }),
       new Promise((_, reject) => { timer = setTimeout(() => reject(Object.assign(new Error("advisory timeout"), { code: "TIMEOUT" })), timeout_ms); })
     ]);
-    const verdict = validateAdvisory(raw, utterance);
+    const verdict = validateAdvisory(raw, utterance, { anchor_count: (anchor_candidates ?? []).slice(0, 6).length });
     return { ...verdict, latency_ms: Date.now() - started, ...(verdict.accepted ? {} : { raw_intent: typeof raw?.intent === "string" ? raw.intent.slice(0, 40) : null }) };
   } catch (error) {
     return { accepted: false, reason: error?.code === "TIMEOUT" ? "timeout" : "provider_error", latency_ms: Date.now() - started };
