@@ -169,7 +169,7 @@ const PHASE_LABELS = Object.freeze({ BRIEFING: "briefing", STAGING: "equipment s
 // Functions that carry world knowledge into the wording; social/repair/heard turns do not.
 const INFORMATIONAL_FUNCTIONS = new Set(["ask_factual", "ask_personal_experience", "challenge", "make_request", "make_statement", "ask_item_ownership", "express_uncertainty"]);
 const HISTORY_TAIL = Object.freeze({ repair: 2 });
-const REPAIR_LIKE = new Set(["clarify_previous", "request_repetition", "ask_heard_confirmation"]);
+const REPAIR_LIKE = new Set(["clarify_previous", "request_repetition", "ask_heard_confirmation", "ask_meaning", "ask_response_event"]);
 const CUSTODY_CHANGING_EVENTS = new Set(["handed-over", "hand-over", "receive", "assign", "retrieve", "carry", "store", "place", "drop", "dropped", "recovered", "state-lost"]);
 const MAX_HEARD_TURNS = 6;
 const RELEVANCE_GENERIC = new Set(["field", "survey", "record", "device", "equipment", "gear", "kit", "item", "thing", "things", "stuff", "who", "whos", "anyone", "anybody", "everyone", "everybody", "does", "know", "yes", "yeah", "okay", "right", "just", "really", "think", "have", "got", "portable", "materials"]);
@@ -348,6 +348,12 @@ function compileObserverDialogueContext({
     if (fn === "ask_heard_confirmation") {
       const row = [...heardAll].reverse().find((r) => r.is_player);
       if (row) repairTarget = { kind: "player_line_asked_about", speaker: "PLAYER", text: row.text };
+    } else if (fn === "ask_meaning" || fn === "ask_response_event") {
+      // The exact earlier line (quoted/meant) or the player's line whose response is asked about --
+      // only when THIS speaker said or heard it (event id first, then text).
+      const wanted = fn === "ask_meaning" ? (frame.antecedent.responses?.[0] ?? (frame.antecedent.player_text ? { text: frame.antecedent.player_text, is_player: true } : null)) : (frame.antecedent.player_text ? { text: frame.antecedent.player_text, is_player: true } : null);
+      const row = wanted ? [...heardAll].reverse().find((r) => (r.text === clip(wanted.text, 400) && Boolean(r.is_player) === Boolean(wanted.is_player))) : null;
+      if (row) repairTarget = { kind: row.is_player ? "player_line_asked_about" : "line_being_repaired", speaker: row.is_player ? "PLAYER" : (row.is_self ? speakerName : (row.speaker_name ?? "Someone")), is_self: row.is_self, text: row.text };
     } else {
       const own = [...heardAll].reverse().find((r) => r.is_self);
       const other = [...heardAll].reverse().find((r) => !r.is_player);
@@ -366,7 +372,9 @@ function compileObserverDialogueContext({
     discourse_function: fn,
     current_topic: frame?.topic && frame.topic !== "unknown" ? frame.topic : null,
     previous_topic: lastPlayerRow ? (detectTopic(lastPlayerRow.text) !== "unknown" ? detectTopic(lastPlayerRow.text) : null) : null,
-    recipient_scope: purpose === "autonomous_report" ? "room" : (recipientType === "direct" ? "you" : recipientType === "group" ? "group" : "room"),
+    recipient_scope: purpose === "autonomous_report" ? "room" : (recipientType === "direct" ? "you" : recipientType === "group" ? (recipientContext.address_scope === "subset" ? "subset" : "group") : "room"),
+    // An explicitly addressed set ("Hello Ava and Josephine"): the OTHER people addressed with this speaker.
+    ...(recipientType === "group" && recipientContext.address_scope === "subset" ? { addressed_names: (recipientContext.addressee_ids ?? []).filter((id) => !sameId(id, sid)).map((id) => nameOf(id)).filter(Boolean) } : {}),
     direct_target_name: recipientType === "direct" ? (recipientContext.target_id ? nameOf(recipientContext.target_id) : speakerName) : null,
     latest_speaker: lastRow ? (lastRow.is_player ? "PLAYER" : (lastRow.is_self ? speakerName : lastRow.speaker_name)) : null,
     introductions_occurred: heardAll.some((row) => row.is_player && (interpretUtterance(row.text).speech_act === "introduction" || /\bmy name is\b|\bcall me\b/i.test(row.text))),

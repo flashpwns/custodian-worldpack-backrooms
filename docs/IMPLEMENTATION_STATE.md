@@ -1,5 +1,39 @@
 # Yellow Beast Implementation State
 
+## Conversational Pragmatics Convergence Pass — 2026-09-24
+
+- **Evidence**: Jack's human Electron trace on HEAD `7459f35`. Five failures, all in deterministic pragmatics; provider, presentation and Ava's own reply path worked.
+  - A quoted phrase of Elizabeth's line ("staying with") was planned as an unknown fact.
+  - "Hello Ava and Josephine" addressed nobody.
+  - After a direct exchange with Ava, "Why wouldn't you say anything…" went to someone else.
+  - That question was treated as a generic factual question.
+  - "just now, when I said hello ava and josephine…" dropped the open "when do you mean?".
+- **Root causes**:
+  - The address parser knew one leading vocative only; greeting+name, name lists and trailing vocatives were untargeted.
+  - Scope inheritance covered only reflexes ("What?").
+  - Open questions carried no expected answer shape, so only item names or repair phrases resumed them.
+  - No discourse function referred to earlier wording or to conversational events.
+  - Bare group nouns ("table", "all", "team") counted as group address anywhere.
+- **Fixed (general mechanisms)**:
+  - **Addressee sets.** `parseAddressees` resolves direct, subset and group address from sentence structure: leading vocatives, greetings, trailing vocatives and @mentions. A mentioned name is not an address. The interaction record carries a canonical `address` (`scope`, `addressee_ids`, `form`, `source`, `utterance`). A named set is answered only by its members: greetings and individual questions (including readiness) by each, shared facts by one spokesperson.
+  - **Active thread.** `resolveRecipientScope` applies, in order: explicit address or group language, then an answer to an open question (goes to its asker), then reflexes, discourse-dependent lines and second-person lines (continue the preceding direct/subset/group exchange), then room speech. A report, a location change or staleness ends the thread. It is derived from persisted history, so it survives a cold reload.
+  - **Earlier wording.** `ask_meaning` resolves quotations and prior lines, in order: exact quote, named speaker, addressee, latest line. Only lines the player heard or said are searched. A quoted span maps onto the authorized fact the line was planned with (receipt plan facts plus structured `fact_semantics`). Several matching facts are clarified; none means the words were only wording, so the line's basis answers. Another person's line is referred back to them, and only a responder who heard that line receives its text.
+  - **Open questions as typed slots.** The plan records `expected_slot` (`temporal`, `location`, `spatial_selection`, `referent`, `person`, `reason`, `yes_no`, `topic`). The value is persisted in the receipt basis. `matchOpenQuestionSlot` reads a fragment as the answer before any fresh interpretation:
+    - Temporal answers are anchored canonically and resume the question.
+    - Location answers replace the unresolved place.
+    - Reason answers are recorded as a `player_claim`.
+  - **Conversational events and silence.** The derived event log (12 exchanges) records address, listeners, owners, responders and a per-listener SIMULATION silence basis: `not_a_listener`, `response_policy_selected_other`, `not_selected_no_response`, `room_speech_no_response` or `reply_not_delivered` (the last is a failure, not canonical silence). `ask_response_event` resolves the exchange named (event descriptions, quotes, "until I addressed you directly") or the responder's latest unanswered one. Speech gets only a character-knowable reason: `did_not_hear`, `another_answered` or none. Motives, excuses and false "I did answer" are rejected. Talk about the conversation is never itself a candidate event.
+  - **Assignment semantics (Part 7).** The canonical source was underdefined, not Gemma: the team runtime's default posture (`follow` the lead, intent "maintain team contact", no order) was presented as the current assignment, "staying with the expedition lead". That hid the archetype's `primary_task` and read as lodging. Now an ordered task wins, then the assigned task, then the default posture. Follow is worded "following you" / "following <name>", with a gloss from the canonical intent. Lodging readings are rejected.
+  - **Trace.** `[YB:DISCOURSE_TRACE].pragmatics` shows explicit and inherited addressees, the active thread, the open question and slot, the slot answer, the prior utterance and quoted span, the conversational event, and per-plan basis, slot and silence basis. `[YB:COMMIT_TRACE]` adds the open question's slot and the thread.
+  - **Validator.** Silence motives, lodging readings and interpreting someone else's words are rejected. So are invented activities in greetings and bare statements, re-clarifying an answered clarification, and activity reports inside a clarification. "Where are you referring to?" counts as a clarification.
+  - **Renderer.** The LOCAL rail shows "→ Ava, Josephine" for a named set, not "→ Assembly Table".
+- **Verification**:
+  - `tests/ed27-conversational-pragmatics.test.js` passes 15/15, covering A–L, silence semantics and the trace.
+  - ed1–ed26 all pass. ed16 was updated for the corrected assignment phrase.
+  - Full per-file run (all 174 test files, this tree vs an untouched HEAD snapshot): 1244 pass / 80 fail vs 1229 / 80. The +15 are ed27; no test newly fails. `validate-assets` fails identically in both trees at the known raw-media provenance assertion.
+  - Real models: on the production path, Gemma 4 E4B and fallback-only share semantic digest `0c5f3d6963f44386` over the ed27 L sequence. In the human sequence Gemma worded 10 of 18 lines; every rejection was a real violation (invented motives for silence, counter-questions, invented activities).
+- **Not changed**: the raw-media provenance `validate` rule. ed27 is unregistered in the protected verification authority, like ed1–ed26.
+
 ## Human-Conversation Semantics Convergence Pass — 2026-09-24
 
 - **Starting point**: HEAD `256a0d7`, which already fixed Jack's reproduction; that reproduction ran on the code before it. A fresh trace of the current production path found the remaining gaps below.

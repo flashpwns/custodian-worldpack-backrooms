@@ -215,7 +215,7 @@ function buildLocalDialoguePacket(context) {
     run,
     speakerId,
     listeners: context.interaction?.listeners ?? [],
-    recipientContext: { recipient_type: context.recipient_type ?? (isGroup ? "group" : "direct"), target_id: (context.recipient_type ?? (isGroup ? "group" : "direct")) === "direct" ? speakerId : null, inherited_scope: Boolean(context.inherited_scope) },
+    recipientContext: { recipient_type: context.recipient_type ?? (isGroup ? "group" : "direct"), target_id: (context.recipient_type ?? (isGroup ? "group" : "direct")) === "direct" ? speakerId : null, inherited_scope: Boolean(context.inherited_scope), address_scope: context.address?.scope ?? null, addressee_ids: [...(context.address?.addressee_ids ?? [])] },
     semanticFrame: context.semantic_frame ?? null,
     responsePlan: context.response_plan ?? null,
     contribution,

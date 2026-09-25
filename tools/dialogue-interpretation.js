@@ -169,7 +169,7 @@ function selfStateQuery(raw) {
 // answer it; without one it is a clarification. Never every "next".
 const NEXT_STEP_PATTERN = /^(?:so,?\s+|okay,?\s+|ok,?\s+|alright,?\s+|and\s+)?(?:what(?:'s| is)|whats)\s+(?:next|the plan|the next step|our next step|up next|on the agenda)\b|^(?:so,?\s+|okay,?\s+|and\s+)?what (?:now|next)\b|\bwhat (?:do|should|are) we (?:do|doing|supposed to do|supposed to be doing)(?:\s+(?:now|next|today))?[\s?!.]*$|\bwhere (?:do|should) we (?:go|head)(?:\s+(?:now|next))?[\s?!.]*$|\bwhat happens (?:now|next)\b/i;
 // "Why?" / "What makes you say that?": asks the reason for the immediately preceding line.
-const EXPLANATION_REQUEST_PATTERN = /^(?:but\s+|so\s+|and\s+|oh,?\s+)?(?:why(?: not| is that| do you (?:say|think) (?:that|so)| would you say that)?|why'?s that|how come|what makes you (?:say|think) (?:that|so|it)|how do you know(?: that)?|what do you base that on|what are you basing (?:that|it) on|based on what|what'?s that based on|what do you mean by (?:that|it))(?:,\s*[A-Za-z][\w'-]*)?[\s?!.]*$/i;
+const EXPLANATION_REQUEST_PATTERN = /^(?:but\s+|so\s+|and\s+|oh,?\s+)?(?:why(?: not| is that| do you (?:say|think) (?:that|so)| would you say that| did you say (?:that|so|it))?|why'?s that|how come|what makes you (?:say|think) (?:that|so|it)|how do you know(?: that)?|what do you base that on|what are you basing (?:that|it) on|based on what|what'?s that based on|what do you mean by (?:that|it))(?:,\s*[A-Za-z][\w'-]*)?[\s?!.]*$/i;
 // A bare wh-follow-up ("Where?", "When?") asks about the immediately preceding line.
 const BARE_WH_FOLLOWUP_PATTERN = /^(?:where|when|who|which one|how)[\s?!.]*$/i;
 // Leading discourse markers carry no content ("Anyway, what's next?"); classification sees the rest.
@@ -206,7 +206,73 @@ const HANDOFF_REQUEST_PATTERN = /\b(?:hand|pass|give|bring|transfer)\b/i;
 // (a question about a sound in the world, not about the player's speech).
 const HEARD_CONFIRMATION_PATTERN = /\b(?:did|do|does|can|could)\s+(?:anyone|anybody|any\s+of\s+you|everyone|everybody|you(?:\s+(?:guys|all))?|y'?all|someone|somebody|one\s+of\s+you)\s+(?:even\s+|actually\s+|really\s+)?(?:just\s+)?(?:hear|catch|get)\s+(?:what\s+i\s+(?:just\s+)?(?:said|told|say)|me\b|my\s+(?:last|previous)\s+(?:line|statement|message))|\bhear(?:d)?\s+what\s+i\s+(?:just\s+)?(?:said|told)\b|\b(?:you|y'?all|anyone)\s+(?:guys\s+)?hear\s+me\b/i;
 
+// ─── Conversational pragmatics cues ─────────────────────────────────────────
+// Who a prior line is attributed to: "you" (the addressee), "I" (the player), a third-person pronoun or a
+// capitalized name. Never resolved here; dialogue-discourse resolves it against heard history.
+const SPEAKER_REF = "(you|i|she|he|they|[A-Za-z][a-z'-]+)";
+// Quoted or delimited span of earlier wording: "staying with", “staying with”, 'staying with'.
+const QUOTED_SPAN_PATTERN = /["“”]\s*([^"“”]+?)\s*["“”]|(?:^|[\s(])'([^']+?)'(?=[\s?!.,)]|$)/;
+const PRONOUN_SPAN = /^(?:that|it|this|those|these|(?:that thing |the thing )?(?:what )?(?:you|she|he|they) (?:just )?said(?: earlier| before| just now)?|that thing)$/i;
+function quotedSpan(raw) {
+  const match = String(raw ?? "").match(QUOTED_SPAN_PATTERN);
+  const span = match ? (match[1] ?? match[2]) : null;
+  return span ? span.replace(/[?!.,\s]+$/, "").trim() || null : null;
+}
+const MEANING_FORMS = [
+  // "What do you mean by 'staying with'?" / "What did she mean by that?"
+  new RegExp(`^(?:so,?\\s+|but\\s+|and\\s+|sorry,?\\s+|wait,?\\s+|okay,?\\s+)?what (?:do|did|does) ${SPEAKER_REF} mean(?:t)?\\s+by\\s+([\\s\\S]+?)[\\s?!.]*$`, "i"),
+  // "What did you mean when you said X?"
+  new RegExp(`^(?:so,?\\s+|but\\s+|and\\s+|sorry,?\\s+|wait,?\\s+)?what (?:do|did|does) ${SPEAKER_REF} mean(?:t)?,?\\s+when (?:you|i|she|he|they|[A-Za-z][a-z'-]+) (?:said|say|told me|mentioned)(?: that)?,?\\s+([\\s\\S]+?)[\\s?!.]*$`, "i"),
+  // "When you said X, what did you mean?"
+  new RegExp(`^when ${SPEAKER_REF} (?:said|say|told me|mentioned)(?: that)?,?\\s+([\\s\\S]+?),\\s*what (?:do|did) (?:you|she|he|they|[A-Za-z][a-z'-]+) mean(?:t)?(?: by (?:that|it))?[\\s?!.]*$`, "i"),
+  // "What does 'X' mean?" (only with an explicit quotation)
+  /^what does\s+(["“'][\s\S]+?["”'])\s+mean[\s?!.]*$/i
+];
+/**
+ * A request for the meaning of earlier wording. Returns { speaker_ref, span } (span null for "that") or
+ * null. Only wording that identifies a line (a quotation, a phrase, or a third-person speaker) counts;
+ * a bare "What do you mean by that?" stays an explanation request about the preceding line.
+ */
+function meaningRequest(raw) {
+  const text = String(raw ?? "").trim();
+  for (const [index, pattern] of MEANING_FORMS.entries()) {
+    const match = text.match(pattern);
+    if (!match) continue;
+    const speakerRef = index === 3 ? "you" : match[1].toLowerCase();
+    const rawSpan = index === 3 ? match[1] : match[2];
+    const span = quotedSpan(rawSpan) ?? String(rawSpan ?? "").replace(/^["“'\s]+|["”'\s?!.,]+$/g, "").trim();
+    const pronoun = !span || PRONOUN_SPAN.test(span);
+    // A bare "that/it" about the addressee's own line stays an explanation request ("What do you mean by that?").
+    if (pronoun && speakerRef === "you" && (!span || /^(?:that|it|this)$/i.test(span))) return null;
+    return Object.freeze({ speaker_ref: speakerRef, span: pronoun ? null : span.slice(0, 200) });
+  }
+  return null;
+}
+// "Why didn't you answer me?" / "Why wouldn't you say anything until I addressed you?" / "Why did you
+// ignore that?" / "Why did you answer him but not me?" / "Why didn't anyone respond?": a question about a
+// recent conversational EVENT (who responded, who stayed silent), never about a line's content.
+const RESPONSE_EVENT_PATTERN = /\b(?:why|how come)\b[^?.!]*?\b(?:(?:didn'?t|did not|wouldn'?t|would not|won'?t|will not|weren'?t|was(?:n'?t| not)|haven'?t|hasn'?t|hadn'?t|couldn'?t|could not)\s+(?:you|anyone|anybody|nobody|no one|any of you|either of you|y'?all|you guys|she|he|they|[A-Z][a-z]+)|(?:did|do|are|were|was)\s+(?:you|she|he|they|everyone|everybody|[A-Z][a-z]+)\s+(?:ignor|just ignor)|(?:nobody|no one|none of you)\b)[^?.!]*?\b(?:answer\w*|respond\w*|repl(?:y|ied|ies)|say (?:anything|something|a word|hi|hello|hey)|said (?:anything|something|a word|hi|hello|hey)|talk\w*|speak\w*|acknowledg\w*|greet\w*|ignor\w*|react\w*|responded)\b|\bwhy (?:did|do|are|were) (?:you|she|he|they) (?:ignor\w*|answer\w* (?:him|her|them|[A-Z][a-z]+)(?: but not| and not| instead of) me)\b/i;
+// "When I greeted Ava", "when I said hello", "until I addressed you directly": a recent conversational
+// event named by what the player did. Groups: the actor, the verb and the remainder (names / quotation).
+const EVENT_REFERENCE_PATTERN = /\b(?:when|after|before|until|since) (i|you|we) ((?:first )?(?:said|asked|greeted|told|mentioned|called|spoke|talked|addressed|introduced|introduced myself|said hello|said hi|say|was talking|were talking))\b([^?.!]*)/i;
+// Second-person reference to one addressee ("you", "your"), minus fixed expressions that address no one.
+const SECOND_PERSON_PATTERN = /\b(?:you|your|yours|yourself)\b/i;
+const GENERIC_YOU_PATTERN = /\b(?:you know|you never know|you see|if you ask me|mind you|thank you|you'?d think)\b/gi;
+function addressesSecondPerson(raw) {
+  return SECOND_PERSON_PATTERN.test(String(raw ?? "").replace(GENERIC_YOU_PATTERN, " "));
+}
+// Shapes a bare answer to an open question can take (checked against that question's expected slot).
+const SLOT_ANSWER_PATTERNS = Object.freeze({
+  reason: /^(?:(?:well,?\s+|just\s+)?because|'?cause|cos|cuz|since|so that|so we|in case)\b/i,
+  yes_no: /^(?:yes|yeah|yep|yup|no|nope|nah|right|correct|exactly|not really|sort of|kind of|i do|i did|i don'?t|i didn'?t)\b/i,
+  location: /^(?:(?:it'?s |it is |it was |over |right |out |up |down |back )?(?:by|near|next to|beside|behind|in front of|under|underneath|over by|at|on|in|inside|outside|across from|past|through|around|toward|towards|against)\s+(?:the|that|this|my|your|our|a|an|his|her|their)\b|(?:over |right |back )?(?:here|there)\b[\s.!?]*$|(?:on |to )?(?:the )?(?:left|right)\b)/i,
+  temporal: /^(?:just now|earlier|then|before that|back then|a (?:minute|moment|second|while) ago|at the (?:start|beginning|briefing)|during the briefing|today|this morning|(?:when|after|before|while|until|since)\b)/i
+});
+
 const LANGUAGE_PATTERNS = Object.freeze({
+  response_event: RESPONSE_EVENT_PATTERN,
+  event_reference: EVENT_REFERENCE_PATTERN,
+  slot_answers: SLOT_ANSWER_PATTERNS,
   invite_self_description: INVITE_SELF_DESCRIPTION_PATTERN,
   repetition_request: REPETITION_REQUEST_PATTERNS,
   bare_reaction: BARE_REACTION_PATTERNS,
@@ -298,13 +364,88 @@ function parseNamedAddress(text, { explicit_target = null, is_known = () => fals
   return none();
 }
 
+// Group terms that may stand in an addressee LIST ("Hey guys", "Ava and everyone, ...").
+const LIST_GROUP_TERMS = Object.freeze([...GROUP_VOCATIVES, "guys", "folks", "gang", "y'all", "yall", "you all", "you guys", "you two", "you both", "both of you", "all of you"]);
+const escapeRe = (value) => String(value).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
+/**
+ * THE addressee-SET parser: who the player's words address, from sentence structure only (vocative
+ * position, greeting structure, trailing vocative, @mentions), never from a name merely mentioned
+ * ("Ava told me Roy has the camera" addresses no one). `names` lists known personnel names
+ * ({ name, id } -- id null for someone who is not a coworker). Returns the legacy parseNamedAddress
+ * shape plus the addressed set:
+ *   address_type  "direct" | "subset" | "group" | "none"
+ *   addressee_ids / addressee_names  in the order the player named them
+ *   address_form  "leading_vocative" | "greeting" | "trailing_vocative" | "mention" | "chip" | "none"
+ * An explicit (UI-selected) target keeps precedence: a spoken list widens it to a set only when the
+ * list itself names that target.
+ */
+function parseAddressees(text, { explicit_target = null, names = [], is_known = null, resolve_id = null, name_tokens = [] } = {}) {
+  const raw = String(text ?? "").trim();
+  const index = new Map();
+  for (const entry of names ?? []) if (entry?.name) index.set(String(entry.name).toLowerCase(), entry.id ?? null);
+  const known = is_known ?? ((name) => index.has(String(name).toLowerCase()));
+  const idOf = resolve_id ?? ((name) => index.get(String(name).toLowerCase()) ?? null);
+  const legacy = parseNamedAddress(raw, { explicit_target, is_known: known, resolve_id: idOf, name_tokens });
+  const withSet = (result, form) => ({ ...result, addressee_ids: result.address_type === "direct" && result.explicit_target_id ? [result.explicit_target_id] : [], addressee_names: result.address_type === "direct" && result.explicit_target_name ? [result.explicit_target_name] : [], address_form: form });
+
+  const alternatives = [...new Set([...index.keys(), ...LIST_GROUP_TERMS])].sort((a, b) => b.length - a.length).map(escapeRe);
+  if (!alternatives.length) return withSet(legacy, legacy.source === "none" ? "none" : legacy.source === "chip" ? "chip" : legacy.source === "mention" ? "mention" : "leading_vocative");
+  const NAME = `@?(?:${alternatives.join("|")})(?![\\w'])`;
+  const LIST = `${NAME}(?:\\s*(?:,\\s*(?:and\\s+)?|\\s+and\\s+|\\s*&\\s*)${NAME})*`;
+  const forms = [
+    ["mention", new RegExp(`^(@(?:${alternatives.join("|")})(?![\\w'])(?:\\s*(?:,\\s*(?:and\\s+)?|\\s+and\\s+|\\s*&\\s*|\\s+)@(?:${alternatives.join("|")})(?![\\w']))+)\\s*[,:]?\\s*([\\s\\S]*\\S[\\s\\S]*)$`, "i"), (m) => ({ list: m[1].replace(/\s+@/g, ", @"), residual: m[2].trim() })],
+    ["greeting", new RegExp(`^(${GREETING_HEAD})[\\s,]+(${LIST})\\s*(?:[,.!?;:-]+\\s*([\\s\\S]*))?$`, "i"), (m) => ({ list: m[2], residual: (m[3] ?? "").trim() || m[1] })],
+    ["leading_vocative", new RegExp(`^(${LIST})\\s*[,:]\\s*([\\s\\S]*\\S[\\s\\S]*)$`, "i"), (m) => ({ list: m[1], residual: m[2].trim() })],
+    ["trailing_vocative", new RegExp(`^([\\s\\S]*?[^\\s,])\\s*,\\s*(${LIST})\\s*([?!.]*)\\s*$`, "i"), (m) => ({ list: m[2], residual: `${m[1].trim()}${m[3] ?? ""}` })]
+  ];
+  let parsed = null;
+  for (const [form, pattern, pick] of forms) {
+    const match = raw.match(pattern);
+    if (!match) continue;
+    const { list, residual } = pick(match);
+    const items = list.split(/\s*(?:,\s*(?:and\s+)?|\s+and\s+|\s*&\s*)\s*/i).map((item) => item.replace(/^@/, "").trim()).filter(Boolean);
+    if (!items.length || !items.every((item) => LIST_GROUP_TERMS.includes(item.toLowerCase()) || known(item))) continue;
+    parsed = { form, items, residual };
+    break;
+  }
+  if (!parsed) return withSet(legacy, legacy.source === "none" ? "none" : legacy.source === "chip" ? "chip" : legacy.source === "mention" ? "mention" : "leading_vocative");
+
+  const group = parsed.items.some((item) => LIST_GROUP_TERMS.includes(item.toLowerCase()));
+  const resolved = [];
+  for (const item of parsed.items) {
+    if (LIST_GROUP_TERMS.includes(item.toLowerCase())) continue;
+    const id = idOf(item);
+    if (id && !resolved.some((entry) => entry.id === id)) resolved.push({ id, name: item });
+  }
+  const chipId = explicit_target ? idOf(String(explicit_target).replace(/^@/, "")) : null;
+  if (explicit_target) {
+    // The spoken list widens the selected target only when it names that target.
+    if (!group && chipId && resolved.length > 1 && resolved.some((entry) => entry.id === chipId)) {
+      return { explicit_target_id: null, explicit_target_name: null, residual_text: parsed.residual, address_type: "subset", source: "chip", addressee_ids: resolved.map((e) => e.id), addressee_names: resolved.map((e) => e.name), address_form: parsed.form };
+    }
+    return withSet(legacy, "chip");
+  }
+  if (group) return { explicit_target_id: null, explicit_target_name: parsed.items.find((item) => LIST_GROUP_TERMS.includes(item.toLowerCase())), residual_text: parsed.residual, address_type: "group", source: "vocative", addressee_ids: [], addressee_names: [], address_form: parsed.form };
+  if (resolved.length > 1) return { explicit_target_id: null, explicit_target_name: null, residual_text: parsed.residual, address_type: "subset", source: "vocative", addressee_ids: resolved.map((e) => e.id), addressee_names: resolved.map((e) => e.name), address_form: parsed.form };
+  // One person (or one known name that is not a coworker: the caller reports that person's availability).
+  const single = resolved[0] ?? { id: null, name: parsed.items[0] };
+  return { explicit_target_id: single.id, explicit_target_name: single.name, residual_text: parsed.residual, address_type: "direct", source: "vocative", addressee_ids: single.id ? [single.id] : [], addressee_names: [single.name], address_form: parsed.form };
+}
+
 /** Compatibility wrapper: residual text for an already-resolved explicit target. */
 function stripNamedAddress(text, target = null) {
   if (!target) return String(text ?? "").trim();
   return parseNamedAddress(text, { explicit_target: target }).residual_text;
 }
 
-const GROUP_ADDRESS_PATTERNS = /(?:^|\b)(?:@?(?:table|team|everyone|everybody|all|crew|teammates?|folks)|anybody|anyone|does anyone|you all|all of you|any of you|each of you|either of you|both of you|yourselves|you guys|you folks|y'all)(?:\b|$)/i;
+// Group address in language. Plural address phrases count anywhere; a bare group NOUN ("table", "team",
+// "all", "crew", "folks") counts only as an address: an @mention, a leading/trailing vocative or after a
+// greeting -- never as an ordinary word ("By the table.", "Is that all?", "the team is ready").
+const GROUP_ADDRESS_PHRASES = /(?:^|\b)(?:everyone|everybody|anybody|anyone|does anyone|you all|all of you|any of you|each of you|either of you|both of you|yourselves|you guys|you folks|y'all)(?:\b|$)/i;
+const GROUP_NOUN = "(?:table|team|all|crew|teammates?|folks|group|guys)";
+const GROUP_NOUN_ADDRESS = new RegExp(`@${GROUP_NOUN}\\b|^${GROUP_NOUN}\\s*[,:!]|,\\s*${GROUP_NOUN}\\s*[?!.]*\\s*$|^${GREETING_HEAD}[\\s,]+${GROUP_NOUN}\\b`, "i");
+const GROUP_ADDRESS_PATTERNS = { test: (text) => GROUP_ADDRESS_PHRASES.test(String(text ?? "")) || GROUP_NOUN_ADDRESS.test(String(text ?? "").trim()) };
 const GROUP_GREETING_PATTERNS = new RegExp(`^${GREETING_HEAD}[\\s,!-]+${GREETING_VOCATIVE}[\\s!.,?]*$`, "i");
 const AMBIGUOUS_REFERENCE_PATTERNS = /\b(?:the thing|that thing|do the thing|over there|you know what|whatever it is|that stuff)\b/i;
 // wire the late-defined pattern into the shared table
@@ -503,6 +644,16 @@ function resolveResponseOwners({ recipient_type, interpretation, player_text, ca
   // inherently individual answer: every eligible present listener gets one, like a group greeting.
   // Asked of the room at no one ("Excited?"), one listener answers.
   if (fn === "check_in") return recipient_type === "group" ? eligible.map((candidate) => candidate.id) : eligible.slice(0, 1).map((candidate) => candidate.id);
+  // "Ava, Josephine, you ready?": readiness is each addressee's own momentary state.
+  if (frame?.addressee_state && recipient_type === "group" && !frame?.resumed_question) return eligible.map((candidate) => candidate.id);
+  // "What do you mean by 'X'?" is answered by whoever said the line (their own speech), when they heard it.
+  if (fn === "ask_meaning" && frame?.antecedent?.resolved) {
+    const speaker = eligible.find((candidate) => (frame.antecedent.responder_ids ?? []).includes(candidate.id));
+    return [(speaker ?? eligible[0]).id];
+  }
+  // "Why didn't you (all) answer?": each addressed listener accounts for their own part; asked of the room,
+  // one listener answers.
+  if (fn === "ask_response_event") return recipient_type === "group" ? eligible.map((candidate) => candidate.id) : eligible.slice(0, 1).map((candidate) => candidate.id);
   // Other questions whose answer is each listener's own (experience, opinion, role) are answered by each
   // listener when the group is addressed; otherwise by one.
   if (INDIVIDUAL_ANSWER_FUNCTIONS.has(fn) && !frame?.resumed_question) return recipient_type === "group" ? eligible.map((candidate) => candidate.id) : [(eligible.find((candidate) => candidate.has_relevant_knowledge) ?? eligible[0]).id];
@@ -756,9 +907,13 @@ module.exports = {
   TOPICS,
   BARE_REACTION_PATTERN: BARE_REACTION_PATTERNS,
   selfStateQuery,
+  meaningRequest,
+  quotedSpan,
+  addressesSecondPerson,
   LANGUAGE_PATTERNS: LANGUAGE_PATTERNS_FULL,
   GROUP_VOCATIVES,
   parseNamedAddress,
+  parseAddressees,
   stripNamedAddress,
   interpretUtterance,
   detectTopic,

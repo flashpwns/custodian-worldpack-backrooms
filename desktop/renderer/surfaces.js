@@ -114,12 +114,16 @@
         return `<li class="communication-message channel-facility-broadcast" data-channel="facility-broadcast"><span class="message-channel">FACILITY BROADCAST</span><div><span class="comm-speaker comm-broadcast-speaker">${escape(item.speaker ?? "FACILITY BROADCAST")}:</span> <span class="comm-text comm-broadcast-text">${escape(item.text)}</span></div>${badge("FACILITY FEED")}</li>`;
       }
       const isLocal = item.channel === "LOCAL";
-      const isGroup = item.recipient_type === "group" || item.targets?.[0] === "Assembly Table" || item.targets?.[0] === "@table" || item.recipient_id === "@table";
+      // An explicitly named set ("Hello Ava and Josephine") is addressed to those people, not the table.
+      const isNamedSet = item.address_scope === "subset";
+      const isGroup = !isNamedSet && (item.recipient_type === "group" || item.targets?.[0] === "Assembly Table" || item.targets?.[0] === "@table" || item.recipient_id === "@table");
       const speaker = item.speaker === "You" ? (isLocal ? "YOU" : "EXPEDITION LEAD") : (item.speaker ?? item.targets?.[0] ?? "Record");
       let targetText = "";
       if (isLocal && item.speaker === "You") {
         if (isGroup) {
           targetText = " → Assembly Table";
+        } else if (isNamedSet && item.targets?.length) {
+          targetText = ` → ${escape(item.targets.join(", "))}`;
         } else if (item.targets?.[0] && item.targets[0] !== "Room / Untargeted") {
           targetText = ` → ${escape(item.targets[0])}`;
         }

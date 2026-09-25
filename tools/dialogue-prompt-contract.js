@@ -102,7 +102,8 @@ function renderContextSections(capsule) {
   const lower = (text) => String(text).replace(/^./, (ch) => ch.toLowerCase());
 
   const actor = capsule.actor ?? {};
-  const actorBits = [actor.assignment ? `You are ${lower(actor.assignment)}.` : null, actor.activity ? `You are ${lower(actor.activity)}.` : null].filter(Boolean);
+  // The assignment phrase is spoken to the person you are talking with ("following you" means them).
+  const actorBits = [actor.assignment ? `Your current assignment, as you would put it to them: "I'm ${lower(actor.assignment)}."` : null, actor.activity ? `You are ${lower(actor.activity)}.` : null].filter(Boolean);
   out.who = `You are ${actor.name ?? "a coworker"}${actor.role ? `, ${article(actor.role)} ${lower(actor.role)}` : ""}. ${actorBits.join(" ")}`.trim();
   out.voice = renderVoice(actor.style);
 
@@ -114,7 +115,7 @@ function renderContextSections(capsule) {
     scene.location_name ? `You are in the ${scene.location_name}${scene.phase ? ` (${scene.phase})` : ""}.` : (scene.phase ? `Current phase: ${scene.phase}.` : null),
     people.length ? `With you: ${people.join(", ")}.` : null,
     hasPlayer ? "PLAYER is the person talking with you. Speak to them directly; never call them \"PLAYER\", and do not use \"you\" as if it were their name." : null,
-    capsule.current_utterance ? (c.recipient_scope === "you" ? "PLAYER is speaking to you directly." : c.recipient_scope === "group" ? "PLAYER is speaking to the whole group." : "PLAYER spoke aloud to the room, to no one in particular.") : null,
+    capsule.current_utterance ? (c.recipient_scope === "you" ? "PLAYER is speaking to you directly." : c.recipient_scope === "subset" ? `PLAYER is speaking to ${(c.addressed_names ?? []).length ? `you and ${c.addressed_names.join(" and ")}` : "you and others"}.` : c.recipient_scope === "group" ? "PLAYER is speaking to the whole group." : "PLAYER spoke aloud to the room, to no one in particular.") : null,
     c.current_topic ? `Topic: ${spoken(c.current_topic)}${c.previous_topic && c.previous_topic !== c.current_topic ? ` (before: ${spoken(c.previous_topic)})` : ""}.` : null,
     c.introductions_occurred ? "Introductions have already happened." : null
   ].filter(Boolean);
@@ -174,7 +175,22 @@ function renderContributionTask(packet) {
     if (f.key === "heard_confirmation") return f.value?.heard === false ? "heard_confirmation: you did NOT hear their last line, say so plainly" : "heard_confirmation: you DID hear the line they are asking about; confirm it plainly (you may not doubt or reinterpret it)";
     if (f.key === "name") return `name: your own name is ${j(f.value)}; say it`;
     if (f.key === "role") return `role: you are ${/^[aeiou]/i.test(String(f.value)) ? "an" : "a"} ${String(f.value).toLowerCase()}; say so`;
-    if (f.key === "current_assignment") return `current_assignment: you are ${String(f.value).replace(/^./, (ch) => ch.toLowerCase())}; say so in plain words`;
+    if (f.key === "current_assignment") return `current_assignment: in your own words to them, "I'm ${String(f.value).replace(/^./, (ch) => ch.toLowerCase())}"; say exactly that, plainly`;
+    if (f.key === "utterance_meaning") {
+      const m = f.value ?? {};
+      if (!m.own) return `They are asking what ${m.speaker_name === "you" ? "they themselves" : (m.speaker_name ?? "someone else")} meant by ${j(m.quoted ?? m.line)}. You did not say it: say only that ${m.speaker_name === "you" ? "it was their own words" : `they would have to ask ${m.speaker_name ?? "that person"}`}. Do not interpret it.`;
+      const said = `Your earlier line: ${j(m.line)}${m.quoted ? `; they are asking what you meant by ${j(m.quoted)}` : ""}.`;
+      if (m.meaning?.semantics?.gloss) return `${said} What it meant (say only this, plainly): you are ${m.meaning.semantics.phrase}, which means ${m.meaning.semantics.gloss}. Nothing about living, lodging or any other arrangement.`;
+      if (m.meaning) return `${said} What it meant (say only this, plainly): ${j(m.meaning.value)} (${String(m.meaning.key).replace(/_/g, " ")}).`;
+      return `${said} Those words were only how you put it; you meant nothing more than the line itself. Say so briefly, adding nothing new.`;
+    }
+    if (f.key === "conversation_event") {
+      const e = f.value ?? {};
+      const who = { you: "you", you_and_others: "you and others", no_one_by_name: "the room", someone_else: "someone else" }[e.addressed] ?? "the room";
+      const what = e.responded ? `You DID answer it${e.own_reply ? `: you said ${j(e.own_reply)}` : ""}. Say so.` : e.reason === "did_not_hear" ? "You did not hear it. Say so plainly." : e.reason === "another_answered" ? `You did not answer; ${(e.others_responded ?? []).join(" and ")} did. Say only that.` : "You did not answer it, and there is NO reason you can give: acknowledge that you didn't answer (a brief apology is fine). Never give a reason, feeling, motive or excuse.";
+      return `They are asking about their earlier line ${j(e.player_line)} (said to ${who}). ${what}`;
+    }
+    if (f.key === "stated_reason") return `They answered your question with their reason: ${j(f.value?.text)}. That is their claim, not something you know. Acknowledge it briefly; do not agree it is true or add to it.`;
     if (f.key === "self_state_answer") {
       const asked = { positive: "excited or eager", tense: "nervous or tense", tired: "tired", wellbeing: "all right" }[f.value?.asked] ?? "that way";
       if (f.value?.answer === "yes") return `They asked if you feel ${asked}: you do. Say so briefly, for yourself only.`;
@@ -250,10 +266,11 @@ function renderContributionTask(packet) {
   if (c.may_ask_clarifying_question) {
     const noun = (c.referents ?? []).find((r) => r.type === "spatial" && !r.resolved && r.noun && !["thing", "one"].includes(r.noun))?.noun;
     const when = c.temporal_reference && !c.temporal_reference.resolved;
-    if (c.discourse_function !== "ask_next_step") how.push(noun ? `You cannot tell which ${noun} they mean. Ask ONE short question about which ${noun}.` : when ? `You cannot tell which time "${c.temporal_reference.expression}" means. Ask ONE short question about when they mean.` : "If the reference is unclear, ask ONE short question about which thing they mean.");
+    const slotQuestion = { temporal: "when they mean", location: "where they mean", person: "who they mean", referent: "which thing they mean", spatial_selection: "which one they mean", topic: "what they mean" }[c.expected_slot] ?? "which thing they mean";
+    if (c.discourse_function !== "ask_next_step") how.push(noun ? `You cannot tell which ${noun} they mean. Ask ONE short question about which ${noun}.` : when ? `You cannot tell which time "${c.temporal_reference.expression}" means. Ask ONE short question about when they mean.` : `It is unclear what they are referring to. Ask ONE short question about ${slotQuestion}.`);
   }
   if (capsule && repairing) how.push("Say your own earlier line again in your own words. Do not answer a new question and do not say you did not understand.");
-  if (capsule && c.resumed_question) how.push(`They are answering your question about what they meant. Answer their earlier question now: ${j(c.resumed_question)}`);
+  if (capsule && c.resumed_question) how.push(`${c.answered_slot ? `They answered your question (the ${{ temporal: "time", location: "place", referent: "thing", spatial_selection: "one", person: "person", reason: "reason", yes_no: "yes or no", topic: "point" }[c.answered_slot] ?? "point"} they meant). ` : "They are answering your question about what they meant. "}Answer their earlier question now: ${j(c.resumed_question)}`);
   if (c.discourse_function === "ask_next_step" && c.may_ask_clarifying_question) how.push(`Nothing tells you what "next" means here. Ask ONE short question about what they mean.`);
   if (capsule && !isReport && !req.length && ["ask_factual", "ask_personal_experience", "challenge", "ask_opinion"].includes(c.discourse_function) && !c.may_ask_clarifying_question) how.push(c.addressee_state ? "They are asking whether you are ready; a brief yes or no about yourself is fine." : (UNCERTAINTY_GUIDE[uncertainty] ?? (c.past_perception ? UNCERTAINTY_GUIDE.did_not_perceive : UNCERTAINTY_GUIDE.no_established_fact)));
   if ((c.same_turn_prior_responses ?? []).length) how.push(`Others already replied this turn:\n- ${c.same_turn_prior_responses.map((r) => `${r.speaker_name ?? "someone"}: ${j(r.text)}`).join("\n- ")}\nDo NOT reuse their opening words or sentence shape, and do not repeat what they already said; say it your own way.`);

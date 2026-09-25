@@ -46,9 +46,13 @@ const ASSISTANT_PERSONA = /\b(?:how (?:can|may|could|might) i (?:help|assist|be 
 const LACK_SAFE = /\b(?:don'?t know|do not know|no idea|no clue|not sure|can'?t say|couldn'?t say|can'?t tell you|couldn'?t tell you|not that i (?:know|recall|remember|noticed|saw|heard)|didn'?t (?:notice|see|catch) anything|don'?t (?:recall|remember)|nothing (?:on|about) that|nothing to (?:add|say|tell)|haven'?t (?:heard|been told)|(?:nobody|no one)(?:'s| has) told me|not that i can think of|can'?t think of|i wouldn'?t know|unsure|not certain|i'?d rather not)\b/i;
 const ABSOLUTE_EXPERIENCE_CLAIM = /\b(?:never|no experience|first time|haven'?t been|have not been|been (?:here|there|in|down)|seen (?:this|the|it) before|done this)\b/i;
 // Functions whose reply is a plain answer/reaction, not a question back.
-const NO_COUNTER_QUESTION = new Set(["report_observation", "greet", "introduce_self", "acknowledge", "close_topic", "joke_or_sarcasm", "social_observation", "warn", "invite_self_description", "ask_role_or_assignment", "ask_item_ownership", "ask_personal_experience", "ask_factual", "request_repetition", "clarify_previous", "ask_heard_confirmation", "check_in", "make_request", "ask_explanation", "ask_next_step", "ask_opinion"]);
-const CLARIFY_CUE = /\b(?:(?:what|which)\b[^?]*\b(?:referring|referencing|talking about)|mean|which|what (?:do|are|exactly|thing|part|item)|sorry|pardon|huh|not sure what|didn'?t (?:catch|follow|get)|come again|say again)\b/i;
-const MAX_WORDS = Object.freeze({ report_observation: 22, greet: 6, introduce_self: 10, acknowledge: 9, close_topic: 9, joke_or_sarcasm: 10, social_observation: 10, check_in: 14, warn: 14, express_uncertainty: 16, ask_heard_confirmation: 16, ask_explanation: 24, ask_next_step: 24, ask_opinion: 14 });
+const NO_COUNTER_QUESTION = new Set(["report_observation", "greet", "introduce_self", "acknowledge", "close_topic", "joke_or_sarcasm", "social_observation", "warn", "invite_self_description", "ask_role_or_assignment", "ask_item_ownership", "ask_personal_experience", "ask_factual", "request_repetition", "clarify_previous", "ask_heard_confirmation", "check_in", "make_request", "ask_explanation", "ask_next_step", "ask_opinion", "ask_meaning", "ask_response_event"]);
+const CLARIFY_CUE = /\b(?:(?:what|which|where|when|who)\b[^?]*\b(?:referring|referencing|talking about)|mean|which|what (?:do|are|exactly|thing|part|item)|sorry|pardon|huh|not sure what|didn'?t (?:catch|follow|get)|come again|say again)\b/i;
+const MAX_WORDS = Object.freeze({ report_observation: 22, greet: 6, introduce_self: 10, acknowledge: 9, close_topic: 9, joke_or_sarcasm: 10, social_observation: 10, check_in: 14, warn: 14, express_uncertainty: 16, ask_heard_confirmation: 16, ask_explanation: 24, ask_next_step: 24, ask_opinion: 14, ask_meaning: 30, ask_response_event: 22 });
+// A motive, feeling or excuse for not answering: never canonical unless the plan supplies it.
+const SILENCE_MOTIVE = /\b(?:because|i thought|i didn'?t (?:realize|realise|think|know (?:you|it|that))|didn'?t (?:realize|realise)|wasn'?t sure (?:you|if|whether|it)|i figured|i assumed|i was (?:busy|distracted|nervous|thinking|focused|waiting|preoccupied|shy|tired|lost|listening|in the middle)|didn'?t want|wasn'?t (?:paying|listening)|zoned out|lost in thought|(?:you )?(?:weren'?t|were not) talking to me|didn'?t know (?:it was|you were|you meant)|thought you (?:were|meant)|not my place|didn'?t catch (?:that|it) was)\b/i;
+// An assignment phrase read as lodging/living arrangements ("staying with" as "living with").
+const LODGING_READING = /\b(?:live|lives|living|lodg\w*|room(?:ing|mate)?s?|sleep\w*|stay(?:ing)? at|house|home|apartment|flat|share (?:a|the) (?:room|place))\b/i;
 const META_PLAYER = /\b(?:the|this) player\b|\bplayer'?s (?:words|line|message|text)\b/i;
 // The capsule labels the person spoken to "PLAYER"; that label is orientation, never speech -- in any case,
 // whether shouted, used as a name ("Morning, Player.") or as an address ("Hey player"). Ordinary uses
@@ -73,7 +77,7 @@ const SENSORY_INVENTION = /\b(?:smell\w*|hear|heard|hearing|sound\w*|glow\w*|hum
 const SARCASM_AGREES = /\b(?:you'?re (?:not wrong|right|correct)|not wrong about|that'?s (?:true|right|correct|a relief)|(?:i )?agree(?:d)?|absolutely|indeed|good point|fair point)\b/i;
 // A reaction that supplies no fact must not narrate events, history or experience of its own.
 // A reaction that supplies no fact must not invent what the speaker is currently doing or waiting for.
-const INVENTED_ACTIVITY = /\b(?:just|still|currently|busy)\s+(?:waiting|trying|working|checking|charging|getting|making|keeping|looking|going|doing)\b|\bwaiting (?:for|on)\b|\btrying to\b/i;
+const INVENTED_ACTIVITY = /\b(?:just|still|currently|busy)\s+(?:waiting|trying|working|checking|charging|getting|making|keeping|looking|going|doing|bringing|carrying|grabbing|packing|sorting|setting|finishing|heading|preparing|organizing|recording|writing|logging)\b|\bwaiting (?:for|on)\b|\btrying to\b|\bi(?:'m| am) (?:keeping|recording|noting|writing|logging|taking) (?:a |the )?(?:note|record|track|down|it|that|this)\b|\b(?:keeping|making) (?:a |the )?(?:verbal )?(?:record|note) of (?:that|it|this)\b/i;
 const INVENTED_HISTORY = /\bi(?:'ve| have) (?:seen|been|done|worked|had)\b|\bi was\b|\bagain\b|\b(?:last|that) (?:time|week|year|day)\b|\bused to\b|\bi remember\b|\bever\b|\b(?:didn'?t|did not|haven'?t|barely|hardly) (?:sleep|slept|rest(?:ed)?|eat(?:en)?)\b|\b(?:no|little|not much) sleep\b/i;
 // Words of the internal plan/packet that must never surface as speech (any function).
 const PLAN_VOCAB = /\b(?:disposition|authorized|contribution|self[_ ]state|antecedent|required facts?|item[_ ]holder|heard[_ ]confirmation|known[_ ]answer)\b/i;
@@ -171,7 +175,11 @@ function validateContribution(contribution, rawSpeech, { player_text = null } = 
   const noFacts = !(contribution.required_facts ?? []).some((f) => f.key !== "uncertainty") && !(contribution.optional_facts ?? []).length;
   const explainedBasis = fn === "ask_explanation" ? (requiredValue(contribution, "explanation_basis")[0] ?? null) : null;
   if ((["joke_or_sarcasm", "social_observation", "greet", "introduce_self", "acknowledge", "close_topic", "check_in"].includes(fn) || (noFacts && ["ask_factual", "ask_personal_experience", "challenge", "make_statement", "ambiguous_reference"].includes(fn)) || (explainedBasis && ["self_state", "no_known_fact", "social", "clarification", "unavailable"].includes(explainedBasis.kind))) && INVENTED_HISTORY.test(speech)) return reject(CODES.FORBIDDEN, "narrates history or experience the plan does not supply");
-  if (["joke_or_sarcasm", "social_observation", "greet", "introduce_self", "acknowledge", "close_topic", "check_in"].includes(fn) && INVENTED_ACTIVITY.test(speech)) return reject(CODES.FORBIDDEN, "invents what the speaker is doing or waiting for");
+  if ((["joke_or_sarcasm", "social_observation", "greet", "introduce_self", "acknowledge", "close_topic", "check_in"].includes(fn) || (noFacts && fn === "make_statement")) && INVENTED_ACTIVITY.test(speech)) return reject(CODES.FORBIDDEN, "invents what the speaker is doing or waiting for");
+  // A greeting or acknowledgment does not report what the speaker is doing ("Hi. I'm compiling the record.").
+  if (["greet", "introduce_self", "acknowledge", "close_topic", "joke_or_sarcasm"].includes(fn) && /\bi(?:'m| am) (?!doing\b|feeling\b|going to\b|getting by\b|not\b)\w+ing\b/i.test(speech)) return reject(CODES.FORBIDDEN, "a social line reports an activity the plan does not supply");
+  // The player just answered this speaker's own clarification: the reply may not claim not to follow it.
+  if (contribution.resumed_question && !contribution.may_ask_clarifying_question && /\b(?:(?:don'?t|do not) (?:know|understand|get)|not sure|no idea) what you(?:'re| are)? (?:mean|meant|asking|referring|talking)\b|\bwhat do you mean\b/i.test(speech)) return reject(CODES.UNMET, "the player answered the clarification; do not ask or deny it again");
   if (fn !== "report_observation" && fn !== "warn" && COMMITMENT_CLAIM.test(speech)) return reject(CODES.FORBIDDEN, "creates a commitment or instruction the simulation does not hold");
   if (VOCATIVE_YOU.test(speech)) return reject(CODES.SHAPE, "addresses the person as \"you\" as if it were a name");
   if (PLAN_VOCAB.test(speech)) return reject(CODES.FORBIDDEN, "internal bookkeeping vocabulary");
@@ -228,6 +236,7 @@ function validateContribution(contribution, rawSpeech, { player_text = null } = 
     if (!speech.includes("?")) return reject(CODES.UNMET, "unresolved reference must be answered with a clarification question");
     if (!CLARIFY_CUE.test(speech)) return reject(CODES.UNMET, "clarification must ask what is meant");
     if (sents.length > 2) return reject(CODES.SHAPE, "clarification request must be brief");
+    if (sents.filter((x) => !x.includes("?")).some((x) => /\bi(?:'m| am) (?!not\b|sorry\b)\w+ing\b/i.test(x))) return reject(CODES.SHAPE, "a clarification asks; it does not report what the speaker is doing");
   }
 
   // A. First-person custody claim (negation-aware, per-claim spans) for an item
@@ -420,6 +429,42 @@ function validateContribution(contribution, rawSpeech, { player_text = null } = 
       }
       // Any other reason (danger, plans, experience) is an invented rationale.
       if (DANGER_EVALUATION.test(speech) && !/danger|safe|risk/i.test(JSON.stringify(basis))) return reject(CODES.FORBIDDEN, "invented rationale: a safety or danger state the basis does not hold");
+      break;
+    }
+    case "ask_meaning": {
+      if (contribution.may_ask_clarifying_question) break;
+      const meaning = requiredValue(contribution, "utterance_meaning")[0];
+      if (!meaning) break;
+      if (!meaning.own) {
+        // Only the speaker can say what their own words meant: point to them, never interpret for them.
+        const named = meaning.speaker_name && meaning.speaker_name !== "you" ? new RegExp(`\\b${String(meaning.speaker_name).replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\b`, "i").test(speech) : /\byou (?:said|meant|mean)\b/i.test(speech);
+        if (!named && !/\b(?:ask (?:her|him|them)|wasn'?t me|didn'?t say)\b/i.test(speech)) return reject(CODES.UNMET, "someone else's line: say they would have to explain it");
+        if (/\b(?:she|he|they) (?:means?|meant)\b/i.test(speech)) return reject(CODES.FORBIDDEN, "interprets someone else's words");
+        break;
+      }
+      const supplied = meaning.meaning ? [JSON.stringify(meaning.meaning.value), meaning.meaning.semantics?.phrase, meaning.meaning.semantics?.gloss].filter(Boolean) : [];
+      const gloss = meaning.meaning?.semantics?.gloss ?? null;
+      if (supplied.length && !supplied.some((text) => coverage(speech, text) >= 0.5) && !(gloss && coverage(speech, gloss) >= 0.3)) return reject(CODES.UNMET, "does not state the meaning the line was authorized with");
+      if (LODGING_READING.test(speech) && !LODGING_READING.test(allowedBlob)) return reject(CODES.FORBIDDEN, "reads an assignment as living or lodging arrangements");
+      const allowedWords = new Set([...contentWords(allowedBlob), ...EXPLANATION_FRAME_WORDS, "assigned", "assignment", "task", "role", "job", "given", "basically", "simply", "literally"]);
+      const novel = contentWords(speech).filter((w) => ![...allowedWords].some((k) => sameStem(k, w)));
+      if (novel.length > 3) return reject(CODES.FORBIDDEN, `adds meaning beyond the line's authorized facts: "${novel.slice(0, 4).join(" ")}"`);
+      break;
+    }
+    case "ask_response_event": {
+      if (contribution.may_ask_clarifying_question) break;
+      const event = requiredValue(contribution, "conversation_event")[0];
+      if (!event) break;
+      const motive = speech.match(SILENCE_MOTIVE);
+      if (motive && !(event.reason === "did_not_hear" && /catch|hear/i.test(motive[0]))) return reject(CODES.FORBIDDEN, `invented motive for the response: "${motive[0]}"`);
+      if (!event.responded && /\bi (?:did|do) (?:answer|respond|reply|say)|\bi (?:answered|responded|replied)\b/i.test(speech)) return reject(CODES.CONTRADICTION, "claims an answer that was never given");
+      if (event.responded && !/\b(?:did|answered|said|replied|responded)\b/i.test(speech)) return reject(CODES.UNMET, "the speaker did answer and must say so");
+      if (event.heard && /\b(?:didn'?t|did not|couldn'?t|could not) (?:hear|catch)|\bmissed (?:it|that|you)\b/i.test(speech)) return reject(CODES.CONTRADICTION, "denies hearing a line the speaker heard");
+      if (event.reason === "did_not_hear" && !/\b(?:didn'?t|did not|couldn'?t|could not) (?:hear|catch)|\bmissed\b/i.test(speech)) return reject(CODES.UNMET, "the speaker did not hear it and must say so");
+      if (event.reason === "another_answered" && !(event.others_responded ?? []).some((name) => new RegExp(`\\b${String(name).replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\b`, "i").test(speech)) && !/\b(?:someone|somebody) else\b/i.test(speech)) return reject(CODES.UNMET, "the knowable reason is that someone else answered");
+      const allowedWords = new Set([...contentWords(allowedBlob), ...EXPLANATION_FRAME_WORDS, "answer", "answered", "answering", "respond", "responded", "reply", "replied", "sorry", "right", "hear", "heard", "catch", "caught", "then", "earlier", "missed", "someone", "else", "fair", "apologies", "bad"]);
+      const novel = contentWords(speech).filter((w) => ![...allowedWords].some((k) => sameStem(k, w)));
+      if (novel.length > 2) return reject(CODES.FORBIDDEN, `invented account of the exchange: "${novel.slice(0, 4).join(" ")}"`);
       break;
     }
     case "make_request": {

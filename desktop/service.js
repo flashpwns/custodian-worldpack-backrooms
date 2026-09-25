@@ -25,7 +25,7 @@ const { LOCAL_PROVIDER_SPEC } = require("../tools/ai-local-model-provider");
 const { ManagedInferenceAppliance } = require("../tools/managed-inference-appliance");
 const { createDialogueRuntimeSupervisor } = require("../tools/dialogue-runtime-supervisor");
 const { buildLocalDialoguePacket, buildObservationReportPacket, validateLocalDialogue } = require("../tools/ai-local-dialogue");
-const { interpretUtterance: interpretDialogueUtterance, inferLocalRecipientType, resolveResponseOwners, stripNamedAddress, parseNamedAddress } = require("../tools/dialogue-interpretation");
+const { interpretUtterance: interpretDialogueUtterance, inferLocalRecipientType, resolveResponseOwners, stripNamedAddress, parseAddressees } = require("../tools/dialogue-interpretation");
 const dialogueDiscourse = require("../tools/dialogue-discourse");
 const dialogueFallback = require("../tools/dialogue-fallback");
 const observerContextCompiler = require("../tools/observer-context-compiler");
@@ -1896,7 +1896,7 @@ class DesktopService {
     canonical.result.presentation_source = allModel ? first.presentationSource : allFallback ? "deterministic-fallback" : "mixed-model-fallback";
     if (this.developerMode) {
       // One bounded record per turn: what was committed and why, never hidden world state.
-      const after = (() => { try { const d = dialogueDiscourse.deriveDiscourseState({ interaction_history: currentEntry.run.expedition.interaction_history, dialogue_history: currentEntry.run.expedition.dialogue_history, player_id: currentEntry.run.session.startup.player.observer_id, location_id: currentEntry.run.spatial?.player_location ?? null, current_interval: currentEntry.run.expedition.clock?.interval ?? null, equipment: currentEntry.run.expedition.equipment, receipts: currentEntry.run.expedition.communication_receipts ?? [] }); return { topic: d.current_topic_key, topic_stack: d.topic_stack.map((t) => t.topic), open_question: d.pending_question?.player_text ?? null, last_question: d.last_question?.player_text ?? null }; } catch { return null; } })();
+      const after = (() => { try { const d = dialogueDiscourse.deriveDiscourseState({ interaction_history: currentEntry.run.expedition.interaction_history, dialogue_history: currentEntry.run.expedition.dialogue_history, player_id: currentEntry.run.session.startup.player.observer_id, location_id: currentEntry.run.spatial?.player_location ?? null, current_interval: currentEntry.run.expedition.clock?.interval ?? null, equipment: currentEntry.run.expedition.equipment, receipts: currentEntry.run.expedition.communication_receipts ?? [], people: (currentEntry.run.expedition.team?.members ?? []).flatMap((m) => [m.first_name, m.last_name, m.display_name].filter(Boolean).map((name) => ({ name: String(name), id: m.personnel_id ?? m.id }))) }); return { topic: d.current_topic_key, topic_stack: d.topic_stack.map((t) => t.topic), open_question: d.pending_question ? { id: d.pending_question.question_id ?? null, text: d.pending_question.player_text ?? null, expected_slot: d.pending_question.expected_slot ?? null } : null, last_question: d.last_question?.player_text ?? null, active_thread: d.active_thread ? { kind: d.active_thread.kind, members: d.active_thread.member_ids } : null }; } catch { return null; } })();
       this.log(`[YB:COMMIT_TRACE] ${JSON.stringify({
         request_id: requestId,
         provider: first?.selectedProvider ?? null,
@@ -2152,8 +2152,14 @@ class DesktopService {
           || allWorldChars.some((c) => [c.first_name, c.last_name, c.display_name, c.identity, c.id, ...(c.aliases ?? [])].filter(Boolean).some((name) => String(name).toLowerCase() === candNorm));
       };
       const targetMember = rawTarget ? coworkers.find((m) => [m.personnel_id, m.id, m.first_name, m.display_name].filter(Boolean).some((n) => String(n).toLowerCase() === String(rawTarget).replace(/^@/, "").toLowerCase())) : null;
-      const address = parseNamedAddress(message, { explicit_target: rawTarget || null, is_known: isKnownAddressName, name_tokens: targetMember ? [targetMember.first_name, targetMember.last_name, ...String(targetMember.display_name ?? "").split(/\s+/)].filter(Boolean) : [] });
-      if (!rawTarget && address.address_type !== "none") rawTarget = address.explicit_target_name;
+      // Addressee SETS ("Hello Ava and Josephine", "Ava, Josephine, you ready?", "..., Elizabeth?") are
+      // resolved from sentence structure against the canonical roster -- a name merely mentioned is not
+      // an address, and the model never selects addressees.
+      const addressNames = coworkers.flatMap((m) => [m.first_name, m.last_name, m.display_name, ...(m.aliases ?? [])].filter(Boolean).map((name) => ({ name: String(name), id: m.personnel_id ?? m.id })));
+      const address = parseAddressees(message, { explicit_target: rawTarget || null, names: addressNames, is_known: isKnownAddressName, resolve_id: (name) => addressNames.find((entry) => entry.name.toLowerCase() === String(name).replace(/^@/, "").toLowerCase())?.id ?? null, name_tokens: targetMember ? [targetMember.first_name, targetMember.last_name, ...String(targetMember.display_name ?? "").split(/\s+/)].filter(Boolean) : [] });
+      const addressedSubset = address.address_type === "subset" ? address.addressee_ids : null;
+      const groupByAddress = !rawTarget && address.address_type === "group" && address.source !== "chip";
+      if (!rawTarget && address.address_type === "direct") rawTarget = address.explicit_target_name;
 
       const isOpenerBriefing = cq4Day1Opener.isOpener(entry.run?.scenario) && entry.phase?.phase_id === "BRIEFING";
       const GROUP_TERMS = new Set(["@table", "table", "team", "teammate", "teammates", "all", "everyone", "broadcast", "room", "local", "anyone", "crew", "group"]);
@@ -2163,7 +2169,8 @@ class DesktopService {
       // target itself is unchanged and keeps precedence.
       const utterance = address.residual_text;
       const inferredRecipientType = inferLocalRecipientType(utterance, { explicitTarget: rawTarget && !explicitGroupTarget ? rawTarget : null });
-      let isGroup = explicitGroupTarget || (!rawTarget && inferredRecipientType === "group");
+      // An explicitly named set outranks group language inside the residual ("Ava, Josephine, are you all ready?").
+      let isGroup = !addressedSubset && (explicitGroupTarget || groupByAddress || (!rawTarget && inferredRecipientType === "group"));
 
       let peer = null;
       let recipients = [];
@@ -2175,6 +2182,8 @@ class DesktopService {
       // rather than a fresh explicit/group address? Never read for canonical
       // routing -- surfaced only in the [YB:DIALOGUE_TRACE] dev trace below.
       let inheritedScope = false;
+      // The canonical address event this line makes (recorded on the interaction; see q4-interactions).
+      let addressRecord = null;
       // ED-1: bounded discourse context DERIVED from canonical interaction and
       // dialogue history (same location only). Read-only; nothing persisted.
       const discourseState = dialogueDiscourse.deriveDiscourseState({
@@ -2185,7 +2194,9 @@ class DesktopService {
         current_interval: expedition.clock?.interval ?? null,
         equipment: expedition.equipment,
         // Why each prior reply was said (its authorized plan), for "why?" and open clarifications.
-        receipts: expedition.communication_receipts ?? []
+        receipts: expedition.communication_receipts ?? [],
+        // Roster names, to reconstruct older turns' residual utterance exactly as the live turn saw it.
+        people: addressNames
       });
 
       if (channel === "local") {
@@ -2211,6 +2222,28 @@ class DesktopService {
           recipient_type = "group";
           target_id = isOpenerBriefing ? "@table" : "@team";
           target_name = isOpenerBriefing ? "Assembly Table" : "Team";
+          addressRecord = { scope: "group", addressee_ids: localPeers.map((member) => member.personnel_id ?? member.id), form: explicitGroupTarget ? (address.source === "chip" ? "chip" : address.address_form) : (groupByAddress ? address.address_form : "group_language"), source: "explicit" };
+        } else if (addressedSubset) {
+          // An explicitly named SET: exactly those people are addressed; nobody else is asked to answer.
+          const addressed = addressedSubset.map((id) => coworkers.find((member) => (member.personnel_id ?? member.id) === id)).filter(Boolean);
+          const reachable = addressed.filter((member) => localPeers.some((peerMember) => (peerMember.personnel_id ?? peerMember.id) === (member.personnel_id ?? member.id)));
+          if (reachable.length === 0) {
+            const reason = `${addressed.map((member) => member.first_name || member.display_name).join(" and ")} ${addressed.length > 1 ? "are" : "is"} not within speaking range.`;
+            communicationRuntime.local(expedition, { sender: playerId, recipients: addressedSubset, text: message, eligible: false, failure_reason: reason });
+            q4Interactions.record(expedition, { channel, speaker: "You", targets: addressed.map((member) => member.display_name), player_text: message, attempted_behavior: "speak with nearby teammates", eligibility: "target-out-of-range", delivery: "not-delivered", presentation: { result: reason } });
+            try { this.persistSession(world, "field-researcher", entry); } catch (persistError) {
+              for (const key of Object.keys(world)) delete world[key]; Object.assign(world, beforeWorld);
+              for (const key of Object.keys(entry.run)) delete entry.run[key]; Object.assign(entry.run, beforeRun);
+              entry.run._world = world; entry.phase = beforePhase;
+              return publicError("PERSISTENCE_COMMIT_FAILED", "The action could not be saved and was not committed. Check the operation record storage before retrying.");
+            }
+            return publicError("LOCAL_TARGET_UNAVAILABLE", reason);
+          }
+          recipients = reachable;
+          recipient_type = reachable.length === 1 ? "direct" : "group";
+          target_id = reachable.length === 1 ? (reachable[0].personnel_id ?? reachable[0].id) : null;
+          target_name = reachable.map((member) => member.first_name ?? member.display_name).join(" and ");
+          addressRecord = { scope: "subset", addressee_ids: [...addressedSubset], form: address.address_form, source: "explicit" };
         } else if (rawTarget) {
           const targetNorm = rawTarget.toLowerCase();
           const activeMatches = coworkers.filter((member) => {
@@ -2290,6 +2323,7 @@ class DesktopService {
           recipient_type = "direct";
           target_id = peer.personnel_id ?? peer.id;
           target_name = peer.first_name ?? peer.display_name;
+          addressRecord = { scope: "direct", addressee_ids: [target_id], form: address.source === "chip" || address.address_form === "chip" ? "chip" : address.address_form, source: "explicit" };
         } else {
           // Untargeted utterance: spoken aloud into the room. No individual or
           // group was addressed by the player's own words. A short, purely
@@ -2300,7 +2334,9 @@ class DesktopService {
           const inheritedScopeResolution = dialogueDiscourse.resolveRecipientScope({
             text: utterance,
             discourse: discourseState,
-            present_ids: localPeers.map((member) => member.personnel_id ?? member.id)
+            present_ids: localPeers.map((member) => member.personnel_id ?? member.id),
+            people: coworkers.map((member) => ({ id: member.personnel_id ?? member.id, name: member.first_name ?? null })),
+            equipment: expedition.equipment
           });
           const priorLocal = inheritedScopeResolution.inherited ? discourseState.last_turn : null;
           const inheritedGroup = inheritedScopeResolution.recipient_type === "group"
@@ -2311,12 +2347,14 @@ class DesktopService {
             : null;
 
           if (inheritedGroup.length > 0) {
+            const inheritedSubset = inheritedScopeResolution.address_scope === "subset";
             recipients = inheritedGroup;
             recipient_type = "group";
-            isGroup = true;
-            target_id = priorLocal.recipient_id ?? (isOpenerBriefing ? "@table" : "@team");
-            target_name = isOpenerBriefing ? "Assembly Table" : "Team";
+            isGroup = !inheritedSubset;
+            target_id = inheritedSubset ? null : ((priorLocal?.recipient_id && String(priorLocal.recipient_id).startsWith("@") ? priorLocal.recipient_id : null) ?? (isOpenerBriefing ? "@table" : "@team"));
+            target_name = inheritedSubset ? inheritedGroup.map((member) => member.first_name ?? member.display_name).join(" and ") : (isOpenerBriefing ? "Assembly Table" : "Team");
             inheritedScope = true;
+            addressRecord = { scope: inheritedSubset ? "subset" : "group", addressee_ids: inheritedGroup.map((member) => member.personnel_id ?? member.id), form: "inherited", source: inheritedScopeResolution.source };
           } else if (inheritedDirect) {
             recipients = [inheritedDirect];
             recipient_type = "direct";
@@ -2324,6 +2362,7 @@ class DesktopService {
             target_id = inheritedDirect.personnel_id ?? inheritedDirect.id;
             target_name = inheritedDirect.first_name ?? inheritedDirect.display_name;
             inheritedScope = true;
+            addressRecord = { scope: "direct", addressee_ids: [target_id], form: "inherited", source: inheritedScopeResolution.source };
           } else {
             // Genuine untargeted scope: heard by everyone present, addressed
             // to no one. Nobody is spoken TO; any reaction stays room-scoped.
@@ -2331,8 +2370,10 @@ class DesktopService {
             recipient_type = "none";
             target_id = null;
             target_name = null;
+            addressRecord = { scope: "untargeted", addressee_ids: [], form: "none", source: "untargeted" };
           }
         }
+        addressRecord = { ...(addressRecord ?? { scope: "untargeted", addressee_ids: [], form: "none", source: "untargeted" }), utterance };
 
         const deliveredRecipients = recipients.length > 0 ? recipients.map((member) => member.personnel_id ?? member.id) : localPeers.map((member) => member.personnel_id ?? member.id);
         const deliveredLocal = communicationRuntime.local(expedition, { sender: playerId, recipients: deliveredRecipients, text: message, eligible: true });
@@ -2350,7 +2391,7 @@ class DesktopService {
         const isDisclosure = /\b(?:i prefer|i(?:'d| would) rather|(?:please )?call me)\b|\b(?:i(?:'m| am)|i feel|i get|makes me|i hate|i don'?t like)\b[^.?!]{0,40}\b(?:nervous|afraid|scared|tight spaces|dark|claustrophobic|worried)\b/i.test(message);
         // Bounded interpretation — deterministic speech act classification for the wordsmith pipeline.
         // Separate from the regex flags above which feed the existing reactionContext API.
-        const localInterpretation = interpretDialogueUtterance(utterance, { isGroup });
+        const localInterpretation = interpretDialogueUtterance(utterance, { isGroup: recipient_type === "group" });
         // ED-1: deterministic semantic frame (discourse function, referents,
         // antecedent). Code decides the conversational situation; the model
         // never chooses any part of it.
@@ -2359,7 +2400,7 @@ class DesktopService {
         const selectionCheck = spatial_selection ? spatialEvents.resolveSpatialReferenceSelection(entry.run, spatial_selection, { observer_id: playerId, now: expedition.clock?.interval ?? null }) : null;
         const validatedSelection = selectionCheck?.ok ? selectionCheck.selection : null;
         if (selectionCheck && !selectionCheck.ok && this.developerMode) this.log(`[YB:SPATIAL_TRACE] ${JSON.stringify({ request_id: requestId, rejected: selectionCheck.code, detail: selectionCheck.detail ?? null })}`);
-        const semanticFrame = dialogueDiscourse.buildSemanticFrame({ text: utterance, recipient_type, interpretation: localInterpretation, discourse: discourseState, equipment: expedition.equipment, scope_inherited: inheritedScope, spatial_selection: validatedSelection, temporal_anchors: dialogueTemporalAnchors(entry.run), now: expedition.clock?.interval ?? null, people: coworkers.map((member) => ({ id: member.personnel_id ?? member.id, name: member.first_name ?? null })) });
+        const semanticFrame = dialogueDiscourse.buildSemanticFrame({ text: utterance, recipient_type, interpretation: localInterpretation, discourse: discourseState, equipment: expedition.equipment, scope_inherited: inheritedScope, spatial_selection: validatedSelection, temporal_anchors: dialogueTemporalAnchors(entry.run), now: expedition.clock?.interval ?? null, people: coworkers.map((member) => ({ id: member.personnel_id ?? member.id, name: member.first_name ?? null })), addressee_ids: recipients.map((member) => member.personnel_id ?? member.id) });
         const discourseSummary = dialogueDiscourse.summarizeDiscourse(discourseState, semanticFrame);
         for (const recipient of (recipients.length > 0 ? recipients : localPeers)) {
           const recId = recipient.personnel_id ?? recipient.id;
@@ -2412,7 +2453,7 @@ class DesktopService {
         let interactionTargets = [];
         let recipientIds = [];
         const playerListeners = localPeers.map((p) => p.personnel_id ?? p.id);
-        interactionTargets = recipient_type === "none" ? ["Room / Untargeted"] : (isGroup ? ["Assembly Table"] : recipients.map((r) => r.display_name));
+        interactionTargets = recipient_type === "none" ? ["Room / Untargeted"] : (isGroup && addressRecord.scope === "group" ? ["Assembly Table"] : recipients.map((r) => r.display_name));
         recipientIds = recipient_type === "none" ? [] : recipients.map((r) => r.personnel_id ?? r.id);
 
         const heardPeers = recipient_type === "none" ? localPeers : recipients;
@@ -2498,7 +2539,7 @@ class DesktopService {
           item.text = planned ? `${first}: ${planned}` : item.legacy_wording();
           priorTexts.push(planned ?? "");
         }
-        if (this.developerMode) this.log(`[YB:DISCOURSE_TRACE] ${dialogueDiscourse.formatDiscourseTrace({ request_id: requestId, listener_ids: heardPeers.map((peer) => peer.personnel_id ?? peer.id), raw_utterance: message, utterance, recipient_scope: semanticFrame.target_scope, frame: semanticFrame, discourse_summary: discourseSummary, owner_ids: ownerIds, plans: responsePlans, grounded_facts: responsePlans.flatMap((plan) => plan.required_facts.map((fact) => `${plan.responder_id}:${fact.key}`)) })}`);
+        if (this.developerMode) this.log(`[YB:DISCOURSE_TRACE] ${dialogueDiscourse.formatDiscourseTrace({ request_id: requestId, listener_ids: heardPeers.map((peer) => peer.personnel_id ?? peer.id), raw_utterance: message, utterance, recipient_scope: semanticFrame.target_scope, frame: semanticFrame, discourse_summary: discourseSummary, owner_ids: ownerIds, plans: responsePlans, grounded_facts: responsePlans.flatMap((plan) => plan.required_facts.map((fact) => `${plan.responder_id}:${fact.key}`)), address: addressRecord, discourse: discourseState })}`);
         for (const item of authorizedResponses) {
           item.body = String(item.text ?? "").replace(new RegExp(`^${String(item.recipient?.first_name ?? "").replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}:\\s*`, "i"), "");
           item.listeners = [playerId, ...localPeers.map((p) => p.personnel_id ?? p.id).filter((id) => id !== item.id)];
@@ -2539,7 +2580,8 @@ class DesktopService {
           recipient_ids: recipientIds,
           listeners: playerListeners,
           player_text: message,
-          attempted_behavior: recipient_type === "none" ? "speak aloud to the room" : (isGroup ? "address the group" : "speak with a nearby teammate"),
+          attempted_behavior: recipient_type === "none" ? "speak aloud to the room" : (addressRecord.scope === "subset" ? "speak with named teammates" : isGroup ? "address the group" : "speak with a nearby teammate"),
+          address: addressRecord,
           eligibility: "eligible",
           delivery: "heard",
           time_cost: 0,
@@ -2589,7 +2631,8 @@ class DesktopService {
         // recipient_type, never a "someone answered" inference -- a room-scoped
         // ("none") utterance that happens to draw one deterministic reaction
         // must not be rendered as if the player had addressed that person directly.
-        const coworkerRecipientType = recipient_type === "group" ? "group" : recipient_type === "direct" ? "direct" : "none";
+        // Replies to an explicitly named set go back to the player, not to the assembly table.
+        const coworkerRecipientType = recipient_type === "group" && addressRecord.scope !== "subset" ? "group" : (recipient_type === "direct" || addressRecord.scope === "subset") ? "direct" : "none";
         const coworkerRecipientId = coworkerRecipientType === "group" ? (isOpenerBriefing ? "@table" : "@team") : coworkerRecipientType === "direct" ? playerId : null;
         const coworkerRecipientName = coworkerRecipientType === "group" ? (isOpenerBriefing ? "Assembly Table" : "Team") : coworkerRecipientType === "direct" ? "YOU" : null;
         if (!willBeHosted) for (const authorized of authorizedResponses) {
@@ -2657,7 +2700,8 @@ class DesktopService {
               interpretation: clone(localInterpretation),
               is_group: isGroup,
               recipient_type,
-              inherited_scope: inheritedScope
+              inherited_scope: inheritedScope,
+              address: clone(addressRecord)
             }))
           };
           entry.run.expedition.communication_receipts ??= [];
@@ -2671,7 +2715,7 @@ class DesktopService {
           entry.run._world = world; entry.phase = beforePhase;
           return publicError("PERSISTENCE_COMMIT_FAILED", "The action could not be saved and was not committed. Check the operation record storage before retrying.");
         }
-        if (authorizedResponses.length > 0) Object.defineProperty(output, "_local_dialogue_contexts", { configurable:true, enumerable:false, value:authorizedResponses.map((authorized) => ({ run:entry.run, runId:entry.run.run_id, player_text:message, speaker:authorized.recipient, person:authorized.person, reaction_context:authorized.reaction_context, reaction:authorized.reaction, fallback_text:authorized.text, interaction, world, entry, requestId, player_event_id:playerDialogueEvent.id, interpretation:localInterpretation, semantic_frame:authorized.semantic_frame, response_plan:authorized.response_plan, authorized_contribution:authorized.authorized_contribution, discourse_summary:authorized.discourse_summary, is_group:isGroup, recipient_type, inherited_scope:inheritedScope, phase_id:entry.phase?.phase_id ?? null })) });
+        if (authorizedResponses.length > 0) Object.defineProperty(output, "_local_dialogue_contexts", { configurable:true, enumerable:false, value:authorizedResponses.map((authorized) => ({ run:entry.run, runId:entry.run.run_id, player_text:message, speaker:authorized.recipient, person:authorized.person, reaction_context:authorized.reaction_context, reaction:authorized.reaction, fallback_text:authorized.text, interaction, world, entry, requestId, player_event_id:playerDialogueEvent.id, interpretation:localInterpretation, semantic_frame:authorized.semantic_frame, response_plan:authorized.response_plan, authorized_contribution:authorized.authorized_contribution, discourse_summary:authorized.discourse_summary, is_group:isGroup, recipient_type, inherited_scope:inheritedScope, address:addressRecord, phase_id:entry.phase?.phase_id ?? null })) });
         return output;
       }
       const radio = expedition.equipment?.["survey-radio"];

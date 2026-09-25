@@ -116,6 +116,47 @@ function presentExplanation(basis, style = {}) {
   }
 }
 
+// A clarification asks for exactly the kind of answer its open question expects (the plan's slot).
+const CLARIFY_BY_SLOT = Object.freeze({ temporal: "Sorry, when do you mean?", location: "Sorry, where do you mean?", person: "Sorry, who do you mean?", referent: "Sorry, which thing do you mean?", spatial_selection: "Sorry, which one do you mean?", reason: "Sorry, why do you say that?", yes_no: "Sorry, do you mean yes or no?", topic: "Sorry, what do you mean?" });
+const clarifyFor = (plan, fallback = "Sorry, what do you mean?") => CLARIFY_BY_SLOT[plan?.expected_slot] ?? fallback;
+
+/** What one's own earlier line meant, from the fact its words came from (never the words themselves). */
+function presentMeaning(meaning, style = {}) {
+  if (!meaning) return null;
+  if (!meaning.own) return meaning.speaker_name === "you" ? "That's what you said. I can't tell you what you meant by it." : `You'd have to ask ${meaning.speaker_name ?? "them"} what they meant.`;
+  const fact = meaning.meaning ?? null;
+  if (fact) {
+    const semantics = fact.semantics ?? null;
+    switch (fact.key) {
+      case "current_assignment":
+        if (semantics?.task_type === "follow") return `I just mean I'm ${semantics.phrase}: ${semantics.gloss}.`;
+        if (semantics?.source === "assigned_task") return `It's the task I was assigned: ${sentence(semantics.phrase)}. That's all there is to it.`;
+        return `That's my assignment: ${sentence(fact.value)}.`;
+      case "role": return `That's my role. I'm ${article(String(fact.value))} ${sentence(String(fact.value).toLowerCase())}.`;
+      case "name": return "That's just my name.";
+      case "item_holder": return presentExplanation({ kind: "custody", ...fact.value }, style);
+      case "known_fact": return `Just that ${lowerFirst(sentence(fact.value?.text ?? ""))}.`;
+      case "current_procedure": return presentExplanation({ kind: "briefing_instruction", ...fact.value }, style);
+      case "self_state": case "self_state_answer": return "Just how I feel right now. Nothing more to it.";
+      default: return "I only meant what I said.";
+    }
+  }
+  // The quoted words were only how the line was put: what it meant is what it was said on.
+  if (meaning.basis?.kind === "social" && meaning.basis.discourse_function === "greet") return "Just saying hello.";
+  if (meaning.basis?.kind === "social" && meaning.basis.discourse_function === "introduce_self") return "Just that it's good to meet you.";
+  if (meaning.basis && meaning.basis.kind !== "unavailable") return presentExplanation(meaning.basis, style);
+  return "I only meant what I said.";
+}
+
+/** A recent exchange, accounted for with only what the speaker perceived; no motive is ever supplied. */
+function presentConversationEvent(event) {
+  if (!event) return null;
+  if (event.responded) return event.own_reply ? `I did answer. I said, "${sentence(event.own_reply)}."` : "I did answer you.";
+  if (event.reason === "did_not_hear") return "Sorry, I didn't hear you then.";
+  if (event.reason === "another_answered" && event.others_responded?.length) return `${event.others_responded.join(" and ")} answered you then.`;
+  return "You're right, I didn't answer. Sorry about that.";
+}
+
 const GREET_BY_EXPRESSION = { "dryly observant": "Hey.", "quietly friendly": "Hi there.", "carefully polite": "Good morning.", "plain-spoken": "Hey.", "wry under pressure": "Well, hello." };
 const GREET_ALTERNATES = ["Hello.", "Morning.", "Hi."];
 const INTRODUCE_BY_EXPRESSION = { "dryly observant": "Good to meet you, I think.", "quietly friendly": "Good to meet you.", "carefully polite": "Pleasure to meet you.", "plain-spoken": "Good to meet you.", "wry under pressure": "Well, nice to meet you." };
@@ -208,6 +249,12 @@ function presentFallback({ frame, plan = null, prior = [] } = {}) {
     }
     case "ask_opinion":
       return variant("No real opinion on it yet.", ["Hard to say yet.", "Haven't really formed a view.", "Couldn't say yet."], prior);
+    case "ask_meaning":
+      if (plan?.may_ask_clarifying_question) return clarifyFor(plan, "Sorry, which part do you mean?");
+      return presentMeaning(fact(plan, "utterance_meaning"), style) ?? "Sorry, which part do you mean?";
+    case "ask_response_event":
+      if (plan?.may_ask_clarifying_question) return clarifyFor(plan, "Sorry, when do you mean?");
+      return presentConversationEvent(fact(plan, "conversation_event")) ?? "Sorry, when do you mean?";
     case "ask_explanation":
       if (!frame.antecedent?.resolved) return "Sorry, what do you mean?";
       // A bare "When?"/"Where?" after a line that had nothing behind it: nothing more is known either.
@@ -229,7 +276,7 @@ function presentFallback({ frame, plan = null, prior = [] } = {}) {
       // An equipment referent that did not resolve is a clarification, never ignorance.
       if ((frame.referents ?? []).some((r) => r.type === "equipment" && !r.resolved)) return "Which thing do you mean?";
       // A time the simulation cannot anchor (and no fact answers) is asked about, never guessed.
-      if (frame.temporal_reference && !frame.temporal_reference.resolved && plan?.may_ask_clarifying_question) return "Sorry, when do you mean?";
+      if (frame.temporal_reference && !frame.temporal_reference.resolved && plan?.may_ask_clarifying_question) return clarifyFor(plan, "Sorry, when do you mean?");
       // A wh-question with nothing authorized is an honest "don't know"; a
       // yes/no question with nothing authorized makes no claim either way.
       if (frame.addressee_state) return "Yeah, I think so.";
@@ -256,7 +303,7 @@ function presentFallback({ frame, plan = null, prior = [] } = {}) {
       if (spatial) return `Sorry, which ${spatial.noun} do you mean?`;
       if ((frame.referents ?? []).some((r) => r.reason === "no_antecedent")) return "Sorry, what are you asking about?";
       if (frame.temporal_reference && !frame.temporal_reference.resolved) return "Sorry, when do you mean?";
-      return "Sorry, which thing do you mean?";
+      return clarifyFor(plan, "Sorry, which thing do you mean?");
     }
     case "ask_heard_confirmation": {
       if (!frame.antecedent?.resolved) return "Sorry, hear what?";
@@ -282,6 +329,8 @@ function presentFallback({ frame, plan = null, prior = [] } = {}) {
     case "close_topic":
       return "All right.";
     case "make_statement": {
+      // The player's answer to one's own "Why?" is heard as their claim, acknowledged, never confirmed.
+      if (fact(plan, "stated_reason")) return variant("Okay, fair enough.", ["All right, got it.", "Okay."], prior);
       const recalled = renderKnownAnswer(fact(plan, "known_answer"));
       return recalled ?? variant(ACK_BY_TEMPERAMENT[style.conversational_temperament] ?? "Understood.", ACK_ALTERNATES, prior);
     }
@@ -355,4 +404,4 @@ function presentReportFallback({ contribution } = {}) {
   return generic;
 }
 
-module.exports = { presentFallback, presentStaleSafeFallback, presentReportFallback, presentSelfState, presentSelfStateAnswer, presentExplanation, renderKnownAnswer, COMMIT_SENSITIVE_FACTS };
+module.exports = { presentMeaning, presentConversationEvent, CLARIFY_BY_SLOT, presentFallback, presentStaleSafeFallback, presentReportFallback, presentSelfState, presentSelfStateAnswer, presentExplanation, renderKnownAnswer, COMMIT_SENSITIVE_FACTS };

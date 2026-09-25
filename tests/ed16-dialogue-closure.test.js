@@ -37,8 +37,13 @@ const strings = (value, out = []) => { if (typeof value === "string") out.push(v
 
 // ── A/B/C: assignment presentation ──────────────────────────────────────────
 test("ED-1.6 A/B/C — assignments are rendered to safe phrases; raw task objects never leave the helper", async () => {
-  assert.equal(D.presentAssignment({ task: { type: "follow", state: "active", target: PLAYER }, player_id: PLAYER }), "staying with the expedition lead");
-  assert.equal(D.presentAssignment({ task: { type: "follow", state: "active", target: "c-omar" }, names: { "c-omar": "Omar" } }), "staying with Omar");
+  // The follow task is worded literally, to the person it is spoken to ("staying with" read as lodging).
+  assert.equal(D.presentAssignment({ task: { type: "follow", state: "active", target: PLAYER }, player_id: PLAYER }), "following you");
+  assert.equal(D.presentAssignment({ task: { type: "follow", state: "active", target: "c-omar" }, names: { "c-omar": "Omar" } }), "following Omar");
+  // The team runtime's DEFAULT follow posture is not an assignment: it never masks the assigned task;
+  // an ORDERED follow is the current assignment.
+  assert.equal(D.presentAssignment({ task: { type: "follow", state: "active", target: PLAYER }, primary_task: "verbal-recall", player_id: PLAYER }), "keeping the verbal record");
+  assert.equal(D.presentAssignment({ task: { type: "follow", state: "active", target: PLAYER, order_id: "o-1" }, primary_task: "verbal-recall", player_id: PLAYER }), "following you");
   assert.equal(D.presentAssignment({ task: { type: "operate", state: "active", target: "survey-instrument" }, equipment: { "survey-instrument": { id: "survey-instrument", label: "Survey instrument" } } }), "operating the survey instrument");
   assert.equal(D.presentAssignment({ task: { type: "operate", state: "active", target: "unknown-thing" } }), null, "unresolvable carried/operated item -> null");
   assert.equal(D.presentAssignment({ task: { type: "teleport", state: "active" } }), null);
@@ -47,7 +52,7 @@ test("ED-1.6 A/B/C — assignments are rendered to safe phrases; raw task object
   assert.equal(D.presentAssignment({ task: null, primary_task: "verbal-recall" }), "keeping the verbal record");
   assert.equal(D.presentAssignment({ task: null, primary_task: "some-unmapped-slug" }), null);
   const self = D.buildSelfKnowledge({ person: { first_name: "Nora" }, task: { type: "follow", state: "active", target: PLAYER }, player_id: PLAYER });
-  assert.equal(self.current_assignment, "staying with the expedition lead");
+  assert.equal(self.current_assignment, "following you");
   assert.equal(typeof D.buildSelfKnowledge({ person: { first_name: "Nora" }, task: { type: "x" } }).current_assignment, "object", "null, not a raw object");
   assert.equal(D.buildSelfKnowledge({ person: { first_name: "Nora" }, task: { type: "x" } }).current_assignment, null);
 
@@ -68,7 +73,7 @@ test("ED-1.6 A/B/C — assignments are rendered to safe phrases; raw task object
       if (assignment) assert.equal(typeof assignment.value, "string");
     }
     for (const event of spoken) assert.doesNotMatch(event.text, UNSAFE);
-    assert.ok(spoken.some((e) => /staying with the expedition lead/.test(e.text)) || mine.some((p) => p.authorized_contribution.required_facts.some((f) => f.key === "current_assignment")), "the follow task renders as a phrase");
+    assert.ok(spoken.some((e) => /following you|keeping the verbal record|delivering the startup materials|compiling the layout record/.test(e.text)) || mine.some((p) => p.authorized_contribution.required_facts.some((f) => f.key === "current_assignment")), "the follow task renders as a phrase");
     // receipt snapshots are safe too
     const receipt = state.session.run.expedition.communication_receipts?.at(-1);
     if (receipt) assert.deepEqual(strings(receipt.response_contexts ?? []).filter((t) => /\[object|q4-player \[/.test(t)), []);
