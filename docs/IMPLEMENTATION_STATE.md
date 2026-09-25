@@ -1,5 +1,41 @@
 # Yellow Beast Implementation State
 
+## Semantic Interpretation + Canonical Knowledge Convergence Pass — 2026-09-25
+
+- **Evidence**: Jack's unscripted Electron run.
+  - Paraphrases fell to generic `ask_factual` with uncertainty ("What do we actually do around here?", "what is your specific job, then, daisy?", "Where are we supposed to go next?", "Who is that Kirk guy anyway?").
+  - The no-comma vocative "Brady tell me…" was room speech.
+  - A follow-up on Clint's line went to Daisy.
+  - "What recording?" had no antecedent.
+  - Self-state answers leaked assignments ("Just compiling the layout record.").
+  - A social statement produced a help-desk question.
+- **Diagnosis**: interpretation depended on narrow phrases; coworkers held no granted knowledge at all (the delivered briefing reached no one); the validator treated knowable facts as sayable; and questions were checked only for listed functions.
+- **Knowledge (source-backed, compartmentalized)**:
+  - `tools/canonical-knowledge.js` projects each actor's grants from canonical state only: self, briefing beats they were present for, observed attendance, heard self-descriptions.
+  - Each grant carries its authority class, source, basis, epistemic mode and scope.
+  - The briefing now stamps `beat_key` + `listeners` on every delivered line (`tools/cq4-day1-opener.js`).
+  - Definitions granted on mention are removed from reply context unless granted. The Threshold, Standard and the Complex are canon not yet granted to Day-1 coworkers, so the answer is a truthful "not told".
+  - In the opener, custody without observation is known only where the roster call stated it.
+  - Matrix and authority classes: `docs/dialogue/DAY1_KNOWLEDGE_MATRIX.md`.
+- **Interpretation**:
+  - Tier 1 recognizes question TYPES structurally over semantic classes: role, institution purpose, mission objective, next step, person identity, assignment purpose, entity definition. The entity is resolved by code against a canonical index that includes non-present entities; reference needs no presence, knowledge does.
+  - No-comma vocatives are recognized.
+  - Tier 2 (`tools/dialogue-advisory-interpreter.js`) runs one bounded advisory reading per player turn, and only when Tier 1 left the line generic. It returns a strict allowlisted schema (intent, referent span, confidence), is validated (spans must be the player's own words; confidence ≥ 0.6), uses the same pinned local model, and is persisted on the interaction (never re-requested on reload).
+  - Without accepted advice, a generic question naming a canonical entity is clarified (doctrine 7.26); it never becomes "I don't know".
+- **Threads/anchors**:
+  - A question about a term the previous speaker's AUTHORIZED facts introduced stays with that speaker.
+  - "What recording?" resolves to the fact that licensed the line (task aliases are language, not facts).
+- **Output ceiling**:
+  - Every operational term and every first-person activity claim in a candidate must be licensed by that turn's plan or by the player's words.
+  - Any question without a clarification plan is rejected, with or without "?".
+  - The capsule offers the speaker's assignment only on turns that authorize it. On real Gemma, operational volunteering on social turns fell from 4/8 to 0/8.
+- **Drift fixed**: the `verbal-recall` phrase is now "handling observation and verbal recall", per the authored roster call.
+- **Harnesses**: the ed test setups now deliver every briefing beat before concluding, as the Electron flow does.
+- **Verification**:
+  - `tests/ed28-semantic-knowledge.test.js` 10/10. ed1–ed27 pass; ed16, ed22 and ed27 expectations were updated to the sourced rules.
+  - Real Gemma 4 E4B and fallback-only share semantic digest `029dd3fae2fa6a9b` on the 17-turn human sequence.
+  - Advisory: 7/7 accepted on generic paraphrases, about 2.7 s each.
+
 ## Conversational Pragmatics Convergence Pass — 2026-09-24
 
 - **Evidence**: Jack's human Electron trace on HEAD `7459f35`. Five failures, all in deterministic pragmatics; provider, presentation and Ava's own reply path worked.

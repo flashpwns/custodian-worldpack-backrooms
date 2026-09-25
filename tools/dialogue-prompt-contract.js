@@ -143,6 +143,7 @@ const UNCERTAINTY_GUIDE = Object.freeze({
   not_told: "Nobody has told you that: say so plainly (you haven't been told), without guessing.",
   no_established_opinion: "You have no particular view on it yet: say so briefly; never invent an opinion.",
   procedure_not_known: "You do not know what comes next: say so plainly.",
+  unknown_person: "You don't know who that is: say so plainly. Never guess.",
   no_established_fact: "No fact answers this: say plainly that you don't know, in your own words. Never ask the question back."
 });
 function renderContributionTask(packet) {
@@ -176,6 +177,11 @@ function renderContributionTask(packet) {
     if (f.key === "name") return `name: your own name is ${j(f.value)}; say it`;
     if (f.key === "role") return `role: you are ${/^[aeiou]/i.test(String(f.value)) ? "an" : "a"} ${String(f.value).toLowerCase()}; say so`;
     if (f.key === "current_assignment") return `current_assignment: in your own words to them, "I'm ${String(f.value).replace(/^./, (ch) => ch.toLowerCase())}"; say exactly that, plainly`;
+    if (f.key === "known_concept") {
+      const how = { briefing: "what Maxwell told you all at the briefing", self: "about yourself", observed: "what you saw yourself", heard: "what someone told you", recorded: "what the records show" };
+      const src = (f.value?.provenance ?? []).map((p) => how[p]).filter(Boolean).join("; ");
+      return `What you know about this${src ? ` (${src})` : ""} -- say only this, plainly, in your own words, adding nothing:\n  ${(f.value?.statements ?? []).map((x) => j(x)).join("\n  ")}`;
+    }
     if (f.key === "utterance_meaning") {
       const m = f.value ?? {};
       if (!m.own) return `They are asking what ${m.speaker_name === "you" ? "they themselves" : (m.speaker_name ?? "someone else")} meant by ${j(m.quoted ?? m.line)}. You did not say it: say only that ${m.speaker_name === "you" ? "it was their own words" : `they would have to ask ${m.speaker_name ?? "that person"}`}. Do not interpret it.`;
@@ -272,7 +278,7 @@ function renderContributionTask(packet) {
   if (capsule && repairing) how.push("Say your own earlier line again in your own words. Do not answer a new question and do not say you did not understand.");
   if (capsule && c.resumed_question) how.push(`${c.answered_slot ? `They answered your question (the ${{ temporal: "time", location: "place", referent: "thing", spatial_selection: "one", person: "person", reason: "reason", yes_no: "yes or no", topic: "point" }[c.answered_slot] ?? "point"} they meant). ` : "They are answering your question about what they meant. "}Answer their earlier question now: ${j(c.resumed_question)}`);
   if (c.discourse_function === "ask_next_step" && c.may_ask_clarifying_question) how.push(`Nothing tells you what "next" means here. Ask ONE short question about what they mean.`);
-  if (capsule && !isReport && !req.length && ["ask_factual", "ask_personal_experience", "challenge", "ask_opinion"].includes(c.discourse_function) && !c.may_ask_clarifying_question) how.push(c.addressee_state ? "They are asking whether you are ready; a brief yes or no about yourself is fine." : (UNCERTAINTY_GUIDE[uncertainty] ?? (c.past_perception ? UNCERTAINTY_GUIDE.did_not_perceive : UNCERTAINTY_GUIDE.no_established_fact)));
+  if (capsule && !isReport && !req.length && ["ask_factual", "ask_personal_experience", "challenge", "ask_opinion", "ask_institution_purpose", "ask_mission_objective", "ask_person_identity", "ask_assignment_purpose", "ask_entity_definition", "ask_role_or_assignment"].includes(c.discourse_function) && !c.may_ask_clarifying_question) how.push(c.addressee_state ? "They are asking whether you are ready; a brief yes or no about yourself is fine." : (UNCERTAINTY_GUIDE[uncertainty] ?? (c.past_perception ? UNCERTAINTY_GUIDE.did_not_perceive : UNCERTAINTY_GUIDE.no_established_fact)));
   if ((c.same_turn_prior_responses ?? []).length) how.push(`Others already replied this turn:\n- ${c.same_turn_prior_responses.map((r) => `${r.speaker_name ?? "someone"}: ${j(r.text)}`).join("\n- ")}\nDo NOT reuse their opening words or sentence shape, and do not repeat what they already said; say it your own way.`);
   if (c.discourse_function === "joke_or_sarcasm") how.push("Their remark is a joke or sarcasm, not a literal claim. React with a short wry or dry aside in your own words. Do NOT agree it is really safe, evaluate it literally, give advice, or redirect to work.");
   if (["invite_self_description", "ask_role_or_assignment"].includes(c.discourse_function)) how.push("Say your name/role, and your assignment as what you are doing right now in plain words. Never say you are 'here to' do something.");

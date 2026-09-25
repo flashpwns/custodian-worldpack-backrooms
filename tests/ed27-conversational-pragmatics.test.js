@@ -32,6 +32,8 @@ function setup(seed, provider = null, { offline = false } = {}) {
   service.confirmQ4Personnel({ world_id: worldId });
   service.startSession({ world_id: worldId, mode: "field-researcher", scenario: "day1-opener" });
   service.submitAction({ world_id: worldId, mode: "field-researcher", action: "ATTEND_BRIEFING" });
+  // Deliver every briefing beat before concluding, as the Electron flow does (knowledge comes from what was said).
+  for (let beat = 0; beat < 3; beat += 1) service.submitAction({ world_id: worldId, mode: "field-researcher", action: "CONTINUE_BRIEFING" });
   service.submitAction({ world_id: worldId, mode: "field-researcher", action: "CONCLUDE_BRIEFING" });
   return attach({ root, service, worldId, logs: [] });
 }
@@ -254,12 +256,12 @@ test("D — the literal trace line: 'staying with' resolves to the recorded fact
 // ─── Part 7: current assignment semantics ────────────────────────────────────────────────────────
 test("assignment — the default follow posture never masks the assigned task; the follow phrase is literal", () => {
   const P = "P";
-  assert.equal(D.presentAssignment({ task: { type: "follow", state: "active", target: P }, primary_task: "verbal-recall", player_id: P }), "keeping the verbal record");
+  assert.equal(D.presentAssignment({ task: { type: "follow", state: "active", target: P }, primary_task: "verbal-recall", player_id: P }), "handling observation and verbal recall");
   const ordered = D.assignmentSemantics({ task: { type: "follow", state: "active", target: P, order_id: "o-1" }, primary_task: "verbal-recall", player_id: P });
   assert.deepEqual([ordered.source, ordered.task_type, ordered.phrase], ["order", "follow", "following you"]);
   assert.match(ordered.gloss, /moving with you/);
   const self = D.buildSelfKnowledge({ person: { first_name: "Ava", primary_task: "verbal-recall" }, task: { type: "follow", state: "active", target: P }, player_id: P });
-  assert.equal(self.current_assignment, "keeping the verbal record");
+  assert.equal(self.current_assignment, "handling observation and verbal recall");
   assert.equal(self.assignment_semantics.source, "assigned_task");
   // Wording may not turn an assignment into living arrangements.
   const contribution = { discourse_function: "ask_meaning", required_facts: [{ key: "utterance_meaning", value: { line: "I'm following you.", quoted: "following", own: true, match: "unique", meaning: { key: "current_assignment", value: "following you", semantics: ordered } } }], optional_facts: [], forbidden_claims: [], may_ask_clarifying_question: false };

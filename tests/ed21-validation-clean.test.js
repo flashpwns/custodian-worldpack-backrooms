@@ -123,6 +123,8 @@ async function service(provider, seed) {
   svc.confirmQ4Personnel({ world_id: worldId });
   svc.startSession({ world_id: worldId, mode: "field-researcher", scenario: "day1-opener" });
   svc.submitAction({ world_id: worldId, mode: "field-researcher", action: "ATTEND_BRIEFING" });
+  // Deliver every briefing beat before concluding, as the Electron flow does (knowledge comes from what was said).
+  for (let beat = 0; beat < 3; beat += 1) svc.submitAction({ world_id: worldId, mode: "field-researcher", action: "CONTINUE_BRIEFING" });
   svc.submitAction({ world_id: worldId, mode: "field-researcher", action: "CONCLUDE_BRIEFING" });
   svc.log = () => {};
   return { root, svc, worldId, session: svc.session(worldId, "field-researcher") };

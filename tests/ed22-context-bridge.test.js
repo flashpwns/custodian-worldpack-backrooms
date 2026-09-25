@@ -29,6 +29,8 @@ function setup(seed, provider = null) {
   service.confirmQ4Personnel({ world_id: worldId });
   service.startSession({ world_id: worldId, mode: "field-researcher", scenario: "day1-opener" });
   service.submitAction({ world_id: worldId, mode: "field-researcher", action: "ATTEND_BRIEFING" });
+  // Deliver every briefing beat before concluding, as the Electron flow does (knowledge comes from what was said).
+  for (let beat = 0; beat < 3; beat += 1) service.submitAction({ world_id: worldId, mode: "field-researcher", action: "CONTINUE_BRIEFING" });
   service.submitAction({ world_id: worldId, mode: "field-researcher", action: "CONCLUDE_BRIEFING" });
   const session = service.session(worldId, "field-researcher");
   const playerId = session.run.session.startup.player.observer_id;
@@ -398,10 +400,10 @@ test("Ontology A — the Threshold reaches the model as \"the Threshold\", never
   assert.match(prompt, /fixed gate, not an object/);
   const state = setup("ed22-onto-a");
   try {
+    // Ontology truth is not observer knowledge: no delivered Day-1 source tells these coworkers what the
+    // Threshold is, so its definition never enters their reply context (canonical-knowledge CANON_NOT_GRANTED).
     const { capsule } = compile(state, state.ids[0], "Is the Threshold cleared for crossing?");
-    const def = capsule.known_state.find((k) => k.kind === "definition");
-    assert.match(def.text, /the Threshold is ASYNC's fixed gate between STANDARD and the Complex/i);
-    assert.equal(def.entity.entity_class, "fixed_transition");
+    assert.equal(capsule.known_state.find((k) => k.kind === "definition"), undefined);
     assert.doesNotMatch(blob(capsule), /apparatus/i);
   } finally { cleanup(state); }
 });
@@ -425,7 +427,7 @@ test("Ontology C/D/E — knowing what the Threshold is is not knowing its state;
   try {
     const [a, b] = state.ids;
     const first = compile(state, a, "Is the Threshold cleared for crossing?");
-    assert.ok(first.capsule.known_state.some((k) => k.kind === "definition"), "C: the speaker knows what it is");
+    assert.ok(!first.capsule.known_state.some((k) => k.kind === "definition"), "C: canon does not grant these coworkers what it is (no source)");
     assert.ok(!first.capsule.known_state.some((k) => /cleared|active|collapsed|dead|dark/i.test(k.text) && k.kind !== "definition"), "C: but not its current state");
     // D: hidden canonical state changes; nothing surfaces.
     const before = first.capsule._internal.fingerprint;
@@ -438,7 +440,7 @@ test("Ontology C/D/E — knowing what the Threshold is is not knowing its state;
     const told = compile(state, a, "Is the Threshold cleared for crossing?");
     const item = told.capsule.known_state.find((k) => k.kind === "reported");
     assert.ok(item && item.epistemic === "told" && /cleared for crossing/.test(item.text));
-    assert.equal(told.capsule.known_state[0].kind, "definition");
+    assert.ok(!told.capsule.known_state.some((k) => k.kind === "definition"), "being told its state grants its state (as report), not its definition");
   } finally { cleanup(state); }
 });
 

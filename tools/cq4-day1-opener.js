@@ -10,6 +10,20 @@ const RUNTIME_SCENARIO = definition.runtime_scenario;
 const clone = (value) => structuredClone(value);
 const digest = (value) => crypto.createHash("sha256").update(JSON.stringify(value)).digest("hex");
 
+// Who HEARD a briefing line: the team members in the briefing room when it was spoken (a canonical
+// delivery fact the knowledge grants read; a member elsewhere never hears it).
+function briefingListeners(run, briefing) {
+  const room = briefing?.room_id ?? "async-briefing-room";
+  const locations = run?.spatial?.personnel_locations ?? {};
+  return (run?.expedition?.team?.members ?? []).filter((member) => {
+    const id = member.personnel_id ?? member.id;
+    const at = locations[id] ?? null;
+    return member.status !== "dead" && (at == null || at === room);
+  }).map((member) => member.personnel_id ?? member.id);
+}
+// Which authored beat a delivered line is (the knowledge grants read beats by key, never by parsing prose).
+const BRIEFING_BEAT_KEYS = Object.freeze(["intro", "mission_statement", "schedule", "roster_call"]);
+
 const BEATS = Object.freeze({
   FACILITY_BROADCAST: "FACILITY_BROADCAST",
   PERSONNEL_BRIEFING: "PERSONNEL_BRIEFING",
@@ -951,6 +965,8 @@ function startPersonnelBriefing(run) {
       speaker: briefing.speaker,
       speaker_title: briefing.speaker_title,
       text: firstBeat,
+      beat_key: BRIEFING_BEAT_KEYS[0],
+      listeners: briefingListeners(run, briefing),
       at: new Date().toISOString()
     });
 
@@ -1011,6 +1027,8 @@ function interactPersonnelBriefing(run, input = "") {
         speaker: briefing.speaker,
         speaker_title: briefing.speaker_title,
         text: nextBeatText,
+        beat_key: BRIEFING_BEAT_KEYS[briefing.current_beat_index] ?? null,
+        listeners: briefingListeners(run, briefing),
         at: new Date().toISOString()
       });
       presentationBus.emit(run, {
@@ -1114,6 +1132,8 @@ function concludePersonnelBriefing(run) {
       speaker: briefing.speaker || "DR. KIRK MAXWELL",
       speaker_title: briefing.speaker_title || "Chief Expedition Briefing Authority · Standard Side",
       text: dismissalText,
+      beat_key: "dismissal",
+      listeners: briefingListeners(run, briefing),
       at: new Date().toISOString()
     });
   }
@@ -1152,6 +1172,8 @@ function advancePersonnelBriefingBeat(run) {
 }
 
 module.exports = {
+  briefingListeners,
+  BRIEFING_BEAT_KEYS,
   VERSION,
   SCENARIO,
   RUNTIME_SCENARIO,

@@ -128,6 +128,46 @@ const NO_BASIS = /\b(?:nothing to go on|can'?t think of|haven'?t (?:formed|thoug
 const SOCIAL_NO_TASK = new Set(["report_observation", "greet", "introduce_self", "acknowledge", "joke_or_sarcasm", "social_observation", "check_in", "close_topic", "clarify_previous", "request_repetition", "ambiguous_reference", "invite_self_description", "ask_role_or_assignment", "ask_item_ownership", "ask_personal_experience"]);
 const OTHERS_APPLY = new Set(["report_observation", "check_in", "invite_self_description", "ask_role_or_assignment", "ask_personal_experience", "greet", "introduce_self"]);
 
+// ─── authorized contribution = hard output ceiling ──────────────────────────────────────────────
+// Operational subject matter (assignments, equipment, places, schedule, procedure, people of the
+// operation). Each such term in speech must be licensed by the plan (required/optional facts, the line in
+// question, same-turn accepted lines) or by the player's own words -- what the speaker KNOWS is not what
+// this turn authorizes them to SAY.
+const OPERATIONAL_TERMS = /\b(?:cameras?|photo\w*|radios?|transceiver|lamps?|flashlights?|worklights?|duffle|bags?|materials?|startup|spectrometer|layout|records?|recording|recall|verbal|observations?|deliver(?:y|ing|ed|ies)?|reconnaissance|recon|outposts?|bermuda|staging|threshold|complex|standard|kv31|briefing|briefed|manifest|cutoff|deadline|noon|\d{1,2}(?::\d{2})?\s*(?:a\.?m\.?|p\.?m\.?)|\d{1,2}:\d{2}|tape|routes?|procedures?|protocols?|missions?|objectives?|assignments?|maxwell|kirk|async|equipment|gear|expedition(?! lead)|survey\w*|compil\w*|courier|layouts?)\b/gi;
+// A first-person report of what one is doing ("Just compiling the layout record.", "Focused on the materials.").
+const ACTIVITY_CLAIM = /\b(?:i(?:'m| am)|we(?:'re| are)|just|currently|busy|still)\s+(?:\w+ly\s+)?(\w{3,}ing)\b|\bfocused on\b/gi;
+const SAFE_ACTIVITY = new Set(["doing", "feeling", "getting", "going", "saying", "asking", "hanging", "managing", "holding", "kidding", "joking", "wondering", "being", "meaning", "thinking", "glad", "morning", "nothing", "something", "anything", "everything"]);
+const licensedTerm = (term, blob, playerText) => {
+  const t = term.toLowerCase().replace(/s$/, "");
+  const stem = t.length > 5 ? t.slice(0, 5) : t;
+  return blob.includes(stem) || String(playerText ?? "").toLowerCase().includes(stem);
+};
+/** Every operational claim (term or first-person activity) a candidate makes, licensed or not (trace). */
+function operationalClaims(speech) {
+  return [...new Set([...String(speech).matchAll(OPERATIONAL_TERMS)].map((m) => m[0].toLowerCase()).concat([...String(speech).matchAll(ACTIVITY_CLAIM)].filter((m) => !SAFE_ACTIVITY.has((m[1] ?? "").toLowerCase())).map((m) => m[0].toLowerCase())))];
+}
+/** Operational claims in speech the plan does not license (empty when every claim is licensed). */
+function unlicensedClaims(speech, contribution, playerText = null) {
+  const blob = JSON.stringify([contribution?.required_facts, contribution?.optional_facts, contribution?.antecedent, contribution?.referents, contribution?.same_turn_prior_responses, contribution?.resumed_question]).toLowerCase();
+  const out = [];
+  for (const match of String(speech).matchAll(OPERATIONAL_TERMS)) if (!licensedTerm(match[0], blob, playerText)) out.push(match[0]);
+  for (const match of String(speech).matchAll(ACTIVITY_CLAIM)) {
+    const verb = (match[1] ?? "focused").toLowerCase();
+    if (SAFE_ACTIVITY.has(verb)) continue;
+    if (!licensedTerm(verb, blob, playerText)) out.push(match[0]);
+  }
+  return [...new Set(out)];
+}
+// Asking something the plan did not authorize: a real question (not a tag like "right?"), with or without
+// a question mark ("Is there a specific procedure I should follow" is a question).
+const TAG_QUESTION = /^(?:\w+[,.]?\s+)?(?:right|huh|eh|yeah|no|isn'?t it|aren'?t we|don'?t you think)\?$|,\s*(?:right|huh|eh|isn'?t it|aren'?t we|don'?t you think)\?$/i;
+const INTERROGATIVE_START = /^(?:(?:so|and|but|well|also|hey),?\s+)?(?:is there|are there|is it|are we|should i|shall i|shall we|do you want|would you like|can i|could i|may i|do you need|what (?:should|do|can|would)|which|where (?:should|do)|how (?:should|do|can)|is anyone|does anyone)\b/i;
+function asksQuestion(speech) {
+  const parts = String(speech).split(/(?<=[.!?])\s+/).map((x) => x.trim()).filter(Boolean);
+  if (/\b(?:i was wondering (?:if|whether)|let me know (?:if|whether)|any idea (?:if|whether|what|how))\b/i.test(speech)) return true;
+  return parts.some((part) => (part.endsWith("?") && !TAG_QUESTION.test(part)) || INTERROGATIVE_START.test(part));
+}
+
 const RESTATEMENT_FRAME = /\b(?:just (?:saying|said|meant|asking|greeting)|i (?:was|just|said|meant|asked|told|mentioned)|i(?:\u2019|')m (?:saying|just)|what i (?:said|meant)|as i said|like i said|sorry|pardon|introduc\w+|repeat\w*|again)\b/i;
 const factValue = (contribution, key) => [...(contribution.required_facts ?? []), ...(contribution.optional_facts ?? [])].filter((f) => f.key === key).map((f) => f.value);
 const requiredValue = (contribution, key) => (contribution.required_facts ?? []).filter((f) => f.key === key).map((f) => f.value);
@@ -220,7 +260,15 @@ function validateContribution(contribution, rawSpeech, { player_text = null } = 
     if (OPENER_FUNCTIONS.has(fn) && !echoesStance && opener(prior.text) && opener(prior.text) === opener(speech)) return reject(CODES.SHAPE, "opens exactly like an earlier speaker this turn");
     if (contentWords(speech).length >= 2 && coverage(speech, prior.text) >= 0.85 && coverage(prior.text, speech) >= 0.85 && !["report_observation", "ask_item_ownership", "ask_role_or_assignment", "invite_self_description"].includes(fn)) return reject(CODES.SHAPE, "near-identical to an earlier speaker's line this turn");
   }
-  if (NO_COUNTER_QUESTION.has(fn) && !contribution.may_ask_clarifying_question && speech.includes("?")) return reject(CODES.SHAPE, "answers with a question");
+  // Response shape: a question is authorized only by a clarification plan. Every other plan answers,
+  // reacts or acknowledges; an unrequested question (help-desk "Is there a procedure I should follow?")
+  // violates it, question mark or not.
+  if (fn !== "report_observation" && fn !== "ambiguous_reference" && !contribution.may_ask_clarifying_question && asksQuestion(speech)) return reject(CODES.SHAPE, NO_COUNTER_QUESTION.has(fn) ? "answers with a question" : "asks a question the plan does not authorize");
+  // Contribution ceiling: every operational claim must be licensed by THIS turn's plan.
+  if (fn !== "report_observation") {
+    const unlicensed = unlicensedClaims(speech, contribution, player_text);
+    if (unlicensed.length) return reject(CODES.FORBIDDEN, `states something this turn does not authorize: "${unlicensed.slice(0, 3).join('", "')}"`);
+  }
 
   if (fn === "joke_or_sarcasm") {
     // Agreeing with sarcasm and then asserting a world fact ("Yeah, it's got a good buffer zone").
@@ -284,6 +332,11 @@ function validateContribution(contribution, rawSpeech, { player_text = null } = 
     }
     case "invite_self_description":
     case "ask_role_or_assignment": {
+      if (fn === "ask_role_or_assignment" && (requiredValue(contribution, "known_concept").length || requiredValue(contribution, "uncertainty").length)) {
+        const known = requiredValue(contribution, "known_concept")[0];
+        if (known ? !(known.statements ?? []).some((text) => coverage(speech, text) >= 0.5) : !LACK_SAFE.test(speech)) return reject(CODES.UNMET, known ? "does not state the known fact" : "nothing is known: say you don't know");
+        break;
+      }
       if (/\bhere to\b/i.test(speech)) return reject(CODES.FORBIDDEN, "invented purpose for being here");
       const facts = ["name", "role", "current_assignment"].flatMap((key) => requiredValue(contribution, key).map((v) => [key, v]));
       // "Name's Diego, field technician." is self-focused without I / my.
@@ -429,6 +482,19 @@ function validateContribution(contribution, rawSpeech, { player_text = null } = 
       }
       // Any other reason (danger, plans, experience) is an invented rationale.
       if (DANGER_EVALUATION.test(speech) && !/danger|safe|risk/i.test(JSON.stringify(basis))) return reject(CODES.FORBIDDEN, "invented rationale: a safety or danger state the basis does not hold");
+      break;
+    }
+    case "ask_institution_purpose":
+    case "ask_mission_objective":
+    case "ask_person_identity":
+    case "ask_assignment_purpose":
+    case "ask_entity_definition":
+    case "ask_role_or_assignment_known": {
+      if (contribution.may_ask_clarifying_question) break;
+      const known = requiredValue(contribution, "known_concept")[0];
+      if (known) {
+        if (!(known.statements ?? []).some((text) => coverage(speech, text) >= 0.5)) return reject(CODES.UNMET, "does not state the known fact");
+      } else if (!LACK_SAFE.test(speech) && !/\b(?:nobody|no one)(?:'s| has) (?:told|said)|haven'?t been told|don'?t know (?:who|what|that)\b/i.test(speech)) return reject(CODES.UNMET, "nothing is known: say you haven't been told / don't know");
       break;
     }
     case "ask_meaning": {
@@ -609,4 +675,4 @@ function validateUniversalWording(rawSpeech) {
   return validateOntology(speech);
 }
 
-module.exports = { validateOntology, validateUniversalWording, CODES, coverage, contentWords, sameStem, validateContribution, validateOwnershipClaims, samePersonnel };
+module.exports = { operationalClaims, unlicensedClaims, asksQuestion, validateOntology, validateUniversalWording, CODES, coverage, contentWords, sameStem, validateContribution, validateOwnershipClaims, samePersonnel };

@@ -24,6 +24,8 @@ function setup(seed, provider = null) {
   service.confirmQ4Personnel({ world_id: worldId });
   service.startSession({ world_id: worldId, mode: "field-researcher", scenario: "day1-opener" });
   service.submitAction({ world_id: worldId, mode: "field-researcher", action: "ATTEND_BRIEFING" });
+  // Deliver every briefing beat before concluding, as the Electron flow does (knowledge comes from what was said).
+  for (let beat = 0; beat < 3; beat += 1) service.submitAction({ world_id: worldId, mode: "field-researcher", action: "CONTINUE_BRIEFING" });
   service.submitAction({ world_id: worldId, mode: "field-researcher", action: "CONCLUDE_BRIEFING" });
   const session = service.session(worldId, "field-researcher");
   const playerId = session.run.session.startup.player.observer_id;
@@ -42,14 +44,14 @@ test("ED-1.6 A/B/C — assignments are rendered to safe phrases; raw task object
   assert.equal(D.presentAssignment({ task: { type: "follow", state: "active", target: "c-omar" }, names: { "c-omar": "Omar" } }), "following Omar");
   // The team runtime's DEFAULT follow posture is not an assignment: it never masks the assigned task;
   // an ORDERED follow is the current assignment.
-  assert.equal(D.presentAssignment({ task: { type: "follow", state: "active", target: PLAYER }, primary_task: "verbal-recall", player_id: PLAYER }), "keeping the verbal record");
+  assert.equal(D.presentAssignment({ task: { type: "follow", state: "active", target: PLAYER }, primary_task: "verbal-recall", player_id: PLAYER }), "handling observation and verbal recall");
   assert.equal(D.presentAssignment({ task: { type: "follow", state: "active", target: PLAYER, order_id: "o-1" }, primary_task: "verbal-recall", player_id: PLAYER }), "following you");
   assert.equal(D.presentAssignment({ task: { type: "operate", state: "active", target: "survey-instrument" }, equipment: { "survey-instrument": { id: "survey-instrument", label: "Survey instrument" } } }), "operating the survey instrument");
   assert.equal(D.presentAssignment({ task: { type: "operate", state: "active", target: "unknown-thing" } }), null, "unresolvable carried/operated item -> null");
   assert.equal(D.presentAssignment({ task: { type: "teleport", state: "active" } }), null);
   assert.equal(D.presentAssignment({ task: "Handling the medical kit" }), "Handling the medical kit", "already-safe strings are kept");
   assert.equal(D.presentAssignment({ task: "q4-player-abc123def" }), null);
-  assert.equal(D.presentAssignment({ task: null, primary_task: "verbal-recall" }), "keeping the verbal record");
+  assert.equal(D.presentAssignment({ task: null, primary_task: "verbal-recall" }), "handling observation and verbal recall");
   assert.equal(D.presentAssignment({ task: null, primary_task: "some-unmapped-slug" }), null);
   const self = D.buildSelfKnowledge({ person: { first_name: "Nora" }, task: { type: "follow", state: "active", target: PLAYER }, player_id: PLAYER });
   assert.equal(self.current_assignment, "following you");
@@ -73,7 +75,7 @@ test("ED-1.6 A/B/C — assignments are rendered to safe phrases; raw task object
       if (assignment) assert.equal(typeof assignment.value, "string");
     }
     for (const event of spoken) assert.doesNotMatch(event.text, UNSAFE);
-    assert.ok(spoken.some((e) => /following you|keeping the verbal record|delivering the startup materials|compiling the layout record/.test(e.text)) || mine.some((p) => p.authorized_contribution.required_facts.some((f) => f.key === "current_assignment")), "the follow task renders as a phrase");
+    assert.ok(spoken.some((e) => /following you|handling observation and verbal recall|delivering the startup materials|compiling the layout record/.test(e.text)) || mine.some((p) => p.authorized_contribution.required_facts.some((f) => f.key === "current_assignment")), "the follow task renders as a phrase");
     // receipt snapshots are safe too
     const receipt = state.session.run.expedition.communication_receipts?.at(-1);
     if (receipt) assert.deepEqual(strings(receipt.response_contexts ?? []).filter((t) => /\[object|q4-player \[/.test(t)), []);

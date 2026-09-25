@@ -100,12 +100,13 @@ function localSystemInstructions(taskInstructions) {
 // accepted reply well before it.
 const LOCAL_DIALOGUE_MAX_TOKENS = 256;
 function generationOptions(kind) {
-  const interpretation = kind === "intent" || kind === "living-interpretation";
+  const interpretation = kind === "intent" || kind === "living-interpretation" || kind === "dialogue-interpretation";
   return {
     temperature: interpretation ? 0 : 0.45,
     top_p: interpretation ? 0.8 : 0.9,
     repeat_penalty: 1.08,
-    max_tokens: interpretation ? 1800 : (kind === "local-dialogue" ? LOCAL_DIALOGUE_MAX_TOKENS : 900)
+    // The dialogue advisory reading is one small JSON object.
+    max_tokens: kind === "dialogue-interpretation" ? 160 : interpretation ? 1800 : (kind === "local-dialogue" ? LOCAL_DIALOGUE_MAX_TOKENS : 900)
   };
 }
 
@@ -271,6 +272,11 @@ function createLocalModelProvider({
         "Keep presentation_claims empty unless a supplied source phrase must be cited."
       ].join("\n"), packet, { schema:LIVING_PRESENTATION_SCHEMA });
       return sanitizeLocalLivingPresentationCandidate(candidate);
+    },
+    // Tier 2 dialogue interpretation: classify the LANGUAGE of one player line into a strict advisory
+    // schema. Receives only the line (and the previous line); code validates and resolves everything.
+    async interpretDialogue({ system, user, schema }) {
+      return request("dialogue-interpretation", system, { utterance_prompt: user }, { name: "dialogue_advisory", schema }, { userContent: user, systemContent: system });
     },
     async presentLocal(packet) {
       // Plan-carrying packets (every production packet) are worded from the rendered capsule +

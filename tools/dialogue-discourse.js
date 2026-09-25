@@ -18,6 +18,7 @@
 
 const { interpretUtterance, detectTopic, parseNamedAddress, parseAddressees, selfStateQuery, meaningRequest, quotedSpan, addressesSecondPerson, LANGUAGE_PATTERNS: LP } = require("./dialogue-interpretation");
 const canonLexicon = require("./canon-lexicon");
+const canonicalKnowledge = require("./canonical-knowledge");
 
 const DISCOURSE_VERSION = "yellow-beast-dialogue-discourse@v2";
 const RECENT_TURN_WINDOW = 4;
@@ -48,7 +49,11 @@ const DISCOURSE_FUNCTIONS = Object.freeze([
   // authorized with (one's own line) -- never from its surface wording.
   "ask_meaning",
   // "Why didn't you answer me?": a recent conversational EVENT; only a character-knowable reason.
-  "ask_response_event"
+  "ask_response_event",
+  // Knowledge questions answered from the speaker's canonical knowledge grants (canonical-knowledge),
+  // never from the model: what ASYNC/this place is for, today's objective, who someone is, what an
+  // assignment or item is for, what a named place/entity is.
+  "ask_institution_purpose", "ask_mission_objective", "ask_person_identity", "ask_assignment_purpose", "ask_entity_definition"
 ]);
 
 const EXPECTED_SHAPES = Object.freeze({
@@ -77,7 +82,12 @@ const EXPECTED_SHAPES = Object.freeze({
   ask_explanation: "brief_basis_explanation",
   ask_opinion: "brief_opinion_stance",
   ask_meaning: "brief_meaning_of_own_line",
-  ask_response_event: "brief_account_of_conversation_event"
+  ask_response_event: "brief_account_of_conversation_event",
+  ask_institution_purpose: "brief_grounded_answer",
+  ask_mission_objective: "brief_grounded_answer",
+  ask_person_identity: "brief_grounded_answer",
+  ask_assignment_purpose: "brief_grounded_answer",
+  ask_entity_definition: "brief_grounded_answer"
 });
 
 const REQUESTED_CONTENT = Object.freeze({
@@ -92,13 +102,20 @@ const REQUESTED_CONTENT = Object.freeze({
   ask_explanation: "basis_of_preceding_line",
   ask_opinion: "own_opinion",
   ask_meaning: "meaning_of_prior_line",
-  ask_response_event: "account_of_response_event"
+  ask_response_event: "account_of_response_event",
+  ask_institution_purpose: "known_concept",
+  ask_mission_objective: "known_concept",
+  ask_person_identity: "known_concept",
+  ask_assignment_purpose: "known_concept",
+  ask_entity_definition: "known_concept"
 });
+// Functions answered from a canonical knowledge query (the concept each asks).
+const KNOWLEDGE_FUNCTIONS = Object.freeze({ ask_institution_purpose: "institution_purpose", ask_mission_objective: "mission_objective", ask_person_identity: "person_identity", ask_assignment_purpose: "assignment_purpose", ask_entity_definition: "entity_definition" });
 
 // Functions whose reply is socially obliged once the speaker heard the line,
 // independent of the salience-based reaction system and of any wording.
 const ANSWERABLE_QUESTIONS = new Set(["ask_factual", "ask_personal_experience", "challenge", "make_request"]);
-const OBLIGATING_FUNCTIONS = new Set(["invite_self_description", "ask_role_or_assignment", "clarify_previous", "request_repetition", "ambiguous_reference", "ask_next_step", "ask_explanation", "ask_meaning", "ask_response_event"]);
+const OBLIGATING_FUNCTIONS = new Set(["invite_self_description", "ask_role_or_assignment", "clarify_previous", "request_repetition", "ambiguous_reference", "ask_next_step", "ask_explanation", "ask_meaning", "ask_response_event", "ask_institution_purpose", "ask_mission_objective", "ask_person_identity", "ask_assignment_purpose", "ask_entity_definition"]);
 
 /**
  * Pure deterministic eligibility rule (listener state is the caller's input;
@@ -157,7 +174,7 @@ const scopeOf = (recipientType) => (recipientType === "direct" ? "direct" : reci
  * count as exchanges. Only same-location turns within `max_interval_gap`
  * simulation intervals count, at most `window` of them.
  */
-function deriveDiscourseState({ interaction_history = [], dialogue_history = [], player_id, location_id = null, current_interval = null, window = RECENT_TURN_WINDOW, max_interval_gap = MAX_INTERVAL_GAP, equipment = null, receipts = [], people = [], log_window = EVENT_LOG_WINDOW } = {}) {
+function deriveDiscourseState({ interaction_history = [], dialogue_history = [], player_id, location_id = null, current_interval = null, window = RECENT_TURN_WINDOW, max_interval_gap = MAX_INTERVAL_GAP, equipment = null, receipts = [], people = [], log_window = EVENT_LOG_WINDOW, entities = [] } = {}) {
   // WHY each committed line was said: the plan it was authorized with, persisted in the turn's
   // communication receipt (never the wording). Keyed by submission, then speaker. The plan's facts (and
   // their structured semantics) are what an earlier line MEANT; a later "what do you mean by X?" maps the
@@ -234,6 +251,8 @@ function deriveDiscourseState({ interaction_history = [], dialogue_history = [],
       recipient_id: isPlayerTurn ? (item.recipient_id ?? null) : null,
       recipient_ids: isPlayerTurn ? [...(item.recipient_ids ?? [])] : [],
       address,
+      // The accepted advisory interpretation this turn was framed with (persisted; never re-requested).
+      advice: isPlayerTurn && item.interpretation?.advice?.accepted ? item.interpretation.advice : null,
       responder_ids: responderIds,
       owner_ids: ownerIds,
       // Coworkers who heard the player's line (canonical interaction listeners).
@@ -268,9 +287,10 @@ function deriveDiscourseState({ interaction_history = [], dialogue_history = [],
     if (!turns.includes(turn)) continue; // log-only turn: address/response facts, no re-framing
     if (turn.kind !== "player_exchange") { turn.discourse_function = null; turn.item_referent = null; turn.awaiting_clarification = false; openQuestion = null; continue; }
     const earlier = allTurns.slice(0, allTurns.indexOf(turn));
-    const priorFrame = buildSemanticFrame({ text: residual, recipient_type: turn.recipient_type ?? "none", addressee_ids: turn.address.addressee_ids, equipment: equipment ?? {}, discourse: { pending_question: openQuestion, last_item_referent: itemSoFar, turns: earlier.slice(-window), last_turn: earlier.at(-1) ?? null, event_log: earlier, utterance_log: utteranceLog(earlier, player_id) }, people });
+    const priorFrame = buildSemanticFrame({ text: residual, recipient_type: turn.recipient_type ?? "none", addressee_ids: turn.address.addressee_ids, equipment: equipment ?? {}, discourse: { pending_question: openQuestion, last_item_referent: itemSoFar, turns: earlier.slice(-window), last_turn: earlier.at(-1) ?? null, event_log: earlier, utterance_log: utteranceLog(earlier, player_id) }, people, entities, advice: turn.advice ?? null });
     const priorItem = (priorFrame.referents ?? []).find((ref) => ref.type === "equipment" && ref.resolved) ?? null;
     turn.discourse_function = priorFrame.discourse_function ?? null;
+    turn.knowledge_key = priorFrame.knowledge_query ? `knowledge:${priorFrame.knowledge_query.concept}:${priorFrame.knowledge_query.entity?.id ?? priorFrame.knowledge_query.entity?.label ?? "-"}` : null;
     if (["ask_meaning", "ask_response_event", "ask_explanation", "clarify_previous", "request_repetition", "ask_heard_confirmation"].includes(turn.discourse_function) || priorFrame.slot_answer) turn.meta = true;
     turn.resolved_utterance = priorFrame.resolved_utterance ?? null;
     turn.item_referent = priorItem ? { id: priorItem.id, label: priorItem.label } : null;
@@ -302,7 +322,7 @@ function deriveDiscourseState({ interaction_history = [], dialogue_history = [],
   // Topic stack: distinct conversational topics in order, each with its latest question (derived from
   // history, never stored and never chosen by the model). A topic is the resolved item, the procedure,
   // the speakers' own states, or the detected subject.
-  const topicKeyOf = (turn) => (turn.item_referent ? `item:${turn.item_referent.id}` : turn.discourse_function === "ask_next_step" ? "procedure" : turn.discourse_function === "check_in" ? "self_state" : turn.topic ?? null);
+  const topicKeyOf = (turn) => (turn.item_referent ? `item:${turn.item_referent.id}` : turn.knowledge_key ? turn.knowledge_key : turn.discourse_function === "ask_next_step" ? "procedure" : turn.discourse_function === "check_in" ? "self_state" : turn.topic ?? null);
   const topicStack = [];
   for (const turn of turns) {
     if (turn.kind !== "player_exchange" || ["clarify_previous", "request_repetition", "ask_explanation", "ask_heard_confirmation", "acknowledge", "close_topic", "ask_meaning", "ask_response_event"].includes(turn.discourse_function)) continue;
@@ -456,6 +476,17 @@ function resolveRecipientScope({ text, explicit_target = null, group_address = f
     const askers = (pending.asker_ids?.length ? pending.asker_ids : pending.responder_ids ?? []).filter((id) => present.has(id));
     if (askers.length === 1) return { recipient_type: "direct", recipient_ids: askers, inherited: true, source: "open_question_answer", address_scope: "direct" };
     if (askers.length > 1) return { recipient_type: "group", recipient_ids: askers, inherited: true, source: "open_question_answer", address_scope: "subset" };
+  }
+  // 2b. A question about something the previous speaker's AUTHORIZED line introduced ("What exactly are
+  // the startup materials for?" after "I'm delivering the startup materials.", or "What are those for?")
+  // stays with that speaker. Only authorized facts create anchors; model wording alone never does.
+  const lastResponses = last?.kind === "player_exchange" ? (last.responses ?? []) : [];
+  if (lastResponses.length && LP.question_like.test(raw)) {
+    const words = (raw.toLowerCase().match(/[a-z]{4,}/g) ?? []).map((w) => w.replace(/s$/, ""));
+    const introducers = [...new Set(lastResponses.filter((r) => anchorTerms(r).some((t) => words.includes(t))).map((r) => r.speaker_id))].filter((id) => present.has(id));
+    const pronounFollowUp = /\b(?:those|them|that|these|it)\b/i.test(raw) && lastResponses.length === 1 && anchorEntities(lastResponses[0]).length + anchorTerms(lastResponses[0]).length > 0;
+    if (introducers.length === 1) return { recipient_type: "direct", recipient_ids: introducers, inherited: true, source: "anchored_follow_up", address_scope: "direct" };
+    if (!introducers.length && pronounFollowUp && present.has(lastResponses[0].speaker_id)) return { recipient_type: "direct", recipient_ids: [lastResponses[0].speaker_id], inherited: true, source: "anchored_follow_up", address_scope: "direct" };
   }
   if (last && isFollowUpReflex(raw) && last.kind === "autonomous_report") {
     const reporter = last.responder_ids[0];
@@ -671,6 +702,8 @@ function clarificationSlot(frame) {
   const fn = frame.discourse_function;
   if (fn === "ask_response_event") return "temporal";
   if (fn === "ask_meaning") return "topic";
+  if (fn === "ask_person_identity") return "person";
+  if (fn === "ask_assignment_purpose" || fn === "ask_entity_definition") return "referent";
   if (frame.temporal_reference && !frame.temporal_reference.resolved) return "temporal";
   const refs = frame.referents ?? [];
   if (refs.some((r) => r.type === "spatial" && !r.resolved && r.noun && !GENERIC_DEICTIC_NOUNS.has(r.noun))) return "spatial_selection";
@@ -799,7 +832,7 @@ function responseEventReference({ text, discourse, addressee_ids = [], people = 
  * The earlier LINE a meaning request refers to, among lines the player heard or said: explicit quotation
  * first, then the named/addressed speaker, then the most recent line of that speaker. Never unheard speech.
  */
-function resolveUtteranceReference({ speaker_ref = "you", span = null, discourse = null, addressee_ids = [], people = [] } = {}) {
+function resolveUtteranceReference({ speaker_ref = "you", span = null, discourse = null, addressee_ids = [], people = [], target = null } = {}) {
   const log = discourse?.utterance_log ?? [];
   if (!log.length) return Object.freeze({ resolved: false, reason: "no_prior_line", span });
   const npc = log.filter((l) => !l.is_player);
@@ -812,10 +845,13 @@ function resolveUtteranceReference({ speaker_ref = "you", span = null, discourse
     const person = (people ?? []).find((p) => String(p.name ?? "").toLowerCase() === speaker_ref);
     pool = person ? npc.filter((l) => l.speaker_id === person.id) : npc;
   }
+  const pickTarget = (target) => log.filter((l) => l.interaction_id === target.interaction_id && l.speaker_id === target.speaker_id);
   const pick = (lines, how) => {
     const line = lines.at(-1);
     return Object.freeze({ resolved: true, match: how, span, candidates: lines.length, interaction_id: line.interaction_id, speaker_id: line.speaker_id, speaker_name: line.speaker_name ?? null, is_player: line.is_player, text: line.text, basis: line.basis ?? null, facts: line.facts ?? null, listener_ids: [...(line.listener_ids ?? [])] });
   };
+  // An anchored noun question names the exact line whose authorized facts introduced the term.
+  if (target) { const lines = pickTarget(target); if (lines.length) return pick(lines, "anchor"); }
   if (!span) {
     const lines = preferred.length ? preferred : pool;
     return lines.length ? pick(lines, "latest") : Object.freeze({ resolved: false, reason: "no_prior_line", span });
@@ -841,11 +877,123 @@ function matchSpanToFacts(span, facts) {
   // A span matches a fact when it is (a paraphrase of) part of that fact's wording, or when most of its
   // content words come from that fact ("verbal record duty" ~ "keeping the verbal record").
   const partial = (value) => { const words = spanWords(span).filter((w) => w.length >= 4); const own = new Set(spanWords(value)); return words.length >= 1 && words.filter((w) => own.has(w)).length / words.length >= 0.5; };
-  const hits = all.filter((f) => spanMatch(span, textOf(f.value)) || partial(textOf(f.value)));
+  // A task's lexical aliases (language, not facts) let "recording" reach the verbal-recall assignment.
+  const aliasesOf = (f) => (facts?.semantics?.[f.key]?.task ? (canonicalKnowledge.TASK_ALIASES[facts.semantics[f.key].task] ?? []).join(" ") : "");
+  const hits = all.filter((f) => spanMatch(span, textOf(f.value)) || partial(textOf(f.value)) || (aliasesOf(f) && partial(aliasesOf(f))));
   const keys = [...new Set(hits.map((f) => f.key))];
   if (keys.length === 1) return { status: "unique", fact: hits[0], semantics: facts?.semantics?.[keys[0]] ?? null };
   if (keys.length > 1) return { status: "ambiguous", keys };
   return { status: "wording_only" };
+}
+
+// ─── 3e. Semantic knowledge intents, anchors and advisory merge ────────────────────────────────
+// Terms a committed line's AUTHORIZED FACTS introduced (plus the lexical aliases of an authorized task).
+// Model wording never becomes an anchor on its own: only what licensed the line does.
+const ANCHOR_STOP = new Set(["with", "that", "this", "your", "have", "been", "from", "they", "them", "what", "field", "keeping", "handling", "right", "now", "just", "said", "maxwell"]);
+const NON_ANCHOR_FACTS = new Set(["self_state", "self_state_answer", "uncertainty", "heard_confirmation", "request_disposition", "explanation_basis", "conversation_event", "name"]);
+function anchorTerms(response) {
+  const facts = response?.facts;
+  if (!facts) return [];
+  // Only facts with operational CONTENT anchor; states, stances and bookkeeping never do.
+  const texts = [...(facts.required ?? []), ...(facts.optional ?? [])].filter((f) => !NON_ANCHOR_FACTS.has(f.key)).flatMap((f) => (typeof f.value === "string" ? [f.value] : Array.isArray(f.value) ? f.value.filter((v) => typeof v === "string") : f.value && typeof f.value === "object" ? Object.values(f.value).filter((v) => typeof v === "string") : []));
+  const task = facts.semantics?.current_assignment?.task ?? null;
+  const aliases = task ? (canonicalKnowledge.TASK_ALIASES[task] ?? []) : [];
+  const words = [...(texts.join(" ").toLowerCase().match(/[a-z]{4,}/g) ?? []), ...aliases.flatMap((a) => a.toLowerCase().split(/\s+/)).filter((w) => w.length >= 4)];
+  return [...new Set(words.map((w) => w.replace(/s$/, "")))].filter((w) => !ANCHOR_STOP.has(w));
+}
+/** Canonical entities a line's authorized facts introduced (its task, items, places). */
+function anchorEntities(response, entities = []) {
+  const facts = response?.facts;
+  if (!facts) return [];
+  const text = [...(facts.required ?? []), ...(facts.optional ?? [])].map((f) => (typeof f.value === "string" ? f.value : JSON.stringify(f.value ?? ""))).join(" ");
+  const found = canonicalKnowledge.resolveEntityMentions(text, entities).filter((e) => ["task", "equipment", "location", "entity"].includes(e.kind));
+  const task = facts.semantics?.current_assignment?.task ?? null;
+  const taskEntity = task ? entities.find((e) => e.id === `task:${task}`) : null;
+  return [...(taskEntity ? [{ id: taskEntity.id, kind: taskEntity.kind, label: taskEntity.label }] : []), ...found.filter((e) => e.id !== taskEntity?.id)];
+}
+/** "What recording?" -- a bare noun question about a term the previous speaker's facts introduced. */
+function anchoredNounQuestion(raw, discourse) {
+  const noun = String(raw ?? "").trim().match(LP.bare_noun_question)?.[1]?.trim();
+  if (!noun || LP.not_a_noun.test(noun)) return null;
+  const words = (noun.toLowerCase().match(/[a-z]{4,}/g) ?? []).map((w) => w.replace(/s$/, ""));
+  if (!words.length) return null;
+  const last = discourse?.last_turn ?? null;
+  for (const response of [...(last?.responses ?? [])].reverse()) {
+    const terms = anchorTerms(response);
+    if (words.some((w) => terms.some((t) => t === w || (t.length >= 5 && w.length >= 5 && t.slice(0, 5) === w.slice(0, 5))))) return Object.freeze({ speaker_ref: "you", span: noun, target: { interaction_id: last.interaction_id, speaker_id: response.speaker_id }, anchored: true });
+  }
+  return null;
+}
+/** An entity plus the entities that are the same assignment (the duffle IS the startup materials task). */
+function withRelated(entity, entities = []) {
+  if (!entity) return null;
+  const related = [];
+  for (const [task, pattern] of Object.entries(canonicalKnowledge.TASK_ITEMS)) {
+    if (!pattern) continue;
+    if (entity.id === `task:${task}`) related.push(...entities.filter((e) => e.kind === "equipment" && pattern.test(e.label ?? "")).map((e) => e.id));
+    if (entity.kind === "equipment" && pattern.test(entity.label ?? "")) related.push(`task:${task}`);
+  }
+  return { ...entity, related_ids: [...new Set(related)] };
+}
+/**
+ * Tier 1 semantic knowledge intent: the question TYPE (by structure) and the canonical entity it is
+ * about (resolved by code, present or not). Returns { fn, query, unresolved? } or null.
+ */
+function semanticKnowledgeIntent(raw, { entities = [], addressee_ids = [], ownership = false, discourse = null } = {}) {
+  const SI = LP.semantic_intents;
+  const mentions = canonicalKnowledge.resolveEntityMentions(raw, entities);
+  const first = (kinds) => mentions.find((m) => kinds.includes(m.kind)) ?? null;
+  const query = (concept, entity = null, extra = {}) => ({ concept, entity: entity ? withRelated(entity, entities) : null, ...extra });
+  if (SI.institution_purpose.test(raw)) return { fn: "ask_institution_purpose", query: query("institution_purpose", mentions.find((m) => m.id === "async") ?? null) };
+  if (SI.mission_objective.test(raw)) return { fn: "ask_mission_objective", query: query("mission_objective") };
+  if (SI.assignment_purpose.test(raw)) {
+    let entity = first(["task", "equipment"]);
+    // "What are those for?": the thing the previous speaker's authorized line introduced.
+    if (!entity && /\b(?:those|that|these|this|them|it)\b/i.test(raw)) entity = anchorEntities((discourse?.last_turn?.responses ?? []).at(-1), entities)[0] ?? null;
+    return { fn: "ask_assignment_purpose", query: query("assignment_purpose", entity), unresolved: !entity };
+  }
+  if (SI.role_or_assignment.test(raw)) {
+    const person = mentions.find((m) => m.kind === "person" && !addressee_ids.includes(m.id) && !m.is_player);
+    if (/\bmy\b/i.test(raw)) return { fn: "ask_role_or_assignment", query: query("role_or_assignment", mentions.find((m) => m.is_player) ?? entities.find((e) => e.is_player) ?? null, { subject: "player" }) };
+    if (person) return person.non_present ? { fn: "ask_person_identity", query: query("person_identity", person) } : { fn: "ask_role_or_assignment", query: query("role_or_assignment", person, { subject: "other" }) };
+    return { fn: "ask_role_or_assignment", query: query("role_or_assignment", null, { subject: "addressee" }) };
+  }
+  if (!ownership && SI.person_identity.test(raw)) {
+    let person = first(["person"]);
+    if (!person && LP.briefing_person_description.test(raw)) person = entities.find((e) => e.kind === "person" && e.non_present) ?? null;
+    if (person) return { fn: "ask_person_identity", query: query("person_identity", person) };
+    const place = first(["location", "entity", "institution"]);
+    if (place) return { fn: "ask_entity_definition", query: query("entity_definition", place) };
+    const name = String(raw).match(LP.who_is_name)?.[1];
+    if (name && !["You", "I", "He", "She", "That", "This", "It", "There", "They", "We"].includes(name)) return { fn: "ask_person_identity", query: query("person_identity", { id: null, kind: "person", label: name, unknown: true }) };
+    // "Who was that doctor?": more than one canonical person fits; ask which.
+    if (LP.person_description.test(raw)) return { fn: "ask_person_identity", query: query("person_identity", null), unresolved: true };
+    return null;
+  }
+  if (SI.entity_definition.test(raw)) {
+    const place = first(["location", "entity", "institution"]);
+    if (place) return { fn: "ask_entity_definition", query: query("entity_definition", place) };
+  }
+  return null;
+}
+// Bounded advisory intents -> discourse functions (Tier 2). Advice classifies LANGUAGE only.
+const ADVISORY_INTENT_FUNCTIONS = Object.freeze({
+  self_description: "invite_self_description", role_or_assignment: "ask_role_or_assignment", institution_purpose: "ask_institution_purpose", mission_objective: "ask_mission_objective", next_step: "ask_next_step", person_identity: "ask_person_identity", assignment_purpose: "ask_assignment_purpose", entity_definition: "ask_entity_definition", item_ownership: "ask_item_ownership", personal_experience: "ask_personal_experience", self_state: "check_in", opinion: "ask_opinion", explanation: "ask_explanation", social_statement: "make_statement", greeting: "greet", request: "make_request", factual_other: "ask_factual", unclear: "ambiguous_reference"
+});
+/** Map a validated advisory frame onto a discourse function; every entity is resolved by code. */
+function applyAdvice(advice, { entities = [], raw = "", addressee_ids = [], discourse = null } = {}) {
+  const fn = ADVISORY_INTENT_FUNCTIONS[advice?.intent];
+  if (!fn) return null;
+  const concept = KNOWLEDGE_FUNCTIONS[fn] ?? (fn === "ask_role_or_assignment" ? "role_or_assignment" : null);
+  if (!concept) return { fn, query: null, unresolved: fn === "ambiguous_reference" };
+  const text = advice.referent_text ?? "";
+  const entity = text ? (canonicalKnowledge.resolveEntityMentions(text, entities)[0] ?? null) : null;
+  if (fn === "ask_role_or_assignment" && (!entity || addressee_ids.includes(entity.id))) return { fn, query: { concept, entity: null, subject: "addressee" } };
+  if (fn === "ask_person_identity" && !entity && /^[A-Z][a-z]+$/.test(text.trim())) return { fn, query: { concept, entity: { id: null, kind: "person", label: text.trim(), unknown: true } } };
+  const needsEntity = ["ask_person_identity", "ask_assignment_purpose", "ask_entity_definition"].includes(fn);
+  const anchoredEntity = !entity && fn === "ask_assignment_purpose" ? anchorEntities((discourse?.last_turn?.responses ?? []).at(-1), entities)[0] ?? null : null;
+  const resolved = entity ?? anchoredEntity;
+  return { fn: fn === "ask_role_or_assignment" && entity?.non_present ? "ask_person_identity" : fn, query: { concept: fn === "ask_role_or_assignment" && entity?.non_present ? "person_identity" : concept, entity: resolved ? withRelated(resolved, entities) : null }, unresolved: needsEntity && !resolved };
 }
 
 // ─── 4. Semantic frame ──────────────────────────────────────────────────────
@@ -853,7 +1001,7 @@ function matchSpanToFacts(span, facts) {
  * Deterministic frame for the RESIDUAL utterance (named address already
  * stripped by the caller). `discourse` may be null (context-free classification).
  */
-function buildSemanticFrame({ text, recipient_type = "none", interpretation = null, discourse = null, equipment = {}, scope_inherited = false, spatial_selection = null, temporal_anchors = null, now = null, people = [], addressee_ids = [], slot_constraint = null } = {}) {
+function buildSemanticFrame({ text, recipient_type = "none", interpretation = null, discourse = null, equipment = {}, scope_inherited = false, spatial_selection = null, temporal_anchors = null, now = null, people = [], addressee_ids = [], slot_constraint = null, entities = [], advice = null } = {}) {
   // Leading discourse markers ("Anyway, ...") carry no content; an explicit topic return ("Back to X, ...")
   // is recorded, and classification sees the rest of the utterance.
   let raw = String(text ?? "").trim();
@@ -869,7 +1017,7 @@ function buildSemanticFrame({ text, recipient_type = "none", interpretation = nu
   if (topicReturn && LP.topic_return_generic.test(raw)) {
     const earlier = [...(discourse?.topic_stack ?? [])].reverse().find((entry) => entry.topic !== discourse?.current_topic_key && entry.question) ?? null;
     if (earlier) {
-      const reframed = buildSemanticFrame({ text: earlier.question, recipient_type, discourse: { ...(discourse ?? {}), pending_question: null, last_question: null }, equipment, scope_inherited, spatial_selection, temporal_anchors, now, people, addressee_ids });
+      const reframed = buildSemanticFrame({ text: earlier.question, recipient_type, discourse: { ...(discourse ?? {}), pending_question: null, last_question: null }, equipment, scope_inherited, spatial_selection, temporal_anchors, now, people, addressee_ids, entities });
       return Object.freeze({ ...reframed, topic_return: { topic: earlier.topic, question: earlier.question }, resolved_utterance: earlier.question });
     }
   }
@@ -880,7 +1028,7 @@ function buildSemanticFrame({ text, recipient_type = "none", interpretation = nu
   const pendingQ = slot_constraint ? null : (discourse?.pending_question ?? null);
   const slotAnswer = pendingQ ? matchOpenQuestionSlot(raw, pendingQ, { equipment, people, discourse, spatial_selection }) : null;
   const resumedFrom = (q) => ({ player_text: q.player_text, interaction_id: q.interaction_id, responder_ids: [...(q.responder_ids ?? [])], question_id: q.question_id ?? null, expected_slot: q.expected_slot ?? null });
-  const reframeWith = (question, extra = {}) => buildSemanticFrame({ text: question, recipient_type, discourse: { ...(discourse ?? {}), pending_question: null, last_question: null }, equipment, scope_inherited, spatial_selection, temporal_anchors, now, people, addressee_ids, ...extra });
+  const reframeWith = (question, extra = {}) => buildSemanticFrame({ text: question, recipient_type, discourse: { ...(discourse ?? {}), pending_question: null, last_question: null }, equipment, scope_inherited, spatial_selection, temporal_anchors, now, people, addressee_ids, entities, ...extra });
   if (slotAnswer && pendingQ.player_text && slotAnswer.slot === "temporal") {
     // "When do you mean?" -> "Just now." / "When I greeted Ava and Josephine.": the SAME question, now
     // anchored to that time or conversational event.
@@ -910,7 +1058,16 @@ function buildSemanticFrame({ text, recipient_type = "none", interpretation = nu
   const selfQuery = selfStateQuery(raw);
 
   // "What do you mean by 'staying with'?": the meaning of an earlier LINE (quotation / phrase / speaker).
-  const meaning = meaningRequest(raw);
+  let knowledgeIntent = null;
+  // Tier 1 could only give the utterance a GENERIC reading (an untyped question/statement): the bounded
+  // advisory interpreter may classify its language; code still resolves every entity and fact.
+  let tier1Generic = false;
+  let knowledgeQuery = null;
+  let interpretationSource = "deterministic";
+  // "What recording?" / "Which record?": a bare noun question about a term the previous speaker's
+  // authorized facts introduced is a question about that line's meaning (semantic anchor), not trivia.
+  const anchored = anchoredNounQuestion(raw, discourse);
+  const meaning = meaningRequest(raw) ?? anchored;
   if (meaning) fn = "ask_meaning";
   // "Why didn't you answer me?": a recent conversational EVENT (who answered, who stayed silent).
   else if (LP.response_event.test(raw)) fn = "ask_response_event";
@@ -920,7 +1077,10 @@ function buildSemanticFrame({ text, recipient_type = "none", interpretation = nu
   else if (LP.heard_confirmation.test(raw)) fn = "ask_heard_confirmation";
   else if (LP.opinion_question.test(raw)) fn = "ask_opinion";
   else if (LP.personal_experience.test(raw) && !ownership && !LP.past_perception.test(raw)) fn = "ask_personal_experience";
-  else if (LP.next_step.test(raw)) fn = "ask_next_step";
+  // "What are we doing today?" asks today's objective, not only the next step.
+  else if (LP.semantic_intents.mission_objective.test(raw)) { fn = "ask_mission_objective"; knowledgeQuery = { concept: "mission_objective", entity: null }; }
+  else if (LP.next_step.test(raw) || LP.semantic_intents.next_step.test(raw)) fn = "ask_next_step";
+  else if ((knowledgeIntent = semanticKnowledgeIntent(raw, { entities, addressee_ids, ownership, discourse }))) { fn = knowledgeIntent.fn; knowledgeQuery = knowledgeIntent.query; }
   else if (selfQuery && !ownership) fn = "check_in";
   else if (LP.ambiguous_reference.test(raw)) { fn = "ambiguous_reference"; unresolved = true; }
   else if (ownership) fn = "ask_item_ownership";
@@ -942,10 +1102,10 @@ function buildSemanticFrame({ text, recipient_type = "none", interpretation = nu
       case "warning": fn = "warn"; break;
       case "uncertainty": fn = "express_uncertainty"; break;
       case "personal_question": fn = "ask_personal_experience"; break;
-      case "factual_question": case "group_question": fn = "ask_factual"; break;
+      case "factual_question": case "group_question": fn = "ask_factual"; tier1Generic = true; break;
       case "request": fn = "make_request"; break;
-      case "statement": fn = "make_statement"; break;
-      default: fn = "ambiguous_reference"; unresolved = true;
+      case "statement": fn = "make_statement"; tier1Generic = isQuestion; break;
+      default: fn = "ambiguous_reference"; unresolved = true; tier1Generic = true;
     }
   }
 
@@ -1049,9 +1209,23 @@ function buildSemanticFrame({ text, recipient_type = "none", interpretation = nu
   }
   // ── Earlier wording ("What do you mean by 'staying with'?"): the exact prior LINE, from what the player
   // heard or said; the line's own authorized facts say what it meant. Hidden speech is never searched.
-  const utteranceReference = fn === "ask_meaning" ? resolveUtteranceReference({ ...meaning, discourse, addressee_ids, people }) : null;
+  const utteranceReference = fn === "ask_meaning" && meaning ? resolveUtteranceReference({ ...meaning, discourse, addressee_ids, people }) : null;
   if (utteranceReference && !utteranceReference.resolved) unresolved = true;
 
+  if (knowledgeIntent?.unresolved) unresolved = true;
+  // A generic reading that referents, time or perception already typed is not generic.
+  if (tier1Generic && (referents.length || temporal || LP.past_perception.test(raw) || resumed)) tier1Generic = false;
+  // ── Tier 2: an accepted advisory frame (validated upstream, persisted with the turn) re-types ONLY a
+  // generic Tier 1 reading. It never overrides a confident deterministic frame, and it names no fact.
+  let adviceApplied = null;
+  if (tier1Generic && advice?.accepted) {
+    const mapped = applyAdvice(advice, { entities, raw, addressee_ids, discourse });
+    if (mapped) { fn = mapped.fn; knowledgeQuery = mapped.query ?? knowledgeQuery; unresolved = Boolean(mapped.unresolved); interpretationSource = "advisory"; adviceApplied = { intent: advice.intent, confidence: advice.confidence }; }
+  }
+  // Doctrine 7.26: a question the parser could not type that names a canonical entity is a PARSE limit,
+  // not the character's ignorance -- without an accepted advisory reading it is clarified, never "I don't know".
+  const tier1WasGeneric = tier1Generic;
+  if (tier1Generic && interpretationSource === "deterministic" && isQuestion && canonicalKnowledge.resolveEntityMentions(raw, entities).some((e) => e.kind !== "equipment")) { fn = "ambiguous_reference"; unresolved = true; }
   const frame = {
     version: DISCOURSE_VERSION,
     speech_act: interp.speech_act,
@@ -1088,6 +1262,12 @@ function buildSemanticFrame({ text, recipient_type = "none", interpretation = nu
     explanation_aspect: fn === "ask_explanation" && LP.bare_wh_followup.test(raw) ? raw.replace(/[\s?!.]+$/, "").toLowerCase() : null,
     // "Are you excited?": which feeling was asked about; the answer comes from canonical self-state.
     self_state_query: fn === "check_in" ? selfQuery : null,
+    // Which tier typed this utterance, and whether Tier 1 left it generic (advisory candidate).
+    interpretation_source: interpretationSource,
+    tier1_generic: tier1WasGeneric && interpretationSource === "deterministic",
+    advice: adviceApplied,
+    // The canonical knowledge concept (and entity, resolved by code) a knowledge question asks.
+    knowledge_query: knowledgeQuery ? { concept: knowledgeQuery.concept, entity: knowledgeQuery.entity ? { id: knowledgeQuery.entity.id, kind: knowledgeQuery.entity.kind, label: knowledgeQuery.entity.label, ...(knowledgeQuery.entity.unknown ? { unknown: true } : {}), ...(knowledgeQuery.entity.non_present ? { non_present: true } : {}), ...(knowledgeQuery.entity.related_ids?.length ? { related_ids: knowledgeQuery.entity.related_ids } : {}) } : null, ...(knowledgeQuery.subject ? { subject: knowledgeQuery.subject } : {}) } : null,
     // The line whose meaning is asked about, and the conversational event asked about.
     utterance_reference: utteranceReference,
     event_reference: eventReference,
@@ -1182,7 +1362,9 @@ const pick = (source, keys) => Object.fromEntries(keys.filter((key) => source?.[
 const INTERNAL_ID = /\b(?:q4|yb-personnel|coordinated|open-passage|clear-q4|item|actor|node|edge|entity)-[a-z0-9][a-z0-9:-]{2,}|[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}|\[object /i;
 // Bounded phrases for the archetype-authored primary_task slugs.
 const PRIMARY_TASK_PHRASES = Object.freeze({
-  "verbal-recall": "keeping the verbal record",
+  // Worded as the authored roster call assigns it ("observation and verbal recall"); "verbal record" was a
+  // presentation drift from the source.
+  "verbal-recall": "handling observation and verbal recall",
   "material-delivery": "delivering the startup materials",
   "layout-compilation": "compiling the layout record"
 });
@@ -1319,12 +1501,17 @@ const PURPOSES = Object.freeze({
   close_topic: "acknowledge the topic being dropped in one short phrase",
   check_in: "answer the social check-in briefly for yourself only; add no operational facts",
   make_request: "respond to the request in character using only supplied required_facts",
-  make_statement: "respond conversationally only if warranted; do not interrogate",
+  make_statement: "react briefly to what they said, the way a coworker would; ask them nothing and bring up nothing new",
   ask_heard_confirmation: "confirm plainly that you heard what they just said; you may briefly acknowledge what they said but add no interpretation, urgency, motive or action, and do not ask whether anyone heard you",
   ask_next_step: "state the current next step exactly as supplied; if none is supplied, ask what they mean; do not invent a plan",
   ask_explanation: "explain your previous line using only the supplied basis; do not invent a reason, experience, danger or plan",
   ask_opinion: "give your own view only as supplied; with no view supplied, say you have no particular opinion yet, without inventing one",
   ask_meaning: "say what your earlier line meant using only the supplied meaning; if it was someone else's line, say they would have to explain it; add nothing new",
+  ask_institution_purpose: "say what you know about what this work is for, using only the supplied known facts; if none are supplied, say plainly you haven't been told",
+  ask_mission_objective: "say what you know about today's assignment, using only the supplied known facts; if none are supplied, say plainly you haven't been told",
+  ask_person_identity: "say who that person is using only the supplied known facts; if none are supplied, say plainly you don't know",
+  ask_assignment_purpose: "say what that assignment or item is for using only the supplied known facts; if none are supplied, say plainly you haven't been told",
+  ask_entity_definition: "say what you know about that place or thing using only the supplied known facts; if none are supplied, say plainly you haven't been told",
   ask_response_event: "account for what happened in that exchange using only the supplied event; give only the supplied reason, and if none is supplied give no reason at all (no motive, feeling or excuse)"
 });
 
@@ -1371,6 +1558,7 @@ function responseBasisFromPlan(plan, frame = null) {
   const value = (key) => facts.find((f) => f.key === key)?.value ?? null;
   if (value("explanation_basis")) return value("explanation_basis");
   if (plan.may_ask_clarifying_question) return { kind: "clarification", expected_slot: plan.expected_slot ?? null };
+  if (value("known_concept")) return { kind: "known_information", facts: [...(value("known_concept").statements ?? [])].slice(0, 2), provenance: value("known_concept").provenance ?? [] };
   if (value("utterance_meaning")) return { kind: "meaning_of_line", own: Boolean(value("utterance_meaning").own), match: value("utterance_meaning").match ?? null };
   if (value("conversation_event")) return { kind: "conversation_event", reason: value("conversation_event").reason };
   if (fn === "check_in" || value("self_state")) {
@@ -1424,7 +1612,10 @@ function planResponses({ frame, owner_ids = [], responders = {}, names = {} } = 
       return { label: ref.label, holder_name: known ? (names[ref.holder] ?? null) : null, holder_is_self: ref.holder === responder_id, ...(known ? {} : { holder_known: false }) };
     };
 
-    if (fn === "invite_self_description" || fn === "ask_role_or_assignment") {
+    const kq = frame?.knowledge_query ?? null;
+    const aboutSelf = kq?.entity?.id && kq.entity.id === responder_id;
+    const selfRoleQuestion = fn === "ask_role_or_assignment" && (!kq || kq.subject === "addressee" || aboutSelf);
+    if (fn === "invite_self_description" || selfRoleQuestion || (fn === "ask_person_identity" && aboutSelf)) {
       if (self?.name) required.push({ key: "name", value: self.name });
       if (self?.role) required.push({ key: "role", value: self.role });
       if (self?.current_assignment) {
@@ -1500,6 +1691,19 @@ function planResponses({ frame, owner_ids = [], responders = {}, names = {} } = 
       forbidden.push("invented_rationale");
     }
 
+    // Knowledge questions: the answer material is THIS responder's own canonical knowledge query result
+    // (provenance kept). Knowing it is what the plan authorizes to say; nothing else about the world is.
+    if ((KNOWLEDGE_FUNCTIONS[fn] || (fn === "ask_role_or_assignment" && !selfRoleQuestion)) && !(fn === "ask_person_identity" && aboutSelf)) {
+      const k = frame?.unresolved_reference ? null : (responders[responder_id]?.knowledge ?? null);
+      if (k?.status === "known") {
+        required.push({ key: "known_concept", value: { concept: k.concept, about: k.entity?.label ?? null, statements: k.facts.map((f) => f.statement), provenance: [...new Set(k.facts.map((f) => f.provenance))] } });
+        semantics.knowledge = { concept: k.concept, entity_id: k.entity?.id ?? null, facts: k.facts.map((f) => ({ key: f.key, provenance: f.provenance, authority_class: f.authority_class ?? null, source_ref: f.source_ref })) };
+      } else if (!frame?.unresolved_reference) {
+        required.push({ key: "uncertainty", value: { kind: k?.status === "unknown_entity" ? "unknown_person" : "not_told" } });
+        semantics.knowledge = { concept: k?.concept ?? KNOWLEDGE_FUNCTIONS[fn] ?? "role_or_assignment", entity_id: k?.entity?.id ?? null, facts: [], unknown_reason: k?.unknown_reason ?? null };
+      }
+      forbidden.push("new_factual_claims");
+    }
     if (fn === "ask_meaning") {
       // What an earlier LINE meant. One's own line: the authorized fact the quoted words came from (its
       // structured meaning), or -- when the words were only wording -- the basis the line was said on.
@@ -1626,7 +1830,7 @@ function toAuthorizedContribution(plan, frame, { names = {} } = {}) {
  * the open question and its slot, the earlier line or conversational event referred to, and each plan's
  * response/silence basis. Ids and bounded text only -- never broad world state.
  */
-function pragmaticsTrace({ address = null, frame = null, discourse = null, plans = [] } = {}) {
+function pragmaticsTrace({ address = null, frame = null, discourse = null, plans = [], interpretation = null } = {}) {
   const inherited = address?.form === "inherited";
   const ref = frame?.utterance_reference ?? null;
   const ev = frame?.event_reference ?? null;
@@ -1639,11 +1843,21 @@ function pragmaticsTrace({ address = null, frame = null, discourse = null, plans
     prior_utterance: ref ? { resolved: ref.resolved, interaction_id: ref.interaction_id ?? null, speaker: ref.speaker_id ?? null, match: ref.match ?? ref.reason ?? null } : null,
     quoted_span: ref?.span ?? null,
     conversational_event: ev ? { resolved: ev.resolved, relation: ev.relation, target: ev.target?.interaction_id ?? null, candidates: (ev.candidates ?? []).map((c) => c.interaction_id) } : null,
-    response_basis: plans.map((p) => ({ responder: p.responder_id, basis: responseBasisFromPlan(p, frame)?.kind ?? null, expected_slot: p.expected_slot ?? null, ...(p.fact_semantics?.conversation_event ? { silence_basis: p.fact_semantics.conversation_event.simulation_basis } : {}) }))
+    response_basis: plans.map((p) => ({ responder: p.responder_id, basis: responseBasisFromPlan(p, frame)?.kind ?? null, expected_slot: p.expected_slot ?? null, ...(p.fact_semantics?.conversation_event ? { silence_basis: p.fact_semantics.conversation_event.simulation_basis } : {}) })),
+    interpretation_source: frame?.interpretation_source ?? "deterministic",
+    tier1_generic: Boolean(frame?.tier1_generic),
+    advisory_frame: interpretation?.advice ? { intent: interpretation.advice.intent, referent_text: interpretation.advice.referent_text, relation: interpretation.advice.discourse_relation, confidence: interpretation.advice.confidence } : null,
+    advisory_validation: interpretation?.advisory_validation ?? null,
+    advisory_latency_ms: interpretation?.advisory_latency_ms ?? null,
+    resolved_semantic_concept: frame?.knowledge_query?.concept ?? null,
+    knowledge_query: frame?.knowledge_query ? { concept: frame.knowledge_query.concept, entity: frame.knowledge_query.entity?.id ?? frame.knowledge_query.entity?.label ?? null } : null,
+    // Fact keys and provenance only -- never the facts' content.
+    knowledge_results: plans.filter((p) => p.fact_semantics?.knowledge).map((p) => ({ responder: p.responder_id, facts: p.fact_semantics.knowledge.facts.map((f) => `${f.key}:${f.provenance}`), unknown_reason: p.fact_semantics.knowledge.unknown_reason ?? null })),
+    contribution_fact_keys: plans.map((p) => ({ responder: p.responder_id, required: (p.required_facts ?? []).map((f) => f.key), optional: (p.optional_facts ?? []).map((f) => f.key) }))
   };
 }
 
-function formatDiscourseTrace({ raw_utterance, utterance = null, recipient_scope, frame, discourse_summary, owner_ids = [], plans = [], grounded_facts = [], provider_result = null, fallback_used = null, committed_event_ids = null, request_id = null, listener_ids = null, address = null, discourse = null } = {}) {
+function formatDiscourseTrace({ raw_utterance, utterance = null, recipient_scope, frame, discourse_summary, owner_ids = [], plans = [], grounded_facts = [], provider_result = null, fallback_used = null, committed_event_ids = null, request_id = null, listener_ids = null, address = null, discourse = null, interpretation = null } = {}) {
   return JSON.stringify({
     request_id: request_id ?? undefined,
     utterance: raw_utterance,
@@ -1662,7 +1876,7 @@ function formatDiscourseTrace({ raw_utterance, utterance = null, recipient_scope
     provider_result,
     fallback_used,
     committed: committed_event_ids,
-    pragmatics: pragmaticsTrace({ address, frame, discourse, plans })
+    pragmatics: pragmaticsTrace({ address, frame, discourse, plans, interpretation })
   });
 }
 
@@ -1743,6 +1957,12 @@ module.exports = {
   toAuthorizedContribution,
   formatDiscourseTrace,
   pragmaticsTrace,
+  KNOWLEDGE_FUNCTIONS,
+  semanticKnowledgeIntent,
+  anchorTerms,
+  anchorEntities,
+  applyAdvice,
+  ADVISORY_INTENT_FUNCTIONS,
   matchOpenQuestionSlot,
   clarificationSlot,
   resolveEventReference,

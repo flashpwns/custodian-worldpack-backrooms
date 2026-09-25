@@ -388,6 +388,20 @@ class ProviderPool {
         });
         return res.result;
       },
+      async interpretDialogue(input) {
+        const reqId = requestId || `auto-dialogue-interpretation-${Date.now()}`;
+        const res = await pool.executeWithFallback({
+          requestKind: "dialogue-interpretation",
+          requestId: reqId,
+          route: `${route}/dialogue-interpretation`,
+          onComplete,
+          executeFn: async (provider) => {
+            if (typeof provider.interpretDialogue === "function") return provider.interpretDialogue(input);
+            throw new Error("dialogue interpretation unsupported by provider");
+          }
+        });
+        return res.result;
+      },
       async presentLocal(packet) {
         const reqId = requestId || `auto-local-dialogue-${Date.now()}`;
         const res = await pool.executeWithFallback({

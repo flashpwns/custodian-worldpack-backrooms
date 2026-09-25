@@ -217,6 +217,14 @@ function resolveCustodyKnowledge(run, observerId, equipmentId) {
   }
   const history = item.history ?? [];
   const changed = history.some((entry) => CUSTODY_CHANGING_EVENTS.has(String(entry.event ?? "").toLowerCase()));
+  // Day-1 opener: custody known WITHOUT observation only where a delivered briefing line the observer
+  // heard stated it (roster call + authored manifest). Unbriefed issuance is not knowledge (no source ->
+  // no grant). Other scenarios keep the recorded-issuance rule.
+  if (!changed && member && run?.expedition?.day1_opener) {
+    const briefed = require("./canonical-knowledge").briefedCustody(run, observerId).get(item.id);
+    if (briefed && sameId(briefed.holder_id, holder)) return { known: true, authority: AUTHORITY.INSTITUTIONAL_KNOWLEDGE, holder_id: holder, form: "recorded", source_ref: briefed.source_ref };
+    return { known: false, reason: "not_briefed" };
+  }
   if (!changed && member) return { known: true, authority: AUTHORITY.INSTITUTIONAL_KNOWLEDGE, holder_id: holder, form: "recorded", source_ref: `equipment.${equipmentId}.issuance` };
   return { known: false, reason: "observer_authority_missing" };
 }
@@ -281,10 +289,14 @@ function compileObserverDialogueContext({
   const assignment = dialogueDiscourse.presentAssignment({ task: member.current_task ?? member.assignment ?? null, primary_task: member.primary_task ?? null, names: { ...names, [playerId]: "you" }, equipment, player_id: playerId });
   const activity = typeof member.current_activity === "string" ? dialogueDiscourse.presentAssignment({ task: member.current_activity }) : null;
   const style = { ...(contribution?.style_hints ?? {}) };
-  const actor = { name: speakerName, role: member.role ?? null, assignment: assignment ?? null, activity: activity ?? null, style };
+  // The speaker's assignment/activity orient the model only on turns whose plan authorizes speaking about
+  // them; otherwise they tempt an unauthorized "just compiling the layout record" (knowing != saying).
+  const authorizesAssignment = /"(?:current_assignment|current_activity|known_concept|utterance_meaning|explanation_basis)"/.test(JSON.stringify([contribution?.required_facts ?? [], contribution?.optional_facts ?? []])) || purpose !== "response";
+  const actor = { name: speakerName, role: member.role ?? null, assignment: authorizesAssignment ? (assignment ?? null) : null, activity: authorizesAssignment ? (activity ?? null) : null, style };
+  if (!authorizesAssignment && assignment) omitted.push({ path: "actor.assignment", reason: "not_authorized_this_turn" });
   prov("actor.name", AUTHORITY.SELF_KNOWLEDGE, "team.member.name");
   if (actor.role) prov("actor.role", AUTHORITY.SELF_KNOWLEDGE, "team.member.role");
-  if (assignment) { prov("actor.assignment", AUTHORITY.SELF_KNOWLEDGE, "team.member.task", { commit: true }); commitSensitive.push({ kind: "assignment", person_id: sid, value: assignment }); }
+  if (actor.assignment) { prov("actor.assignment", AUTHORITY.SELF_KNOWLEDGE, "team.member.task", { commit: true }); commitSensitive.push({ kind: "assignment", person_id: sid, value: assignment }); }
 
   // ── CURRENT SCENE + PRESENT PEOPLE (current perception, gated by observation-authority) ──
   const scene = { location_name: null, phase: null };
@@ -464,6 +476,13 @@ function compileObserverDialogueContext({
   for (const entity of canonLexicon.entitiesMentioned([utterance, ...(frame?.referents ?? []).map((ref) => ref.label)].filter(Boolean).join(" "))) mentioned.set(entity.id, entity);
   if (purpose === "autonomous_report" && observation?.feature_id) { const own = canonLexicon.resolveCanonicalEntity(observation.feature_id); if (own && knownState.some((item) => item.kind === "observation")) mentioned.set(own.id, own); }
   const definitions = [];
+  // Ontology truth is not observer knowledge: in a reply, a definition enters context only when this
+  // speaker holds a knowledge grant for that entity (canonical-knowledge). A report keeps the class of
+  // what the observer actually sees.
+  if (purpose === "response") {
+    const granted = new Set(require("./canonical-knowledge").knowledgeFor(run, sid).filter((f) => f.concept === "entity_definition").map((f) => f.entity_id));
+    for (const id of [...mentioned.keys()]) if (!granted.has(id)) { mentioned.delete(id); omitted.push({ path: "known_state.definition", reason: "knowledge_not_granted" }); }
+  }
   for (const entity of mentioned.values()) {
     definitions.push({ kind: "definition", epistemic: EPISTEMIC.RECORDED, text: entity.definition, entity: entityFacts(entity) });
     prov("known_state.definition", AUTHORITY.INSTITUTIONAL_KNOWLEDGE, `canon-lexicon.entity.${entity.id}`);

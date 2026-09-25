@@ -217,6 +217,11 @@ function createDialogueRuntimeSupervisor({
       throw new Error("wrapProvider requires a deterministic fallback function");
     }
     return {
+      // Advisory interpretation has no deterministic stand-in: unavailable means Tier 1 stands.
+      async interpretDialogue(input) {
+        if (!getStatus().canAttempt || typeof provider?.interpretDialogue !== "function") throw new Error("dialogue interpretation unavailable");
+        try { return await provider.interpretDialogue(input); } catch (error) { lastError = error; throw error; }
+      },
       async presentLocal(packet) {
         if (!getStatus().canAttempt || typeof provider?.presentLocal !== "function") {
           return fallback(packet);

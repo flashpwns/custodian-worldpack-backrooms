@@ -224,6 +224,8 @@ test("ED-1 — service integration: self-description turn plans, fans out to eve
     service.confirmQ4Personnel({ world_id: worldId });
     service.startSession({ world_id: worldId, mode: "field-researcher", scenario: "day1-opener" });
     service.submitAction({ world_id: worldId, mode: "field-researcher", action: "ATTEND_BRIEFING" });
+    // Deliver every briefing beat before concluding, as the Electron flow does (knowledge comes from what was said).
+    for (let beat = 0; beat < 3; beat += 1) service.submitAction({ world_id: worldId, mode: "field-researcher", action: "CONTINUE_BRIEFING" });
     service.submitAction({ world_id: worldId, mode: "field-researcher", action: "CONCLUDE_BRIEFING" });
     const session = service.session(worldId, "field-researcher");
     const playerId = session.run.session.startup.player.observer_id;

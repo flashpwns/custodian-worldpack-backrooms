@@ -193,6 +193,16 @@ function presentFallback({ frame, plan = null, prior = [] } = {}) {
   const fn = frame?.discourse_function;
   const style = plan?.style_hints ?? {};
 
+  // Knowledge answers: exactly the granted statements (provenance kept in the plan), or a truthful unknown.
+  const known = fact(plan, "known_concept");
+  if (known && !plan?.may_ask_clarifying_question) {
+    const said = (known.statements ?? []).slice(0, 2).join(" ");
+    return known.concept === "institution_purpose" ? `All I know is what we were told. ${said}` : said;
+  }
+  if (["ask_institution_purpose", "ask_mission_objective", "ask_person_identity", "ask_assignment_purpose", "ask_entity_definition"].includes(fn) || (fn === "ask_role_or_assignment" && fact(plan, "uncertainty"))) {
+    if (plan?.may_ask_clarifying_question) return clarifyFor(plan, "Sorry, which do you mean?");
+    return fact(plan, "uncertainty")?.kind === "unknown_person" ? "I don't know who that is." : "Nobody's told me that.";
+  }
   switch (fn) {
     case "invite_self_description":
     case "ask_role_or_assignment": {

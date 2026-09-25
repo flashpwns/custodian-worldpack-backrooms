@@ -206,6 +206,33 @@ const HANDOFF_REQUEST_PATTERN = /\b(?:hand|pass|give|bring|transfer)\b/i;
 // (a question about a sound in the world, not about the player's speech).
 const HEARD_CONFIRMATION_PATTERN = /\b(?:did|do|does|can|could)\s+(?:anyone|anybody|any\s+of\s+you|everyone|everybody|you(?:\s+(?:guys|all))?|y'?all|someone|somebody|one\s+of\s+you)\s+(?:even\s+|actually\s+|really\s+)?(?:just\s+)?(?:hear|catch|get)\s+(?:what\s+i\s+(?:just\s+)?(?:said|told|say)|me\b|my\s+(?:last|previous)\s+(?:line|statement|message))|\bhear(?:d)?\s+what\s+i\s+(?:just\s+)?(?:said|told)\b|\b(?:you|y'?all|anyone)\s+(?:guys\s+)?hear\s+me\b/i;
 
+// ─── Semantic knowledge intents (Tier 1: structural recognition of question TYPES) ────────────
+// Each recognizer is a question form + a predicate class; the entity it is about is resolved by code
+// against canonical entities. None of them names an answer. Anything they cannot type confidently is
+// left to the bounded advisory interpreter (Tier 2) or to ordinary factual handling.
+const LEAD = "^(?:so,?\\s+|and\\s+|but\\s+|well,?\\s*\\.*\\s*|um+,?\\s+|uh+,?\\s+|ok(?:ay)?,?\\s+|alright,?\\s+|hey,?\\s+|ah\\.?\\s+|then,?\\s+)*";
+const JOB_NOUN = "(?:job|role|assignment|task|duty|duties|position|responsibilit(?:y|ies)|work|function|part in this|part)";
+const POSSESSOR = "(?:your|his|her|their|my|[A-Za-z][a-z]+'s)";
+const SEMANTIC_INTENT_PATTERNS = Object.freeze({
+  // "What is your (specific) job?", "What do you do (here)?", "What are you supposed to be doing?"
+  role_or_assignment: new RegExp(`\\bwhat(?:\\s+exactly)?(?:'s|\\s+is|\\s+are|\\s+was)?\\s+(?:exactly\\s+)?${POSSESSOR}\\s+(?:specific |exact |actual |main |particular |official |own )?${JOB_NOUN}\\b|\\bwhat (?:do|does) (?:you|[A-Z][a-z]+) (?:actually |exactly |even |really |normally |usually )?(?:do|handle|work on)(?:\\s+(?:here|around here|on (?:this|the) team|today|exactly|for (?:work|a living)))?[\\s?!.,]*(?:then|anyway|exactly)?[\\s?!.,]*$|\\bwhat (?:are|is) (?:you|[A-Z][a-z]+) (?:supposed|meant|assigned|scheduled|here) to (?:be )?(?:doing|do|handle|work on)\\b|\\bwhat (?:are|is) (?:you|[A-Z][a-z]+) (?:in charge of|responsible for|assigned to)\\b|\\btell me (?:about|more about) ${POSSESSOR} (?:job|role|work|assignment)\\b`, "i"),
+  // "What do we actually do around here?", "What is this place for?", "What does ASYNC do?", "What are we here for?"
+  institution_purpose: new RegExp(`\\bwhat(?:'s| is)?(?: it)?(?: that)? (?:(?:do|does) )?(?:we|y'?all|you guys|you all|you people|they|async|a-sync|this (?:place|company|outfit|facility)|the company) (?:actually |really |even |exactly |all |ever )?do\\b(?!\\s+(?:now|next|first|then|after))|\\bwhat(?:'s| is) (?:this place|this company|this outfit|this facility|async|a-sync)(?:\\s+(?:for|about|all about|exactly|anyway))?[\\s?!.]*$|\\bwhat (?:are|am) (?:we|i) (?:(?:even|actually|really) )?(?:here for|doing here)\\b|\\bwhy are we (?:even |all )?here\\b`, "i"),
+  // "What are we doing today?", "What's the mission?", "What are we going into the Complex to do today?"
+  mission_objective: /\bwhat(?:'s| is| are)? (?:the |our |today's |this )(?:mission|assignment|objective|goal|job today|task today|plan for today)\b|\bwhat (?:are|is) we (?:doing|supposed to (?:be )?do(?:ing)?|here to do) today\b|\bwhat (?:are|is) we (?:going|heading|headed|gonna go) (?:in(?:to)?|to|down) (?:the complex|there|the outpost)\b|\bwhat (?:are|is) we (?:going|gonna) (?:to )?do (?:in |into |down |over )?(?:the complex|there|today)\b|\bwhy are we going (?:in(?:to)?|to|down)\b/i,
+  // "Where are we supposed to go next?", "Where are we headed?", "What happens after this?", "What's the next step?"
+  next_step: /\bwhere (?:are|do|should|shall|will|am) (?:we|i) (?:supposed to |meant to |going to |gonna |expected to )?(?:go|head|be going|be heading|report)(?: to)?(?:\s+(?:next|now|after this|from here|after that))?\b|\bwhere (?:are we|we're|am i) (?:headed|heading|going|off to)\b|\bwhat happens (?:next|now|after this|after that)\b|\bwhat(?:'s| is) (?:the )?next (?:step|thing|stop)\b|\bwhat(?:'s| is) after this\b|\bwhat do we do (?:next|now|after this|from here)\b|\bwhat now\b/i,
+  // "Who is Kirk?", "Who's that Maxwell guy?", "Who was that doctor briefing us?"
+  person_identity: new RegExp(`${LEAD}who(?:'s| is| was| were)\\b`, "i"),
+  // "What are the startup materials for?", "What are those for?", "Why are you carrying that?"
+  assignment_purpose: /\bwhat(?:\s+exactly)?(?:'s|\s+is|\s+are|\s+was|\s+were)\s+(?:exactly\s+|all\s+)?(?:the |that |those |these |this |your |his |her |their |[A-Z][a-z]+'s )?(?:[\w-]+\s+){0,4}?(?:[\w-]+\s+)?for\b[\s?!.]*$|\bwhat (?:do|does|did) (?:you|we|they|[A-Z][a-z]+) need (?:the |that |those |these |this )?(?:[\w-]+\s+){0,3}?for\b|\bwhy (?:are|is|do|does|did) (?:you|we|they|[A-Z][a-z]+) (?:even |still |the one |the one who's )?(?:carrying|delivering|holding|bringing|keeping|recording|doing|compiling|taking|need(?:ing)?|have|got)\b/i,
+  // "What is the Threshold?", "What is Standard?", "Where is Equipment Staging?"
+  entity_definition: new RegExp(`${LEAD}(?:what(?:'s| is| are)|where(?:'s| is| are)|what exactly is|tell me about)\\s+(?:the |this |that )?[A-Za-z][\\w -]{1,40}?(?:\\s+(?:exactly|anyway|again|then))?[\\s?!.]*$`, "i")
+});
+// A no-comma leading vocative ("Brady tell me about yourself", "Brady, ..."): the name is followed by an
+// addressed clause (imperative, question word, auxiliary + "you"), never by a third-person verb.
+const ADDRESSED_CLAUSE = /^(?:tell|give|hand|pass|take|come|look|help|check|wait|stay|show|let|please|what|who|where|when|why|how|which|can you|could you|would you|will you|do you|did you|are you|have you|were you|you)\b/i;
+
 // ─── Conversational pragmatics cues ─────────────────────────────────────────
 // Who a prior line is attributed to: "you" (the addressee), "I" (the player), a third-person pronoun or a
 // capitalized name. Never resolved here; dialogue-discourse resolves it against heard history.
@@ -269,7 +296,22 @@ const SLOT_ANSWER_PATTERNS = Object.freeze({
   temporal: /^(?:just now|earlier|then|before that|back then|a (?:minute|moment|second|while) ago|at the (?:start|beginning|briefing)|during the briefing|today|this morning|(?:when|after|before|while|until|since)\b)/i
 });
 
+// "What recording?" -- a bare noun question (anchored by discourse to a prior line's authorized facts).
+// One to three words, a noun phrase only ("What recording?", "Which record?", "What layout record?").
+const BARE_NOUN_QUESTION = /^(?:what|which)\s+((?:[a-z-]+\s+){0,2}[a-z-]+)[\s?!.]*$/i;
+const NOT_A_NOUN = /\b(?:time|now|next|else|happened|happens|for|is|are|was|were|am|be|do|does|did|about|then|so|if|kind|way|heck|hell|exactly|you|we|they|it|that|this|he|she|i|me|up|going|mean|meant)\b/i;
+// "Who was that doctor briefing us?" describes the person by the briefing; "that doctor/guy" alone is a description.
+const BRIEFING_PERSON_DESCRIPTION = /\bdoctor\b[^?.!]*\bbrief|\bbrief\w*\b[^?.!]*\bdoctor\b/i;
+const PERSON_DESCRIPTION = /\b(?:doctor|guy|man|woman|person|lady|fellow)\b/i;
+const WHO_IS_NAME = /\b[Ww]ho(?:'s| is| was)\s+(?:that |this |the )?([A-Z][a-z]+)\b/;
+
 const LANGUAGE_PATTERNS = Object.freeze({
+  semantic_intents: SEMANTIC_INTENT_PATTERNS,
+  bare_noun_question: BARE_NOUN_QUESTION,
+  not_a_noun: NOT_A_NOUN,
+  briefing_person_description: BRIEFING_PERSON_DESCRIPTION,
+  person_description: PERSON_DESCRIPTION,
+  who_is_name: WHO_IS_NAME,
   response_event: RESPONSE_EVENT_PATTERN,
   event_reference: EVENT_REFERENCE_PATTERN,
   slot_answers: SLOT_ANSWER_PATTERNS,
@@ -397,6 +439,8 @@ function parseAddressees(text, { explicit_target = null, names = [], is_known = 
     ["mention", new RegExp(`^(@(?:${alternatives.join("|")})(?![\\w'])(?:\\s*(?:,\\s*(?:and\\s+)?|\\s+and\\s+|\\s*&\\s*|\\s+)@(?:${alternatives.join("|")})(?![\\w']))+)\\s*[,:]?\\s*([\\s\\S]*\\S[\\s\\S]*)$`, "i"), (m) => ({ list: m[1].replace(/\s+@/g, ", @"), residual: m[2].trim() })],
     ["greeting", new RegExp(`^(${GREETING_HEAD})[\\s,]+(${LIST})\\s*(?:[,.!?;:-]+\\s*([\\s\\S]*))?$`, "i"), (m) => ({ list: m[2], residual: (m[3] ?? "").trim() || m[1] })],
     ["leading_vocative", new RegExp(`^(${LIST})\\s*[,:]\\s*([\\s\\S]*\\S[\\s\\S]*)$`, "i"), (m) => ({ list: m[1], residual: m[2].trim() })],
+    // "Brady tell me about yourself": no delimiter, but the name is followed by an addressed clause.
+    ["leading_vocative", new RegExp(`^(${NAME})\\s+([\\s\\S]*\\S[\\s\\S]*)$`, "i"), (m) => (ADDRESSED_CLAUSE.test(m[2]) ? { list: m[1], residual: m[2].trim() } : { list: "", residual: "" })],
     ["trailing_vocative", new RegExp(`^([\\s\\S]*?[^\\s,])\\s*,\\s*(${LIST})\\s*([?!.]*)\\s*$`, "i"), (m) => ({ list: m[2], residual: `${m[1].trim()}${m[3] ?? ""}` })]
   ];
   let parsed = null;
@@ -404,6 +448,7 @@ function parseAddressees(text, { explicit_target = null, names = [], is_known = 
     const match = raw.match(pattern);
     if (!match) continue;
     const { list, residual } = pick(match);
+    if (!list) continue;
     const items = list.split(/\s*(?:,\s*(?:and\s+)?|\s+and\s+|\s*&\s*)\s*/i).map((item) => item.replace(/^@/, "").trim()).filter(Boolean);
     if (!items.length || !items.every((item) => LIST_GROUP_TERMS.includes(item.toLowerCase()) || known(item))) continue;
     parsed = { form, items, residual };
@@ -650,6 +695,18 @@ function resolveResponseOwners({ recipient_type, interpretation, player_text, ca
   if (fn === "ask_meaning" && frame?.antecedent?.resolved) {
     const speaker = eligible.find((candidate) => (frame.antecedent.responder_ids ?? []).includes(candidate.id));
     return [(speaker ?? eligible[0]).id];
+  }
+  // Knowledge questions (who someone is, what an assignment is for, what today is about): the person asked
+  // about answers for themselves; an assignment/item question goes to the one whose assignment it is;
+  // otherwise ONE spokesperson who canonically knows it (never a chorus of the same fact).
+  const knowledgeQuestion = ["ask_institution_purpose", "ask_mission_objective", "ask_person_identity", "ask_assignment_purpose", "ask_entity_definition"].includes(fn) || (fn === "ask_role_or_assignment" && frame?.knowledge_query?.subject && frame.knowledge_query.subject !== "addressee");
+  if (knowledgeQuestion && !frame?.resumed_question) {
+    const about = frame?.knowledge_query?.entity?.id ?? null;
+    const selfAnswer = eligible.find((candidate) => candidate.id === about);
+    if (selfAnswer && ["ask_person_identity", "ask_role_or_assignment"].includes(fn)) return [selfAnswer.id];
+    const owner = fn === "ask_assignment_purpose" ? eligible.find((candidate) => candidate.owns_entity) : null;
+    if (owner) return [owner.id];
+    return [(eligible.find((candidate) => candidate.has_relevant_knowledge) ?? eligible[0]).id];
   }
   // "Why didn't you (all) answer?": each addressed listener accounts for their own part; asked of the room,
   // one listener answers.

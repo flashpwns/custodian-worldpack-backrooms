@@ -27,6 +27,9 @@ const { createDialogueRuntimeSupervisor } = require("../tools/dialogue-runtime-s
 const { buildLocalDialoguePacket, buildObservationReportPacket, validateLocalDialogue } = require("../tools/ai-local-dialogue");
 const { interpretUtterance: interpretDialogueUtterance, inferLocalRecipientType, resolveResponseOwners, stripNamedAddress, parseAddressees } = require("../tools/dialogue-interpretation");
 const dialogueDiscourse = require("../tools/dialogue-discourse");
+const canonicalKnowledge = require("../tools/canonical-knowledge");
+const dialogueAdvisory = require("../tools/dialogue-advisory-interpreter");
+const dialogueValidation = require("../tools/dialogue-validation");
 const dialogueFallback = require("../tools/dialogue-fallback");
 const observerContextCompiler = require("../tools/observer-context-compiler");
 const referenceExpedition = require("../tools/reference-expedition");
@@ -135,7 +138,11 @@ function dialogueProcedureContext(run, memberId) {
   const room = briefing.room_id ?? null;
   const destination = room ? canonLexicon.CANONICAL_LOCATIONS[room]?.known_destination ?? null : null;
   if (!destination || canonicalLedger.getPersonnelLocation(run, memberId) !== room) return null;
-  return { current_step: "get acquainted with the team", next_step: `report to ${destination}`, source: "the briefing" };
+  // Only a member who HEARD the dismissal knows the next step (canonical-knowledge grant), and it is the
+  // step that line stated -- never the room's lexicon destination on its own.
+  const granted = canonicalKnowledge.queryKnowledge(run, { actor_id: memberId, concept: "current_procedure" });
+  if (granted.status !== "known" || !granted.facts[0]?.next_step) return null;
+  return { current_step: granted.facts[0].current_step ?? "get acquainted with the team", next_step: granted.facts[0].next_step, source: "the briefing" };
 }
 function safeId(value) { return typeof value === "string" && /^[a-z0-9][a-z0-9_-]{0,100}$/i.test(value); }
 function friendlyName(value) { return typeof value === "string" && value.trim().length > 0 && value.trim().length <= 80; }
@@ -1527,8 +1534,63 @@ class DesktopService {
       return publicError("SESSION_BUSY", "The previous action is still being resolved. Wait for its result before submitting another message.");
     }
 
+    // Tier 2: when the deterministic parse leaves a LOCAL line generic, ONE bounded advisory reading of its
+    // language (per player turn, never per NPC) is taken before the canonical commit. It is input to code,
+    // validated, persisted with the turn, and never consulted for facts.
+    const need = channel === "local" ? this.dialogueAdvisoryNeed(world_id, { ...input, request_id: requestId }) : null;
+    if (need?.needed) {
+      const advisoryProvider = this.acquireAdvisoryProvider({ requestId });
+      if (advisoryProvider) {
+        const promise = Promise.resolve().then(async () => {
+          const advice = await dialogueAdvisory.requestAdvisory(advisoryProvider, { utterance: need.utterance, previous_line: need.previous_line });
+          this.communicationTurnInflight.delete(world_id);
+          return this.continueQ4Communication(input, requestId, fingerprint, advice);
+        });
+        this.communicationTurnInflight.set(world_id, { id: requestId, fingerprint, promise });
+        return promise;
+      }
+    }
+    return this.continueQ4Communication(input, requestId, fingerprint, need?.needed ? { accepted: false, reason: "advisory_unavailable", latency_ms: 0 } : null);
+  }
+  /** Read-only Tier 1 assessment: would the deterministic parse leave this LOCAL line generic? */
+  dialogueAdvisoryNeed(world_id, input) {
+    try {
+      const entry = this.session(world_id, "field-researcher");
+      const run = entry?.run;
+      if (!run?.expedition || entry.kind !== "bootstrap") return null;
+      if ((run.expedition.communication_receipts ?? []).some((receipt) => receipt.id === input.request_id)) return null;
+      const message = String(input.text ?? "").trim().slice(0, 2000);
+      if (!message) return null;
+      const playerId = run.session.startup.player.observer_id;
+      const coworkers = run.expedition.team.members.filter((m) => m.personnel_id !== playerId);
+      const names = coworkers.flatMap((m) => [m.first_name, m.last_name, m.display_name].filter(Boolean).map((name) => ({ name: String(name), id: m.personnel_id ?? m.id })));
+      const address = parseAddressees(message, { explicit_target: typeof input.target === "string" ? input.target : null, names });
+      const entities = canonicalKnowledge.entityIndex(run);
+      const discourse = dialogueDiscourse.deriveDiscourseState({ interaction_history: run.expedition.interaction_history, dialogue_history: run.expedition.dialogue_history, player_id: playerId, location_id: run.spatial?.player_location ?? null, current_interval: run.expedition.clock?.interval ?? null, equipment: run.expedition.equipment, receipts: run.expedition.communication_receipts ?? [], people: names, entities });
+      const frame = dialogueDiscourse.buildSemanticFrame({ text: address.residual_text, recipient_type: address.address_type === "direct" ? "direct" : address.address_type === "none" ? "none" : "group", discourse, equipment: run.expedition.equipment, people: coworkers.map((m) => ({ id: m.personnel_id ?? m.id, name: m.first_name })), addressee_ids: address.addressee_ids ?? [], entities, temporal_anchors: dialogueTemporalAnchors(run), now: run.expedition.clock?.interval ?? null });
+      const previous = discourse.last_turn?.responses?.at(-1)?.text ?? discourse.last_turn?.player_text ?? null;
+      return { needed: Boolean(frame.tier1_generic), utterance: address.residual_text, previous_line: previous };
+    } catch (error) {
+      this.log(`dialogue advisory precheck non-fatal: ${error.message}`);
+      return null;
+    }
+  }
+  /** The provider an advisory reading may use (same local model; none when dialogue is not configured). */
+  acquireAdvisoryProvider({ requestId }) {
+    // Only a ready local runtime (or an injected provider) is worth awaiting: otherwise Tier 1 stands at
+    // once and the turn stays synchronous, as it always was without hosted wording.
+    if (!this.localDialogueProvider && this.dialogueRuntime?.getStatus?.().ready !== true) return null;
+    const providerSetting = this.settings().provider;
+    const configured = ["openai", "auto", "local", "groq", "gemini", "openrouter"].includes(providerSetting);
+    const { provider, dialogueProvider, providerUnavailable } = this.acquireLocalDialogueProvider({ requestId, route: "submitQ4Communication/dialogue-interpretation", configured });
+    if (providerUnavailable) return null;
+    const chosen = this.localDialogueProvider ? provider : dialogueProvider;
+    return typeof chosen?.interpretDialogue === "function" ? chosen : null;
+  }
+  continueQ4Communication(input, requestId, fingerprint, advice = null) {
+    const { world_id } = input;
     const canonical = this.transactionContext.run(world_id, () =>
-      this.submitQ4CommunicationCanonical({ ...input, request_id: requestId, input_fingerprint: fingerprint })
+      this.submitQ4CommunicationCanonical({ ...input, request_id: requestId, input_fingerprint: fingerprint, interpretation_advice: advice })
     );
     const providerSetting = this.settings().provider;
     const configured = ["openai", "auto", "local", "groq", "gemini", "openrouter"].includes(providerSetting);
@@ -2010,7 +2072,7 @@ class DesktopService {
       for (const item of prepared) {
         const ctx = item.context;
         const ownerName = ctx.speaker?.first_name ?? ctx.speaker?.display_name ?? ctx.speaker?.personnel_id ?? ctx.speaker?.id ?? "unknown";
-        this.log(`[YB:DIALOGUE_TRACE] text=${JSON.stringify(ctx.player_text)} recipient_type=${ctx.recipient_type ?? (ctx.is_group ? "group" : "direct")} inherited_scope=${ctx.inherited_scope ? "yes" : "no"} response_owner=${ownerName} speech_act=${item.packet?.player_speech_act?.speech_act ?? "n/a"} discourse_function=${ctx.semantic_frame?.discourse_function ?? "n/a"} plan_shape=${ctx.response_plan?.expected_response_shape ?? "n/a"} purpose=${JSON.stringify(item.packet?.authorized_response?.purpose ?? null)} provider_ready=${!item.unavailable} candidate_produced=${Boolean(item.candidateRaw)} validator_accepted=${item.validation.ok} rejection_reason=${item.validation.ok ? "none" : (item.validation.code ?? "unknown")} validation_reason=${JSON.stringify(item.validation.ok ? null : (item.validation.reason ?? null))} requested_content=${item.packet?.authorized_contribution?.requested_content ?? "n/a"} required_facts=${JSON.stringify((item.packet?.authorized_contribution?.required_facts ?? []).map((f) => f.key))} optional_facts=${JSON.stringify((item.packet?.authorized_contribution?.optional_facts ?? []).map((f) => f.key))} candidate=${JSON.stringify(item.candidateRaw?.speech ?? null)} fallback_used=${!item.validation.ok} output_source=${item.presentationSource}`);
+        this.log(`[YB:DIALOGUE_TRACE] text=${JSON.stringify(ctx.player_text)} recipient_type=${ctx.recipient_type ?? (ctx.is_group ? "group" : "direct")} inherited_scope=${ctx.inherited_scope ? "yes" : "no"} response_owner=${ownerName} speech_act=${item.packet?.player_speech_act?.speech_act ?? "n/a"} discourse_function=${ctx.semantic_frame?.discourse_function ?? "n/a"} plan_shape=${ctx.response_plan?.expected_response_shape ?? "n/a"} purpose=${JSON.stringify(item.packet?.authorized_response?.purpose ?? null)} provider_ready=${!item.unavailable} candidate_produced=${Boolean(item.candidateRaw)} validator_accepted=${item.validation.ok} rejection_reason=${item.validation.ok ? "none" : (item.validation.code ?? "unknown")} validation_reason=${JSON.stringify(item.validation.ok ? null : (item.validation.reason ?? null))} requested_content=${item.packet?.authorized_contribution?.requested_content ?? "n/a"} required_facts=${JSON.stringify((item.packet?.authorized_contribution?.required_facts ?? []).map((f) => f.key))} optional_facts=${JSON.stringify((item.packet?.authorized_contribution?.optional_facts ?? []).map((f) => f.key))} candidate=${JSON.stringify(item.candidateRaw?.speech ?? null)} candidate_fact_claims=${JSON.stringify(item.candidateRaw?.speech ? dialogueValidation.operationalClaims(item.candidateRaw.speech) : [])} unauthorized_claim_rejections=${JSON.stringify(item.candidateRaw?.speech && item.packet?.authorized_contribution ? dialogueValidation.unlicensedClaims(item.candidateRaw.speech, item.packet.authorized_contribution, ctx.player_text) : [])} fallback_used=${!item.validation.ok} output_source=${item.presentationSource}`);
         // One dev-only context trace: what the speaker was allowed to know, by category and
         // provenance. Omitted facts are named by reason only; their values are never printed.
         if (item.packet?._dialogue_trace?.context) this.log(`[YB:CONTEXT_TRACE] ${JSON.stringify({ speaker: ownerName, context: item.packet._dialogue_trace.context, response_plan_fact_keys: (item.packet?.authorized_contribution?.required_facts ?? []).map((f) => f.key), revalidation: item.context_check ? { ok: item.context_check.ok, code: item.context_check.code ?? null } : null, candidate: item.candidateRaw?.speech ?? null, validator: item.validation.ok ? "accepted" : (item.validation.code ?? "rejected"), fallback_source: item.validation.ok ? null : (item.validation.code === "LOCAL_CONTEXT_STALE" ? "stale-safe-plan-fallback" : "same-plan-fallback") })}`);
@@ -2020,7 +2082,9 @@ class DesktopService {
     canonical.projection = this.projectionFor(currentWorld, "field-researcher", currentEntry);
     return canonical;
   }
-  submitQ4CommunicationCanonical({ world_id, channel, text, target = null, request_id = null, input_fingerprint = null, spatial_selection = null }) {
+  submitQ4CommunicationCanonical({ world_id, channel, text, target = null, request_id = null, input_fingerprint = null, spatial_selection = null, interpretation_advice = null }) {
+    // Only a validated advisory frame may reach framing; anything else leaves Tier 1 standing.
+    const interpretationAdvice = interpretation_advice?.accepted ? interpretation_advice : null;
     if (this.commandBusy(world_id)) return publicError("SESSION_BUSY", "Wait for the current action to finish before changing this operation.");
     if (outcomes.isRetired(this.getWorld(world_id))) return publicError("WORLD_RETIRED", "This world is a read-only historical record.");
     let entry = null; let world = null; let beforeRun = null; let beforeWorld = null; let beforePhase = null;
@@ -2158,6 +2222,8 @@ class DesktopService {
       const addressNames = coworkers.flatMap((m) => [m.first_name, m.last_name, m.display_name, ...(m.aliases ?? [])].filter(Boolean).map((name) => ({ name: String(name), id: m.personnel_id ?? m.id })));
       const address = parseAddressees(message, { explicit_target: rawTarget || null, names: addressNames, is_known: isKnownAddressName, resolve_id: (name) => addressNames.find((entry) => entry.name.toLowerCase() === String(name).replace(/^@/, "").toLowerCase())?.id ?? null, name_tokens: targetMember ? [targetMember.first_name, targetMember.last_name, ...String(targetMember.display_name ?? "").split(/\s+/)].filter(Boolean) : [] });
       const addressedSubset = address.address_type === "subset" ? address.addressee_ids : null;
+      // Every canonical entity the player's words could refer to (reference needs no presence).
+      const canonicalEntities = canonicalKnowledge.entityIndex(entry.run);
       const groupByAddress = !rawTarget && address.address_type === "group" && address.source !== "chip";
       if (!rawTarget && address.address_type === "direct") rawTarget = address.explicit_target_name;
 
@@ -2196,7 +2262,9 @@ class DesktopService {
         // Why each prior reply was said (its authorized plan), for "why?" and open clarifications.
         receipts: expedition.communication_receipts ?? [],
         // Roster names, to reconstruct older turns' residual utterance exactly as the live turn saw it.
-        people: addressNames
+        people: addressNames,
+        // Canonical entities (present or not), so earlier turns re-frame exactly as they were framed live.
+        entities: canonicalEntities
       });
 
       if (channel === "local") {
@@ -2400,7 +2468,7 @@ class DesktopService {
         const selectionCheck = spatial_selection ? spatialEvents.resolveSpatialReferenceSelection(entry.run, spatial_selection, { observer_id: playerId, now: expedition.clock?.interval ?? null }) : null;
         const validatedSelection = selectionCheck?.ok ? selectionCheck.selection : null;
         if (selectionCheck && !selectionCheck.ok && this.developerMode) this.log(`[YB:SPATIAL_TRACE] ${JSON.stringify({ request_id: requestId, rejected: selectionCheck.code, detail: selectionCheck.detail ?? null })}`);
-        const semanticFrame = dialogueDiscourse.buildSemanticFrame({ text: utterance, recipient_type, interpretation: localInterpretation, discourse: discourseState, equipment: expedition.equipment, scope_inherited: inheritedScope, spatial_selection: validatedSelection, temporal_anchors: dialogueTemporalAnchors(entry.run), now: expedition.clock?.interval ?? null, people: coworkers.map((member) => ({ id: member.personnel_id ?? member.id, name: member.first_name ?? null })), addressee_ids: recipients.map((member) => member.personnel_id ?? member.id) });
+        const semanticFrame = dialogueDiscourse.buildSemanticFrame({ text: utterance, recipient_type, interpretation: localInterpretation, discourse: discourseState, equipment: expedition.equipment, scope_inherited: inheritedScope, spatial_selection: validatedSelection, temporal_anchors: dialogueTemporalAnchors(entry.run), now: expedition.clock?.interval ?? null, people: coworkers.map((member) => ({ id: member.personnel_id ?? member.id, name: member.first_name ?? null })), addressee_ids: recipients.map((member) => member.personnel_id ?? member.id), entities: canonicalEntities, advice: interpretationAdvice });
         const discourseSummary = dialogueDiscourse.summarizeDiscourse(discourseState, semanticFrame);
         for (const recipient of (recipients.length > 0 ? recipients : localPeers)) {
           const recId = recipient.personnel_id ?? recipient.id;
@@ -2459,6 +2527,7 @@ class DesktopService {
         const heardPeers = recipient_type === "none" ? localPeers : recipients;
         const equipmentKnowledgeQuestion = ["group_question", "factual_question"].includes(localInterpretation?.speech_act) && localInterpretation?.topic === "equipment" && /\b(?:carry|carrying|holding|holds|have|has|got|equipment|gear|kit|manifest|assigned|responsible)\b/i.test(message);
         const selfKnowledgeById = {};
+        const knowledgeById = {};
         const responseCandidates = heardPeers.map((recipient) => {
           const recId = recipient.personnel_id ?? recipient.id;
           const recipientPerson = history.character(world, recId);
@@ -2496,6 +2565,11 @@ class DesktopService {
           // Custody this listener can know comes ONLY from the observer/knowledge authority
           // (self, witnessed handoff, or unchanged institutional issuance).
           const custodyKnown = Object.fromEntries((semanticFrame.referents ?? []).filter((ref) => ref.type === "equipment" && ref.resolved && ref.id).map((ref) => [ref.id, observerContextCompiler.resolveCustodyKnowledge(entry.run, recId, ref.id).known]));
+          // What THIS listener canonically knows about the question's concept (provenance kept).
+          const knowledge = semanticFrame.knowledge_query ? canonicalKnowledge.queryKnowledge(entry.run, { actor_id: recId, concept: semanticFrame.knowledge_query.concept, entity: semanticFrame.knowledge_query.entity }) : null;
+          knowledgeById[recId] = knowledge;
+          const askedEntityIds = [semanticFrame.knowledge_query?.entity?.id, ...(semanticFrame.knowledge_query?.entity?.related_ids ?? [])].filter(Boolean);
+          const ownsEntity = askedEntityIds.some((id) => heldEquipment.some((item) => item.id === id) || (id.startsWith("task:") && recipient.primary_task === id.slice(5)));
           selfKnowledgeById[recId] = dialogueDiscourse.buildSelfKnowledge({ person: recipientPerson, member: recipient, task: reactionContext?.worker?.task ?? null, held_equipment: heldEquipment, known_facts: knownFacts, known_answer: knownAnswerFact, names: spokenNames, equipment: expedition.equipment, player_id: playerId, custody_known: custodyKnown, self_state: canonicalLedger.describeSelfState(recipient), procedure: dialogueProcedureContext(entry.run, recId) });
           // "Did anyone hear what I just said?" is answered only by someone who actually heard that line.
           const heardTheAskedLine = semanticFrame.discourse_function !== "ask_heard_confirmation" || !semanticFrame.antecedent?.resolved || (semanticFrame.antecedent.listener_ids ?? []).includes(recId);
@@ -2517,7 +2591,8 @@ class DesktopService {
             // Eligibility: listener state (heardPeers) + reaction salience OR the
             // deterministic semantic duty of the frame. Never wording.
             response_eligible: heardTheAskedLine && (Boolean(reaction.reaction) || dialogueDiscourse.frameObligatesResponse(semanticFrame, recId, { recipient_type, holder_present: !requestedEquipment || heardPeers.some((peer) => (peer.personnel_id ?? peer.id) === requestedEquipment.holder) })),
-            has_relevant_knowledge: Boolean(equipmentRelevant || (knownAnswerFact && dialogueDiscourse.KNOWN_ANSWER_FUNCTIONS.includes(semanticFrame.discourse_function)) || topicFactsKnown || (semanticFrame.discourse_function === "ask_next_step" && selfKnowledgeById[recId]?.procedure))
+            owns_entity: ownsEntity,
+            has_relevant_knowledge: Boolean(knowledge?.status === "known" || equipmentRelevant || (knownAnswerFact && dialogueDiscourse.KNOWN_ANSWER_FUNCTIONS.includes(semanticFrame.discourse_function)) || topicFactsKnown || (semanticFrame.discourse_function === "ask_next_step" && selfKnowledgeById[recId]?.procedure))
           };
         });
 
@@ -2525,7 +2600,7 @@ class DesktopService {
         const authorizedResponses = ownerIds.map((id) => responseCandidates.find((candidate) => candidate.id === id)).filter(Boolean);
         // Per-owner response plan over the ALREADY-authorized owners; the
         // planner never adds, removes or reorders speakers.
-        const responsePlans = dialogueDiscourse.planResponses({ frame: semanticFrame, owner_ids: authorizedResponses.map((item) => item.id), responders: Object.fromEntries(Object.entries(selfKnowledgeById).map(([id, self]) => [id, { self }])), names: spokenNames });
+        const responsePlans = dialogueDiscourse.planResponses({ frame: semanticFrame, owner_ids: authorizedResponses.map((item) => item.id), responders: Object.fromEntries(Object.entries(selfKnowledgeById).map(([id, self]) => [id, { self, knowledge: knowledgeById[id] ?? null }])), names: spokenNames });
         const priorTexts = [];
         for (const item of authorizedResponses) {
           item.response_plan = responsePlans.find((plan) => plan.responder_id === item.id) ?? null;
@@ -2539,7 +2614,7 @@ class DesktopService {
           item.text = planned ? `${first}: ${planned}` : item.legacy_wording();
           priorTexts.push(planned ?? "");
         }
-        if (this.developerMode) this.log(`[YB:DISCOURSE_TRACE] ${dialogueDiscourse.formatDiscourseTrace({ request_id: requestId, listener_ids: heardPeers.map((peer) => peer.personnel_id ?? peer.id), raw_utterance: message, utterance, recipient_scope: semanticFrame.target_scope, frame: semanticFrame, discourse_summary: discourseSummary, owner_ids: ownerIds, plans: responsePlans, grounded_facts: responsePlans.flatMap((plan) => plan.required_facts.map((fact) => `${plan.responder_id}:${fact.key}`)), address: addressRecord, discourse: discourseState })}`);
+        if (this.developerMode) this.log(`[YB:DISCOURSE_TRACE] ${dialogueDiscourse.formatDiscourseTrace({ request_id: requestId, listener_ids: heardPeers.map((peer) => peer.personnel_id ?? peer.id), raw_utterance: message, utterance, recipient_scope: semanticFrame.target_scope, frame: semanticFrame, discourse_summary: discourseSummary, owner_ids: ownerIds, plans: responsePlans, grounded_facts: responsePlans.flatMap((plan) => plan.required_facts.map((fact) => `${plan.responder_id}:${fact.key}`)), address: addressRecord, discourse: discourseState, interpretation: { advice: interpretationAdvice, advisory_validation: interpretation_advice ? (interpretation_advice.accepted ? "accepted" : `rejected:${interpretation_advice.reason}`) : null, advisory_latency_ms: interpretation_advice?.latency_ms ?? null } })}`);
         for (const item of authorizedResponses) {
           item.body = String(item.text ?? "").replace(new RegExp(`^${String(item.recipient?.first_name ?? "").replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}:\\s*`, "i"), "");
           item.listeners = [playerId, ...localPeers.map((p) => p.personnel_id ?? p.id).filter((id) => id !== item.id)];
@@ -2582,6 +2657,9 @@ class DesktopService {
           player_text: message,
           attempted_behavior: recipient_type === "none" ? "speak aloud to the room" : (addressRecord.scope === "subset" ? "speak with named teammates" : isGroup ? "address the group" : "speak with a nearby teammate"),
           address: addressRecord,
+          // How this line was interpreted (Tier 1 deterministic / Tier 2 advisory) and the validated advisory
+          // frame itself, persisted so re-framing after a reload never re-asks a model.
+          interpretation: { source: semanticFrame.interpretation_source, tier1_generic: Boolean(semanticFrame.tier1_generic || semanticFrame.interpretation_source === "advisory"), advice: interpretationAdvice ? clone(interpretationAdvice) : null, advisory_validation: interpretation_advice ? (interpretation_advice.accepted ? "accepted" : `rejected:${interpretation_advice.reason}`) : null, advisory_latency_ms: interpretation_advice?.latency_ms ?? null },
           eligibility: "eligible",
           delivery: "heard",
           time_cost: 0,
