@@ -4,6 +4,7 @@
 // decides whether a particular coworker responds before this packet exists;
 // the provider may only phrase that already-authorized response.
 const canonicalLedger = require("./canonical-world-ledger");
+const canonicalKnowledge = require("./canonical-knowledge");
 const { projectLiveScene, projectObserverState } = require("./live-scene-projection");
 const { isParticipantOrListener, heardInitiatingUtterance, heardResponseUtterance, getAttitude, retrieveRelevantMemories } = require("./q4-personnel-continuity");
 const { interpretUtterance, resolveResponsePurpose, selectRelevantContext, resolveReportPurpose, detectTopic } = require("./dialogue-interpretation");
@@ -661,7 +662,9 @@ function validateLocalDialogue(packet, candidate, runValue = null) {
   const universal = contribution ? { ok: true } : validateUniversalWording(speech);
   if (!universal.ok) return universal;
   const speakerName = packet?.context_capsule?.actor?.name ?? (typeof packet?.speaker?.known_identity === "string" ? packet.speaker.known_identity : packet?.speaker?.known_identity?.name ?? null);
-  const semantic = validateContribution(contribution, speech, { player_text: packet?.player_message?.text ?? null, speaker_name: speakerName });
+  const claimRun = runValue ?? packet?._run ?? null;
+  const claimPeople = claimRun ? (claimRun.expedition?.team?.members ?? []).map((m) => ({ id: m.personnel_id ?? m.id, name: m.first_name ?? m.display_name, names: [m.first_name, m.last_name, m.display_name].filter(Boolean) })) : [];
+  const semantic = validateContribution(contribution, speech, { player_text: packet?.player_message?.text ?? null, speaker_name: speakerName, speaker_id: packet?.speaker?.observer_id ?? null, people: claimPeople, entities: claimRun ? canonicalKnowledge.entityIndex(claimRun) : [], resolveMentions: claimRun ? canonicalKnowledge.resolveEntityMentions : null });
   if (!semantic.ok) return semantic;
   const named = validateNamedPeople(packet, speech);
   if (!named.ok) return named;

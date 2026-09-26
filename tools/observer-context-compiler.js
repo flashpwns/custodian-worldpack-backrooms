@@ -341,7 +341,7 @@ function compileObserverDialogueContext({
   // A raw last-N window is never enough: rows must bear on this turn. Repair, heard-confirmation and
   // exchange-continuing/social turns keep the immediate tail so the speaker knows who said what;
   // factual/personal/ownership questions get only topic- or referent-relevant rows.
-  const tailSize = ["ask_factual", "ask_personal_experience", "ask_item_ownership"].includes(fn) ? 0 : HISTORY_TAIL.repair;
+  const tailSize = ["ask_factual", "ask_personal_experience", "ask_item_ownership", "ask_predicate"].includes(fn) ? 0 : HISTORY_TAIL.repair;
   const topic = frame?.topic && frame.topic !== "unknown" ? frame.topic : null;
   // Relevance words: the utterance's specific content words plus each resolved item's HEAD noun. Generic
   // words ("field", "who", "equipment") admit nothing on their own -- "field camera" must not pull in

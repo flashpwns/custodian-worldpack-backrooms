@@ -146,4 +146,118 @@ async function requestAdvisory(provider, { utterance, previous_line = null, ask_
   } finally { if (timer) clearTimeout(timer); }
 }
 
-module.exports = { ADVISORY_VERSION, INTENTS, ADVISORY_SCHEMA, ADVISORY_SYSTEM_TEXT, MIN_CONFIDENCE, buildAdvisoryPrompt, validateAdvisory, requestAdvisory };
+// ─── v2 (ED-30 D15): multi-act, opaque candidates, registry facets, constrained decoding ────────────────
+// The runtime's OpenAI-compatible `response_format: json_schema` (strict) is compiled by llama.cpp into a
+// grammar, so malformed output cannot be sampled at all; validation below still checks every field.
+const ADVISORY_V2_VERSION = "yellow-beast-dialogue-advisory@v2";
+const V2_SPEECH_ACTS = Object.freeze(["greeting", "farewell", "self_introduction", "social_acknowledgment", "thanks", "attention_call", "statement", "sarcasm", "question", "request", "repair", "elliptical_continuation", "answer"]);
+const V2_RELATIONS = Object.freeze(["new", "continuation", "repair", "topic_return", "attention", "answer"]);
+const V2_QUANTIFIERS = Object.freeze(["none", "one", "each", "any", "all", "subset", "except"]);
+const V2_CONFIDENCE = Object.freeze(["low", "medium", "high"]);
+const MAX_ACTS = 4;
+
+/** The v2 JSON schema for one scene: facet enum = registry ids offered, candidate enums = opaque labels. */
+function advisoryV2Schema({ facets = [], people = [], referents = [] } = {}) {
+  const nullableEnum = (values) => ({ anyOf: [{ type: "string", enum: values.length ? values : ["none"] }, { type: "null" }] });
+  return {
+    type: "object",
+    additionalProperties: false,
+    required: ["acts", "confidence"],
+    properties: {
+      acts: {
+        type: "array", minItems: 1, maxItems: MAX_ACTS,
+        items: {
+          type: "object", additionalProperties: false,
+          required: ["speech_act", "facet", "addressee_candidate", "referent_candidate", "quantifier", "discourse_relation"],
+          properties: {
+            speech_act: { type: "string", enum: [...V2_SPEECH_ACTS] },
+            addressee_text: { type: ["string", "null"] },
+            addressee_candidate: nullableEnum(people.map((p) => p.label)),
+            referent_text: { type: ["string", "null"] },
+            referent_candidate: nullableEnum(referents.map((r) => r.label)),
+            facet: nullableEnum(facets),
+            polarity: { type: "string", enum: ["positive", "negative"] },
+            temporal_text: { type: ["string", "null"] },
+            quantifier: { type: "string", enum: [...V2_QUANTIFIERS] },
+            discourse_relation: { type: "string", enum: [...V2_RELATIONS] }
+          }
+        }
+      },
+      turn_relation: { type: "string", enum: [...V2_RELATIONS] },
+      confidence: { type: "string", enum: [...V2_CONFIDENCE] }
+    }
+  };
+}
+
+const ADVISORY_V2_SYSTEM_TEXT = [
+  "You classify the LANGUAGE of one line a person said at a work table. You do not answer it and you know nothing about the world.",
+  "Split the line into at most four acts. For each act choose: speech_act; facet (what is asked about, from the list, or null); who is addressed (addressee_candidate label, or null); what place/thing it is about (referent_candidate label, or null); quantifier; discourse_relation.",
+  "Every *_text field must be copied EXACTLY from the line, or null. Use only the labels given. If you cannot tell, say confidence low.",
+  "Reply with exactly one compact JSON object and nothing else."
+].join("\n");
+
+function buildAdvisoryV2Prompt({ utterance, recent = [], people = [], referents = [], facets = [], facet_guide = {} }) {
+  return [
+    recent.length ? `Recent lines (words only):\n${recent.slice(-3).map((l) => `- ${String(l).slice(0, 160)}`).join("\n")}` : null,
+    `The line: ${JSON.stringify(String(utterance).slice(0, 400))}`,
+    people.length ? `People at the table (addressee labels): ${people.map((p) => `${p.label}=${p.name}`).join(", ")}` : null,
+    referents.length ? `Places/things (referent labels): ${referents.map((r) => `${r.label}=${r.name}`).join(", ")}` : null,
+    `Facets:\n${facets.map((f) => `- ${f}${facet_guide[f] ? `: ${facet_guide[f]}` : ""}`).join("\n")}`
+  ].filter(Boolean).join("\n");
+}
+
+const within2 = (span, utterance, repaired) => { const s = String(span).toLowerCase().trim(); return String(utterance).toLowerCase().replace(/[’‘]/g, "'").includes(s) || String(repaired ?? "").toLowerCase().includes(s); };
+/**
+ * Validates a v2 candidate. Labels must come from the offered sets, facets from the offered enum, spans
+ * from the player's own words (raw or repaired). Low confidence is not accepted (understand -> clarify).
+ */
+function validateAdvisoryV2(raw, utterance, { people = [], referents = [], facets = [], repaired = null } = {}) {
+  if (!raw || typeof raw !== "object" || Array.isArray(raw) || !Array.isArray(raw.acts)) return { accepted: false, reason: "malformed" };
+  if (Object.keys(raw).some((k) => !["acts", "turn_relation", "confidence"].includes(k))) return { accepted: false, reason: "unsupported_field" };
+  if (!V2_CONFIDENCE.includes(raw.confidence)) return { accepted: false, reason: "malformed_confidence" };
+  if (raw.confidence === "low") return { accepted: false, reason: "low_confidence" };
+  if (!raw.acts.length || raw.acts.length > MAX_ACTS) return { accepted: false, reason: "act_count" };
+  const peopleLabels = new Map(people.map((p) => [p.label, p]));
+  const refLabels = new Map(referents.map((r) => [r.label, r]));
+  const acts = [];
+  for (const act of raw.acts) {
+    if (!act || typeof act !== "object") return { accepted: false, reason: "malformed_act" };
+    if (!V2_SPEECH_ACTS.includes(act.speech_act) || !V2_RELATIONS.includes(act.discourse_relation) || !V2_QUANTIFIERS.includes(act.quantifier)) return { accepted: false, reason: "unsupported_value" };
+    if (act.facet != null && !facets.includes(act.facet)) return { accepted: false, reason: "unsupported_facet" };
+    if (act.addressee_candidate != null && !peopleLabels.has(act.addressee_candidate)) return { accepted: false, reason: "unknown_candidate" };
+    if (act.referent_candidate != null && !refLabels.has(act.referent_candidate)) return { accepted: false, reason: "unknown_candidate" };
+    for (const key of ["addressee_text", "referent_text", "temporal_text"]) if (act[key] != null && (typeof act[key] !== "string" || act[key].length > MAX_SPAN || !within2(act[key], utterance, repaired))) return { accepted: false, reason: `${key}_not_in_utterance` };
+    // A named addressee must actually be named in the line (code maps the label; the words must be the player's).
+    const person = act.addressee_candidate ? peopleLabels.get(act.addressee_candidate) : null;
+    if (person && !(person.names ?? [person.name]).some((n) => within2(n, utterance, repaired)) && !(act.addressee_text && within2(act.addressee_text, utterance, repaired))) return { accepted: false, reason: "addressee_not_in_utterance" };
+    // A referent the player never named (neither its name nor a verbatim span) is dropped: the model may not
+    // choose a place or thing the line does not mention (review F12).
+    const ref = act.referent_candidate ? refLabels.get(act.referent_candidate) : null;
+    // A deictic span ("there", "it", "that place") names nothing: only the referent's own name counts, or a
+    // span that contains a word of that name (review F12 residual).
+    const nameWords = String(ref?.name ?? "").toLowerCase().split(/\s+/).filter((w) => w.length > 2 && !["the", "and"].includes(w));
+    const refNamed = ref && (within2(String(ref.name ?? ""), utterance, repaired) || (act.referent_text && within2(act.referent_text, utterance, repaired) && nameWords.some((w) => String(act.referent_text).toLowerCase().includes(w))));
+    acts.push(Object.freeze({ speech_act: act.speech_act, facet: act.facet ?? null, addressee_id: person?.id ?? null, referent_id: refNamed ? ref.id : null, quantifier: act.quantifier, discourse_relation: act.discourse_relation, polarity: act.polarity ?? "positive", temporal_text: act.temporal_text ?? null }));
+  }
+  return Object.freeze({ version: ADVISORY_V2_VERSION, accepted: true, acts, turn_relation: raw.turn_relation ?? null, confidence: raw.confidence });
+}
+
+/** One bounded v2 advisory call (never throws; timeout/malformed/unavailable -> not accepted). */
+async function requestAdvisoryV2(provider, { utterance, repaired = null, recent = [], people = [], referents = [], facets = [], facet_guide = {}, timeout_ms = 8000 } = {}) {
+  if (!provider || typeof provider.interpretDialogue !== "function") return { accepted: false, reason: "advisory_unavailable", latency_ms: 0 };
+  const started = Date.now();
+  let timer = null;
+  try {
+    const raw = await Promise.race([
+      provider.interpretDialogue({ system: ADVISORY_V2_SYSTEM_TEXT, user: buildAdvisoryV2Prompt({ utterance, recent, people, referents, facets, facet_guide }), schema: advisoryV2Schema({ facets, people, referents }) }),
+      new Promise((_, reject) => { timer = setTimeout(() => reject(Object.assign(new Error("advisory timeout"), { code: "TIMEOUT" })), timeout_ms); })
+    ]);
+    // A v1-shaped reply (older scripted providers) is still validated by the v1 rules.
+    const verdict = raw && Array.isArray(raw.acts) ? validateAdvisoryV2(raw, utterance, { people, referents, facets, repaired }) : validateAdvisory(raw, utterance, {});
+    return { ...verdict, latency_ms: Date.now() - started };
+  } catch (error) {
+    return { accepted: false, reason: error?.code === "TIMEOUT" ? "timeout" : "provider_error", latency_ms: Date.now() - started };
+  } finally { if (timer) clearTimeout(timer); }
+}
+
+module.exports = { ADVISORY_V2_VERSION, advisoryV2Schema, ADVISORY_V2_SYSTEM_TEXT, buildAdvisoryV2Prompt, validateAdvisoryV2, requestAdvisoryV2, ADVISORY_VERSION, INTENTS, ADVISORY_SCHEMA, ADVISORY_SYSTEM_TEXT, MIN_CONFIDENCE, buildAdvisoryPrompt, validateAdvisory, requestAdvisory };

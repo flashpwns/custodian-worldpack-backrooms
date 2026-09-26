@@ -841,6 +841,26 @@
       "file": "tests/ed29-day1-knowledge-convergence.test.js",
       "status": "included",
       "tier": "aggregate"
+    },
+    {
+      "file": "tests/ed30a-compositional-turns.test.js",
+      "status": "included",
+      "tier": "aggregate"
+    },
+    {
+      "file": "tests/ed30b-validation-personhood.test.js",
+      "status": "included",
+      "tier": "aggregate"
+    },
+    {
+      "file": "tests/ed30c-conversation-management.test.js",
+      "status": "included",
+      "tier": "aggregate"
+    },
+    {
+      "file": "tests/ed30d-properties-independence.test.js",
+      "status": "included",
+      "tier": "aggregate"
     }
   ],
   "report_tools": [

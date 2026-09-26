@@ -61,12 +61,13 @@ const CHECK_IN_BY_TEMPERAMENT = {
   "deadpan": "Can't complain."
 };
 // Canonically moved self-state, worded plainly (the affect system decided it; wording only says it).
-const AFFECT_WORDING = Object.freeze({ tired: "tired", tense: "a bit on edge", pressed: "feeling the clock" });
+const AFFECT_WORDING = Object.freeze({ tired: "tired", tense: "a bit on edge", nervous: "a little nervous", pressed: "feeling the clock" });
 function affectKeys(affect = []) {
   const keys = [];
   for (const item of affect) {
     if (/tired/i.test(item)) keys.push("tired");
     else if (/tense|stress/i.test(item)) keys.push("tense");
+    else if (/nervous/i.test(item)) keys.push("nervous");
     else if (/pressed|time/i.test(item)) keys.push("pressed");
   }
   return [...new Set(keys)];
@@ -76,10 +77,10 @@ function presentSelfState(selfState, style = {}) {
   if (!selfState) return null;
   const keys = affectKeys(selfState.affect);
   if (selfState.state === "affected" && keys.length) {
-    const order = ["tired", "tense", "pressed"].filter((key) => keys.includes(key));
+    const order = ["tired", "tense", "nervous", "pressed"].filter((key) => keys.includes(key));
     const said = order.map((key) => AFFECT_WORDING[key]);
     const list = said.length > 1 ? `${said.slice(0, -1).join(", ")} and ${said.at(-1)}` : said[0];
-    return `Honestly? ${upperFirst(list)}.`;
+    return `Honestly, ${list}.`;
   }
   return CHECK_IN_BY_TEMPERAMENT[style.conversational_temperament] ?? "Doing all right.";
 }
@@ -87,10 +88,12 @@ function presentSelfState(selfState, style = {}) {
 // A question about one feeling, answered from canonical state. "not_especially": an ordinary state holds
 // no elevated feeling either way -- a stance, never "I don't know" (a speaker has access to themselves).
 const NOT_ESPECIALLY_LINES = ["Not especially. I feel all right about it.", "Can't say I feel much either way.", "Not really. Just feeling normal about it.", "Not especially, no."];
-const YES_AFFECT_LINES = Object.freeze({ tired: "Yeah, a bit tired, honestly.", tense: "A little on edge, yes." });
+const YES_AFFECT_LINES = Object.freeze({ tired: "Yeah, a bit tired, honestly.", tense: "A little on edge, yes.", nervous: "Yeah, a little nervous, honestly." });
 function presentSelfStateAnswer(answer, selfState, style = {}, prior = []) {
   if (!answer) return null;
-  if (answer.answer === "yes") return YES_AFFECT_LINES[answer.asked] ?? presentSelfState(selfState, style);
+  if (answer.answer === "yes") return (answer.asked === "tense" && affectKeys(selfState?.affect).includes("nervous") && !affectKeys(selfState?.affect).includes("tense") ? YES_AFFECT_LINES.nervous : YES_AFFECT_LINES[answer.asked]) ?? presentSelfState(selfState, style);
+  // Asked about one feeling while canonically feeling another: say no to the one asked, then the real one.
+  if (answer.answer === "affected_instead" && answer.asked === "tired") return `Not tired, no. ${presentSelfState(selfState, style)}`;
   if (answer.answer === "affected_instead" || answer.answer === "affected") return presentSelfState(selfState, style);
   if (answer.answer === "not_especially") return variant(NOT_ESPECIALLY_LINES[0], NOT_ESPECIALLY_LINES.slice(1), prior);
   return variant(CHECK_IN_BY_TEMPERAMENT[style.conversational_temperament] ?? "Doing all right.", Object.values(CHECK_IN_BY_TEMPERAMENT), prior);
@@ -101,7 +104,7 @@ function presentExplanation(basis, style = {}) {
   if (!basis) return "Sorry, what do you mean?";
   switch (basis.kind) {
     case "self_state":
-      if (basis.state === "affected" && (basis.affect ?? []).length) return `${presentSelfState({ state: "affected", affect: basis.affect }, style).replace(/^Honestly\? /, "")} That's all.`;
+      if (basis.state === "affected" && (basis.affect ?? []).length) return `${presentSelfState({ state: "affected", affect: basis.affect }, style).replace(/^Honestly, /, "").replace(/^./, (c) => c.toUpperCase())} That's all.`;
       return "Just how I feel right now. Nothing out of the ordinary.";
     case "no_known_fact":
       if (basis.uncertainty === "not_told") return "Because nobody's told me.";
@@ -123,7 +126,7 @@ function presentExplanation(basis, style = {}) {
       return "That's where it is, as far as I know.";
     case "known_information": {
       const p = basis.provenance ?? [];
-      const said = p.includes("briefing") ? "Maxwell told us at the briefing." : p.includes("observed") ? "I saw it myself." : p.includes("heard") && basis.heard_from?.length ? `${basis.heard_from.join(" and ")} said so.` : p.includes("self") ? "That's my own assignment." : p.includes("baseline_field_procedure") ? "That's basic field training." : p.includes("baseline_induction") ? "That's the basic orientation everyone assigned here gets." : "That's just what I know about it.";
+      const said = p.includes("briefing") ? "We were told at the briefing." : p.includes("observed") ? "I saw it myself." : p.includes("heard") && basis.heard_from?.length ? `${[].concat(basis.heard_from).join(" and ")} said so.` : p.includes("self") ? "That's my own assignment." : p.includes("baseline_field_procedure") ? "That's basic field training." : p.includes("baseline_induction") ? "That's the basic orientation everyone assigned here gets." : "That's just what I know about it.";
       return basis.partial ? `${said} Nobody's said anything about the rest.` : said;
     }
     case "custody_history":
@@ -139,6 +142,16 @@ function presentExplanation(basis, style = {}) {
       return "I'm only repeating what was said.";
     case "request_policy":
       return basis.disposition === "requires_structured_handoff" ? "Things only change hands through a proper handoff." : "I'm just saying I heard you.";
+    case "predicate_answer": {
+      const p = basis.provenance ?? [];
+      if (["unknown", "not_established"].includes(basis.value)) return /^person\.(?:complex|expedition)/.test(basis.predicate ?? "") ? "I just can't think of a time I have." : basis.value === "unknown" ? "I just haven't been told." : "Nobody's said anything about it.";
+      if (p.includes("self")) return /complex|expedition/.test(basis.predicate ?? "") ? "That's just my own history." : /first_day|tenure/.test(basis.predicate ?? "") ? "That's just how long I've been here." : "That's just me.";
+      if (p.includes("briefing")) return "That's what we were told at the briefing.";
+      if (p.includes("heard")) return "That's what I heard said.";
+      if (basis.value === "unknown") return "I just haven't been told.";
+      if (basis.value === "not_established") return "Nobody's said anything about it.";
+      return "That's just what I know about it.";
+    }
     case "not_own_line":
       return basis.speaker_name ? `You'd have to ask ${basis.speaker_name}.` : "That wasn't me.";
     case "social":
@@ -252,12 +265,107 @@ function presentReported(reported) {
   }
   const lines = bySpeaker.map((e) => (e.key === "you"
     ? e.items.slice(-2).map((c) => saidLine("You said,", c.quote)).join(" ")
+    // One's own words are quoted back as they were said, never re-narrated in the third person.
+    : e.key === "I" && e.items.some((c) => c.quote)
+      ? e.items.filter((c) => c.quote).slice(-2).map((c, i) => saidLine(i ? "I also said," : "I said,", c.quote)).join(" ")
     : `${e.key} said ${e.items.slice(0, 3).map((c) => sentence(c.reported)).join(", and that ")}.`));
   if (lines.length === 2 && bySpeaker.every((e) => e.key !== "you")) return `${lines[0].replace(/\.$/, "")}, but ${lines[1]}`;
   return lines.slice(-2).join(" ");
 }
 
+// ─── Semantic Registry answers (ED-30): worded ONLY from the resolver result the plan carries ───────────
+const TENURE_LINE = Object.freeze({ weeks: "I've been with ASYNC a few weeks", months: "I've been with ASYNC a few months", years: "I've been with ASYNC for years" });
+function presentPredicateAnswer(answer, { prior = [] } = {}) {
+  if (!answer) return null;
+  const a = answer.answer ?? {};
+  if (answer.predicate === "conversation.claim_check") return variant("I couldn't tell you either way.", ["No idea, honestly. I couldn't say either way.", "I couldn't say either way."], prior);
+  if (answer.value === "unknown" && a.third_party) { const who = a.subject_name ?? "them"; return variant(`I couldn't tell you. You'd have to ask ${who}.`, [`No idea, honestly. You'd have to ask ${who}.`, `I don't know. You'd have to ask ${who}.`], prior); }
+  if (answer.value === "unknown") return a.third_party ? variant("I couldn't tell you. You'd have to ask them.", ["No idea, honestly. You'd have to ask them.", "I don't know. You'd have to ask them."], prior) : variant("No idea, honestly.", ["I don't know.", "Couldn't tell you."], prior);
+  if (answer.value === "not_established") {
+    if (answer.predicate === "person.intent") return "Couldn't tell you. Nothing in particular.";
+    // One's own history that canon does not settle: an honest hedge, never an invented yes or no.
+    if (a.count_asked) return variant("I couldn't say how many, exactly.", ["Couldn't tell you how many, honestly.", "I couldn't say exactly how many."], prior);
+    // A place the profile does not settle ("Have you been to Outpost A?"): no lean either way.
+    if (a.place && !["complex", "threshold"].includes(a.place)) return variant("I couldn't say for sure.", ["Couldn't say for sure, honestly.", "I'm not sure, honestly."], prior);
+    if (/^person\.(?:complex|expedition)_experience$/.test(answer.predicate)) return "Not that I can think of.";
+    return variant("Nobody's said.", ["Nobody's said anything about that.", "That hasn't come up."], prior);
+  }
+  if (a.reported) return `${upperFirst(sentence(answer.statements?.[0] ?? "That's what I heard"))}.`;
+  switch (answer.predicate) {
+    case "person.first_day_at_async":
+      if (answer.value === "yes") return variant("Yeah, it's my first day.", ["It is, yeah. First day.", "Yes, first day for me."], prior);
+      return `No, ${TENURE_LINE[a.band] ?? "I've been here a while"}.`;
+    case "person.async_tenure":
+      return a.band === "first_day" ? "Today's my first day." : `${upperFirst(TENURE_LINE[a.band] ?? "A while")}.`;
+    case "person.expedition_experience":
+      // "Is this your first expedition?" asks it inverted: yes = none before.
+      if (answer.inverted) return answer.value === "no" ? variant("Yes, it's my first expedition.", ["Yes, first one for me.", "It is, yeah. My first."], prior) : variant("No, I've been on expeditions before.", ["No, not my first.", "No, I've done this before."], prior);
+      return answer.value === "no" ? variant("No, this is my first expedition.", ["No, first one for me.", "Not before, no. This is my first."], prior) : variant("Yes, I've been on expeditions before.", ["I have, yeah.", "Yes, I've done this before."], prior);
+    case "person.complex_experience":
+      if (answer.inverted && !(a.place && !["complex", "threshold"].includes(a.place))) return answer.value === "no" ? variant("Yes, it's my first time going in.", ["Yes, first time for me. I've never been in.", "It is, yeah. I've never been in the Complex."], prior) : variant("No, I've been in before.", ["No, not my first time. I've been in before.", "No, I've been in the Complex before."], prior);
+      if (a.place && !["complex", "threshold"].includes(a.place)) return answer.value === "no" ? "No. I've never been in the Complex at all." : "Not that I can think of.";
+      return answer.value === "no" ? variant("No, never. I've never been in the Complex.", ["No, I've never been in.", "Never, no. I haven't been in the Complex."], prior) : variant("Yes, I've been in before.", ["I have, yes. I've been in before.", "Yeah, I've been in the Complex before."], prior);
+    case "person.wellbeing":
+    case "person.nervousness":
+    case "person.anticipation":
+    case "person.fatigue": {
+      // A self-state answered from the recorded dimensions (a past state in the past tense).
+      const d = a.dimensions ?? null;
+      if (!d) return null;
+      const nervous = ["elevated", "high"].includes(d.nervousness);
+      const phrase = answer.predicate === "person.fatigue" ? (["high", "elevated"].includes(d.fatigue) ? "pretty tired" : nervous ? "not tired, just a little nervous" : "not tired")
+        : answer.predicate === "person.anticipation" ? (nervous ? "more nervous than excited" : "not especially excited, but all right")
+          : answer.predicate === "person.nervousness" ? (nervous ? "a little nervous" : "not especially nervous")
+            : (nervous ? "a little nervous" : /fine|good|ok/.test(String(d.wellbeing)) ? "fine" : "not great");
+      if (a.temporal === "earlier") return /^not /.test(phrase) ? `Earlier, I wasn't ${phrase.slice(4)}.` : `Earlier, I was ${phrase}.`;
+      return `${upperFirst(phrase)}.`;
+    }
+    case "person.familiarity":
+      // Two people answering "do you two know each other?" never say the identical line.
+      return answer.value === "no" ? variant(`No, ${lowerFirst(sentence(answer.statements?.[0] ?? "we only met today"))}.`, ["No, we'd never met before today.", "Same here. We only just met."], prior) : `Yes, ${lowerFirst(sentence(answer.statements?.[0] ?? "we know each other"))}.`;
+    case "place.access":
+      return `Yes. ${upperFirst(sentence(answer.statements?.[0] ?? "We're going in"))}.`;
+    case "transition.participants":
+    case "mission.participants": {
+      const said = sentence(answer.statements?.[0] ?? "");
+      // "Are we splitting up?" / "together or splitting up?": nobody has said anything about splitting; the
+      // canonical answer is who was sent (never a bare "yes" to a split question).
+      if (answer.asks_split || a.asks_split) return /\btogether\b/i.test(String(answer.alternatives ?? "")) || (answer.alternatives ?? []).length ? `Together, as far as I know. Nobody's said anything about splitting up. ${said}.` : `Nobody's said anything about splitting up. ${said}.`;
+      if (/\bsplit/i.test(String(answer.alternatives ?? ""))) return `Together, as far as I know. ${said}.`;
+      // To a negative question, no bare "yes": say what is so.
+      if (answer.negated) return answer.value === "yes" ? `As far as I know, we're all going. ${said}.` : `${said}.`;
+      if (a.subject_ids?.length) return `As far as I know, yes. ${said}.`;
+      // A "who" question gets the answer itself, never a "yes".
+      if (answer.question_form === "wh") return `${said}.`;
+      return answer.value === "yes" ? `Yes, as far as I know. ${said}.` : `${said}.`;
+    }
+    default:
+      return (answer.statements ?? []).length ? (answer.statements ?? []).slice(0, 2).map((x) => `${upperFirst(sentence(x))}.`).join(" ") : null;
+  }
+}
+
+// After "Like I said," a sentence's first word is lowercased unless it is a name or the pronoun I.
+const PROPER_OPENERS = new Set(["Maxwell", "ASYNC", "Async", "Outpost", "Equipment", "Complex", "Threshold", "Bermuda", "Kirk", "Beck"]);
+function keepsCapital(line, plan) {
+  const first = String(line).match(/^[A-Za-z][A-Za-z'’-]*/)?.[0] ?? "";
+  const bare = first.replace(/['’].*$/, "");
+  if (bare === "I" || /^[A-Z]{2,}$/.test(bare)) return true;
+  if (PROPER_OPENERS.has(bare)) return true;
+  // A proper noun of this plan's facts: a whole name value ("Tonya") or capitalised mid-sentence.
+  const blob = JSON.stringify([plan?.required_facts ?? [], plan?.optional_facts ?? []]);
+  return new RegExp(`"${bare}"|[a-z,] ${bare}\\b`).test(blob);
+}
+
 function presentFallback({ frame, plan = null, prior = [] } = {}) {
+  // One line answering several acts: each part worded from its own frame and plan, in order.
+  if (plan?.discourse_function === "compound") return plan.parts.map((part) => presentFallback({ frame: part.frame, plan: part.plan, prior })).filter(Boolean).join(" ") || null;
+  const line = presentFallbackLine({ frame, plan, prior });
+  // Asked again right after answering the same thing: "Like I said, ..." (never a duplicate introduction).
+  // (Only a common sentence opener is lowercased after "Like I said," -- never a name.)
+  if (line && optionalFact(plan, "repeat_of_own_answer") && !plan?.may_ask_clarifying_question && !/^like i said/i.test(line)) return `Like I said, ${keepsCapital(line, plan) ? line : lowerFirst(line)}`;
+  return line;
+}
+function presentFallbackLine({ frame, plan = null, prior = [] } = {}) {
   const fn = frame?.discourse_function;
   const style = plan?.style_hints ?? {};
 
@@ -278,7 +386,10 @@ function presentFallback({ frame, plan = null, prior = [] } = {}) {
     if (plan?.may_ask_clarifying_question) return clarifyFor(plan, "Sorry, who do you mean?");
     const u = fact(plan, "uncertainty");
     const who = u?.speaker_name === "you" ? "you" : (u?.speaker_name ?? "them");
-    return u?.kind === "not_heard_on_topic" ? `I didn't hear ${who} say anything about that.` : `I didn't hear ${who} say that.`;
+    // Nothing heard from them at all vs nothing on this topic.
+    // On a topic, the speaker can only say what they hold -- never that the person did not say it.
+    if (u?.kind === "report_topic_not_held" || u?.kind === "not_heard_on_topic") return `I couldn't tell you what ${who} said about that.`;
+    return u?.kind === "not_heard_on_topic" ? `I didn't hear ${who} say anything about that.` : `I didn't hear ${who} say anything.`;
   }
   if (fn === "ask_current_action" && fact(plan, "current_action")) {
     const activity = fact(plan, "current_action").activity;
@@ -291,6 +402,11 @@ function presentFallback({ frame, plan = null, prior = [] } = {}) {
     if (kind === "current_state_unknown") return "I don't know what state it's in right now.";
     return "Nobody's told me that.";
   }
+  if (fn === "ask_predicate") {
+    if (plan?.may_ask_clarifying_question) return clarifyFor(plan, "Sorry, what do you mean?");
+    return presentPredicateAnswer(fact(plan, "predicate_answer"), { prior, names: plan?.names ?? null }) ?? "I couldn't say.";
+  }
+  if (fn === "attend") return variant("Yes?", ["Yeah?", "Mm?"], prior);
   switch (fn) {
     case "invite_self_description":
     case "ask_role_or_assignment": {
@@ -340,9 +456,12 @@ function presentFallback({ frame, plan = null, prior = [] } = {}) {
     }
     case "joke_or_sarcasm":
       return JOKE_BY_EXPRESSION[style.social_expression] ?? JOKE_BY_TEMPERAMENT[style.conversational_temperament] ?? "Ha.";
-    case "check_in":
+    case "check_in": {
       if (fact(plan, "self_state_answer")) return presentSelfStateAnswer(fact(plan, "self_state_answer"), fact(plan, "self_state"), style, prior);
-      return presentSelfState(fact(plan, "self_state"), style) ?? (CHECK_IN_BY_TEMPERAMENT[style.conversational_temperament] ?? "Doing all right.");
+      const said = presentSelfState(fact(plan, "self_state"), style) ?? (CHECK_IN_BY_TEMPERAMENT[style.conversational_temperament] ?? "Doing all right.");
+      // Several people answering for themselves never chorus the same sentence (F14).
+      return prior.includes(said) ? variant(said, fact(plan, "self_state")?.state === "affected" ? [said.replace(/^Honestly, /, "").replace(/^./, (c) => c.toUpperCase())] : ["Doing all right, thanks.", "Can't complain.", "I'm fine.", "All right, thanks."], prior) : said;
+    }
     case "ask_next_step": {
       const procedure = fact(plan, "current_procedure");
       const notTold = fact(plan, "uncertainty");
@@ -372,6 +491,7 @@ function presentFallback({ frame, plan = null, prior = [] } = {}) {
       return facts.length ? `${upperFirst(sentence(facts[0].value.text))}.` : "I'm only going by what I know.";
     }
     case "ask_factual": {
+      if (plan?.may_ask_clarifying_question && !(plan?.required_facts ?? []).length) return clarifyFor(plan, "Sorry, what do you mean?");
       const recalled = renderKnownAnswer(fact(plan, "known_answer"));
       if (recalled) return recalled;
       const known = (plan?.required_facts ?? []).filter((f) => f.key === "known_fact");
@@ -394,6 +514,7 @@ function presentFallback({ frame, plan = null, prior = [] } = {}) {
     case "clarify_previous":
     case "request_repetition": {
       const ante = frame.antecedent ?? {};
+      if (optionalFact(plan, "reclarify")) return "Sorry, I wasn't sure what you meant. What are you asking?";
       if (!ante.resolved) return "Sorry, what are you asking me to go back over?";
       const responses = fact(plan, "antecedent_responses") ?? [];
       const own = responses.filter((r) => r.is_self).slice(-1)[0] ?? null;
@@ -406,6 +527,7 @@ function presentFallback({ frame, plan = null, prior = [] } = {}) {
       return said ? saidLine("You said,", said) : "Sorry, what are you asking me to go back over?";
     }
     case "ambiguous_reference": {
+      if (frame.turn?.clarify_reason === "misunderstood") return "Sorry, I must have misunderstood. What were you asking?";
       const spatial = (frame.referents ?? []).find((r) => r.type === "spatial" && !r.resolved && r.noun && !["thing", "one"].includes(r.noun));
       if (spatial) return `Sorry, which ${spatial.noun} do you mean?`;
       if ((frame.referents ?? []).some((r) => r.reason === "no_antecedent")) return "Sorry, what are you asking about?";
@@ -423,6 +545,8 @@ function presentFallback({ frame, plan = null, prior = [] } = {}) {
     case "introduce_self":
       return variant(INTRODUCE_BY_EXPRESSION[style.social_expression] ?? "Good to meet you.", INTRODUCE_ALTERNATES, prior);
     case "acknowledge":
+      // "I was speaking to Tonya." after Tonya already answered: she confirms it was her, nothing more.
+      if (frame?.turn?.repair?.vacuous) return variant("Right, that was me.", ["Yeah, that was me."], prior);
       return variant(ACK_BY_TEMPERAMENT[style.conversational_temperament] ?? "Understood.", ACK_ALTERNATES, prior);
     case "social_observation":
       // About the speaker: the canonical self-state answers it; without that fact no state is claimed.
@@ -513,4 +637,4 @@ function presentReportFallback({ contribution } = {}) {
   return generic;
 }
 
-module.exports = { quoteLine, presentPartial, presentReported, presentMeaning, presentConversationEvent, CLARIFY_BY_SLOT, presentFallback, presentStaleSafeFallback, presentReportFallback, presentSelfState, presentSelfStateAnswer, presentExplanation, renderKnownAnswer, COMMIT_SENSITIVE_FACTS };
+module.exports = { presentPredicateAnswer, quoteLine, presentPartial, presentReported, presentMeaning, presentConversationEvent, CLARIFY_BY_SLOT, presentFallback, presentStaleSafeFallback, presentReportFallback, presentSelfState, presentSelfStateAnswer, presentExplanation, renderKnownAnswer, COMMIT_SENSITIVE_FACTS };

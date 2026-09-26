@@ -16,6 +16,12 @@ The application ships an on-device wording runtime; it is started, verified and 
   - Compiled into `llama-server` from llama.cpp's `vendor/` tree: cpp-httplib 0.57.1 — MIT, Copyright (c) 2017 yhirose (`docs/licenses/cpp-httplib-MIT.txt`); nlohmann/json — MIT, Copyright (c) 2013-2025 Niels Lohmann (`docs/licenses/nlohmann-json-MIT.txt`); miniaudio — public domain or MIT-0; stb_image — public domain (MIT alternative). The runtime links only macOS system frameworks otherwise.
 - Gemma 4 E4B instruction-tuned, Q4_K_M GGUF (google/gemma-4-E4B-it by Google DeepMind; quantization unsloth/gemma-4-E4B-it-GGUF, revision bfc15c382204943c3a8fff0c750b94ae2364d7a3; SHA-256 85a896a047553e842f25297ee5b031d64ff30147d9c4af17b1e4b394cd1fab87) — Apache-2.0; use also subject to the Gemma Prohibited Use Policy. Full text: `docs/licenses/Gemma-4-Apache-2.0.txt` (also shipped beside the model). Pinned in `tools/local-runtime-pin.json`.
 
+## Development-only tools (not shipped)
+
+Used only by the repository's test suite; never packaged into the application.
+
+- fast-check 4.10.2 (property-based and metamorphic testing, ED-30) — MIT, Copyright (c) 2017 Nicolas Dubien. See `docs/decisions/ed30-dialogue-dependencies.md`.
+
 Yellow Beast is an unofficial fan project and is not affiliated with Kane Pixels.
 
 ## Owner-supplied Day One menu recordings

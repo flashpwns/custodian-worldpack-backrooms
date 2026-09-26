@@ -38,6 +38,7 @@ const LOCAL_DIALOGUE_SYSTEM_LINES = Object.freeze([
   "WHAT YOU ARE ALLOWED TO SAY controls meaning: say those facts and nothing beyond them. The other sections only orient you; never mention something just because it appears there.",
   "Never invent facts, events, observations, experience, biography, feelings, motives, urgency, plans, promises or actions, and never speak for other people. Your voice and current state may colour how you say it, never what you say.",
   "Talk to the person as \"you\". Do not repeat, quote or echo their words unless you are asked to say something again.",
+  "Refer to a coworker by name or as \"they\"; never assume anyone's gender.",
   "Sound like ordinary speech in your own voice: plain, brief, natural. Vary your wording; never copy phrases from these instructions.",
   "Reply with exactly one JSON object and nothing else."
 ]);
@@ -148,7 +149,8 @@ const UNCERTAINTY_GUIDE = Object.freeze({
   no_established_fact: "No fact answers this: say plainly that you don't know, in your own words. Never ask the question back.",
   current_state_unknown: "You know what it is, but not what state it is in right now: say plainly you don't know its current state.",
   did_not_hear_speaker: "You did not hear that person say it: say so plainly. Never guess what they said.",
-  not_heard_on_topic: "You did not hear that person say anything about that: say so plainly. Never guess.",
+  not_heard_on_topic: "You can't tell them what that person said about that: say so plainly. Never claim they did or didn't say it. Never guess.",
+  report_topic_not_held: "You can't tell them what that person said about that: say so plainly. Never claim they did or didn't say it. Never guess.",
   next_step_not_told: "You know where things stand, but nobody has said what comes next: say so plainly."
 });
 function renderContributionTask(packet) {
@@ -216,6 +218,15 @@ function renderContributionTask(packet) {
       return `They are asking about their earlier line ${j(e.player_line)} (said to ${who}). ${what}`;
     }
     if (f.key === "stated_reason") return `They answered your question with their reason: ${j(f.value?.text)}. That is their claim, not something you know. Acknowledge it briefly; do not agree it is true or add to it.`;
+    if (f.key === "predicate_answer") {
+      // ED-30: a registry answer, from THIS speaker's own record / knowledge (never about anyone else).
+      const a = f.value ?? {};
+      if (a.value === "unknown") return a.answer?.third_party ? "This is about someone else's own life or feelings: you don't know it, and only they could say. Say so plainly (they would have to ask them); never guess or speak for them." : "You don't know the answer: say so plainly, without guessing.";
+      if (a.value === "not_established") return "Nobody has said or settled this: say so plainly (for example, nobody's said), without guessing either way.";
+      const own = (a.provenance ?? []).includes("self");
+      const yesNo = ["yes", "no"].includes(a.value) && ["yes_no", "declarative", "choice", "tag"].includes(a.question_form ?? "");
+      return `The answer to their question${own ? " (about yourself; you know your own history)" : a.answer?.reported ? " (what someone else SAID; report it as theirs, in the past tense)" : ""} -- say only this, plainly, in your own words, adding no numbers, names, places or reasons:\n  ${(a.statements ?? []).map((x) => j(x)).join("\n  ")}${yesNo ? `\n  (Their question is yes/no: your answer is ${a.value.toUpperCase()}.)` : ""}\nSay nothing about anyone else's feelings, history or plans.`;
+    }
     if (f.key === "self_state_answer") {
       const asked = { positive: "excited or eager", tense: "nervous or tense", tired: "tired", wellbeing: "all right" }[f.value?.asked] ?? "that way";
       if (f.value?.answer === "yes") return `They asked if you feel ${asked}: you do. Say so briefly, for yourself only.`;
@@ -239,7 +250,7 @@ function renderContributionTask(packet) {
         clarification: "you were not sure what they meant",
         briefing_instruction: `it is what you were all told at ${b.source ?? "the briefing"}`,
         custody: b.holder_is_self ? "the item is with you" : (b.holder_known === false ? "you do not know who has it" : b.known_by === "briefing" ? "Maxwell said so at the briefing (you did not see it yourself)" : b.known_by === "seen" ? "you can see it" : b.known_by === "seen_earlier" ? "that is where you last saw it" : "that is where it is, as far as you know"),
-        known_information: `${(b.provenance ?? []).includes("briefing") ? "Maxwell told you all at the briefing" : (b.provenance ?? []).includes("observed") ? "you saw it yourself" : (b.provenance ?? []).includes("heard") && b.heard_from?.length ? `${b.heard_from.join(" and ")} said so` : (b.provenance ?? []).includes("self") ? "it is about your own assignment" : (b.provenance ?? []).includes("baseline_field_procedure") ? "it is basic field training" : (b.provenance ?? []).includes("baseline_induction") ? "it is the basic orientation everyone assigned here gets" : "it is what you know about it"}${b.partial ? "; and nobody has told you the rest" : ""}`,
+        known_information: `${(b.provenance ?? []).includes("briefing") ? "Maxwell told you all at the briefing" : (b.provenance ?? []).includes("observed") ? "you saw it yourself" : (b.provenance ?? []).includes("heard") && b.heard_from?.length ? `${[].concat(b.heard_from).join(" and ")} said so` : (b.provenance ?? []).includes("self") ? "it is about your own assignment" : (b.provenance ?? []).includes("baseline_field_procedure") ? "it is basic field training" : (b.provenance ?? []).includes("baseline_induction") ? "it is the basic orientation everyone assigned here gets" : "it is what you know about it"}${b.partial ? "; and nobody has told you the rest" : ""}`,
         custody_history: b.basis === "briefing" ? "Maxwell said so at the briefing" : "you saw it then",
         heard_report: `you heard ${(b.speakers ?? []).join(" and ") || "it"} say it`,
         assignment: "it is your assignment",

@@ -53,10 +53,10 @@ const escapeRe = (value) => String(value).replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
 // understood here; NPC wording keeps the canonical terms (see dialogue-validation).
 const TASK_ALIASES = Object.freeze({
   "verbal-recall": ["observation and verbal recall", "verbal recall", "verbal record", "recall", "recording", "record", "observations", "observation", "notes"],
-  "material-delivery": ["startup materials", "startup material", "startup prerequisite materials", "materials", "material", "delivery", "delivering", "duffle", "the bag", "cargo"],
+  "material-delivery": ["startup materials", "startup material", "startup prerequisite materials", "materials", "material", "delivery", "delivering", "duffle", "duffel", "the bag", "cargo"],
   "layout-compilation": ["layout record", "layout", "compiling", "the record"]
 });
-const TASK_ITEMS = Object.freeze({ "material-delivery": /duffle|startup/i, "layout-compilation": /layout/i, "verbal-recall": null });
+const TASK_ITEMS = Object.freeze({ "material-delivery": /duff(?:le|el)|startup/i, "layout-compilation": /layout/i, "verbal-recall": null });
 const PLACE_ENTITIES = Object.freeze({
   // "backrooms" is a PLAYER synonym only (understood, never spoken by NPCs: see dialogue-validation).
   complex: { id: "complex", kind: "entity", label: "the Complex", names: ["the complex", "complex", "the backrooms", "backrooms"] },
@@ -401,7 +401,14 @@ function briefingKnowledge(run, actorId) {
       // Current procedure is commit-sensitive: it holds only while introductions are open (the canonical
       // handoff state), never as an eternal "next".
       const current = opener?.beat === "LOCAL_INTRODUCTIONS" && opener?.personnel_briefing?.status === "concluded" && (opener?.esd_handoff?.status ?? "introductions-open") === "introductions-open";
-      if (destination && current) {
+      // ED-30 G2: once getting acquainted is complete (every coworker has spoken to the lead about
+      // themselves, or the lead closed it), the next INCOMPLETE step is reporting to the destination. The
+      // instruction itself stays queryable as history (dismissal_instruction below).
+      const acquainted = run.expedition.dialogue_state?.acquaintance?.complete_at != null;
+      if (destination && current && acquainted) {
+        facts.push(grant({ concept: "current_procedure", key: "report_to_next_destination", proposition: `Next we report to ${destination}.`, reported: `next we report to ${destination}`, source_ref: `${WORLDPACK}#briefing_authority.dialogue.dismissal + dialogue_state.acquaintance.complete_at`, commit_sensitive: true, extra: { next_step: `report to ${destination}`, current_step: null }, ...heard(beat) }));
+      }
+      if (destination && current && !acquainted) {
         facts.push(grant({ concept: "current_procedure", key: "briefing_dismissal", proposition: `We're to get acquainted, then report to ${destination}.`, reported: `we're to get acquainted, then report to ${destination}`, source_ref: `${WORLDPACK}#briefing_authority.dialogue.dismissal`, commit_sensitive: true, extra: { next_step: `report to ${destination}`, current_step: "get acquainted with the team" }, ...heard(beat) }));
         facts.push(grant({ concept: "current_action", key: "getting_acquainted", facet: "activity", proposition: "Just getting acquainted, like Maxwell said.", reported: "getting acquainted", source_ref: `${WORLDPACK}#briefing_authority.dialogue.dismissal`, commit_sensitive: true, ...heard(beat) }));
       }
@@ -457,9 +464,20 @@ const UNKNOWN_CLASS = Object.freeze({ CANON_NOT_GRANTED: SEMANTIC_REASON.LEGITIM
  * Structured propositions an authorized line communicated, keyed by the facts that licensed it. Surface
  * wording is never parsed back into meaning. Returns [{ concept, key, facet, entity_ids, reported }].
  */
+// Third-person, past-tense report clauses for a person's own registry answers ("Tonya said it wasn't
+// her first day"): a report is temporally hedged by construction (E4).
+const REPORTED_SELF_CLAUSE = Object.freeze({
+  "person.first_day_at_async": (a) => (a.value === "yes" ? "it was their first day" : "it wasn't their first day"),
+  "person.async_tenure": (a) => ({ first_day: "it was their first day", weeks: "they'd been with ASYNC a few weeks", months: "they'd been with ASYNC a few months", years: "they'd been with ASYNC for years" }[a.answer?.band] ?? null),
+  "person.expedition_experience": (a) => (a.value === "no" ? "it was their first expedition" : "they'd been on expeditions before"),
+  "person.complex_experience": (a) => (a.value === "no" ? "they'd never been in the Complex" : "they'd been in the Complex before"),
+  // Acquaintance is always with someone: the clause names them when the answer did.
+  "person.familiarity": (a) => { const who = String(a.statements?.[0] ?? "").match(/\bmet ([A-Z][\w.]*(?: [A-Z][\w]*)?) today\b/)?.[1] ?? null; return a.value === "no" ? (who ? `they'd only met ${who} today` : "they'd only just met") : "they knew each other"; }
+});
 function propositionsOfPlan(plan, { speaker_id, speaker_name, names = {} } = {}) {
   const out = [];
   if (!plan) return out;
+  if (plan.discourse_function === "compound") return plan.parts.flatMap((p) => propositionsOfPlan(p.plan, { speaker_id, speaker_name, names }));
   const value = (key) => (plan.required_facts ?? []).find((f) => f.key === key)?.value ?? null;
   const role = value("role");
   const assignment = value("current_assignment");
@@ -482,6 +500,20 @@ function propositionsOfPlan(plan, { speaker_id, speaker_name, names = {} } = {})
     const itemId = plan.fact_semantics?.custody?.equipment_id ?? null;
     const heldBy = holder.holder_is_self ? speaker_name : holder.holder_name;
     out.push({ concept: "custody", key: "item_holder", facet: "custody", entity_ids: [itemId].filter(Boolean), reported: `the ${String(holder.label).toLowerCase()} was with ${heldBy === "you" ? "you" : heldBy}`, holder: holder.holder_is_self ? speaker_id : (Object.entries(names).find(([, n]) => n === holder.holder_name)?.[0] ?? null) });
+  }
+  // ED-30: a registry answer about oneself is heard as that person's own statement (reported later in the
+  // past tense, never converted into a present-tense fact about them).
+  const answer = value("predicate_answer");
+  if (answer && !answer.answer?.reported && !answer.answer?.third_party && ["yes", "no", "value"].includes(answer.value)) {
+    const clause = REPORTED_SELF_CLAUSE[answer.predicate]?.(answer) ?? null;
+    if (clause) out.push({ concept: answer.predicate, key: answer.predicate, predicate: answer.predicate, facet: "self_report", entity_ids: [speaker_id].filter(Boolean), polarity: answer.value, reported: clause, ...(answer.answer?.other_id ? { other_id: answer.answer.other_id } : {}) });
+  }
+  const selfState = value("self_state");
+  if (selfState && ["check_in", "social_observation"].includes(plan.discourse_function)) {
+    const affect = (selfState.affect ?? []).filter((a) => !/PLAYER/.test(a));
+    const stance = value("self_state_answer");
+    const predicate = stance?.asked === "tense" ? "person.nervousness" : stance?.asked === "tired" ? "person.fatigue" : stance?.asked === "positive" ? "person.anticipation" : "person.wellbeing";
+    out.push({ concept: predicate, key: predicate, predicate, facet: "self_report", entity_ids: [speaker_id].filter(Boolean), polarity: affect.length ? "affected" : "ordinary", reported: affect.length ? `they were ${affect.join(" and ")}` : (predicate === "person.wellbeing" ? "they were doing all right" : `they weren't especially ${predicate === "person.nervousness" ? "nervous" : predicate === "person.fatigue" ? "tired" : "excited"}`) });
   }
   const procedure = value("current_procedure");
   if (procedure?.next_step) out.push({ concept: "current_procedure", key: "current_procedure", facet: "next_step", entity_ids: [], reported: `${procedure.current_step ? `we ${sentence(procedure.current_step)}, then ` : "we "}${sentence(procedure.next_step)}` });
@@ -571,7 +603,7 @@ function reportedSpeech(run, { actor_id, speaker_id = null, entity_ids = [], con
   for (const p of matches) { const k = `${p.speaker_id}|${p.reported ?? p.text}`; counts.set(k, (counts.get(k) ?? 0) + 1); }
   const seen = new Set();
   const unique = matches.filter((p) => { const k = `${p.speaker_id}|${p.reported ?? p.text}`; if (seen.has(k)) return false; seen.add(k); return true; });
-  return Object.freeze({ status, speaker_id, own_speech: Boolean(own), heard_speaker: bySpeaker.length > 0, claims: unique.slice(-4).map((p) => ({ speaker_id: p.speaker_id, speaker_name: p.speaker_name, epistemic_mode: p.epistemic_mode, key: p.key, concept: p.concept, reported: p.reported, text: p.text ?? null, entity_ids: p.entity_ids, source_event: p.source_event, source_ref: p.source_ref, interaction: p.interaction ?? null, at: p.at, times: counts.get(`${p.speaker_id}|${p.reported ?? p.text}`) ?? 1, ...(p.origin ? { origin: p.origin } : {}) })) });
+  return Object.freeze({ status, speaker_id, own_speech: Boolean(own), heard_speaker: bySpeaker.length > 0, claims: unique.slice(-12).map((p) => ({ speaker_id: p.speaker_id, speaker_name: p.speaker_name, epistemic_mode: p.epistemic_mode, key: p.key, concept: p.concept, reported: p.reported, text: p.text ?? null, ...(p.line ? { line: p.line } : {}), entity_ids: p.entity_ids, source_event: p.source_event, source_ref: p.source_ref, interaction: p.interaction ?? null, at: p.at, times: counts.get(`${p.speaker_id}|${p.reported ?? p.text}`) ?? 1, ...(p.origin ? { origin: p.origin } : {}) })) });
 }
 /** The actor's OWN earlier lines, as propositions (own-speech provenance; never "heard myself"). */
 function ownSpeechPropositions(run, actorId) {
@@ -580,7 +612,7 @@ function ownSpeechPropositions(run, actorId) {
   for (const event of run?.expedition?.dialogue_history ?? []) {
     if (event?.kind !== "speech" || event.speaker_id !== actorId || !event.submission_id) continue;
     const plan = (receipts.get(event.submission_id)?.response_contexts ?? []).find((c) => c.target_worker_id === actorId)?.response_plan ?? null;
-    for (const p of propositionsOfPlan(plan, { speaker_id: actorId, speaker_name: "I" })) out.push({ speaker_id: actorId, speaker_name: "I", epistemic_mode: "own_speech", source_event: event.id ?? null, source_ref: `dialogue_history.${event.submission_id}`, interaction: event.submission_id, at: event.interval ?? null, ...p });
+    for (const p of propositionsOfPlan(plan, { speaker_id: actorId, speaker_name: "I" })) out.push({ speaker_id: actorId, speaker_name: "I", epistemic_mode: "own_speech", source_event: event.id ?? null, source_ref: `dialogue_history.${event.submission_id}`, interaction: event.submission_id, at: event.interval ?? null, line: event.text ?? null, ...p });
   }
   return out;
 }

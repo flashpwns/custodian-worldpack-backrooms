@@ -7,6 +7,7 @@
 // is not unrestricted natural-language inference.
 
 const { resolveEquipmentReferent } = require("./dialogue-discourse");
+const dialogueClaims = require("./dialogue-claims");
 const canonLexicon = require("./canon-lexicon");
 
 const CODES = Object.freeze({
@@ -46,9 +47,9 @@ const ASSISTANT_PERSONA = /\b(?:how (?:can|may|could|might) i (?:help|assist|be 
 const LACK_SAFE = /\b(?:don'?t know|do not know|no idea|no clue|not sure|can'?t say|couldn'?t say|can'?t tell you|couldn'?t tell you|not that i (?:know|recall|remember|noticed|saw|heard)|didn'?t (?:notice|see|catch) anything|don'?t (?:recall|remember)|nothing (?:on|about) that|nothing to (?:add|say|tell)|haven'?t (?:heard|been told)|(?:nobody|no one)(?:'s| has) told me|not that i can think of|can'?t think of|i wouldn'?t know|unsure|not certain|i'?d rather not)\b/i;
 const ABSOLUTE_EXPERIENCE_CLAIM = /\b(?:never|no experience|first time|haven'?t been|have not been|been (?:here|there|in|down)|seen (?:this|the|it) before|done this)\b/i;
 // Functions whose reply is a plain answer/reaction, not a question back.
-const NO_COUNTER_QUESTION = new Set(["report_observation", "greet", "introduce_self", "acknowledge", "close_topic", "joke_or_sarcasm", "social_observation", "warn", "invite_self_description", "ask_role_or_assignment", "ask_item_ownership", "ask_personal_experience", "ask_factual", "request_repetition", "clarify_previous", "ask_heard_confirmation", "check_in", "make_request", "ask_explanation", "ask_next_step", "ask_opinion", "ask_meaning", "ask_response_event"]);
+const NO_COUNTER_QUESTION = new Set(["ask_predicate", "report_observation", "greet", "introduce_self", "acknowledge", "close_topic", "joke_or_sarcasm", "social_observation", "warn", "invite_self_description", "ask_role_or_assignment", "ask_item_ownership", "ask_personal_experience", "ask_factual", "request_repetition", "clarify_previous", "ask_heard_confirmation", "check_in", "make_request", "ask_explanation", "ask_next_step", "ask_opinion", "ask_meaning", "ask_response_event"]);
 const CLARIFY_CUE = /\b(?:(?:what|which|where|when|who)\b[^?]*\b(?:referring|referencing|talking about)|mean|which|what (?:do|are|exactly|thing|part|item)|sorry|pardon|huh|not sure what|didn'?t (?:catch|follow|get)|come again|say again)\b/i;
-const MAX_WORDS = Object.freeze({ report_observation: 22, greet: 6, introduce_self: 10, acknowledge: 9, close_topic: 9, joke_or_sarcasm: 10, social_observation: 10, check_in: 14, warn: 14, express_uncertainty: 16, ask_heard_confirmation: 16, ask_explanation: 24, ask_next_step: 24, ask_opinion: 14, ask_meaning: 30, ask_response_event: 22 });
+const MAX_WORDS = Object.freeze({ attend: 4, ask_predicate: 40, report_observation: 22, greet: 6, introduce_self: 10, acknowledge: 9, close_topic: 9, joke_or_sarcasm: 10, social_observation: 10, check_in: 14, warn: 14, express_uncertainty: 16, ask_heard_confirmation: 16, ask_explanation: 24, ask_next_step: 24, ask_opinion: 14, ask_meaning: 30, ask_response_event: 22 });
 // A motive, feeling or excuse for not answering: never canonical unless the plan supplies it.
 const SILENCE_MOTIVE = /\b(?:because|i thought|i didn'?t (?:realize|realise|think|know (?:you|it|that))|didn'?t (?:realize|realise)|wasn'?t sure (?:you|if|whether|it)|i figured|i assumed|i was (?:busy|distracted|nervous|thinking|focused|waiting|preoccupied|shy|tired|lost|listening|in the middle)|didn'?t want|wasn'?t (?:paying|listening)|zoned out|lost in thought|(?:you )?(?:weren'?t|were not) talking to me|didn'?t know (?:it was|you were|you meant)|thought you (?:were|meant)|not my place|didn'?t catch (?:that|it) was)\b/i;
 // An assignment phrase read as lodging/living arrangements ("staying with" as "living with").
@@ -141,7 +142,7 @@ const OTHERS_APPLY = new Set(["report_observation", "check_in", "invite_self_des
 const OPERATIONAL_TERMS = /\b(?:cameras?|photo\w*|radios?|transceiver|lamps?|flashlights?|worklights?|duffle|bags?|materials?|startup|spectrometer|layout|records?|recording|recall|verbal|observations?|deliver(?:y|ing|ed|ies)?|reconnaissance|recon|outposts?|bermuda|staging|threshold|complex|standard|kv31|briefing|briefed|manifest|cutoff|deadline|noon|\d{1,2}(?::\d{2})?\s*(?:a\.?m\.?|p\.?m\.?)|\d{1,2}:\d{2}|tape|routes?|procedures?|protocols?|missions?|objectives?|assignments?|maxwell|kirk|async|equipment|gear|expedition(?! lead)|survey\w*|compil\w*|courier|layouts?|deploy\w*|departure|depart\w*|(?:at|by|before|until) (?:ten|eleven|twelve|one|two|three)(?: o'?clock)?)\b/gi;
 // A first-person report of what one is doing ("Just compiling the layout record.", "Focused on the materials.").
 const ACTIVITY_CLAIM = /\b(?:i(?:'m| am)|we(?:'re| are)|just|currently|busy|still)\s+(?:\w+ly\s+)?(\w{3,}ing)\b|\bfocused on\b/gi;
-const SAFE_ACTIVITY = new Set(["doing", "feeling", "getting", "going", "saying", "asking", "hanging", "managing", "holding", "kidding", "joking", "wondering", "being", "meaning", "thinking", "glad", "morning", "nothing", "something", "anything", "everything"]);
+const SAFE_ACTIVITY = new Set(["doing", "feeling", "getting", "going", "saying", "asking", "repeating", "quoting", "hanging", "managing", "holding", "kidding", "joking", "wondering", "being", "meaning", "thinking", "glad", "morning", "nothing", "something", "anything", "everything"]);
 const licensedTerm = (term, blob, playerText) => {
   const t = term.toLowerCase().replace(/s$/, "");
   const stem = t.length > 5 ? t.slice(0, 5) : t;
@@ -190,9 +191,12 @@ function knownAnswerText(value) {
 const OBJECT_VERBS = "(?:pick(?:ed|s|ing)?|grab(?:bed|s|bing)?|took|take|taking|carry|carried|carrying|carries|hold|held|holding|holds|hand(?:ed|ing)?|gave|give|giving|pocket(?:ed)?|brought|bring|found|find|finding|got|has|have|had|using|used|use|uses|lost|dropped|drop)";
 // Canonical terminology in NPC speech: the Threshold is never a "portal", a "gate device" or a handheld
 // thing. (The player's own synonyms are understood by interpretation; coworkers keep institutional terms.)
+// Out-of-world vocabulary: the speaker is a person, not software (review F13).
+const OUT_OF_WORLD_TERMS = /\b(?:(?:the|my|this|a|an|language|ai) model|as an ai|an ai\b|\bai (?:prompt|model|assistant)|my (?:prompt|instructions|system prompt|training)|chatbot|large language|llm|the prompt)\b/i;
 const NON_CANONICAL_TERMS = /\bportals?\b|\bgate\s+device\b|\bhandheld\s+threshold\b|\bthreshold\s+(?:device|gadget|unit)\b|\bdimensional\s+(?:gate|door|rift)\b|\bthe\s+backrooms\b/i;
 function validateOntology(rawSpeech) {
   const speech = String(rawSpeech ?? "");
+  if (OUT_OF_WORLD_TERMS.test(speech)) return reject(CODES.FORBIDDEN, `out-of-world terminology: "${speech.match(OUT_OF_WORLD_TERMS)[0]}"`);
   if (NON_CANONICAL_TERMS.test(speech)) return reject(CODES.FORBIDDEN, `non-canonical terminology: "${speech.match(NON_CANONICAL_TERMS)[0]}"`);
   for (const entity of Object.values(canonLexicon.CANONICAL_ENTITIES)) {
     if (entity.portable) continue;
@@ -206,13 +210,55 @@ function validateOntology(rawSpeech) {
 /**
  * @returns {{ok:true}|{ok:false, code:string, reason:string}}
  */
-function validateContribution(contribution, rawSpeech, { player_text = null, speaker_name = null } = {}) {
+function validateContribution(contribution, rawSpeech, options = {}) {
+  const { player_text = null, speaker_name = null, speaker_id = null, people = [], entities = [], resolveMentions = null, prior = null, compound_part = false } = options;
   if (!contribution) return { ok: true };
+  // ED-30 F12: a compound line answers several acts; every part is validated against the whole line with
+  // the other parts' facts licensed (not required), and the union is the ceiling.
+  if (contribution.discourse_function === "compound") {
+    // The WHOLE line keeps the shape rules a part is excused from: no unrequested question, and one combined
+    // word ceiling for the parts (review F9).
+    const whole = String(rawSpeech ?? "");
+    if (!(contribution.parts ?? []).some((p) => p.may_ask_clarifying_question) && asksQuestion(whole)) return reject(CODES.SHAPE, "asks a question the plan does not authorize");
+    const cap = (contribution.parts ?? []).reduce((n, p) => n + (MAX_WORDS[p.discourse_function] ?? 30), 0);
+    if (whole.split(/\s+/).filter(Boolean).length > cap) return reject(CODES.SHAPE, `a combined answer longer than ${cap} words`);
+    // Each part is judged on the sentences that answer IT (a mixed "No, ... Yes, ..." answer is two answers).
+    const sentences = whole.split(/(?<=[.!?])\s+/).filter(Boolean);
+    const claimed = new Set();
+    for (const [index, part] of (contribution.parts ?? []).entries()) {
+      const predicate = (part.required_facts ?? []).find((f) => f.key === "predicate_answer")?.value?.predicate ?? null;
+      const own = predicate ? sentences.filter((sn) => dialogueClaims.extractPropositions(sn, { people: options.people ?? [] }).some((p) => p.families.includes(predicate))) : [];
+      for (const sn of own) claimed.add(sn);
+      const partSpeech = own.length ? own.join(" ") : whole;
+      const others = (contribution.parts ?? []).filter((_, i) => i !== index).flatMap((p) => [...(p.required_facts ?? []), ...(p.optional_facts ?? [])]);
+      const verdict = validateContribution({ ...part, optional_facts: [...(part.optional_facts ?? []), ...others], same_turn_prior_responses: contribution.same_turn_prior_responses ?? [] }, partSpeech, { ...options, compound_part: true });
+      if (!verdict.ok) return { ...verdict, reason: `part ${index + 1} (${part.discourse_function}): ${verdict.reason ?? verdict.code}` };
+    }
+    // Sentences no part claims are still checked -- against everything the parts license together (review N2).
+    const rest = claimed.size ? sentences.filter((sn) => !claimed.has(sn)).join(" ") : "";
+    if (rest) {
+      const union = { discourse_function: "compound", required_facts: [], optional_facts: (contribution.parts ?? []).flatMap((p) => [...(p.required_facts ?? []), ...(p.optional_facts ?? [])]), same_turn_prior_responses: contribution.same_turn_prior_responses ?? [] };
+      const ontologyRest = validateOntology(rest);
+      if (!ontologyRest.ok) return ontologyRest;
+      const claimsRest = dialogueClaims.validateClaims(rest, union, { people: options.people ?? [], speaker_id: options.speaker_id ?? null, speaker_name: options.speaker_name ?? null, entities: options.entities ?? [], resolveMentions: options.resolveMentions ?? null, prior: (contribution.same_turn_prior_responses ?? []).map((p) => p?.text).filter(Boolean), player_text: options.player_text ?? null });
+      if (!claimsRest.ok) return { ...claimsRest, reason: `unanswered sentence: ${claimsRest.reason ?? claimsRest.code}` };
+      const unlicensedRest = unlicensedClaims(rest, union, options.player_text ?? null);
+      if (unlicensedRest.length) return reject(CODES.FORBIDDEN, `states something this turn does not authorize: "${unlicensedRest.slice(0, 3).join('", "')}"`);
+      if (/\b(?:fraud|liar|idiot|stupid|terrified|scared|furious)\b/i.test(rest)) return reject(CODES.FORBIDDEN, `an aside no part licenses: "${rest}"`);
+    }
+    return { ok: true };
+  }
   // Typographic apostrophes/quotes ("We’ll") are normalized so no rule is bypassed by punctuation style.
   const speech = String(rawSpeech ?? "").replace(/[\u2018\u2019\u02bc]/g, "'").replace(/[\u201c\u201d]/g, '"').trim();
   const ontology = validateOntology(speech);
   if (!ontology.ok) return ontology;
   const fn = contribution.discourse_function;
+  // ED-30: an attention response is a word or two of listening, nothing more.
+  if (fn === "attend") return /^\s*(?:yes|yeah|yep|mm+|hm+|mhm|what'?s up|what is it|i'?m (?:here|listening)|here|go ahead|listening)\b[\s?.!,]*$/i.test(speech) ? { ok: true } : reject(CODES.SHAPE, "an attention response is a word or two");
+  // ED-30 H1-H5: personal claims about anyone but the speaker (unless an attributed licensed report),
+  // unlicensed self claims, manufactured precision, the entity ceiling, and answer responsiveness.
+  const claims = dialogueClaims.validateClaims(speech, contribution, { people, speaker_id, speaker_name: speaker_name ?? requiredValue(contribution, "name")[0] ?? null, entities, resolveMentions, prior: prior ?? (contribution.same_turn_prior_responses ?? []).map((p) => p?.text).filter(Boolean), player_text });
+  if (!claims.ok) return claims;
   const forbidden = new Set(contribution.forbidden_claims ?? []);
   const sents = sentences(speech);
   const allowedBlob = JSON.stringify([contribution.required_facts, contribution.optional_facts, contribution.antecedent, contribution.referents, contribution.same_turn_prior_responses]).toLowerCase();
@@ -244,7 +290,10 @@ function validateContribution(contribution, rawSpeech, { player_text = null, spe
   if (PLAN_VOCAB.test(speech)) return reject(CODES.FORBIDDEN, "internal bookkeeping vocabulary");
   // A first-person perception ("I saw something strange") is an observation claim: only a plan that carries
   // an observation (or custody the speaker saw) licenses one.
-  if (fn !== "report_observation" && PERCEPTION_CLAIM.test(speech) && !/observ|"known_by":"seen|"kind":"observation"|own-report/.test(allowedBlob)) return reject(CODES.FORBIDDEN, `claims a perception the plan does not supply: "${speech.match(PERCEPTION_CLAIM)[0]}"`);
+  // A verbatim quotation of a line the plan supplies (a repetition: 'I just said, "I saw it myself."') claims
+  // nothing new; only the unquoted words are checked for perception claims.
+  const unquoted = String(speech).replace(/[“”]/g, '"').replace(/"([^"]+)"/g, (whole, inner) => (allowedBlob.includes(JSON.stringify(inner).slice(1, -1).toLowerCase()) || allowedBlob.includes(inner.toLowerCase()) ? "" : whole));
+  if (fn !== "report_observation" && PERCEPTION_CLAIM.test(unquoted) && !/observ|"known_by":"seen|"kind":"observation"|own-report/.test(allowedBlob)) return reject(CODES.FORBIDDEN, `claims a perception the plan does not supply: "${unquoted.match(PERCEPTION_CLAIM)[0]}"`);
   // A suggested course of action is new content unless the plan (or the player's own words) supplied it.
   if (fn !== "report_observation" && fn !== "warn") {
     const directive = speech.match(INVENTED_DIRECTIVE);
@@ -267,7 +316,7 @@ function validateContribution(contribution, rawSpeech, { player_text = null, spe
     const why = speech.match(INVENTED_RATIONALE);
     if (why && !allowedBlob.includes(why[0].toLowerCase()) && !(player_text && new RegExp(`\\b${why[0].replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}`, "i").test(player_text))) return reject(CODES.FORBIDDEN, `invented rationale: "${why[0]}"`);
   }
-  if (MAX_WORDS[fn] && words(speech).length > MAX_WORDS[fn]) return reject(CODES.SHAPE, "a brief social line is expected");
+  if (!compound_part && MAX_WORDS[fn] && words(speech).length > MAX_WORDS[fn]) return reject(CODES.SHAPE, "a brief social line is expected");
   // Echoing the player's own words back is not an answer or a clarification.
   if (player_text && !REPAIR_FUNCTIONS.has(fn) && contentWords(player_text).length >= 2 && coverage(speech, player_text) >= 0.8 && coverage(player_text, speech) >= 0.6) return reject(CODES.SHAPE, "echoes the player instead of responding");
   const norm = (t) => words(t).join(" ");
@@ -285,7 +334,10 @@ function validateContribution(contribution, rawSpeech, { player_text = null, spe
   // Response shape: a question is authorized only by a clarification plan. Every other plan answers,
   // reacts or acknowledges; an unrequested question (help-desk "Is there a procedure I should follow?")
   // violates it, question mark or not.
-  if (fn !== "report_observation" && fn !== "ambiguous_reference" && !contribution.may_ask_clarifying_question && asksQuestion(speech)) return reject(CODES.SHAPE, NO_COUNTER_QUESTION.has(fn) ? "answers with a question" : "asks a question the plan does not authorize");
+  if (!compound_part && fn !== "report_observation" && fn !== "ambiguous_reference" && !contribution.may_ask_clarifying_question && asksQuestion(speech)) return reject(CODES.SHAPE, NO_COUNTER_QUESTION.has(fn) ? "answers with a question" : "asks a question the plan does not authorize");
+  // A coworker's gender is not canonical: a line that names one must not give them "he"/"she" (fail closed;
+  // the fallback uses the name or "they"). Lines about Maxwell, whose pronoun canon establishes, are exempt.
+  if ((people ?? []).some((p) => new RegExp(`\\b${String(p.name ?? "").replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\b`, "i").test(speech)) && /\b(?:she|he|her|him|his|hers|herself|himself|she's|he's)\b/i.test(speech) && !/\b(?:maxwell|kirk)\b/i.test(speech)) return reject(CODES.SHAPE, "assigns a coworker a gender that canon does not establish");
   // Contribution ceiling: every operational claim must be licensed by THIS turn's plan.
   if (fn !== "report_observation") {
     const unlicensed = unlicensedClaims(speech, contribution, player_text);
@@ -484,7 +536,13 @@ function validateContribution(contribution, rawSpeech, { player_text = null, spe
     }
     case "ask_explanation": {
       if (contribution.may_ask_clarifying_question) break;
-      const basis = explainedBasis ?? { kind: "unavailable" };
+      // ED-30: a registry answer's basis is voiced as its provenance (own history, briefing, heard, nothing to go on).
+      const basis = explainedBasis?.kind === "predicate_answer"
+        ? (["unknown", "not_established"].includes(explainedBasis.value) ? { kind: "no_known_fact", uncertainty: /^person\./.test(explainedBasis.predicate ?? "") ? "no_established_personal_history" : "not_told" }
+          : (explainedBasis.provenance ?? []).includes("briefing") ? { kind: "briefing_instruction" }
+            : (explainedBasis.provenance ?? []).includes("heard") ? { kind: "heard_report" }
+              : { kind: "self_history", predicate: explainedBasis.predicate })
+        : (explainedBasis ?? { kind: "unavailable" });
       const asserted = withoutNegatedFeelings(speech);
       if (POSITIVE_AFFECT_CLAIM.test(asserted)) return reject(CODES.FORBIDDEN, "claims a feeling canonical self-state does not hold");
       // Explaining an answer that had no established history: no history of either polarity may appear.
@@ -512,7 +570,7 @@ function validateContribution(contribution, rawSpeech, { player_text = null, spe
       }
       // A reason that is only a feeling, a lack of basis, an unclear question or small talk adds almost no
       // content of its own: new subject matter beyond the basis is an invented reason.
-      if (["self_state", "no_known_fact", "clarification", "social", "unavailable"].includes(basis.kind)) {
+      if (["self_state", "no_known_fact", "clarification", "social", "unavailable", "self_history"].includes(basis.kind)) {
         const allowedWords = new Set([...contentWords(JSON.stringify(basis)), ...contentWords(allowedBlob), ...EXPLANATION_FRAME_WORDS]);
         const novel = contentWords(speech).filter((w) => ![...allowedWords].some((k) => sameStem(k, w)));
         if (novel.length > 2) return reject(CODES.FORBIDDEN, `invented rationale beyond the basis: "${novel.slice(0, 4).join(" ")}"`);
@@ -549,6 +607,14 @@ function validateContribution(contribution, rawSpeech, { player_text = null, spe
       if (contribution.may_ask_clarifying_question) break;
       const reported = requiredValue(contribution, "reported_speech")[0];
       if (!reported) {
+        // On a topic the speaker holds no report about, they can only say they can't tell -- and must not claim
+        // the person did or didn't say it.
+        const onTopic = ["not_heard_on_topic", "report_topic_not_held"].includes(requiredValue(contribution, "uncertainty")[0]?.kind);
+        if (onTopic) {
+          if (!/\b(?:couldn'?t|could not|can'?t|cannot) (?:tell|say)\b|\bno idea\b|\bdon'?t know\b/i.test(speech)) return reject(CODES.UNMET, "the speaker can only say they can't tell what was said about that");
+          if (/\b(?:didn'?t|did not|never) (?:say|mention)\b|\bsaid nothing\b/i.test(speech)) return reject(CODES.FORBIDDEN, "claims the person did not say it");
+          break;
+        }
         if (!/\b(?:didn'?t|did not|never) (?:hear|catch)\b|\bnot that i (?:heard|recall|remember)\b|\bdon'?t (?:recall|remember)\b/i.test(speech)) return reject(CODES.UNMET, "the speaker did not hear it and must say so");
         break;
       }
@@ -557,6 +623,16 @@ function validateContribution(contribution, rawSpeech, { player_text = null, spe
       const attributed = claims.some((c) => (c.epistemic === "player_claim" ? /\byou (?:said|told|mentioned)\b/i.test(speech) : new RegExp(`\\b${String(c.speaker_name ?? "").replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\b`, "i").test(speech) && /\b(?:said|says|told|mentioned|according to)\b/i.test(speech)));
       if (!attributed) return reject(CODES.UNMET, "reported speech must be attributed to whoever said it");
       if (!claims.some((c) => coverage(speech, c.reported ?? c.quote ?? "") >= 0.4)) return reject(CODES.UNMET, "does not report what was said");
+      // Every reported clause ("X said A, and that B") must be one of the heard claims -- same content, same
+      // polarity, same PERSON ("I'm on observation" is not "he's on observation").
+      const firstPerson = (t) => /\b(?:i|i'm|i've|i'd|me|my|mine|myself)\b/i.test(String(t));
+      const negatedText = (t) => /\b(?:not|never|no|n't|nothing|nobody)\b|n't\b/i.test(String(t));
+      const heldTexts = claims.map((c) => String(c.reported ?? c.quote ?? "")).filter(Boolean);
+      const unabbreviated = speech.replace(/\b(Dr|Mr|Mrs|Ms|St|Prof)\./g, "$1");
+      const reportedParts = [...unabbreviated.matchAll(/\b(?:said|says|told (?:me|us)|mentioned)\s+(?:that\s+)?([^.!?]+)/gi)].flatMap((m) => m[1].split(/,?\s+and that\s+/i)).map((x) => x.trim()).filter((x) => x && !/^"/.test(x));
+      for (const part of reportedParts) {
+        if (!heldTexts.some((h) => coverage(part, h) >= 0.6 && firstPerson(part) === firstPerson(h) && negatedText(part) === negatedText(h))) return reject(CODES.FORBIDDEN, `reports something that was not said: "${part}"`);
+      }
       if (claims.some((c) => c.epistemic === "player_claim") && PLAYER_CLAIM_ENDORSEMENT.test(speech)) return reject(CODES.FORBIDDEN, "endorses the player's claim as true");
       break;
     }

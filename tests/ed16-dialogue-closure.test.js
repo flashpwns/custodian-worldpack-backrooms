@@ -217,7 +217,8 @@ test("ED-1.6 — plan-carrying factual/personal turns lose unscored memory bags,
     packets.length = 0;
     await say(state, "What time do we leave?");
     const p = packets.at(-1);
-    assert.equal(p.authorized_contribution.discourse_function, "ask_factual");
+    // ED-30: the schedule is the registry predicate mission.schedule (a plan-carrying factual turn).
+    assert.equal(p.authorized_contribution.discourse_function, "ask_predicate");
     assert.equal(p.speaker_shell, null);
     assert.deepEqual(p.visible_context.visible_objects, []);
     assert.deepEqual(p.speaker.memories.filter((m) => !m.relevance), [], "no unscored memory bag");

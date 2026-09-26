@@ -4,7 +4,7 @@ const VERSION = "yellow-beast-q4-interaction-envelope@v2";
 const CHANNELS = Object.freeze(["action", "local", "standard"]);
 const clone = (value) => structuredClone(value);
 
-function record(expedition, { channel, speaker = "You", speaker_id = null, targets = [], recipient_type = null, recipient_id = null, recipient_ids = [], listeners = [], player_text = null, attempted_behavior = null, eligibility = "eligible", delivery = "not-applicable", time_cost = 0, canonical_effects = [], observer_knowledge = [], presentation = {}, response_speaker = null, response_speaker_id = null, response_owners = [], responses = [], response_listeners = [], location_id = null, submission_id = null, source = "player", requested_action = null, address = null, interpretation = null }) {
+function record(expedition, { channel, speaker = "You", speaker_id = null, targets = [], recipient_type = null, recipient_id = null, recipient_ids = [], listeners = [], player_text = null, attempted_behavior = null, eligibility = "eligible", delivery = "not-applicable", time_cost = 0, canonical_effects = [], observer_knowledge = [], presentation = {}, response_speaker = null, response_speaker_id = null, response_owners = [], responses = [], response_listeners = [], location_id = null, submission_id = null, source = "player", requested_action = null, address = null, interpretation = null, turn = null }) {
   if (!expedition || !CHANNELS.includes(channel)) throw new Error("Q4 interaction requires a supported channel");
   expedition.interaction_history ??= [];
   const interaction = {
@@ -45,6 +45,9 @@ function record(expedition, { channel, speaker = "You", speaker_id = null, targe
     // untargeted, the addressed ids and how the address was established (vocative, greeting, chip,
     // group language, inherited thread). Decided by code, never by wording.
     ...(address ? { address: clone(address) } : {}),
+    // ED-30: the compositional analysis of the player's line (clauses, acts, relation, predicate, the
+    // request ids it opened or re-opened). Derived bookkeeping; the player's words are player_text.
+    ...(turn ? { turn: clone(turn) } : {}),
     ...(interpretation ? { interpretation: clone(interpretation) } : {})
   };
   expedition.interaction_history.push(interaction);

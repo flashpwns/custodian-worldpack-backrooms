@@ -104,7 +104,7 @@ function setup(seed, provider) {
 
 test("ED-5 — positive known answer: only the knower answers; the fact reaches the contribution, the model, and the fallback", async () => {
   const packets = [];
-  const provider = { name: "ed5-capture", model: "v1", async presentLocal(packet) { packets.push(packet); return { version: VERSION, observer_id: packet.speaker.observer_id, speech: "I checked the utility room and I was fine." }; } };
+  const provider = { name: "ed5-capture", model: "v1", async presentLocal(packet) { packets.push(packet); return { version: VERSION, observer_id: packet.speaker.observer_id, speech: "I checked the utility room." }; } };
   const rejecting = { name: "ed5-reject", model: "v1", async presentLocal(packet) { return { version: VERSION, observer_id: packet.speaker.observer_id, speech: "I saw a strange glowing door and everything was terrifying." }; } };
   const a = setup("ed5-known", provider);
   const b = setup("ed5-known", rejecting);
@@ -126,7 +126,9 @@ test("ED-5 — positive known answer: only the knower answers; the fact reaches 
     assert.ok(known, "the known answer is a plan fact in the contribution the model receives");
     assert.equal(known.value.kind, "own-report");
     assert.equal(known.value.checked_location, "utility room");
-    assert.equal(spoken[0].text, "I checked the utility room and I was fine.", "accepted model wording using only that fact");
+    // ED-30 (L8/H2): "... and I was fine" would add a self-state the plan does not license; the accepted
+    // wording states only the known answer.
+    assert.equal(spoken[0].text, "I checked the utility room.", "accepted model wording using only that fact");
 
     const beforeB = b.session.run.expedition.dialogue_history.length;
     await b.service.submitQ4Communication({ world_id: b.worldId, channel: "local", text: "What happened while we were apart?" });

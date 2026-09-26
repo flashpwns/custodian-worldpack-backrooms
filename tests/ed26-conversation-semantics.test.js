@@ -356,7 +356,13 @@ test("human sequences A–F — semantics through the production service", async
     const a1 = await turn(state, "Are you all excited for day one?");
     assert.equal(a1.fn, "check_in");
     assert.equal(a1.owners.length, state.ids.length);
-    for (const line of a1.spoken) assert.doesNotMatch(line.text, /don'?t know|excited|nervous|scared/i);
+    // ED-30: the authored first-day observer's nerves are canonical self-state (personhood baseline); nobody
+    // claims excitement, fear or ignorance of their own feelings, and nobody else claims nerves.
+    const firstDay = state.team.find((m) => m.archetype === "first-day-observer");
+    for (const line of a1.spoken) {
+      assert.doesNotMatch(line.text, /don'?t know|excited|scared/i);
+      if ((line.speaker_id ?? null) !== (firstDay?.personnel_id ?? firstDay?.id)) assert.doesNotMatch(line.text, /nervous/i);
+    }
     const a2 = await turn(state, "What makes you say that?");
     assert.equal(a2.contexts[0].response_plan.required_facts[0].value.kind, "self_state");
     // B
@@ -365,10 +371,17 @@ test("human sequences A–F — semantics through the production service", async
     const b2 = await turn(state, "I mean for the day");
     assert.equal(b2.contexts[0].semantic_frame.procedure_scope, "day");
     // C
+    // ED-30: "there" is the place the previous answer named (Equipment Staging); whether the speaker has been
+    // there is not settled by canon, so the registry answer is not_established (never an invented yes/no),
+    // and "why?" is explained by exactly that basis.
     const c1 = await turn(state, "Have you been there before?");
-    assert.equal(c1.contexts[0].response_plan.required_facts[0].value.kind, "no_established_personal_history");
+    const c1answer = c1.contexts[0].response_plan.required_facts[0].value;
+    assert.equal(c1answer.predicate, "person.complex_experience");
+    assert.equal(c1answer.value, "not_established");
     const c2 = await turn(state, "Why do you say that?");
-    assert.equal(c2.contexts[0].response_plan.required_facts[0].value.uncertainty, "no_established_personal_history");
+    assert.equal(c2.contexts[0].response_plan.required_facts[0].value.kind, "predicate_answer");
+    assert.equal(c2.contexts[0].response_plan.required_facts[0].value.value, "not_established");
+    assert.doesNotMatch(c2.spoken[0].text, /\b(?:never been|I have been|I've been)\b/i);
     // D
     await turn(state, "Who has the field camera?");
     const d2 = await turn(state, "How do you know?");

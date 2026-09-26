@@ -1,5 +1,72 @@
 # Yellow Beast Implementation State
 
+## ED-30 Compositional Conversation, Dialogue Information State & Personhood Convergence — 2026-09-26
+
+- **Architecture: one turn pipeline.** Every LOCAL line now goes through the same staged pipeline, with the legacy frame builder kept as input:
+
+  | Stage | Module | What it does |
+  | --- | --- | --- |
+  | Normalize | `tools/dialogue-normalize.js` | Repairs apostrophes, chat slang and common typos; closed-vocabulary name repair; "were" → "we're" decided by syntax. The raw line is preserved. |
+  | Segment and acts | `tools/dialogue-acts.js` | Clauses, markers, politeness leads/tails, vocatives vs mentions, speech acts, indirect-question unwrapping, unpunctuated chat questions. |
+  | Analyze | `tools/dialogue-turn.js` | Addressees, relation (repair / ellipsis / attention / answer), completeness gate, reconciliation with the legacy frame, `finalizeFrame`. |
+  | Resolve | `tools/dialogue-resolvers.js` | Answers registry predicates from canonical state. |
+  | Plan | existing planner | Builds the response plan. |
+  | Validate | `tools/dialogue-claims.js` (H1–H5) plus the existing validators | Checks every candidate line. |
+  | Commit | ledger (`tools/dialogue-state.js`) | Records what was answered. |
+
+  - **Semantic Registry** (`tools/dialogue-registry.js`): one declarative table of predicates and facets. Parser, planner, validator, resolver and tests all read it; J14 proves that a new facet is data plus one resolver.
+  - **Dialogue Information State** (`run.expedition.dialogue_state`): the request ledger, activities, repairs, acquaintance, and a bounded learning-hook log that holds references only.
+  - **Personhood** (`tools/dialogue-personhood.js`, `data/worldpacks/clear-q4/personhood-constraints.json`): archetype-constrained profiles, self-state dimensions and history.
+  - **C6 seams, defined but not built** (`tools/dialogue-agents.js`): speaker agenda (always empty), belief view, and a need/goal read that returns "not established".
+- **Laws enforced in code.**
+  - **Third-party state.** Another person's private state or history is only ever an attributed report of what was heard, with matching content and polarity, or "you'd have to ask them".
+  - **Satisfaction.** A social reply never satisfies a question.
+  - **Inverted and count questions.** Inverted questions ("Is this your first time?") and count questions are answered correctly.
+  - **Tier 2 fills only real gaps.** The Tier-2 advisory (v2, constrained JSON schema) may fill only gaps that Tier 1 reports, and only from spans the player actually typed.
+  - **Provider independence.** Tested by semantic digest across fallback, garbage, throwing, scripted and leaky providers.
+- **Owner decisions made fail-closed and recorded for review:**
+  - Veteran-doctor prior Complex/expedition experience: a generated "some" band, overridable in data.
+  - Acquaintance is complete when every coworker has introduced themself, or when the player closes the round.
+  - "There" defaults to the Complex only for experience questions, and only once the conversation has an anchor.
+  - Coworker gender is not established. Lines use names or "they"; he/she for a coworker is rejected.
+  - The wording for a place history the profile does not settle is "I couldn't say for sure."
+- **Tooling:**
+  - `npm run dialogue:repl` (the production service from a terminal);
+  - `dialogue:replay` (JSONL transcript regression);
+  - `dialogue:eval` (corpus scorer);
+  - `dialogue:fuzz` (seeded invariant fuzzer);
+  - developer-only `getDialogueTurnTrace` / `exportDialogueTranscript`.
+
+  Docs: `docs/dialogue/TRANSCRIPT_REGRESSION.md` and `docs/decisions/ed30-dialogue-dependencies.md`. Added fast-check as a devDependency only. Neither NLP library was adopted: the bake-off numbers are in the decision record.
+- **Tests:**
+  - `tests/ed30a`–`ed30d`: J4 trace, stage goldens, J5 metamorphic (fast-check), J6 minimal pairs, J7/J8 matrices, J9–J11, J12 personhood, J13 fuzzer, J14 plug-in, J16 independence, J17 cold reload, M1 trace, I6 transcripts.
+  - All findings from the independent reviews (A7) are pinned as tests.
+  - Existing ed tests were updated only where they encoded the older plan shape: ed2, ed5, ed15, ed16, ed26, ed29.
+- **Measured (ED-30 report has the full tables):**
+  - **Dev corpus:** 143 items, 100% on every field.
+  - **Held-out corpus** (338 items, SHA-256 e3a1e6f9…; blind-authored, measured twice as the brief allows).
+
+    | Run | Speech act | Addressee | Predicate | Relation | Cardinality | Temporal | Question form | Clarify rate | Confident-wrong |
+    | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+    | Run 1 | 77.5 | 60.1 | 56.8 | 75.1 | 68.9 | 87.9 | 78.1 | 25.7 | 39.6 |
+    | Run 2 (after class fixes on dev) | 93.5 | 64.2 | 83.1 | 86.4 | 78.4 | 94.4 | 81.4 | 12.7 | 35.5 |
+    | Run 2, convention-mapped | 93.5 | 85.2 (92.9 incl. rotation-policy items) | 83.1 | 86.4 | 84.9 | 94.4 | 81.4 | 12.7 | 14.8 |
+
+    Convention mapping means "untargeted" counted as "group" for an unaddressed room question, and "each_self_concise" counted as "each_self". **The L2 held-out gates are NOT met.**
+  - **Metamorphic:** 1,752 single-transform variants plus fast-check composed transforms (seed 30005), 0 failures.
+  - **Fuzz:** 3,000 turns across three providers, 0 invariant violations.
+  - **Real model** (Gemma 4 E4B, pinned llama.cpp): five scripted sessions, 149 turns. 0 semantic mismatches against the reviewed deterministic run, 0 accepted private-state claims, 0 accepted nonresponsive lines, 0 dropped questions.
+  - **Independent reviews:** two rounds. All blocking findings fixed and pinned.
+  - **Full suite, per file:** 175 files, 1,419 tests, 1,342 pass, 77 fail. The baseline was 171 files, 1,361 tests, 1,284 pass, 77 fail, and the 77 failing tests are the identical pre-existing set. The verification inventory is back to its 57 pre-existing errors; ED-30 added none.
+  - **Performance:** Tier 1 costs 0.21 / 0.35 ms (p50/p90). Per-turn persistence cost grows with conversation length because the whole save is cloned and hashed on every persist. This is pre-existing and flagged for a separate incremental-persistence pass.
+- **Design decisions needed from the owner.** Each is recorded here and implemented fail-closed until decided.
+  1. **Follow-up routing.** Untargeted follow-ups currently rotate to the least-recently-spoken knower (ED-29 fairness). The blind corpus author expected them to go to the person who just spoke, and 26 held-out items differ on this alone.
+  2. **Acknowledging remarks.** Should ordinary remarks and sarcasm get one short acknowledgment (current behaviour) or silence (the blind author's reading)?
+  3. **Veteran doctor's history.** The prior Complex/expedition experience band is currently "some".
+  4. **"There".** Should "there" default to the Complex once the conversation has an anchor?
+  5. **Coworker genders.** None are established; lines use names or "they".
+- **Not in scope.** The known raw-media provenance failure was not touched. Dialogue is not declared frozen.
+
 ## Day-1 Canon Ratification + Knowledge Completion + Dialogue Convergence Pass — 2026-09-25
 
 - **Owner decisions applied (this pass).**

@@ -204,10 +204,15 @@ test("ED-1.5 — factual turns receive only plan facts, never the speaker's broa
     await say(state, `${member.first_name}, what time do we leave?`);
     const packet = packets.at(-1);
     assert.deepEqual(packet.known_facts, [], "no duplicate top-level fact surface");
-    const facts = packet.authorized_contribution.required_facts.filter((f) => f.key === "known_fact").map((f) => f.value.text);
-    assert.deepEqual(facts, ["The departure cutoff is at one o'clock."], "only the topic-matched fact is authorized");
+    // ED-30: "what time do we leave?" is the registry predicate mission.schedule; its resolver reads the
+    // speaker's own observation record, so the authorized material is still exactly the topic-matched fact.
+    const facts = packet.authorized_contribution.required_facts.flatMap((f) => (f.key === "known_fact" ? [f.value.text] : f.key === "predicate_answer" ? f.value.statements : []));
+    // The briefing's schedule grant (canonical knowledge this speaker was present for) outranks a loose
+    // observation note; either way exactly one schedule statement is authorized and nothing else.
+    assert.equal(facts.length, 1, "exactly one schedule fact is authorized");
+    assert.match(facts[0], /cutoff|departure|one o'clock|1:00/i, "only the topic-matched fact is authorized");
     assert.ok(!JSON.stringify(packet).includes("loose cable"));
-    assert.equal(packet.authorized_contribution.required_facts[0].key, "known_fact");
+    assert.ok(["known_fact", "predicate_answer"].includes(packet.authorized_contribution.required_facts[0].key));
   } finally { cleanup(state); }
 });
 

@@ -480,6 +480,9 @@ function describeSelfState(member) {
   if (moved("urgency") && state.urgency > base.urgency) affect.push("feeling pressed for time");
   if (moved("fatigue") && state.fatigue > base.fatigue) affect.push("tired");
   if (moved("trust_player") && state.trust_player < base.trust_player) affect.push("guarded with PLAYER");
+  // The authored personhood baseline (a first-day hire's nerves) is canonical self-state too; an actual
+  // stress move already says it.
+  if (member?.personhood?.baseline?.nervousness === "elevated" && !affect.includes("tense and under some stress")) affect.push("a little nervous");
   return Object.freeze({ state: affect.length ? "affected" : "ordinary", affect: Object.freeze(affect) });
 }
 

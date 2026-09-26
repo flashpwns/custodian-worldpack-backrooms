@@ -524,8 +524,12 @@ test("advisory — addressee span is language only: verbatim, resolved by code t
   try {
     const recovered = await turn(state, `so what's the deal with your work ${n2}`);
     if (calls) {
-      assert.match(lastPrompt, /addressee_text_span/);
-      assert.equal(recovered.interaction.address.form, "advisory_span");
+      // ED-30: the v2 advisory offers the present people as opaque labels (the v1 prompt asked for a span);
+      // either way the model's words are language only and code maps them to a present coworker. Tier 1
+      // may now resolve the clause-final name itself (a trailing vocative).
+      assert.match(lastPrompt, /addressee_text_span|People at the table \(addressee labels\): (?:p\d=\w+(?:, )?)+/);
+      assert.doesNotMatch(lastPrompt, /yb-personnel|q4-player/, "no ids reach the advisory");
+      assert.ok(["advisory_span", "trailing_vocative"].includes(recovered.interaction.address.form));
       assert.deepEqual(recovered.owners, [c2]);
     }
     // Tier 1 resolved address: no addressee question is asked of the model.

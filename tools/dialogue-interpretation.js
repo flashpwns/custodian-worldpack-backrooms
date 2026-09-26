@@ -237,7 +237,7 @@ const SEMANTIC_INTENT_PATTERNS = Object.freeze({
   // "What is this room for?" (LOCATION purpose)
   location_purpose: /\bwhat(?:'s| is| was) (?:this|that|the) (?:room|briefing room|space|area|table)(?: (?:here|used))? (?:for|used for)\b|\bwhat (?:do|did) (?:we|they|people) (?:use|do in) (?:this|that|the) (?:room|space)\b|\bwhat happens in (?:this|that|the) room\b/i,
   // "Is Maxwell here?" (current presence) / "Was Maxwell just here?" / "Where did he go?" (recent presence).
-  person_presence: /^(?:so,?\s+|and\s+|wait,?\s+)?(?:is|was) (?:he|she|maxwell|kirk|dr\.? maxwell|[A-Z][a-z]+) (?:still |just |even )?(?:here|around|in here|in the room|with us|nearby)\b|\bwhere did (?:he|she|maxwell|kirk|dr\.? maxwell|[A-Z][a-z]+) go\b/i,
+  person_presence: /^(?:so,?\s+|and\s+|wait,?\s+)?(?:is|was) (?:he|she|maxwell|kirk|dr\.? maxwell|[A-Z][a-z]+) (?:still |just |even )?(?:here|around|in here|in the room|with us|nearby)\b|\bwhere did (?:he|she|maxwell|kirk|dr\.? maxwell|[A-Z][a-z]+) go\b|^(?:so,?\s+|and\s+|wait,?\s+)?where(?:'s| is| was) (?:he|she|maxwell|kirk|dr\.? maxwell|[A-Z][a-z]+)(?: (?:now|right now|at))?[\s?!.]*$/i,
   // "Are we on Standard?" / "Are we in the Complex yet?" (CURRENT STATE of where we are, not a definition).
   where_we_are: /^(?:so,?\s+|and\s+|wait,?\s+)?(?:are|am|is) (?:we|i|you|the team) (?:still |already |even )?(?:on|in|at|inside|over on|on the) (?:the )?(standard(?: side)?|the complex|complex)\b/i,
   // Facets of an entity beyond its definition (never answered by the definition itself):
@@ -768,6 +768,9 @@ function resolveResponseOwners({ recipient_type, interpretation, player_text, ca
   const eligible = candidates.filter((candidate) => candidate?.response_eligible && candidate?.id);
   if (recipient_type === "direct") return eligible.slice(0, 1).map((candidate) => candidate.id);
   if (eligible.length === 0) return [];
+  // ED-30: registry predicates and attention calls are owned by their response cardinality (each person
+  // answering their own state/history, one knower, one spokesperson for a shared/collective fact).
+  if (["ask_predicate", "attend"].includes(frame?.discourse_function)) return require("./dialogue-turn").ownersByCardinality({ frame, recipient_type, eligible, spokesperson });
   // The player introducing themself to the team: each present teammate may acknowledge ONCE, briefly (a
   // narrow social policy -- not "every group statement gets everyone").
   if (frame?.discourse_function === "introduce_self" && !frame?.resumed_question) return eligible.map((candidate) => candidate.id);
@@ -818,9 +821,11 @@ function resolveResponseOwners({ recipient_type, interpretation, player_text, ca
     const selfAnswer = eligible.find((candidate) => candidate.id === about);
     if (selfAnswer && ["ask_person_identity", "ask_role_or_assignment"].includes(fn)) return [selfAnswer.id];
     const owner = fn === "ask_assignment_purpose" ? eligible.find((candidate) => candidate.owns_entity) : null;
-    if (owner) return [owner.id];
     const knowers = eligible.filter((candidate) => candidate.has_relevant_knowledge);
-    return [(spokesperson(knowers) ?? spokesperson(eligible)).id];
+    const fullKnowers = knowers.filter((candidate) => candidate.knows_fully);
+    // The one whose assignment it is answers -- unless they do not know and someone else does.
+    if (owner && (owner.knows_fully || !fullKnowers.length)) return [owner.id];
+    return [(spokesperson(fullKnowers) ?? spokesperson(knowers) ?? spokesperson(eligible)).id];
   }
   // A claim the player makes about the world is acknowledged by one listener (never confirmed).
   if (fn === "make_statement" && frame?.player_claim && recipient_type !== "group") return [spokesperson(eligible).id];
@@ -891,6 +896,9 @@ function resolveResponseOwners({ recipient_type, interpretation, player_text, ca
     return eligible.slice(0, 1).map((candidate) => candidate.id);
   }
 
+  // ED-30: Tier 1 found a question or request the legacy reading took for a remark (no "?"): one listener
+  // answers or asks -- a question is never left in silence.
+  if (["question", "request", "elliptical_continuation", "repair"].includes(frame?.turn?.speech_act)) return [(spokesperson(eligible) ?? eligible[0]).id];
   if (["warning", "uncertainty", "joke_or_sarcasm", "social_observation", "factual_question", "personal_question", "request", "ambiguous", "greeting", "introduction"].includes(act)) {
     return eligible.slice(0, 1).map((candidate) => candidate.id);
   }

@@ -103,17 +103,21 @@ test("ED-2 B/C — plan-carrying packets carry style only; no personality lore c
     assert.deepEqual(packet.speaker.tendencies, {});
     assert.equal(packet.speaker.relationship, null);
     assert.equal(packet.speaker.role, null);
-    assert.deepEqual(packet.authorized_contribution.required_facts, [{ key: "uncertainty", value: { kind: "no_established_personal_history" } }], "no experience fact is authorized");
-    // the candidate that invents "first time" is rejected; the honest fallback is committed
+    // ED-30: prior Complex experience is canonical personhood (a band generated under the authored
+    // archetype and persisted on the member), never personality lore: the plan carries the resolver's
+    // answer for THIS speaker, and only that. Coworker 1 is the authored first-day observer: never been in.
+    const answer = packet.authorized_contribution.required_facts.find((f) => f.key === "predicate_answer")?.value;
+    assert.equal(packet.authorized_contribution.required_facts.length, 1, "exactly one authorized fact");
+    assert.equal(answer.predicate, "person.complex_experience");
+    assert.equal(answer.value, "no");
+    assert.deepEqual(answer.provenance, ["self"]);
+    // "First time for me." now states the canonical value, so it is accepted as responsive and true.
     const spoken = coworkerEvents(state, before)[0];
-    assert.equal(spoken.text, "Not that I can think of.");
+    assert.equal(spoken.text, "First time for me.");
     const trace = state.service.getDialogueWordsmithTrace({ limit: 5 }).traces.at(-1).wordsmiths[0];
-    assert.equal(trace.validator_accepted, false);
-    assert.equal(trace.fallback_used, true);
-    assert.equal(trace.output_source, "deterministic-fallback");
-    assert.equal(trace.rejection_reason, "LOCAL_PRESENTATION_CONTRIBUTION_UNMET");
-    assert.deepEqual([trace.discourse_function, trace.requested_content, trace.expected_response_shape], ["ask_personal_experience", "personal_experience", "brief_grounded_personal_answer"]);
-    assert.ok(state.logs.some((l) => l.includes("[YB:DIALOGUE_TRACE]") && l.includes("validation_reason=") && l.includes("candidate=\"First time for me.\"")));
+    assert.equal(trace.validator_accepted, true);
+    assert.deepEqual([trace.discourse_function, trace.requested_content, trace.expected_response_shape], ["ask_predicate", "predicate_answer", "brief_predicate_answer"]);
+    assert.ok(state.logs.some((l) => l.includes("[YB:DIALOGUE_TRACE]") && l.includes("candidate=\"First time for me.\"")));
   } finally { cleanup(state); }
 });
 
