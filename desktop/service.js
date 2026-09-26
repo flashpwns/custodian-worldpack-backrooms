@@ -21,11 +21,29 @@ const { ProviderPool } = require("../tools/ai-provider-pool");
 const { executeLivingTurn } = require("../tools/ai-living-turn");
 const { summarizeLanguageAssistance, failureReason } = require("./language-assistance");
 const { PROVIDER_SPECS } = require("../tools/ai-hosted-transport");
-const { buildLocalDialoguePacket, validateLocalDialogue } = require("../tools/ai-local-dialogue");
+const { LOCAL_PROVIDER_SPEC } = require("../tools/ai-local-model-provider");
+const { ManagedInferenceAppliance } = require("../tools/managed-inference-appliance");
+const { createDialogueRuntimeSupervisor } = require("../tools/dialogue-runtime-supervisor");
+const { buildLocalDialoguePacket, buildObservationReportPacket, validateLocalDialogue } = require("../tools/ai-local-dialogue");
+const { interpretUtterance: interpretDialogueUtterance, inferLocalRecipientType, resolveResponseOwners, stripNamedAddress, parseAddressees } = require("../tools/dialogue-interpretation");
+const dialogueDiscourse = require("../tools/dialogue-discourse");
+const canonicalKnowledge = require("../tools/canonical-knowledge");
+const dialogueAdvisory = require("../tools/dialogue-advisory-interpreter");
+const dialogueValidation = require("../tools/dialogue-validation");
+const dialogueFallback = require("../tools/dialogue-fallback");
+const dialogueTurn = require("../tools/dialogue-turn");
+const dialogueState = require("../tools/dialogue-state");
+const dialogueResolvers = require("../tools/dialogue-resolvers");
+const dialoguePersonhood = require("../tools/dialogue-personhood");
+const dialogueAgents = require("../tools/dialogue-agents");
+const dialogueDevtrace = require("../tools/dialogue-devtrace");
+const observerContextCompiler = require("../tools/observer-context-compiler");
 const referenceExpedition = require("../tools/reference-expedition");
 const cq4Day1Opener = require("../tools/cq4-day1-opener");
 const interpretiveDirector = require("../tools/interpretive-director");
 const canonLexicon = require("../tools/canon-lexicon");
+const spatialEvents = require("../tools/spatial-event-contract");
+const { renderContributionTask } = require("../tools/dialogue-prompt-contract");
 const canonLinter = require("../tools/canon-linter");
 const canonicalLedger = require("../tools/canonical-world-ledger");
 const { buildSafeScene, fallbackNarration } = require("../tools/scene-presentation");
@@ -61,6 +79,7 @@ const consequenceRuntime = require("../tools/consequence-runtime");
 const presentationBus = require("../tools/presentation-bus");
 const acousticDirector = require("../tools/acoustic-director");
 const decisionScheduler = require("../tools/decision-scheduler");
+const speechScheduler = require("../tools/speech-scheduler");
 const { event: expeditionEvent } = require("../tools/expedition");
 const beckExperience = require("../tools/beck-experience");
 const nullzoneExperience = require("../tools/nullzone-experience");
@@ -71,6 +90,7 @@ const { CredentialStore } = require("./credentials");
 const developerInspection = require("../tools/dev-inspection");
 const packageVersion = require("../package.json").version;
 const buildInfo = require("./build-info");
+const { applicationTrack } = require("./menu-music");
 const q4BetaReport = require("../tools/q4-beta-report");
 const worldpackRegistry = require("../data/worldpacks/registry.json");
 const doctrineRuntime = require("../tools/doctrine-runtime");
@@ -79,15 +99,60 @@ const SAVE_SCHEMA_VERSION = "yellow-beast-session@7";
 const PERSISTENCE_PAIR_VERSION = "yellow-beast-persistence-pair@v1";
 
 const clone = (value) => structuredClone(value);
-const currentClearQ4 = (payload) => payload?.version === "yellow-beast-save@v9" && (payload.lifecycle ?? "active") === "active" && payload.spatial_pack_id === "clear-q4";
+const currentClearQ4 = (payload) => payload?.version === "yellow-beast-save@v10" && (payload.lifecycle ?? "active") === "active" && payload.spatial_pack_id === "clear-q4";
 const hasCurrentEnvironment = (payload) => payload?.spatial?.environment?.version === environment.VERSION;
 const hasCurrentStandardOperator = (world) => world?.q4_standard_operator?.version === standardOperator.VERSION;
 const MODES = Object.freeze(worldpackRegistry.programs.map((program) => Object.freeze({ ...program, label: program.program_name, playable: program.availability === "available" })));
-const DEFAULT_SETTINGS = Object.freeze({ version: 5, input_mode: "structured", provider: "offline", theme: "system", text_scale:"default", reduced_motion: false, reduced_sensory: false, audio_muted: false, audio_master: 0.35, audio_interface: 0.35, audio_radio: 0.35, audio_ambient: 0.25, guided_introductions: true, reopen_last_world: true, mode_onboarding: {}, visual_rendering: true, visual_adapter: "fallback", visual_quality: "documentary", automatic_evidence_rendering: true, retry_failed_renders: true, media_effect_intensity: "restrained", comfyui_endpoint: "http://127.0.0.1:8188", comfyui_workflow: "observer-safe-q4-evidence" });
+const DEFAULT_SETTINGS = Object.freeze({ version: 8, input_mode: "natural", provider: "local", local_endpoint:LOCAL_PROVIDER_SPEC.defaultEndpoint, local_model:LOCAL_PROVIDER_SPEC.defaultModel, theme: "system", text_scale:"default", reduced_motion: false, reduced_sensory: false, audio_muted: false, audio_master: 0.35, audio_sfx: 0.35, audio_music: 0.25, audio_interface: 0.35, audio_radio: 0.35, audio_ambient: 0.25, guided_introductions: false, reopen_last_world: true, mode_onboarding: {}, visual_rendering: true, visual_adapter: "fallback", visual_quality: "documentary", automatic_evidence_rendering: true, retry_failed_renders: true, media_effect_intensity: "restrained", comfyui_endpoint: "http://127.0.0.1:8188", comfyui_workflow: "observer-safe-q4-evidence" });
 // Non-Q4 language is deliberately a small phrase-to-existing-control adapter.
 // It cannot invent a target or capability: recognised phrases only select an
 // action already available in the active, observer-safe session.
 function publicError(code, message) { return { ok: false, error: { code, message } }; }
+// Bounded concurrency for wording already-authorized same-turn replies (see presentHostedLocalDialogue).
+// 1 = serial. Chosen from measurement on the pinned runtime, not assumed.
+const DIALOGUE_WORDING_CONCURRENCY = 1;
+// Consecutive runtime restarts that end without a ready runtime before automatic recovery stops.
+const MAX_UNRECOVERED_DIALOGUE_RESTARTS = 3;
+/** Runs thunks with at most `limit` in flight; results keep the thunks' order. */
+async function boundedAll(thunks, limit) {
+  const results = new Array(thunks.length);
+  let next = 0;
+  const worker = async () => { while (next < thunks.length) { const i = next++; results[i] = await thunks[i](); } };
+  await Promise.all(Array.from({ length: Math.max(1, Math.min(limit, thunks.length)) }, worker));
+  return results;
+}
+// Canonical event anchors a temporal reference in dialogue may resolve against ("after the briefing",
+// "before we crossed"). Only recorded events count; a missing anchor leaves the reference unresolved.
+function dialogueTemporalAnchors(run) {
+  const anchors = {};
+  const briefing = run?.expedition?.day1_opener?.one_shot_events?.maxwell_opening_briefing;
+  if (briefing?.consumed && Number.isFinite(Number(briefing.at_interval))) anchors.briefing = { interval: Number(briefing.at_interval), source: "day1_opener.one_shot_events.maxwell_opening_briefing" };
+  const concluded = run?.expedition?.day1_opener?.personnel_briefing;
+  if (concluded?.status === "concluded" && Number.isFinite(Number(concluded.concluded_at_interval))) anchors.maxwell_departure = { interval: Number(concluded.concluded_at_interval), source: "day1_opener.personnel_briefing.concluded_at_interval" };
+  const crossing = (run?.expedition?.facility_operations?.events ?? []).find((event) => event?.type === "THRESHOLD_CROSSING" && Number.isFinite(Number(event.at?.interval)));
+  if (crossing) anchors.crossing = { interval: Number(crossing.at.interval), source: `facility_operations.${crossing.id}` };
+  return anchors;
+}
+// The current procedure a listener canonically knows ("What's next?"), from canonical-knowledge grants
+// only: the briefing's dismissal while introductions are open (held only while the listener is still where
+// that instruction was given), then whatever the canonical state establishes (staging; the post-crossing
+// radio check from basic field procedure). Never a hardcoded "next"; UI text is never consulted.
+function dialogueProcedureContext(run, memberId) {
+  const opener = run?.expedition?.day1_opener;
+  if (!opener) return null;
+  const granted = canonicalKnowledge.queryKnowledge(run, { actor_id: memberId, concept: "current_procedure" });
+  if (!["known", "partial"].includes(granted.status)) return null;
+  for (const fact of granted.facts) {
+    if (fact.key === "report_to_next_destination") return { current_step: null, next_step: fact.next_step, source: "the briefing" };
+    if (fact.key === "briefing_dismissal") {
+      const room = opener.personnel_briefing?.room_id ?? null;
+      if (!room || canonicalLedger.getPersonnelLocation(run, memberId) !== room) continue;
+      return { current_step: fact.current_step ?? "get acquainted with the team", next_step: fact.next_step, source: "the briefing" };
+    }
+    if (fact.current_step) return { current_step: fact.current_step, next_step: fact.next_step ?? null, source: fact.provenance === "baseline_field_procedure" ? "basic field procedure" : "where we are" };
+  }
+  return null;
+}
 function safeId(value) { return typeof value === "string" && /^[a-z0-9][a-z0-9_-]{0,100}$/i.test(value); }
 function friendlyName(value) { return typeof value === "string" && value.trim().length > 0 && value.trim().length <= 80; }
 function ensureDirectory(directory) { fs.mkdirSync(directory, { recursive: true }); }
@@ -116,11 +181,20 @@ function sessionRuntimeCandidate(entry) {
 function redactDiagnostic(value) { if (Array.isArray(value)) return value.map(redactDiagnostic); if (value && typeof value === "object") return Object.fromEntries(Object.entries(value).map(([key, item]) => [key, /key|token|password|secret|credential/i.test(key) ? "[redacted]" : redactDiagnostic(item)])); return typeof value === "string" ? value.replace(/\b(?:sk|rk|pk)-[A-Za-z0-9_-]+\b/g, "[redacted]") : value; }
 
 class DesktopService {
-  constructor({ appDataPath = null, paths = null, logger = null, credentials = null, evidenceMediaProviders = {}, livingTurnProvider = null, localDialogueProvider = null, defaultQ4Scenario = "procedural-survey", developerMode = process.env.YELLOW_BEAST_DEVELOPER_MODE === "1", nowFn = null } = {}) {
+  constructor({ appDataPath = null, paths = null, logger = null, credentials = null, evidenceMediaProviders = {}, livingTurnProvider = null, localDialogueProvider = null, defaultQ4Scenario = "procedural-survey", developerMode = process.env.YELLOW_BEAST_DEVELOPER_MODE === "1", nowFn = null, notifyProjectionChanged = null, dialogueWordingConcurrency = DIALOGUE_WORDING_CONCURRENCY } = {}) {
+    this.dialogueWordingConcurrency = Number.isInteger(dialogueWordingConcurrency) && dialogueWordingConcurrency > 0 ? dialogueWordingConcurrency : 1;
+    // Pass 9C-2: the only main->renderer push in the app. Electron's IPC here
+    // is otherwise invoke/response only (see preload.js), so an autonomous
+    // report committed after a request has already returned would otherwise
+    // sit unseen until some unrelated future request re-reads projection.
+    // Narrow by design: carries only a world_id, never dialogue content --
+    // the renderer re-reads through its existing getGameplayProjection path.
+    this.notifyProjectionChanged = typeof notifyProjectionChanged === "function" ? notifyProjectionChanged : () => {};
     this.paths = paths ?? (appDataPath ? { root: appDataPath, worlds: path.join(appDataPath, "worlds"), saves: path.join(appDataPath, "saves"), logs: path.join(appDataPath, "logs"), media: path.join(appDataPath, "media"), config: path.join(appDataPath, "config.json") } : resolveAppPaths());
     this.now = typeof nowFn === "function" ? nowFn : () => Date.now();
     this.checkInHolds = new Map();
     this.paths.media ??= path.join(this.paths.root, "media");
+    this.paths.exports ??= path.join(this.paths.root, "exports");
     this.metadataFile = path.join(this.paths.root, "desktop-worlds.json");
     this.settingsFile = path.join(this.paths.root, "desktop-settings.json");
     this.logger = logger ?? (() => {});
@@ -128,25 +202,105 @@ class DesktopService {
     this.developerMode = developerMode === true;
     this.sessions = new Map();
     this.naturalTurnInflight = new Map();
+    this.communicationTurnInflight = new Map();
     this.naturalCommandContext = new AsyncLocalStorage();
+    this.transactionContext = this.naturalCommandContext;
     this.recovery = new Map();
     this.recoveredWorlds = new Map();
-    [this.paths.root, this.paths.worlds, this.paths.saves, this.paths.logs, this.paths.media].forEach(ensureDirectory);
+    [this.paths.root, this.paths.worlds, this.paths.saves, this.paths.logs, this.paths.media, this.paths.exports].forEach(ensureDirectory);
     this.evidenceMedia = new evidenceMedia.EvidenceMediaRenderer({ media_root:this.paths.media, providers:evidenceMediaProviders });
     this.evidenceRenderInflight = new Map();
     this.interpretationProvenance = [];
+    this.dialogueWordsmithTraces = [];
     this.authorityRegistry = createAuthorityRegistry();
     this.livingTurnProvider = livingTurnProvider;
     this.localDialogueProvider = localDialogueProvider;
+    this.dialogueRestartFailures = 0;
+    this.dialogueRestartBackoffMs = 2000;
     this.defaultQ4Scenario = cq4Day1Opener.isOpener(defaultQ4Scenario)
       ? "day1-opener"
       : (defaultQ4Scenario === "reference-expedition" ? "reference-expedition" : "procedural-survey");
+    this.inferenceAppliance = new ManagedInferenceAppliance({
+      appDataPath: this.paths.root,
+      developerMode: this.developerMode,
+      logger: (msg) => this.log(`[InferenceAppliance] ${msg}`),
+      // A runtime that dies mid-session is respawned immediately (same single-flight path as a
+      // supervisor-requested restart); dialogue meanwhile uses the same-plan deterministic fallback.
+      onUnexpectedExit: () => this.requestDialogueRuntimeRestart()
+    });
     this.providerPool = new ProviderPool({
       credentials: this.credentials,
       settingsGetter: () => this.settings(),
+      applianceGetter: () => this.inferenceAppliance,
       onInvocation: (event) => this.recordProviderInvocation(event),
       onProvenance: (summary) => this.recordAttemptChain(summary)
     });
+    // Non-blocking: the endpoint changes on every daemon respawn, so it is
+    // read fresh from the appliance on every supervisor inspection/warmup
+    // rather than captured once here. Does not call .start() -- this
+    // constructor runs on every test/app start and must stay side-effect
+    // light; callers kick off warmup explicitly via startDialogueRuntime().
+    this.dialogueRuntime = createDialogueRuntimeSupervisor({
+      endpointFn: () => this.inferenceAppliance.getStatus().endpoint,
+      model: LOCAL_PROVIDER_SPEC.defaultModel,
+      // DEGRADED/FAILED only ever *ask* for a respawn; process ownership
+      // (spawn/kill) stays entirely inside the appliance. respawn() is the
+      // appliance's own "stop, re-check integrity, restart daemon" entry point
+      // (a full repair() whenever the installed model's record has drifted).
+      onRestartRequested: () => this.requestDialogueRuntimeRestart()
+    });
+  }
+
+  // One restart at a time; when the appliance has respawned the runtime the supervisor re-checks it, so
+  // a runtime that died mid-session returns to model wording without restarting the application.
+  // A DEGRADED supervisor over a daemon that still answers its health check is a request-level failure:
+  // the daemon is kept (respawning it would only restart the outage) and only re-checked. Once the
+  // supervisor confirms readiness, the pool's local cooldown -- earned against the previous daemon or
+  // port -- is cleared so the next turn is worded by the model again.
+  // A runtime that cannot come back (a broken install) is retried a bounded number of times with backoff,
+  // then left to the deterministic fallback instead of re-verifying the model forever.
+  requestDialogueRuntimeRestart({ state: supervisorState = null } = {}) {
+    try {
+      const state = this.inferenceAppliance?.state;
+      if ((state === "READY" || state === "REPAIR_REQUIRED") && !this.dialogueRepairInFlight && !this.shuttingDown && this.dialogueRestartFailures < MAX_UNRECOVERED_DIALOGUE_RESTARTS) {
+        this.dialogueRepairInFlight = (async () => {
+          const healthy = state === "READY" && supervisorState !== "failed" && (await this.inferenceAppliance.healthcheck().catch(() => null))?.ok === true;
+          if (!healthy && !this.shuttingDown) await this.inferenceAppliance.respawn().catch(() => null);
+          let status = null;
+          try { status = await this.dialogueRuntime?.retry(); } catch {}
+          return status;
+        })().then((status) => {
+          this.dialogueRepairInFlight = null;
+          if (status?.ready) {
+            this.dialogueRestartFailures = 0;
+            this.providerPool?.resetHealth("local");
+            return;
+          }
+          this.dialogueRestartFailures += 1;
+          if (this.dialogueRestartFailures < MAX_UNRECOVERED_DIALOGUE_RESTARTS && !this.shuttingDown) {
+            const timer = setTimeout(() => this.requestDialogueRuntimeRestart({ state: "failed" }), this.dialogueRestartBackoffMs * this.dialogueRestartFailures);
+            timer.unref?.();
+          }
+        });
+      }
+    } catch {}
+  }
+
+  // Kicks off dialogue runtime warmup without blocking startup. Intended to
+  // be called once from main.js after the window/service are constructed so
+  // warmup overlaps the title/cinematic sequence instead of gating it.
+  startDialogueRuntime() {
+    // The player never manages the runtime: when the application ships (or the dev tree holds) the pinned
+    // runtime and model, a fresh profile installs them silently before the supervisor warms the daemon.
+    const ready = (async () => {
+      try {
+        const appliance = this.inferenceAppliance;
+        if (appliance?.state === "NOT_INSTALLED" && appliance.hasBundledAssets()) await appliance.install();
+      } catch (error) { this.log(`local dialogue runtime install failed: ${error.message}`); }
+      try { await this.dialogueRuntime?.start(); } catch {}
+    })();
+    ready.catch(() => {});
+    return ready;
   }
 
   recordAttemptChain(summary) {
@@ -169,7 +323,20 @@ class DesktopService {
   log(message) { this.logger(String(message).replace(/[\r\n]+/g, " ")); }
   metadata() { const value = readJson(this.metadataFile, { version: 1, worlds: {}, first_run_complete: false, last_world_id: null }); value.worlds ??= {}; return value; }
   writeMetadata(value) { writeJson(this.metadataFile, value); }
-  settings() { return { ...DEFAULT_SETTINGS, ...readJson(this.settingsFile, DEFAULT_SETTINGS) }; }
+  settings() {
+    const stored = readJson(this.settingsFile, DEFAULT_SETTINGS);
+    const merged = { ...DEFAULT_SETTINGS, ...stored };
+    // Settings schema v8: local_endpoint/local_model no longer control the
+    // production local runtime (the managed inference appliance owns the
+    // real endpoint/model). Discard any pre-v8 stored override so an old
+    // save cannot silently point at a stale manual address.
+    if ((stored.version ?? 0) < 8) {
+      merged.local_endpoint = DEFAULT_SETTINGS.local_endpoint;
+      merged.local_model = DEFAULT_SETTINGS.local_model;
+    }
+    merged.version = DEFAULT_SETTINGS.version;
+    return merged;
+  }
   worldFile(worldId) { if (!safeId(worldId)) throw Object.assign(new Error("invalid world reference"), { code: "WORLD_INVALID" }); return path.join(this.paths.worlds, `${worldId}.json`); }
   sessionFile(worldId, mode) { if (!safeId(worldId) || !MODES.some((item) => item.id === mode)) throw Object.assign(new Error("invalid session reference"), { code: "SESSION_INVALID" }); return path.join(this.paths.saves, `${worldId}-${mode}.json`); }
   getMode(mode) { return MODES.find((item) => item.id === mode) ?? null; }
@@ -203,11 +370,48 @@ class DesktopService {
       throw error;
     }
   }
-  worldInfo(world, metadata = {}) { return { id: world.world_id, name: metadata.name ?? world.world_id, version: world.version, created_at: metadata.created_at ?? null, last_played_at: metadata.last_played_at ?? null, last_mode: metadata.last_mode ?? null, status: outcomes.isRetired(world) ? "retired" : "ready" }; }
+  worldInfo(world, metadata = {}) {
+    const identity = world.q4_operations?.controlled_player;
+    const person = identity ? history.character(world, identity) : null;
+    const isFiled = Boolean(person && world.q4_operations?.personnel_confirmation?.completed);
+    const personnelName = isFiled ? (person.display_name || [person.first_name, person.last_name].filter(Boolean).join(" ")) : null;
+    const name = personnelName || metadata.name || world.world_id;
+    return { id: world.world_id, name, has_filed_personnel: isFiled, version: world.version, created_at: metadata.created_at ?? null, last_played_at: metadata.last_played_at ?? null, last_mode: metadata.last_mode ?? null, status: outcomes.isRetired(world) ? "retired" : "ready" };
+  }
 
-  getAppInfo() { const data = this.metadata(); const build = buildInfo.read(); return { ok: true, app: { name: "Yellow Beast", version: packageVersion, alpha: true, build, first_run_complete: Boolean(data.first_run_complete), data_path: this.paths.root, developer_mode:this.developerMode } }; }
+  getAppInfo() { const data = this.metadata(); const build = buildInfo.read(); return { ok: true, app: { name: "Yellow Beast", version: packageVersion, alpha: true, build, menu_music: applicationTrack, first_run_complete: Boolean(data.first_run_complete), data_path: this.paths.root, developer_mode:this.developerMode } }; }
   getInterpretationProvenance({ limit = 20 } = {}) { if (!this.developerMode) return publicError("DEVELOPER_DISABLED", "Developer tooling is disabled."); return { ok: true, records: clone(this.interpretationProvenance.slice(-Math.max(1, Math.min(100, Number(limit) || 20)))) }; }
   recordInterpretationProvenance(record) { const offline = record.provider === "deterministic-mock" || record.provider === "deterministic-living-provider"; this.interpretationProvenance.push({ ...record, execution_mode: offline ? "offline" : (record.provider ?? "unknown"), provider_invoked: record.provider_invoked === true, response_classification: record.response_classification ?? (offline ? "deterministic" : "not-yet-observed"), authority_registry: this.authorityRegistry?.version ?? null, authority_context_order: ["simulation-doctrine", "worldpack-and-domain-authority", "canonical-current-state", "observer-safe-projection", "persisted-history", "player-submission", "response-contract"], authority_sources: this.authorityRegistry?.sourceMetadata?.() ?? [], recorded_at: new Date().toISOString() }); if (this.interpretationProvenance.length > 100) this.interpretationProvenance.shift(); }
+  recordDialogueWordsmithTrace(record) { if (!this.developerMode) return; this.dialogueWordsmithTraces.push(redactDiagnostic(record)); if (this.dialogueWordsmithTraces.length > 50) this.dialogueWordsmithTraces.shift(); }
+  /** ED-30 M1: the developer trace of one LOCAL turn (developer mode only; never part of the player projection). */
+  getDialogueTurnTrace({ world_id, request_id = null } = {}) {
+    if (!this.developerMode) return publicError("DEVELOPER_DISABLED", "Developer tooling is disabled.");
+    const entry = this.session(world_id, "field-researcher");
+    if (!entry?.run?.expedition) return publicError("TRACE_UNAVAILABLE", "A Clear-Q4 session is required for this trace.");
+    const id = request_id ?? (entry.run.expedition.communication_receipts ?? []).filter((r) => String(r.channel ?? "local").toLowerCase() === "local").at(-1)?.id ?? null;
+    if (!id) return publicError("TRACE_UNAVAILABLE", "No conversation turn to trace yet.");
+    return { ok: true, developer_only: true, trace: clone(dialogueDevtrace.turnTrace(entry.run, id, { wordsmith: this.dialogueWordsmithTraces.find((t) => t.request_id === id) ?? null })) };
+  }
+  /**
+   * ED-30 I6: export this session's conversation as a JSONL transcript (developer mode only). Written to the
+   * logs folder (or `destination`); replay it with `npm run dialogue:replay <file>`.
+   */
+  exportDialogueTranscript({ world_id, destination = null } = {}) {
+    if (!this.developerMode) return publicError("DEVELOPER_DISABLED", "Developer tooling is disabled.");
+    const entry = this.session(world_id, "field-researcher");
+    if (!entry?.run?.expedition) return publicError("TRANSCRIPT_UNAVAILABLE", "A Clear-Q4 session is required for a transcript.");
+    const records = dialogueDevtrace.transcriptRecords(entry.run, { world: this.getWorld(world_id), wordsmithTraces: this.dialogueWordsmithTraces });
+    // The renderer may not choose where the main process writes (review F15): a destination is honoured only
+    // inside this profile's own data folder.
+    const folder = path.join(this.paths.logs, "dialogue-transcripts");
+    const inside = destination && path.resolve(destination).startsWith(path.resolve(folder) + path.sep) && /\.jsonl$/i.test(destination);
+    if (destination && !inside) return publicError("TRANSCRIPT_DESTINATION_INVALID", "Transcripts are written to the profile's logs/dialogue-transcripts folder.");
+    const file = inside ? path.resolve(destination) : path.join(this.paths.logs, "dialogue-transcripts", `${world_id.slice(0, 8)}-${new Date().toISOString().replace(/[:.]/g, "-")}.jsonl`);
+    fs.mkdirSync(path.dirname(file), { recursive: true });
+    fs.writeFileSync(file, `${records.map((r) => JSON.stringify(r)).join("\n")}\n`);
+    return { ok: true, developer_only: true, file, turns: records.length - 1 };
+  }
+  getDialogueWordsmithTrace({ limit = 20 } = {}) { if (!this.developerMode) return publicError("DEVELOPER_DISABLED", "Developer tooling is disabled."); return { ok:true, developer_only:true, traces:clone(this.dialogueWordsmithTraces.slice(-Math.max(1, Math.min(50, Number(limit) || 20)))) }; }
   recordProviderInvocation({ request_id, route, ...event }) {
     this.recordInterpretationProvenance({ request_id, route, event:"provider-invocation", ...event, provider_invoked:true, invocation_status:event.status, response_classification:event.status === "completed" ? "model-response-parsed" : event.status === "failed" ? "provider-failure" : "provider-request-started" });
     this.traceNaturalTurn("provider-invocation", { request_id, route, ...event });
@@ -217,7 +421,7 @@ class DesktopService {
     // Callers supply bounded metadata only: never credentials, raw prompts, or saves.
     try { this.log(JSON.stringify({ diagnostic:"natural-turn", stage, ...detail })); } catch {}
   }
-  getDeveloperSnapshot({ world_id, mode = null } = {}) { if (!this.developerMode) return publicError("DEVELOPER_DISABLED", "Developer tooling is disabled."); try { const world = this.getWorld(world_id); const entry = mode ? (this.session(world_id, mode) ?? this.restoreSession(world, mode, readJson(this.sessionFile(world_id, mode), null))) : null; const provider = this.getProviderStatus().provider; const run = entry?.kind === "bootstrap" ? entry.run : null; const simulationTruth = run ? { developer_only: true, authoritative_clock: structuredClone(run.expedition.clock), event_queue: structuredClone(run.expedition.operational?.events ?? []), mission_state: structuredClone(run.expedition.mission_state), teammate_locations: structuredClone(run.spatial?.personnel_locations ?? {}), teammate_decisions: structuredClone(run.expedition.team_runtime?.decision_history ?? run.expedition.operational?.decision_history ?? []), hazard_state: structuredClone(run.expedition.hazards ?? {}), phenomenon_state:phenomenonEcology.diagnostics(world,{developer:true}), item_custody: structuredClone(run.expedition.logistics?.items ?? {}), container_contents: structuredClone(run.expedition.logistics?.containers ?? {}), institutional_knowledge: structuredClone(world.institutional_response?.confirmed_knowledge ?? []), standard_response_queue: structuredClone(world.institutional_response?.pending_decisions ?? []), observer_safe_projection: q4.presentation(run, entry.phase, null, world) } : null; return { ok:true, snapshot:developerInspection.snapshot(world), active:{ mode, phase:entry?.phase ?? null, session_kind:entry?.kind ?? null, simulation_truth:simulationTruth }, provider:{ selected:provider.selected, offline:provider.offline, configured:provider.openai.configured, status:provider.offline ? "offline" : provider.openai.status }, doctrine: doctrineRuntime.read(), interpretation_provenance: clone(this.interpretationProvenance), provider_safe_context:run ? developerInspection.providerSafeContext(run) : null, recent_history:developerInspection.recentHistory(world) }; } catch { return publicError("DEVELOPER_SNAPSHOT_UNAVAILABLE", "The selected world could not be inspected."); } }
+  getDeveloperSnapshot({ world_id, mode = null } = {}) { if (!this.developerMode) return publicError("DEVELOPER_DISABLED", "Developer tooling is disabled."); try { const world = this.getWorld(world_id); const entry = mode ? (this.session(world_id, mode) ?? this.restoreSession(world, mode, readJson(this.sessionFile(world_id, mode), null))) : null; const provider = this.getProviderStatus().provider; const run = entry?.kind === "bootstrap" ? entry.run : null; const simulationTruth = run ? { developer_only: true, authoritative_clock: structuredClone(run.expedition.clock), event_queue: structuredClone(run.expedition.operational?.events ?? []), mission_state: structuredClone(run.expedition.mission_state), teammate_locations: structuredClone(run.spatial?.personnel_locations ?? {}), teammate_decisions: structuredClone(run.expedition.team_runtime?.decision_history ?? run.expedition.operational?.decision_history ?? []), hazard_state: structuredClone(run.expedition.hazards ?? {}), phenomenon_state:phenomenonEcology.diagnostics(world,{developer:true}), item_custody: structuredClone(run.expedition.logistics?.items ?? {}), container_contents: structuredClone(run.expedition.logistics?.containers ?? {}), institutional_knowledge: structuredClone(world.institutional_response?.confirmed_knowledge ?? []), standard_response_queue: structuredClone(world.institutional_response?.pending_decisions ?? []), observer_safe_projection: q4.presentation(run, entry.phase, null, world) } : null; return { ok:true, snapshot:developerInspection.snapshot(world), active:{ mode, phase:entry?.phase ?? null, session_kind:entry?.kind ?? null, simulation_truth:simulationTruth }, provider:{ selected:provider.selected, offline:provider.offline, configured:provider.openai.configured, status:provider.offline ? "offline" : provider.openai.status }, doctrine: doctrineRuntime.read(), interpretation_provenance: clone(this.interpretationProvenance), dialogue_wordsmith_trace:clone(this.dialogueWordsmithTraces), provider_safe_context:run ? developerInspection.providerSafeContext(run) : null, recent_history:developerInspection.recentHistory(world) }; } catch { return publicError("DEVELOPER_SNAPSHOT_UNAVAILABLE", "The selected world could not be inspected."); } }
   async traceDeveloperIntent({ world_id, mode, text }) { if (!this.developerMode) return publicError("DEVELOPER_DISABLED", "Developer tooling is disabled."); try { const world = this.getWorld(world_id); const entry = this.session(world_id, mode) ?? this.restoreSession(world, mode, readJson(this.sessionFile(world_id, mode), null)); if (!entry || entry.kind !== "bootstrap") return publicError("TRACE_UNAVAILABLE", "A Clear-Q4 session is required for this non-executing trace."); return { ok:true, trace:await developerInspection.intentTrace({ run:entry.run, provider:createMockProvider(), player_text:text }) }; } catch { return publicError("TRACE_UNAVAILABLE", "The selected session could not be traced."); } }
   controlQ4PhenomenonFixture({ world_id, action="instantiate", family=null, location_id=null, profile_id=null, phenomenon_id=null, text=null, target_id=null, alias=null }={}) {
     if (this.commandBusy(world_id)) return publicError("SESSION_BUSY", "Wait for the current action to finish before changing this operation."); if(!this.developerMode)return publicError("DEVELOPER_DISABLED","Developer tooling is disabled.");try{const world=this.getWorld(world_id);const entry=this.session(world_id,"field-researcher")??this.restoreSession(world,"field-researcher",readJson(this.sessionFile(world_id,"field-researcher"),null));if(!entry||entry.kind!=="bootstrap"||!entry.run.spatial)return publicError("FIXTURE_SESSION_REQUIRED","Start Clear-Q4 before using a controlled phenomenon fixture.");const run=entry.run;const player=run.session.startup.player.observer_id;const location=location_id??run.spatial.player_location;let result;
@@ -247,6 +451,8 @@ class DesktopService {
       const actualSeed = seed && typeof seed === "string" ? seed : crypto.randomUUID();
       const world = history.createWorld({ seed: actualSeed });
       cq4Day1Opener.ensureWorldOutpostGeography(world);
+      const starterPersonnel = q4Personnel.initializeStarterPersonnel(world, { seed: actualSeed, staffing_rules: cq4Day1Opener.staffingRules() });
+      if (!starterPersonnel.ok) throw Object.assign(new Error("starter personnel unavailable"), { code: starterPersonnel.code });
       const data = this.metadata();
       if (data.worlds[world.world_id]) return publicError("WORLD_ALREADY_EXISTS", "That world already exists.");
       this.saveCanonical(world); const now = new Date().toISOString(); data.worlds[world.world_id] = { name: worldName, created_at: now, last_played_at: now, last_mode: null }; data.first_run_complete = true; data.last_world_id = world.world_id; this.writeMetadata(data);
@@ -261,7 +467,7 @@ class DesktopService {
   createQ4Personnel({ world_id, first_name, last_name, display_name = null }) {
     if (this.commandBusy(world_id)) return publicError("SESSION_BUSY", "Wait for the current action to finish before changing this operation."); try { const world = this.getWorld(world_id); if (outcomes.isRetired(world)) return publicError("WORLD_RETIRED", "This world is a read-only historical record."); const created = q4Personnel.createPlayer(world, { first_name, last_name, display_name }); if (!created.ok) return publicError(created.code, "Enter a valid first and last name for the personnel record."); this.saveCanonical(world); return { ok: true, created: created.created, player: created.player }; } catch { return publicError("PERSONNEL_CREATION_FAILED", "The ASYNC personnel record could not be created safely."); } }
   confirmQ4Personnel({ world_id }) {
-    if (this.commandBusy(world_id)) return publicError("SESSION_BUSY", "Wait for the current action to finish before changing this operation."); try { const world = this.getWorld(world_id); if (outcomes.isRetired(world)) return publicError("WORLD_RETIRED", "This world is a read-only historical record."); const identity = world.q4_operations?.controlled_player; const person = identity ? history.character(world, identity) : null; if (!person) return publicError("PERSONNEL_CREATION_REQUIRED", "Create your ASYNC personnel record before confirming it."); world.q4_operations.personnel_confirmation = { completed: true, personnel_id: identity, confirmed_at: world.q4_operations.personnel_confirmation?.confirmed_at ?? new Date().toISOString() }; this.saveCanonical(world); return { ok: true, player: q4Personnel.safePerson(person) }; } catch { return publicError("PERSONNEL_CONFIRMATION_FAILED", "The personnel record could not be confirmed safely."); } }
+    if (this.commandBusy(world_id)) return publicError("SESSION_BUSY", "Wait for the current action to finish before changing this operation."); try { const world = this.getWorld(world_id); if (outcomes.isRetired(world)) return publicError("WORLD_RETIRED", "This world is a read-only historical record."); const identity = world.q4_operations?.controlled_player; const person = identity ? history.character(world, identity) : null; if (!person) return publicError("PERSONNEL_CREATION_REQUIRED", "Create your ASYNC personnel record before confirming it."); world.q4_operations.personnel_confirmation = { completed: true, personnel_id: identity, confirmed_at: world.q4_operations.personnel_confirmation?.confirmed_at ?? new Date().toISOString() }; this.saveCanonical(world); const data = this.metadata(); if (data.worlds[world_id]) { const displayName = person.display_name || [person.first_name, person.last_name].filter(Boolean).join(" "); if (displayName) { data.worlds[world_id].name = displayName; this.writeMetadata(data); } } return { ok: true, player: q4Personnel.safePerson(person) }; } catch { return publicError("PERSONNEL_CONFIRMATION_FAILED", "The personnel record could not be confirmed safely."); } }
   saveWorld({ world_id }) {
     if (this.commandBusy(world_id)) return publicError("SESSION_BUSY", "Wait for the current action to finish before changing this operation."); try { const world = this.getWorld(world_id); this.saveCanonical(world); return { ok: true }; } catch (error) { return publicError(error.code ?? "WORLD_SAVE_FAILED", "This world could not be saved."); } }
   deleteWorld({ world_id, confirmed = false }) {
@@ -275,20 +481,93 @@ class DesktopService {
   exportWorld({ world_id, destination }) { try { const source = this.worldFile(world_id); if (!destination || !path.isAbsolute(destination)) return publicError("EXPORT_DESTINATION_INVALID", "Choose an export destination."); history.loadWorld(source); fs.copyFileSync(source, destination); return { ok: true, file: destination }; } catch (error) { return publicError("WORLD_EXPORT_FAILED", "This world could not be exported."); } }
   importWorld({ source, name = null }) { try { if (!source || !path.isAbsolute(source)) return publicError("IMPORT_SOURCE_INVALID", "Choose a world export to import."); const world = history.loadWorld(source); const data = this.metadata(); if (fs.existsSync(this.worldFile(world.world_id)) || data.worlds[world.world_id]) return publicError("WORLD_CONFLICT", "A world with this identity is already present."); this.saveCanonical(world); const now = new Date().toISOString(); data.worlds[world.world_id] = { name: friendlyName(name) ? name.trim() : world.world_id, created_at: now, last_played_at: now, last_mode: null }; this.writeMetadata(data); return { ok: true, world: this.worldInfo(world, data.worlds[world.world_id]) }; } catch { return publicError("WORLD_IMPORT_FAILED", "That export is not a compatible Yellow Beast world."); } }
   getSettings() { return { ok: true, settings: this.settings(), provider: this.getProviderStatus().provider }; }
-  updateSettings({ settings }) { if (!settings || typeof settings !== "object") return publicError("SETTINGS_INVALID", "Settings were not understood."); const next = { ...this.settings() }; if (settings.input_mode && !["structured", "natural"].includes(settings.input_mode)) return publicError("SETTINGS_INVALID", "Choose a supported input mode."); if (settings.provider && !["auto", "offline", "openai", "groq", "gemini", "openrouter"].includes(settings.provider)) return publicError("PROVIDER_CONFIGURATION_REQUIRED", "Choose offline play or configured language assistance."); if (settings.provider && !["auto", "offline"].includes(settings.provider) && settings.provider !== next.provider && !this.credentials.configured(settings.provider)) return publicError("PROVIDER_CONFIGURATION_REQUIRED", "Add an access key first, or continue offline."); if (settings.theme && !["system", "light", "dark", "high-contrast"].includes(settings.theme)) return publicError("SETTINGS_INVALID", "Choose a supported appearance."); if (settings.text_scale && !["small", "default", "large", "extra-large"].includes(settings.text_scale)) return publicError("SETTINGS_INVALID", "Choose a supported text size."); if (settings.reduced_motion !== undefined && typeof settings.reduced_motion !== "boolean") return publicError("SETTINGS_INVALID", "Reduced motion must be on or off."); if (settings.reduced_sensory !== undefined && typeof settings.reduced_sensory !== "boolean") return publicError("SETTINGS_INVALID", "Reduced sensory must be on or off."); if (settings.audio_muted !== undefined && typeof settings.audio_muted !== "boolean") return publicError("SETTINGS_INVALID", "Audio mute must be on or off."); for (const key of ["audio_master", "audio_interface", "audio_radio", "audio_ambient"]) if (settings[key] !== undefined && (!Number.isFinite(settings[key]) || settings[key] < 0 || settings[key] > 1)) return publicError("SETTINGS_INVALID", `${key} must be between 0 and 1.`); if (settings.guided_introductions !== undefined && typeof settings.guided_introductions !== "boolean") return publicError("SETTINGS_INVALID", "Guided introductions must be on or off."); if (settings.visual_adapter && !["fallback", "comfyui", "hosted"].includes(settings.visual_adapter)) return publicError("SETTINGS_INVALID", "Choose a supported visual renderer."); if (settings.visual_quality && !["documentary", "detailed"].includes(settings.visual_quality)) return publicError("SETTINGS_INVALID", "Choose a supported visual quality."); if (settings.media_effect_intensity && !["restrained", "reduced"].includes(settings.media_effect_intensity)) return publicError("SETTINGS_INVALID", "Choose a supported media effect intensity."); for (const key of ["visual_rendering", "automatic_evidence_rendering", "retry_failed_renders"]) if (settings[key] !== undefined && typeof settings[key] !== "boolean") return publicError("SETTINGS_INVALID", `${key} must be on or off.`); for (const id of Object.keys(PROVIDER_SPECS)) { const key = `${id}_model`; if (Object.hasOwn(settings,key)) { if (typeof settings[key] !== "string" || !settings[key].trim() || settings[key].length > 120) return publicError("MODEL_INVALID", "Enter a model name up to 120 characters."); if (settings[key] !== next[key]) this.providerPool.resetHealth(id); } } Object.assign(next, settings); delete next.api_key; writeJson(this.settingsFile, next); return { ok: true, settings: next };
+  updateSettings({ settings }) {
+    if (!settings || typeof settings !== "object") return publicError("SETTINGS_INVALID", "Settings were not understood.");
+    const next = { ...this.settings() };
+    if (settings.input_mode && !["structured", "natural"].includes(settings.input_mode)) return publicError("SETTINGS_INVALID", "Choose a supported input mode.");
+    if (settings.provider && !["auto", "offline", "local", "openai", "groq", "gemini", "openrouter"].includes(settings.provider)) return publicError("PROVIDER_CONFIGURATION_REQUIRED", "Choose a supported language provider.");
+    if (settings.provider && !["auto", "offline", "local"].includes(settings.provider) && settings.provider !== next.provider && !this.credentials.configured(settings.provider)) return publicError("PROVIDER_CONFIGURATION_REQUIRED", "Add an access key first, or continue offline.");
+    if (settings.theme && !["system", "light", "dark", "high-contrast"].includes(settings.theme)) return publicError("SETTINGS_INVALID", "Choose a supported appearance.");
+    if (settings.text_scale && !["small", "default", "large", "extra-large"].includes(settings.text_scale)) return publicError("SETTINGS_INVALID", "Choose a supported text size.");
+    if (settings.reduced_motion !== undefined && typeof settings.reduced_motion !== "boolean") return publicError("SETTINGS_INVALID", "Reduced motion must be on or off.");
+    if (settings.reduced_sensory !== undefined && typeof settings.reduced_sensory !== "boolean") return publicError("SETTINGS_INVALID", "Reduced sensory must be on or off.");
+    if (settings.audio_muted !== undefined && typeof settings.audio_muted !== "boolean") return publicError("SETTINGS_INVALID", "Audio mute must be on or off.");
+    for (const key of ["audio_master", "audio_sfx", "audio_music", "audio_interface", "audio_radio", "audio_ambient"]) if (settings[key] !== undefined && (!Number.isFinite(settings[key]) || settings[key] < 0 || settings[key] > 1)) return publicError("SETTINGS_INVALID", `${key} must be between 0 and 1.`);
+    if (settings.guided_introductions !== undefined && typeof settings.guided_introductions !== "boolean") return publicError("SETTINGS_INVALID", "Guided introductions must be on or off.");
+    if (settings.visual_adapter && !["fallback", "comfyui", "hosted"].includes(settings.visual_adapter)) return publicError("SETTINGS_INVALID", "Choose a supported visual renderer.");
+    if (settings.visual_quality && !["documentary", "detailed"].includes(settings.visual_quality)) return publicError("SETTINGS_INVALID", "Choose a supported visual quality.");
+    if (settings.media_effect_intensity && !["restrained", "reduced"].includes(settings.media_effect_intensity)) return publicError("SETTINGS_INVALID", "Choose a supported media effect intensity.");
+    for (const key of ["visual_rendering", "automatic_evidence_rendering", "retry_failed_renders"]) if (settings[key] !== undefined && typeof settings[key] !== "boolean") return publicError("SETTINGS_INVALID", `${key} must be on or off.`);
+    for (const id of Object.keys(PROVIDER_SPECS)) {
+      const key = `${id}_model`;
+      if (Object.hasOwn(settings, key)) {
+        if (typeof settings[key] !== "string" || !settings[key].trim() || settings[key].length > 120) return publicError("MODEL_INVALID", "Enter a model name up to 120 characters.");
+        if (settings[key] !== next[key]) this.providerPool.resetHealth(id);
+      }
+    }
+    // local_endpoint / local_model no longer control the production local
+    // runtime -- the managed inference appliance owns the real endpoint and
+    // model. Accept and silently ignore these keys (older clients/saved
+    // settings may still send them) rather than validating or persisting
+    // them.
+    delete settings.local_endpoint;
+    delete settings.local_model;
+    Object.assign(next, settings);
+    delete next.api_key;
+    writeJson(this.settingsFile, next);
+    return { ok: true, settings: next };
   }
-  getProviderStatus() { const selected = this.settings().provider ?? "offline"; const configured = this.credentials.configured("openai"); const settings = this.settings(); const media = this.evidenceMedia.status(settings); const pool = this.providerPool; return { ok: true, provider: { selected, entries:this.providerEntries(), offline: selected === "offline", openai: { configured, status: selected === "openai" ? (configured ? "ready" : "configuration-required") : "inactive" }, groq: { configured: this.credentials.configured("groq"), status: selected === "groq" ? (this.credentials.configured("groq") ? "ready" : "configuration-required") : "inactive" }, gemini: { configured: this.credentials.configured("gemini"), status: selected === "gemini" ? (this.credentials.configured("gemini") ? "ready" : "configuration-required") : "inactive" }, openrouter: { configured: this.credentials.configured("openrouter"), status: selected === "openrouter" ? (this.credentials.configured("openrouter") ? "ready" : "configuration-required") : "inactive" }, auto: { active: selected === "auto", eligible: pool ? pool.getCandidates({ preferredProvider: "auto" }) : [], health: pool ? Object.fromEntries(["groq", "gemini", "openrouter", "openai"].map((id) => [id, pool.getHealth(id)])) : {} }, local_provider: { supported: true, adapter: settings.visual_adapter, endpoint: settings.comfyui_endpoint, status: media.local.selected ? (media.local.available ? "ready" : "unavailable") : "inactive" }, evidence_media: media } }; }
+  getProviderStatus() {
+    const selected = this.settings().provider ?? "offline";
+    const configured = this.credentials.configured("openai");
+    const settings = this.settings();
+    const media = this.evidenceMedia.status(settings);
+    const pool = this.providerPool;
+    const localHealth = pool.getHealth("local");
+    const localStatus = localHealth.last_success
+      ? "ready"
+      : localHealth.last_failure_class ? "unavailable" : "not-tested";
+    const applianceStatus = this.inferenceAppliance.getStatus();
+    return { ok:true, provider:{
+      selected,
+      entries:this.providerEntries(),
+      offline:selected === "offline" || (selected === "local" && !applianceStatus.is_ready),
+      local:{ configured:true, status:selected === "local" ? localStatus : "inactive", model:applianceStatus.model, endpoint:applianceStatus.endpoint },
+      openai:{ configured, status:selected === "openai" ? (configured ? "ready" : "configuration-required") : "inactive" },
+      groq:{ configured:this.credentials.configured("groq"), status:selected === "groq" ? (this.credentials.configured("groq") ? "ready" : "configuration-required") : "inactive" },
+      gemini:{ configured:this.credentials.configured("gemini"), status:selected === "gemini" ? (this.credentials.configured("gemini") ? "ready" : "configuration-required") : "inactive" },
+      openrouter:{ configured:this.credentials.configured("openrouter"), status:selected === "openrouter" ? (this.credentials.configured("openrouter") ? "ready" : "configuration-required") : "inactive" },
+      auto:{ active:selected === "auto", eligible:pool ? pool.getCandidates({ preferredProvider:"auto" }) : [], health:pool ? Object.fromEntries(["groq", "gemini", "openrouter", "openai"].map((id) => [id, pool.getHealth(id)])) : {} },
+      local_provider:{ supported:true, adapter:settings.visual_adapter, endpoint:settings.comfyui_endpoint, status:media.local.selected ? (media.local.available ? "ready" : "unavailable") : "inactive" },
+      evidence_media:media
+    } };
+  }
   async renderEvidence({ world_id, evidence_id, retry = false } = {}) { const key = `${world_id}:${evidence_id}:${retry ? "retry" : "render"}`; if (this.evidenceRenderInflight.has(key)) return this.evidenceRenderInflight.get(key); const task = this.renderEvidenceNow({ world_id, evidence_id, retry }).finally(() => this.evidenceRenderInflight.delete(key)); this.evidenceRenderInflight.set(key, task); return task; }
   async renderEvidenceNow({ world_id, evidence_id, retry = false } = {}) {
     if (this.commandBusy(world_id)) return publicError("SESSION_BUSY", "Wait for the current action to finish before changing this operation."); try { const world = this.getWorld(world_id); const record = evidenceAuthority.archive(world, { observer:"player" }).records.find((item) => item.id === evidence_id); if (!record) return publicError("EVIDENCE_UNAVAILABLE", "That evidence record is not available to this observer."); const before = clone(record); const result = await this.evidenceMedia.render({ world_id:world.world_id, record, settings:this.settings(), retry, onPresentation:(presentation) => evidenceAuthority.setPresentation(world, evidence_id, presentation) }); this.saveCanonical(world); const after = evidenceAuthority.archive(world, { observer:"player" }).records.find((item) => item.id === evidence_id); const canonicalUnchanged = JSON.stringify({ ...before, render_status:undefined, render_presentation:undefined }) === JSON.stringify({ ...after, render_status:undefined, render_presentation:undefined }); if (!canonicalUnchanged) throw new Error("evidence truth changed during media rendering"); const entry = this.session(world_id, "field-researcher") ?? this.restoreSession(world, "field-researcher", readJson(this.sessionFile(world_id, "field-researcher"), null)); return { ok:true, result:{ success:result.ok, code:result.code ?? null, presentation:result.presentation ?? null, fallback:result.fallback ?? null }, projection:entry ? this.projectionFor(world, "field-researcher", entry) : null }; } catch (error) { this.log(`evidence rendering failed: ${error.message}`); return publicError("EVIDENCE_RENDER_FAILED", "The evidence record remains available; visual rendering could not be completed."); } }
   providerEntries() {
-    return ["groq", "gemini", "openrouter", "openai"].map(id => {
+    const localHealth = this.providerPool.getHealth("local");
+    const local = {
+      id:"local",
+      kind:"local",
+      label:LOCAL_PROVIDER_SPEC.displayName,
+      model:this.providerPool.getModel("local"),
+      default_model:LOCAL_PROVIDER_SPEC.defaultModel,
+      endpoint:this.inferenceAppliance.getStatus().endpoint,
+      configured:true,
+      status:localHealth.last_failure_class ? failureReason([{ attempts:[{ failure_class:localHealth.last_failure_class }] }]) : localHealth.last_success ? "Structured response received from this device" : "Configured; connection not tested",
+      last_success:localHealth.last_success,
+      last_failure:localHealth.last_failure_class,
+      cooldown_until:localHealth.cooldown_until
+    };
+    const hosted = ["groq", "gemini", "openrouter", "openai"].map(id => {
       const info = this.credentials.describe?.(id) ?? { configured:this.credentials.configured(id) };
       const health = this.providerPool.getHealth(id);
       return { id, label:PROVIDER_SPECS[id].displayName, model:this.providerPool.getModel(id), default_model:PROVIDER_SPECS[id].defaultModel,
         ...info, status:!info.configured ? "No usable key" : health.last_failure_class ? failureReason([{ attempts:[{ failure_class:health.last_failure_class }] }]) : health.last_success ? "Response received this session" : "Stored; connection not tested",
         last_success:health.last_success, last_failure:health.last_failure_class, cooldown_until:health.cooldown_until };
     });
+    return [local, ...hosted];
   }
   configureProvider({ provider = "openai", api_key, model = null, activate = true } = {}) {
     if (!Object.hasOwn(PROVIDER_SPECS, provider)) return publicError("PROVIDER_INVALID", "Choose a supported provider.");
@@ -317,7 +596,7 @@ class DesktopService {
   testProvider({ provider = null, live = false } = {}) {
     const target = provider || this.settings().provider;
     if (target === "offline") return { ok:true, status:"ready", message:"Offline deterministic play is selected. No hosted AI request was made." };
-    if (target !== "auto" && !Object.hasOwn(PROVIDER_SPECS,target)) return publicError("PROVIDER_INVALID", "Choose a supported provider.");
+    if (target !== "auto" && target !== "local" && !Object.hasOwn(PROVIDER_SPECS,target)) return publicError("PROVIDER_INVALID", "Choose a supported provider.");
     if (live) return this.testHostedProvider(target);
     return { ok:true, status:"not-tested", message:"Connection has not been tested. Use Test connection to send a small request." };
   }
@@ -334,13 +613,29 @@ class DesktopService {
           if (result?.status !== "proposal" || result?.noncanonical !== true || result?.attempts?.length !== 1 || result.attempts[0].actor?.kind !== "player" || result.attempts[0].action !== "WAIT") throw Object.assign(new Error("Invalid connection-test proposal"),{ code:"MALFORMED_RESPONSE" });
           return result;
         } });
-        return { ok:true, status:"response-received", selected_provider:result.selected_provider, message:`${PROVIDER_SPECS[result.selected_provider].displayName} returned a valid structured response. Expedition gameplay is tested separately.` };
+        const displayName = result.selected_provider === "local" ? LOCAL_PROVIDER_SPEC.displayName : PROVIDER_SPECS[result.selected_provider].displayName;
+        return { ok:true, status:"response-received", selected_provider:result.selected_provider, message:`${displayName} returned a valid structured response. Expedition gameplay is tested separately.` };
       } catch { return { ok:false, error:{ code:"PROVIDER_UNAVAILABLE", message:failureReason(executions), provider_failure:true } }; }
     })();
     this.providerTests.set(provider,task);
     try { return await task; } finally { this.providerTests.delete(provider); }
   }
-  renameWorld({ world_id, name }) { if (!friendlyName(name)) return publicError("WORLD_NAME_INVALID", "Choose a world name between 1 and 80 characters."); const data = this.metadata(); if (!data.worlds[world_id]) return publicError("WORLD_NOT_FOUND", "This world no longer exists."); data.worlds[world_id].name = name.trim(); this.writeMetadata(data); return { ok: true, world: this.loadWorld({ world_id }).world }; }
+  getInferenceApplianceStatus() {
+    return { ok: true, appliance: this.inferenceAppliance.getStatus() };
+  }
+  async installInferenceAppliance(options = {}) {
+    return await this.inferenceAppliance.install(options);
+  }
+  cancelInferenceApplianceInstall() {
+    return { ok: true, cancelled: this.inferenceAppliance.cancelInstall() };
+  }
+  async repairInferenceAppliance() {
+    return await this.inferenceAppliance.repair();
+  }
+  async removeInferenceAppliance() {
+    return await this.inferenceAppliance.remove();
+  }
+  renameWorld({ world_id, name }) { if (!friendlyName(name)) return publicError("WORLD_NAME_INVALID", "Choose a world name between 1 and 80 characters."); const data = this.metadata(); if (!data.worlds[world_id]) return publicError("WORLD_NOT_FOUND", "This world no longer exists."); try { const world = this.getWorld(world_id); const identity = world.q4_operations?.controlled_player; const person = identity ? history.character(world, identity) : null; if (person && world.q4_operations?.personnel_confirmation?.completed) return publicError("PERSONNEL_RECORD_LOCKED", "This field file is registered to permanent personnel and cannot be renamed."); } catch {} data.worlds[world_id].name = name.trim(); this.writeMetadata(data); return { ok: true, world: this.loadWorld({ world_id }).world }; }
   replaceRecoveryPrimaries(replacements) {
     const tag = `${process.pid}.${crypto.randomUUID()}`; const staged = []; const rollback = [];
     try {
@@ -366,12 +661,12 @@ class DesktopService {
     } catch { return publicError("BACKUP_RESTORE_FAILED", "The previous save could not be restored safely."); }
   }
   exportBrokenWorld({ world_id, destination }) { try { const source = this.worldFile(world_id); if (!destination || !path.isAbsolute(destination) || !fs.existsSync(source)) return publicError("EXPORT_DESTINATION_INVALID", "Choose a destination for this world file."); fs.copyFileSync(source, destination); return { ok: true, file: destination }; } catch { return publicError("EXPORT_FAILED", "The world file could not be copied."); } }
-  getDiagnostics() { const status = this.getProviderStatus().provider; const hosted = this.interpretationProvenance.filter((record) => (record.provider_invoked || record.invocation_status) && record.provider !== "offline" && record.provider !== "deterministic-mock").at(-1); const activeProvider = status.selected; const isOffline = status.offline || activeProvider === "offline"; const providerStatus = isOffline ? "offline" : (status[activeProvider]?.status ?? (activeProvider === "auto" ? "ready" : "inactive")); const anyConfigured = Boolean(status.openai?.configured || status.groq?.configured || status.gemini?.configured || status.openrouter?.configured); return { ok: true, diagnostics: { app_version: packageVersion, platform: process.platform, provider: activeProvider, provider_status: providerStatus, hosted_ai:hosted ? { provider:hosted.provider, request_id:hosted.request_id, request_kind:hosted.request_kind, invocation_status:hosted.invocation_status, hosted_request:hosted.hosted_request === true, response_received:hosted.response_received === true, response_parsed:hosted.response_parsed === true, model:hosted.model, duration_ms:hosted.duration_ms, error_type:hosted.error_type ?? null, error_status:hosted.error_status ?? null, error_code:hosted.error_code ?? null, error_param:hosted.error_param ?? null } : { invocation_status:"not-observed", hosted_request:false, response_received:false, response_parsed:false }, evidence_media:{ pipeline_version:evidenceMedia.PIPELINE_VERSION, provider_mode:status.evidence_media.selected, provider_available:status.evidence_media.available, fallback:status.evidence_media.fallback }, environment:{ version:environment.VERSION, config_version:environment.CONFIG_VERSION, authority:"canonical-spatial-snapshot" }, save_directory: "managed application data", credentials_configured: anyConfigured, save_schema_version: SAVE_SCHEMA_VERSION, telemetry: "disabled", offline_gameplay: true } }; }
+  getDiagnostics() { const status = this.getProviderStatus().provider; const hosted = this.interpretationProvenance.filter((record) => (record.provider_invoked || record.invocation_status) && record.provider !== "offline" && record.provider !== "deterministic-mock").at(-1); const activeProvider = status.selected; const isOffline = status.offline || activeProvider === "offline"; const providerStatus = isOffline ? "offline" : (status[activeProvider]?.status ?? (activeProvider === "auto" ? "ready" : "inactive")); const anyConfigured = Boolean(status.openai?.configured || status.groq?.configured || status.gemini?.configured || status.openrouter?.configured); return { ok: true, diagnostics: { app_version: packageVersion, platform: process.platform, provider: activeProvider, provider_status: providerStatus, local_ai:{ selected:activeProvider === "local", endpoint:status.local?.endpoint, model:status.local?.model, status:status.local?.status }, hosted_ai:hosted ? { provider:hosted.provider, request_id:hosted.request_id, request_kind:hosted.request_kind, invocation_status:hosted.invocation_status, hosted_request:hosted.hosted_request === true, response_received:hosted.response_received === true, response_parsed:hosted.response_parsed === true, model:hosted.model, duration_ms:hosted.duration_ms, error_type:hosted.error_type ?? null, error_status:hosted.error_status ?? null, error_code:hosted.error_code ?? null, error_param:hosted.error_param ?? null } : { invocation_status:"not-observed", hosted_request:false, response_received:false, response_parsed:false }, evidence_media:{ pipeline_version:evidenceMedia.PIPELINE_VERSION, provider_mode:status.evidence_media.selected, provider_available:status.evidence_media.available, fallback:status.evidence_media.fallback }, environment:{ version:environment.VERSION, config_version:environment.CONFIG_VERSION, authority:"canonical-spatial-snapshot" }, save_directory: "managed application data", credentials_configured: anyConfigured, save_schema_version: SAVE_SCHEMA_VERSION, telemetry: "disabled", offline_gameplay: true } }; }
   sanitizedLogTail() { const file = path.join(this.paths.logs, "desktop.log"); try { return fs.readFileSync(file, "utf8").split(/\r?\n/).filter(Boolean).slice(-40).map((line) => redactDiagnostic(line)); } catch { return []; } }
   exportTesterReport({ world_id, mode = "field-researcher", note = null } = {}) { try { const world = this.getWorld(world_id); const loaded = this.loadSession(world, mode); const entry = this.session(world_id, mode) ?? loaded.entry ?? null; const projection = entry ? this.projectionFor(world, mode, entry) : null; const provider = this.getProviderStatus().provider; const active = provider.selected; const render_diagnostics = evidenceAuthority.archive(world, { observer:"player" }).records.map((record) => ({ evidence_id:record.id, request_id:record.render_presentation?.request_id ?? null, status:record.render_status, last_error:record.render_presentation?.last_error ?? null, artifact_reference:record.render_presentation?.artifact?.relative_path ?? null, seed:record.render_presentation?.seed ?? null, model:record.render_presentation?.provider_model ?? null, pipeline_version:record.render_presentation?.pipeline_version ?? null })); const environment_diagnostics = environment.diagnostics(world.q4_geography?.environment, entry?.run?.spatial?.player_location ?? null); const phenomenon_diagnostics=phenomenonEcology.diagnostics(world); const recent_public_events=developerInspection.recentHistory(world).filter((item)=>!String(item.type).startsWith("q4.phenomenon.")); const input = { world, session: projection, provider: { selected: provider.selected, offline: provider.offline, configured: Boolean(provider.openai?.configured || provider.groq?.configured || provider.gemini?.configured || provider.openrouter?.configured), status: provider.offline ? "offline" : (provider[active]?.status ?? (active === "auto" ? "ready" : "inactive")), evidence_media:provider.evidence_media }, interpretation_provenance: this.interpretationProvenance, doctrine: { source: doctrineRuntime.SOURCE, sha256: doctrineRuntime.read().sha256, priority: "constitutional" }, render_diagnostics, environment_diagnostics, phenomenon_diagnostics, note, save_schema_version: SAVE_SCHEMA_VERSION, recent_public_events, logs: this.sanitizedLogTail(), recovery: { world: this.recoveryStatus(world_id, "world"), session: this.recoveryStatus(world_id, mode) } }; const safeInput = redactDiagnostic(input); const report = q4BetaReport.report(safeInput); const file = q4BetaReport.writeReport(this.paths.logs, safeInput); return { ok: true, file, report }; } catch { return publicError("TESTER_REPORT_FAILED", "The diagnostic record could not be exported safely."); } }
   serializeSession(world, mode, entry) { const phase = entry.phase ?? phases.createPhase({ mode, guided: this.settings().guided_introductions !== false }); if (entry.kind === "bootstrap") return { version: 7, schema: SAVE_SCHEMA_VERSION, mode, kind: entry.kind, legacy_flow: entry.legacy_flow === true, phase, payload: bootstrap.saveRun(entry.run) }; if (entry.kind === "lost") return { version: 7, schema: SAVE_SCHEMA_VERSION, mode, kind: entry.kind, phase, payload: clone(entry.run) }; return { version: 7, schema: SAVE_SCHEMA_VERSION, mode, kind: entry.kind, phase, payload: clone(entry) }; }
   validateSessionSave(saved, mode) { if (!saved || typeof saved !== "object") return "SESSION_SAVE_DAMAGED"; if (saved.mode !== mode) return "SESSION_MODE_INVALID"; if (![1, 2, 3, 4, 5, 6, 7].includes(saved.version ?? 1)) return "SESSION_VERSION_UNSUPPORTED"; if (saved.version === 7 && saved.schema !== SAVE_SCHEMA_VERSION) return "SESSION_SCHEMA_UNSUPPORTED"; if (!["bootstrap", "lost", "nullzone", "beck"].includes(saved.kind)) return "SESSION_SAVE_DAMAGED"; if (saved.phase?.mode_id && saved.phase.mode_id !== mode) return "SESSION_SAVE_DAMAGED"; if (saved.kind === "bootstrap" && currentClearQ4(saved.payload) && (!hasCurrentEnvironment(saved.payload) || !bootstrap.resumeRun(saved.payload).ok)) return "SESSION_SAVE_DAMAGED"; try { if (saved.phase?.phase_id) phases.validate(mode, saved.phase.phase_id); } catch { return "SESSION_SAVE_DAMAGED"; } return null; }
-  restoreSession(world, mode, saved, { allowUnmarked = true } = {}) { if (this.validateSessionSave(saved, mode) || !persistencePairMatches(world, saved, { mode, allowUnmarked })) return null; const phase = saved.phase ?? phases.createPhase({ mode, guided: this.settings().guided_introductions !== false }); if (saved.kind === "bootstrap") { const current = saved.payload?.version === "yellow-beast-save@v9"; if (currentClearQ4(saved.payload) && !hasCurrentStandardOperator(world)) return null; const hadSpatialState = Boolean(saved.payload?.spatial); const hadRadioState = Boolean(saved.payload?.expedition?.radio); const hadOperationalState = Boolean(saved.payload?.expedition?.operational); const restored = bootstrap.resumeRun(saved.payload, { world, spatial_worldpack: mode === "field-researcher" ? "clear-q4" : null, phase: phase.phase_id }); if (!restored.ok) return null; if (!current) { bootstrap.ensureSpatial(restored.run, phase.phase_id); if (!hadSpatialState) { if (["FIELD_OPERATION", "RETURN", "DEBRIEF"].includes(phase.phase_id)) bootstrap.enterSpatialField(restored.run); else bootstrap.setSpatialPhase(restored.run, phase.phase_id); } if (!hadRadioState && ["FIELD_OPERATION", "RETURN", "DEBRIEF"].includes(phase.phase_id)) q4Radio.completeCheck(restored.run.expedition); if (!hadOperationalState && restored.run.expedition?.clock?.check_in_due_at != null && !restored.run.expedition.communications?.check_ins?.length) q4Time.schedule(restored.run.expedition, Math.max(1, restored.run.expedition.clock.check_in_due_at - restored.run.expedition.clock.interval)); bootstrap.evaluateMissionState(restored.run, phase.phase_id); } return { kind: "bootstrap", run: restored.run, legacy_flow: saved.legacy_flow === true || phase.legacy_flow === true, restored_from_legacy:!current, phase }; } if (saved.kind === "lost") return { kind: "lost", run: saved.payload, phase }; if (saved.kind === "nullzone") return { kind: "nullzone", run_id: saved.payload.run_id, phase }; if (saved.kind === "beck") return { kind: "beck", run_id: saved.payload.run_id, phase }; return null; }
+  restoreSession(world, mode, saved, { allowUnmarked = true } = {}) { if (this.validateSessionSave(saved, mode) || !persistencePairMatches(world, saved, { mode, allowUnmarked })) return null; const phase = saved.phase ?? phases.createPhase({ mode, guided: this.settings().guided_introductions !== false }); if (saved.kind === "bootstrap") { const current = saved.payload?.version === "yellow-beast-save@v10"; if (currentClearQ4(saved.payload) && !hasCurrentStandardOperator(world)) return null; const hadSpatialState = Boolean(saved.payload?.spatial); const hadRadioState = Boolean(saved.payload?.expedition?.radio); const hadOperationalState = Boolean(saved.payload?.expedition?.operational); const restored = bootstrap.resumeRun(saved.payload, { world, spatial_worldpack: mode === "field-researcher" ? "clear-q4" : null, phase: phase.phase_id }); if (!restored.ok) return null; if (!current) { bootstrap.ensureSpatial(restored.run, phase.phase_id); if (!hadSpatialState) { if (["FIELD_OPERATION", "RETURN", "DEBRIEF"].includes(phase.phase_id)) bootstrap.enterSpatialField(restored.run); else bootstrap.setSpatialPhase(restored.run, phase.phase_id); } if (!hadRadioState && ["FIELD_OPERATION", "RETURN", "DEBRIEF"].includes(phase.phase_id)) q4Radio.completeCheck(restored.run.expedition); if (!hadOperationalState && restored.run.expedition?.clock?.check_in_due_at != null && !restored.run.expedition.communications?.check_ins?.length) q4Time.schedule(restored.run.expedition, Math.max(1, restored.run.expedition.clock.check_in_due_at - restored.run.expedition.clock.interval)); bootstrap.evaluateMissionState(restored.run, phase.phase_id); } return { kind: "bootstrap", run: restored.run, legacy_flow: saved.legacy_flow === true || phase.legacy_flow === true, restored_from_legacy:!current, phase }; } if (saved.kind === "lost") return { kind: "lost", run: saved.payload, phase }; if (saved.kind === "nullzone") return { kind: "nullzone", run_id: saved.payload.run_id, phase }; if (saved.kind === "beck") return { kind: "beck", run_id: saved.payload.run_id, phase }; return null; }
   loadSession(world, mode) { const file = this.sessionFile(world.world_id, mode); const current = readJsonCandidate(file); if (!current.ok && current.code === "SAVE_MISSING") return { ok:false, code:"SESSION_NOT_FOUND" }; const problem = current.ok ? this.validateSessionSave(current.value, mode) : "SESSION_SAVE_DAMAGED"; const entry = !problem ? this.restoreSession(world, mode, current.value) : null; if (entry) return { ok:true, entry, recovery:this.recoveryStatus(world.world_id, mode) }; if (["SESSION_VERSION_UNSUPPORTED","SESSION_SCHEMA_UNSUPPORTED"].includes(problem)) return { ok:false, code:problem }; const backup = readJsonCandidate(this.sessionBackupFile(world.world_id, mode)); const recovered = backup.ok && !this.validateSessionSave(backup.value, mode) ? this.restoreSession(world, mode, backup.value, { allowUnmarked:false }) : null; if (recovered) return { ok:true, entry:recovered, recovery:this.noteRecovery(world.world_id, mode, "previous-good-session") }; return { ok:false, code:problem ?? "SESSION_SAVE_DAMAGED" }; }
   loadPersistencePair(worldId, mode) {
     const worldPrimary = this.worldFile(worldId); const worldBackup = this.backupFile(worldId); const sessionPrimary = this.sessionFile(worldId, mode); const sessionBackup = this.sessionBackupFile(worldId, mode);
@@ -422,6 +717,16 @@ class DesktopService {
     for (const member of expedition.team?.members ?? []) { const person = history.character(world, member.personnel_id ?? member.id); if (!person) continue; const memberStatus = String(member.status ?? "").toLowerCase(); const memberCondition = String(member.condition ?? "").toLowerCase(); const observerOnly = ["normal","uninjured"].includes(memberCondition) && ["unavailable","missing"].includes(memberStatus); if (["missing","dead"].includes(person.status)) { if (!consequenceRuntime.PERSONNEL_STATUSES.has(memberStatus) || !new Set([...consequenceRuntime.PERSONNEL_CONDITIONS,"normal","recovering","deceased"]).has(memberCondition)) throw Object.assign(new Error("invalid terminal personnel observation state"), { code:"SESSION_PERSONNEL_STATE_INVALID" }); continue; } if (observerOnly) continue; const checked = consequenceRuntime.validatePersonnelSnapshot(member); if (!checked.ok) throw Object.assign(new Error("invalid session personnel authority state"), { code:checked.code }); const changed = person.status !== checked.status || String(person.condition).toLowerCase() !== checked.condition; person.status = checked.status; person.condition = checked.condition; if (changed) history.event(world, entry.run.run_id, "q4.personnel.condition.changed", { identity: person.identity, status: person.status, condition: person.condition, interval: expedition.clock.interval }, "authoritative-operational-consequence"); }
     for (const message of expedition.messages ?? []) { if (message.intended_recipient !== "Standard" || !["delivered", "acknowledged"].includes(message.state) || message.institutional_recorded) continue; const recordId = `q4-delivered-communication-${message.id}`; history.event(world, entry.run.run_id, "q4.communication.reported", { message_id: message.id, endpoint: "Standard", purpose: message.purpose, status: message.state, interval: message.delivered_at }); history.recordInstitutional(world, entry.run.run_id, recordId, { channel: "standard", purpose: message.purpose, report: message.text, status: message.state, source_message: message.id, delivered_at: message.delivered_at }); if (message.geography_report === true && entry.run.survey_frontier) surveyFrontier.report(entry.run.survey_frontier, message.sender, { at: message.delivered_at ?? expedition.clock?.interval ?? 0, message_id: message.id }); for (const evidenceId of message.evidence_ids ?? []) { history.recordInstitutional(world, entry.run.run_id, `institutional-evidence-${evidenceId}`, { evidence_id: evidenceId, source_message: message.id, status: "reported" }); evidenceAuthority.report(world, evidenceId, message.id); } message.institutional_recorded = recordId; }
     if (entry.run.survey_frontier) world.q4_survey_frontier = clone(entry.run.survey_frontier);
+    if (entry.run.expedition?.day1_opener?.catastrophic_ending) {
+      world.q4_operations ??= {};
+      world.q4_operations.terminal_outcome ??= {
+        run_id: entry.run.run_id,
+        outcome: "catastrophic-failure",
+        reason: "Post-1:00 PM operational cutoff exceeded Complex-side. Trapped personnel.",
+        asset_id: entry.run.expedition.day1_opener.catastrophic_ending.asset_id ?? "ending.catastrophic.newspaper",
+        at: new Date().toISOString()
+      };
+    }
   }
   adoptPersistencePair(world, entry, committed) {
     for (const key of Object.keys(world)) delete world[key]; Object.assign(world, committed.world);
@@ -429,7 +734,7 @@ class DesktopService {
     const source = committed.entry.run; const target = entry.run;
     const environmentIds = new Map((source.spatial?.environment?.history ?? []).map((change) => [change.id, change.world_history_id])); for (const change of target.spatial?.environment?.history ?? []) if (environmentIds.has(change.id)) change.world_history_id = environmentIds.get(change.id);
     const messageRecords = new Map((source.expedition?.messages ?? []).map((message) => [message.id, message.institutional_recorded])); for (const message of target.expedition?.messages ?? []) if (messageRecords.get(message.id)) message.institutional_recorded = messageRecords.get(message.id);
-    target.survey_frontier = clone(source.survey_frontier); q4Equipment.absorbCompatibility(target.expedition); if (target.expedition.logistics) logisticsRuntime.attach(target.expedition); missionRuntime.attachCompatibilityView(target.expedition); target._world = world;
+    target.survey_frontier = clone(source.survey_frontier); target.observation_state = clone(source.observation_state); q4Equipment.absorbCompatibility(target.expedition); if (target.expedition.logistics) logisticsRuntime.attach(target.expedition); missionRuntime.attachCompatibilityView(target.expedition); target._world = world;
   }
   session(worldId, mode) { return this.sessions.get(`${worldId}:${mode}`) ?? null; }
   persistSession(world, mode, entry) { if (this.recoveredWorlds.has(world.world_id)) throw Object.assign(new Error("automatic recovery is read-only until explicitly adopted"), { code:"PERSISTENCE_RECOVERY_READ_ONLY" }); const candidateWorld = history.canonicalJson(world, { code:"CANONICAL_WORLD_VALUE_INVALID" }); const candidateEntry = sessionRuntimeCandidate(entry); if (candidateEntry.kind === "bootstrap") missionRuntime.attachCompatibilityView(candidateEntry.run.expedition); this.reconcileSessionCandidate(candidateWorld, candidateEntry); const serialized = this.serializeSession(candidateWorld, mode, candidateEntry); const committed = this.commitPersistencePair(candidateWorld, mode, serialized); committed.entry = candidateEntry; this.adoptPersistencePair(world, entry, committed); this.sessions.set(`${world.world_id}:${mode}`, entry); try { const data = this.metadata(); if (data.worlds[world.world_id]) { data.worlds[world.world_id].last_played_at = new Date().toISOString(); data.worlds[world.world_id].last_mode = mode; data.last_world_id = world.world_id; this.writeMetadata(data); } } catch (error) { this.log(`persistence metadata update failed after coordinated commit: ${error.message}`); } }
@@ -460,12 +765,15 @@ class DesktopService {
     this.saveSession(world.world_id, mode, serialized, { validateOnly:true });
     return retired;
   }
-  startSession({ world_id, mode, seed = null, require_personnel = false, scenario = null }) {
-    if (this.commandBusy(world_id)) return publicError("SESSION_BUSY", "Wait for the current action to finish before changing this operation.");
+  startSession({ world_id, mode, seed = null, require_personnel = false, scenario = null, force = false }) {
+    if (!force && this.commandBusy(world_id)) return publicError("SESSION_BUSY", "Wait for the current action to finish before changing this operation.");
     try { const world = this.getWorld(world_id); if (outcomes.isRetired(world)) return publicError("WORLD_RETIRED", "This world is a read-only historical record."); const descriptor = this.getMode(mode); if (!descriptor) return publicError("MODE_INVALID", "Choose one of the available roles."); let entry;
       if (mode === "field-researcher") {
         if (require_personnel && !world.q4_operations?.controlled_player) return publicError("PERSONNEL_CREATION_REQUIRED", "Create your ASYNC personnel record before receiving an assignment.");
-        const requestedScenario = cq4Day1Opener.isOpener(scenario) || (scenario == null && cq4Day1Opener.isOpener(this.defaultQ4Scenario))
+        const hasCompletedOpener = Object.values(world.runs ?? {}).some(r => cq4Day1Opener.isOpener(r.scenario) && r.status === "completed") ||
+                                   Object.values(world.q4_missions ?? {}).some(m => m.id?.startsWith("CQ4-DAY1") && m.status === "completed");
+        const defaultOpener = cq4Day1Opener.isOpener(this.defaultQ4Scenario) && !hasCompletedOpener;
+        const requestedScenario = cq4Day1Opener.isOpener(scenario) || (scenario == null && defaultOpener)
           ? "day1-opener"
           : (scenario === "reference-expedition" || (scenario == null && this.defaultQ4Scenario === "reference-expedition") ? "reference-expedition" : "procedural-survey");
         const runSeed = seed ?? world.seed ?? "desktop";
@@ -474,47 +782,14 @@ class DesktopService {
         standardOperator.ensure(world, started.run.run_id);
         entry = { kind: "bootstrap", run: started.run, legacy_flow: false, phase: phases.createPhase({ mode, guided: this.settings().guided_introductions !== false }) };
         bootstrap.setSpatialPhase(entry.run, entry.phase.phase_id);
-        if (cq4Day1Opener.isOpener(requestedScenario)) {
-          const now = new Date();
-          const monthNames = ["JANUARY", "FEBRUARY", "MARCH", "APRIL", "MAY", "JUNE", "JULY", "AUGUST", "SEPTEMBER", "OCTOBER", "NOVEMBER", "DECEMBER"];
-          const dateStr = `${monthNames[now.getMonth()]} ${now.getDate()}, 1994 BRIEFING`;
-          if (!cq4Day1Opener.isOneShotConsumed(entry.run, "briefing_date_card")) {
-            presentationBus.emit(entry.run, {
-              type: "opener_briefing_card",
-              source: presentationBus.SOURCES.AUTHORED,
-              title: dateStr,
-              text: dateStr,
-              metadata: { briefing_title: dateStr, physical_room_voice: true }
-            });
-            cq4Day1Opener.markOneShotConsumed(entry.run, "briefing_date_card");
-          }
-          const members = entry.run.expedition?.team?.members ?? [];
-          const pName = members[0]?.first_name || members[0]?.display_name || "Assignee";
-          const c1Name = members[1]?.first_name || members[1]?.display_name || "Teammate";
-          const c2Name = members[2]?.first_name || members[2]?.display_name || "Courier";
-          const c3Name = members[3]?.first_name || members[3]?.display_name || "Doctor";
-          const maxwellText = `Good morning, Q4 assignees. My name is Dr. Kirk Maxwell. Should any of you become recurring expedition personnel, we'll be seeing quite a bit of one another. Today's assignment is straightforward. Delivery and introductory reconnaissance. ${c2Name} has custody of the startup material scheduled for Outpost A, Bermuda branch. ${pName}, you're on camera. ${c3Name}, layout record. ${c1Name}, observation and verbal recall. There isn't time for questions here. Get acquainted, then report to Equipment Staging.`;
-          if (!cq4Day1Opener.isOneShotConsumed(entry.run, "maxwell_opening_briefing")) {
-            presentationBus.emit(entry.run, {
-              type: presentationBus.EVENT_TYPES.DIALOGUE,
-              source: presentationBus.SOURCES.AUTHORED,
-              speaker: "DR. KIRK MAXWELL",
-              channel: "LOCAL",
-              text: maxwellText,
-              physical_room_voice: true,
-              metadata: { physical_room_voice: true, role: "Chief Expedition Briefing Authority" }
-            });
-            cq4Day1Opener.markOneShotConsumed(entry.run, "maxwell_opening_briefing");
-          }
-        }
       }
       else if (mode === "lost") entry = { kind: "lost", run: lost.start(world, seed), phase: phases.createPhase({ mode, guided: this.settings().guided_introductions !== false }) };
       else { const run_id = history.beginRun(world, { profile: mode, scenario: mode === "async-command" ? "becks-desk-operations" : "nullzone-exposure", seed }); if (mode === "local-anomaly") { const prepared = nullzone.prepare(world, run_id, ["field-light", "recording-device", "evidence-container"]); if (!prepared.ok || !nullzone.enter(world, run_id).ok) return publicError("SESSION_START_FAILED", "The civilian excursion could not start."); entry = { kind: "nullzone", run_id }; } else entry = { kind: "beck", run_id }; }
       entry.phase ??= phases.createPhase({ mode, guided: this.settings().guided_introductions !== false }); if (entry.kind === "bootstrap") entry.phase.legacy_flow = entry.legacy_flow === true; this.persistSession(world, mode, entry); return { ok: true, session: { world_id, mode, resumable: true }, projection: this.projectionFor(world, mode, entry) };
     } catch (error) { this.log(`session start failed: ${error.message}`); return publicError("SESSION_START_FAILED", "This session could not start safely."); }
   }
-  resumeSession({ world_id, mode }) {
-    if (this.commandBusy(world_id)) return publicError("SESSION_BUSY", "Wait for the current action to finish before changing this operation.");
+  resumeSession({ world_id, mode, force = false }) {
+    if (!force && this.commandBusy(world_id)) return publicError("SESSION_BUSY", "Wait for the current action to finish before changing this operation.");
     try {
       const loaded = this.loadPersistencePair(world_id, mode);
       if (!loaded.ok) {
@@ -546,6 +821,34 @@ class DesktopService {
   }
   briefingScene(entry, mode, phaseId = entry.phase?.phase_id, world = null) {
     const view = q4.presentation(entry.run, entry.phase ?? phases.createPhase({ mode }), null, world);
+    const isOpener = cq4Day1Opener.isOpener(entry.run?.scenario);
+    if (isOpener && phaseId === "BRIEFING") {
+      const isBroadcastStandby = view.facility_broadcast?.status === "standby" || (!view.facility_broadcast?.visible && !view.facility_broadcast?.completed);
+      const isBroadcastInProgress = Boolean(view.facility_broadcast?.status === "in-progress" && view.facility_broadcast?.visible);
+      const isBriefingConcluded = view.beat === "LOCAL_INTRODUCTIONS" || view.personnel_briefing?.status === "concluded";
+      const narration = isBroadcastStandby
+        ? "Terminal operational in ASYNC briefing room. Standing by for facility transmission."
+        : isBroadcastInProgress
+        ? "Facility broadcast in progress."
+        : isBriefingConcluded
+        ? "Dr. Maxwell has concluded the assignment briefing. Get acquainted with your team, then proceed to Equipment Staging."
+        : "Facility broadcast concluded. Standing by for assignment briefing.";
+      const prompt = isBroadcastStandby
+        ? "Standing by for facility transmission."
+        : isBroadcastInProgress
+        ? "Await conclusion of briefing broadcast before proceeding."
+        : isBriefingConcluded
+        ? "Get acquainted with your team, then proceed to Equipment Staging."
+        : "Standing by for assignment briefing.";
+      const facts = [
+        ["location", "location", "the ASYNC briefing room"],
+        ["status", "status", narration]
+      ].map(([id, category, text]) => ({ id, category, text, required: true }));
+      const scene = { version: "yellow-beast-scene@v1", scene_id: `briefing-${entry.run.run_id ?? entry.run.session.id}`, world_ref: entry.run.world_id ?? null, session_ref: entry.run.session.id, turn_ref: "briefing", observer_ref: entry.run.session.startup.player.observer_id, mode, profile: "clear-q4", scene_type: "briefing", significance: "Operational notice", location: "ASYNC briefing room", safe_facts: facts, immediate_changes: [], visible_actors: [], communications: [], sensory_facts: [], inventory: [], object_state_changes: [], unresolved_facts: [], continuing_conditions: [], context: [], interaction_prompt: prompt, provenance: { source: "observer-safe-q4-briefing", input: null } };
+      scene.narration = narration;
+      scene.narration_source = "fallback";
+      return scene;
+    }
     const team = view.team.map((member) => member.display_name).join(" and ") || "the assigned field team";
     const equipment = (view.equipment?.required ?? []).map((item) => item.label).join(", ") || "the assigned field kit";
     const facts = [
@@ -586,6 +889,22 @@ class DesktopService {
     return this.modeScene(world, mode, entry, { consequence: { result: { accepted: options.accepted !== false, observer_safe_summary: options.public_reason ?? "The current situation remains unchanged." } } });
   }
   decorateEvidenceMedia(projection, world) { if (!projection.q4?.archive) return projection; const safe = clone(projection); safe.q4.archive.records = safe.q4.archive.records.map((record) => { const presentation = record.render_presentation ?? evidenceAuthority.presentation(record); const available = presentation.status === "ready" && evidenceMedia.artifactAvailable(this.paths.media, presentation.artifact); const status = !available && presentation.status === "ready" ? "unavailable" : presentation.status; return { ...record, render_presentation:{ ...presentation, status, artifact_available:available, artifact_url:available ? `file:///${path.resolve(this.paths.media, presentation.artifact.relative_path).replace(/\\/g, "/")}` : null }, fallback:evidenceMedia.fallback(record, available ? "" : presentation.last_error?.message ?? "not generated") }; }); return safe; }
+  // Closes the omniscience leak Pass 9A found: consumePending() drained
+  // unfiltered, so any autonomous LOCAL dialogue event would reach the
+  // renderer regardless of who could actually hear it. Only LOCAL dialogue
+  // events that explicitly carry listeners[] are gated; events with no
+  // listeners[] recorded (non-dialogue types, and pre-existing authored
+  // narration that never populated it, e.g. the Maxwell briefing beats) pass
+  // through unchanged.
+  filterAutonomousDialogueForPlayer(events, run) {
+    const playerId = run?.session?.startup?.player?.observer_id ?? null;
+    return events.filter((event) => {
+      if (event.type !== presentationBus.EVENT_TYPES.DIALOGUE) return true;
+      if (String(event.channel ?? "").toUpperCase() !== "LOCAL") return true;
+      if (!Array.isArray(event.listeners) || event.listeners.length === 0) return true;
+      return !playerId || event.listeners.includes(playerId);
+    });
+  }
   projectionFor(worldOrId, mode, entryParam = null) {
     const world = typeof worldOrId === "string" ? this.getWorld(worldOrId) : worldOrId;
     const worldId = world?.world_id ?? world?.id ?? (typeof worldOrId === "string" ? worldOrId : null);
@@ -596,11 +915,201 @@ class DesktopService {
     if (entry.kind === "bootstrap") surface = bootstrap.status(entry.run); else if (entry.kind === "lost") surface = lost.projection(entry.run); else if (entry.kind === "nullzone") surface = { ...nullzone.projection(world), local_observation: nullzone.observeRegion(world) }; else surface = desk.projection(world);
     const phase = entry.phase ?? phases.createPhase({ mode, guided: this.settings().guided_introductions !== false }); const unfinished = consequenceEchoes.unfinishedBusiness(world, mode, { run_id: runId });
     const spatialDef = entry.run?.spatial_pack_id ? bootstrap.spatialDefinitionFor(entry.run.spatial_pack_id) : {};
-    const acousticScene = entry.run ? acousticDirector.evaluateAcousticScene(entry.run, spatialDef, world) : null;
-    const pendingPresentationEvents = entry.run ? presentationBus.consumePending(entry.run) : [];
+    const acousticScene = entry.run ? acousticDirector.evaluateAcousticScene(entry.run, spatialDef, world, phase.phase_id) : null;
+    const pendingPresentationEvents = entry.run ? this.filterAutonomousDialogueForPlayer(presentationBus.consumePending(entry.run), entry.run) : [];
     const baseProjection = this.decorateEvidenceMedia({ version: "yellow-beast-desktop-projection@v1", world: this.worldInfo(world, this.metadata().worlds[world.world_id] ?? {}), mode: clone(descriptor), scenario: entry.run?.scenario ?? null, gameplay: gameplay.projection(world, { mode: descriptor.gameplay_mode, run_id: runId }), institution: mode === "async-command" ? desk.projection(world) : null, consequence_echoes: consequenceEchoes.observerView(world, mode, { run_id: runId }), unfinished_business: unfinished, surface: clone(surface), phase: clone(phase), q4: entry.kind === "bootstrap" ? q4.presentation(entry.run, phase, unfinished, world) : null, beck: entry.kind === "beck" ? beckExperience.presentation(world, surface, phase, unfinished) : null, nullzone: entry.kind === "nullzone" ? nullzoneExperience.presentation(world, phase, unfinished) : null, lost: entry.kind === "lost" ? lostExperience.presentation(surface, phase, unfinished) : null, scene: this.sceneFor(entry, mode, {}, world), available_actions: this.availableFor(world, mode, entry), acoustic_scene: acousticScene, presentation_events: pendingPresentationEvents, settings: this.settings() }, world);
-    if (entry.kind === "bootstrap" && cq4Day1Opener.isOpener(entry.run?.scenario) && phase.phase_id === "DEBRIEF") {
-      baseProjection.demo_termination = { status_text: "NO FURTHER ASSIGNMENTS AVAILABLE" };
+    if (entry.kind === "bootstrap" && cq4Day1Opener.isOpener(entry.run?.scenario)) {
+      const opener = entry.run?.expedition?.day1_opener;
+      if (opener?.catastrophic_ending) {
+        baseProjection.catastrophic_ending = clone(opener.catastrophic_ending);
+        baseProjection.demo_termination = {
+          status_text: "NO FURTHER ASSIGNMENTS AVAILABLE",
+          catastrophic: true,
+          asset_id: opener.catastrophic_ending.asset_id,
+          headline: opener.catastrophic_ending.headline,
+          date: opener.catastrophic_ending.date
+        };
+      } else if (phase.phase_id === "DEBRIEF" || entry.run.lifecycle === "completed") {
+        const expedition = entry.run?.expedition ?? {};
+        const writtenReport = expedition.written_report ?? Object.values(world.q4_reviews ?? {})[0]?.written_report ?? null;
+        const institutionalAssessment = expedition.institutional_assessment ?? Object.values(world.q4_reviews ?? {})[0]?.institutional_findings?.reference_assessment ?? {
+          status: "COMMITTED",
+          confidence: "high",
+          summary: "Observer account filed under Protocol KV31-C. Cross-referenced against central evidence intake.",
+          basis: {
+            written_report_id: writtenReport?.report_id ?? "WR-CQ4-DAY1",
+            evidence_ids: ["EVD-DUFFLE-01", "EVD-SURVEY-NOTE-01"],
+            prior_record_ids: ["ARCH-KV31-91"]
+          }
+        };
+
+        const teamMembers = expedition.team?.members ?? [];
+        const playerId = entry.run?.session?.startup?.player?.observer_id;
+        const personnelRoster = teamMembers.map((member) => {
+          const char = world.characters?.[member.identity] ?? {};
+          const isPlayer = member.identity === playerId || member.controlled;
+          const assignedEquip = Object.entries(expedition.equipment ?? {})
+            .filter(([_, item]) => item.holder === member.identity || (isPlayer && (item.holder === "You" || item.holder === member.identity)))
+            .map(([id, item]) => ({ id, label: item.label, state: item.state }));
+          return {
+            identity: member.identity,
+            display_name: member.display_name ?? char.display_name ?? member.identity,
+            role: member.role ?? char.role ?? (isPlayer ? "Team Lead" : "Assigned Personnel"),
+            clearance: member.clearance ?? char.clearance ?? (isPlayer ? "Level 1 / Field Lead" : "Level 1 / Technical"),
+            condition: member.condition ?? char.condition ?? "Nominal",
+            assigned_equipment: assignedEquip,
+            personality_archetype: member.archetype ?? char.identity_substrate?.behavioral_disposition ?? "Standard ASync Staff",
+            identity_substrate: char.identity_substrate ? { ...char.identity_substrate } : null
+          };
+        });
+
+        const evidenceVault = [
+          {
+            id: "EVD-DUFFLE-01",
+            type: "Logistics Container",
+            label: "Startup Prerequisite Materials Duffle",
+            custody_status: "Central Intake Vault Custody",
+            custodian: "ASync Archive Division",
+            vault_location: "Central Intake Vault / Sector B1 Vault 4",
+            receipt_timestamp: "1991-07-17 12:45:00",
+            notes: "Heavy nylon logistics duffle containing Outpost A startup prerequisites (delivered and verified at Outpost A, surrendered to vault custody)."
+          },
+          {
+            id: "EVD-SURVEY-NOTE-01",
+            type: "Operational Record",
+            label: "Layout Notes & Field Route Record",
+            custody_status: "Central Intake Vault Custody",
+            custodian: "ASync Archive Division",
+            vault_location: "Central Intake Vault / Sector B1 Vault 4",
+            receipt_timestamp: "1991-07-17 12:46:12",
+            notes: "Drafted layout record and corridor annotations for Bermuda Branch traversal."
+          },
+          {
+            id: "EVD-SPECTRO-01",
+            type: "Measurement Data Plate",
+            label: "Mass Spectrometer Calibration & Atmosphere Readings",
+            custody_status: "Central Intake Vault Custody",
+            custodian: "ASync Archive Division",
+            vault_location: "Central Intake Vault / Sector B1 Vault 4",
+            receipt_timestamp: "1991-07-17 12:48:30",
+            notes: "Telemetry log and mass spectrometer atmospheric calibration readings taken in KV31 and Bermuda branch."
+          }
+        ];
+
+        const photosTaken = expedition.day1_opener?.photographs_taken ?? expedition.photographs_taken ?? 6;
+        const photographsData = {
+          total_capacity: 24,
+          exposures_used: photosTaken,
+          exposures_remaining: 24 - photosTaken,
+          frames: [
+            { frame: 1, subject: "Assembly Briefing Room B1-4", location: "Briefing Room", timestamp: "10:04 AM", description: "Expedition personnel seated during Dr. Kirk Maxwell briefing presentation." },
+            { frame: 2, subject: "Equipment Staging Department Manifest", location: "Equipment Staging Department", timestamp: "10:22 AM", description: "Inspection of equipment issue manifest and prefield logistics kits." },
+            { frame: 3, subject: "Threshold Approach Magnetization Warning Sign", location: "Threshold Approach", timestamp: "10:35 AM", description: "Warning placard on double blast door indicating high magnetic field hazard." },
+            { frame: 4, subject: "Threshold Chamber Aperture", location: "Threshold Chamber", timestamp: "10:48 AM", description: "Direct view of the open KV31 Threshold aperture and magnetic interlock ring." },
+            { frame: 5, subject: "Bermuda Branch Neon Guidance Tape", location: "Utility Room", timestamp: "11:12 AM", description: "High-visibility green guidance line leading into Bermuda branch access corridor." },
+            { frame: 6, subject: "Outpost A Forward Assembly", location: "Outpost A", timestamp: "11:45 AM", description: "Folding table setup and stenciled placard ASYNC OUTPOST A // BERMUDA BRANCH." }
+          ].slice(0, photosTaken)
+        };
+
+        const mapData = {
+          facility_schematic: {
+            title: "ASYNC RESEARCH FACILITY · SECTOR B1",
+            sector: "Sector B1 Lower Operational Sub-level",
+            nodes: [
+              { id: "maintenance-wing", name: "Maintenance Wing", desc: "Mechanical utility and interlock power routing" },
+              { id: "briefing-room", name: "Briefing Room", desc: "Assignment briefing and team orientation" },
+              { id: "equipment-staging", name: "Equipment Staging Department / ESD", desc: "Manifest inspection and equipment issue" },
+              { id: "kv31-control", name: "KV31 Control Room", desc: "Threshold monitoring and observation station" },
+              { id: "threshold-chamber", name: "Threshold Chamber", desc: "Electromagnetic aperture and interlock gates" }
+            ]
+          },
+          bermuda_branch_route: {
+            branch: "Bermuda Branch",
+            classification: "Controlled Exploratory Route",
+            traversed_nodes: [
+              { id: "threshold-side-entry", name: "Outpost KV31", desc: "Protected ASync workplace beyond Threshold" },
+              { id: "utility-room", name: "Utility Room", desc: "Initial aperture room with neon guidance tape origin" },
+              { id: "corridor", name: "Bermuda Access Corridor", desc: "Transitional hallway leading into Outpost A" },
+              { id: "outpost-a", name: "Outpost A", desc: "Forward operational staging point with folding tables and radio" }
+            ],
+            inspections: {
+              "outpost-a": {
+                label: "Outpost A Node Inspection",
+                placard: "ASYNC OUTPOST A // BERMUDA BRANCH",
+                furniture: "Two folding tables, unpacked logistics containers",
+                equipment: "Stationary field radio, startup prerequisite materials delivered",
+                coordinates: { x: 580, y: 195 }
+              },
+              "threshold-side-entry": {
+                label: "Outpost KV31 Node Inspection",
+                hazard_signage: "WARNING / HIGH MAGNETIC FIELD / AUTHORIZED PERSONNEL ONLY",
+                aperture: "Interlocking blast door and observation window to Standard",
+                status: "Operational return portal confirmed and secured"
+              }
+            }
+          }
+        };
+
+        const institutionalRecordsData = {
+          intake_ledger: {
+            batch_id: "REC-1991-0717-KV31-CQ4",
+            intake_operator: "Records Custodian / Intake Division B",
+            timestamp: "1991-07-17 12:52:10",
+            protocol: "Protocol KV31-C Section 9.2",
+            status: "CLOSED / COMMITTED"
+          },
+          confirmed_knowledge: [
+            "Outpost A startup prerequisite materials successfully staged and verified.",
+            "Bermuda branch guidance tape integrity verified intact from KV31 to Outpost A.",
+            "Threshold operational window confirmed stable during authorized traversal window.",
+            "No catastrophic magnetic interlock disruption recorded during excursion."
+          ],
+          end_of_shift_status: {
+            shift_status: "END OF SHIFT",
+            date: "JULY 17, 1991",
+            record_status: "EXPEDITION RECORD COMMITTED",
+            assignment_status: "NO FURTHER ASSIGNMENT ISSUED",
+            records_status: "AEOT RECORDS REMAIN AVAILABLE"
+          }
+        };
+
+        baseProjection.aeot_inspection = {
+          active: true,
+          status: "inspectable",
+          day_one_completed: true,
+          date: "JULY 17, 1991",
+          shift_status: "END OF SHIFT",
+          assignment_status: "NO FURTHER ASSIGNMENT ISSUED",
+          records_status: "AEOT RECORDS REMAIN AVAILABLE",
+          report_committed: Boolean(writtenReport),
+          available_views: ["report", "personnel", "evidence", "photographs", "map", "institutional_records"],
+          views: {
+            report: {
+              written_report: writtenReport,
+              institutional_assessment: institutionalAssessment,
+              export_available: true
+            },
+            personnel: {
+              roster: personnelRoster
+            },
+            evidence: {
+              vault_location: "Central Intake Vault / Sector B1 Vault 4",
+              items: evidenceVault
+            },
+            photographs: photographsData,
+            map: mapData,
+            institutional_records: institutionalRecordsData
+          }
+        };
+        baseProjection.end_of_shift_notice = {
+          title: "END OF SHIFT",
+          date: "JULY 17, 1991",
+          record_status: "EXPEDITION RECORD COMMITTED",
+          assignment_status: "NO FURTHER ASSIGNMENT ISSUED",
+          records_status: "AEOT RECORDS REMAIN AVAILABLE",
+          prose: "END OF SHIFT\nJULY 17, 1991\nEXPEDITION RECORD COMMITTED\nNO FURTHER ASSIGNMENT ISSUED\nAEOT RECORDS REMAIN AVAILABLE"
+        };
+      }
     }
     return baseProjection;
   }
@@ -646,7 +1155,7 @@ class DesktopService {
         : referenceExpedition.writeReport(entry.run, { author:entry.run.session.startup.player.observer_id, text, at:entry.run.expedition.clock?.interval ?? 0 });
       if (!written.ok) {
         const msg = (written.code === "REFERENCE_REPORT_EMPTY" || written.code === "OPENER_REPORT_EMPTY")
-          ? "Enter the account you intend to submit to A-Sync."
+          ? "Enter the account you intend to submit to ASync."
           : (written.code === "REFERENCE_REPORT_TOO_LONG" || written.code === "OPENER_REPORT_TOO_LONG")
             ? "The written report exceeds the 4,000-character field limit."
             : "The written report could not be accepted.";
@@ -690,16 +1199,51 @@ class DesktopService {
       return publicError(error.code ?? "REPORT_SUBMISSION_FAILED", error.message ?? "The report could not be submitted.");
     }
   }
+  exportReportPdf({ world_id, destination = null }) {
+    if (!world_id) return publicError("WORLD_ID_REQUIRED", "Specify a world to export the report for.");
+    try {
+      const world = this.getWorld(world_id);
+      if (!world) return publicError("WORLD_NOT_FOUND", "The requested world could not be found.");
+      const entry = this.session(world_id, "field-researcher") ?? this.restoreSession(world, "field-researcher", readJson(this.sessionFile(world_id, "field-researcher"), null));
+      const report = entry?.run?.expedition?.written_report ?? Object.values(world.q4_reviews ?? {})[0]?.written_report;
+      if (!report) return publicError("REPORT_NOT_FOUND", "No committed report is available to export.");
+
+      const reportPdf = require("../tools/report-pdf");
+      const sanitizedMissionId = String(report.mission_id ?? "CQ4-DAY1").replace(/[^a-zA-Z0-9_-]/g, "_");
+      const defaultFileName = `ASYNC-EXPEDITION-REPORT-${sanitizedMissionId}-${world_id.slice(0, 8)}.pdf`;
+      const exportsDir = this.paths.exports ?? path.join(this.paths.root, "exports");
+      ensureDirectory(exportsDir);
+      const targetPath = destination || path.join(exportsDir, defaultFileName);
+
+      const result = reportPdf.writeReportPdf({
+        report,
+        expedition: entry?.run?.expedition ?? {},
+        world_id,
+        run_id: entry?.run?.run_id ?? report.run_id ?? null,
+        world
+      }, targetPath);
+
+      return {
+        ok: true,
+        destination: result.destination,
+        byte_length: result.byte_length
+      };
+    } catch (error) {
+      this.log(`exportReportPdf failed: ${error.message}`);
+      return publicError("EXPORT_FAILED", `The report could not be exported to PDF: ${error.message}`);
+    }
+  }
   submitQ4Logistics({ world_id, action, item_id = null, container_id = null, target_holder = null, target_container = null, source_item_id = null, quantity = 1, actor = null }) {
     if (this.commandBusy(world_id)) return publicError("SESSION_BUSY", "Wait for the current action to finish before changing this operation.");
     if (outcomes.isRetired(this.getWorld(world_id))) return publicError("WORLD_RETIRED", "This world is a read-only historical record.");
+    let entry = null; let world = null; let beforeRun = null; let beforeWorld = null; let beforePhase = null;
     try {
-      const world = this.getWorld(world_id);
-      const entry = this.session(world_id, "field-researcher") ?? this.restoreSession(world, "field-researcher", readJson(this.sessionFile(world_id, "field-researcher"), null));
+      world = this.getWorld(world_id);
+      entry = this.session(world_id, "field-researcher") ?? this.restoreSession(world, "field-researcher", readJson(this.sessionFile(world_id, "field-researcher"), null));
       if (!entry || entry.kind !== "bootstrap") return publicError("SESSION_NOT_FOUND", "Start or continue Clear-Q4 before managing equipment.");
-      const beforeRun = clone(entry.run);
-      const beforeWorld = clone(world);
-      const beforePhase = clone(entry.phase);
+      beforeRun = clone(entry.run);
+      beforeWorld = clone(world);
+      beforePhase = clone(entry.phase);
       const context = this.q4LogisticsContext(entry, world);
       const definition = bootstrap.logisticsDefinitionFor(entry.run.spatial_pack_id);
       const resolveHolder = (value) => {
@@ -715,6 +1259,10 @@ class DesktopService {
       spatialRuntime.syncEquipment(entry.run.spatial, entry.run.expedition);
       const authoredCost = bootstrap.dynamicsDefinitionFor(entry.run.spatial_pack_id).action_costs[String(action).toUpperCase()] ?? (/^INSPECT|^VERIFY/.test(String(action).toUpperCase()) ? 0 : 1);
       const cycle = bootstrap.resolveOperationalCycle(entry.run, String(action).toUpperCase(), authoredCost, "logistics-transaction");
+      if (cq4Day1Opener.isOpener(entry.run.scenario)) {
+        const duration = cq4Day1Opener.getActionDuration(String(action).toUpperCase(), { item_id, target_holder, container_id });
+        cq4Day1Opener.advanceSimulationTime(entry.run, duration);
+      }
       expeditionEvent(entry.run.expedition, "logistics.transaction.committed", { transaction_id: result.transaction.id, action: result.transaction.action, item_id: result.transaction.item_id ?? null, container_id: result.transaction.container_id ?? null });
       try {
         this.persistSession(world, "field-researcher", entry);
@@ -744,9 +1292,14 @@ class DesktopService {
     if (entry.kind === "bootstrap") {
       if (entry.phase?.phase_id === "REPORT") return [];
       const legacyFlow = entry.legacy_flow === true || entry.phase?.legacy_flow === true;
+      const isOpenerRun = cq4Day1Opener.isOpener(entry.run?.scenario);
+      const beat = entry.run?.expedition?.day1_opener?.beat;
+      const briefingStatus = entry.run?.expedition?.day1_opener?.personnel_briefing?.status ?? "pending";
+      const briefingGated = entry.phase?.phase_id === "BRIEFING" && isOpenerRun && (!cq4Day1Opener.isBroadcastCompleted(entry.run) || beat === cq4Day1Opener.BEATS.PERSONNEL_BRIEFING);
+      const briefingAction = briefingGated ? (briefingStatus === "active" ? "CONCLUDE_BRIEFING" : (briefingStatus === "pending" ? "ATTEND_BRIEFING" : null)) : "READY";
       const phaseActions = legacyFlow
-        ? { BRIEFING: "READY", STAGING: "PROCEED", FACILITY_TRANSIT: "APPROACH", THRESHOLD: "CROSS", STANDARD_RADIO_CHECK: q4Radio.read(entry.run.expedition).check_completed ? "BEGIN_FIELD_OPERATION" : null }
-        : { BRIEFING: "READY", STAGING: "PROCEED", FACILITY_TRANSIT: "APPROACH", THRESHOLD: "READY", STANDARD_RADIO_CHECK: q4Radio.read(entry.run.expedition).check_completed ? "CROSS" : null };
+        ? { BRIEFING: briefingAction, STAGING: "PROCEED", FACILITY_TRANSIT: "APPROACH", THRESHOLD: "CROSS", STANDARD_RADIO_CHECK: q4Radio.read(entry.run.expedition).check_completed ? "BEGIN_FIELD_OPERATION" : null }
+        : { BRIEFING: briefingAction, STAGING: "PROCEED", FACILITY_TRANSIT: "APPROACH", THRESHOLD: "READY", STANDARD_RADIO_CHECK: q4Radio.read(entry.run.expedition).check_completed ? "CROSS" : null };
       const state = bootstrap.status(entry.run); const observed = bootstrap.look(entry.run, { record: false }); const targets = state.view.targets.map(({ alias }) => ({ ref: alias, label: alias })); const exits = (observed.view?.exits ?? []).map(({ alias }) => ({ ref: alias, label: alias }));
       const objectActions = new Map();
       for (const object of observed.view?.objects ?? []) for (const affordance of object.actions ?? []) if (affordance.available) {
@@ -762,6 +1315,7 @@ class DesktopService {
       const mitigationTargets = hazardRuntime.project(entry.run, bootstrap.dynamicsDefinitionFor(entry.run.spatial_pack_id)).filter((hazard) => hazard.mitigation_available).map((hazard) => ({ ref: hazard.id, label: `Mitigate ${hazard.category} warning` }));
       const actions = state.available_verbs.filter((type) => {
         if (type === "COMMUNICATE" && entry.phase?.phase_id === "BRIEFING") return false;
+        if (briefingGated && ["RETURN", "ABORT"].includes(type)) return false;
         if (["ORDER_HOLD", "ORDER_INVESTIGATE", "ORDER_FOLLOW", "ASSIST", "RECOVER", "MITIGATE"].includes(type) && !["FIELD_OPERATION", "RETURN"].includes(entry.phase?.phase_id)) return false;
         if (entry.run.spatial && type === "RECORD" && !objectActionTypes.has("RECORD")) return false;
         if (type === "USE" && referenceExpedition.isReference(entry.run.scenario) && entry.run.spatial?.player_location !== referenceExpedition.definition.measurement.location_id && !objectActionTypes.has("USE")) return false;
@@ -787,6 +1341,101 @@ class DesktopService {
     return [{ type: "REVIEW_REPORT", target_required: false, targets: [] }, { type: "ADVANCE", target_required: false, targets: [] }];
   }
   getAvailableActions({ world_id, mode }) { const current = this.getGameplayProjection({ world_id, mode }); return current.ok ? { ok: true, actions: current.projection.available_actions } : current; }
+  startBriefingBroadcast({ world_id }) {
+    if (this.commandBusy(world_id)) return publicError("SESSION_BUSY", "Wait for the current action to finish before changing this operation.");
+    try {
+      const world = this.getWorld(world_id);
+      if (outcomes.isRetired(world)) return publicError("WORLD_RETIRED", "This world is a read-only historical record.");
+      const entry = this.session(world_id, "field-researcher") ?? this.restoreSession(world, "field-researcher", readJson(this.sessionFile(world_id, "field-researcher"), null));
+      if (!entry || entry.kind !== "bootstrap") return publicError("SESSION_NOT_FOUND", "Start or continue Clear-Q4 first.");
+      const transition = cq4Day1Opener.startBroadcast(entry.run);
+      this.persistSession(world, "field-researcher", entry);
+      return {
+        ok: true,
+        result: { outcome: "broadcast-completed", beat: transition.beat },
+        projection: this.projectionFor(world, "field-researcher", entry)
+      };
+    } catch (error) {
+      this.log(`startBriefingBroadcast error: ${error.message}`);
+      return publicError("BROADCAST_START_FAILED", "Failed to start briefing broadcast.");
+    }
+  }
+  completeBriefingBroadcast({ world_id }) {
+    if (this.commandBusy(world_id)) return publicError("SESSION_BUSY", "Wait for the current action to finish before changing this operation.");
+    try {
+      const world = this.getWorld(world_id);
+      if (outcomes.isRetired(world)) return publicError("WORLD_RETIRED", "This world is a read-only historical record.");
+      const entry = this.session(world_id, "field-researcher") ?? this.restoreSession(world, "field-researcher", readJson(this.sessionFile(world_id, "field-researcher"), null));
+      if (!entry || entry.kind !== "bootstrap") return publicError("SESSION_NOT_FOUND", "Start or continue Clear-Q4 first.");
+      const transition = cq4Day1Opener.completeBroadcast(entry.run);
+      this.persistSession(world, "field-researcher", entry);
+      return {
+        ok: true,
+        result: { outcome: "broadcast-completed", beat: transition.beat },
+        projection: this.projectionFor(world, "field-researcher", entry)
+      };
+    } catch (error) {
+      this.log(`completeBriefingBroadcast error: ${error.message}`);
+      return publicError("BROADCAST_COMPLETION_FAILED", "Failed to transition briefing broadcast.");
+    }
+  }
+  startPersonnelBriefing({ world_id }) {
+    if (this.commandBusy(world_id)) return publicError("SESSION_BUSY", "Wait for the current action to finish before changing this operation.");
+    try {
+      const world = this.getWorld(world_id);
+      if (outcomes.isRetired(world)) return publicError("WORLD_RETIRED", "This world is a read-only historical record.");
+      const entry = this.session(world_id, "field-researcher") ?? this.restoreSession(world, "field-researcher", readJson(this.sessionFile(world_id, "field-researcher"), null));
+      if (!entry || entry.kind !== "bootstrap") return publicError("SESSION_NOT_FOUND", "Start or continue Clear-Q4 first.");
+      const transition = cq4Day1Opener.startPersonnelBriefing(entry.run);
+      this.persistSession(world, "field-researcher", entry);
+      return {
+        ok: true,
+        result: { outcome: "briefing-started", status: transition.status, beat: transition.beat },
+        projection: this.projectionFor(world, "field-researcher", entry)
+      };
+    } catch (error) {
+      this.log(`startPersonnelBriefing error: ${error.message}`);
+      return publicError("BRIEFING_START_FAILED", "Failed to start personnel briefing.");
+    }
+  }
+  interactPersonnelBriefing({ world_id, text = "" }) {
+    if (this.commandBusy(world_id)) return publicError("SESSION_BUSY", "Wait for the current action to finish before changing this operation.");
+    try {
+      const world = this.getWorld(world_id);
+      if (outcomes.isRetired(world)) return publicError("WORLD_RETIRED", "This world is a read-only historical record.");
+      const entry = this.session(world_id, "field-researcher") ?? this.restoreSession(world, "field-researcher", readJson(this.sessionFile(world_id, "field-researcher"), null));
+      if (!entry || entry.kind !== "bootstrap") return publicError("SESSION_NOT_FOUND", "Start or continue Clear-Q4 first.");
+      const transition = cq4Day1Opener.interactPersonnelBriefing(entry.run, text);
+      this.persistSession(world, "field-researcher", entry);
+      return {
+        ok: true,
+        result: { outcome: "briefing-interacted", reply: transition.reply ?? null, status: transition.status, beat: transition.beat },
+        projection: this.projectionFor(world, "field-researcher", entry)
+      };
+    } catch (error) {
+      this.log(`interactPersonnelBriefing error: ${error.message}`);
+      return publicError("BRIEFING_INTERACTION_FAILED", "Failed to process briefing interaction.");
+    }
+  }
+  concludePersonnelBriefing({ world_id }) {
+    if (this.commandBusy(world_id)) return publicError("SESSION_BUSY", "Wait for the current action to finish before changing this operation.");
+    try {
+      const world = this.getWorld(world_id);
+      if (outcomes.isRetired(world)) return publicError("WORLD_RETIRED", "This world is a read-only historical record.");
+      const entry = this.session(world_id, "field-researcher") ?? this.restoreSession(world, "field-researcher", readJson(this.sessionFile(world_id, "field-researcher"), null));
+      if (!entry || entry.kind !== "bootstrap") return publicError("SESSION_NOT_FOUND", "Start or continue Clear-Q4 first.");
+      const transition = cq4Day1Opener.concludePersonnelBriefing(entry.run);
+      this.persistSession(world, "field-researcher", entry);
+      return {
+        ok: true,
+        result: { outcome: "briefing-concluded", status: transition.status, beat: transition.beat },
+        projection: this.projectionFor(world, "field-researcher", entry)
+      };
+    } catch (error) {
+      this.log(`concludePersonnelBriefing error: ${error.message}`);
+      return publicError("BRIEFING_CONCLUDE_FAILED", "Failed to conclude personnel briefing.");
+    }
+  }
   advanceQ4Operations({ world_id }) {
     if (this.commandBusy(world_id)) return publicError("SESSION_BUSY", "Wait for the current action to finish before changing this operation.");
     try {
@@ -796,9 +1445,31 @@ class DesktopService {
       const processed = q4Career.process(world, bootstrap.institutionalDefinitionFor(entry.run.spatial_pack_id), entry.run, q4Continuity.review(world, entry.run.expedition?.mission?.id));
       const seed = q4Continuity.nextSeed(world, entry.run.expedition?.mission?.id ?? entry.run.expedition?.id); const current = world.q4_operations?.controlled_player;
       if (history.character(world, current)?.status === "dead") return publicError("WORLD_RETIRED", "Controlled personnel death retires this world; begin a new career in a new world.");
-      const started = bootstrap.startRun({ profile: "field-researcher", seed, scenario: "procedural-survey", world, player_identity: current, spatial_worldpack: "clear-q4" }); if (!started.ok) return publicError("NEXT_EXPEDITION_UNAVAILABLE", "The next assignment could not be prepared safely.");
+      const started = bootstrap.startRun({ profile: "field-researcher", seed, scenario: "procedural-survey", world, player_identity: current, spatial_worldpack: "clear-q4" });
+      if (!started.ok) return publicError("NEXT_EXPEDITION_UNAVAILABLE", "The next assignment could not be prepared safely.");
       const next = { kind: "bootstrap", run: started.run, phase: phases.createPhase({ mode: "field-researcher", guided: this.settings().guided_introductions !== false }) }; this.persistSession(world, "field-researcher", next); return { ok: true, result: { outcome: "operations-advanced", public_reason: processed.idempotent ? "The recorded institutional cycle was already complete; the next assignment remains unchanged." : "Institutional processing completed; the next Clear-Q4 assignment is available.", career_cycle: processed.cycle }, projection: this.projectionFor(world, "field-researcher", next) };
-    } catch { return publicError("NEXT_EXPEDITION_UNAVAILABLE", "The next assignment could not be prepared safely."); }
+    } catch {
+      return publicError("NEXT_EXPEDITION_UNAVAILABLE", "The next assignment could not be prepared safely.");
+    }
+  }
+  triggerCatastrophicEnding({ world_id }) {
+    if (this.commandBusy(world_id)) return publicError("SESSION_BUSY", "Wait for the current action to finish before changing this operation.");
+    try {
+      const world = this.getWorld(world_id);
+      if (!world || outcomes.isRetired(world)) return publicError("WORLD_RETIRED", "This world is a read-only historical record.");
+      const entry = this.session(world_id, "field-researcher") ?? this.restoreSession(world, "field-researcher", readJson(this.sessionFile(world_id, "field-researcher"), null));
+      if (!entry || entry.kind !== "bootstrap") return publicError("SESSION_NOT_FOUND", "Start or continue Clear-Q4 first.");
+      const result = cq4Day1Opener.triggerCatastrophicEnding(world, entry);
+      this.persistSession(world, "field-researcher", entry);
+      return {
+        ok: true,
+        result: result.result,
+        projection: this.projectionFor(world, "field-researcher", entry)
+      };
+    } catch (error) {
+      this.log(`triggerCatastrophicEnding failed: ${error.message}`);
+      return publicError("CATASTROPHIC_TRIGGER_FAILED", "The catastrophic failure sequence could not be triggered safely.");
+    }
   }
   recordQ4Action(entry, text, result, world = null, submission_id = null, canonicalAction = null) {
     const verb = canonicalAction ?? String(text).trim().split(/\s+/, 1)[0].toUpperCase();
@@ -809,11 +1480,12 @@ class DesktopService {
   }
   submitQ4LocalIntent({ world_id, text, request_id = null }) {
     if (this.commandBusy(world_id)) return publicError("SESSION_BUSY", "Wait for the current action to finish before changing this operation.");
+    let entry = null; let world = null; let beforeRun = null; let beforeWorld = null; let beforePhase = null;
     try {
-      const world = this.getWorld(world_id); if (outcomes.isRetired(world)) return publicError("WORLD_RETIRED", "This world is a read-only historical record."); const entry = this.session(world_id, "field-researcher") ?? this.restoreSession(world, "field-researcher", readJson(this.sessionFile(world_id, "field-researcher"), null));
+      world = this.getWorld(world_id); if (outcomes.isRetired(world)) return publicError("WORLD_RETIRED", "This world is a read-only historical record."); entry = this.session(world_id, "field-researcher") ?? this.restoreSession(world, "field-researcher", readJson(this.sessionFile(world_id, "field-researcher"), null));
       if (!entry || entry.kind !== "bootstrap") return publicError("SESSION_NOT_FOUND", "Start or continue Clear-Q4 before issuing a LOCAL order.");
       if (!["FIELD_OPERATION", "RETURN"].includes(entry.phase?.phase_id)) return publicError("LOCAL_PHASE_INVALID", "Nearby field orders are available only during an active field operation or return.");
-      const beforeRun = clone(entry.run); const beforeWorld = clone(world); const beforePhase = clone(entry.phase);
+      beforeRun = clone(entry.run); beforeWorld = clone(world); beforePhase = clone(entry.phase);
       const run = entry.run; const expedition = run.expedition; const player = run.session.startup.player.observer_id;
       const requestId = request_id ?? `local-${crypto.createHash("sha256").update(`${run.run_id}|${expedition.clock.interval}|${text}`).digest("hex").slice(0, 18)}`;
       expedition.local_intent_requests ??= []; const duplicate = expedition.local_intent_requests.find((item) => item.id === requestId);
@@ -856,6 +1528,7 @@ class DesktopService {
       // Advance deterministic actor decision scheduler before persistence
       const spatialDefLocal = bootstrap.spatialDefinitionFor(run.spatial_pack_id);
       try { decisionScheduler.scheduleDecisions(run, spatialDefLocal, world); } catch (schedulerError) { this.log(`decision scheduler non-fatal: ${schedulerError.message}`); }
+      try { this.processAutonomousSpeech(world.world_id, run.run_id); } catch (speechSchedulerError) { this.log(`speech scheduler non-fatal: ${speechSchedulerError.message}`); }
       try {
         this.persistSession(world, "field-researcher", entry);
       } catch (persistError) {
@@ -880,143 +1553,1462 @@ class DesktopService {
     }
   }
   submitQ4Communication(input = {}) {
-    const canonical = this.submitQ4CommunicationCanonical(input);
-    const providerSetting = this.settings().provider;
-    const configured = ["openai", "auto", "groq", "gemini", "openrouter"].includes(providerSetting);
-    if (input.channel !== "local" || !canonical?.ok || (!configured && !this.localDialogueProvider)) return canonical;
-    return this.presentHostedLocalDialogue(input, canonical, { configured });
+    const { world_id, channel, text, target = null } = input;
+    if (this.recoveredWorlds.has(world_id)) return publicError("PERSISTENCE_RECOVERY_READ_ONLY", "Restore the recovered operation record before communicating.");
+    const requestId = input.request_id ?? input.submission_id ?? `desktop-comms-${crypto.randomUUID()}`;
+    const cleanText = typeof text === "string" ? text.trim() : "";
+    const fingerprint = crypto.createHash("sha256").update(JSON.stringify([world_id, channel, target ?? null, cleanText, ...(input.spatial_selection ? [input.spatial_selection] : [])])).digest("hex");
+
+    if (typeof requestId !== "string" || !requestId.trim() || requestId.length > 160) {
+      return publicError("REQUEST_ID_INVALID", "The communication reference is invalid. Submit the message again.");
+    }
+    const active = this.communicationTurnInflight.get(world_id);
+    if (active) {
+      if (active.id === requestId && active.fingerprint === fingerprint) return active.promise;
+      return publicError(active.id === requestId ? "REQUEST_ID_REUSED" : "SESSION_BUSY", active.id === requestId ? "That communication reference belongs to a different message." : "The previous communication is still being resolved. Wait for its result before submitting another message.");
+    }
+    if (this.commandBusy(world_id)) {
+      return publicError("SESSION_BUSY", "The previous action is still being resolved. Wait for its result before submitting another message.");
+    }
+
+    // Tier 2: when the deterministic parse leaves a LOCAL line generic, ONE bounded advisory reading of its
+    // language (per player turn, never per NPC) is taken before the canonical commit. It is input to code,
+    // validated, persisted with the turn, and never consulted for facts.
+    const need = channel === "local" ? this.dialogueAdvisoryNeed(world_id, { ...input, request_id: requestId }) : null;
+    if (need?.needed) {
+      const advisoryProvider = this.acquireAdvisoryProvider({ requestId });
+      if (advisoryProvider) {
+        const promise = Promise.resolve().then(async () => {
+          // ED-30: one bounded v2 reading (multi-act, opaque candidates, registry facets, constrained decoding).
+          const rawAdvice = need.v2 ? await dialogueAdvisory.requestAdvisoryV2(advisoryProvider, need.v2) : await dialogueAdvisory.requestAdvisory(advisoryProvider, { utterance: need.utterance, previous_line: need.previous_line, ask_addressee: need.ask_addressee, anchor_candidates: need.anchor_candidates });
+          // Tier 2 may fill only what Tier 1 reported missing (D16): the gaps travel with the reading.
+          const advice = rawAdvice && typeof rawAdvice === "object" ? { ...rawAdvice, tier1_missing: [...(need.completeness?.missing ?? [])] } : rawAdvice;
+          this.communicationTurnInflight.delete(world_id);
+          return this.continueQ4Communication(input, requestId, fingerprint, advice);
+        });
+        this.communicationTurnInflight.set(world_id, { id: requestId, fingerprint, promise });
+        return promise;
+      }
+    }
+    return this.continueQ4Communication(input, requestId, fingerprint, need?.needed ? { accepted: false, reason: "advisory_unavailable", latency_ms: 0 } : null);
   }
-  async presentHostedLocalDialogue({ world_id }, canonical, { configured }) {
-    const context = canonical._local_dialogue_context;
-    delete canonical._local_dialogue_context;
-    if (!context) return canonical;
-    const requestId = `desktop-local-${world_id}-${Date.now()}`;
+  /** Read-only Tier 1 assessment: would the deterministic parse leave this LOCAL line generic? */
+  dialogueAdvisoryNeed(world_id, input) {
+    try {
+      const entry = this.session(world_id, "field-researcher");
+      const run = entry?.run;
+      if (!run?.expedition || entry.kind !== "bootstrap") return null;
+      if ((run.expedition.communication_receipts ?? []).some((receipt) => receipt.id === input.request_id)) return null;
+      const message = String(input.text ?? "").trim().slice(0, 2000);
+      if (!message) return null;
+      const playerId = run.session.startup.player.observer_id;
+      const coworkers = run.expedition.team.members.filter((m) => m.personnel_id !== playerId);
+      const names = coworkers.flatMap((m) => [m.first_name, m.last_name, m.display_name].filter(Boolean).map((name) => ({ name: String(name), id: m.personnel_id ?? m.id })));
+      const address = parseAddressees(message, { explicit_target: typeof input.target === "string" ? input.target : null, names });
+      const entities = canonicalKnowledge.entityIndex(run);
+      const discourse = dialogueDiscourse.deriveDiscourseState({ interaction_history: run.expedition.interaction_history, dialogue_history: run.expedition.dialogue_history, player_id: playerId, location_id: run.spatial?.player_location ?? null, current_interval: run.expedition.clock?.interval ?? null, equipment: run.expedition.equipment, receipts: run.expedition.communication_receipts ?? [], people: names, entities });
+      const previous = discourse.last_turn?.responses?.at(-1)?.text ?? discourse.last_turn?.player_text ?? null;
+      // ED-30 completeness gate (D14): Tier 1 may skip Tier 2 only when the turn is COMPLETE, not merely
+      // confident. The advisory sees surface text and opaque candidate labels only -- never ids or facts.
+      const presentIds = coworkers.filter((m) => m.status === "active").map((m) => m.personnel_id ?? m.id);
+      const present = coworkers.filter((m) => presentIds.includes(m.personnel_id ?? m.id)).map((m) => ({ id: m.personnel_id ?? m.id, name: m.first_name ?? m.display_name, names: [m.first_name, m.last_name].filter(Boolean) }));
+      const analysis = dialogueTurn.analyzeTurn({ raw: message, present, entities, dis: dialogueTurn.withSalience(dialogueState.snapshot(run, { player_id: playerId, location_id: run.spatial?.player_location ?? null, present_ids: presentIds }), discourse, entities) });
+      // The dry-run frame reads the SAME normalized request text the canonical turn will (never the raw typing).
+      const frame = dialogueDiscourse.buildSemanticFrame({ text: analysis.primary?.request_text ?? address.residual_text, recipient_type: address.address_type === "direct" ? "direct" : address.address_type === "none" ? "none" : "group", discourse, equipment: run.expedition.equipment, people: coworkers.map((m) => ({ id: m.personnel_id ?? m.id, name: m.first_name })), addressee_ids: address.addressee_ids ?? [], entities, temporal_anchors: dialogueTemporalAnchors(run), now: run.expedition.clock?.interval ?? null });
+      const completeness = dialogueTurn.completenessWithFrame(analysis, frame, analysis.primary);
+      const candidates = dialogueTurn.advisoryCandidates(present, entities);
+      const recent = (discourse.turns ?? []).slice(-2).flatMap((t) => [t.player_text, ...(t.responses ?? []).map((r) => r.text)]).filter(Boolean);
+      const needed = Boolean(frame.tier1_generic) || !completeness.complete;
+      return { needed, completeness, utterance: address.residual_text, previous_line: previous, ask_addressee: address.address_type === "none" && !input.target, anchor_candidates: dialogueDiscourse.anchorCandidates(discourse).map((candidate) => candidate.label), v2: needed ? { utterance: message, repaired: analysis.normalized.repaired, recent, people: candidates.people, referents: candidates.referents, facets: candidates.facets } : null };
+    } catch (error) {
+      this.log(`dialogue advisory precheck non-fatal: ${error.message}`);
+      return null;
+    }
+  }
+  /** ED-30 ledger: open / re-open the requests a committed player turn makes (see dialogue-state). */
+  openDialogueRequests(run, options) {
+    try { return dialogueState.openTurnRequests(run, options); } catch (error) { this.log(`dialogue ledger open non-fatal: ${error.message}`); return []; }
+  }
+  /** ED-30 ledger: satisfaction, activity/acquaintance progress and learning events for delivered lines only. */
+  commitDialogueLedger(run, items, options = {}) {
+    try { return dialogueState.commitTurnLines(run, items, options); } catch (error) { this.log(`dialogue ledger commit non-fatal: ${error.message}`); return []; }
+  }
+  /** The provider an advisory reading may use (same local model; none when dialogue is not configured). */
+  acquireAdvisoryProvider({ requestId }) {
+    // Only a ready local runtime (or an injected provider) is worth awaiting: otherwise Tier 1 stands at
+    // once and the turn stays synchronous, as it always was without hosted wording.
+    if (!this.localDialogueProvider && this.dialogueRuntime?.getStatus?.().ready !== true) return null;
+    const providerSetting = this.settings().provider;
+    const configured = ["openai", "auto", "local", "groq", "gemini", "openrouter"].includes(providerSetting);
+    const { provider, dialogueProvider, providerUnavailable } = this.acquireLocalDialogueProvider({ requestId, route: "submitQ4Communication/dialogue-interpretation", configured });
+    if (providerUnavailable) return null;
+    const chosen = this.localDialogueProvider ? provider : dialogueProvider;
+    return typeof chosen?.interpretDialogue === "function" ? chosen : null;
+  }
+  continueQ4Communication(input, requestId, fingerprint, advice = null) {
+    const { world_id } = input;
+    const canonical = this.transactionContext.run(world_id, () =>
+      this.submitQ4CommunicationCanonical({ ...input, request_id: requestId, input_fingerprint: fingerprint, interpretation_advice: advice })
+    );
+    const providerSetting = this.settings().provider;
+    const configured = ["openai", "auto", "local", "groq", "gemini", "openrouter"].includes(providerSetting);
+    const dialogueContexts = canonical?._local_dialogue_contexts ?? (canonical?._local_dialogue_context ? [canonical._local_dialogue_context] : []);
+    if (input.channel !== "local" || !canonical?.ok || dialogueContexts.length === 0 || (!configured && !this.localDialogueProvider && !dialogueContexts.some((context) => context.resuming))) return canonical;
+
+    const promise = Promise.resolve().then(async () => {
+      try {
+        return await this.transactionContext.run(world_id, async () => {
+          return await this.presentHostedLocalDialogue(input, canonical, { configured, requestId });
+        });
+      } finally {
+        this.communicationTurnInflight.delete(world_id);
+        this.giveAutonomousSpeechAnotherChance(world_id);
+      }
+    });
+    this.communicationTurnInflight.set(world_id, { id: requestId, fingerprint, promise });
+    return promise;
+  }
+  // Shared by presentHostedLocalDialogue (player-directed replies) and
+  // presentObservationReport (autonomous NPC reports, Pass 9B-2): resolves
+  // whether a local dialogue provider is usable right now and, if so,
+  // acquires it under the same readiness rules. An explicitly injected
+  // this.localDialogueProvider (dev/test override) bypasses the appliance
+  // readiness supervisor entirely; the auto-selected appliance-backed
+  // provider is wrapped by dialogueRuntime so a failed/unavailable backend
+  // still drives supervisor state. Neither path weakens presentLocal's
+  // contract: any failure throws the same way either provider would.
+  acquireLocalDialogueProvider({ requestId, route, configured }) {
     const providerSetting = this.settings().provider;
     const isManualHosted = ["openai", "groq", "gemini", "openrouter"].includes(providerSetting);
     const key = isManualHosted ? this.credentials.get(providerSetting) : null;
-    if (isManualHosted && !key && !this.localDialogueProvider) {
-      canonical.result.provider_unavailable = true;
-      canonical.result.presentation_source = "deterministic-fallback";
-      canonical.result.public_reason = `Language assistance is unavailable. Deterministic response: ${context.fallback_text}`;
-      canonical.result.scene.narration = canonical.result.public_reason;
-      canonical.result.scene.narration_source = "deterministic-fallback";
-      return canonical;
-    }
-    const provider = this.localDialogueProvider ?? this.providerPool.createAutoProvider({ requestId, route:"submitQ4Communication/local-dialogue" });
-    this.recordInterpretationProvenance({ request_id:requestId, route:"submitQ4Communication/local-dialogue", event:"provider-selected", input:"player-supplied", provider:provider.name, model:provider.model ?? "injected", provider_invoked:false, response_classification:"not-yet-observed", canonical_resolution:"communication-runtime -> personnel-continuity -> presentation-validation", observer_projection:"local-dialogue-packet@v1" });
-    try {
-      if (typeof provider.presentLocal !== "function") throw new Error("local dialogue provider unavailable");
-      const packet = buildLocalDialoguePacket(context);
-      const validation = validateLocalDialogue(packet, await provider.presentLocal(structuredClone(packet)));
-      if (!validation.ok) {
-        canonical.result.provider_unavailable = true;
-        canonical.result.presentation_source = "deterministic-fallback";
-        canonical.result.public_reason = `Language assistance returned an invalid response and was rejected. Deterministic response: ${context.fallback_text}`;
-      } else {
-        canonical.result.presentation_source = "hosted-model";
-        canonical.result.hosted_request = { request_id:requestId, provider:provider.name, status:"completed" };
-        canonical.result.public_reason = `${context.speaker.display_name}: ${validation.candidate.speech}`;
-        context.interaction.presentation.response = validation.candidate.speech;
-        context.interaction.presentation.source = "hosted-model";
-        this.persistSession(context.world, "field-researcher", context.entry);
+    let provider = null;
+    let dialogueProvider = null;
+    let providerUnavailable = !this.localDialogueProvider && (!configured || (isManualHosted && !key));
+    if (!providerUnavailable) {
+      try {
+        provider = this.localDialogueProvider ?? this.providerPool.createAutoProvider({ requestId, route });
+        if (typeof provider.presentLocal !== "function") throw new Error("local dialogue provider unavailable");
+        dialogueProvider = this.localDialogueProvider ? provider : this.dialogueRuntime.wrapProvider(provider, {
+          fallback: () => { throw new Error("local dialogue provider unavailable"); }
+        });
+      } catch (providerError) {
+        providerUnavailable = true;
+        this.log(`LOCAL language assistance unavailable: ${providerError.message}`);
       }
-    } catch (error) {
-      this.log(`LOCAL language assistance unavailable: ${error.message}`);
-      canonical.result.provider_unavailable = true;
-      canonical.result.presentation_source = "deterministic-fallback";
-      canonical.result.public_reason = `Language assistance is unavailable. Deterministic response: ${context.fallback_text}`;
     }
+    return { provider, dialogueProvider, providerUnavailable };
+  }
+  // Speak callback for speechScheduler.drainSpeechQueue (Pass 9B-2): the
+  // scheduler has already decided whether, who, and why -- this only builds
+  // the observer-safe packet, asks the provider to word it, and validates
+  // the result. When the provider is unavailable or its wording is rejected,
+  // the SAME plan is worded by the deterministic report fallback (it states
+  // only the authorized observation). null is returned only when no packet
+  // can be built, which leaves the entry to the scheduler's exhaustion policy.
+  async presentObservationReport(entry, run, phaseId = null) {
+    const requestId = `speech-queue-${entry.id}`;
+    const providerSetting = this.settings().provider;
+    const configured = ["openai", "auto", "local", "groq", "gemini", "openrouter"].includes(providerSetting);
+    let packet = null;
+    try {
+      packet = buildObservationReportPacket({ run, observer_id: entry.observer_id, feature_id: entry.feature_id, purpose: entry.purpose, disposition: entry.disposition, phase_id: phaseId });
+    } catch (packetError) {
+      this.log(`observation report packet unavailable for ${entry.observer_id}: ${packetError.message}`);
+      return null;
+    }
+    // The scheduler already authorized WHETHER/WHO/WHEN. From here the SAME plan
+    // feeds model wording, semantic validation and the same-plan fallback; an
+    // authorized speech act is never silently dropped.
+    const fallback = (reason) => {
+      const text = dialogueFallback.presentReportFallback({ contribution: packet.authorized_contribution });
+      this.log(`observation report fallback for ${entry.observer_id}: ${reason}`);
+      return text ?? null;
+    };
+    const { dialogueProvider, providerUnavailable } = this.acquireLocalDialogueProvider({ requestId, route: "speechScheduler/observation-report", configured });
+    if (providerUnavailable) return fallback("provider unavailable");
+    if (!packet.authorized_contribution || !packet.context_capsule) return fallback("no authorized contribution");
+    try {
+      const candidateRaw = await dialogueProvider.presentLocal(structuredClone(packet));
+      const validation = validateLocalDialogue(packet, candidateRaw, run);
+      if (!validation.ok) {
+        this.log(`observation report validateLocalDialogue failed: code=${validation.code}, candidate=${JSON.stringify(candidateRaw)}`);
+        return fallback(validation.code);
+      }
+      // Same pre-commit revalidation as player-directed replies: the report must still
+      // belong to this run and speaker, and anything commit-sensitive it asserts must hold now.
+      const check = observerContextCompiler.revalidateContext({ run, capsule: packet._capsule, speech: validation.candidate.speech, speakerId: entry.observer_id, phaseId });
+      if (this.developerMode) this.log(`[YB:CONTEXT_TRACE] ${JSON.stringify({ path: "autonomous-report", context: observerContextCompiler.describeCapsule(packet._capsule), candidate: candidateRaw?.speech ?? null, validator: "accepted", revalidation: { ok: check.ok, code: check.code ?? null } })}`);
+      if (!check.ok) return fallback(check.code);
+      return validation.candidate.speech;
+    } catch (providerError) {
+      this.log(`observation report language assistance unavailable for ${entry.observer_id}: ${providerError.message}`);
+      return fallback("provider error");
+    }
+  }
+  // Fire-and-forget continuation that runs the live speak() path against the
+  // speech queue without blocking the synchronous turn that scheduled it
+  // (mirrors submitQ4Communication's canonical-then-hosted split). Re-checks
+  // the run_id staleness guard both before touching the queue and again
+  // before persisting, exactly like presentHostedLocalDialogue -- a run that
+  // moved on in the interim (save/reload, new turn) must never be committed
+  // into by a report scheduled against an earlier state of it.
+  // Complete busy authority for this world, equivalent to commandBusy() but
+  // usable from inside our own transactionContext.run() wrapper: commandBusy
+  // exempts the current AsyncLocalStorage store's own world_id ("I'm not
+  // busy relative to myself"), which is meaningless here -- autonomous
+  // speech is never the transaction a player turn is waiting on, so it must
+  // see naturalTurnInflight/communicationTurnInflight exactly as they are.
+  autonomousSpeechBlocked(world_id) {
+    return this.naturalTurnInflight.has(world_id) || this.communicationTurnInflight.has(world_id);
+  }
+  // B1: transactionContext is an AsyncLocalStorage marker, not a lock, so a
+  // player turn can start and finish entirely during the provider's await.
+  // Gated twice: once before starting the drain (don't even begin a
+  // provider call into a busy world) and once per-entry via canCommit(),
+  // re-checked by drainSpeechQueue immediately after speak() resolves and
+  // before any commit side effect. A busy/stale world at that point is a
+  // postponement -- the entry is left queued for the next opportunity,
+  // never marked failed.
+  processAutonomousSpeech(world_id, expectedRunId) {
+    return Promise.resolve().then(async () => {
+      try {
+        if (this.autonomousSpeechBlocked(world_id)) return;
+        await this.transactionContext.run(world_id, async () => {
+          if (this.autonomousSpeechBlocked(world_id)) return;
+          const world = this.getWorld(world_id);
+          if (!world || outcomes.isRetired(world)) return;
+          const entry = this.session(world_id, "field-researcher");
+          if (!entry?.run || entry.run.run_id !== expectedRunId) {
+            this.log(`stale autonomous speech continuation discarded: operation ${expectedRunId} superseded`);
+            return;
+          }
+          const result = await speechScheduler.drainSpeechQueue(entry.run, world, {
+            communicationTurnInflight: this.autonomousSpeechBlocked(world_id),
+            speak: (queueEntry, r) => this.presentObservationReport(queueEntry, r, entry.phase?.phase_id ?? null),
+            canCommit: () => !this.autonomousSpeechBlocked(world_id) && this.session(world_id, "field-researcher") === entry && entry.run.run_id === expectedRunId
+          });
+          if (result.drained.length === 0) return;
+          const stillCurrent = this.session(world_id, "field-researcher");
+          if (stillCurrent !== entry || stillCurrent.run?.run_id !== expectedRunId) {
+            this.log(`stale autonomous speech result discarded: operation ${expectedRunId} superseded before commit`);
+            return;
+          }
+          try {
+            this.persistSession(world, "field-researcher", entry);
+          } catch (persistError) {
+            this.log(`autonomous speech persistence failed: ${persistError.message}`);
+            return; // no notification on a failed/rolled-back commit
+          }
+          // Notify only if the player actually heard one of the committed
+          // reports (S2/listener gating carries through to the refresh
+          // signal itself, not just the projected content).
+          const playerId = entry.run.session?.startup?.player?.observer_id ?? null;
+          if (playerId && result.drained.some((event) => event.listeners?.includes(playerId))) {
+            try { this.notifyProjectionChanged(world_id); }
+            catch (notifyError) { this.log(`projection-changed notification failed: ${notifyError.message}`); }
+          }
+        });
+      } catch (error) {
+        this.log(`autonomous speech continuation failed: ${error.message}`);
+      }
+    });
+  }
+  // C: gives any report postponed by B1's canCommit guard another
+  // opportunity right after the player turn that blocked it finishes.
+  // Fire-and-forget, single extra attempt -- not a loop, not a second
+  // scheduler.
+  giveAutonomousSpeechAnotherChance(world_id) {
+    try {
+      const entry = this.session(world_id, "field-researcher");
+      if (entry?.run?.run_id) this.processAutonomousSpeech(world_id, entry.run.run_id);
+    } catch (error) {
+      this.log(`autonomous speech follow-up scheduling failed: ${error.message}`);
+    }
+  }
+  async presentHostedLocalDialogue({ world_id }, canonical, { configured, requestId: callRequestId }) {
+    const contexts = canonical._local_dialogue_contexts ?? (canonical._local_dialogue_context ? [canonical._local_dialogue_context] : []);
+    delete canonical._local_dialogue_contexts;
+    delete canonical._local_dialogue_context;
+    if (contexts.length === 0) return canonical;
+    const requestId = contexts[0].requestId ?? callRequestId ?? `desktop-local-${world_id}-${Date.now()}`;
+
+    let currentWorld = this.getWorld(world_id);
+    if (!currentWorld || outcomes.isRetired(currentWorld)) {
+      return publicError("WORLD_RETIRED", "This world is a read-only historical record.");
+    }
+    let currentEntry = this.session(world_id, "field-researcher");
+    if (!currentEntry || currentEntry.run?.run_id !== contexts[0].runId) {
+      this.log(`stale dialogue completion discarded: operation ${contexts[0].runId} superseded`);
+      return publicError("OPERATION_SUPERSEDED", "The operation changed before the response could be delivered.");
+    }
+
+    const { provider, dialogueProvider, providerUnavailable } = this.acquireLocalDialogueProvider({ requestId, route: "submitQ4Communication/local-dialogue", configured });
+
+    // Wording one owner's already-authorized contribution. `prior` is the lines ACCEPTED earlier in this
+    // canonical turn (names + text only); it shapes wording, never who speaks or what is true.
+    const wordOne = async (context, prior) => {
+      context.same_turn_prior_responses = prior;
+      let packet = null;
+      let candidateRaw = null;
+      let unavailable = providerUnavailable;
+      let validation = { ok:false, code:"LOCAL_PROVIDER_UNAVAILABLE" };
+      let selectedProvider = provider?.name ?? (unavailable ? "unavailable" : "injected-local-dialogue-provider");
+      if (!unavailable) {
+        try {
+          packet = buildLocalDialoguePacket(context);
+          // Hard model-input boundary: only a plan-carrying packet may be worded by a provider.
+          if (!packet.authorized_contribution || !packet.context_capsule) throw Object.assign(new Error("dialogue packet carries no authorized contribution"), { code: "DIALOGUE_PLAN_REQUIRED" });
+          this.recordInterpretationProvenance({ request_id: requestId, route: "submitQ4Communication/local-dialogue", event: "provider-selected", input: "player-supplied", provider:selectedProvider, model:provider.model ?? "injected", provider_invoked:false, response_classification:"not-yet-observed", canonical_resolution:"communication-runtime -> deterministic-response-owners -> personnel-continuity -> presentation-validation", observer_projection:"local-dialogue-packet@v1", responder_id:context.speaker?.personnel_id ?? context.speaker?.id });
+          candidateRaw = await dialogueProvider.presentLocal(structuredClone(packet));
+          const providerExecution = provider.getExecutions?.().at(-1) ?? null;
+          selectedProvider = providerExecution?.selected_provider ?? provider.name ?? selectedProvider;
+          validation = validateLocalDialogue(packet, candidateRaw);
+        } catch (providerError) {
+          unavailable = true;
+          validation = { ok:false, code:"LOCAL_PROVIDER_UNAVAILABLE" };
+          this.log(`LOCAL language assistance unavailable for ${context.speaker?.first_name ?? "responder"}: ${providerError.message}`);
+        }
+      }
+      return { context, packet, candidateRaw, validation, unavailable, selectedProvider };
+    };
+    const acceptedPrior = (items) => items.map((item) => ({
+      speaker_id: item.context.speaker?.personnel_id ?? item.context.speaker?.id ?? null,
+      speaker_name: item.context.speaker?.first_name ?? item.context.speaker?.display_name ?? null,
+      text: item.speech ?? null
+    }));
+    // Inference scheduling is NOT speech scheduling. Owners, their order and their plans were fixed by
+    // code before any wording is requested, and every packet below is compiled from the same canonical
+    // snapshot (nothing mutates canonical state until the commit loop), so independent owners may be
+    // worded concurrently. Acceptance and commit still run strictly in canonical owner order; completion
+    // order is never observed.
+    const concurrency = Math.min(this.dialogueWordingConcurrency, contexts.length);
+    const concurrent = !providerUnavailable && concurrency > 1
+      ? await boundedAll(contexts.map((context) => () => wordOne(context, [])), concurrency)
+      : null;
+    const prepared = [];
+    for (const [index, context] of contexts.entries()) {
+      const prior = acceptedPrior(prepared);
+      let result = concurrent ? concurrent[index] : await wordOne(context, prior);
+      if (concurrent && result.validation.ok && prior.length) {
+        // Same-turn coordination is judged against the lines accepted BEFORE this owner. A collision gets
+        // one sequential re-wording that sees those lines (the serial behaviour); nothing else changes.
+        const view = { ...result.packet, authorized_contribution: { ...result.packet.authorized_contribution, same_turn_prior_responses: prior.map(({ speaker_name, text }) => ({ speaker_name, text })) } };
+        if (!validateLocalDialogue(view, result.candidateRaw, result.packet._run).ok) result = await wordOne(context, prior);
+      }
+      const { packet, candidateRaw, validation, unavailable, selectedProvider } = result;
+      let fallbackSpeech = context.fallback_text ? context.fallback_text.replace(/^[^:]+:\s*/, "") : context.fallback_text;
+      // Variant selection uses the lines actually ACCEPTED earlier this turn,
+      // from the SAME frame/plan snapshot the model received.
+      if (context.semantic_frame && context.response_plan && prepared.length) {
+        const replanned = dialogueFallback.presentFallback({ frame: context.semantic_frame, plan: context.response_plan, prior: prepared.map((item) => item.speech).filter(Boolean) });
+        if (replanned) fallbackSpeech = replanned;
+      }
+      const speech = validation.ok ? validation.candidate.speech : fallbackSpeech;
+      const presentationSource = validation.ok ? (selectedProvider === "local" ? "local-model" : "hosted-model") : "deterministic-fallback";
+      prepared.push({ context, packet, candidateRaw, validation, unavailable, selectedProvider, speech, presentationSource });
+    }
+
+    currentWorld = this.getWorld(world_id);
+    if (!currentWorld || outcomes.isRetired(currentWorld)) {
+      return publicError("WORLD_RETIRED", "This world is a read-only historical record.");
+    }
+    currentEntry = this.session(world_id, "field-researcher");
+    if (!currentEntry || currentEntry.run?.run_id !== contexts[0].runId) {
+      this.log(`stale dialogue completion discarded: operation ${contexts[0].runId} superseded`);
+      const oldRun = currentWorld.runs?.[contexts[0].runId];
+      if (oldRun?.expedition?.communication_receipts) {
+        const oldReceipt = oldRun.expedition.communication_receipts.find((r) => r.id === requestId);
+        if (oldReceipt && oldReceipt.status === "pending") {
+          oldReceipt.status = "canceled";
+        }
+      }
+      return publicError("OPERATION_SUPERSEDED", "The operation changed before the response could be delivered.");
+    }
+
+    const receipt = currentEntry.run?.expedition?.communication_receipts?.find((r) => r.id === requestId);
+    if (receipt && receipt.status === "canceled") {
+      return publicError("REQUEST_CANCELED", "The communication was canceled before finalization.");
+    }
+
+    // PRE-COMMIT REVALIDATION. The provider awaits above can span other canonical
+    // changes. A candidate must still belong to this world/run/speaker/turn/plan, and any
+    // commit-sensitive fact its wording asserts (custody, presence, location, phase,
+    // assignment) must still hold in CURRENT canonical state. Otherwise the stale wording
+    // is never committed: the same turn/owner/purpose is worded by the deterministic
+    // fallback, which withholds the stale value. Nothing about the turn itself changes.
+    for (const item of prepared) {
+      item.context_check = null;
+      if (!item.speech || !item.packet?._capsule) continue;
+      const speakerKey = item.context.speaker?.personnel_id ?? item.context.speaker?.id;
+      const check = observerContextCompiler.revalidateContext({ run: currentEntry.run, capsule: item.packet._capsule, speech: item.speech, speakerId: speakerKey, submissionId: requestId, plan: item.context.response_plan ?? null, phaseId: currentEntry.phase?.phase_id ?? null });
+      item.context_check = check;
+      if (check.ok) continue;
+      // A deterministic fallback is worded from the SAME plan snapshot as the model, so it can be just as
+      // stale (e.g. custody changed while the provider was generating). Revalidation therefore applies to
+      // whatever text would be committed, never only to model wording.
+      if (check.cancel) {
+        // The speaker is no longer a participant in this exchange: the reply is cancelled, not reworded.
+        this.log(`pre-commit revalidation cancelled reply for ${item.context.speaker?.first_name ?? "responder"}: ${check.code}`);
+        item.validation = { ok: false, code: "LOCAL_CONTEXT_TURN_CANCELLED", reason: check.code };
+        item.speech = null;
+        item.presentationSource = "cancelled";
+        continue;
+      }
+      const priorSpeech = prepared.filter((other) => other !== item).map((other) => other.speech).filter(Boolean);
+      const safe = item.context.semantic_frame ? dialogueFallback.presentStaleSafeFallback({ frame: item.context.semantic_frame, plan: item.context.response_plan, prior: priorSpeech }) : null;
+      this.log(`pre-commit revalidation rejected candidate for ${item.context.speaker?.first_name ?? "responder"}: ${check.code}${check.stale?.length ? ` (${check.stale.map((entry) => entry.kind).join(", ")})` : ""}`);
+      item.validation = { ok: false, code: "LOCAL_CONTEXT_STALE", reason: check.code };
+      item.speech = safe ?? "I'm not sure right now.";
+      item.presentationSource = "deterministic-fallback";
+    }
+
+    const beforeWorld = clone(currentWorld);
+    const beforeRun = clone(currentEntry.run);
+    const beforePhase = clone(currentEntry.phase);
+    const committedResponses = [];
+    for (const item of prepared) {
+      const context = item.context;
+      if (!item.validation.ok) this.log(`validateLocalDialogue failed: code=${item.validation.code}, candidate=${JSON.stringify(item.candidateRaw)}`);
+      if (!item.speech) continue;
+      personnelContinuity.recordDialogueMemory(currentWorld, {
+        run_id: currentEntry.run.run_id,
+        identity: context.speaker.personnel_id ?? context.speaker.id,
+        player_text: context.player_text,
+        response: item.speech,
+        source: "local-communication",
+        sender: currentEntry.run.session.startup.player.observer_id,
+        at: currentEntry.run.expedition.clock?.interval ?? 0
+      });
+      const responseEvent = presentationBus.createDialogueEvent({
+        submission_id: requestId,
+        speaker_id: context.speaker.personnel_id ?? context.speaker.id,
+        speaker_name: context.speaker.first_name ?? context.speaker.display_name ?? "Teammate",
+        speaker_title: context.speaker.role ?? null,
+        recipient_type: (context.recipient_type ?? (context.is_group ? "group" : "direct")) === "group" ? "group" : (context.recipient_type ?? (context.is_group ? "group" : "direct")) === "none" ? "none" : "direct",
+        recipient_id: (context.recipient_type ?? (context.is_group ? "group" : "direct")) === "group" ? (currentEntry.run?.scenario && cq4Day1Opener.isOpener(currentEntry.run.scenario) ? "@table" : "@team") : (context.recipient_type ?? "direct") === "none" ? null : currentEntry.run.session.startup.player.observer_id,
+        recipient_name: (context.recipient_type ?? (context.is_group ? "group" : "direct")) === "group" ? (cq4Day1Opener.isOpener(currentEntry.run.scenario) ? "Assembly Table" : "Team") : (context.recipient_type ?? "direct") === "none" ? null : "YOU",
+        listeners: [currentEntry.run.session.startup.player.observer_id, ...(context.interaction?.listeners ?? []).filter((id) => id !== (context.speaker.personnel_id ?? context.speaker.id))],
+        channel: "LOCAL",
+        text: item.speech,
+        kind: "speech",
+        source: item.validation.ok ? presentationBus.SOURCES.AI_PERFORMANCE : presentationBus.SOURCES.DETERMINISTIC,
+        interval: currentEntry.run.expedition.clock?.interval ?? 0,
+        delivery: "delivered"
+      });
+      currentEntry.run.expedition.dialogue_history ??= [];
+      currentEntry.run.expedition.dialogue_history.push(responseEvent);
+      presentationBus.emit(currentEntry.run, responseEvent);
+      committedResponses.push({
+        order:committedResponses.length,
+        speaker_id:responseEvent.speaker_id,
+        speaker_name:responseEvent.speaker_name,
+        text:item.speech,
+        source:item.presentationSource,
+        committed_event_id:responseEvent.id
+      });
+      item.committed_event_id = responseEvent.id;
+    }
+    // ED-30: only delivered, accepted (or plan-fallback) lines satisfy their request slot; a cancelled reply leaves it open.
+    this.commitDialogueLedger(currentEntry.run, prepared.map((item) => ({ speaker_id: item.context.speaker?.personnel_id ?? item.context.speaker?.id, event_id: item.committed_event_id ?? null, plan: item.context.response_plan, frame: item.context.semantic_frame, request_id: item.context.request_id ?? null, request_ids: item.context.request_ids ?? null, listeners: [currentEntry.run.session.startup.player.observer_id, ...(item.context.interaction?.listeners ?? [])], delivered: Boolean(item.committed_event_id && item.speech) })), { present_ids: (item0 => item0 ? (item0.context.interaction?.listeners ?? []) : [])(prepared[0]) });
+
+    const first = prepared[0];
+    const allModel = prepared.length > 0 && prepared.every((item) => item.validation.ok);
+    const allFallback = prepared.every((item) => !item.validation.ok);
+    if (prepared.some((item) => item.unavailable)) canonical.result.provider_unavailable = true;
+    else delete canonical.result.provider_unavailable;
+    canonical.result.presentation_source = allModel ? first.presentationSource : allFallback ? "deterministic-fallback" : "mixed-model-fallback";
+    if (this.developerMode) {
+      // One bounded record per turn: what was committed and why, never hidden world state.
+      const after = (() => { try { const d = dialogueDiscourse.deriveDiscourseState({ interaction_history: currentEntry.run.expedition.interaction_history, dialogue_history: currentEntry.run.expedition.dialogue_history, player_id: currentEntry.run.session.startup.player.observer_id, location_id: currentEntry.run.spatial?.player_location ?? null, current_interval: currentEntry.run.expedition.clock?.interval ?? null, equipment: currentEntry.run.expedition.equipment, receipts: currentEntry.run.expedition.communication_receipts ?? [], people: (currentEntry.run.expedition.team?.members ?? []).flatMap((m) => [m.first_name, m.last_name, m.display_name].filter(Boolean).map((name) => ({ name: String(name), id: m.personnel_id ?? m.id }))) }); return { topic: d.current_topic_key, topic_stack: d.topic_stack.map((t) => t.topic), open_question: d.pending_question ? { id: d.pending_question.question_id ?? null, text: d.pending_question.player_text ?? null, expected_slot: d.pending_question.expected_slot ?? null } : null, last_question: d.last_question?.player_text ?? null, active_thread: d.active_thread ? { kind: d.active_thread.kind, members: d.active_thread.member_ids } : null }; } catch { return null; } })();
+      this.log(`[YB:COMMIT_TRACE] ${JSON.stringify({
+        request_id: requestId,
+        provider: first?.selectedProvider ?? null,
+        presentation_source: canonical.result.presentation_source,
+        committed: committedResponses.map((item) => ({ event_id: item.committed_event_id, speaker: item.speaker_name, source: item.source, text: item.text })),
+        turns: prepared.map((item) => ({ speaker: item.context.speaker?.first_name ?? null, basis: dialogueDiscourse.responseBasisFromPlan(item.context.response_plan, item.context.semantic_frame)?.kind ?? null, prompt_tokens_est: item.packet ? Math.ceil(String(renderContributionTask(item.packet) ?? "").length / 4) : null, candidate: item.validation?.ok ? "accepted" : (item.validation?.code ?? null), reason: item.validation?.ok ? null : (item.validation?.reason ?? null), revalidation: { ok: item.context_check?.ok ?? null, code: item.context_check?.code ?? null, cancelled: Boolean(item.context_check?.cancel) } })),
+        discourse_after: after
+      })}`);
+    }
+    canonical.result.public_reason = committedResponses.map((item) => `${item.speaker_name}: ${item.text}`).join(" ") || "Your message is heard. No further response is required.";
+    if (allFallback && first) {
+      // Built from what was actually COMMITTED (after revalidation/cancellation), never from a
+      // pre-commit fallback snapshot that may have gone stale or been cancelled.
+      const committedText = committedResponses.map((item) => `${item.speaker_name}: ${item.text}`).join(" ") || "Your message is heard. No further response is required.";
+      canonical.result.public_reason = first.unavailable
+        ? `Language assistance is unavailable. Deterministic response: ${committedText}`
+        : `Language assistance returned an invalid response and was rejected. Deterministic response: ${committedText}`;
+    }
+    canonical.result.hosted_request = { request_id:requestId, provider:first?.selectedProvider ?? "unavailable", hosted:first?.selectedProvider !== "local", status:"completed", responder_count:committedResponses.length };
+    if (first?.context?.interaction) {
+      q4Interactions.updatePresentation(currentEntry.run.expedition, first.context.interaction.id, {
+        response: committedResponses[0]?.text ?? null,
+        source: canonical.result.presentation_source,
+        response_speaker: committedResponses[0]?.speaker_name ?? null,
+        response_speaker_id: committedResponses[0]?.speaker_id ?? null,
+        responses: committedResponses
+      });
+    }
+
+    canonical.result.scene = this.sceneFor(currentEntry, "field-researcher", {
+      scene_type: "delta",
+      accepted: true,
+      action: "LOCAL",
+      public_reason: canonical.result.public_reason
+    }, currentWorld);
     canonical.result.scene.narration = canonical.result.public_reason;
     canonical.result.scene.narration_source = canonical.result.presentation_source;
+
+    if (receipt) {
+      receipt.status = "completed";
+      receipt.public_reason = canonical.result.public_reason;
+      receipt.presentation_source = canonical.result.presentation_source;
+      receipt.scene = clone(canonical.result.scene);
+      receipt.cached_result = { ok: true, result: clone(canonical.result) };
+    }
+
+    try {
+      this.persistSession(currentWorld, "field-researcher", currentEntry);
+    } catch (persistError) {
+      for (const key of Object.keys(currentWorld)) delete currentWorld[key];
+      Object.assign(currentWorld, beforeWorld);
+      for (const key of Object.keys(currentEntry.run)) delete currentEntry.run[key];
+      Object.assign(currentEntry.run, beforeRun);
+      currentEntry.run._world = currentWorld;
+      currentEntry.phase = beforePhase;
+      const failedReceipt = currentEntry.run.expedition?.communication_receipts?.find((r) => r.id === requestId);
+      if (failedReceipt) {
+        failedReceipt.status = "failed";
+      }
+      this.log(`finalization persistence failed: ${persistError.message}`);
+      return publicError("PERSISTENCE_COMMIT_FAILED", "Your message was delivered, but the reply could not be saved. Retry this message to finish saving the reply.");
+    }
+
+    this.recordDialogueWordsmithTrace({
+      developer_only:true,
+      request_id:requestId,
+      provider_used:first?.selectedProvider ?? "unavailable",
+      player_event_id:contexts[0]?.player_event_id ?? null,
+      deterministic_responders:contexts.map((context, order) => ({ order, speaker_id:context.speaker?.personnel_id ?? context.speaker?.id, speaker_name:context.speaker?.first_name ?? context.speaker?.display_name })),
+      // Development-only diagnosis of what actually happened for this responder:
+      // was the provider ready, did it produce a candidate, did validation
+      // accept or reject it (and why), and what finally got said. Never
+      // surfaced to the player -- gated by developerMode in
+      // recordDialogueWordsmithTrace / getDialogueWordsmithTrace, and
+      // redacted before storage.
+      wordsmiths:prepared.map((item, order) => ({
+        order,
+        responder_id:item.context.speaker?.personnel_id ?? item.context.speaker?.id,
+        provider_ready:!item.unavailable,
+        speech_act:item.packet?.player_speech_act?.speech_act ?? null,
+        semantic_frame:item.context.semantic_frame ?? null,
+        response_plan:item.context.response_plan ?? null,
+        authorized_contribution:item.packet?.authorized_contribution ?? null,
+        discourse_function:item.packet?.authorized_contribution?.discourse_function ?? null,
+        requested_content:item.packet?.authorized_contribution?.requested_content ?? null,
+        expected_response_shape:item.packet?.authorized_contribution?.expected_response_shape ?? null,
+        required_fields:(item.packet?.authorized_contribution?.required_facts ?? []).map((f) => f.key),
+        optional_fields:(item.packet?.authorized_contribution?.optional_facts ?? []).map((f) => f.key),
+        validation_reason:item.validation.ok ? null : (item.validation.reason ?? null),
+        response_purpose:item.packet?.authorized_response?.purpose ?? null,
+        context_trace:item.packet?._dialogue_trace?.context ?? null,
+        context_revalidation:item.context_check ? { ok:item.context_check.ok, code:item.context_check.code ?? null, stale:(item.context_check.stale ?? []).map((entry) => entry.kind) } : null,
+        wordsmith_packet:item.packet ? JSON.parse(JSON.stringify(item.packet)) : null,
+        raw_candidate:item.candidateRaw,
+        candidate_produced:Boolean(item.candidateRaw),
+        validator_accepted:item.validation.ok,
+        rejection_reason:item.validation.ok ? null : (item.validation.code ?? null),
+        fallback_used:!item.validation.ok,
+        output_source:item.presentationSource,
+        committed_event_id:committedResponses[order]?.committed_event_id ?? null
+      })),
+      committed_event_ids:committedResponses.map((item) => item.committed_event_id),
+      canonical_commit_order:[contexts[0]?.player_event_id, ...committedResponses.map((item) => item.committed_event_id)].filter(Boolean)
+    });
+
+    // DEV-ONLY console trace, gated the same as recordDialogueWordsmithTrace
+    // (developerMode). Reuses the same `prepared` data the trace above is
+    // built from -- no second tracing system, never player-visible, never
+    // written to canonical state.
+    if (this.developerMode) {
+      for (const item of prepared) {
+        const ctx = item.context;
+        const ownerName = ctx.speaker?.first_name ?? ctx.speaker?.display_name ?? ctx.speaker?.personnel_id ?? ctx.speaker?.id ?? "unknown";
+        this.log(`[YB:DIALOGUE_TRACE] text=${JSON.stringify(ctx.player_text)} recipient_type=${ctx.recipient_type ?? (ctx.is_group ? "group" : "direct")} inherited_scope=${ctx.inherited_scope ? "yes" : "no"} response_owner=${ownerName} speech_act=${item.packet?.player_speech_act?.speech_act ?? "n/a"} discourse_function=${ctx.semantic_frame?.discourse_function ?? "n/a"} plan_shape=${ctx.response_plan?.expected_response_shape ?? "n/a"} purpose=${JSON.stringify(item.packet?.authorized_response?.purpose ?? null)} provider_ready=${!item.unavailable} candidate_produced=${Boolean(item.candidateRaw)} validator_accepted=${item.validation.ok} rejection_reason=${item.validation.ok ? "none" : (item.validation.code ?? "unknown")} validation_reason=${JSON.stringify(item.validation.ok ? null : (item.validation.reason ?? null))} requested_content=${item.packet?.authorized_contribution?.requested_content ?? "n/a"} required_facts=${JSON.stringify((item.packet?.authorized_contribution?.required_facts ?? []).map((f) => f.key))} optional_facts=${JSON.stringify((item.packet?.authorized_contribution?.optional_facts ?? []).map((f) => f.key))} candidate=${JSON.stringify(item.candidateRaw?.speech ?? null)} candidate_fact_claims=${JSON.stringify(item.candidateRaw?.speech ? dialogueValidation.operationalClaims(item.candidateRaw.speech) : [])} unauthorized_claim_rejections=${JSON.stringify(item.candidateRaw?.speech && item.packet?.authorized_contribution ? dialogueValidation.unlicensedClaims(item.candidateRaw.speech, item.packet.authorized_contribution, ctx.player_text) : [])} fallback_used=${!item.validation.ok} output_source=${item.presentationSource}`);
+        // One dev-only context trace: what the speaker was allowed to know, by category and
+        // provenance. Omitted facts are named by reason only; their values are never printed.
+        if (item.packet?._dialogue_trace?.context) this.log(`[YB:CONTEXT_TRACE] ${JSON.stringify({ speaker: ownerName, context: item.packet._dialogue_trace.context, response_plan_fact_keys: (item.packet?.authorized_contribution?.required_facts ?? []).map((f) => f.key), revalidation: item.context_check ? { ok: item.context_check.ok, code: item.context_check.code ?? null } : null, candidate: item.candidateRaw?.speech ?? null, validator: item.validation.ok ? "accepted" : (item.validation.code ?? "rejected"), fallback_source: item.validation.ok ? null : (item.validation.code === "LOCAL_CONTEXT_STALE" ? "stale-safe-plan-fallback" : "same-plan-fallback") })}`);
+      }
+    }
+
+    canonical.projection = this.projectionFor(currentWorld, "field-researcher", currentEntry);
     return canonical;
   }
-  submitQ4CommunicationCanonical({ world_id, channel, text, target = null }) {
+  submitQ4CommunicationCanonical({ world_id, channel, text, target = null, request_id = null, input_fingerprint = null, spatial_selection = null, interpretation_advice = null }) {
+    // Only a validated advisory frame may reach framing; anything else leaves Tier 1 standing.
+    const interpretationAdvice = interpretation_advice?.accepted ? interpretation_advice : null;
     if (this.commandBusy(world_id)) return publicError("SESSION_BUSY", "Wait for the current action to finish before changing this operation.");
     if (outcomes.isRetired(this.getWorld(world_id))) return publicError("WORLD_RETIRED", "This world is a read-only historical record.");
+    let entry = null; let world = null; let beforeRun = null; let beforeWorld = null; let beforePhase = null;
     try {
-      const world = this.getWorld(world_id); const entry = this.session(world_id, "field-researcher") ?? this.restoreSession(world, "field-researcher", readJson(this.sessionFile(world_id, "field-researcher"), null));
+      world = this.getWorld(world_id); entry = this.session(world_id, "field-researcher") ?? this.restoreSession(world, "field-researcher", readJson(this.sessionFile(world_id, "field-researcher"), null));
       if (!entry || entry.kind !== "bootstrap") return publicError("SESSION_NOT_FOUND", "Start or continue Clear-Q4 before communicating.");
-      const beforeRun = clone(entry.run); const beforeWorld = clone(world); const beforePhase = clone(entry.phase);
+      beforeRun = clone(entry.run); beforeWorld = clone(world); beforePhase = clone(entry.phase);
+      const requestId = request_id ?? null;
+      const cleanText = typeof text === "string" ? text.trim() : "";
+      const fingerprint = input_fingerprint ?? crypto.createHash("sha256").update(JSON.stringify([world_id, channel, target ?? null, cleanText, ...(spatial_selection ? [spatial_selection] : [])])).digest("hex");
+      if (requestId && entry.run?.expedition?.communication_receipts) {
+        const recorded = entry.run.expedition.communication_receipts.find((receipt) => receipt.id === requestId);
+        if (recorded) {
+          if (recorded.input_fingerprint !== fingerprint) return publicError("REQUEST_ID_REUSED", "That communication reference belongs to a different message.");
+          if (recorded.status === "canceled") return publicError("REQUEST_CANCELED", "The communication was canceled.");
+          if (recorded.status === "pending" || recorded.status === "failed") {
+            const res = clone(recorded.cached_result ?? {
+              ok: true,
+              result: {
+                outcome: recorded.delivery ?? "delivered",
+                public_reason: recorded.public_reason ?? "This message has already been recorded."
+              }
+            });
+            const interaction = entry.run?.expedition?.interaction_history?.find((item) => item.submission_id === recorded.id || item.id === recorded.interaction_id);
+            // Delivery and attitude changes were committed already. Reuse the original
+            // authorization without calling react() or recording the utterance again.
+            const savedContexts = recorded.response_contexts?.length ? recorded.response_contexts : [{ target_worker_id:recorded.target_worker_id ?? interaction?.response_speaker_id, response_category:recorded.response_category, fallback_text:recorded.fallback_text }];
+            const recoveredContexts = savedContexts.map((saved) => {
+              const speaker = entry.run?.expedition?.team?.members?.find((m) => (m.personnel_id ?? m.id) === saved.target_worker_id) ?? null;
+              const person = speaker ? history.character(world, speaker.personnel_id ?? speaker.id) : null;
+              const originalReaction = person?.continuity?.reaction_history?.find((item) => item.event_id === recorded.cached_result?.result?.message?.id && item.at === entry.run.run_id);
+              const category = saved.response_category ?? originalReaction?.category ?? (saved.semantic_frame ? "acknowledgment" : null);
+              if (!speaker || !person || !category) return null;
+              // Recovery retains the exact frame/plan/contribution the turn was
+              // authorized with. Only a receipt written before snapshots existed
+              // is re-derived (context-free), never via the pre-ED-1 path.
+              const recoveredRecipientType = saved.recipient_type ?? interaction?.recipient_type ?? null;
+              let recoveredFrame = saved.semantic_frame ?? null;
+              let recoveredPlan = saved.response_plan ?? null;
+              let recoveredContribution = saved.authorized_contribution ?? null;
+              if (!recoveredFrame || !recoveredPlan) {
+                const equipmentNow = entry.run.expedition.equipment ?? {};
+                const recoveredNames = Object.fromEntries([...(entry.run.expedition.team.members ?? []).map((m) => [m.personnel_id ?? m.id, m.first_name ?? m.display_name ?? null]), [entry.run.session?.startup?.player?.observer_id, "you"]]);
+                const recoveredId = speaker.personnel_id ?? speaker.id;
+                recoveredFrame = dialogueDiscourse.buildSemanticFrame({ text: stripNamedAddress(recorded.text, recorded.target), recipient_type: recoveredRecipientType ?? "none", equipment: equipmentNow });
+                [recoveredPlan] = dialogueDiscourse.planResponses({ frame: recoveredFrame, owner_ids: [recoveredId], responders: { [recoveredId]: { self: dialogueDiscourse.buildSelfKnowledge({ person, member: speaker, held_equipment: Object.values(equipmentNow).filter((item) => item.holder === recoveredId), known_facts: (speaker.known_information ?? []).filter((fact) => fact.kind !== "reported-knowledge" || fact.source === "direct-observation"), names: recoveredNames, equipment: equipmentNow, player_id: entry.run.session?.startup?.player?.observer_id, custody_known: Object.fromEntries((recoveredFrame.referents ?? []).filter((ref) => ref.type === "equipment" && ref.resolved && ref.id).map((ref) => [ref.id, observerContextCompiler.resolveCustodyKnowledge(entry.run, recoveredId, ref.id).known])), self_state: canonicalLedger.describeSelfState(speaker), procedure: dialogueProcedureContext(entry.run, recoveredId) }) } }, names: recoveredNames });
+                recoveredContribution = dialogueDiscourse.toAuthorizedContribution(recoveredPlan, recoveredFrame, { names: recoveredNames });
+              }
+              return {
+                run:entry.run,
+                runId:entry.run.run_id,
+                player_text:recorded.text,
+                speaker,
+                person,
+                reaction:{ category },
+                fallback_text:saved.fallback_text ?? `${speaker.first_name}: Understood.`,
+                interaction,
+                world,
+                entry,
+                requestId:recorded.id,
+                player_event_id:recorded.player_event_id ?? null,
+                interpretation:saved.interpretation ?? interpretDialogueUtterance(stripNamedAddress(recorded.text, recorded.target), { isGroup:interaction?.recipient_type === "group" }),
+                semantic_frame:recoveredFrame,
+                response_plan:recoveredPlan,
+                authorized_contribution:recoveredContribution,
+                discourse_summary:saved.discourse_summary ?? null,
+                is_group:saved.is_group ?? interaction?.recipient_type === "group",
+                recipient_type:recoveredRecipientType,
+                inherited_scope:Boolean(saved.inherited_scope),
+                phase_id:entry.phase?.phase_id ?? null,
+                resuming:true,
+                request_id:saved.request_id ?? null,
+                request_ids:saved.request_ids ?? null
+              };
+            }).filter(Boolean);
+            if (!interaction || recoveredContexts.length !== savedContexts.length) {
+              return publicError("DIALOGUE_RECOVERY_UNAVAILABLE", "Your message was delivered, but its original reply context is unavailable. The unfinished reply has been preserved.");
+            }
+            Object.defineProperty(res, "_local_dialogue_contexts", { configurable:true, enumerable:false, value:recoveredContexts });
+            res.projection = this.projectionFor(world, "field-researcher", entry);
+            return res;
+          }
+          if (recorded.status === "completed" || !recorded.status) {
+            const res = clone(recorded.cached_result ?? {
+              ok: true,
+              result: {
+                outcome: recorded.delivery ?? "delivered",
+                public_reason: recorded.public_reason ?? "This message has already been recorded."
+              }
+            });
+            res.result ??= {};
+            res.result.duplicate = true;
+            if (recorded.public_reason) res.result.public_reason = recorded.public_reason;
+            if (recorded.presentation_source) res.result.presentation_source = recorded.presentation_source;
+            if (recorded.scene) {
+              res.result.scene = clone(recorded.scene);
+            } else if (res.result.scene) {
+              res.result.scene.public_reason = res.result.public_reason;
+              res.result.scene.narration = res.result.public_reason;
+              res.result.scene.narration_source = res.result.presentation_source;
+            }
+            res.projection = this.projectionFor(world, "field-researcher", entry);
+            return res;
+          }
+        }
+      }
+      beforeRun = clone(entry.run); beforeWorld = clone(world); beforePhase = clone(entry.phase);
       if (!q4Interactions.CHANNELS.includes(channel) || channel === "action") return publicError("CHANNEL_INVALID", "Choose a communication channel.");
+      if (cq4Day1Opener.isOpener(entry.run.scenario) && entry.phase?.phase_id === "BRIEFING") {
+        if (!cq4Day1Opener.isBroadcastCompleted(entry.run)) {
+          return publicError("BROADCAST_IN_PROGRESS", "The facility broadcast is in progress. Coworker interaction is unavailable until the broadcast concludes.");
+        }
+        if (channel !== "local") return publicError("INTRO_CHANNEL_UNAVAILABLE", "Introductions use LOCAL speech. The facility broadcast is receive-only and Standard is not active here.");
+        if (entry.run?.expedition?.day1_opener?.beat === cq4Day1Opener.BEATS.PERSONNEL_BRIEFING) {
+          cq4Day1Opener.concludePersonnelBriefing(entry.run);
+        }
+      }
+      if (cq4Day1Opener.isOpener(entry.run.scenario) && ["STAGING", "FACILITY_TRANSIT", "THRESHOLD", "STANDARD_RADIO_CHECK"].includes(entry.phase?.phase_id) && channel === "local") return publicError("LOCAL_INPUT_PAUSED", "Personnel are focused on equipment preparation.");
       const message = typeof text === "string" ? text.trim().slice(0, 2000) : "";
       if (!message) return publicError("COMMUNICATION_EMPTY", "Say or transmit something before sending it.");
-      const expedition = entry.run.expedition; const playerId = entry.run.session.startup.player.observer_id; const coworkers = expedition.team.members.filter((member) => member.personnel_id !== playerId); const requested = String(target ?? "").toLowerCase(); const peer = requested && !["team", "teammate", "standard"].includes(requested) ? coworkers.find((member) => [member.personnel_id, member.first_name, member.display_name].filter(Boolean).some((value) => String(value).toLowerCase() === requested)) : null; const person = peer ? history.character(world, peer.personnel_id ?? peer.id) : null; const observed = peer && channel === "local" ? q4Personnel.observerStatus(peer, person, entry.phase?.phase_id, entry.run.spatial, playerId) : null;
+      const expedition = entry.run.expedition; const playerId = entry.run.session.startup.player.observer_id; const coworkers = expedition.team.members.filter((member) => member.personnel_id !== playerId);
+      let rawTarget = typeof target === "string" ? target.trim() : (target && typeof target === "object" ? (target.id ?? target.name ?? target.personnel_id ?? null) : null);
+      // ONE named-address parser for live interpretation, recipient resolution
+      // and prior-turn reconstruction. A vocative counts only when it names a
+      // known person or a group term; an explicit (UI-selected) target keeps
+      // precedence and is never replaced by a vocative.
+      const allWorldChars = Object.values(world.characters ?? {});
+      const isKnownAddressName = (candidate) => {
+        const candNorm = String(candidate).toLowerCase();
+        return coworkers.some((m) => [m.first_name, m.last_name, m.display_name, m.personnel_id, m.id, ...(m.aliases ?? [])].filter(Boolean).some((name) => String(name).toLowerCase() === candNorm))
+          || allWorldChars.some((c) => [c.first_name, c.last_name, c.display_name, c.identity, c.id, ...(c.aliases ?? [])].filter(Boolean).some((name) => String(name).toLowerCase() === candNorm));
+      };
+      const targetMember = rawTarget ? coworkers.find((m) => [m.personnel_id, m.id, m.first_name, m.display_name].filter(Boolean).some((n) => String(n).toLowerCase() === String(rawTarget).replace(/^@/, "").toLowerCase())) : null;
+      // Addressee SETS ("Hello Ava and Josephine", "Ava, Josephine, you ready?", "..., Elizabeth?") are
+      // resolved from sentence structure against the canonical roster -- a name merely mentioned is not
+      // an address, and the model never selects addressees.
+      const addressNames = coworkers.flatMap((m) => [m.first_name, m.last_name, m.display_name, ...(m.aliases ?? [])].filter(Boolean).map((name) => ({ name: String(name), id: m.personnel_id ?? m.id })));
+      const resolveAddressId = (name) => addressNames.find((entry) => entry.name.toLowerCase() === String(name).replace(/^@/, "").toLowerCase())?.id ?? null;
+      let address = parseAddressees(message, { explicit_target: rawTarget || null, names: addressNames, is_known: isKnownAddressName, resolve_id: resolveAddressId, name_tokens: targetMember ? [targetMember.first_name, targetMember.last_name, ...String(targetMember.display_name ?? "").split(/\s+/)].filter(Boolean) : [] });
+      // Every canonical entity the player's words could refer to (reference needs no presence).
+      const canonicalEntities = canonicalKnowledge.entityIndex(entry.run);
+      // ED-1: bounded discourse context DERIVED from canonical interaction and
+      // dialogue history (same location only). Read-only; nothing persisted.
+      const discourseState = dialogueDiscourse.deriveDiscourseState({
+        interaction_history: expedition.interaction_history,
+        dialogue_history: entry.run.expedition.dialogue_history,
+        player_id: playerId,
+        location_id: entry.run.spatial?.player_location ?? null,
+        current_interval: expedition.clock?.interval ?? null,
+        equipment: expedition.equipment,
+        // Why each prior reply was said (its authorized plan), for "why?" and open clarifications.
+        receipts: expedition.communication_receipts ?? [],
+        // Roster names, to reconstruct older turns' residual utterance exactly as the live turn saw it.
+        people: addressNames,
+        // Canonical entities (present or not), so earlier turns re-frame exactly as they were framed live.
+        entities: canonicalEntities
+      });
+      // Correction of the previous line's conversational TARGET ("No, I said Brady.", "Not Daisy."): the same
+      // question is re-asked of the intended person. It repairs who was addressed, never an identity fact.
+      const presentLocalIds = channel === "local" ? coworkers.filter((member) => member.status === "active" && q4Personnel.observerStatus(member, history.character(world, member.personnel_id ?? member.id), entry.phase?.phase_id, entry.run.spatial, playerId).local_eligible).map((member) => member.personnel_id ?? member.id) : [];
+      // ED-30 compositional turn analysis (clauses, acts, vocatives anywhere, repairs, ellipsis, attention
+      // calls, quantifiers, deixis), resolved against the dialogue ledger. Language only; code resolves
+      // every person, place and request. Profiles exist before anyone is asked about themselves.
+      if (channel === "local") dialoguePersonhood.ensurePersonhood(entry.run);
+      const turnPeople = channel === "local" ? coworkers.filter((member) => presentLocalIds.includes(member.personnel_id ?? member.id)).map((member) => ({ id: member.personnel_id ?? member.id, name: member.first_name ?? member.display_name, names: [member.first_name, member.last_name, member.display_name, ...(member.aliases ?? [])].filter(Boolean) })) : [];
+      let turnAnalysis = channel === "local" ? dialogueTurn.analyzeTurn({ raw: message, present: turnPeople, entities: canonicalEntities, dis: dialogueTurn.withSalience(dialogueState.snapshot(entry.run, { player_id: playerId, location_id: entry.run.spatial?.player_location ?? null, present_ids: presentLocalIds }), discourseState, canonicalEntities), explicit_target_id: targetMember ? (targetMember.personnel_id ?? targetMember.id) : null }) : null;
+      // An accepted v2 advisory reading fills only what Tier 1 left incomplete (never truth, never ids).
+      if (turnAnalysis && interpretationAdvice?.version === dialogueAdvisory.ADVISORY_V2_VERSION) turnAnalysis = dialogueTurn.applyAdvisory(turnAnalysis, interpretationAdvice, { present: turnPeople });
+      let turnPrimary = turnAnalysis?.primary ?? null;
+      const chipTarget = typeof target === "string" && target.trim();
+      // The established address-correction rule ("No, I meant Brady.", "Not Daisy.") keeps precedence when it
+      // resolves; the compositional repair/ellipsis/attention analysis covers everything it does not.
+      const legacyCorrection = channel === "local" && !chipTarget ? dialogueDiscourse.resolveAddressCorrection({ text: message, discourse: discourseState, people: addressNames, present_ids: presentLocalIds }) : null;
+      const turnDirects = Boolean(turnPrimary && !chipTarget && !legacyCorrection?.resolved && (["repair", "attention"].includes(turnPrimary.relation) || turnPrimary.speech_act === "elliptical_continuation"));
+      const addressCorrection = turnDirects ? null : legacyCorrection;
+      // When the established correction rule re-asks the question, the compositional act records it as a
+      // re-issue of the previous request to that person (never a vacuous acknowledgment).
+      if (legacyCorrection?.resolved && turnPrimary) {
+        const lastRequest = dialogueState.lastRequest(entry.run);
+        turnPrimary = { ...turnPrimary, speech_act: "repair", repair: { ...(turnPrimary.repair ?? {}), kind: "target", vacuous: false }, addressee: { kind: "explicit", ids: [legacyCorrection.target_id], quantifier: null, source: "legacy_correction" }, request_text: legacyCorrection.question_text ?? turnPrimary.request_text, reissue_of: lastRequest?.request_id ?? null, relation_target: lastRequest?.request_id ?? null, predicate: lastRequest?.predicate ?? null, fn_hint: lastRequest?.fn ?? null, clarify: null, cardinality: turnPrimary.cardinality === "each_ack" ? "one_spokesperson" : turnPrimary.cardinality };
+        turnAnalysis = { ...turnAnalysis, primary: turnPrimary, effective: [...turnAnalysis.effective.slice(0, -1), turnPrimary] };
+      }
+      if (addressCorrection?.resolved) {
+        const intended = coworkers.find((member) => (member.personnel_id ?? member.id) === addressCorrection.target_id);
+        const intendedName = intended?.first_name ?? intended?.display_name;
+        const reasked = parseAddressees(addressCorrection.question_text, { explicit_target: intendedName, names: addressNames, is_known: isKnownAddressName, resolve_id: resolveAddressId, name_tokens: [intended?.first_name, intended?.last_name].filter(Boolean) });
+        address = { ...reasked, address_type: "direct", addressee_ids: [addressCorrection.target_id], explicit_target_id: addressCorrection.target_id, explicit_target_name: intendedName, source: "correction", address_form: "correction" };
+        rawTarget = intendedName;
+      } else if (addressCorrection && !addressCorrection.resolved) {
+        // Which person was meant is still open: whoever answered the line asks.
+        const asker = addressCorrection.prior_responder_ids.find((id) => presentLocalIds.includes(id)) ?? null;
+        const askerMember = asker ? coworkers.find((member) => (member.personnel_id ?? member.id) === asker) : null;
+        if (askerMember) { address = { ...address, address_type: "direct", addressee_ids: [asker], explicit_target_id: asker, explicit_target_name: askerMember.first_name ?? askerMember.display_name, residual_text: message, source: "correction", address_form: "correction" }; rawTarget = askerMember.first_name ?? askerMember.display_name; }
+      }
+      // Tier 2 addressee recovery: only when Tier 1 found no address and the (already requested) advisory
+      // reading copied a name span from the line. Code resolves it against present coworkers; a name that is
+      // the subject of a third-person clause ("Clint said ...") is a mention, never an address.
+      if (!addressCorrection && address.address_type === "none" && !rawTarget && interpretationAdvice?.addressee_text_span) {
+        const span = interpretationAdvice.addressee_text_span;
+        // Two canonical people answering to the same name: the span is not an address (fail closed).
+        const sameName = new Set(addressNames.filter((entry) => entry.name.toLowerCase() === String(span).toLowerCase()).map((entry) => entry.id));
+        const id = sameName.size === 1 ? resolveAddressId(span) : null;
+        const escaped = String(span).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+        const mentionedAsSubject = new RegExp(`\\b${escaped}\\s+(?:said|says|told|has|had|have|is|was|were|went|thinks|knows|mentioned|did|does|will|would)\\b|\\b${escaped}'s\\b`, "i").test(message);
+        if (id && presentLocalIds.includes(id) && !mentionedAsSubject) {
+          address = { ...address, address_type: "direct", addressee_ids: [id], explicit_target_id: id, explicit_target_name: span, source: "advisory", address_form: "advisory_span" };
+          rawTarget = span;
+        }
+      }
+      if (channel === "local" && !chipTarget && !addressCorrection) {
+        const turnAddress = dialogueTurn.addressFromTurn(turnPrimary, address, turnPeople);
+        if (turnAddress) { address = turnAddress; rawTarget = address.address_type === "direct" ? address.explicit_target_name : (address.address_type === "none" ? rawTarget : null); }
+      }
+      const addressedSubset = address.address_type === "subset" ? address.addressee_ids : null;
+      const groupByAddress = !rawTarget && address.address_type === "group" && address.source !== "chip";
+      if (!rawTarget && address.address_type === "direct") rawTarget = address.explicit_target_name;
+
+      const isOpenerBriefing = cq4Day1Opener.isOpener(entry.run?.scenario) && entry.phase?.phase_id === "BRIEFING";
+      const GROUP_TERMS = new Set(["@table", "table", "team", "teammate", "teammates", "all", "everyone", "broadcast", "room", "local", "anyone", "crew", "group"]);
+      const explicitGroupTarget = Boolean(rawTarget && GROUP_TERMS.has(rawTarget.toLowerCase()));
+      // Interpretation sees only the residual utterance: a vocative naming the
+      // explicit target ("Nora, what?") is address, not content. The explicit
+      // target itself is unchanged and keeps precedence.
+      const utterance = address.residual_text;
+      const inferredRecipientType = inferLocalRecipientType(utterance, { explicitTarget: rawTarget && !explicitGroupTarget ? rawTarget : null });
+      // An explicitly named set outranks group language inside the residual ("Ava, Josephine, are you all ready?").
+      let isGroup = !addressedSubset && (explicitGroupTarget || groupByAddress || (!rawTarget && inferredRecipientType === "group"));
+
+      let peer = null;
+      let recipients = [];
+      let recipient_type = "none";
+      let target_id = null;
+      let target_name = null;
+      // DEV-ONLY diagnostic flag: did this turn's scope come from inheriting
+      // the immediately preceding LOCAL exchange (bare follow-up continuity)
+      // rather than a fresh explicit/group address? Never read for canonical
+      // routing -- surfaced only in the [YB:DIALOGUE_TRACE] dev trace below.
+      let inheritedScope = false;
+      // The canonical address event this line makes (recorded on the interaction; see q4-interactions).
+      let addressRecord = null;
+
       if (channel === "local") {
-        const localPeers = coworkers.filter((member) => { const record = history.character(world, member.personnel_id ?? member.id); return member.status === "active" && q4Personnel.observerStatus(member, record, entry.phase?.phase_id, entry.run.spatial, playerId).local_eligible; });
-        if (peer && !localPeers.some((m) => (m.personnel_id ?? m.id) === (peer.personnel_id ?? peer.id))) {
-          const reason = peer?.condition === "Unresponsive" ? "The teammate is unresponsive." : `${peer.first_name || peer.display_name} is not within speaking range.`;
-          communicationRuntime.local(expedition, { sender: playerId, recipients: [peer.personnel_id ?? peer.id], text: message, eligible: false, failure_reason: reason });
-          q4Interactions.record(expedition, { channel, speaker: "You", targets: [peer.display_name], player_text: message, attempted_behavior: "speak with a nearby teammate", eligibility: "target-out-of-range", delivery: "not-delivered", presentation: { result: reason } });
-          try {
-            this.persistSession(world, "field-researcher", entry);
-          } catch (persistError) {
-            for (const key of Object.keys(world)) delete world[key]; Object.assign(world, beforeWorld);
-            for (const key of Object.keys(entry.run)) delete entry.run[key]; Object.assign(entry.run, beforeRun);
-            entry.run._world = world; entry.phase = beforePhase;
-            return publicError("PERSISTENCE_COMMIT_FAILED", "The action could not be saved and was not committed. Check the operation record storage before retrying.");
+        const localPeers = coworkers.filter((member) => {
+          const record = history.character(world, member.personnel_id ?? member.id);
+          return member.status === "active" && q4Personnel.observerStatus(member, record, entry.phase?.phase_id, entry.run.spatial, playerId).local_eligible;
+        });
+
+        if (isGroup) {
+          if (localPeers.length === 0) {
+            const reason = "No nearby participating personnel can hear this transmission.";
+            communicationRuntime.local(expedition, { sender: playerId, recipients: ["unconfirmed teammate"], text: message, eligible: false, failure_reason: reason });
+            q4Interactions.record(expedition, { channel, speaker: "You", targets: ["no nearby teammate"], player_text: message, attempted_behavior: "speak with a nearby teammate", eligibility: "target-out-of-range", delivery: "not-delivered", presentation: { result: reason } });
+            try { this.persistSession(world, "field-researcher", entry); } catch (persistError) {
+              for (const key of Object.keys(world)) delete world[key]; Object.assign(world, beforeWorld);
+              for (const key of Object.keys(entry.run)) delete entry.run[key]; Object.assign(entry.run, beforeRun);
+              entry.run._world = world; entry.phase = beforePhase;
+              return publicError("PERSISTENCE_COMMIT_FAILED", "The action could not be saved and was not committed. Check the operation record storage before retrying.");
+            }
+            return publicError("LOCAL_TARGET_UNAVAILABLE", reason);
           }
-          return publicError("LOCAL_TARGET_UNAVAILABLE", reason);
-        }
-        const recipients = peer ? localPeers.filter((m) => (m.personnel_id ?? m.id) === (peer.personnel_id ?? peer.id)) : localPeers;
-        const eligible = recipients.length > 0;
-        if (!eligible) {
-          const reason = peer?.condition === "Unresponsive" ? "The teammate is unresponsive." : observed?.contact_category === "LOCAL" ? "The local conversation could not be delivered." : `No nearby participating personnel can hear this transmission.`;
-          communicationRuntime.local(expedition, { sender: playerId, recipients: [peer?.personnel_id ?? peer?.id ?? "unconfirmed teammate"], text: message, eligible: false, failure_reason: reason });
-          q4Interactions.record(expedition, { channel, speaker: "You", targets: [peer?.display_name ?? "no nearby teammate"], player_text: message, attempted_behavior: "speak with a nearby teammate", eligibility: "target-out-of-range", delivery: "not-delivered", presentation: { result: reason } });
-          try {
-            this.persistSession(world, "field-researcher", entry);
-          } catch (persistError) {
-            for (const key of Object.keys(world)) delete world[key]; Object.assign(world, beforeWorld);
-            for (const key of Object.keys(entry.run)) delete entry.run[key]; Object.assign(entry.run, beforeRun);
-            entry.run._world = world; entry.phase = beforePhase;
-            return publicError("PERSISTENCE_COMMIT_FAILED", "The action could not be saved and was not committed. Check the operation record storage before retrying.");
+          recipients = localPeers;
+          recipient_type = "group";
+          target_id = isOpenerBriefing ? "@table" : "@team";
+          target_name = isOpenerBriefing ? "Assembly Table" : "Team";
+          addressRecord = { scope: "group", addressee_ids: localPeers.map((member) => member.personnel_id ?? member.id), form: explicitGroupTarget ? (address.source === "chip" ? "chip" : address.address_form) : (groupByAddress ? address.address_form : "group_language"), source: "explicit" };
+        } else if (addressedSubset) {
+          // An explicitly named SET: exactly those people are addressed; nobody else is asked to answer.
+          const addressed = addressedSubset.map((id) => coworkers.find((member) => (member.personnel_id ?? member.id) === id)).filter(Boolean);
+          const reachable = addressed.filter((member) => localPeers.some((peerMember) => (peerMember.personnel_id ?? peerMember.id) === (member.personnel_id ?? member.id)));
+          if (reachable.length === 0) {
+            const reason = `${addressed.map((member) => member.first_name || member.display_name).join(" and ")} ${addressed.length > 1 ? "are" : "is"} not within speaking range.`;
+            communicationRuntime.local(expedition, { sender: playerId, recipients: addressedSubset, text: message, eligible: false, failure_reason: reason });
+            q4Interactions.record(expedition, { channel, speaker: "You", targets: addressed.map((member) => member.display_name), player_text: message, attempted_behavior: "speak with nearby teammates", eligibility: "target-out-of-range", delivery: "not-delivered", presentation: { result: reason } });
+            try { this.persistSession(world, "field-researcher", entry); } catch (persistError) {
+              for (const key of Object.keys(world)) delete world[key]; Object.assign(world, beforeWorld);
+              for (const key of Object.keys(entry.run)) delete entry.run[key]; Object.assign(entry.run, beforeRun);
+              entry.run._world = world; entry.phase = beforePhase;
+              return publicError("PERSISTENCE_COMMIT_FAILED", "The action could not be saved and was not committed. Check the operation record storage before retrying.");
+            }
+            return publicError("LOCAL_TARGET_UNAVAILABLE", reason);
           }
-          return publicError("LOCAL_TARGET_UNAVAILABLE", reason);
+          recipients = reachable;
+          recipient_type = reachable.length === 1 ? "direct" : "group";
+          target_id = reachable.length === 1 ? (reachable[0].personnel_id ?? reachable[0].id) : null;
+          target_name = reachable.map((member) => member.first_name ?? member.display_name).join(" and ");
+          addressRecord = { scope: "subset", addressee_ids: [...addressedSubset], form: address.address_form, source: "explicit" };
+        } else if (rawTarget) {
+          const targetNorm = rawTarget.toLowerCase();
+          const activeMatches = coworkers.filter((member) => {
+            const record = history.character(world, member.personnel_id ?? member.id);
+            const candidates = [
+              member.personnel_id,
+              member.id,
+              member.first_name,
+              member.last_name,
+              member.display_name,
+              record?.first_name,
+              record?.last_name,
+              record?.display_name,
+              ...(member.aliases ?? []),
+              ...(record?.aliases ?? [])
+            ].filter(Boolean).map(s => String(s).toLowerCase().trim());
+            return candidates.includes(targetNorm);
+          });
+
+          if (activeMatches.length > 1) {
+            return publicError("TARGET_AMBIGUOUS", `Multiple active teammates match "${rawTarget}". Specify the full name or role.`);
+          }
+
+          if (activeMatches.length === 0) {
+            const allWorldCharacters = Object.values(world.characters ?? {});
+            const worldMatches = allWorldCharacters.filter((person) => {
+              const candidates = [
+                person.identity,
+                person.id,
+                person.first_name,
+                person.last_name,
+                person.display_name,
+                ...(person.aliases ?? [])
+              ].filter(Boolean).map(s => String(s).toLowerCase().trim());
+              return candidates.includes(targetNorm);
+            });
+
+            if (worldMatches.length > 0) {
+              const match = worldMatches[0];
+              if (match.status === "dead") {
+                return publicError("LOCAL_TARGET_UNAVAILABLE", `${match.display_name || match.first_name || rawTarget} is deceased and cannot be addressed.`);
+              }
+              if (match.identity === playerId) {
+                return publicError("TARGET_INVALID", "You cannot address yourself as a recipient.");
+              }
+              if (match.role?.toLowerCase().includes("chief") || match.identity === "kirk-maxwell") {
+                return publicError("LOCAL_TARGET_UNAVAILABLE", `${match.display_name || match.first_name || rawTarget} is not present in the field complex.`);
+              }
+              return publicError("LOCAL_TARGET_UNAVAILABLE", `${match.display_name || match.first_name || rawTarget} is not assigned to the current operational team.`);
+            }
+
+            return publicError("TARGET_NOT_FOUND", `No personnel matching "${rawTarget}" was found.`);
+          }
+
+          peer = activeMatches[0];
+          const person = history.character(world, peer.personnel_id ?? peer.id);
+          const observed = q4Personnel.observerStatus(peer, person, entry.phase?.phase_id, entry.run.spatial, playerId);
+
+          if (!localPeers.some((m) => (m.personnel_id ?? m.id) === (peer.personnel_id ?? peer.id))) {
+            const reason = peer?.condition === "Unresponsive"
+              ? "The teammate is unresponsive."
+              : `${peer.first_name || peer.display_name} is not within speaking range.`;
+            communicationRuntime.local(expedition, { sender: playerId, recipients: [peer.personnel_id ?? peer.id], text: message, eligible: false, failure_reason: reason });
+            q4Interactions.record(expedition, { channel, speaker: "You", targets: [peer.display_name], player_text: message, attempted_behavior: "speak with a nearby teammate", eligibility: "target-out-of-range", delivery: "not-delivered", presentation: { result: reason } });
+            try {
+              this.persistSession(world, "field-researcher", entry);
+            } catch (persistError) {
+              for (const key of Object.keys(world)) delete world[key]; Object.assign(world, beforeWorld);
+              for (const key of Object.keys(entry.run)) delete entry.run[key]; Object.assign(entry.run, beforeRun);
+              entry.run._world = world; entry.phase = beforePhase;
+              return publicError("PERSISTENCE_COMMIT_FAILED", "The action could not be saved and was not committed. Check the operation record storage before retrying.");
+            }
+            return publicError("LOCAL_TARGET_UNAVAILABLE", reason);
+          }
+
+          recipients = [peer];
+          recipient_type = "direct";
+          target_id = peer.personnel_id ?? peer.id;
+          target_name = peer.first_name ?? peer.display_name;
+          addressRecord = { scope: "direct", addressee_ids: [target_id], form: address.source === "chip" || address.address_form === "chip" ? "chip" : address.address_form, source: "explicit" };
+        } else {
+          // Untargeted utterance: spoken aloud into the room. No individual or
+          // group was addressed by the player's own words. A short, purely
+          // reactive follow-up ("What?", "Huh?") may inherit the conversational
+          // scope of the immediately preceding LOCAL exchange at this same
+          // location -- it must never collapse to "pick the first eligible
+          // teammate and pretend the player addressed them directly."
+          const inheritedScopeResolution = dialogueDiscourse.resolveRecipientScope({
+            text: utterance,
+            discourse: discourseState,
+            present_ids: localPeers.map((member) => member.personnel_id ?? member.id),
+            people: coworkers.map((member) => ({ id: member.personnel_id ?? member.id, name: member.first_name ?? null })),
+            equipment: expedition.equipment
+          });
+          const priorLocal = inheritedScopeResolution.inherited ? discourseState.last_turn : null;
+          const inheritedGroup = inheritedScopeResolution.recipient_type === "group"
+            ? localPeers.filter((member) => inheritedScopeResolution.recipient_ids.includes(member.personnel_id ?? member.id))
+            : [];
+          const inheritedDirect = inheritedScopeResolution.recipient_type === "direct"
+            ? localPeers.find((member) => (member.personnel_id ?? member.id) === inheritedScopeResolution.recipient_ids[0]) ?? null
+            : null;
+
+          if (inheritedGroup.length > 0) {
+            const inheritedSubset = inheritedScopeResolution.address_scope === "subset";
+            recipients = inheritedGroup;
+            recipient_type = "group";
+            isGroup = !inheritedSubset;
+            target_id = inheritedSubset ? null : ((priorLocal?.recipient_id && String(priorLocal.recipient_id).startsWith("@") ? priorLocal.recipient_id : null) ?? (isOpenerBriefing ? "@table" : "@team"));
+            target_name = inheritedSubset ? inheritedGroup.map((member) => member.first_name ?? member.display_name).join(" and ") : (isOpenerBriefing ? "Assembly Table" : "Team");
+            inheritedScope = true;
+            addressRecord = { scope: inheritedSubset ? "subset" : "group", addressee_ids: inheritedGroup.map((member) => member.personnel_id ?? member.id), form: "inherited", source: inheritedScopeResolution.source };
+          } else if (inheritedDirect) {
+            recipients = [inheritedDirect];
+            recipient_type = "direct";
+            isGroup = false;
+            target_id = inheritedDirect.personnel_id ?? inheritedDirect.id;
+            target_name = inheritedDirect.first_name ?? inheritedDirect.display_name;
+            inheritedScope = true;
+            addressRecord = { scope: "direct", addressee_ids: [target_id], form: "inherited", source: inheritedScopeResolution.source };
+          } else {
+            // Genuine untargeted scope: heard by everyone present, addressed
+            // to no one. Nobody is spoken TO; any reaction stays room-scoped.
+            recipients = [];
+            recipient_type = "none";
+            target_id = null;
+            target_name = null;
+            addressRecord = { scope: "untargeted", addressee_ids: [], form: "none", source: "untargeted" };
+          }
         }
-         const deliveredLocal = communicationRuntime.local(expedition, { sender: playerId, recipients: recipients.map((member) => member.personnel_id ?? member.id), text: message, eligible: true });
+        addressRecord = { ...(addressRecord ?? { scope: "untargeted", addressee_ids: [], form: "none", source: "untargeted" }), utterance };
+
+        const deliveredRecipients = recipients.length > 0 ? recipients.map((member) => member.personnel_id ?? member.id) : localPeers.map((member) => member.personnel_id ?? member.id);
+        const deliveredLocal = communicationRuntime.local(expedition, { sender: playerId, recipients: deliveredRecipients, text: message, eligible: true });
         phenomenonEcology.recordSpeech(world, entry.run, { speaker:playerId, text:message, location_id:entry.run.spatial.player_location });
-        if (/\b(route|corridor|passage|location|map|survey|where)\b/i.test(message) && entry.run.survey_frontier) for (const recipient of recipients) surveyFrontier.share(entry.run.survey_frontier, recipient.personnel_id ?? recipient.id, playerId, { at: expedition.clock.interval });
-        for (const recipient of recipients) {
+        // Map knowledge never moves because a line merely contains "where"/"route": a knowledge
+        // transfer needs communicated content (Doctrine 4.10, 7.19). Route sharing belongs to the
+        // structured report path, not to keyword matching over speech.
+        const request = /\b(hand|pass|give|bring|transfer)\b/i.test(message);
+        const isQuestion = /\?$/.test(message.trim()) || /^(?:what|where|who|when|why|how|can you|could you|do you|is there|are there|will you)\b/i.test(message.trim());
+        const isWarning = /\b(?:look out|watch out|careful|warning|danger|hazard|stop)\b/i.test(message);
+        const importance = request ? 58 : isWarning ? 75 : 85;
+        const risk = isWarning ? 70 : 0;
+        // A disclosure is the player's own first-person preference or concern ("I prefer...", "I get nervous
+        // in the dark"); a keyword about the world ("It's dark in here.") discloses nothing about them.
+        const isDisclosure = /\b(?:i prefer|i(?:'d| would) rather|(?:please )?call me)\b|\b(?:i(?:'m| am)|i feel|i get|makes me|i hate|i don'?t like)\b[^.?!]{0,40}\b(?:nervous|afraid|scared|tight spaces|dark|claustrophobic|worried)\b/i.test(message);
+        // Bounded interpretation — deterministic speech act classification for the wordsmith pipeline.
+        // Separate from the regex flags above which feed the existing reactionContext API.
+        const localInterpretation = interpretDialogueUtterance(utterance, { isGroup: recipient_type === "group" });
+        // ED-1: deterministic semantic frame (discourse function, referents,
+        // antecedent). Code decides the conversational situation; the model
+        // never chooses any part of it.
+        // A renderer/spatial-runtime selection is INPUT: it resolves "that door" only after the contract
+        // has checked it against canonical spatial state; otherwise the reference stays unresolved.
+        const selectionCheck = spatial_selection ? spatialEvents.resolveSpatialReferenceSelection(entry.run, spatial_selection, { observer_id: playerId, now: expedition.clock?.interval ?? null }) : null;
+        const validatedSelection = selectionCheck?.ok ? selectionCheck.selection : null;
+        if (selectionCheck && !selectionCheck.ok && this.developerMode) this.log(`[YB:SPATIAL_TRACE] ${JSON.stringify({ request_id: requestId, rejected: selectionCheck.code, detail: selectionCheck.detail ?? null })}`);
+        // Intra-turn anaphora: "Who is Maxwell and what does he do?" -- a pronoun in the main act points at the
+        // entity an earlier act of the SAME turn asked about.
+        let frameDiscourse = discourseState;
+        const earlierAct = turnAnalysis && turnPrimary ? turnAnalysis.effective.filter((a) => a !== turnPrimary && ["question", "request"].includes(a.speech_act) && a.request_text && (a.act?.span?.[0] ?? 0) < (turnPrimary.act?.span?.[0] ?? 0)).at(-1) : null;
+        if (earlierAct && /\b(?:he|him|his|she|her|they|them|it|that|those|there)\b/i.test(utterance)) {
+          const earlierFrame = dialogueDiscourse.buildSemanticFrame({ text: earlierAct.request_text, discourse: discourseState, equipment: expedition.equipment, entities: canonicalEntities, people: coworkers.map((member) => ({ id: member.personnel_id ?? member.id, name: member.first_name ?? null })) });
+          if (earlierFrame.knowledge_query) frameDiscourse = { ...discourseState, last_turn: { ...(discourseState.last_turn ?? {}), kind: "player_exchange", knowledge_key: `knowledge:${earlierFrame.knowledge_query.concept}:${earlierFrame.knowledge_query.entity?.id ?? "-"}`, responses: [] } };
+        }
+        let semanticFrame = dialogueDiscourse.buildSemanticFrame({ text: utterance, recipient_type, interpretation: localInterpretation, discourse: frameDiscourse, equipment: expedition.equipment, scope_inherited: inheritedScope, spatial_selection: validatedSelection, temporal_anchors: dialogueTemporalAnchors(entry.run), now: expedition.clock?.interval ?? null, people: coworkers.map((member) => ({ id: member.personnel_id ?? member.id, name: member.first_name ?? null })), addressee_ids: recipients.map((member) => member.personnel_id ?? member.id), entities: canonicalEntities, advice: interpretationAdvice, correction: addressCorrection });
+        // ED-30 reconciliation: the registry facet is preserved over entity lookup (D16); an unresolved act
+        // clarifies; the effective act's relation, cardinality and arguments ride on the frame.
+        if (turnPrimary) {
+          const turnCompleteness = dialogueTurn.completenessWithFrame(turnAnalysis, semanticFrame, turnPrimary);
+          semanticFrame = dialogueTurn.finalizeFrame(semanticFrame, turnPrimary, dialogueTurn.reconcile(semanticFrame, turnPrimary), { completeness: turnCompleteness, entities: canonicalEntities });
+        } else semanticFrame = dialogueTurn.finalizeFrame(semanticFrame, null, null);
+        // The lead closing the round ("Okay, that's that") ends getting acquainted before this turn's own
+        // procedure question is answered (same canonical transaction; rolled back with it on failure).
+        if (turnAnalysis?.closes_activity) { dialogueState.closeActivity(entry.run, "player_closed"); dialogueState.noteAcquaintanceClosed(entry.run, presentLocalIds); }
+        const discourseSummary = dialogueDiscourse.summarizeDiscourse(discourseState, semanticFrame);
+        for (const recipient of (recipients.length > 0 ? recipients : localPeers)) {
+          const recId = recipient.personnel_id ?? recipient.id;
           recipient.last_communication = { channel: "LOCAL", direction: "received", at: expedition.clock.interval, message_id: deliveredLocal.message.id };
           recipient.known_information ??= [];
           recipient.known_information.push({ kind: "reported-knowledge", text: message, source: "local-communication", sender: playerId, at: expedition.clock.interval, message_id: deliveredLocal.message.id });
+          personnelContinuity.recordDialogueMemory(world, {
+            run_id: entry.run.run_id,
+            identity: recId,
+            player_text: message,
+            response: null,
+            source: "local-communication",
+            sender: playerId,
+            at: expedition.clock.interval
+          });
+          if (isDisclosure) {
+            personnelContinuity.recordAttitudeChange(world, {
+              run_id: entry.run.run_id,
+              identity: recId,
+              target_id: playerId,
+              delta: { trust: 8, rapport: 10 },
+              reason: "Player shared working preferences and concerns openly.",
+              at: expedition.clock.interval
+            });
+          } else if (isWarning) {
+            personnelContinuity.recordAttitudeChange(world, {
+              run_id: entry.run.run_id,
+              identity: recId,
+              target_id: playerId,
+              delta: { trust: 4, rapport: 2 },
+              reason: "Player gave timely operational warning.",
+              at: expedition.clock.interval
+            });
+          }
         }
-        const request = /\b(hand|pass|give|bring|transfer)\b/i.test(message);
-        const requestedEquipment = request ? Object.values(expedition.equipment ?? {}).find((item) => [item.id, item.label, item.type].filter(Boolean).some((value) => message.toLowerCase().includes(String(value).toLowerCase()) || String(value).toLowerCase().split(/\s+/).some((term) => term.length > 4 && message.toLowerCase().includes(term)))) : null;
+        // The ONE canonical item resolution is semanticFrame.referents. A
+        // uniquely resolved referent may drive knowledge/owner selection and
+        // handoff wording; an ambiguous or unmatched item never claims ownership.
+        const equipmentReferent = semanticFrame.referents.find((ref) => ref.type === "equipment" && ref.resolved) ?? null;
+        const requestedEquipment = equipmentReferent ? (expedition.equipment?.[equipmentReferent.id] ?? Object.values(expedition.equipment ?? {}).find((item) => item.id === equipmentReferent.id) ?? null) : null;
         const equipmentHolder = requestedEquipment ? expedition.team.members.find((member) => member.personnel_id === requestedEquipment.holder) : null;
-        const responses = recipients.map((recipient) => { const recipientPerson = history.character(world, recipient.personnel_id ?? recipient.id); const reactionContext = personnelContinuity.reactionContext({ world, run: entry.run, phase: entry.phase?.phase_id, worker_id: recipient.personnel_id, player_id: playerId, event: { id: deliveredLocal.message.id, category: "local-communication", summary: `The teammate heard the player's statement: ${message}`, novelty_key: request ? "local-equipment-request" : `local-statement-${message.toLowerCase().slice(0, 80)}`, operational_importance: request ? 58 : 85, perceived_risk: 0, observed_by: [recipient.personnel_id], delivered_to: [recipient.personnel_id], participants: [playerId, recipient.personnel_id] } }); const reaction = personnelContinuity.react(world, reactionContext); const knownAnswer = personnelContinuity.presentKnownAnswer(entry.run, recipient.personnel_id, message); const response = request ? (requestedEquipment?.holder === recipient.personnel_id ? `${recipient.first_name}: I hear the request. The ${requestedEquipment.label.toLowerCase()} remains with me until we complete a physical handoff.` : requestedEquipment?.holder === playerId ? `${recipient.first_name}: You already hold the ${requestedEquipment.label.toLowerCase()}.` : equipmentHolder ? `${recipient.first_name}: ${equipmentHolder.first_name} has the ${requestedEquipment.label.toLowerCase()}; a physical handoff still has to happen in person.` : `${recipient.first_name}: I hear the request, but I cannot confirm that equipment in my custody.`) : knownAnswer ?? personnelContinuity.presentReaction(recipientPerson, reaction.reaction, message); return { recipient, person:recipientPerson, reaction_context:reactionContext, reaction:reaction.reaction, text:response }; });
-        const addressed = peer ? responses.find((item) => item.recipient.personnel_id === peer.personnel_id) : null;
-        const namedInMessage = recipients.find((m) => [m.first_name, m.last_name, m.display_name].filter(Boolean).some((n) => new RegExp(`\\b${String(n).replace(/[.*+?^${}()|[\\]\\\\]/g, "\\$&")}\\b`, "i").test(message)));
-        const roleInMessage = recipients.find((m) => { const role = String(m.role ?? "").toLowerCase(); return role && role.split(/\s+/).some((w) => w.length > 3 && new RegExp(`\\b${w}\\b`, "i").test(message)); });
-        const addressedRecipient = addressed ?? (namedInMessage ? responses.find((item) => item.recipient.personnel_id === (namedInMessage.personnel_id ?? namedInMessage.id)) : (roleInMessage ? responses.find((item) => item.recipient.personnel_id === (roleInMessage.personnel_id ?? roleInMessage.id)) : null));
-        const equipmentRespondent = requestedEquipment && equipmentHolder ? responses.find((item) => item.recipient.personnel_id === equipmentHolder.personnel_id) : null;
-        const chosen = addressedRecipient ?? equipmentRespondent ?? responses.find((item) => item.reaction && item.text) ?? responses[0];
-        const response = chosen?.text || "";
-        personnelContinuity.recordSharedHistory(world, { run_id: entry.run.run_id, participants: [playerId, ...recipients.map((recipient) => recipient.personnel_id ?? recipient.id)], kind: "local-communication", refs: { message_id: deliveredLocal.message.id, geography_shared: /\b(route|corridor|passage|location|map|survey|where)\b/i.test(message) }, at: expedition.clock.interval });
-        const interactionTargets = recipients.map(recipient => recipient.display_name);
-        const responseBody = response.replace(new RegExp(`^${String(chosen?.recipient?.first_name ?? "").replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}:\\s*`, "i"), "");
-        const interaction = q4Interactions.record(expedition, { channel, speaker: "You", targets: interactionTargets, player_text: message, attempted_behavior: "speak with nearby participating personnel", eligibility: "eligible", delivery: "heard", time_cost: 0, canonical_effects: ["communication.local.delivered"], response_speaker: chosen?.recipient?.first_name ?? chosen?.recipient?.display_name ?? null, presentation: { result: "heard", response:responseBody } });
+        const unresolvedItemNamed = semanticFrame.referents.some((ref) => ref.type === "equipment" && !ref.resolved);
+        const spokenNames = Object.fromEntries([...(expedition.team.members ?? []).map((member) => [member.personnel_id ?? member.id, member.first_name ?? member.display_name ?? null]), [playerId, "you"]]);
+
+        let chosen = null;
+        let response = "";
+        let responseBody = "";
+        let chosenId = null;
+        let responseListeners = [];
+        let interactionTargets = [];
+        let recipientIds = [];
+        const playerListeners = localPeers.map((p) => p.personnel_id ?? p.id);
+        interactionTargets = recipient_type === "none" ? ["Room / Untargeted"] : (isGroup && addressRecord.scope === "group" ? ["Assembly Table"] : recipients.map((r) => r.display_name));
+        recipientIds = recipient_type === "none" ? [] : recipients.map((r) => r.personnel_id ?? r.id);
+
+        const heardPeers = recipient_type === "none" ? localPeers : recipients;
+        // Fair spokesperson input: each coworker's most recent canonical line (dialogue_history order).
+        const lastSpokeSeq = new Map();
+        (entry.run.expedition.dialogue_history ?? []).forEach((event, index) => { if (event?.kind === "speech" && event.speaker_id && event.speaker_id !== playerId) lastSpokeSeq.set(event.speaker_id, index); });
+        // Per-listener inputs for ONE act's frame (ED-30: a turn may carry several acts, each framed alone).
+        const buildCandidates = (semanticFrame, { primaryAct = true, peers = heardPeers, recipientType = recipient_type } = {}) => {
+        const equipmentReferent = semanticFrame.referents.find((ref) => ref.type === "equipment" && ref.resolved) ?? null;
+        const requestedEquipment = equipmentReferent ? (expedition.equipment?.[equipmentReferent.id] ?? Object.values(expedition.equipment ?? {}).find((item) => item.id === equipmentReferent.id) ?? null) : null;
+        const unresolvedItemNamed = semanticFrame.referents.some((ref) => ref.type === "equipment" && !ref.resolved);
+        const equipmentKnowledgeQuestion = primaryAct && ["group_question", "factual_question"].includes(localInterpretation?.speech_act) && localInterpretation?.topic === "equipment" && /\b(?:carry|carrying|holding|holds|have|has|got|equipment|gear|kit|manifest|assigned|responsible)\b/i.test(message);
+        const selfKnowledgeById = {};
+        const knowledgeById = {};
+        const custodyHistoryById = {};
+        const predicateResultById = {};
+        const kq = semanticFrame.knowledge_query ?? null;
+        const responseCandidates = peers.map((recipient) => {
+          const recId = recipient.personnel_id ?? recipient.id;
+          const recipientPerson = history.character(world, recId);
+          const reactionContext = personnelContinuity.reactionContext({
+            world,
+            run: entry.run,
+            phase: entry.phase?.phase_id,
+            worker_id: recId,
+            player_id: playerId,
+            event: {
+              id: deliveredLocal.message.id,
+              category: "local-communication",
+              summary: `The teammate heard the player's statement: ${message}`,
+              novelty_key: request ? "local-equipment-request" : `local-statement-${message.toLowerCase().slice(0, 80)}`,
+              operational_importance: importance,
+              perceived_risk: risk,
+              is_question: isQuestion,
+              observed_by: [recId],
+              delivered_to: [recId],
+              participants: [playerId, recId]
+            }
+          });
+          const reaction = personnelContinuity.react(world, reactionContext);
+          // ONE known-answer authority: the structured answer decides relevance
+          // here AND becomes a plan fact (toKnownAnswerFact) that the fallback
+          // and the model both read. No wording function is involved.
+          const knownAnswerFact = dialogueDiscourse.toKnownAnswerFact(personnelContinuity.resolveKnownAnswer(entry.run, recId, message, world));
+          const heldEquipment = Object.values(expedition.equipment ?? {}).filter((item) => item.holder === recId);
+          // Knowledge relevance (not wording): a uniquely resolved item is
+          // relevant only to its canonical holder; an ambiguous/unmatched item
+          // is relevant to nobody; a generic "what are we carrying?" keeps the
+          // prior behavior (each holder of gear).
+          const equipmentRelevant = equipmentKnowledgeQuestion && !unresolvedItemNamed && (requestedEquipment ? requestedEquipment.holder === recId : heldEquipment.length > 0);
+          const knownFacts = (recipient.known_information ?? []).filter((fact) => fact.kind !== "reported-knowledge" || fact.source === "direct-observation");
+          // Custody this listener can know comes ONLY from the observer/knowledge authority
+          // (self, witnessed handoff, or unchanged institutional issuance).
+          const custodyResults = Object.fromEntries((semanticFrame.referents ?? []).filter((ref) => ref.type === "equipment" && ref.resolved && ref.id).map((ref) => [ref.id, observerContextCompiler.resolveCustodyKnowledge(entry.run, recId, ref.id)]));
+          const custodyKnown = Object.fromEntries(Object.entries(custodyResults).map(([id, result]) => [id, result.known]));
+          // HOW this listener knows the holder (the epistemic basis a later "How do you know?" explains).
+          const custodyBasis = Object.fromEntries(Object.entries(custodyResults).filter(([, result]) => result.known).map(([id, result]) => [id, /roster_call/.test(result.source_ref ?? "") ? "briefing" : result.form === "current" && /holder$/.test(result.source_ref ?? "") ? "self" : result.form === "current" ? "seen" : result.form === "observed_earlier" ? "seen_earlier" : "record"]));
+          // What THIS listener canonically knows about the question's concept (provenance kept).
+          // A projection error is recorded as such (never voiced as the character's ignorance).
+          let knowledge = null;
+          if (kq) { try { knowledge = canonicalKnowledge.queryKnowledge(entry.run, { actor_id: recId, concept: kq.concept, entity: kq.entity, facet: kq.facet ?? null, speaker_id: kq.speaker_id ?? null, topic_concept: kq.topic_concept ?? null }); } catch (projectionError) { this.log(`knowledge projection non-fatal: ${projectionError.message}`); knowledge = null; } }
+          knowledgeById[recId] = knowledge;
+          // A registry predicate is answered by THIS listener's own resolver result (profile, briefing, observation).
+          if (semanticFrame.discourse_function === "ask_predicate") { try { predicateResultById[recId] = dialogueResolvers.resolvePredicate(entry.run, { actor_id: recId, predicate: semanticFrame.predicate, args: dialogueTurn.argsFor(semanticFrame, recId), temporal: semanticFrame.turn?.temporal_scope ?? null }); } catch (resolverError) { this.log(`predicate resolver non-fatal: ${resolverError.message}`); predicateResultById[recId] = null; } }
+          if (semanticFrame.custody_time === "historical") { const ref = (semanticFrame.referents ?? []).find((r) => r.type === "equipment" && r.resolved); custodyHistoryById[recId] = ref ? canonicalKnowledge.custodyHistory(entry.run, recId, ref.id) : []; }
+          const askedEntityIds = [semanticFrame.knowledge_query?.entity?.id, ...(semanticFrame.knowledge_query?.entity?.related_ids ?? [])].filter(Boolean);
+          const ownsEntity = askedEntityIds.some((id) => heldEquipment.some((item) => item.id === id) || (id.startsWith("task:") && recipient.primary_task === id.slice(5)));
+          selfKnowledgeById[recId] = dialogueDiscourse.buildSelfKnowledge({ person: recipientPerson, member: recipient, task: reactionContext?.worker?.task ?? null, held_equipment: heldEquipment, known_facts: knownFacts, known_answer: knownAnswerFact, names: spokenNames, equipment: expedition.equipment, player_id: playerId, custody_known: custodyKnown, custody_basis: custodyBasis, self_state: canonicalLedger.describeSelfState(recipient), procedure: dialogueProcedureContext(entry.run, recId) });
+          // "Did anyone hear what I just said?" is answered only by someone who actually heard that line.
+          const heardTheAskedLine = semanticFrame.discourse_function !== "ask_heard_confirmation" || !semanticFrame.antecedent?.resolved || (semanticFrame.antecedent.listener_ids ?? []).includes(recId);
+          // Topic-matched known facts use the SAME selection the plan uses.
+          const topicFactsKnown = (["ask_factual", "challenge"].includes(semanticFrame.discourse_function) ? dialogueDiscourse.selectKnownFacts(semanticFrame, knownFacts) : []).length > 0;
+          // Wording is deferred: it runs only for already-authorized owners and
+          // can influence neither eligibility, owner count nor scope.
+          // Last-resort legacy wording for a discourse function the plan-aware
+          // fallback does not cover. Every current function is covered, so this
+          // is not reached on plan-carrying turns.
+          const legacyWording = () => personnelContinuity.presentReaction(recipientPerson, reaction.reaction, message, playerId, localInterpretation?.speech_act ?? null);
+          return {
+            id: recId,
+            recipient,
+            person: recipientPerson,
+            reaction_context: reactionContext,
+            reaction: reaction.reaction,
+            legacy_wording: legacyWording,
+            // Eligibility: listener state (heardPeers) + reaction salience OR the
+            // deterministic semantic duty of the frame. Never wording.
+            response_eligible: heardTheAskedLine && (Boolean(reaction.reaction) || dialogueDiscourse.frameObligatesResponse(semanticFrame, recId, { recipient_type: recipientType, holder_present: !requestedEquipment || heardPeers.some((peer) => (peer.personnel_id ?? peer.id) === requestedEquipment.holder) })),
+            owns_entity: ownsEntity,
+            last_spoke_seq: lastSpokeSeq.has(recId) ? lastSpokeSeq.get(recId) : -1,
+            // Knows the asked detail in full (not merely something related): preferred for "does anyone know".
+            knows_fully: Boolean((predicateResultById[recId] && !["unknown", "not_established", "partial"].includes(predicateResultById[recId].value)) || knowledge?.status === "known" || (semanticFrame.discourse_function === "ask_next_step" && selfKnowledgeById[recId]?.procedure)),
+            has_relevant_knowledge: Boolean((predicateResultById[recId] && !["unknown", "not_established"].includes(predicateResultById[recId].value)) || ["known", "partial"].includes(knowledge?.status) || equipmentRelevant || (knownAnswerFact && dialogueDiscourse.KNOWN_ANSWER_FUNCTIONS.includes(semanticFrame.discourse_function)) || topicFactsKnown || (semanticFrame.discourse_function === "ask_next_step" && selfKnowledgeById[recId]?.procedure))
+          };
+        });
+        const responders = Object.fromEntries(Object.entries(selfKnowledgeById).map(([id, self]) => [id, { self, knowledge: knowledgeById[id] ?? null, custody_history: custodyHistoryById[id] ?? null, predicate_result: predicateResultById[id] ?? null, agenda: dialogueAgents.admitAgenda(entry.run, id, dialogueAgents.speakerAgenda(entry.run, id)).admitted, repeat_of: semanticFrame.predicate && !String(semanticFrame.predicate).startsWith("conversation.") && !semanticFrame.unresolved_reference && !semanticFrame.resumed_question && !semanticFrame.turn?.args?.third_party_subject && !semanticFrame.turn?.args?.count_asked ? ((({ r }) => (r && (r.temporal ?? null) === (semanticFrame.turn?.temporal_scope ?? null) && (r.args?.place_id ?? null) === (semanticFrame.turn?.args?.place_id ?? null) ? r.request_id : null))({ r: dialogueState.recentlyAnswered(entry.run, semanticFrame.predicate, id) })) : null }]));
+        return { responseCandidates, responders };
+        };
+        const { responseCandidates, responders: primaryResponders } = buildCandidates(semanticFrame);
+
+        const ownerIds = resolveResponseOwners({ recipient_type, interpretation:localInterpretation, player_text:utterance, candidates:responseCandidates, frame:semanticFrame });
+        if (channel === "local") semanticFrame = dialogueTurn.subjectCheckIn(semanticFrame, ownerIds);
+        const authorizedResponses = ownerIds.map((id) => responseCandidates.find((candidate) => candidate.id === id)).filter(Boolean);
+        // Per-owner response plan over the ALREADY-authorized owners; the
+        // planner never adds, removes or reorders speakers.
+        const responsePlans = dialogueDiscourse.planResponses({ frame: semanticFrame, owner_ids: authorizedResponses.map((item) => item.id), responders: primaryResponders, names: spokenNames });
+        for (const item of authorizedResponses) item.response_plan = responsePlans.find((plan) => plan.responder_id === item.id) ?? null;
+        // ED-30 F12: the turn's OTHER question/request acts ("Who is Maxwell and what does he do?"), each framed,
+        // owned and planned on its own. One responder licensed for several acts answers them together in one
+        // line (a compound plan whose parts are validated and satisfied separately); otherwise each act has
+        // its own responder line.
+        const extraActs = channel === "local" && turnAnalysis ? turnAnalysis.effective.filter((act) => act !== turnPrimary && ["question", "request"].includes(act.speech_act) && act.request_text) : [];
+        let previousKey = semanticFrame.knowledge_query ? `knowledge:${semanticFrame.knowledge_query.concept}:${semanticFrame.knowledge_query.entity?.id ?? "-"}` : null;
+        for (const act of extraActs) {
+          // Each question goes to the person IT addresses ("Malcolm, is it your first day? And Tonya, are you
+          // tired?"): its own addressee set, recipient type and candidate pool (review N4).
+          const actPool = recipient_type === "none" ? heardPeers : localPeers;
+          const actIds = (act.addressee?.ids ?? []).filter((id) => actPool.some((member) => (member.personnel_id ?? member.id) === id));
+          const actRecipientType = actIds.length === 1 && act.addressee?.kind !== "group" ? "direct" : actIds.length ? "group" : recipient_type;
+          const actAddresseeIds = actIds.length ? actIds : recipients.map((member) => member.personnel_id ?? member.id);
+          const intraDiscourse = previousKey ? { ...discourseState, last_turn: { ...(discourseState.last_turn ?? {}), kind: "player_exchange", knowledge_key: previousKey, responses: [] } } : discourseState;
+          const rawFrame = dialogueDiscourse.buildSemanticFrame({ text: act.request_text, recipient_type: actRecipientType, discourse: intraDiscourse, equipment: expedition.equipment, people: coworkers.map((member) => ({ id: member.personnel_id ?? member.id, name: member.first_name ?? null })), addressee_ids: actAddresseeIds, entities: canonicalEntities, temporal_anchors: dialogueTemporalAnchors(entry.run), now: expedition.clock?.interval ?? null });
+          const actFrame = dialogueTurn.finalizeFrame(rawFrame, act, dialogueTurn.reconcile(rawFrame, act), { completeness: dialogueTurn.completenessWithFrame(turnAnalysis, rawFrame, act), entities: canonicalEntities });
+          if (actFrame.knowledge_query) previousKey = `knowledge:${actFrame.knowledge_query.concept}:${actFrame.knowledge_query.entity?.id ?? "-"}`;
+          const inputs = actIds.length ? buildCandidates(actFrame, { primaryAct: false, peers: actPool.filter((member) => actIds.includes(member.personnel_id ?? member.id)), recipientType: actRecipientType }) : buildCandidates(actFrame, { primaryAct: false });
+          const actCandidates = actIds.length ? inputs.responseCandidates.filter((c) => actIds.includes(c.id)) : inputs.responseCandidates;
+          const actOwners = resolveResponseOwners({ recipient_type: actRecipientType, interpretation: localInterpretation, player_text: act.request_text, candidates: actCandidates, frame: actFrame });
+          const actPlans = dialogueDiscourse.planResponses({ frame: actFrame, owner_ids: actOwners, responders: inputs.responders, names: spokenNames });
+          const actFirst = (act.act?.span?.[0] ?? 0) < (turnPrimary?.act?.span?.[0] ?? 0);
+          for (const plan of actPlans) {
+            const existing = authorizedResponses.find((item) => item.id === plan.responder_id);
+            if (existing) {
+              const parts = existing.response_plan?.discourse_function === "compound" ? existing.response_plan.parts : [{ plan: existing.response_plan, frame: semanticFrame }];
+              existing.response_plan = dialogueDiscourse.compoundPlan(actFirst ? [{ plan, frame: actFrame }, ...parts] : [...parts, { plan, frame: actFrame }]);
+            } else {
+              const candidate = inputs.responseCandidates.find((c) => c.id === plan.responder_id);
+              if (!candidate) continue;
+              candidate.response_plan = plan;
+              candidate.own_frame = actFrame;
+              // Answers come in the order the questions were asked.
+              if (actFirst) authorizedResponses.unshift(candidate); else authorizedResponses.push(candidate);
+            }
+          }
+          act.frame_predicate = actFrame.predicate;
+        }
+        const priorTexts = [];
+        for (const item of authorizedResponses) {
+          const itemFrame = item.own_frame ?? semanticFrame;
+          item.authorized_contribution = dialogueDiscourse.toAuthorizedContribution(item.response_plan, itemFrame, { names: spokenNames });
+          item.semantic_frame = itemFrame;
+          item.discourse_summary = discourseSummary;
+          // Fallback wording, AFTER owners, from the SAME plan snapshot the model
+          // receives (frame + plan facts + style hints + earlier same-turn lines).
+          const planned = dialogueFallback.presentFallback({ frame: itemFrame, plan: item.response_plan, prior: priorTexts });
+          const first = item.recipient.first_name ?? item.recipient.display_name;
+          item.text = planned ? `${first}: ${planned}` : item.legacy_wording();
+          priorTexts.push(planned ?? "");
+        }
+        if (this.developerMode) this.log(`[YB:DISCOURSE_TRACE] ${dialogueDiscourse.formatDiscourseTrace({ request_id: requestId, listener_ids: heardPeers.map((peer) => peer.personnel_id ?? peer.id), raw_utterance: message, utterance, recipient_scope: semanticFrame.target_scope, frame: semanticFrame, discourse_summary: discourseSummary, owner_ids: ownerIds, plans: responsePlans, grounded_facts: responsePlans.flatMap((plan) => plan.required_facts.map((fact) => `${plan.responder_id}:${fact.key}`)), address: addressRecord, discourse: discourseState, interpretation: { advice: interpretationAdvice, advisory_validation: interpretation_advice ? (interpretation_advice.accepted ? "accepted" : `rejected:${interpretation_advice.reason}`) : null, advisory_latency_ms: interpretation_advice?.latency_ms ?? null } })}`);
+        for (const item of authorizedResponses) {
+          item.body = String(item.text ?? "").replace(new RegExp(`^${String(item.recipient?.first_name ?? "").replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}:\\s*`, "i"), "");
+          item.listeners = [playerId, ...localPeers.map((p) => p.personnel_id ?? p.id).filter((id) => id !== item.id)];
+        }
+        chosen = authorizedResponses[0] ?? null;
+        chosenId = chosen?.id ?? null;
+        response = authorizedResponses.map((item) => item.text).join(" ");
+        responseBody = chosen?.body ?? "";
+        responseListeners = chosen?.listeners ?? [];
+
+        if (recipients.length > 0) {
+          personnelContinuity.recordSharedHistory(world, { run_id: entry.run.run_id, participants: [playerId, ...recipients.map((recipient) => recipient.personnel_id ?? recipient.id)], kind: "local-communication", refs: { message_id: deliveredLocal.message.id, geography_shared: /\b(route|corridor|passage|location|map|survey|where)\b/i.test(message) }, at: expedition.clock.interval });
+        }
+
+        const providerSetting = this.settings().provider;
+        const configured = ["openai", "auto", "local", "groq", "gemini", "openrouter"].includes(providerSetting);
+        const willBeHosted = authorizedResponses.length > 0 && channel === "local" && (configured || Boolean(this.localDialogueProvider));
+        const responseOwners = authorizedResponses.map((item, index) => ({
+          order: index,
+          speaker_id: item.id,
+          speaker_name: item.recipient.first_name ?? item.recipient.display_name ?? "Coworker"
+        }));
+        const projectedResponses = willBeHosted ? [] : authorizedResponses.map((item, index) => ({
+          order: index,
+          speaker_id: item.id,
+          speaker_name: item.recipient.first_name ?? item.recipient.display_name ?? "Coworker",
+          text: item.body,
+          source: "deterministic"
+        }));
+
+        const interaction = q4Interactions.record(expedition, {
+          channel,
+          speaker: "You",
+          speaker_id: playerId,
+          targets: interactionTargets,
+          recipient_type,
+          recipient_id: target_id,
+          recipient_ids: recipientIds,
+          listeners: playerListeners,
+          player_text: message,
+          attempted_behavior: recipient_type === "none" ? "speak aloud to the room" : (addressRecord.scope === "subset" ? "speak with named teammates" : isGroup ? "address the group" : "speak with a nearby teammate"),
+          address: addressRecord,
+          // How this line was interpreted (Tier 1 deterministic / Tier 2 advisory) and the validated advisory
+          // frame itself, persisted so re-framing after a reload never re-asks a model.
+          interpretation: { source: semanticFrame.interpretation_source, tier1_generic: Boolean(semanticFrame.tier1_generic || semanticFrame.interpretation_source === "advisory"), advice: interpretationAdvice ? clone(interpretationAdvice) : null, advisory_validation: interpretation_advice ? (interpretation_advice.accepted ? "accepted" : `rejected:${interpretation_advice.reason}`) : null, advisory_latency_ms: interpretation_advice?.latency_ms ?? null },
+          eligibility: "eligible",
+          delivery: "heard",
+          time_cost: 0,
+          canonical_effects: ["communication.local.delivered"],
+          response_speaker: chosen?.recipient?.first_name ?? chosen?.recipient?.display_name ?? null,
+          response_speaker_id: chosenId,
+          response_owners: responseOwners,
+          // A player request for someone to DO something, as structured intent. Conversation never
+          // performs it (status not_executed); a future action authority consumes it from here.
+          ...(semanticFrame.requested_action ? { requested_action: clone(semanticFrame.requested_action) } : {}),
+          responses: projectedResponses,
+          response_listeners: responseListeners,
+          location_id: entry.run.spatial?.player_location ?? null,
+          submission_id: requestId,
+          presentation: { result: "heard", response: responseBody || null }
+        });
         q4Trajectories.noteCommunication({ world, expedition, run_id: entry.run.run_id, channel: "local", delivered: true, text: message });
         const cycle = bootstrap.resolveOperationalCycle(entry.run, "LOCAL", 0, "local-communication");
-        presentationBus.emit(entry.run, {
-          type: presentationBus.EVENT_TYPES.DIALOGUE,
-          source: presentationBus.SOURCES.DETERMINISTIC,
-          speaker: "You",
-          channel: "LOCAL",
-          text: message
-        });
-        if (response) {
-          presentationBus.emit(entry.run, {
-            type: presentationBus.EVENT_TYPES.DIALOGUE,
-            source: presentationBus.SOURCES.DETERMINISTIC,
-            speaker: chosen?.recipient?.first_name ?? chosen?.recipient?.display_name ?? "Teammate",
-            channel: "LOCAL",
-            text: responseBody
-          });
+        if (cq4Day1Opener.isOpener(entry.run.scenario)) {
+          const commDuration = cq4Day1Opener.getActionDuration("COMMUNICATE", { length: message.length > 100 ? "extended" : message.length < 25 ? "brief" : "normal" });
+          cq4Day1Opener.advanceSimulationTime(entry.run, commDuration);
         }
+
+        // 1. Commit canonical player dialogue event FIRST
+        const playerDialogueEvent = presentationBus.createDialogueEvent({
+          submission_id: requestId,
+          speaker_id: playerId,
+          speaker_name: "YOU",
+          speaker_title: "EXPEDITION LEAD",
+          recipient_type,
+          recipient_id: target_id,
+          recipient_name: target_name,
+          listeners: playerListeners,
+          channel: "LOCAL",
+          text: message,
+          kind: "speech",
+          source: presentationBus.SOURCES.DETERMINISTIC,
+          interval: expedition.clock.interval,
+          delivery: "delivered"
+        });
+        entry.run.expedition.dialogue_history ??= [];
+        entry.run.expedition.dialogue_history.push(playerDialogueEvent);
+        presentationBus.emit(entry.run, playerDialogueEvent);
+        // ED-30 request ledger: the player's question/request is opened (or a repaired / re-asked one
+        // re-opened) now; it is satisfied only when a delivered line passes validation for its slot.
+        const ledgerRequestIds = channel === "local" ? this.openDialogueRequests(entry.run, { analysis: turnAnalysis, frame: semanticFrame, interaction, player_event_id: playerDialogueEvent.id, owner_ids: authorizedResponses.filter((item) => !item.own_frame).map((item) => item.id), present_ids: presentLocalIds, submission_id: requestId }) : [];
+        // Extra acts open their own requests (each question under discussion is tracked on its own).
+        const extraRequestIds = new Map();
+        for (const act of (channel === "local" && turnAnalysis ? turnAnalysis.effective.filter((a) => a !== turnPrimary && ["question", "request"].includes(a.speech_act) && a.request_text) : [])) {
+          const owners = authorizedResponses.filter((item) => (item.own_frame?.turn?.speech_act === act.speech_act && item.own_frame?.predicate === act.frame_predicate) || (item.response_plan?.parts ?? []).some((part) => part.frame?.predicate === act.frame_predicate)).map((item) => item.id);
+          const opened = dialogueState.openRequest(entry.run, { interaction_id: interaction?.id ?? null, submission_id: requestId, utterance_event_id: playerDialogueEvent.id, act_index: turnAnalysis.effective.indexOf(act), predicate: act.frame_predicate ?? act.predicate ?? null, request_text: act.request_text, targets: owners, cardinality: act.cardinality ?? "one_spokesperson", question_form: act.question_form ?? null, temporal: act.temporal_scope ?? null, args: act.args ?? null });
+          if (opened) { extraRequestIds.set(act.frame_predicate ?? act.request_text, opened.request_id); ledgerRequestIds.push(opened.request_id); }
+        }
+        for (const item of authorizedResponses) {
+          if (item.own_frame) { item.request_id = extraRequestIds.get(item.own_frame.predicate ?? "") ?? null; continue; }
+          item.request_id = ledgerRequestIds[0] ?? null;
+          if (item.response_plan?.discourse_function === "compound") item.request_ids = item.response_plan.parts.map((part) => (part.frame === semanticFrame ? ledgerRequestIds[0] : extraRequestIds.get(part.frame?.predicate ?? "")) ?? null);
+        }
+        // (record() returns a copy: the analysis is written onto the stored interaction record itself.)
+        const storedInteraction = interaction ? expedition.interaction_history.find((item) => item.id === interaction.id) : null;
+        if (storedInteraction && turnAnalysis) storedInteraction.turn = { ...dialogueTurn.turnRecord(turnAnalysis, { frame: semanticFrame, request_ids: ledgerRequestIds, completeness: semanticFrame.turn?.completeness ?? null }), beat: expedition.day1_opener?.beat ?? null };
+
+        // 2. Commit authorized coworker responses in deterministic owner order.
+        // The response's displayed recipient scope follows the PLAYER's actual
+        // recipient_type, never a "someone answered" inference -- a room-scoped
+        // ("none") utterance that happens to draw one deterministic reaction
+        // must not be rendered as if the player had addressed that person directly.
+        // Replies to an explicitly named set go back to the player, not to the assembly table.
+        const coworkerRecipientType = recipient_type === "group" && addressRecord.scope !== "subset" ? "group" : (recipient_type === "direct" || addressRecord.scope === "subset") ? "direct" : "none";
+        const coworkerRecipientId = coworkerRecipientType === "group" ? (isOpenerBriefing ? "@table" : "@team") : coworkerRecipientType === "direct" ? playerId : null;
+        const coworkerRecipientName = coworkerRecipientType === "group" ? (isOpenerBriefing ? "Assembly Table" : "Team") : coworkerRecipientType === "direct" ? "YOU" : null;
+        if (!willBeHosted) for (const authorized of authorizedResponses) {
+          const coworkerDialogueEvent = presentationBus.createDialogueEvent({
+            submission_id: requestId,
+            speaker_id: authorized.id,
+            speaker_name: authorized.recipient?.first_name ?? authorized.recipient?.display_name ?? "Coworker",
+            speaker_title: authorized.recipient?.role ?? null,
+            recipient_type: coworkerRecipientType,
+            recipient_id: coworkerRecipientId,
+            recipient_name: coworkerRecipientName,
+            listeners: authorized.listeners,
+            channel: "LOCAL",
+            text: authorized.body,
+            kind: "speech",
+            source: presentationBus.SOURCES.DETERMINISTIC,
+            interval: expedition.clock.interval,
+            delivery: "delivered"
+          });
+          entry.run.expedition.dialogue_history.push(coworkerDialogueEvent);
+          presentationBus.emit(entry.run, coworkerDialogueEvent);
+          authorized.committed_event_id = coworkerDialogueEvent.id;
+        }
+        if (!willBeHosted) this.commitDialogueLedger(entry.run, authorizedResponses.map((item) => ({ speaker_id: item.id, event_id: item.committed_event_id ?? null, plan: item.response_plan, frame: item.semantic_frame, request_id: item.request_id ?? null, request_ids: item.request_ids ?? null, listeners: item.listeners ?? [], delivered: Boolean(item.committed_event_id) })), { present_ids: presentLocalIds });
+        if (this.developerMode && !willBeHosted && authorizedResponses.length) this.log(`[YB:COMMIT_TRACE] ${JSON.stringify({ request_id: requestId, presentation_source: "deterministic", committed: authorizedResponses.map((item) => ({ speaker: item.recipient?.first_name ?? null, text: item.body })) })}`);
+
         if (entry.run?.spatial && ["FIELD_OPERATION", "RETURN"].includes(entry.phase?.phase_id)) {
           const spatialDefLocal = bootstrap.spatialDefinitionFor(entry.run.spatial_pack_id);
           try { decisionScheduler.scheduleDecisions(entry.run, spatialDefLocal, world); } catch (schedulerError) { this.log(`decision scheduler non-fatal: ${schedulerError.message}`); }
+          try { this.processAutonomousSpeech(world.world_id, entry.run.run_id); } catch (speechSchedulerError) { this.log(`speech scheduler non-fatal: ${speechSchedulerError.message}`); }
+        }
+        const publicReason = response || (recipient_type === "none" ? (isOpenerBriefing ? "You speak aloud to the room. Nobody at the table responds." : "You speak aloud. Nobody responds.") : "Your message is heard. No further response is required.");
+        const scene = this.sceneFor(entry, "field-researcher", { scene_type: "delta", accepted: true, action: "LOCAL", public_reason: publicReason }, world);
+        const output = { ok: true, result: { outcome: "delivered", public_reason: publicReason, message: { id: deliveredLocal.message.id, state: deliveredLocal.message.state }, mission_updates: cycle.mission_updates, scene }, projection: this.projectionFor(world, "field-researcher", entry) };
+        if (requestId) {
+          const receipt = {
+            id: requestId,
+            submission_id: requestId,
+            input_fingerprint: fingerprint,
+            run_id: entry.run.run_id,
+            interval: expedition.clock.interval,
+            channel,
+            target: target ?? null,
+            text: message,
+            delivery: "delivered",
+            status: willBeHosted ? "pending" : "completed",
+            public_reason: publicReason,
+            presentation_source: "deterministic",
+            scene: clone(scene),
+            cached_result: { ok: true, result: clone(output.result) },
+            interaction_id: interaction?.id ?? null,
+            target_worker_id: authorizedResponses[0]?.id ?? null,
+            response_category: authorizedResponses[0]?.reaction?.category ?? null,
+            fallback_text: authorizedResponses[0]?.text ?? response,
+            player_event_id: playerDialogueEvent.id,
+            response_owners: responseOwners,
+            response_contexts: authorizedResponses.map((authorized) => ({
+              target_worker_id: authorized.id,
+              response_category: authorized.reaction?.category ?? null,
+              fallback_text: authorized.text,
+              // Retry/recovery snapshot: the exact frame, plan and contribution
+              // this turn was authorized with. Never re-derived after the fact.
+              semantic_frame: clone(authorized.semantic_frame),
+              response_plan: clone(authorized.response_plan),
+              authorized_contribution: clone(authorized.authorized_contribution),
+              discourse_summary: clone(authorized.discourse_summary),
+              interpretation: clone(localInterpretation),
+              is_group: isGroup,
+              recipient_type,
+              inherited_scope: inheritedScope,
+              address: clone(addressRecord),
+              request_id: authorized.request_id ?? null,
+              request_ids: authorized.request_ids ?? null
+            }))
+          };
+          entry.run.expedition.communication_receipts ??= [];
+          entry.run.expedition.communication_receipts.push(receipt);
         }
         try {
           this.persistSession(world, "field-researcher", entry);
@@ -1026,11 +3018,7 @@ class DesktopService {
           entry.run._world = world; entry.phase = beforePhase;
           return publicError("PERSISTENCE_COMMIT_FAILED", "The action could not be saved and was not committed. Check the operation record storage before retrying.");
         }
-        const publicReason = response || "Your message is heard. No further response is required.";
-        const scene = this.sceneFor(entry, "field-researcher", { scene_type: "delta", accepted: true, action: "LOCAL", public_reason: publicReason }, world);
-        const output = { ok: true, result: { outcome: "delivered", public_reason: publicReason, message: { id: deliveredLocal.message.id, state: deliveredLocal.message.state }, mission_updates: cycle.mission_updates, scene }, projection: this.projectionFor(world, "field-researcher", entry) };
-        const authorized = chosen?.reaction && chosen.text ? chosen : (responses.find((item) => item.reaction && item.text) ?? null);
-        if (authorized) Object.defineProperty(output, "_local_dialogue_context", { configurable:true, enumerable:false, value:{ run:entry.run, player_text:message, speaker:authorized.recipient, person:authorized.person, reaction_context:authorized.reaction_context, reaction:authorized.reaction, fallback_text:authorized.text, interaction, world, entry } });
+        if (authorizedResponses.length > 0) Object.defineProperty(output, "_local_dialogue_contexts", { configurable:true, enumerable:false, value:authorizedResponses.map((authorized) => ({ run:entry.run, runId:entry.run.run_id, player_text:message, speaker:authorized.recipient, person:authorized.person, reaction_context:authorized.reaction_context, reaction:authorized.reaction, fallback_text:authorized.text, interaction, world, entry, requestId, player_event_id:playerDialogueEvent.id, interpretation:localInterpretation, semantic_frame:authorized.semantic_frame, response_plan:authorized.response_plan, authorized_contribution:authorized.authorized_contribution, discourse_summary:authorized.discourse_summary, is_group:isGroup, recipient_type, inherited_scope:inheritedScope, address:addressRecord, phase_id:entry.phase?.phase_id ?? null, request_id:authorized.request_id ?? null, request_ids:authorized.request_ids ?? null })) });
         return output;
       }
       const radio = expedition.equipment?.["survey-radio"];
@@ -1039,6 +3027,20 @@ class DesktopService {
         ["FIELD_OPERATION", "RETURN"].includes(entry.phase?.phase_id) &&
         (entry.run.spatial?.player_location === "utility-room" || entry.run.spatial?.player_location === "threshold-side-entry");
       const radioAvailable = radioCheckPhase || isOpenerReturnAtKV31 || (q4Equipment.stateUsable(radio) && radio.holder === playerId && radio.charges > 0);
+      if (cq4Day1Opener.isOpener(entry.run.scenario) && cq4Day1Opener.isCutoffExceeded(entry.run)) {
+        const reason = "Standard communication line is dead. Operational cutoff exceeded.";
+        communicationRuntime.failRadio(expedition, { sender: playerId, recipient: "Standard", text: message, reason });
+        q4Interactions.record(expedition, { channel, speaker: "You", targets: ["Standard"], player_text: message, attempted_behavior: "transmit over the survey radio", eligibility: "radio-unavailable", delivery: "not-delivered", presentation: { result: reason } });
+        try {
+          this.persistSession(world, "field-researcher", entry);
+        } catch (persistError) {
+          for (const key of Object.keys(world)) delete world[key]; Object.assign(world, beforeWorld);
+          for (const key of Object.keys(entry.run)) delete entry.run[key]; Object.assign(entry.run, beforeRun);
+          entry.run._world = world; entry.phase = beforePhase;
+          return publicError("PERSISTENCE_COMMIT_FAILED", "The action could not be saved and was not committed. Check the operation record storage before retrying.");
+        }
+        return publicError("STANDARD_UNAVAILABLE", reason);
+      }
       if (!["STANDARD_RADIO_CHECK", "FIELD_OPERATION", "RETURN"].includes(entry.phase?.phase_id) || !radioAvailable || (!radioCheckPhase && !isOpenerReturnAtKV31 && !q4Radio.available(expedition))) {
         const reason = entry.phase?.phase_id === "BRIEFING" ? "The field radio channel is not active during briefing." : entry.phase?.phase_id === "STAGING" ? "Standard remains unavailable until the radio-check phase." : entry.phase?.phase_id === "THRESHOLD" ? "Complete the approach before establishing radio contact." : "The Standard radio channel is not available from here.";
         communicationRuntime.failRadio(expedition, { sender: playerId, recipient: "Standard", text: message, reason });
@@ -1081,6 +3083,9 @@ class DesktopService {
       }
       if (actuallyDelivered) {
         standardOperator.recordContact(world, entry.run, resolvedMessage);
+        if (!radioCheckPhase && entry.phase?.phase_id === "FIELD_OPERATION") {
+          q4Trajectories.noteCommunication({ world, expedition, run_id: entry.run.run_id, channel: "standard", delivered: true, text: message });
+        }
         if (/\b(entity|form|figure|voice|sound|discrepancy|structure|humanoid|unidentified)\b/i.test(message)) for (const observation of phenomenonEcology.projection(world,{observer:playerId,location_id:entry.run.spatial.player_location})) { const item=phenomenonEcology.resolveObservedTarget(world,{observer:playerId,location_id:entry.run.spatial.player_location,target:observation.designation}); if(item)phenomenonEcology.deliverReport(world,item.id,{observer:playerId,message_id:resolvedMessage.id,summary:message,include_alias:message.toLowerCase().includes(String(observation.alias??"").toLowerCase())&&Boolean(observation.alias),at:resolvedMessage.delivered_at??expedition.clock.interval}); }
         if (cq4Day1Opener.isOpener(entry.run.scenario) && ["FIELD_OPERATION", "RETURN"].includes(entry.phase?.phase_id)) {
           const loc = entry.run.spatial?.player_location;
@@ -1089,7 +3094,7 @@ class DesktopService {
             entry.run.expedition.day1_opener.return_surveillance_verified = true;
             presentationBus.emit(entry.run, {
               type: presentationBus.EVENT_TYPES.RADIO,
-              source: presentationBus.SOURCES.AUTHORED,
+              source: presentationBus.SOURCES.AUTHORED_VARIANT,
               speaker: "CONTROL ROOM",
               recipient: "Clear-Q4 team",
               channel: "STANDARD",
@@ -1099,10 +3104,32 @@ class DesktopService {
         }
       }
       const delivery = actuallyDelivered ? "delivered" : resolvedMessage.state === "delayed" ? "delayed" : "queued";
-      const interaction = q4Interactions.record(expedition, { channel, speaker: "You", targets: ["Standard"], player_text: message, attempted_behavior: "transmit over the survey radio", eligibility: "eligible", delivery, time_cost: 1, canonical_effects: ["communication.sent"], observer_knowledge: actuallyDelivered ? [{ observer: "Standard", kind: "reported-communication", text: message }] : [], presentation: { result: delivery } });
+      const interaction = q4Interactions.record(expedition, { channel, speaker: "You", targets: ["Standard"], player_text: message, attempted_behavior: "transmit over the survey radio", eligibility: "eligible", delivery, time_cost: 1, canonical_effects: ["communication.sent"], observer_knowledge: actuallyDelivered ? [{ observer: "Standard", kind: "reported-communication", text: message }] : [], submission_id: requestId, presentation: { result: delivery } });
       if (radioCheckPhase && resolvedMessage.state === "acknowledged") q4Interactions.record(expedition, { channel, speaker: "STANDARD", targets: ["Clear-Q4 team"], player_text: "Standard acknowledgment received for Radio check.", attempted_behavior: "scheduled radio-check acknowledgment", eligibility: "eligible", delivery: "received", canonical_effects: ["q4.radio.check.acknowledged"], presentation: { result: "received" } });
-      if (!radioCheckPhase) q4Trajectories.noteCommunication({ world, expedition, run_id: entry.run.run_id, channel: "standard", delivered: actuallyDelivered, text: message });
       const missionUpdates = [...cycle.mission_updates, ...(acknowledgmentCycle?.mission_updates ?? [])];
+      if (cq4Day1Opener.isOpener(entry.run.scenario)) {
+        const duration = radioCheckPhase
+          ? cq4Day1Opener.getActionDuration("RADIO_CHECK")
+          : cq4Day1Opener.getActionDuration("COMMUNICATE", { length: message.length > 100 ? "extended" : message.length < 25 ? "brief" : "normal" });
+        cq4Day1Opener.advanceSimulationTime(entry.run, duration);
+      }
+      const radioPlayerEvent = presentationBus.createDialogueEvent({
+        submission_id: requestId,
+        speaker_id: playerId,
+        speaker_name: "YOU",
+        speaker_title: "EXPEDITION LEAD",
+        recipient_type: "broadcast",
+        recipient_id: "standard-operations",
+        recipient_name: "STANDARD DESK",
+        channel: "STANDARD",
+        text: message,
+        kind: "radio",
+        source: presentationBus.SOURCES.DETERMINISTIC,
+        interval: expedition.clock.interval,
+        delivery: actuallyDelivered ? "delivered" : "not-delivered"
+      });
+      entry.run.expedition.dialogue_history ??= [];
+      entry.run.expedition.dialogue_history.push(radioPlayerEvent);
       presentationBus.emit(entry.run, {
         type: presentationBus.EVENT_TYPES.RADIO,
         source: presentationBus.SOURCES.DETERMINISTIC,
@@ -1112,6 +3139,22 @@ class DesktopService {
         text: message
       });
       if (radioCheckPhase && resolvedMessage.state === "acknowledged") {
+        const standardAckEvent = presentationBus.createDialogueEvent({
+          submission_id: requestId,
+          speaker_id: "standard-operations",
+          speaker_name: "STANDARD DESK",
+          speaker_title: "Operations Authority",
+          recipient_type: "broadcast",
+          recipient_id: playerId,
+          recipient_name: "YOU",
+          channel: "STANDARD",
+          text: "Standard acknowledgment received for Radio check.",
+          kind: "radio",
+          source: presentationBus.SOURCES.DETERMINISTIC,
+          interval: expedition.clock.interval,
+          delivery: "delivered"
+        });
+        entry.run.expedition.dialogue_history.push(standardAckEvent);
         presentationBus.emit(entry.run, {
           type: presentationBus.EVENT_TYPES.RADIO,
           source: presentationBus.SOURCES.DETERMINISTIC,
@@ -1124,6 +3167,30 @@ class DesktopService {
       if (entry.run?.spatial && ["FIELD_OPERATION", "RETURN"].includes(entry.phase?.phase_id)) {
         const spatialDefRadio = bootstrap.spatialDefinitionFor(entry.run.spatial_pack_id);
         try { decisionScheduler.scheduleDecisions(entry.run, spatialDefRadio, world); } catch (schedulerError) { this.log(`decision scheduler non-fatal: ${schedulerError.message}`); }
+        try { this.processAutonomousSpeech(world.world_id, entry.run.run_id); } catch (speechSchedulerError) { this.log(`speech scheduler non-fatal: ${speechSchedulerError.message}`); }
+      }
+      const publicReason = resolvedMessage.state === "delayed" ? resolvedMessage.interference?.public_description ?? "The transmission is delayed; no delivery confirmation has been received." : actuallyDelivered ? "The transmission was delivered. Standard acknowledgment remains separately recorded." : "The transmission is queued; delivery has not been confirmed.";
+      const scene = this.sceneFor(entry, "field-researcher", { scene_type: "delta", accepted: true, action: "STANDARD", public_reason: publicReason }, world);
+      const output = { ok: true, result: { outcome: resolvedMessage.state, public_reason: publicReason, message: { id: resolvedMessage.id, state: resolvedMessage.state }, mission_updates: missionUpdates, operational_updates: cycle.public_updates, scene }, projection: this.projectionFor(world, "field-researcher", entry) };
+      if (requestId) {
+        const receipt = {
+          id: requestId,
+          submission_id: requestId,
+          input_fingerprint: fingerprint,
+          run_id: entry.run.run_id,
+          interval: expedition.clock.interval,
+          channel,
+          target: target ?? null,
+          text: message,
+          delivery: resolvedMessage.state,
+          status: "completed",
+          public_reason: publicReason,
+          presentation_source: "deterministic",
+          scene: clone(scene),
+          cached_result: { ok: true, result: clone(output.result) }
+        };
+        entry.run.expedition.communication_receipts ??= [];
+        entry.run.expedition.communication_receipts.push(receipt);
       }
       try {
         this.persistSession(world, "field-researcher", entry);
@@ -1133,9 +3200,7 @@ class DesktopService {
         entry.run._world = world; entry.phase = beforePhase;
         return publicError("PERSISTENCE_COMMIT_FAILED", "The action could not be saved and was not committed. Check the operation record storage before retrying.");
       }
-      const publicReason = resolvedMessage.state === "delayed" ? resolvedMessage.interference?.public_description ?? "The transmission is delayed; no delivery confirmation has been received." : actuallyDelivered ? "The transmission was delivered. Standard acknowledgment remains separately recorded." : "The transmission is queued; delivery has not been confirmed.";
-      const scene = this.sceneFor(entry, "field-researcher", { scene_type: "delta", accepted: true, action: "STANDARD", public_reason: publicReason }, world);
-      return { ok: true, result: { outcome: resolvedMessage.state, public_reason: publicReason, message: { id: resolvedMessage.id, state: resolvedMessage.state }, mission_updates: missionUpdates, operational_updates: cycle.public_updates, scene }, projection: this.projectionFor(world, "field-researcher", entry) };
+      return output;
     } catch (error) {
       if (entry?.run && beforeRun) {
         for (const key of Object.keys(world)) delete world[key]; Object.assign(world, beforeWorld);
@@ -1152,10 +3217,11 @@ class DesktopService {
   submitQ4Handoff({ world_id, item_id, target = null }) {
     if (this.commandBusy(world_id)) return publicError("SESSION_BUSY", "Wait for the current action to finish before changing this operation.");
     if (outcomes.isRetired(this.getWorld(world_id))) return publicError("WORLD_RETIRED", "This world is a read-only historical record.");
+    let entry = null; let world = null; let beforeRun = null; let beforeWorld = null; let beforePhase = null;
     try {
-      const world = this.getWorld(world_id); const entry = this.session(world_id, "field-researcher") ?? this.restoreSession(world, "field-researcher", readJson(this.sessionFile(world_id, "field-researcher"), null));
+      world = this.getWorld(world_id); entry = this.session(world_id, "field-researcher") ?? this.restoreSession(world, "field-researcher", readJson(this.sessionFile(world_id, "field-researcher"), null));
       if (!entry || entry.kind !== "bootstrap") return publicError("SESSION_NOT_FOUND", "Start or continue Clear-Q4 before handing over equipment.");
-      const beforeRun = clone(entry.run); const beforeWorld = clone(world); const beforePhase = clone(entry.phase);
+      beforeRun = clone(entry.run); beforeWorld = clone(world); beforePhase = clone(entry.phase);
       const player = entry.run.session.startup.player.observer_id; const coworkers = entry.run.expedition.team.members.filter((member) => member.personnel_id !== player); const targetText = String(target ?? "").toLowerCase(); const key = entry.run.expedition.equipment[item_id] ? item_id : Object.entries(entry.run.expedition.equipment).find(([, item]) => item.id === item_id)?.[0]; const item = entry.run.expedition.equipment[key];
       const isPlayerTarget = ["player", "you", String(player).toLowerCase()].includes(targetText) || targetText === String(entry.run.session?.startup?.player?.observer_id).toLowerCase() || targetText === String(entry.run.expedition.team.members[0]?.identity).toLowerCase() || targetText === String(entry.run.expedition.team.members[0]?.personnel_id).toLowerCase();
       if (isPlayerTarget) {
@@ -1206,11 +3272,12 @@ class DesktopService {
   }
   selectQ4OptionalStore({ world_id, item_id }) {
     if (this.commandBusy(world_id)) return publicError("SESSION_BUSY", "Wait for the current action to finish before changing this operation.");
+    let entry = null; let world = null; let beforeRun = null; let beforeWorld = null; let beforePhase = null;
     try {
-      const world = this.getWorld(world_id); const entry = this.session(world_id, "field-researcher") ?? this.restoreSession(world, "field-researcher", readJson(this.sessionFile(world_id, "field-researcher"), null));
+      world = this.getWorld(world_id); entry = this.session(world_id, "field-researcher") ?? this.restoreSession(world, "field-researcher", readJson(this.sessionFile(world_id, "field-researcher"), null));
       if (!entry || entry.kind !== "bootstrap") return publicError("SESSION_NOT_FOUND", "Start or continue Clear-Q4 before selecting stores.");
       if (entry.phase?.phase_id !== "STAGING") return publicError("STAGING_REQUIRED", "Optional stores can only be selected during staging.");
-      const beforeRun = clone(entry.run); const beforeWorld = clone(world); const beforePhase = clone(entry.phase);
+      beforeRun = clone(entry.run); beforeWorld = clone(world); beforePhase = clone(entry.phase);
       const selected = logisticsRuntime.transact(entry.run.expedition, bootstrap.logisticsDefinitionFor(entry.run.spatial_pack_id, entry.run.scenario), { action: "RETRIEVE", item_id, actor: entry.run.session.startup.player.observer_id }, this.q4LogisticsContext(entry, world));
       if (!selected.ok) return publicError(selected.code, selected.public_reason);
       expeditionEvent(entry.run.expedition, "q4.loadout.optional_selected", { equipment_id: selected.item.instance_id, type: selected.item.category });
@@ -1316,8 +3383,8 @@ class DesktopService {
       const now = this.now();
 
       presentationBus.emit(entry.run, {
-        type: "radio_chirp",
-        cue: "radio_chirp",
+        type: presentationBus.EVENT_TYPES.AUDIO_CUE,
+        cue: "radio_tx_chirp",
         source: presentationBus.SOURCES.DETERMINISTIC,
         text: "*radio chirp*",
         channel: "STANDARD"
@@ -1358,6 +3425,21 @@ class DesktopService {
         delivered_at: interval
       };
       standardOperator.recordContact(world, entry.run, checkInMsg);
+
+      const locallyPresentPersonnel = q4Personnel.publicTeam(entry.run, entry.phase?.phase_id, world).filter((member) => !member.controlled && member.local_eligible);
+      for (const member of locallyPresentPersonnel) {
+        const mId = member.personnel_id ?? member.id;
+        if (mId) {
+          personnelContinuity.recordAttitudeChange(world, {
+            run_id: entry.run.run_id,
+            identity: mId,
+            target_id: playerId,
+            delta: { trust: 4, rapport: 3 },
+            reason: "Completed formal radio check-in with Standard.",
+            at: interval
+          });
+        }
+      }
 
       q4Interactions.record(expedition, {
         channel: "standard",
@@ -1407,14 +3489,42 @@ class DesktopService {
   submitAction({ world_id, mode, action, target = null }) {
     if (this.commandBusy(world_id)) return publicError("SESSION_BUSY", "Wait for the current action to finish before changing this operation.");
     if (this.recoveredWorlds.has(world_id)) return publicError("PERSISTENCE_RECOVERY_READ_ONLY", "This verified previous record is available for inspection only until it is explicitly restored.");
+    let world = null; let entry = null; let beforeRun = null; let beforeWorld = null; let beforePhase = null;
     try {
-      const world = this.getWorld(world_id); if (outcomes.isRetired(world)) return publicError("WORLD_RETIRED", "This world is a read-only historical record."); const entry = this.session(world_id, mode) ?? this.restoreSession(world, mode, readJson(this.sessionFile(world_id, mode), null)); if (!entry) return publicError("SESSION_NOT_FOUND", "Start or continue a session first.");
-      const beforeRun = clone(entry.run); const beforeWorld = clone(world); const beforePhase = clone(entry.phase);
+      world = this.getWorld(world_id); if (outcomes.isRetired(world)) return publicError("WORLD_RETIRED", "This world is a read-only historical record."); entry = this.session(world_id, mode) ?? this.restoreSession(world, mode, readJson(this.sessionFile(world_id, mode), null)); if (!entry) return publicError("SESSION_NOT_FOUND", "Start or continue a session first.");
+      beforeRun = clone(entry.run); beforeWorld = clone(world); beforePhase = clone(entry.phase);
       const verb = String(action ?? "").toUpperCase(); let result; if (entry.kind === "bootstrap") { entry.run._last_mission_updates = []; entry.run._active_submission_id = `player-submission-${crypto.createHash("sha256").update(JSON.stringify([entry.run.run_id, entry.run.expedition.interaction_history?.length ?? 0, verb, target ?? null])).digest("hex").slice(0, 18)}`; }
       if (entry.kind === "bootstrap" && verb === "ADVANCE_OPERATIONS") return this.advanceQ4Operations({ world_id });
+      if (entry.kind === "bootstrap" && (verb === "COMPLETE_BROADCAST" || verb === "RELEASE_FEED")) {
+        return this.completeBriefingBroadcast({ world_id });
+      }
+      if (entry.kind === "bootstrap" && verb === "START_BROADCAST") {
+        return this.startBriefingBroadcast({ world_id });
+      }
+      if (entry.kind === "bootstrap" && (verb === "START_BRIEFING" || verb === "ATTEND_BRIEFING")) {
+        return this.startPersonnelBriefing({ world_id });
+      }
+      if (entry.kind === "bootstrap" && (verb === "CONCLUDE_BRIEFING" || verb === "END_BRIEFING")) {
+        return this.concludePersonnelBriefing({ world_id });
+      }
+      if (entry.kind === "bootstrap" && (verb === "CONTINUE_BRIEFING" || verb === "CONTINUE_LISTENING" || verb === "LISTEN")) {
+        return this.interactPersonnelBriefing({ world_id, text: "continue" });
+      }
       if (entry.kind === "bootstrap" && verb === "COMMUNICATE") return publicError("PLAYER_TRANSMISSION_REQUIRED", "Type and deliberately submit your own message in the communication composer.");
       if (entry.kind === "bootstrap" && ["DEPLOY", "READY", "PROCEED", "APPROACH", "CROSS", "RADIO_CHECK", "BEGIN_FIELD_OPERATION"].includes(verb)) {
         const phase = entry.phase?.phase_id;
+        if (verb === "READY" && phase === "BRIEFING" && cq4Day1Opener.isOpener(entry.run.scenario)) {
+          if (!cq4Day1Opener.isBroadcastCompleted(entry.run)) {
+            return publicError("BROADCAST_IN_PROGRESS", "The facility broadcast is in progress. Await conclusion of the broadcast before proceeding to equipment staging.");
+          }
+          const briefingStatus = entry.run?.expedition?.day1_opener?.personnel_briefing?.status;
+          if (briefingStatus === "active") {
+            return publicError("BRIEFING_IN_PROGRESS", "Dr. Kirk Maxwell's briefing is in progress. Conclude the briefing before proceeding to equipment staging.");
+          }
+          if (briefingStatus === "pending") {
+            this.concludePersonnelBriefing({ world_id });
+          }
+        }
         const radioChecked = q4Radio.ensure(entry.run.expedition).check_completed;
         const legacyFlow = entry.legacy_flow === true || entry.phase?.legacy_flow === true;
         const expected = legacyFlow
@@ -1479,7 +3589,7 @@ class DesktopService {
         } else {
           result = { ok: true, outcome: "phase-advanced" };
           if (verb === "PROCEED") { const readiness = q4Equipment.projection(entry.run.expedition, entry.run.session.startup.player.observer_id); if (!readiness.readiness) { entry.run.expedition.deviations.push("proceeded-with-required-equipment-unavailable"); expeditionEvent(entry.run.expedition, "q4.loadout.proceeded_without_required", { missing: readiness.missing }); } }
-          const advanced = q4.nextPhase(entry.phase, { action: verb, legacy_flow: legacyFlow }); if (!advanced.ok) return publicError(advanced.code, "The expedition cannot advance from its current state."); entry.phase = advanced.phase; bootstrap.setSpatialPhase(entry.run, entry.phase.phase_id); if (entry.phase.phase_id === "STANDARD_RADIO_CHECK") q4Radio.authorize(entry.run.expedition); q4Equipment.updatePhase(entry.run.expedition, entry.phase.phase_id);
+          const advanced = q4.nextPhase(entry.phase, { action: verb, legacy_flow: legacyFlow }); if (!advanced.ok) return publicError(advanced.code, "The expedition cannot advance from its current state."); entry.phase = advanced.phase; bootstrap.setSpatialPhase(entry.run, entry.phase.phase_id); if (entry.phase.phase_id === "STAGING" && cq4Day1Opener.isOpener(entry.run.scenario)) entry.run.expedition.day1_opener.esd_handoff = { status:"equipment-cooperation", destination:"Equipment Services Division", player_dialogue_input:"paused", coworker_activity:"active" }; if (entry.phase.phase_id === "STANDARD_RADIO_CHECK") q4Radio.authorize(entry.run.expedition); q4Equipment.updatePhase(entry.run.expedition, entry.phase.phase_id);
         }
         if (verb !== "RADIO_CHECK" && result.ok) {
           if (entry.run.expedition?.mission_state) entry.run.expedition.mission_state.phase = entry.phase.phase_id;
@@ -1491,12 +3601,31 @@ class DesktopService {
       else if (entry.kind === "lost") { if (verb === "MOVE") result = lost.move(world, entry.run, target); else if (verb === "DROP") result = lost.drop(world, entry.run, target); else if (verb === "RETURN") result = lost.escape(world, entry.run); else if (verb === "STRAND") result = lost.strand(world, entry.run); else result = { ok: false, code: "ACTION_UNAVAILABLE" }; }
       else if (entry.kind === "nullzone") { if (verb === "EXPAND") result = nullzone.expand(world, entry.run_id); else if (verb === "DISCOVER") result = nullzone.discoverArtifact(world, entry.run_id); else if (verb === "RETURN") result = nullzone.returnBase(world, entry.run_id); else result = { ok: false, code: "ACTION_UNAVAILABLE" }; }
       else result = verb === "REVIEW_REPORT" ? { ok: true, result: desk.projection(world) } : verb === "ADVANCE" ? desk.advance(world, entry.run_id) : { ok: false, code: "ACTION_UNAVAILABLE" };
-      if (!result.ok) return publicError(result.error?.code ?? result.code ?? "ACTION_REJECTED", result.error?.public_reason ?? result.result?.public_reason ?? result.public_reason ?? "That action is not available right now.");
+      if (!result.ok) {
+        if (entry.run?.expedition?.day1_opener?.catastrophic_ending) {
+          try {
+            this.persistSession(world, mode, entry);
+          } catch (persistError) {
+            this.log(`catastrophic persist error: ${persistError.message}`);
+            if (entry?.run && beforeRun) {
+              if (world && beforeWorld) { for (const k of Object.keys(world)) delete world[k]; Object.assign(world, beforeWorld); }
+              for (const k of Object.keys(entry.run)) delete entry.run[k]; Object.assign(entry.run, beforeRun);
+              entry.run._world = world; entry.phase = beforePhase;
+            }
+            return publicError("PERSISTENCE_COMMIT_FAILED", "The catastrophic outcome could not be saved and was not committed. Check the operation record storage before retrying.");
+          }
+        }
+        return publicError(result.error?.code ?? result.code ?? "ACTION_REJECTED", result.error?.public_reason ?? result.result?.public_reason ?? result.public_reason ?? "That action is not available right now.");
+      }
       if (entry.kind === "bootstrap" && q4Radio.ensure(entry.run.expedition).check_completed && !q4Interactions.history(entry.run.expedition, "standard").some((item) => item.attempted_behavior === "scheduled radio-check acknowledgment")) {
         const acknowledged = entry.run.expedition.messages?.find((item) => item.purpose === "radio-check" && item.state === "acknowledged");
         if (acknowledged) q4Interactions.record(entry.run.expedition, { channel: "standard", speaker: "STANDARD", targets: ["Clear-Q4 team"], player_text: "Standard acknowledgment received for Radio check.", attempted_behavior: "scheduled radio-check acknowledgment", eligibility: "eligible", delivery: "received", canonical_effects: ["q4.radio.check.acknowledged"], presentation: { result: "received" } });
       }
       if (entry.kind === "bootstrap") {
+        if (cq4Day1Opener.isOpener(entry.run.scenario)) {
+          const duration = cq4Day1Opener.getActionDuration(verb, { target });
+          cq4Day1Opener.advanceSimulationTime(entry.run, duration);
+        }
         this.recordQ4Action(entry, `${verb}${target ? ` ${target}` : ""}`, result, world, entry.run._active_submission_id);
         this.finishQ4Action(world, entry, verb, result);
         const actionNarration = result.result?.public_reason ?? result.public_reason ?? null;
@@ -1514,13 +3643,14 @@ class DesktopService {
       if (entry.kind === "bootstrap" && entry.run.spatial && ["FIELD_OPERATION", "RETURN"].includes(entry.phase?.phase_id)) {
         const spatialDef = bootstrap.spatialDefinitionFor(entry.run.spatial_pack_id);
         try { decisionScheduler.scheduleDecisions(entry.run, spatialDef, world); } catch (schedulerError) { this.log(`decision scheduler non-fatal: ${schedulerError.message}`); }
+        try { this.processAutonomousSpeech(world.world_id, entry.run.run_id); } catch (speechSchedulerError) { this.log(`speech scheduler non-fatal: ${speechSchedulerError.message}`); }
       }
       try {
         if (mortality?.player_deceased) this.persistTerminalRetirement(world, mode, entry);
         else this.persistSession(world, mode, entry);
       } catch (persistError) {
         if (entry?.run && beforeRun) {
-          for (const k of Object.keys(world)) delete world[k]; Object.assign(world, beforeWorld);
+          if (world && beforeWorld) { for (const k of Object.keys(world)) delete world[k]; Object.assign(world, beforeWorld); }
           for (const k of Object.keys(entry.run)) delete entry.run[k]; Object.assign(entry.run, beforeRun);
           entry.run._world = world; entry.phase = beforePhase;
         }
@@ -1531,7 +3661,7 @@ class DesktopService {
       return { ok: true, result: { outcome: result.outcome ?? "succeeded", public_reason: result.result?.public_reason ?? result.public_reason ?? null, mission_updates: missionUpdates, scene }, projection: this.projectionFor(world, mode, entry) };
     } catch (error) {
       if (entry?.run && beforeRun) {
-        for (const k of Object.keys(world)) delete world[k]; Object.assign(world, beforeWorld);
+        if (world && beforeWorld) { for (const k of Object.keys(world)) delete world[k]; Object.assign(world, beforeWorld); }
         for (const k of Object.keys(entry.run)) delete entry.run[k]; Object.assign(entry.run, beforeRun);
         entry.run._world = world; entry.phase = beforePhase;
       }
@@ -1625,12 +3755,15 @@ class DesktopService {
           if ((referenceExpedition.isReference(entry.run.scenario) || cq4Day1Opener.isOpener(entry.run.scenario)) && !entry.run.expedition.written_report) {
             const reportPhase = phases.transition(entry.phase, "REPORT", { reason:"evidence-custody-complete", guard:true });
             if (reportPhase.ok) entry.phase = reportPhase.phase;
-            result.result = { ...(result.result ?? {}), public_reason:"Returned evidence entered A-Sync custody. Submit your written account before institutional review." };
+            result.result = { ...(result.result ?? {}), public_reason:"Returned evidence entered ASync custody. Submit your written account before institutional review." };
           } else this.finalizeQ4Closure(world, entry);
         }
   }
   commandBusy(worldId) {
-    return this.naturalTurnInflight.has(worldId) && this.naturalCommandContext.getStore() !== worldId;
+    if (this.transactionContext?.getStore() === worldId || this.naturalCommandContext?.getStore() === worldId) {
+      return false;
+    }
+    return this.naturalTurnInflight.has(worldId) || this.communicationTurnInflight.has(worldId);
   }
   async submitNatural(input = {}) {
     const { world_id, mode, text } = input;
@@ -1645,9 +3778,12 @@ class DesktopService {
       if (active.id === requestId && active.fingerprint === fingerprint) return active.promise;
       return publicError(active.id === requestId ? "REQUEST_ID_REUSED" : "SESSION_BUSY", active.id === requestId ? "That action reference belongs to a different instruction." : "The previous action is still being resolved. Wait for its result before submitting another action.");
     }
-    const promise = Promise.resolve().then(() => this.naturalCommandContext.run(world_id, () => this.submitNaturalInternal({ ...input, request_id:requestId, input_fingerprint:fingerprint })));
+    if (this.commandBusy(world_id)) {
+      return publicError("SESSION_BUSY", "The previous action is still being resolved. Wait for its result before submitting another action.");
+    }
+    const promise = Promise.resolve().then(() => this.transactionContext.run(world_id, () => this.submitNaturalInternal({ ...input, request_id:requestId, input_fingerprint:fingerprint })));
     this.naturalTurnInflight.set(world_id, { id:requestId, fingerprint, promise });
-    try { return await promise; } finally { this.naturalTurnInflight.delete(world_id); }
+    try { return await promise; } finally { this.naturalTurnInflight.delete(world_id); this.giveAutonomousSpeechAnotherChance(world_id); }
   }
   async submitNaturalInternal({ world_id, mode, text, request_id, input_fingerprint }) {
     let world = null; let entry = null; let beforeRun = null; let beforeWorld = null; let beforePhase = null;
@@ -1665,6 +3801,18 @@ class DesktopService {
       if (entry.kind === "bootstrap" && mode === "field-researcher" && entry.phase?.phase_id === "REPORT") return this.submitReferenceWrittenReport({ world_id, text });
       if (entry.kind === "bootstrap" && mode === "field-researcher" && ["BRIEFING", "STAGING", "FACILITY_TRANSIT", "THRESHOLD", "STANDARD_RADIO_CHECK"].includes(entry.phase?.phase_id)) {
         const phaseId = entry.phase.phase_id;
+        if (phaseId === "BRIEFING" && cq4Day1Opener.isOpener(entry.run?.scenario)) {
+          const beat = entry.run?.expedition?.day1_opener?.beat;
+          const briefingStatus = entry.run?.expedition?.day1_opener?.personnel_briefing?.status ?? "pending";
+          if (beat === cq4Day1Opener.BEATS.PERSONNEL_BRIEFING) {
+            if (briefingStatus === "pending") {
+              return this.startPersonnelBriefing({ world_id });
+            }
+            if (briefingStatus === "active") {
+              return this.interactPersonnelBriefing({ world_id, text });
+            }
+          }
+        }
         const inputClass = interpretiveDirector.classifyInput(text, phaseId, entry.run);
 
         if (inputClass.classification === "PREFIELD_CLARIFICATION" || inputClass.classification === "PREFIELD_REFUSAL") {
@@ -1873,6 +4021,7 @@ class DesktopService {
           if (entry.run?.spatial && ["FIELD_OPERATION", "RETURN"].includes(entry.phase?.phase_id)) {
             const spatialDefNat = bootstrap.spatialDefinitionFor(entry.run.spatial_pack_id);
             try { decisionScheduler.scheduleDecisions(entry.run, spatialDefNat, world); } catch (schedulerError) { this.log(`decision scheduler non-fatal: ${schedulerError.message}`); }
+            try { this.processAutonomousSpeech(world.world_id, entry.run.run_id); } catch (speechSchedulerError) { this.log(`speech scheduler non-fatal: ${speechSchedulerError.message}`); }
           }
           try {
             this.persistSession(world, mode, entry);
@@ -1945,6 +4094,12 @@ class DesktopService {
             };
           }
         }
+        if (entry.phase?.phase_id === "FIELD_OPERATION" && (/\b(begin return|initiate return|return procedure|start return)\b/i.test(text) || (text.trim().toLowerCase() === "return" && ["threshold-side-entry", "utility-room"].includes(entry.run.spatial?.player_location)))) {
+          return this.submitAction({ world_id, mode, action: "RETURN" });
+        }
+        if (entry.phase?.phase_id === "RETURN" && /\b(complete return|finalize return|finish return)\b/i.test(text)) {
+          return this.submitAction({ world_id, mode, action: "COMPLETE_RETURN" });
+        }
         const namesWorker = members.some((member) => [member.first_name, member.last_name, member.display_name, member.role].filter(Boolean).some((name) => new RegExp(`\\b${String(name).replace(/[.*+?^${}()|[\\]\\\\]/g, "\\$&")}\\b`, "i").test(text)));
         const localPhrase = /\b(stay|hold|watch|wait|regroup|report|assist|help|give|carry|pass|transfer|did you hear)\b/i.test(text) || (/\btake\b/i.test(text) && !/\b(photo|photograph|picture)\b/i.test(text));
         if (namesWorker && localPhrase) return this.submitQ4LocalIntent({ world_id, text });
@@ -1976,7 +4131,7 @@ class DesktopService {
         // object/spatial authorities; unsupported intent cannot mutate reality.
       }
       const providerSetting = this.settings().provider ?? "offline";
-      const isManual = providerSetting !== "auto" && providerSetting !== "offline";
+      const isManual = providerSetting !== "auto" && providerSetting !== "offline" && providerSetting !== "local";
       const key = isManual ? this.credentials.get(providerSetting) : null;
       if (isManual && !key) return publicError("PROVIDER_CONFIGURATION_REQUIRED", "Language assistance needs an access key. Your world is safe; you can continue offline.");
       const nonBootstrap = entry.kind !== "bootstrap"; const adapterRun = nonBootstrap ? { session: { startup: { player: { observer_id: mode } } }, profile_id: mode } : entry.run; const available = this.availableFor(world, mode, entry);
@@ -2011,7 +4166,13 @@ class DesktopService {
         : publicError("PROVIDER_UNAVAILABLE", "Language assistance is unavailable. Continue using structured controls or retry this action reference.");
     }
   }
-  shutdown() { for (const [key, entry] of this.sessions) { const [worldId, mode] = key.split(":"); if (this.recoveredWorlds.has(worldId)) continue; try { this.persistSession(this.getWorld(worldId), mode, entry); } catch (error) { this.log(`shutdown save failed: ${error.message}`); } } return { ok: true }; }
+  shutdown() {
+    this.shuttingDown = true;
+    try { this.dialogueRuntime?.shutdown()?.catch(() => {}); } catch {}
+    try { this.inferenceAppliance?.shutdown(); } catch {}
+    for (const [key, entry] of this.sessions) { const [worldId, mode] = key.split(":"); if (this.recoveredWorlds.has(worldId)) continue; try { this.persistSession(this.getWorld(worldId), mode, entry); } catch (error) { this.log(`shutdown save failed: ${error.message}`); } }
+    return { ok: true };
+  }
 }
 
 module.exports = { DesktopService, MODES, DEFAULT_SETTINGS };

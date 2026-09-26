@@ -1,0 +1,299 @@
+[
+ {
+  "player": "Hello everyone!",
+  "ms": 6743,
+  "lines": [
+   {
+    "speaker": "Giselle",
+    "text": "Hey."
+   },
+   {
+    "speaker": "Malcolm",
+    "text": "Morning."
+   },
+   {
+    "speaker": "Tonya",
+    "text": "Hello."
+   }
+  ],
+  "semantic": {
+   "address": {
+    "scope": "group",
+    "to": [
+     "Giselle",
+     "Malcolm",
+     "Tonya"
+    ]
+   },
+   "speech_act": "greeting",
+   "predicate": null,
+   "fn": "greet",
+   "cardinality": "each_ack",
+   "temporal": null,
+   "clarify": false,
+   "owners": [
+    "Giselle",
+    "Malcolm",
+    "Tonya"
+   ],
+   "requests": []
+  },
+  "sources": [
+   {
+    "speaker": "Giselle",
+    "source": "deterministic-fallback",
+    "accepted": false,
+    "rejection": "LOCAL_PRESENTATION_FORBIDDEN_CLAIM",
+    "detail": "speaks for other coworkers",
+    "candidate": "Hey. Glad everyone is here.",
+    "private_ok": true,
+    "responsive_ok": true
+   },
+   {
+    "speaker": "Malcolm",
+    "source": "local-model",
+    "accepted": true,
+    "rejection": null,
+    "detail": null,
+    "candidate": "Morning.",
+    "private_ok": true,
+    "responsive_ok": true
+   },
+   {
+    "speaker": "Tonya",
+    "source": "deterministic-fallback",
+    "accepted": false,
+    "rejection": "LOCAL_PRESENTATION_SHAPE_VIOLATION",
+    "detail": "a brief social line is expected",
+    "candidate": "Hi there. How's your day starting off?",
+    "private_ok": true,
+    "responsive_ok": true
+   }
+  ]
+ },
+ {
+  "player": "Giselle, how are you?",
+  "ms": 8107,
+  "lines": [
+   {
+    "speaker": "Giselle",
+    "text": "Honestly, a little nervous."
+   }
+  ],
+  "semantic": {
+   "address": {
+    "scope": "direct",
+    "to": [
+     "Giselle"
+    ]
+   },
+   "speech_act": "question",
+   "predicate": "person.wellbeing",
+   "fn": "check_in",
+   "cardinality": "each_self",
+   "temporal": "now",
+   "clarify": false,
+   "owners": [
+    "Giselle"
+   ],
+   "requests": [
+    {
+     "predicate": "person.wellbeing",
+     "state": "SATISFIED"
+    }
+   ]
+  },
+  "sources": [
+   {
+    "speaker": "Giselle",
+    "source": "deterministic-fallback",
+    "accepted": false,
+    "rejection": "LOCAL_PRESENTATION_THIRD_PARTY_PRIVATE_STATE",
+    "detail": "says something about Malcolm this turn does not license (\"A little nervous right now.\")",
+    "candidate": "A little nervous right now. I'm alright.",
+    "private_ok": true,
+    "responsive_ok": true
+   }
+  ]
+ },
+ {
+  "player": "Why?",
+  "ms": 3060,
+  "lines": [
+   {
+    "speaker": "Giselle",
+    "text": "It's just how I feel right now. Meaning I said, honestly, a little nervous."
+   }
+  ],
+  "semantic": {
+   "address": {
+    "scope": "direct",
+    "to": [
+     "Giselle"
+    ]
+   },
+   "speech_act": "question",
+   "predicate": "conversation.explanation",
+   "fn": "ask_explanation",
+   "cardinality": "one_spokesperson",
+   "temporal": null,
+   "clarify": false,
+   "owners": [
+    "Giselle"
+   ],
+   "requests": [
+    {
+     "predicate": "conversation.explanation",
+     "state": "SATISFIED"
+    }
+   ]
+  },
+  "sources": [
+   {
+    "speaker": "Giselle",
+    "source": "local-model",
+    "accepted": true,
+    "rejection": null,
+    "detail": null,
+    "candidate": "It's just how I feel right now. Meaning I said, honestly, a little nervous.",
+    "private_ok": true,
+    "responsive_ok": true
+   }
+  ]
+ },
+ {
+  "player": "Fair enough. What about Tonya?",
+  "ms": 10771,
+  "lines": [
+   {
+    "speaker": "Tonya",
+    "text": "Doing all right, thanks."
+   }
+  ],
+  "semantic": {
+   "address": {
+    "scope": "direct",
+    "to": [
+     "Tonya"
+    ]
+   },
+   "speech_act": "elliptical_continuation",
+   "predicate": "person.wellbeing",
+   "fn": "check_in",
+   "cardinality": "each_self",
+   "temporal": "now",
+   "clarify": false,
+   "owners": [
+    "Tonya"
+   ],
+   "requests": [
+    {
+     "predicate": "person.wellbeing",
+     "state": "SATISFIED"
+    }
+   ]
+  },
+  "sources": [
+   {
+    "speaker": "Tonya",
+    "source": "deterministic-fallback",
+    "accepted": false,
+    "rejection": "LOCAL_PRESENTATION_SHAPE_VIOLATION",
+    "detail": "answers with a question",
+    "candidate": "I'm doing all right. How are things looking on your end?",
+    "private_ok": true,
+    "responsive_ok": true
+   }
+  ]
+ },
+ {
+  "player": "Have you done this before?",
+  "ms": 3097,
+  "lines": [
+   {
+    "speaker": "Tonya",
+    "text": "I've been on expeditions before. It's just how it goes."
+   }
+  ],
+  "semantic": {
+   "address": {
+    "scope": "direct",
+    "to": [
+     "Tonya"
+    ]
+   },
+   "speech_act": "question",
+   "predicate": "person.expedition_experience",
+   "fn": "ask_predicate",
+   "cardinality": "each_self_concise",
+   "temporal": "ever",
+   "clarify": false,
+   "owners": [
+    "Tonya"
+   ],
+   "requests": [
+    {
+     "predicate": "person.expedition_experience",
+     "state": "SATISFIED"
+    }
+   ]
+  },
+  "sources": [
+   {
+    "speaker": "Tonya",
+    "source": "local-model",
+    "accepted": true,
+    "rejection": null,
+    "detail": null,
+    "candidate": "I've been on expeditions before. It's just how it goes.",
+    "private_ok": true,
+    "responsive_ok": true
+   }
+  ]
+ },
+ {
+  "player": "I meant the Complex.",
+  "ms": 2930,
+  "lines": [
+   {
+    "speaker": "Tonya",
+    "text": "I've been in the Complex before."
+   }
+  ],
+  "semantic": {
+   "address": {
+    "scope": "direct",
+    "to": [
+     "Tonya"
+    ]
+   },
+   "speech_act": "repair",
+   "predicate": "person.complex_experience",
+   "fn": "ask_predicate",
+   "cardinality": "each_self_concise",
+   "temporal": "ever",
+   "clarify": false,
+   "owners": [
+    "Tonya"
+   ],
+   "requests": [
+    {
+     "predicate": "person.complex_experience",
+     "state": "SATISFIED"
+    }
+   ]
+  },
+  "sources": [
+   {
+    "speaker": "Tonya",
+    "source": "local-model",
+    "accepted": true,
+    "rejection": null,
+    "detail": null,
+    "candidate": "I've been in the Complex before.",
+    "private_ok": true,
+    "responsive_ok": true
+   }
+  ]
+ }
+]

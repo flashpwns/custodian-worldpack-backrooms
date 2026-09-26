@@ -45,6 +45,7 @@
     "institution-report": "node tools/institution-report.js",
     "gameplay-report": "node tools/gameplay-report.js",
     "desktop:dev": "electron desktop/main.js",
+    "desktop:local-install": "electron tools/local-install-dev.js",
     "desktop:build": "node tools/build-desktop.js",
     "desktop:package": "npm run desktop:build",
     "desktop:verify": "node tools/verify-desktop-artifact.js",
@@ -78,6 +79,10 @@
     "persistent-complex-test": "node --test tests/y56-persistent-procedural-complex.test.js",
     "checkpoint-2": "npm run persistent-complex-test && npm test && npm run desktop:build",
     "acceptance:omnipass": "node tools/omnipass-acceptance.js",
+    "dialogue:repl": "node tools/dialogue-repl.js",
+    "dialogue:replay": "node tools/dialogue-replay.js",
+    "dialogue:eval": "node tools/dialogue-eval.js",
+    "dialogue:fuzz": "node tools/dialogue-fuzz.js",
     "worldpack:create": "node tools/worldpack-authoring.js create",
     "worldpack:validate": "node tools/worldpack-authoring.js validate",
     "worldpack:preview": "node tools/worldpack-authoring.js preview",
@@ -120,7 +125,8 @@
   },
   "devDependencies": {
     "electron": "^43.2.0",
-    "electron-builder": "^26.15.3"
+    "electron-builder": "^26.15.3",
+    "fast-check": "4.10.2"
   },
   "dependencies": {
     "custodian": "github:flashpwns/custodian#b3738da433c78ee4bdb341114933b36a379bd6a4",
@@ -163,6 +169,10 @@
       "docs/YELLOW_BEAST_1.0_DESIGN_CHARTER.md",
       "docs/ai-interface-contract.md",
       "docs/ai-provider.md"
+    ],
+    "extraResources": [
+      { "from": "resources/llama", "to": "llama", "filter": ["**/*"] },
+      { "from": "resources/model", "to": "model", "filter": ["**/*"] }
     ],
     "mac": {
       "target": [

@@ -15,6 +15,8 @@ on:
 jobs:
   package:
     strategy:
+      # Each platform's package is independent evidence; one failing must not cancel the other.
+      fail-fast: false
       matrix:
         os: [macos-latest, windows-latest]
     runs-on: ${{ matrix.os }}
@@ -25,6 +27,18 @@ jobs:
           node-version: 20
           cache: npm
       - run: npm ci
+      # The macOS desktop package ships its own pinned local dialogue runtime (llama.cpp + model). CI obtains
+      # it from the exact URLs in tools/local-runtime-pin.json; every byte is verified against the pinned
+      # SHA-256 before it is used. Platforms without a pinned runtime package deterministic dialogue only.
+      - name: Restore pinned local dialogue runtime
+        if: runner.os == 'macOS'
+        uses: actions/cache@v4
+        with:
+          path: vendor
+          key: local-runtime-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('tools/local-runtime-pin.json') }}
+      - name: Fetch pinned local dialogue runtime
+        if: runner.os == 'macOS'
+        run: node tools/fetch-runtime-resources.js
       - run: npm run build:alpha
       - run: npm run verify:alpha
       - run: npm run desktop:build
@@ -37,15 +51,15 @@ jobs:
         if: runner.os == 'macOS' && success()
         uses: actions/upload-artifact@v4
         with:
-          name: yellow-beast-0.13.0-alpha-macos-arm64
-          path: dist/desktop/Yellow Beast-0.13.0-alpha-arm64-mac.zip
+          name: yellow-beast-desktop-macos-arm64
+          path: dist/desktop/Yellow Beast-*-arm64-mac.zip
           if-no-files-found: error
           retention-days: 14
       - name: Retain validated Windows desktop alpha
         if: runner.os == 'Windows' && success()
         uses: actions/upload-artifact@v4
         with:
-          name: yellow-beast-0.13.0-alpha-windows
-          path: dist/desktop/Yellow Beast-0.13.0-alpha-win.zip
+          name: yellow-beast-desktop-windows
+          path: dist/desktop/Yellow Beast-*-win.zip
           if-no-files-found: error
           retention-days: 14

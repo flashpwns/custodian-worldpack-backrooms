@@ -1,0 +1,40 @@
+{
+  "llama_cpp": {
+    "repository": "ggml-org/llama.cpp",
+    "tag": "b11146",
+    "asset": "llama-b11146-bin-macos-arm64.tar.gz",
+    "platform": "darwin-arm64",
+    "asset_sha256": "1ad3f9eff80edb9dbef4259ad564d1720612ef7eea48fa4afed0e54f5f3d5711",
+    "url": "https://github.com/ggml-org/llama.cpp/releases/download/b11146/llama-b11146-bin-macos-arm64.tar.gz",
+    "extract_to": "vendor/llama"
+  },
+  "model": {
+    "name": "Gemma 4 E4B (instruction-tuned)",
+    "repository": "unsloth/gemma-4-E4B-it-GGUF",
+    "revision": "bfc15c382204943c3a8fff0c750b94ae2364d7a3",
+    "base_model": "google/gemma-4-E4B-it",
+    "base_revision": "ee0ef6023621",
+    "quantization": "Q4_K_M",
+    "source_filename": "gemma-4-E4B-it-Q4_K_M.gguf",
+    "internal_filename": "yellow-beast-local-v1.gguf",
+    "sha256": "85a896a047553e842f25297ee5b031d64ff30147d9c4af17b1e4b394cd1fab87",
+    "bytes": 4977171584,
+    "license": "Apache-2.0",
+    "license_notice": "docs/licenses/Gemma-4-Apache-2.0.txt",
+    "url": "https://huggingface.co/unsloth/gemma-4-E4B-it-GGUF/resolve/bfc15c382204943c3a8fff0c750b94ae2364d7a3/gemma-4-E4B-it-Q4_K_M.gguf",
+    "target": "vendor/model/yellow-beast-local-v1.gguf",
+    "selection": "Chosen by the 2026-09-24 dialogue freeze audit: best validated acceptance on production packets within the 6.0 GB 16 GB-machine budget (see docs/IMPLEMENTATION_STATE.md).",
+    "request_options": {
+      "chat_template_kwargs": {
+        "enable_thinking": false
+      },
+      "sampling": {
+        "dialogue": {
+          "temperature": 0.8,
+          "top_p": 0.95,
+          "top_k": 40
+        }
+      }
+    }
+  }
+}

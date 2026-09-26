@@ -26,6 +26,8 @@ function summarizeLanguageAssistance(selected, living) {
   const executions = selected.getExecutions?.() ?? [];
   const interpretation = executions.find(item => item.request_kind === "living-interpretation");
   const presentation = executions.find(item => item.request_kind === "living-presentation");
+  const localInterpretation = interpretation?.selected_provider === "local";
+  const hostedInterpretation = Boolean(interpretation?.attempts?.some(item => item.status === "completed" && item.hosted_request));
   const failed = living.status === "interpretation_failed";
   const fallback = living.status === "resolved" && (presentation?.selected_provider === "offline" || !living.validation?.accepted);
   const offline = interpretation?.selected_provider === "offline";
@@ -36,7 +38,9 @@ function summarizeLanguageAssistance(selected, living) {
   return {
     interpretation_provider: interpretation?.selected_provider ?? selected.name ?? "unknown",
     presentation_provider: presentation?.selected_provider ?? null,
-    hosted_interpretation: Boolean(interpretation?.attempts?.some(item => item.status === "completed" && item.hosted_request)),
+    generative_interpretation:localInterpretation || hostedInterpretation,
+    local_interpretation:localInterpretation,
+    hosted_interpretation:hostedInterpretation,
     interpretation_failed: failed,
     presentation_fallback: fallback,
     message

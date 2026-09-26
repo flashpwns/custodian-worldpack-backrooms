@@ -55,7 +55,18 @@ function validateDefinition(definition, catalogs = {}) {
 function assignmentHolder(spec, context) {
   if (spec?.assignment?.holder === "player") return context.player;
   if (spec?.assignment?.holder === "institution") return "institutional-stores";
-  if (spec?.assignment?.role) return (context.team ?? []).find((member) => String(member.role).toLowerCase() === String(spec.assignment.role).toLowerCase())?.personnel_id ?? context.player;
+  if (typeof spec?.assignment?.holder === "string" && spec.assignment.holder.startsWith("coworker")) {
+    const idx = parseInt(spec.assignment.holder.replace("coworker", ""), 10);
+    const coworkers = (context.team ?? []).filter((m) => (m.personnel_id ?? m.id) !== context.player);
+    const target = coworkers[idx - 1];
+    if (target) return target.personnel_id ?? target.id;
+  }
+  if (spec?.assignment?.role) {
+    const peers = (context.team ?? []).filter((member) => (member.personnel_id ?? member.id) !== context.player);
+    const peerMatch = peers.find((member) => String(member.role).toLowerCase() === String(spec.assignment.role).toLowerCase());
+    if (peerMatch) return peerMatch.personnel_id ?? peerMatch.id;
+    return (context.team ?? []).find((member) => String(member.role).toLowerCase() === String(spec.assignment.role).toLowerCase())?.personnel_id ?? context.player;
+  }
   return context.player;
 }
 function normalizeItem(key, legacy, definition = {}) {
@@ -98,7 +109,14 @@ function createState(definition, context = {}) {
   for (const member of context.team ?? []) { const id = memberId(member); if (!id || id === context.player || Object.values(state.containers).some((entry) => entry.current_holder === id && entry.kind === "personal")) continue; const containerId = `personal-${digest([state.worldpack_id, id])}`; state.containers[containerId] = { id: containerId, display_name: `${member.display_name ?? "Coworker"} field harness`, kind: "personal", capacity: definition.personal_capacity ?? 6, allowed_categories: ["*"], open: true, accessible: true, current_holder: id, current_location: context.location ?? null, parent_container: null, contents: [], lost: false, history: [] }; }
   for (const spec of definition.item_instances) {
     const legacy = context.legacy_items?.[spec.id] ?? {}; const item = normalizeItem(spec.id, legacy, definitions[spec.definition_id]); const holder = legacy.holder ?? assignmentHolder(spec, context);
-    let containerId = legacy.container_id ?? spec.initial_container ?? null; const initialContainer = state.containers[containerId]; if (!legacy.container_id && holder && holder !== "institutional-stores" && initialContainer?.current_holder !== holder) containerId = Object.values(state.containers).find((entry) => entry.current_holder === holder && entry.kind === "personal")?.id ?? containerId; const container = state.containers[containerId];
+    let containerId = legacy.container_id ?? spec.initial_container ?? null;
+    if (containerId && !state.containers[containerId]) {
+      containerId = (holder && holder !== "institutional-stores" ? Object.values(state.containers).find((entry) => entry.current_holder === holder && entry.kind === "personal")?.id : null) ?? (state.containers[spec.initial_container] ? spec.initial_container : null);
+    } else {
+      const initialContainer = state.containers[containerId];
+      if (!legacy.container_id && holder && holder !== "institutional-stores" && initialContainer?.current_holder !== holder) containerId = Object.values(state.containers).find((entry) => entry.current_holder === holder && entry.kind === "personal")?.id ?? containerId;
+    }
+    const container = state.containers[containerId];
     item.current_holder = container ? container.current_holder : holder; item.assigned_owner = legacy.assigned_to ?? holder; item.current_container = containerId; item.current_location = legacy.location ?? spec.initial_location ?? container?.current_location ?? null; item.charges = Number.isInteger(legacy.charges) ? legacy.charges : spec.initial_charges ?? item.maximum_charges; item.quantity = Number.isInteger(legacy.quantity) ? legacy.quantity : spec.initial_quantity ?? 1;
     item.history.push({ sequence: item.history.length + 1, action: "issued", holder, container: item.current_container, location: item.current_location, at: context.at ?? 0 }); state.items[spec.id] = item;
   }

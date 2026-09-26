@@ -8,15 +8,16 @@ const REQUIRED = Object.freeze(["field-light", "recording-device", "survey-instr
 const OPTIONAL = Object.freeze(["field-notebook", "spare-film", "route-marker-kit", "evidence-sleeves", "spare-battery"]);
 const DEFINITIONS = Object.freeze({
   "field-light": { type: "battery-lamp", label: "Battery field lamp", model: "handheld battery lamp", capability: "illumination", consumable: { kind: "battery condition", remaining: "checked" } },
-  "recording-device": { type: "35mm-camera", label: "35mm field camera", model: "manual 35mm documentation camera", capability: "photographic documentation", consumable: { kind: "film exposures", remaining: 12 } },
+  "recording-device": { type: "35mm-camera", label: "35mm field camera", model: "manual 35mm documentation camera", capability: "photographic documentation", consumable: { kind: "film exposures", remaining: 24 } },
   "survey-instrument": { type: "portable-survey-instrument", label: "Portable survey instrument", model: "portable measurement instrument", capability: "qualitative measurement", consumable: { kind: "battery condition", remaining: "checked" } },
+  "mass-spectrometer": { type: "mass-spectrometer", label: "Portable mass spectrometer", model: "analytical mass spectrometer", capability: "compositional analysis", consumable: { kind: "battery condition", remaining: "checked" } },
   "survey-radio": { type: "field-radio", label: "Handheld field radio", model: "short-range field radio", capability: "radio communication", consumable: { kind: "battery charge", remaining: 8 } },
   "field-notebook": { type: "field-notebook", label: "Field notebook", model: "bound paper field notebook", capability: "written notes", consumable: { kind: "pages", remaining: "available" } },
   "spare-film": { type: "35mm-film", label: "Spare film roll", model: "35mm documentation film", capability: "photographic documentation", consumable: { kind: "film exposures", remaining: 24 } },
   "route-marker-kit": { type: "route-marker-kit", label: "Numbered route-marker kit", model: "adhesive numbered survey tabs", capability: "route marking", consumable: { kind: "numbered tabs", remaining: 4 } },
   "evidence-sleeves": { type: "evidence-sleeves", label: "Sealable evidence sleeves", model: "numbered archival sleeves", capability: "evidence containment", consumable: { kind: "sleeves", remaining: 4 } },
   "spare-battery": { type: "spare-battery", label: "Spare instrument battery", model: "sealed field battery", capability: "equipment replenishment", consumable: { kind: "battery", remaining: 1 } },
-  "field-camera": { type: "35mm-camera", label: "35mm field camera", model: "manual 35mm documentation camera", capability: "photographic documentation", consumable: { kind: "film exposures", remaining: 12 } },
+  "field-camera": { type: "35mm-camera", label: "35mm field camera", model: "manual 35mm documentation camera", capability: "photographic documentation", consumable: { kind: "film exposures", remaining: 24 } },
   "startup-materials-duffle": { type: "startup-materials-duffle", label: "Startup materials duffle", model: "heavy canvas startup materials duffle", capability: "prerequisite material transport", consumable: { kind: "materials contents", remaining: "sealed" } },
   "layout-record": { type: "layout-record", label: "Manifestation layout record", model: "field clipboard and layout record sheets", capability: "layout documentation", consumable: { kind: "record sheets", remaining: 10 } }
 });
@@ -50,6 +51,7 @@ function prepare(world, run_id, { player, peer = null, assistant = null, coworke
     "recording-device": player,
     "field-camera": player,
     "survey-instrument": roleHolder(/survey technician/i),
+    "mass-spectrometer": roleHolder(/researcher|observer/i, people[0]?.identity ?? player),
     "survey-radio": player,
     "startup-materials-duffle": roleHolder(/technician|intern/i, people[1]?.identity ?? player),
     "layout-record": roleHolder(/doctor|medical/i, people[2]?.identity ?? player)
@@ -136,7 +138,9 @@ function publicItem(item, player, known = true, holderNames = {}, context = {}) 
   const observerState = sameLocation ? state : radioConfirmed ? state : item.known_condition === "Operational" ? "Last observed operational" : "Unknown condition";
   const verification = own || sameLocation ? "visually confirmed" : radioConfirmed ? "confirmed over radio" : missing ? "holder missing" : item.state === "abandoned" ? "abandoned" : separated ? "last known" : "unknown";
   const location = stores ? item.location : own || sameLocation ? "carrying" : context.spatial?.last_confirmed_personnel_positions?.[item.holder]?.location ? "last confirmed with holder" : "location unknown";
-  return { id: item.id, category: item.type, label: item.label, model: item.model, holder: own ? "You" : stores ? "Team stores" : names[item.holder] ?? "Assigned teammate", location, state: observerState, verification, capability: item.capability, consumable: own || stores || sameLocation || radioConfirmed ? clone(item.consumable) : { kind: item.consumable?.kind ?? "operational measure", remaining: "Unknown" }, available: (own || stores || sameLocation) && stateUsable(item) };
+  const consumable = /camera/i.test(`${item.type} ${item.label}`) && Number.isFinite(item.charges)
+    ? { kind: "film exposures", remaining: item.charges } : item.consumable;
+  return { id: item.id, category: item.type, label: item.label, model: item.model, holder: own ? "You" : stores ? "Team stores" : names[item.holder] ?? "Assigned teammate", location, state: observerState, verification, capability: item.capability, consumable: own || stores || sameLocation || radioConfirmed ? clone(consumable) : { kind: item.consumable?.kind ?? "operational measure", remaining: "Unknown" }, available: (own || stores || sameLocation) && stateUsable(item) };
 }
 function projection(expedition, player, holderNames = {}, context = {}) { const items = Object.entries(expedition.equipment ?? {}); return { required: items.map(([ref, item]) => ({ ...publicItem(item, player, true, holderNames, context), ref })), optional: Object.entries(expedition.optional_stores ?? {}).map(([ref, item]) => ({ ...publicItem(item, player, true, holderNames, context), ref })), readiness: items.every(([, item]) => stateUsable(item)), missing: items.filter(([, item]) => !stateUsable(item)).map(([, item]) => item.label) }; }
 module.exports = { VERSION, REQUIRED, OPTIONAL, DEFINITIONS, prepare, expeditionEquipment, updatePhase, stateUsable, use, transfer, selectOptional, absorbCompatibility, syncWorld, publicItem, projection };

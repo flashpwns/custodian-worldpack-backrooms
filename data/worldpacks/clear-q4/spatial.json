@@ -60,7 +60,7 @@
       "coordinates": { "x": 280, "y": 130, "level": 0 },
       "entry_state": "institutional-record",
       "environment": { "lighting": "controlled facility lighting", "surface": "reinforced transition floor" },
-      "landmarks": [{ "id": "threshold-apparatus", "name": "Threshold apparatus", "aliases": ["threshold", "apparatus"], "observation": "The controlled Threshold apparatus occupies the far wall.", "inspection": "Status lamps show the recorded crossing route ready for use." }],
+      "landmarks": [{ "id": "threshold-apparatus", "name": "The Threshold", "aliases": ["threshold", "apparatus"], "observation": "The Threshold, the fixed gate to the Complex, occupies the far wall.", "inspection": "Status lamps show the recorded crossing route ready for use." }],
       "hazards": [],
       "tags": ["prefield", "controlled", "return-route"]
     },

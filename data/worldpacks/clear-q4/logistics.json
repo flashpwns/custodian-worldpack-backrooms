@@ -4,8 +4,9 @@
   "personal_capacity": 6,
   "item_definitions": [
     { "id": "battery-lamp", "display_name": "Battery field lamp", "category": "illumination", "model": "handheld battery lamp", "capabilities": ["illumination"], "capacity_contribution": 2, "maximum_charges": 6, "consumable": false },
-    { "id": "field-camera", "display_name": "35mm field camera", "category": "recording", "model": "manual 35mm documentation camera", "capabilities": ["photographic documentation"], "capacity_contribution": 2, "maximum_charges": 12, "consumable": false },
+    { "id": "field-camera", "display_name": "35mm field camera", "category": "recording", "model": "manual 35mm documentation camera", "capabilities": ["photographic documentation"], "capacity_contribution": 2, "maximum_charges": 24, "consumable": false },
     { "id": "survey-instrument", "display_name": "Portable survey instrument", "category": "instrument", "model": "portable measurement instrument", "capabilities": ["qualitative measurement"], "capacity_contribution": 3, "maximum_charges": 5, "consumable": false },
+    { "id": "mass-spectrometer", "display_name": "Portable mass spectrometer", "category": "instrument", "model": "analytical mass spectrometer", "capabilities": ["compositional analysis"], "capacity_contribution": 2, "maximum_charges": 10, "consumable": false },
     { "id": "field-radio", "display_name": "Handheld field radio", "category": "communications", "model": "short-range field radio", "capabilities": ["radio communication"], "capacity_contribution": 2, "maximum_charges": 8, "consumable": false },
     { "id": "field-notebook", "display_name": "Field notebook", "category": "recording", "model": "bound paper field notebook", "capabilities": ["written notes"], "capacity_contribution": 1, "maximum_charges": 30, "consumable": true },
     { "id": "spare-film", "display_name": "Spare film roll", "category": "consumable", "model": "35mm documentation film", "capabilities": ["photographic documentation supply"], "replenishes_definitions": ["field-camera"], "capacity_contribution": 1, "maximum_charges": 24, "consumable": true },
@@ -23,7 +24,7 @@
   ],
   "item_instances": [
     { "id": "field-light", "definition_id": "battery-lamp", "assignment": { "holder": "player" }, "initial_container": "player-harness", "initial_location": "equipment-staging", "initial_charges": 6 },
-    { "id": "recording-device", "definition_id": "field-camera", "assignment": { "role": "documentation specialist" }, "initial_container": "field-case", "initial_location": "equipment-staging", "initial_charges": 12 },
+    { "id": "recording-device", "definition_id": "field-camera", "assignment": { "role": "documentation specialist" }, "initial_container": "field-case", "initial_location": "equipment-staging", "initial_charges": 24 },
     { "id": "survey-instrument", "definition_id": "survey-instrument", "assignment": { "role": "survey technician" }, "initial_container": "field-case", "initial_location": "equipment-staging", "initial_charges": 5 },
     { "id": "survey-radio", "definition_id": "field-radio", "assignment": { "holder": "player" }, "initial_container": "player-harness", "initial_location": "equipment-staging", "initial_charges": 8 },
     { "id": "field-notebook", "definition_id": "field-notebook", "assignment": { "holder": "institution" }, "initial_container": "staging-locker", "initial_location": "equipment-staging", "initial_charges": 30 },

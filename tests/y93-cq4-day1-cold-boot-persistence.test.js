@@ -50,6 +50,7 @@ test("y93 — CQ4 Day 1 Opener: Cold-Boot Persistence Across All 6 Phases Withou
     // -------------------------------------------------------------------------
     // Phase 2: Equipment Staging (STAGING)
     // -------------------------------------------------------------------------
+    service.submitAction({ world_id: world.id, mode: "field-researcher", action: "COMPLETE_BROADCAST" });
     const readyRes = service.submitAction({ world_id: world.id, mode: "field-researcher", action: "READY" });
     assert.equal(readyRes.ok, true);
     assert.equal(entry.phase.phase_id, "STAGING");
@@ -191,10 +192,14 @@ test("y93 — CQ4 Day 1 Opener: Cold-Boot Persistence Across All 6 Phases Withou
     assert.equal(entry.phase.phase_id, "DEBRIEF");
     assert.equal(entry.run.lifecycle, "completed");
 
-    // Verify demo_termination in projection
+    // Verify aeot_inspection and end_of_shift_notice in projection after cold boot
     const projection = service.projectionFor(world.id, "field-researcher");
-    assert.ok(projection.demo_termination, "demo_termination present in projection after cold boot");
-    assert.equal(projection.demo_termination.status_text, "NO FURTHER ASSIGNMENTS AVAILABLE");
+    assert.equal(projection.demo_termination, undefined, "Normal debrief must not set obsolete demo_termination");
+    assert.ok(projection.aeot_inspection, "aeot_inspection present in projection after cold boot");
+    assert.equal(projection.aeot_inspection.active, true);
+    assert.equal(projection.aeot_inspection.shift_status, "END OF SHIFT");
+    assert.ok(projection.end_of_shift_notice, "end_of_shift_notice present in projection after cold boot");
+    assert.equal(projection.end_of_shift_notice.title, "END OF SHIFT");
 
     // Verify advanceQ4Operations rejection
     const advanceRes = service.advanceQ4Operations({ world_id: world.id });

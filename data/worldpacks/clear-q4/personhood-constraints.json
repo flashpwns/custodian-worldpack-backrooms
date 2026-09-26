@@ -1,0 +1,59 @@
+{
+  "version": "yellow-beast-personhood-constraints@v1",
+  "authority": "L2 authored current slice: data/worldpacks/clear-q4/cq4-day1-opener.json staffing.coworker_archetypes (archetype + personality) and briefing_authority.dialogue (intro, dismissal). Each archetype row narrows generation; a single allowed value is authored, several allowed values are generated deterministically from the world seed and actor identity.",
+  "bands": {
+    "async_tenure": ["first_day", "weeks", "months", "years"],
+    "expedition_experience": ["none", "some", "many"],
+    "complex_experience": ["none", "some", "many"],
+    "nervousness": ["low", "elevated"],
+    "anticipation": ["low", "neutral", "elevated"],
+    "confidence": ["unsure", "steady"]
+  },
+  "archetypes": {
+    "first-day-observer": {
+      "source": "staffing.coworker_archetypes[0]: archetype first-day-observer, personality nervous-first-day",
+      "first_day_at_async": [true],
+      "async_tenure": ["first_day"],
+      "expedition_experience": ["none"],
+      "complex_experience": ["none"],
+      "nervousness": ["elevated"],
+      "anticipation": ["neutral"],
+      "confidence": ["unsure"]
+    },
+    "intern-courier": {
+      "source": "staffing.coworker_archetypes[1]: archetype intern-courier, personality intern",
+      "first_day_at_async": [false],
+      "async_tenure": ["weeks", "months"],
+      "expedition_experience": ["none"],
+      "complex_experience": ["none"],
+      "nervousness": ["low"],
+      "anticipation": ["neutral"],
+      "confidence": ["unsure", "steady"]
+    },
+    "doctor-veteran": {
+      "source": "staffing.coworker_archetypes[2]: archetype doctor-veteran, personality veteran-doctor. DESIGN DECISION PENDING (owner): whether the veteran's prior experience includes Complex entries; 'some' is the generated default and may be overridden here.",
+      "first_day_at_async": [false],
+      "async_tenure": ["years"],
+      "expedition_experience": ["some"],
+      "complex_experience": ["some"],
+      "nervousness": ["low"],
+      "anticipation": ["neutral"],
+      "confidence": ["steady"]
+    }
+  },
+  "default": {
+    "source": "no authored archetype: bounded generation only",
+    "first_day_at_async": [true, false],
+    "async_tenure": ["first_day", "weeks", "months", "years"],
+    "expedition_experience": ["none", "some"],
+    "complex_experience": ["none", "some"],
+    "nervousness": ["low"],
+    "anticipation": ["neutral"],
+    "confidence": ["unsure", "steady"]
+  },
+  "familiarity": {
+    "coworkers": "just_met",
+    "briefing_authority": "just_met",
+    "source": "briefing_authority.dialogue.dismissal ('get acquainted with the people at your table') and .intro (Maxwell introduces himself by name) establish that the Q4 assignees and Maxwell meet today."
+  }
+}

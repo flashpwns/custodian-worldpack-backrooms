@@ -67,7 +67,7 @@ function fieldExpedition(player, staffing = null, loadout = null, mission = null
     version: "yellow-beast-expedition@v3",
     id: "clear-q4-field-survey-alpha",
     title: "Clear-Q4 Field Survey Alpha",
-    team: { id: "clear-q4-survey-team", generation: staffing?.generation ?? { version: personnelGeneration.VERSION, seed, total: teamPeople.length }, members: teamPeople.map((person) => ({ id: person.identity, personnel_id: person.identity, identity: person.identity, first_name: person.first_name, last_name: person.last_name, display_name: person.display_name, role: person.role, clearance: person.clearance, status: "active", health: "uninjured", condition: "normal", contact_category: "NEARBY", observed_condition: "appears-normal", last_contact: "assigned", ...(person.archetype ? { archetype: person.archetype } : {}), ...(person.personality ? { personality: person.personality } : {}), ...(person.primary_task ? { primary_task: person.primary_task } : {}) })) },
+    team: { id: "clear-q4-survey-team", generation: staffing?.generation ?? { version: personnelGeneration.VERSION, seed, total: teamPeople.length }, members: teamPeople.map((person) => ({ id: person.identity, personnel_id: person.identity, identity: person.identity, first_name: person.first_name, last_name: person.last_name, display_name: person.display_name, role: person.role, clearance: person.clearance, status: "active", health: "uninjured", condition: "normal", contact_category: "NEARBY", observed_condition: "appears-normal", last_contact: "assigned", known_information: clone(person.known_information ?? []), ...(person.archetype ? { archetype: person.archetype } : {}), ...(person.personality ? { personality: person.personality } : {}), ...(person.primary_task ? { primary_task: person.primary_task } : {}) })) },
     mission: clone(assignedMission), mission_id: assignedMission.id,
     order: { issuer: "Standard", primary: assignedMission.objective.primary, constraints: assignedMission.objective.procedures, reporting: assignedMission.reporting.summary ?? "Transmit a check-in and retain evidence.", authority: "institutional-instruction-not-objective-truth" },
     equipment: loadout?.required ?? q4Equipment.expeditionEquipment(null, player),
@@ -76,7 +76,7 @@ function fieldExpedition(player, staffing = null, loadout = null, mission = null
     clock: { interval: 0, check_in_due_at: null, check_in_overdue: false, check_in_missed: false, check_in_completed_at: null, communication_ticks: 0 },
     operational: { version: "yellow-beast-operational-time@v1", clock: { interval: 0, check_in_due_at: null, check_in_overdue: false, check_in_missed: false, check_in_completed_at: null, communication_ticks: 0 }, events: [], event_history: [], cycle_history: [], evaluation_revision: 0, consequences: [], consequence_revision: 0 },
     radio: { version: "yellow-beast-q4-radio@v1", state: "unavailable", check_completed: false, authorized: false, last_transition: "expedition-created", last_delivery: null },
-    evidence: [], messages: [], interaction_history: [], deviations: [], history: [], facility_operations: { version:FACILITY_OPERATIONS_VERSION, events:[] }, outcome: null, result: null
+    evidence: [], messages: [], interaction_history: [], dialogue_history: [], deviations: [], history: [], facility_operations: { version:FACILITY_OPERATIONS_VERSION, events:[] }, outcome: null, result: null
   };
 }
 function event(expedition, kind, payload) { expedition.history.push({ sequence: expedition.history.length + 1, kind, payload: clone(payload) }); }

@@ -317,6 +317,28 @@ function validateInvariants(run) {
     }
   }
 
+  // 8. A direct-observation record made against an observation-authority
+  // feature id (the "kind:canonicalId" shape observation-authority.js
+  // writes, e.g. "landmark:old-console") must have a matching bucket entry
+  // in that observer's own run.observation_state. This only checks that the
+  // entry exists -- observation_state remains the sole authority on
+  // perception state itself, and the ledger never duplicates it. Free-text
+  // legacy/dialogue-authored targets (e.g. "environment") are not
+  // observation-authority feature ids and are left alone by this check.
+  const OBSERVATION_FEATURE_KINDS = new Set(["landmark", "object", "connection", "phenomenon", "personnel", "evidence"]);
+  for (const member of run.expedition?.team?.members ?? []) {
+    const id = member.personnel_id ?? member.id;
+    for (const item of member.known_information ?? []) {
+      if (item.source !== "direct-observation") continue;
+      const target = String(item.target ?? "");
+      const kind = target.slice(0, target.indexOf(":"));
+      if (!OBSERVATION_FEATURE_KINDS.has(kind)) continue;
+      if (!run.observation_state?.observers?.[id]?.features?.[target]) {
+        violations.push({ invariant: 8, code: "DIRECT_OBSERVATION_MISSING_OBSERVATION_STATE", message: `Direct observation ${target} for ${id} has no matching observation_state bucket entry` });
+      }
+    }
+  }
+
   const ok = violations.length === 0 && unverifiable.length === 0;
   const status = violations.length > 0 ? "FAIL" : (unverifiable.length > 0 ? "UNVERIFIABLE" : "PASS");
 
@@ -427,8 +449,8 @@ function clamp01(v) {
 function getCoworkerEmotionalState(run, memberId) {
   const member = getObserverMember(run, memberId);
   if (!member) return null;
-  member.emotional_state ??= { ...DEFAULT_EMOTIONAL_STATE };
-  return clone(member.emotional_state);
+  // A read never writes: compiling a context must not create canonical state as a side effect.
+  return clone(member.emotional_state ?? { ...DEFAULT_EMOTIONAL_STATE });
 }
 
 function updateCoworkerEmotionalState(run, memberId, updates = {}) {
@@ -441,6 +463,52 @@ function updateCoworkerEmotionalState(run, memberId, updates = {}) {
     }
   }
   return clone(member.emotional_state);
+}
+
+/**
+ * The ONE reading of canonical emotional state for dialogue: which dimensions have moved materially
+ * from the default, as plain phrases. Pure (never writes defaults onto the member). Both the
+ * observer-safe capsule and the response plan read this, so model and fallback say the same thing.
+ */
+function describeSelfState(member) {
+  const base = DEFAULT_EMOTIONAL_STATE;
+  const state = member?.emotional_state ?? null;
+  // Compared at the ledger's own 2-decimal precision (clamp01), so 0.35 vs 0.15 is a 0.20 move, not 0.1999...
+  const moved = (key) => state && typeof state[key] === "number" && Math.round(Math.abs(state[key] - base[key]) * 100) >= 20;
+  const affect = [];
+  if (moved("stress") && state.stress > base.stress) affect.push("tense and under some stress");
+  if (moved("urgency") && state.urgency > base.urgency) affect.push("feeling pressed for time");
+  if (moved("fatigue") && state.fatigue > base.fatigue) affect.push("tired");
+  if (moved("trust_player") && state.trust_player < base.trust_player) affect.push("guarded with PLAYER");
+  // The authored personhood baseline (a first-day hire's nerves) is canonical self-state too; an actual
+  // stress move already says it.
+  if (member?.personhood?.baseline?.nervousness === "elevated" && !affect.includes("tense and under some stress")) affect.push("a little nervous");
+  return Object.freeze({ state: affect.length ? "affected" : "ordinary", affect: Object.freeze(affect) });
+}
+
+// Deterministic affect writer interface. Only a canonical, simulation-classified event may move
+// emotional state, by a bounded, code-owned delta; language (player or model wording) never does.
+// No current gameplay system emits these yet: until one does, affect stays at its defaults and
+// every dialogue surface says the conversation is ordinary (fail closed).
+const AFFECT_EVENTS = Object.freeze({
+  prolonged_stress_exposure: Object.freeze({ stress: +0.25 }),
+  high_stress_event: Object.freeze({ stress: +0.35, urgency: +0.2 }),
+  physical_exertion: Object.freeze({ fatigue: +0.2 }),
+  injury: Object.freeze({ stress: +0.3, fatigue: +0.15 }),
+  rest: Object.freeze({ fatigue: -0.25, stress: -0.1 }),
+  successful_return: Object.freeze({ stress: -0.3, urgency: -0.2 }),
+  interpersonal_conflict_with_player: Object.freeze({ trust_player: -0.25, stress: +0.1 })
+});
+function applyAffectEvent(run, memberId, { kind, at = null, source = null } = {}) {
+  const delta = AFFECT_EVENTS[kind];
+  if (!delta) return { ok: false, code: "AFFECT_EVENT_UNKNOWN" };
+  if (typeof source !== "string" || !source.trim()) return { ok: false, code: "AFFECT_EVENT_SOURCE_REQUIRED" };
+  const member = getObserverMember(run, memberId);
+  if (!member) return { ok: false, code: "AFFECT_EVENT_MEMBER_UNKNOWN" };
+  const current = { ...DEFAULT_EMOTIONAL_STATE, ...(member.emotional_state ?? {}) };
+  const next = Object.fromEntries(Object.entries(delta).map(([key, change]) => [key, current[key] + change]));
+  const state = updateCoworkerEmotionalState(run, memberId, next);
+  return { ok: true, kind, at, source, emotional_state: state };
 }
 
 function formatCoworkerEmotionalSummary(emotionalState) {
@@ -499,6 +567,27 @@ function recordObservationMade(run, { observer, target, location, interval = nul
   });
 }
 
+// A custody change is a direct observation for everyone who was in a position to
+// see it (the parties and anyone standing in the same place). Each observer's OWN
+// known_information gets the record; nobody else's does, so custody that changes
+// out of sight stays unknown to them until they observe or are told.
+function recordCustodyObserved(run, { equipment_id, holder_id, from = null, observers = null, interval = null } = {}) {
+  const at = interval ?? run.expedition?.clock?.interval ?? 0;
+  const actorLocation = getPersonnelLocation(run, holder_id) ?? getPersonnelLocation(run, from);
+  const witnesses = new Set([holder_id, from].filter(Boolean));
+  for (const member of run.expedition?.team?.members ?? []) {
+    const id = member.personnel_id ?? member.id;
+    if (Array.isArray(observers) ? observers.includes(id) : (actorLocation && getPersonnelLocation(run, id) === actorLocation)) witnesses.add(id);
+  }
+  for (const id of witnesses) {
+    const member = getObserverMember(run, id);
+    if (!member) continue;
+    member.known_information ??= [];
+    member.known_information.push({ kind: "custody-observed", source: "direct-observation", equipment_id, holder_id, from, at, is_direct_witness: true });
+  }
+  return [...witnesses];
+}
+
 function recordRadioTransmission(run, { channel, sender, recipients = [], listeners = [], text = null, interval = null }) {
   return recordCausalTransition(run, {
     kind: "radio_transmission",
@@ -537,8 +626,13 @@ module.exports = {
   progressCoworkerTask,
   getCoworkerEmotionalState,
   updateCoworkerEmotionalState,
+  describeSelfState,
+  applyAffectEvent,
+  AFFECT_EVENTS,
   formatCoworkerEmotionalSummary,
   recordEquipmentTransfer,
+  recordCustodyObserved,
+  DEFAULT_EMOTIONAL_STATE,
   recordLocationEntered,
   recordObservationMade,
   recordRadioTransmission

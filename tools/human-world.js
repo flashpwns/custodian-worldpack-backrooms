@@ -59,7 +59,7 @@ const PROCEDURAL_GLUE = Object.freeze([
 
 function q4Context() {
   return {
-    background_presence: "Facility staff are working around the Threshold apparatus.",
+    background_presence: "Facility staff are working around the Threshold.",
     procedures: ["Inspect and document what you can actually observe.", "Use the available equipment and communicate only what you choose to transmit."],
     report_forms: ["Field observations can be transmitted; a transmitted report remains an account, not objective truth."]
   };

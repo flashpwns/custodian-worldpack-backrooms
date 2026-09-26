@@ -26,6 +26,7 @@ function createTestOpenerService(seed = "opener-geography-test") {
 async function advanceToFieldOperation(service, worldId) {
   service.createQ4Personnel({ world_id: worldId, first_name: "Thorne, Marcus" });
   service.startSession({ world_id: worldId, mode: "field-researcher", scenario: "day1-opener" });
+  service.submitAction({ world_id: worldId, mode: "field-researcher", action: "COMPLETE_BROADCAST" });
   service.submitAction({ world_id: worldId, mode: "field-researcher", action: "READY" }); // STAGING
   service.submitAction({ world_id: worldId, mode: "field-researcher", action: "PROCEED" }); // FACILITY_TRANSIT
   service.submitAction({ world_id: worldId, mode: "field-researcher", action: "APPROACH" }); // THRESHOLD
@@ -106,7 +107,7 @@ test("y92 — CQ4 Day 1 Opener: Procedural Geography, Outpost A Coordinates & Pr
       target: "placard",
     });
     assert.equal(inspectPlacard.ok, true);
-    assert.match(inspectPlacard.result.turn_status ?? inspectPlacard.result.public_reason, /A-SYNC OUTPOST A \/\/ BERMUDA BRANCH/);
+    assert.match(inspectPlacard.result.turn_status ?? inspectPlacard.result.public_reason, /ASYNC OUTPOST A \/\/ BERMUDA BRANCH/);
 
     const inspectTables = service.submitAction({
       world_id: world.id,
@@ -326,10 +327,14 @@ test("y92 — CQ4 Day 1 Opener: Surveillance Return, Written Report, and Demo Te
     assert.equal(reportSubmission.ok, true, "Written report accepted");
     assert.equal(entry.phase.phase_id, "DEBRIEF", "Transitions to DEBRIEF phase");
 
-    // 7. Check projection for demo_termination in DEBRIEF
+    // 7. Check projection for aeot_inspection and end_of_shift_notice in DEBRIEF
     const projection = service.projectionFor(world.id, "field-researcher");
-    assert.ok(projection.demo_termination, "demo_termination is present in projection");
-    assert.equal(projection.demo_termination.status_text, "NO FURTHER ASSIGNMENTS AVAILABLE");
+    assert.equal(projection.demo_termination, undefined, "Normal debrief must not set obsolete demo_termination");
+    assert.ok(projection.aeot_inspection, "aeot_inspection is present in projection");
+    assert.equal(projection.aeot_inspection.active, true);
+    assert.equal(projection.aeot_inspection.shift_status, "END OF SHIFT");
+    assert.ok(projection.end_of_shift_notice, "end_of_shift_notice is present in projection");
+    assert.equal(projection.end_of_shift_notice.title, "END OF SHIFT");
 
     // 8. Attempting to advance operations returns NO_FURTHER_ASSIGNMENTS
     const advanceAttempt = service.advanceQ4Operations({ world_id: world.id });

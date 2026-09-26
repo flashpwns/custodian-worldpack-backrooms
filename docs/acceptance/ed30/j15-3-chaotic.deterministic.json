@@ -1,0 +1,1974 @@
+[
+ {
+  "player": "Well this seems incredibly safe.",
+  "ms": 104,
+  "lines": [
+   {
+    "speaker": "Giselle",
+    "text": "Sure. Very comforting."
+   }
+  ],
+  "semantic": {
+   "address": {
+    "scope": "untargeted",
+    "to": []
+   },
+   "speech_act": "sarcasm",
+   "predicate": null,
+   "fn": "joke_or_sarcasm",
+   "cardinality": "one_spokesperson",
+   "temporal": null,
+   "clarify": false,
+   "owners": [
+    "Giselle"
+   ],
+   "requests": []
+  },
+  "sources": [
+   {
+    "speaker": "Giselle",
+    "source": "deterministic-fallback",
+    "accepted": false,
+    "rejection": "LOCAL_PROVIDER_UNAVAILABLE",
+    "detail": null,
+    "candidate": null,
+    "private_ok": true,
+    "responsive_ok": true
+   }
+  ]
+ },
+ {
+  "player": "Maxwell said the Complex is basically an aquarium.",
+  "ms": 105,
+  "lines": [
+   {
+    "speaker": "Malcolm",
+    "text": "Huh. If you say so."
+   }
+  ],
+  "semantic": {
+   "address": {
+    "scope": "untargeted",
+    "to": []
+   },
+   "speech_act": "statement",
+   "predicate": null,
+   "fn": "make_statement",
+   "cardinality": "one_spokesperson",
+   "temporal": null,
+   "clarify": false,
+   "owners": [
+    "Malcolm"
+   ],
+   "requests": []
+  },
+  "sources": [
+   {
+    "speaker": "Malcolm",
+    "source": "deterministic-fallback",
+    "accepted": false,
+    "rejection": "LOCAL_PROVIDER_UNAVAILABLE",
+    "detail": null,
+    "candidate": null,
+    "private_ok": true,
+    "responsive_ok": true
+   }
+  ]
+ },
+ {
+  "player": "Tonya, is that true?",
+  "ms": 107,
+  "lines": [
+   {
+    "speaker": "Tonya",
+    "text": "I couldn't tell you either way."
+   }
+  ],
+  "semantic": {
+   "address": {
+    "scope": "direct",
+    "to": [
+     "Tonya"
+    ]
+   },
+   "speech_act": "question",
+   "predicate": "conversation.claim_check",
+   "fn": "ask_predicate",
+   "cardinality": "one_spokesperson",
+   "temporal": null,
+   "clarify": false,
+   "owners": [
+    "Tonya"
+   ],
+   "requests": [
+    {
+     "predicate": "conversation.claim_check",
+     "state": "ANSWERED_UNKNOWN"
+    }
+   ]
+  },
+  "sources": [
+   {
+    "speaker": "Tonya",
+    "source": "deterministic-fallback",
+    "accepted": false,
+    "rejection": "LOCAL_PROVIDER_UNAVAILABLE",
+    "detail": null,
+    "candidate": null,
+    "private_ok": true,
+    "responsive_ok": true
+   }
+  ]
+ },
+ {
+  "player": "lol ok. Who has the camera?",
+  "ms": 116,
+  "lines": [
+   {
+    "speaker": "Giselle",
+    "text": "You've got the 35mm field camera."
+   }
+  ],
+  "semantic": {
+   "address": {
+    "scope": "untargeted",
+    "to": []
+   },
+   "speech_act": "question",
+   "predicate": "item.holder",
+   "fn": "ask_item_ownership",
+   "cardinality": "one_spokesperson",
+   "temporal": null,
+   "clarify": false,
+   "owners": [
+    "Giselle"
+   ],
+   "requests": [
+    {
+     "predicate": "item.holder",
+     "state": "SATISFIED"
+    }
+   ]
+  },
+  "sources": [
+   {
+    "speaker": "Giselle",
+    "source": "deterministic-fallback",
+    "accepted": false,
+    "rejection": "LOCAL_PROVIDER_UNAVAILABLE",
+    "detail": null,
+    "candidate": null,
+    "private_ok": true,
+    "responsive_ok": true
+   }
+  ]
+ },
+ {
+  "player": "No, I meant who has the duffle.",
+  "ms": 118,
+  "lines": [
+   {
+    "speaker": "Giselle",
+    "text": "Like I said, you've got the 35mm field camera."
+   }
+  ],
+  "semantic": {
+   "address": {
+    "scope": "direct",
+    "to": [
+     "Giselle"
+    ]
+   },
+   "speech_act": "repair",
+   "predicate": "item.holder",
+   "fn": "ask_item_ownership",
+   "cardinality": "one_spokesperson",
+   "temporal": null,
+   "clarify": false,
+   "owners": [
+    "Giselle"
+   ],
+   "requests": []
+  },
+  "sources": [
+   {
+    "speaker": "Giselle",
+    "source": "deterministic-fallback",
+    "accepted": false,
+    "rejection": "LOCAL_PROVIDER_UNAVAILABLE",
+    "detail": null,
+    "candidate": null,
+    "private_ok": true,
+    "responsive_ok": true
+   }
+  ]
+ },
+ {
+  "player": "Actually, forget that. Is it anyone's first day?",
+  "ms": 143,
+  "lines": [
+   {
+    "speaker": "Giselle",
+    "text": "Yeah, it's my first day."
+   },
+   {
+    "speaker": "Malcolm",
+    "text": "No, I've been with ASYNC a few weeks."
+   },
+   {
+    "speaker": "Tonya",
+    "text": "No, I've been with ASYNC for years."
+   }
+  ],
+  "semantic": {
+   "address": {
+    "scope": "group",
+    "to": [
+     "Giselle",
+     "Malcolm",
+     "Tonya"
+    ]
+   },
+   "speech_act": "question",
+   "predicate": "person.first_day_at_async",
+   "fn": "ask_predicate",
+   "cardinality": "each_self",
+   "temporal": "today",
+   "clarify": false,
+   "owners": [
+    "Giselle",
+    "Malcolm",
+    "Tonya"
+   ],
+   "requests": [
+    {
+     "predicate": "person.first_day_at_async",
+     "state": "SATISFIED"
+    }
+   ]
+  },
+  "sources": [
+   {
+    "speaker": "Giselle",
+    "source": "deterministic-fallback",
+    "accepted": false,
+    "rejection": "LOCAL_PROVIDER_UNAVAILABLE",
+    "detail": null,
+    "candidate": null,
+    "private_ok": true,
+    "responsive_ok": true
+   },
+   {
+    "speaker": "Malcolm",
+    "source": "deterministic-fallback",
+    "accepted": false,
+    "rejection": "LOCAL_PROVIDER_UNAVAILABLE",
+    "detail": null,
+    "candidate": null,
+    "private_ok": true,
+    "responsive_ok": true
+   },
+   {
+    "speaker": "Tonya",
+    "source": "deterministic-fallback",
+    "accepted": false,
+    "rejection": "LOCAL_PROVIDER_UNAVAILABLE",
+    "detail": null,
+    "candidate": null,
+    "private_ok": true,
+    "responsive_ok": true
+   }
+  ]
+ },
+ {
+  "player": "Malcolm, you've been here for years right?",
+  "ms": 135,
+  "lines": [
+   {
+    "speaker": "Malcolm",
+    "text": "I've been with ASYNC a few weeks."
+   }
+  ],
+  "semantic": {
+   "address": {
+    "scope": "direct",
+    "to": [
+     "Malcolm"
+    ]
+   },
+   "speech_act": "question",
+   "predicate": "person.async_tenure",
+   "fn": "ask_predicate",
+   "cardinality": "each_self",
+   "temporal": null,
+   "clarify": false,
+   "owners": [
+    "Malcolm"
+   ],
+   "requests": [
+    {
+     "predicate": "person.async_tenure",
+     "state": "SATISFIED"
+    }
+   ]
+  },
+  "sources": [
+   {
+    "speaker": "Malcolm",
+    "source": "deterministic-fallback",
+    "accepted": false,
+    "rejection": "LOCAL_PROVIDER_UNAVAILABLE",
+    "detail": null,
+    "candidate": null,
+    "private_ok": true,
+    "responsive_ok": true
+   }
+  ]
+ },
+ {
+  "player": "I heard Tonya has never been in the Complex.",
+  "ms": 147,
+  "lines": [
+   {
+    "speaker": "Giselle",
+    "text": "Huh. If you say so."
+   }
+  ],
+  "semantic": {
+   "address": {
+    "scope": "untargeted",
+    "to": []
+   },
+   "speech_act": "statement",
+   "predicate": null,
+   "fn": "make_statement",
+   "cardinality": "one_spokesperson",
+   "temporal": null,
+   "clarify": false,
+   "owners": [
+    "Giselle"
+   ],
+   "requests": []
+  },
+  "sources": [
+   {
+    "speaker": "Giselle",
+    "source": "deterministic-fallback",
+    "accepted": false,
+    "rejection": "LOCAL_PROVIDER_UNAVAILABLE",
+    "detail": null,
+    "candidate": null,
+    "private_ok": true,
+    "responsive_ok": true
+   }
+  ]
+ },
+ {
+  "player": "Tonya, have you?",
+  "ms": 146,
+  "lines": [
+   {
+    "speaker": "Tonya",
+    "text": "Yes, I've been in before."
+   }
+  ],
+  "semantic": {
+   "address": {
+    "scope": "direct",
+    "to": [
+     "Tonya"
+    ]
+   },
+   "speech_act": "elliptical_continuation",
+   "predicate": "person.complex_experience",
+   "fn": "ask_predicate",
+   "cardinality": "each_self_concise",
+   "temporal": "ever",
+   "clarify": false,
+   "owners": [
+    "Tonya"
+   ],
+   "requests": [
+    {
+     "predicate": "person.complex_experience",
+     "state": "SATISFIED"
+    }
+   ]
+  },
+  "sources": [
+   {
+    "speaker": "Tonya",
+    "source": "deterministic-fallback",
+    "accepted": false,
+    "rejection": "LOCAL_PROVIDER_UNAVAILABLE",
+    "detail": null,
+    "candidate": null,
+    "private_ok": true,
+    "responsive_ok": true
+   }
+  ]
+ },
+ {
+  "player": "Why?",
+  "ms": 155,
+  "lines": [
+   {
+    "speaker": "Tonya",
+    "text": "That's just my own history."
+   }
+  ],
+  "semantic": {
+   "address": {
+    "scope": "direct",
+    "to": [
+     "Tonya"
+    ]
+   },
+   "speech_act": "question",
+   "predicate": "conversation.explanation",
+   "fn": "ask_explanation",
+   "cardinality": "one_spokesperson",
+   "temporal": null,
+   "clarify": false,
+   "owners": [
+    "Tonya"
+   ],
+   "requests": [
+    {
+     "predicate": "conversation.explanation",
+     "state": "SATISFIED"
+    }
+   ]
+  },
+  "sources": [
+   {
+    "speaker": "Tonya",
+    "source": "deterministic-fallback",
+    "accepted": false,
+    "rejection": "LOCAL_PROVIDER_UNAVAILABLE",
+    "detail": null,
+    "candidate": null,
+    "private_ok": true,
+    "responsive_ok": true
+   }
+  ]
+ },
+ {
+  "player": "Hello?",
+  "ms": 154,
+  "lines": [
+   {
+    "speaker": "Malcolm",
+    "text": "Yes?"
+   }
+  ],
+  "semantic": {
+   "address": {
+    "scope": "untargeted",
+    "to": []
+   },
+   "speech_act": "attention_call",
+   "predicate": null,
+   "fn": "attend",
+   "cardinality": "one_spokesperson",
+   "temporal": null,
+   "clarify": false,
+   "owners": [
+    "Malcolm"
+   ],
+   "requests": []
+  },
+  "sources": [
+   {
+    "speaker": "Malcolm",
+    "source": "deterministic-fallback",
+    "accepted": false,
+    "rejection": "LOCAL_PROVIDER_UNAVAILABLE",
+    "detail": null,
+    "candidate": null,
+    "private_ok": true,
+    "responsive_ok": true
+   }
+  ]
+ },
+ {
+  "player": "Giselle?",
+  "ms": 159,
+  "lines": [
+   {
+    "speaker": "Giselle",
+    "text": "Today's my first day."
+   }
+  ],
+  "semantic": {
+   "address": {
+    "scope": "direct",
+    "to": [
+     "Giselle"
+    ]
+   },
+   "speech_act": "elliptical_continuation",
+   "predicate": "person.async_tenure",
+   "fn": "ask_predicate",
+   "cardinality": "each_self",
+   "temporal": null,
+   "clarify": false,
+   "owners": [
+    "Giselle"
+   ],
+   "requests": [
+    {
+     "predicate": "person.async_tenure",
+     "state": "SATISFIED"
+    }
+   ]
+  },
+  "sources": [
+   {
+    "speaker": "Giselle",
+    "source": "deterministic-fallback",
+    "accepted": false,
+    "rejection": "LOCAL_PROVIDER_UNAVAILABLE",
+    "detail": null,
+    "candidate": null,
+    "private_ok": true,
+    "responsive_ok": true
+   }
+  ]
+ },
+ {
+  "player": "Anyway, where are we going?",
+  "ms": 161,
+  "lines": [
+   {
+    "speaker": "Tonya",
+    "text": "Maxwell said the startup materials are going to Outpost A, Bermuda branch; that's the delivery. Right after this we report to Equipment Staging."
+   }
+  ],
+  "semantic": {
+   "address": {
+    "scope": "untargeted",
+    "to": []
+   },
+   "speech_act": "question",
+   "predicate": "mission.destination",
+   "fn": "ask_predicate",
+   "cardinality": "one_spokesperson",
+   "temporal": null,
+   "clarify": false,
+   "owners": [
+    "Tonya"
+   ],
+   "requests": [
+    {
+     "predicate": "mission.destination",
+     "state": "SATISFIED"
+    }
+   ]
+  },
+  "sources": [
+   {
+    "speaker": "Tonya",
+    "source": "deterministic-fallback",
+    "accepted": false,
+    "rejection": "LOCAL_PROVIDER_UNAVAILABLE",
+    "detail": null,
+    "candidate": null,
+    "private_ok": true,
+    "responsive_ok": true
+   }
+  ]
+ },
+ {
+  "player": "Can you even go in there?",
+  "ms": 164,
+  "lines": [
+   {
+    "speaker": "Tonya",
+    "text": "Yes. We're assigned to an expedition into the Complex."
+   }
+  ],
+  "semantic": {
+   "address": {
+    "scope": "direct",
+    "to": [
+     "Tonya"
+    ]
+   },
+   "speech_act": "question",
+   "predicate": "place.access",
+   "fn": "ask_predicate",
+   "cardinality": "one_spokesperson",
+   "temporal": null,
+   "clarify": false,
+   "owners": [
+    "Tonya"
+   ],
+   "requests": [
+    {
+     "predicate": "place.access",
+     "state": "SATISFIED"
+    }
+   ]
+  },
+  "sources": [
+   {
+    "speaker": "Tonya",
+    "source": "deterministic-fallback",
+    "accepted": false,
+    "rejection": "LOCAL_PROVIDER_UNAVAILABLE",
+    "detail": null,
+    "candidate": null,
+    "private_ok": true,
+    "responsive_ok": true
+   }
+  ]
+ },
+ {
+  "player": "The camera is broken, by the way.",
+  "ms": 172,
+  "lines": [
+   {
+    "speaker": "Malcolm",
+    "text": "Huh. If you say so."
+   }
+  ],
+  "semantic": {
+   "address": {
+    "scope": "untargeted",
+    "to": []
+   },
+   "speech_act": "statement",
+   "predicate": null,
+   "fn": "make_statement",
+   "cardinality": "one_spokesperson",
+   "temporal": null,
+   "clarify": false,
+   "owners": [
+    "Malcolm"
+   ],
+   "requests": []
+  },
+  "sources": [
+   {
+    "speaker": "Malcolm",
+    "source": "deterministic-fallback",
+    "accepted": false,
+    "rejection": "LOCAL_PROVIDER_UNAVAILABLE",
+    "detail": null,
+    "candidate": null,
+    "private_ok": true,
+    "responsive_ok": true
+   }
+  ]
+ },
+ {
+  "player": "Malcolm, is the camera broken?",
+  "ms": 174,
+  "lines": [
+   {
+    "speaker": "Malcolm",
+    "text": "I don't know what state it's in right now."
+   }
+  ],
+  "semantic": {
+   "address": {
+    "scope": "direct",
+    "to": [
+     "Malcolm"
+    ]
+   },
+   "speech_act": "question",
+   "predicate": "item.status",
+   "fn": "ask_entity_definition",
+   "cardinality": "one_spokesperson",
+   "temporal": null,
+   "clarify": false,
+   "owners": [
+    "Malcolm"
+   ],
+   "requests": [
+    {
+     "predicate": "item.status",
+     "state": "ANSWERED_UNKNOWN"
+    }
+   ]
+  },
+  "sources": [
+   {
+    "speaker": "Malcolm",
+    "source": "deterministic-fallback",
+    "accepted": false,
+    "rejection": "LOCAL_PROVIDER_UNAVAILABLE",
+    "detail": null,
+    "candidate": null,
+    "private_ok": true,
+    "responsive_ok": true
+   }
+  ]
+ },
+ {
+  "player": "How do you know?",
+  "ms": 179,
+  "lines": [
+   {
+    "speaker": "Malcolm",
+    "text": "Because nobody's told me."
+   }
+  ],
+  "semantic": {
+   "address": {
+    "scope": "direct",
+    "to": [
+     "Malcolm"
+    ]
+   },
+   "speech_act": "question",
+   "predicate": "conversation.explanation",
+   "fn": "ask_explanation",
+   "cardinality": "one_spokesperson",
+   "temporal": null,
+   "clarify": false,
+   "owners": [
+    "Malcolm"
+   ],
+   "requests": [
+    {
+     "predicate": "conversation.explanation",
+     "state": "SATISFIED"
+    }
+   ]
+  },
+  "sources": [
+   {
+    "speaker": "Malcolm",
+    "source": "deterministic-fallback",
+    "accepted": false,
+    "rejection": "LOCAL_PROVIDER_UNAVAILABLE",
+    "detail": null,
+    "candidate": null,
+    "private_ok": true,
+    "responsive_ok": true
+   }
+  ]
+ },
+ {
+  "player": "Who are you, again?",
+  "ms": 188,
+  "lines": [
+   {
+    "speaker": "Malcolm",
+    "text": "I'm Malcolm, a field technician. I'm delivering the startup materials."
+   }
+  ],
+  "semantic": {
+   "address": {
+    "scope": "direct",
+    "to": [
+     "Malcolm"
+    ]
+   },
+   "speech_act": "question",
+   "predicate": "person.self_description",
+   "fn": "invite_self_description",
+   "cardinality": "each_self",
+   "temporal": null,
+   "clarify": false,
+   "owners": [
+    "Malcolm"
+   ],
+   "requests": [
+    {
+     "predicate": "person.self_description",
+     "state": "SATISFIED"
+    }
+   ]
+  },
+  "sources": [
+   {
+    "speaker": "Malcolm",
+    "source": "deterministic-fallback",
+    "accepted": false,
+    "rejection": "LOCAL_PROVIDER_UNAVAILABLE",
+    "detail": null,
+    "candidate": null,
+    "private_ok": true,
+    "responsive_ok": true
+   }
+  ]
+ },
+ {
+  "player": "Not you, Tonya.",
+  "ms": 194,
+  "lines": [
+   {
+    "speaker": "Malcolm",
+    "text": "Right, that was me."
+   }
+  ],
+  "semantic": {
+   "address": {
+    "scope": "direct",
+    "to": [
+     "Malcolm"
+    ]
+   },
+   "speech_act": "social_acknowledgment",
+   "predicate": null,
+   "fn": "acknowledge",
+   "cardinality": "each_ack",
+   "temporal": null,
+   "clarify": false,
+   "owners": [
+    "Malcolm"
+   ],
+   "requests": []
+  },
+  "sources": [
+   {
+    "speaker": "Malcolm",
+    "source": "deterministic-fallback",
+    "accepted": false,
+    "rejection": "LOCAL_PROVIDER_UNAVAILABLE",
+    "detail": null,
+    "candidate": null,
+    "private_ok": true,
+    "responsive_ok": true
+   }
+  ]
+ },
+ {
+  "player": "whatever. how are you all",
+  "ms": 226,
+  "lines": [
+   {
+    "speaker": "Giselle",
+    "text": "Honestly, a little nervous."
+   },
+   {
+    "speaker": "Malcolm",
+    "text": "Can't complain."
+   },
+   {
+    "speaker": "Tonya",
+    "text": "I'm fine."
+   }
+  ],
+  "semantic": {
+   "address": {
+    "scope": "group",
+    "to": [
+     "Giselle",
+     "Malcolm",
+     "Tonya"
+    ]
+   },
+   "speech_act": "question",
+   "predicate": "person.wellbeing",
+   "fn": "check_in",
+   "cardinality": "each_self",
+   "temporal": "now",
+   "clarify": false,
+   "owners": [
+    "Giselle",
+    "Malcolm",
+    "Tonya"
+   ],
+   "requests": [
+    {
+     "predicate": "person.wellbeing",
+     "state": "SATISFIED"
+    }
+   ]
+  },
+  "sources": [
+   {
+    "speaker": "Giselle",
+    "source": "deterministic-fallback",
+    "accepted": false,
+    "rejection": "LOCAL_PROVIDER_UNAVAILABLE",
+    "detail": null,
+    "candidate": null,
+    "private_ok": true,
+    "responsive_ok": true
+   },
+   {
+    "speaker": "Malcolm",
+    "source": "deterministic-fallback",
+    "accepted": false,
+    "rejection": "LOCAL_PROVIDER_UNAVAILABLE",
+    "detail": null,
+    "candidate": null,
+    "private_ok": true,
+    "responsive_ok": true
+   },
+   {
+    "speaker": "Tonya",
+    "source": "deterministic-fallback",
+    "accepted": false,
+    "rejection": "LOCAL_PROVIDER_UNAVAILABLE",
+    "detail": null,
+    "candidate": null,
+    "private_ok": true,
+    "responsive_ok": true
+   }
+  ]
+ },
+ {
+  "player": "Excited?",
+  "ms": 209,
+  "lines": [
+   {
+    "speaker": "Giselle",
+    "text": "Honestly, a little nervous."
+   }
+  ],
+  "semantic": {
+   "address": {
+    "scope": "untargeted",
+    "to": []
+   },
+   "speech_act": "question",
+   "predicate": "person.anticipation",
+   "fn": "check_in",
+   "cardinality": "each_self",
+   "temporal": "now",
+   "clarify": false,
+   "owners": [
+    "Giselle"
+   ],
+   "requests": [
+    {
+     "predicate": "person.anticipation",
+     "state": "SATISFIED"
+    }
+   ]
+  },
+  "sources": [
+   {
+    "speaker": "Giselle",
+    "source": "deterministic-fallback",
+    "accepted": false,
+    "rejection": "LOCAL_PROVIDER_UNAVAILABLE",
+    "detail": null,
+    "candidate": null,
+    "private_ok": true,
+    "responsive_ok": true
+   }
+  ]
+ },
+ {
+  "player": "What did Giselle say earlier?",
+  "ms": 215,
+  "lines": [
+   {
+    "speaker": "Malcolm",
+    "text": "Giselle said the 35mm field camera was with you, and that it was their first day, and that they were a little nervous."
+   }
+  ],
+  "semantic": {
+   "address": {
+    "scope": "untargeted",
+    "to": []
+   },
+   "speech_act": "question",
+   "predicate": "conversation.reported_speech",
+   "fn": "ask_reported_speech",
+   "cardinality": "one_spokesperson",
+   "temporal": "earlier",
+   "clarify": false,
+   "owners": [
+    "Malcolm"
+   ],
+   "requests": [
+    {
+     "predicate": "conversation.reported_speech",
+     "state": "SATISFIED"
+    }
+   ]
+  },
+  "sources": [
+   {
+    "speaker": "Malcolm",
+    "source": "deterministic-fallback",
+    "accepted": false,
+    "rejection": "LOCAL_PROVIDER_UNAVAILABLE",
+    "detail": null,
+    "candidate": null,
+    "private_ok": true,
+    "responsive_ok": true
+   }
+  ]
+ },
+ {
+  "player": "That's not what I asked.",
+  "ms": 219,
+  "lines": [
+   {
+    "speaker": "Malcolm",
+    "text": "Giselle said the 35mm field camera was with you, and that it was their first day, and that they were a little nervous."
+   }
+  ],
+  "semantic": {
+   "address": {
+    "scope": "direct",
+    "to": [
+     "Malcolm"
+    ]
+   },
+   "speech_act": "repair",
+   "predicate": "conversation.reported_speech",
+   "fn": "ask_reported_speech",
+   "cardinality": "one_spokesperson",
+   "temporal": "earlier",
+   "clarify": false,
+   "owners": [
+    "Malcolm"
+   ],
+   "requests": []
+  },
+  "sources": [
+   {
+    "speaker": "Malcolm",
+    "source": "deterministic-fallback",
+    "accepted": false,
+    "rejection": "LOCAL_PROVIDER_UNAVAILABLE",
+    "detail": null,
+    "candidate": null,
+    "private_ok": true,
+    "responsive_ok": true
+   }
+  ]
+ },
+ {
+  "player": "Sure. Totally fine. We're all going to die.",
+  "ms": 111,
+  "lines": [],
+  "semantic": {
+   "address": {
+    "scope": "untargeted",
+    "to": []
+   },
+   "speech_act": "statement",
+   "predicate": null,
+   "fn": null,
+   "cardinality": null,
+   "temporal": null,
+   "clarify": false,
+   "owners": [],
+   "requests": []
+  },
+  "sources": []
+ },
+ {
+  "player": "Anyone know what the Threshold is?",
+  "ms": 234,
+  "lines": [
+   {
+    "speaker": "Tonya",
+    "text": "The Threshold is the fixed crossing between Standard and the Complex. It's part of the facility, not equipment anyone carries."
+   }
+  ],
+  "semantic": {
+   "address": {
+    "scope": "group",
+    "to": [
+     "Giselle",
+     "Malcolm",
+     "Tonya"
+    ]
+   },
+   "speech_act": "question",
+   "predicate": "place.definition",
+   "fn": "ask_entity_definition",
+   "cardinality": "one_knower",
+   "temporal": null,
+   "clarify": false,
+   "owners": [
+    "Tonya"
+   ],
+   "requests": [
+    {
+     "predicate": "place.definition",
+     "state": "SATISFIED"
+    }
+   ]
+  },
+  "sources": [
+   {
+    "speaker": "Tonya",
+    "source": "deterministic-fallback",
+    "accepted": false,
+    "rejection": "LOCAL_PROVIDER_UNAVAILABLE",
+    "detail": null,
+    "candidate": null,
+    "private_ok": true,
+    "responsive_ok": true
+   }
+  ]
+ },
+ {
+  "player": "What about Outpost A?",
+  "ms": 237,
+  "lines": [
+   {
+    "speaker": "Giselle",
+    "text": "All I know is the startup materials are going to Outpost A, Bermuda branch. Beyond that, nobody's told me."
+   }
+  ],
+  "semantic": {
+   "address": {
+    "scope": "untargeted",
+    "to": []
+   },
+   "speech_act": "elliptical_continuation",
+   "predicate": "place.definition",
+   "fn": "ask_entity_definition",
+   "cardinality": "one_spokesperson",
+   "temporal": null,
+   "clarify": false,
+   "owners": [
+    "Giselle"
+   ],
+   "requests": [
+    {
+     "predicate": "place.definition",
+     "state": "SATISFIED"
+    }
+   ]
+  },
+  "sources": [
+   {
+    "speaker": "Giselle",
+    "source": "deterministic-fallback",
+    "accepted": false,
+    "rejection": "LOCAL_PROVIDER_UNAVAILABLE",
+    "detail": null,
+    "candidate": null,
+    "private_ok": true,
+    "responsive_ok": true
+   }
+  ]
+ },
+ {
+  "player": "Tonya what's your deal",
+  "ms": 239,
+  "lines": [
+   {
+    "speaker": "Tonya",
+    "text": "I'm Tonya, a field medical doctor. I'm compiling the layout record."
+   }
+  ],
+  "semantic": {
+   "address": {
+    "scope": "direct",
+    "to": [
+     "Tonya"
+    ]
+   },
+   "speech_act": "question",
+   "predicate": "person.self_description",
+   "fn": "invite_self_description",
+   "cardinality": "each_self",
+   "temporal": null,
+   "clarify": false,
+   "owners": [
+    "Tonya"
+   ],
+   "requests": [
+    {
+     "predicate": "person.self_description",
+     "state": "SATISFIED"
+    }
+   ]
+  },
+  "sources": [
+   {
+    "speaker": "Tonya",
+    "source": "deterministic-fallback",
+    "accepted": false,
+    "rejection": "LOCAL_PROVIDER_UNAVAILABLE",
+    "detail": null,
+    "candidate": null,
+    "private_ok": true,
+    "responsive_ok": true
+   }
+  ]
+ },
+ {
+  "player": "Do you two know each other?",
+  "ms": 257,
+  "lines": [
+   {
+    "speaker": "Giselle",
+    "text": "No, we only met today."
+   },
+   {
+    "speaker": "Malcolm",
+    "text": "No, we'd never met before today."
+   }
+  ],
+  "semantic": {
+   "address": {
+    "scope": "subset",
+    "to": [
+     "Giselle",
+     "Malcolm"
+    ]
+   },
+   "speech_act": "question",
+   "predicate": "person.familiarity",
+   "fn": "ask_predicate",
+   "cardinality": "each_self",
+   "temporal": null,
+   "clarify": false,
+   "owners": [
+    "Giselle",
+    "Malcolm"
+   ],
+   "requests": [
+    {
+     "predicate": "person.familiarity",
+     "state": "SATISFIED"
+    }
+   ]
+  },
+  "sources": [
+   {
+    "speaker": "Giselle",
+    "source": "deterministic-fallback",
+    "accepted": false,
+    "rejection": "LOCAL_PROVIDER_UNAVAILABLE",
+    "detail": null,
+    "candidate": null,
+    "private_ok": true,
+    "responsive_ok": true
+   },
+   {
+    "speaker": "Malcolm",
+    "source": "deterministic-fallback",
+    "accepted": false,
+    "rejection": "LOCAL_PROVIDER_UNAVAILABLE",
+    "detail": null,
+    "candidate": null,
+    "private_ok": true,
+    "responsive_ok": true
+   }
+  ]
+ },
+ {
+  "player": "What does Maxwell do?",
+  "ms": 254,
+  "lines": [
+   {
+    "speaker": "Tonya",
+    "text": "He gave us this morning's assignment briefing. He's the Standard-side authority responsible for our assignment briefing."
+   }
+  ],
+  "semantic": {
+   "address": {
+    "scope": "untargeted",
+    "to": []
+   },
+   "speech_act": "question",
+   "predicate": "person.role",
+   "fn": "ask_person_identity",
+   "cardinality": "one_spokesperson",
+   "temporal": null,
+   "clarify": false,
+   "owners": [
+    "Tonya"
+   ],
+   "requests": [
+    {
+     "predicate": "person.role",
+     "state": "SATISFIED"
+    }
+   ]
+  },
+  "sources": [
+   {
+    "speaker": "Tonya",
+    "source": "deterministic-fallback",
+    "accepted": false,
+    "rejection": "LOCAL_PROVIDER_UNAVAILABLE",
+    "detail": null,
+    "candidate": null,
+    "private_ok": true,
+    "responsive_ok": true
+   }
+  ]
+ },
+ {
+  "player": "What did he say?",
+  "ms": 260,
+  "lines": [
+   {
+    "speaker": "Giselle",
+    "text": "Maxwell said I'm on observation and verbal recall, and that we were to get acquainted, then report to Equipment Staging, and that we report to Equipment Staging after the briefing."
+   }
+  ],
+  "semantic": {
+   "address": {
+    "scope": "untargeted",
+    "to": []
+   },
+   "speech_act": "question",
+   "predicate": "conversation.reported_speech",
+   "fn": "ask_reported_speech",
+   "cardinality": "one_spokesperson",
+   "temporal": "earlier",
+   "clarify": false,
+   "owners": [
+    "Giselle"
+   ],
+   "requests": [
+    {
+     "predicate": "conversation.reported_speech",
+     "state": "SATISFIED"
+    }
+   ]
+  },
+  "sources": [
+   {
+    "speaker": "Giselle",
+    "source": "deterministic-fallback",
+    "accepted": false,
+    "rejection": "LOCAL_PROVIDER_UNAVAILABLE",
+    "detail": null,
+    "candidate": null,
+    "private_ok": true,
+    "responsive_ok": true
+   }
+  ]
+ },
+ {
+  "player": "Okay, well that's that. What's next?",
+  "ms": 266,
+  "lines": [
+   {
+    "speaker": "Malcolm",
+    "text": "We report to Equipment Staging."
+   }
+  ],
+  "semantic": {
+   "address": {
+    "scope": "untargeted",
+    "to": []
+   },
+   "speech_act": "question",
+   "predicate": "procedure.next_incomplete_step",
+   "fn": "ask_next_step",
+   "cardinality": "one_spokesperson",
+   "temporal": null,
+   "clarify": false,
+   "owners": [
+    "Malcolm"
+   ],
+   "requests": [
+    {
+     "predicate": "procedure.next_incomplete_step",
+     "state": "SATISFIED"
+    }
+   ]
+  },
+  "sources": [
+   {
+    "speaker": "Malcolm",
+    "source": "deterministic-fallback",
+    "accepted": false,
+    "rejection": "LOCAL_PROVIDER_UNAVAILABLE",
+    "detail": null,
+    "candidate": null,
+    "private_ok": true,
+    "responsive_ok": true
+   }
+  ]
+ },
+ {
+  "player": "Are we all going?",
+  "ms": 272,
+  "lines": [
+   {
+    "speaker": "Tonya",
+    "text": "Yes, as far as I know. Maxwell told all of us to report to Equipment Staging."
+   }
+  ],
+  "semantic": {
+   "address": {
+    "scope": "group",
+    "to": [
+     "Giselle",
+     "Malcolm",
+     "Tonya"
+    ]
+   },
+   "speech_act": "question",
+   "predicate": "transition.participants",
+   "fn": "ask_predicate",
+   "cardinality": "one_spokesperson",
+   "temporal": null,
+   "clarify": false,
+   "owners": [
+    "Tonya"
+   ],
+   "requests": [
+    {
+     "predicate": "transition.participants",
+     "state": "SATISFIED"
+    }
+   ]
+  },
+  "sources": [
+   {
+    "speaker": "Tonya",
+    "source": "deterministic-fallback",
+    "accepted": false,
+    "rejection": "LOCAL_PROVIDER_UNAVAILABLE",
+    "detail": null,
+    "candidate": null,
+    "private_ok": true,
+    "responsive_ok": true
+   }
+  ]
+ },
+ {
+  "player": "I asked if we were all going there together.",
+  "ms": 273,
+  "lines": [
+   {
+    "speaker": "Tonya",
+    "text": "Like I said, yes, as far as I know. Maxwell told all of us to report to Equipment Staging."
+   }
+  ],
+  "semantic": {
+   "address": {
+    "scope": "direct",
+    "to": [
+     "Tonya"
+    ]
+   },
+   "speech_act": "repair",
+   "predicate": "transition.participants",
+   "fn": "ask_predicate",
+   "cardinality": "one_spokesperson",
+   "temporal": null,
+   "clarify": false,
+   "owners": [
+    "Tonya"
+   ],
+   "requests": []
+  },
+  "sources": [
+   {
+    "speaker": "Tonya",
+    "source": "deterministic-fallback",
+    "accepted": false,
+    "rejection": "LOCAL_PROVIDER_UNAVAILABLE",
+    "detail": null,
+    "candidate": null,
+    "private_ok": true,
+    "responsive_ok": true
+   }
+  ]
+ },
+ {
+  "player": "Is Tonya coming?",
+  "ms": 282,
+  "lines": [
+   {
+    "speaker": "Giselle",
+    "text": "As far as I know, yes. Maxwell told all of us to report to Equipment Staging."
+   }
+  ],
+  "semantic": {
+   "address": {
+    "scope": "untargeted",
+    "to": []
+   },
+   "speech_act": "question",
+   "predicate": "transition.participants",
+   "fn": "ask_predicate",
+   "cardinality": "one_spokesperson",
+   "temporal": null,
+   "clarify": false,
+   "owners": [
+    "Giselle"
+   ],
+   "requests": [
+    {
+     "predicate": "transition.participants",
+     "state": "SATISFIED"
+    }
+   ]
+  },
+  "sources": [
+   {
+    "speaker": "Giselle",
+    "source": "deterministic-fallback",
+    "accepted": false,
+    "rejection": "LOCAL_PROVIDER_UNAVAILABLE",
+    "detail": null,
+    "candidate": null,
+    "private_ok": true,
+    "responsive_ok": true
+   }
+  ]
+ },
+ {
+  "player": "Where is Maxwell?",
+  "ms": 290,
+  "lines": [
+   {
+    "speaker": "Malcolm",
+    "text": "He's not here now; he left after the briefing."
+   }
+  ],
+  "semantic": {
+   "address": {
+    "scope": "untargeted",
+    "to": []
+   },
+   "speech_act": "question",
+   "predicate": "person.presence",
+   "fn": "ask_person_identity",
+   "cardinality": "one_spokesperson",
+   "temporal": null,
+   "clarify": false,
+   "owners": [
+    "Malcolm"
+   ],
+   "requests": [
+    {
+     "predicate": "person.presence",
+     "state": "SATISFIED"
+    }
+   ]
+  },
+  "sources": [
+   {
+    "speaker": "Malcolm",
+    "source": "deterministic-fallback",
+    "accepted": false,
+    "rejection": "LOCAL_PROVIDER_UNAVAILABLE",
+    "detail": null,
+    "candidate": null,
+    "private_ok": true,
+    "responsive_ok": true
+   }
+  ]
+ },
+ {
+  "player": "You didn't answer me.",
+  "ms": 296,
+  "lines": [
+   {
+    "speaker": "Malcolm",
+    "text": "He's not here now; he left after the briefing."
+   }
+  ],
+  "semantic": {
+   "address": {
+    "scope": "direct",
+    "to": [
+     "Malcolm"
+    ]
+   },
+   "speech_act": "repair",
+   "predicate": "person.presence",
+   "fn": "ask_person_identity",
+   "cardinality": "one_spokesperson",
+   "temporal": null,
+   "clarify": false,
+   "owners": [
+    "Malcolm"
+   ],
+   "requests": []
+  },
+  "sources": [
+   {
+    "speaker": "Malcolm",
+    "source": "deterministic-fallback",
+    "accepted": false,
+    "rejection": "LOCAL_PROVIDER_UNAVAILABLE",
+    "detail": null,
+    "candidate": null,
+    "private_ok": true,
+    "responsive_ok": true
+   }
+  ]
+ },
+ {
+  "player": "Malcolm, what are you doing right now?",
+  "ms": 298,
+  "lines": [
+   {
+    "speaker": "Malcolm",
+    "text": "Next we report to Equipment Staging. Beyond that, nobody's told me."
+   }
+  ],
+  "semantic": {
+   "address": {
+    "scope": "direct",
+    "to": [
+     "Malcolm"
+    ]
+   },
+   "speech_act": "question",
+   "predicate": "person.current_activity",
+   "fn": "ask_current_action",
+   "cardinality": "each_self",
+   "temporal": "now",
+   "clarify": false,
+   "owners": [
+    "Malcolm"
+   ],
+   "requests": [
+    {
+     "predicate": "person.current_activity",
+     "state": "SATISFIED"
+    }
+   ]
+  },
+  "sources": [
+   {
+    "speaker": "Malcolm",
+    "source": "deterministic-fallback",
+    "accepted": false,
+    "rejection": "LOCAL_PROVIDER_UNAVAILABLE",
+    "detail": null,
+    "candidate": null,
+    "private_ok": true,
+    "responsive_ok": true
+   }
+  ]
+ },
+ {
+  "player": "Nice.",
+  "ms": 146,
+  "lines": [],
+  "semantic": {
+   "address": {
+    "scope": "untargeted",
+    "to": []
+   },
+   "speech_act": "social_acknowledgment",
+   "predicate": null,
+   "fn": null,
+   "cardinality": null,
+   "temporal": null,
+   "clarify": false,
+   "owners": [],
+   "requests": []
+  },
+  "sources": []
+ },
+ {
+  "player": "Giselle, how were you feeling earlier?",
+  "ms": 306,
+  "lines": [
+   {
+    "speaker": "Giselle",
+    "text": "Earlier, I was a little nervous."
+   }
+  ],
+  "semantic": {
+   "address": {
+    "scope": "direct",
+    "to": [
+     "Giselle"
+    ]
+   },
+   "speech_act": "question",
+   "predicate": "person.wellbeing",
+   "fn": "ask_predicate",
+   "cardinality": "each_self",
+   "temporal": "earlier",
+   "clarify": false,
+   "owners": [
+    "Giselle"
+   ],
+   "requests": [
+    {
+     "predicate": "person.wellbeing",
+     "state": "SATISFIED"
+    }
+   ]
+  },
+  "sources": [
+   {
+    "speaker": "Giselle",
+    "source": "deterministic-fallback",
+    "accepted": false,
+    "rejection": "LOCAL_PROVIDER_UNAVAILABLE",
+    "detail": null,
+    "candidate": null,
+    "private_ok": true,
+    "responsive_ok": true
+   }
+  ]
+ },
+ {
+  "player": "Hello?",
+  "ms": 303,
+  "lines": [
+   {
+    "speaker": "Tonya",
+    "text": "Yes?"
+   }
+  ],
+  "semantic": {
+   "address": {
+    "scope": "untargeted",
+    "to": []
+   },
+   "speech_act": "attention_call",
+   "predicate": null,
+   "fn": "attend",
+   "cardinality": "one_spokesperson",
+   "temporal": null,
+   "clarify": false,
+   "owners": [
+    "Tonya"
+   ],
+   "requests": []
+  },
+  "sources": [
+   {
+    "speaker": "Tonya",
+    "source": "deterministic-fallback",
+    "accepted": false,
+    "rejection": "LOCAL_PROVIDER_UNAVAILABLE",
+    "detail": null,
+    "candidate": null,
+    "private_ok": true,
+    "responsive_ok": true
+   }
+  ]
+ },
+ {
+  "player": "Giselle, how are you?",
+  "ms": 306,
+  "lines": [
+   {
+    "speaker": "Giselle",
+    "text": "Honestly, a little nervous."
+   }
+  ],
+  "semantic": {
+   "address": {
+    "scope": "direct",
+    "to": [
+     "Giselle"
+    ]
+   },
+   "speech_act": "question",
+   "predicate": "person.wellbeing",
+   "fn": "check_in",
+   "cardinality": "each_self",
+   "temporal": "now",
+   "clarify": false,
+   "owners": [
+    "Giselle"
+   ],
+   "requests": [
+    {
+     "predicate": "person.wellbeing",
+     "state": "SATISFIED"
+    }
+   ]
+  },
+  "sources": [
+   {
+    "speaker": "Giselle",
+    "source": "deterministic-fallback",
+    "accepted": false,
+    "rejection": "LOCAL_PROVIDER_UNAVAILABLE",
+    "detail": null,
+    "candidate": null,
+    "private_ok": true,
+    "responsive_ok": true
+   }
+  ]
+ },
+ {
+  "player": "Why?",
+  "ms": 322,
+  "lines": [
+   {
+    "speaker": "Giselle",
+    "text": "A little nervous. That's all."
+   }
+  ],
+  "semantic": {
+   "address": {
+    "scope": "direct",
+    "to": [
+     "Giselle"
+    ]
+   },
+   "speech_act": "question",
+   "predicate": "conversation.explanation",
+   "fn": "ask_explanation",
+   "cardinality": "one_spokesperson",
+   "temporal": null,
+   "clarify": false,
+   "owners": [
+    "Giselle"
+   ],
+   "requests": [
+    {
+     "predicate": "conversation.explanation",
+     "state": "SATISFIED"
+    }
+   ]
+  },
+  "sources": [
+   {
+    "speaker": "Giselle",
+    "source": "deterministic-fallback",
+    "accepted": false,
+    "rejection": "LOCAL_PROVIDER_UNAVAILABLE",
+    "detail": null,
+    "candidate": null,
+    "private_ok": true,
+    "responsive_ok": true
+   }
+  ]
+ },
+ {
+  "player": "Fair enough. What about Tonya?",
+  "ms": 324,
+  "lines": [
+   {
+    "speaker": "Tonya",
+    "text": "I'm fine."
+   }
+  ],
+  "semantic": {
+   "address": {
+    "scope": "direct",
+    "to": [
+     "Tonya"
+    ]
+   },
+   "speech_act": "elliptical_continuation",
+   "predicate": "person.wellbeing",
+   "fn": "check_in",
+   "cardinality": "each_self",
+   "temporal": "now",
+   "clarify": false,
+   "owners": [
+    "Tonya"
+   ],
+   "requests": [
+    {
+     "predicate": "person.wellbeing",
+     "state": "SATISFIED"
+    }
+   ]
+  },
+  "sources": [
+   {
+    "speaker": "Tonya",
+    "source": "deterministic-fallback",
+    "accepted": false,
+    "rejection": "LOCAL_PROVIDER_UNAVAILABLE",
+    "detail": null,
+    "candidate": null,
+    "private_ok": true,
+    "responsive_ok": true
+   }
+  ]
+ },
+ {
+  "player": "Have you done this before?",
+  "ms": 326,
+  "lines": [
+   {
+    "speaker": "Tonya",
+    "text": "Yes, I've been on expeditions before."
+   }
+  ],
+  "semantic": {
+   "address": {
+    "scope": "direct",
+    "to": [
+     "Tonya"
+    ]
+   },
+   "speech_act": "question",
+   "predicate": "person.expedition_experience",
+   "fn": "ask_predicate",
+   "cardinality": "each_self_concise",
+   "temporal": "ever",
+   "clarify": false,
+   "owners": [
+    "Tonya"
+   ],
+   "requests": [
+    {
+     "predicate": "person.expedition_experience",
+     "state": "SATISFIED"
+    }
+   ]
+  },
+  "sources": [
+   {
+    "speaker": "Tonya",
+    "source": "deterministic-fallback",
+    "accepted": false,
+    "rejection": "LOCAL_PROVIDER_UNAVAILABLE",
+    "detail": null,
+    "candidate": null,
+    "private_ok": true,
+    "responsive_ok": true
+   }
+  ]
+ },
+ {
+  "player": "I meant the Complex.",
+  "ms": 332,
+  "lines": [
+   {
+    "speaker": "Tonya",
+    "text": "Yes, I've been in before."
+   }
+  ],
+  "semantic": {
+   "address": {
+    "scope": "direct",
+    "to": [
+     "Tonya"
+    ]
+   },
+   "speech_act": "repair",
+   "predicate": "person.complex_experience",
+   "fn": "ask_predicate",
+   "cardinality": "each_self_concise",
+   "temporal": "ever",
+   "clarify": false,
+   "owners": [
+    "Tonya"
+   ],
+   "requests": [
+    {
+     "predicate": "person.complex_experience",
+     "state": "SATISFIED"
+    }
+   ]
+  },
+  "sources": [
+   {
+    "speaker": "Tonya",
+    "source": "deterministic-fallback",
+    "accepted": false,
+    "rejection": "LOCAL_PROVIDER_UNAVAILABLE",
+    "detail": null,
+    "candidate": null,
+    "private_ok": true,
+    "responsive_ok": true
+   }
+  ]
+ }
+]

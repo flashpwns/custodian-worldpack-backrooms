@@ -5,6 +5,7 @@
 const bootstrap = require("./run-bootstrap");
 const objectRuntime = require("./object-runtime");
 const environment = require("./q4-environment");
+const observationAuthority = require("./observation-authority");
 
 const VERSION = "yellow-beast-live-scene-packet@v1";
 const CONCLUSION_KINDS = new Set(["observer-conclusion", "established-conclusion"]);
@@ -35,10 +36,27 @@ function locationKnowledge(run, observerId, locationId) {
   return run.survey_frontier?.personnel?.[observerId]?.locations?.[locationId] ?? null;
 }
 
-function projectObjects(run, observerId, locationId) {
+// Sole gate for world-feature visibility in this file: observation-authority
+// owns run.observation_state exclusively, so every "is this feature visible
+// to this observer" question below is answered by consulting its projection,
+// never by re-deriving visibility from raw canonical state.
+function observationIndex(run, observerId) {
+  const entries = observationAuthority.projectFor(run, observerId, run._world ?? null);
+  return new Map(entries.map((item) => [item.featureId, item]));
+}
+
+function projectObjects(run, observerId, locationId, index = observationIndex(run, observerId)) {
   if (!run.object_state || !run.spatial_pack_id) return [];
   const definition = bootstrap.interactionDefinitionFor(run.spatial_pack_id);
+  const observedIds = new Set(Object.keys(run.object_state.objects ?? {})
+    .filter((id) => run.object_state.objects[id]?.location === locationId && index.has(`object:${id}`)));
+  const observedNames = new Set([...observedIds]
+    .map((id) => definition.objects.find((item) => item.id === id)?.display_name)
+    .filter(Boolean));
   return ordered(objectRuntime.projectLocation(run.object_state, definition, { observer:observerId, location:locationId })
+    // Unseen objects (no observation_state bucket entry for this observer)
+    // are omitted entirely, never surfaced as "unknown"/"hidden".
+    .filter((object) => observedNames.has(object.name))
     .map((object) => ({
       name:object.name,
       type:object.object_type,
@@ -72,10 +90,12 @@ function projectRecentEvents(run, observerId, locationId) {
     }));
 }
 
-function projectPersonnel(run, observerId, locationId) {
+function projectPersonnel(run, observerId, locationId, index = observationIndex(run, observerId)) {
   const knownStatus = run.spatial?.personnel_known_status ?? {};
   return ordered((run.expedition?.team?.members ?? [])
     .filter((member) => run.spatial?.personnel_locations?.[memberId(member)] === locationId)
+    // Unseen personnel (no observation_state bucket entry) are omitted.
+    .filter((member) => index.has(`personnel:${memberId(member)}`))
     .map((member) => {
       const id = memberId(member); const known = knownStatus[id] ?? {};
       return {
@@ -212,7 +232,7 @@ function projectCommunication(run, observerId, locationId) {
   return { local, standard:radio, recent_messages:messages };
 }
 
-function projectActionContext(run, observerId, location, objects, visiblePersonnel) {
+function projectActionContext(run, observerId, location, objects, visiblePersonnel, index = observationIndex(run, observerId)) {
   const held = ordered(Object.entries(run.expedition?.equipment ?? {}).filter(([, item]) => item.holder === observerId).map(([id, item]) => ({
     equipment_id:id,
     label:item.label ?? item.model ?? "Assigned equipment",
@@ -221,7 +241,8 @@ function projectActionContext(run, observerId, location, objects, visiblePersonn
     charges:item.charges ?? null
   })), (item) => item.equipment_id);
   const visibleTargets = ordered([
-    ...(location.landmarks ?? []).map((landmark) => landmark.name),
+    // Unseen landmarks (no observation_state bucket entry) are omitted.
+    ...(location.landmarks ?? []).filter((landmark) => index.has(`landmark:${landmark.id}`)).map((landmark) => landmark.name),
     ...objects.map((object) => object.name)
   ].filter(Boolean).map((label) => ({ label })), (target) => target.label);
   return {
@@ -248,9 +269,13 @@ function projectLiveScene(runValue, { observer_id:observerId } = {}) {
   if (!location) return failure("LIVE_SCENE_LOCATION_UNKNOWN", "The observer's authoritative location is unavailable.");
 
   const knownLocation = locationKnowledge(run, observerId, locationId);
-  const objects = projectObjects(run, observerId, locationId);
+  const index = observationIndex(run, observerId);
+  const objects = projectObjects(run, observerId, locationId, index);
   const events = projectRecentEvents(run, observerId, locationId);
-  const personnel = projectPersonnel(run, observerId, locationId);
+  const personnel = projectPersonnel(run, observerId, locationId, index);
+  const rememberedFeatures = ordered([...index.values()]
+    .filter((entry) => entry.present === false && ["landmark", "object", "personnel"].includes(entry.featureId.split(":")[0]))
+    .map((entry) => ({ feature_id:entry.featureId, kind:entry.featureId.split(":")[0], state:entry.state, present:false })), (item) => item.feature_id);
   const effective = environment.current(run.spatial.environment, locationId);
   const packet = {
     version:VERSION,
@@ -268,10 +293,11 @@ function projectLiveScene(runValue, { observer_id:observerId } = {}) {
     },
     visible_objects:objects,
     visible_personnel:personnel,
+    remembered_features:rememberedFeatures,
     recent_observable_events:events,
     observer_knowledge:projectObserverKnowledge(run, observerId, member),
     communication_context:projectCommunication(run, observerId, locationId),
-    available_action_context:projectActionContext(run, observerId, location, objects, personnel)
+    available_action_context:projectActionContext(run, observerId, location, objects, personnel, index)
   };
   return deepFreeze({ ok:true, packet });
 }
@@ -444,5 +470,6 @@ module.exports = {
   VERSION,
   projectLiveScene,
   projectObserverState,
-  validateNegativeConstraintsNoLeaks
+  validateNegativeConstraintsNoLeaks,
+  messageVisibleTo
 };
