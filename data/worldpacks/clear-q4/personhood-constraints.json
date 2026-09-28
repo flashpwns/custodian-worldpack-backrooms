@@ -31,7 +31,7 @@
       "confidence": ["unsure", "steady"]
     },
     "doctor-veteran": {
-      "source": "staffing.coworker_archetypes[2]: archetype doctor-veteran, personality veteran-doctor. DESIGN DECISION PENDING (owner): whether the veteran's prior experience includes Complex entries; 'some' is the generated default and may be overridden here.",
+      "source": "staffing.coworker_archetypes[2]: archetype doctor-veteran, personality veteran-doctor. OWNER DECISION 2026-09-27: SOME prior Complex experience (and therefore some expedition experience). No exact count, expedition history, anomaly history or specific prior event is established unless separately authored.",
       "first_day_at_async": [false],
       "async_tenure": ["years"],
       "expedition_experience": ["some"],

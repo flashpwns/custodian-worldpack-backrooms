@@ -1,7 +1,7 @@
 [
  {
   "player": "hey all",
-  "ms": 187,
+  "ms": 168,
   "lines": [
    {
     "speaker": "Giselle",
@@ -73,7 +73,7 @@
  },
  {
   "player": "first day for everyone",
-  "ms": 181,
+  "ms": 164,
   "lines": [
    {
     "speaker": "Giselle",
@@ -150,7 +150,7 @@
  },
  {
   "player": "giselle hows it going",
-  "ms": 126,
+  "ms": 115,
   "lines": [
    {
     "speaker": "Giselle",
@@ -195,7 +195,7 @@
  },
  {
   "player": "and u malcolm",
-  "ms": 125,
+  "ms": 114,
   "lines": [
    {
     "speaker": "Malcolm",
@@ -240,11 +240,11 @@
  },
  {
   "player": "tonya u been in there b4",
-  "ms": 132,
+  "ms": 118,
   "lines": [
    {
     "speaker": "Tonya",
-    "text": "Yes, I've been in before."
+    "text": "Sorry, where do you mean?"
    }
   ],
   "semantic": {
@@ -256,17 +256,17 @@
    },
    "speech_act": "question",
    "predicate": "person.complex_experience",
-   "fn": "ask_predicate",
+   "fn": "ambiguous_reference",
    "cardinality": "each_self_concise",
    "temporal": "ever",
-   "clarify": false,
+   "clarify": true,
    "owners": [
     "Tonya"
    ],
    "requests": [
     {
      "predicate": "person.complex_experience",
-     "state": "SATISFIED"
+     "state": "CLARIFYING"
     }
    ]
   },
@@ -285,11 +285,11 @@
  },
  {
   "player": "why",
-  "ms": 140,
+  "ms": 131,
   "lines": [
    {
     "speaker": "Tonya",
-    "text": "That's just my own history."
+    "text": "I wasn't sure what you meant."
    }
   ],
   "semantic": {
@@ -330,11 +330,11 @@
  },
  {
   "player": "malcolm same q",
-  "ms": 138,
+  "ms": 128,
   "lines": [
    {
     "speaker": "Malcolm",
-    "text": "No, never. I've never been in the Complex."
+    "text": "Sorry, where do you mean?"
    }
   ],
   "semantic": {
@@ -346,17 +346,17 @@
    },
    "speech_act": "elliptical_continuation",
    "predicate": "person.complex_experience",
-   "fn": "ask_predicate",
+   "fn": "ambiguous_reference",
    "cardinality": "each_self_concise",
    "temporal": "ever",
-   "clarify": false,
+   "clarify": true,
    "owners": [
     "Malcolm"
    ],
    "requests": [
     {
      "predicate": "person.complex_experience",
-     "state": "SATISFIED"
+     "state": "CLARIFYING"
     }
    ]
   },
@@ -375,7 +375,7 @@
  },
  {
   "player": "wheres maxwell",
-  "ms": 155,
+  "ms": 137,
   "lines": [
    {
     "speaker": "Giselle",
@@ -418,7 +418,7 @@
  },
  {
   "player": "who has teh camera",
-  "ms": 157,
+  "ms": 141,
   "lines": [
    {
     "speaker": "Giselle",
@@ -461,7 +461,7 @@
  },
  {
   "player": "whats the duffle for",
-  "ms": 162,
+  "ms": 145,
   "lines": [
    {
     "speaker": "Malcolm",
@@ -504,7 +504,7 @@
  },
  {
   "player": "where r we going",
-  "ms": 166,
+  "ms": 149,
   "lines": [
    {
     "speaker": "Tonya",
@@ -547,7 +547,7 @@
  },
  {
   "player": "why r we going",
-  "ms": 170,
+  "ms": 157,
   "lines": [
    {
     "speaker": "Giselle",
@@ -590,7 +590,7 @@
  },
  {
   "player": "we all going",
-  "ms": 180,
+  "ms": 163,
   "lines": [
    {
     "speaker": "Malcolm",
@@ -637,7 +637,7 @@
  },
  {
   "player": "ok",
-  "ms": 91,
+  "ms": 80,
   "lines": [],
   "semantic": {
    "address": {
@@ -657,7 +657,7 @@
  },
  {
   "player": "tonya tell me abt urself",
-  "ms": 218,
+  "ms": 200,
   "lines": [
    {
     "speaker": "Tonya",
@@ -702,7 +702,7 @@
  },
  {
   "player": "malcolm ur turn",
-  "ms": 184,
+  "ms": 170,
   "lines": [
    {
     "speaker": "Malcolm",
@@ -747,7 +747,7 @@
  },
  {
   "player": "giselle ur turn",
-  "ms": 188,
+  "ms": 178,
   "lines": [
    {
     "speaker": "Giselle",
@@ -792,7 +792,7 @@
  },
  {
   "player": "whats next",
-  "ms": 198,
+  "ms": 183,
   "lines": [
    {
     "speaker": "Tonya",
@@ -835,7 +835,7 @@
  },
  {
   "player": "wat did maxwell tell us to do",
-  "ms": 207,
+  "ms": 191,
   "lines": [
    {
     "speaker": "Malcolm",
@@ -878,7 +878,7 @@
  },
  {
   "player": "u nervous giselle",
-  "ms": 207,
+  "ms": 188,
   "lines": [
    {
     "speaker": "Giselle",
@@ -923,7 +923,7 @@
  },
  {
   "player": "how come",
-  "ms": 211,
+  "ms": 193,
   "lines": [
    {
     "speaker": "Giselle",
@@ -968,7 +968,7 @@
  },
  {
   "player": "hello",
-  "ms": 247,
+  "ms": 200,
   "lines": [
    {
     "speaker": "Giselle",
@@ -1006,7 +1006,7 @@
  },
  {
   "player": "what did tonya say",
-  "ms": 236,
+  "ms": 208,
   "lines": [
    {
     "speaker": "Malcolm",
@@ -1049,7 +1049,7 @@
  },
  {
   "player": "how do u know",
-  "ms": 233,
+  "ms": 207,
   "lines": [
    {
     "speaker": "Malcolm",
@@ -1094,7 +1094,7 @@
  },
  {
   "player": "excited malcolm",
-  "ms": 235,
+  "ms": 214,
   "lines": [
    {
     "speaker": "Malcolm",
@@ -1139,7 +1139,7 @@
  },
  {
   "player": "whens departure",
-  "ms": 252,
+  "ms": 225,
   "lines": [
    {
     "speaker": "Tonya",
@@ -1182,7 +1182,7 @@
  },
  {
   "player": "wat do u mean",
-  "ms": 260,
+  "ms": 230,
   "lines": [
    {
     "speaker": "Tonya",
@@ -1227,7 +1227,7 @@
  },
  {
   "player": "cool",
-  "ms": 125,
+  "ms": 115,
   "lines": [],
   "semantic": {
    "address": {
@@ -1247,7 +1247,7 @@
  },
  {
   "player": "tonya u know malcolm",
-  "ms": 254,
+  "ms": 231,
   "lines": [
    {
     "speaker": "Tonya",
@@ -1292,7 +1292,7 @@
  },
  {
   "player": "anyone been on an expedition b4",
-  "ms": 294,
+  "ms": 276,
   "lines": [
    {
     "speaker": "Giselle",
@@ -1369,7 +1369,7 @@
  },
  {
   "player": "giselle is it tonyas first day",
-  "ms": 273,
+  "ms": 254,
   "lines": [
    {
     "speaker": "Giselle",
@@ -1414,7 +1414,7 @@
  },
  {
   "player": "who is maxwell",
-  "ms": 284,
+  "ms": 260,
   "lines": [
    {
     "speaker": "Malcolm",
@@ -1457,7 +1457,7 @@
  },
  {
   "player": "wat does async do",
-  "ms": 287,
+  "ms": 338,
   "lines": [
    {
     "speaker": "Tonya",
@@ -1500,7 +1500,7 @@
  },
  {
   "player": "wheres equipment staging",
-  "ms": 303,
+  "ms": 273,
   "lines": [
    {
     "speaker": "Giselle",
@@ -1543,7 +1543,7 @@
  },
  {
   "player": "is the threshold dangerous",
-  "ms": 317,
+  "ms": 274,
   "lines": [
    {
     "speaker": "Malcolm",
@@ -1586,7 +1586,7 @@
  },
  {
   "player": "malcolm what do u do",
-  "ms": 300,
+  "ms": 277,
   "lines": [
    {
     "speaker": "Malcolm",
@@ -1631,7 +1631,7 @@
  },
  {
   "player": "nice",
-  "ms": 151,
+  "ms": 139,
   "lines": [],
   "semantic": {
    "address": {
@@ -1651,7 +1651,7 @@
  },
  {
   "player": "whos going to outpost a",
-  "ms": 314,
+  "ms": 300,
   "lines": [
    {
     "speaker": "Tonya",
@@ -1694,7 +1694,7 @@
  },
  {
   "player": "tonya how r u",
-  "ms": 312,
+  "ms": 281,
   "lines": [
    {
     "speaker": "Tonya",
@@ -1739,7 +1739,7 @@
  },
  {
   "player": "same q giselle",
-  "ms": 320,
+  "ms": 290,
   "lines": [
    {
     "speaker": "Giselle",
@@ -1784,7 +1784,7 @@
  },
  {
   "player": "thx",
-  "ms": 159,
+  "ms": 147,
   "lines": [],
   "semantic": {
    "address": {
@@ -1804,7 +1804,7 @@
  },
  {
   "player": "whats the camera for",
-  "ms": 335,
+  "ms": 302,
   "lines": [
    {
     "speaker": "Malcolm",

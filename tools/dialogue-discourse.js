@@ -553,7 +553,10 @@ const GENERIC = new Set(["record", "device", "field", "survey", "layout", "start
 function resolveEquipmentReferent(text, equipment = {}, { loose = false } = {}) {
   const normalized = String(text ?? "").toLowerCase().replace(/-/g, " ");
   const items = Object.entries(equipment ?? {}).map(([key, item]) => (item && typeof item === "object" ? (item.id ? item : { ...item, id: key }) : null)).filter(Boolean);
-  const phrases = (item) => [item.label, item.type, item.id].filter(Boolean).map((v) => String(v).toLowerCase().replace(/-/g, " "));
+  // Every contiguous 2+-word part of a label names the item too ("startup materials" for the "Startup
+  // materials duffle", "mass spectrometer" for the "Portable mass spectrometer"); a match must still be unique.
+  const subPhrases = (label) => { const w = label.split(/\s+/).filter(Boolean); const out = []; for (let i = 0; i < w.length; i += 1) for (let j = i + 2; j <= w.length; j += 1) out.push(w.slice(i, j).join(" ")); return out; };
+  const phrases = (item) => [...new Set([item.label, item.type, item.id].filter(Boolean).map((v) => String(v).toLowerCase().replace(/-/g, " ")).flatMap((p) => [p, ...subPhrases(p)]))];
   const hasPhrase = (p) => new RegExp(`(?:^|[^a-z0-9])${p.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}(?:$|[^a-z0-9])`).test(normalized);
   let matches = items.filter((item) => phrases(item).some(hasPhrase));
   if (matches.length === 0 && loose) {
@@ -1366,7 +1369,8 @@ function buildSemanticFrame({ text, recipient_type = "none", interpretation = nu
 
   // A question about an item's whereabouts/holder ("Is the camera here?", "Have you seen the radio?")
   // is an ownership question once the item resolves, whatever its surface form.
-  const custodyQuestion = isQuestion && LP.custody_predicate.test(raw) && LP.item_noun.test(raw) && ["ask_factual", "ask_personal_experience"].includes(fn);
+  // An item named by its own label ("the startup materials") counts like an item noun.
+  const custodyQuestion = isQuestion && LP.custody_predicate.test(raw) && (LP.item_noun.test(raw) || resolveEquipmentReferent(raw, equipment).status === "unique") && ["ask_factual", "ask_personal_experience"].includes(fn);
   // The single canonical item resolution for this utterance.
   const item = resolveEquipmentReferent(raw, equipment, { loose: fn === "ask_item_ownership" || fn === "make_request" || custodyQuestion || LP.handoff_request.test(raw) });
   if (item.status === "unique") {

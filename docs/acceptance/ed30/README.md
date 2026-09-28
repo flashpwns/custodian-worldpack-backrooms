@@ -42,3 +42,19 @@ The full developer-trace transcripts (JSONL, about 150 KB per session) are not c
   - It counts an unaddressed room question labelled "group" as correct when the pipeline records "untargeted".
   - It counts `each_self_concise` as `each_self`.
   - It counts separately the items where the corpus author expected a follow-up to go to the last speaker; the pipeline rotates those per ED-29.
+
+## Second held-out corpus (after the owner decisions of 2026-09-27)
+
+- **Corpus:** `heldout2-corpus-2026-09-27.spent.jsonl`, 341 items, SHA-256 `2b7c89915fac1975395638ea65f72dfbf533748a90d0e42b73d82349462f0de6`.
+  - Written blind by a fresh subagent. It had no access to the repository, the first corpus or any parser output. The owner decisions were given to it as labelling policy, along with explicit definitions for the two conventions the first corpus left ambiguous: "group" vs "untargeted", and follow-up routing.
+  - Hashed at 2026-09-27T23:57:05Z, before any parser change for the owner decisions (tree clean at `f7f762f`).
+  - **Measured exactly once** (2026-09-28T00:35:08Z), after all code changes and checks were final. Results: `heldout2-run.json`. **It is spent.**
+- **Instrument:** `tools/dialogue-eval.js`, the same as for the first corpus, which scores Tier 1 only. One change: the internal wording variant `each_self_concise` is scored as `each_self`.
+
+  | Speech act | Addressee | Predicate | Relation | Cardinality | Temporal | Question form | Clarify rate | Confident-wrong |
+  | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+  | 84.8 | 85.0 | 62.2 | 85.0 | 81.2 | 88.6 | 73.3 | 21.7 | 24.3 |
+
+- **The L2 gates are not met.** Two failure classes dominate (diagnosed after the measurement; nothing was tuned against it):
+  - **No Tier-1 predicate** for 94 of the 129 predicate misses. These are fresh phrasings and typos outside the registry cue table ("so whats the actual job here", "Who else is coming with us?", "ok so where do we reprot after this"). Most of them become unnecessary clarifications (57 over-clarifications). In the game, a line with no facet is sent to the constrained Tier-2 advisory. This instrument does not run Tier 2.
+  - **Follow-up fragments that question the reply's own words** ("Sealed how?", "Terrified of what?", "harder how", "even Maxwell?"). These are 26 of the 51 addressee misses. They are not recognised as follow-ups because the rule knows fixed fragments, anaphors and canonical names, not echoes of the reply.

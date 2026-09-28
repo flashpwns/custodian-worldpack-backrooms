@@ -109,7 +109,8 @@ function labelsFor(item, sc = scene()) {
   };
   const qf = { tag: "declarative" }[e?.question_form] ?? (["question", "elliptical_continuation", "repair", "attention_call"].includes(e?.speech_act) ? (e?.question_form ?? null) : null);
   const predicate = socialOnly || (e?.speech_act === "attention_call" && !e.request_text) || e?.repair?.vacuous ? null : (frame.predicate ?? null);
-  const card = socialOnly ? "none" : (frame.turn?.cardinality ?? e?.cardinality ?? "none");
+  // "each_self_concise" is a wording variant of each_self (a follow-up answered briefly), not a label.
+  const card = socialOnly ? "none" : ({ each_self_concise: "each_self" }[frame.turn?.cardinality ?? e?.cardinality] ?? frame.turn?.cardinality ?? e?.cardinality ?? "none");
   return { speech_act: speech, question_form: qf, addressee_kind: kindOf(), addressees: ids.map((id) => sc.nameOf(id)).filter(Boolean), predicate, discourse_relation: relation, cardinality: card, temporal_scope: predicate ? (frame.turn?.temporal_scope ?? null) : (e?.temporal_scope ?? null), should_clarify: clarify, _fn: frame.discourse_function, _missing: completeness.missing };
 }
 

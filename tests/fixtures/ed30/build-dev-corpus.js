@@ -32,7 +32,10 @@ const C = {
   PnM: { phase: "introductions", last_player_line: "Malcolm, where's the duffle going?", pending_unanswered_request: "Malcolm, where's the duffle going?" },
   XR2: { phase: "introductions", active_speaker: "Tonya", last_player_line: "Tonya, you first.", last_npc_line: "Yes, I've been in.", active_activity: "EXPERIENCE_ROUND", activity_done: ["Tonya"] },
   Hc: { phase: "introductions", active_speaker: "Giselle", last_player_line: "Who has the camera?", last_npc_line: "You've got it." },
-  Tw: { phase: "introductions", active_speaker: "Tonya", last_player_line: "Tonya, what's next?", last_npc_line: "We report to Equipment Staging." }
+  Tw: { phase: "introductions", active_speaker: "Tonya", last_player_line: "Tonya, what's next?", last_npc_line: "We report to Equipment Staging." },
+  // Owner decisions 2026-09-27 (follow-up routing, "there" antecedents): dev-only phrasings.
+  Mdf: { phase: "introductions", active_speaker: "Malcolm", last_player_line: "Who has the startup materials?", last_npc_line: "I have the startup materials, the duffle." },
+  TnC: { phase: "introductions", active_speaker: "Tonya", last_player_line: "Are you nervous about going into the Complex, Tonya?", last_npc_line: "Not especially." }
 };
 const ALL = ["Giselle", "Malcolm", "Tonya"];
 
@@ -47,8 +50,8 @@ const ROWS = [
   ["Good to hear!", "Gw", "social_acknowledgment", null, "untargeted", [], null, "new", "none", null, false],
   ["Interesting.", "Gcx", "social_acknowledgment", null, "untargeted", [], null, "new", "none", null, false],
   ["thanks", "Gi", "thanks", null, "untargeted", [], null, "new", "none", null, false],
-  ["Well, this seems incredibly safe.", "0", "sarcasm", null, "untargeted", [], null, "new", "one_spokesperson", null, false],
-  ["what could possibly go wrong lol", "0", "sarcasm", null, "untargeted", [], null, "new", "one_spokesperson", null, false],
+  ["Well, this seems incredibly safe.", "0", "sarcasm", null, "untargeted", [], null, "new", "none", null, false],
+  ["what could possibly go wrong lol", "0", "sarcasm", null, "untargeted", [], null, "new", "none", null, false],
   // first day / tenure
   ["Is it everyone's first day here, at Async, today? Or just myself.", "0", "question", "choice", "group", ALL, "person.first_day_at_async", "new", "each_self", "today", false],
   ["is this your first day tonya", "0", "question", "yes_no", "explicit", ["Tonya"], "person.first_day_at_async", "new", "each_self", "today", false],
@@ -60,14 +63,14 @@ const ROWS = [
   ["How long have you all been at ASYNC?", "0", "question", "wh", "group", ALL, "person.async_tenure", "new", "each_self", null, false],
   ["Is anyone else new, or is it just me?", "0", "question", "choice", "group", ALL, "person.first_day_at_async", "new", "each_self", null, false],
   // experience
-  ["So youve been there before? this, complex?", "Gcx", "question", "declarative", "inherited", ["Giselle"], "person.complex_experience", "continuation", "each_self_concise", "ever", false],
-  ["Have any of you been inside before?", "0", "question", "yes_no", "group", ALL, "person.complex_experience", "new", "each_self_concise", "ever", false],
-  ["Been in the Complex before, Tonya?", "0", "question", "declarative", "explicit", ["Tonya"], "person.complex_experience", "new", "each_self_concise", "ever", false],
-  ["Is this your first time going in, Malcolm?", "0", "question", "yes_no", "explicit", ["Malcolm"], "person.complex_experience", "new", "each_self_concise", "ever", false],
-  ["you done this before malcolm", "0", "question", "declarative", "explicit", ["Malcolm"], "person.expedition_experience", "new", "each_self_concise", "ever", false],
-  ["Have you ever been on an expedition, Giselle?", "0", "question", "yes_no", "explicit", ["Giselle"], "person.expedition_experience", "new", "each_self_concise", "ever", false],
-  ["I meant the Complex.", "Mx", "repair", null, "inherited", ["Malcolm"], "person.complex_experience", "repair", "each_self_concise", "ever", false],
-  ["Has anyone here been through the Threshold?", "0", "question", "yes_no", "group", ALL, "person.complex_experience", "new", "each_self_concise", "ever", false],
+  ["So youve been there before? this, complex?", "Gcx", "question", "declarative", "inherited", ["Giselle"], "person.complex_experience", "continuation", "each_self", "ever", false],
+  ["Have any of you been inside before?", "0", "question", "yes_no", "group", ALL, "person.complex_experience", "new", "each_self", "ever", false],
+  ["Been in the Complex before, Tonya?", "0", "question", "declarative", "explicit", ["Tonya"], "person.complex_experience", "new", "each_self", "ever", false],
+  ["Is this your first time going in, Malcolm?", "0", "question", "yes_no", "explicit", ["Malcolm"], "person.complex_experience", "new", "each_self", "ever", false],
+  ["you done this before malcolm", "0", "question", "declarative", "explicit", ["Malcolm"], "person.expedition_experience", "new", "each_self", "ever", false],
+  ["Have you ever been on an expedition, Giselle?", "0", "question", "yes_no", "explicit", ["Giselle"], "person.expedition_experience", "new", "each_self", "ever", false],
+  ["I meant the Complex.", "Mx", "repair", null, "inherited", ["Malcolm"], "person.complex_experience", "repair", "each_self", "ever", false],
+  ["Has anyone here been through the Threshold?", "0", "question", "yes_no", "group", ALL, "person.complex_experience", "new", "each_self", "ever", false],
   // wellbeing / feelings
   ["How are you doing this morning Giselle?", "0", "question", "wh", "explicit", ["Giselle"], "person.wellbeing", "new", "each_self", "now", false],
   ["Good to hear! How about you two, Malcolm, and Tonya?", "Gw", "elliptical_continuation", "wh", "explicit", ["Malcolm", "Tonya"], "person.wellbeing", "continuation", "each_self", "now", false],
@@ -95,7 +98,7 @@ const ROWS = [
   ["Giselle, you're up.", "Ti", "elliptical_continuation", null, "explicit", ["Giselle"], "person.self_description", "continuation", "each_self", null, false],
   ["I'd love to hear about you, Malcolm.", "0", "request", null, "explicit", ["Malcolm"], "person.self_description", "new", "each_self", null, false],
   ["Tonya, tell me about Malcolm.", "0", "request", null, "explicit", ["Tonya"], "person.identity", "new", "one_spokesperson", null, false],
-  ["Tonya told me about Malcolm.", "0", "statement", null, "untargeted", [], null, "new", "one_spokesperson", null, false],
+  ["Tonya told me about Malcolm.", "0", "statement", null, "untargeted", [], null, "new", "none", null, false],
   ["What do you do, Malcolm?", "0", "question", "wh", "explicit", ["Malcolm"], "person.current_assignment", "new", "each_self", null, false],
   ["Who is Maxwell?", "0", "question", "wh", "untargeted", [], "person.identity", "new", "one_spokesperson", null, false],
   ["who's kirk anyway", "0", "question", "wh", "untargeted", [], "person.identity", "new", "one_spokesperson", null, false],
@@ -142,7 +145,7 @@ const ROWS = [
   ["What is the Threshold?", "0", "question", "wh", "untargeted", [], "place.definition", "new", "one_spokesperson", null, false],
   ["Is the Threshold on right now?", "0", "question", "yes_no", "untargeted", [], "place.status", "new", "one_spokesperson", "now", false],
   ["What does ASYNC actually do?", "0", "question", "wh", "untargeted", [], "institution.purpose", "new", "one_spokesperson", null, false],
-  ["Have you been there?", "Md", "question", "yes_no", "inherited", ["Malcolm"], "person.complex_experience", "continuation", "each_self_concise", "ever", false],
+  ["Have you been there?", "Md", "question", "yes_no", "inherited", ["Malcolm"], "person.complex_experience", "continuation", "each_self", "ever", false],
   ["What is there?", "Md", "question", "wh", "inherited", ["Malcolm"], "place.definition", "continuation", "one_spokesperson", null, false],
   // meta
   ["What did you mean by \"verbal recall\"?", "Gi", "question", "wh", "inherited", ["Giselle"], "conversation.meaning_of", "continuation", "one_spokesperson", "earlier", false],
@@ -166,21 +169,21 @@ const ROWS = [
   // repairs with fillers / group repairs / exclusion by name
   ["Oops, I meant Tonya", "MfD", "repair", null, "explicit", ["Tonya"], "person.first_day_at_async", "repair", "each_self", "today", false],
   ["I was actually asking all of you", "Tf", "repair", null, "group", ALL, "person.wellbeing", "repair", "each_self", "now", false],
-  ["That one was meant for everybody", "MxC", "repair", null, "group", ALL, "person.complex_experience", "repair", "each_self_concise", "ever", false],
+  ["That one was meant for everybody", "MxC", "repair", null, "group", ALL, "person.complex_experience", "repair", "each_self", "ever", false],
   ["I didn't ask you, Giselle", "GdM", "repair", null, "explicit", ["Malcolm"], "item.contents", "repair", "one_spokesperson", null, false],
   ["Tonya, I meant", "MfD", "repair", null, "explicit", ["Tonya"], "person.first_day_at_async", "repair", "each_self", "today", false],
-  ["that isn't really an answer", "MxC", "repair", null, "inherited", ["Malcolm"], "person.complex_experience", "repair", "each_self_concise", "ever", false],
+  ["that isn't really an answer", "MxC", "repair", null, "inherited", ["Malcolm"], "person.complex_experience", "repair", "each_self", "ever", false],
   // attention with a pending question
   ["Earth to Malcolm", "PnM", "attention_call", null, "explicit", ["Malcolm"], "item.destination", "attention", "one_spokesperson", null, false],
   ["You there, Malcolm?", "PnM", "attention_call", null, "explicit", ["Malcolm"], "item.destination", "attention", "one_spokesperson", null, false],
   ["Can I have everyone's attention?", "0", "attention_call", null, "untargeted", [], null, "attention", "one_spokesperson", null, false],
   // round-taking / item / sequence / challenge ellipsis
-  ["You next, Malcolm", "XR2", "elliptical_continuation", null, "explicit", ["Malcolm"], "person.complex_experience", "continuation", "each_self_concise", "ever", false],
-  ["And the lamp?", "Hc", "elliptical_continuation", "wh", "untargeted", [], "item.holder", "continuation", "one_spokesperson", null, false],
-  ["the spectrometer too?", "Hc", "elliptical_continuation", "wh", "untargeted", [], "item.holder", "continuation", "one_spokesperson", null, false],
+  ["You next, Malcolm", "XR2", "elliptical_continuation", null, "explicit", ["Malcolm"], "person.complex_experience", "continuation", "each_self", "ever", false],
+  ["And the lamp?", "Hc", "elliptical_continuation", "wh", "inherited", ["Giselle"], "item.holder", "continuation", "one_spokesperson", null, false],
+  ["the spectrometer too?", "Hc", "elliptical_continuation", "wh", "inherited", ["Giselle"], "item.holder", "continuation", "one_spokesperson", null, false],
   ["and after that?", "Tw", "elliptical_continuation", "wh", "inherited", ["Tonya"], "procedure.next_incomplete_step", "continuation", "one_spokesperson", null, false],
   ["not even a bit?", "Tn", "elliptical_continuation", "wh", "inherited", ["Tonya"], "person.nervousness", "continuation", "each_self", "now", false],
-  ["I've been in the Complex before. Have you, Giselle?", "0", "elliptical_continuation", "wh", "explicit", ["Giselle"], "person.complex_experience", "continuation", "each_self_concise", "ever", false],
+  ["I've been in the Complex before. Have you, Giselle?", "0", "elliptical_continuation", "wh", "explicit", ["Giselle"], "person.complex_experience", "continuation", "each_self", "ever", false],
   // lexical coverage (items, route, schedule, presence, activity, opinion, institution, indirect wrappers)
   ["Does anybody have the lamp?", "0", "question", "yes_no", "group", ALL, "item.holder", "new", "one_knower", null, false],
   ["Whose camera is this?", "0", "question", "wh", "untargeted", [], "item.holder", "new", "one_spokesperson", null, false],
@@ -194,10 +197,21 @@ const ROWS = [
   ["somebody tell me when we leave", "0", "question", "indirect", "group", ALL, "mission.schedule", "new", "one_knower", null, false],
   ["Now what?", "0", "question", "wh", "untargeted", [], "procedure.next_incomplete_step", "new", "one_spokesperson", "now", false],
   // sarcasm / farewell / thanks
-  ["Oh great, a broken lamp.", "0", "sarcasm", null, "untargeted", [], null, "new", "one_spokesperson", null, false],
-  ["Love how nobody explains anything.", "0", "sarcasm", null, "untargeted", [], null, "new", "one_spokesperson", null, false],
+  ["Oh great, a broken lamp.", "0", "sarcasm", null, "untargeted", [], null, "new", "none", null, false],
+  ["Love how nobody explains anything.", "0", "sarcasm", null, "untargeted", [], null, "new", "none", null, false],
   ["See you all later", "0", "farewell", null, "group", ALL, null, "new", "each_ack", null, false],
-  ["Thanks Tonya", "Tf", "thanks", null, "explicit", ["Tonya"], null, "new", "none", null, false]
+  ["Thanks Tonya", "Tf", "thanks", null, "explicit", ["Tonya"], null, "new", "none", null, false],
+  // owner decision 1: genuine follow-ups inherit the answerer; fresh shared questions stay untargeted
+  ["whats in it", "Mdf", "question", "wh", "inherited", ["Malcolm"], "item.contents", "continuation", "one_spokesperson", null, false],
+  ["and what's it for?", "Hc", "question", "wh", "inherited", ["Giselle"], "item.purpose", "continuation", "one_spokesperson", null, false],
+  ["How far away is Outpost A?", "Md", "question", "wh", "inherited", ["Malcolm"], "mission.route", "continuation", "one_spokesperson", null, false],
+  ["Okay. What's next?", "Gw", "question", "wh", "untargeted", [], "procedure.next_incomplete_step", "new", "one_spokesperson", null, false],
+  // owner decision 2: remarks require no response, addressed or not
+  ["Tonya, this room gives me the creeps.", "0", "statement", null, "explicit", ["Tonya"], null, "new", "none", null, false],
+  // owner decision 4: "there" needs an active place antecedent
+  ["Have you been there before?", "0", "question", "yes_no", "untargeted", [], "person.complex_experience", "new", "each_self", "ever", true],
+  ["Have you been there before?", "Gw", "question", "yes_no", "inherited", ["Giselle"], "person.complex_experience", "continuation", "each_self", "ever", true],
+  ["have you been there before though", "TnC", "question", "yes_no", "inherited", ["Tonya"], "person.complex_experience", "continuation", "each_self", "ever", false]
 ];
 
 const lines = ROWS.map(([utterance, ctx, speech_act, question_form, addressee_kind, addressees, predicate, discourse_relation, cardinality, temporal_scope, should_clarify], i) => JSON.stringify({ id: `d${String(i + 1).padStart(3, "0")}`, context: C[ctx], utterance, expected: { speech_act, question_form, addressee_kind, addressees, predicate, discourse_relation, cardinality, temporal_scope, should_clarify } }));

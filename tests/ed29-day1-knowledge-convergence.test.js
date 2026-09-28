@@ -459,9 +459,12 @@ test("fairness — untargeted shared questions rotate to the least-recently-spok
   const state = setup("ed29-fair", garbage());
   try {
     const owners = [];
-    for (const text of ["What are we doing today?", "Where do we go next?", "What is the Threshold?", "What's LOCAL?", "What does ASYNC do?", "What is the Complex?"]) owners.push(...(await turn(state, text)).owners);
+    for (const text of ["What are we doing today?", "Where do we go next?", "What is the Threshold?", "What's LOCAL?", "What does ASYNC do?"]) owners.push(...(await turn(state, text)).owners);
     assert.ok(new Set(owners).size >= 3, `spokespeople rotate: ${owners}`);
     for (let i = 1; i < owners.length; i += 1) assert.notEqual(owners[i], owners[i - 1], "the same coworker does not answer twice running without a semantic reason");
+    // Owner decision (2026-09-27): a genuine follow-up is not rotated. The ASYNC answer named the Complex;
+    // asking what that is picks up that reply, so its speaker answers.
+    assert.deepEqual((await turn(state, "What is the Complex?")).owners, [owners.at(-1)], "a follow-up to a reply stays with its speaker");
     // Pure policy: least recently spoken, ties in canonical order; no model input.
     assert.equal(I.spokesperson([{ id: "a", last_spoke_seq: 5 }, { id: "b", last_spoke_seq: 2 }, { id: "c", last_spoke_seq: 9 }]).id, "b");
     assert.equal(I.spokesperson([{ id: "a", last_spoke_seq: -1 }, { id: "b", last_spoke_seq: -1 }]).id, "a");

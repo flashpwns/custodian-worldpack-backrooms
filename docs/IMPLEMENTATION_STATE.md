@@ -1,5 +1,43 @@
 # Yellow Beast Implementation State
 
+## ED-30 follow-up: owner decisions applied + fresh held-out measurement — 2026-09-27
+
+- **Owner decisions (2026-09-27), applied at the lowest correct authority:**
+  1. **Follow-up routing** (`tools/dialogue-turn.js`, `resolveAddressee` / `isFollowUp`). Responder priority: explicit addressee > repair target > owner of the semantic antecedent (last substantive speaker) > active activity target > knowledgeable eligible responder > least-recently-spoken rotation.
+     - A genuine follow-up inherits its responder and is never rotated. A follow-up is an anaphor ("What's in it?"), a reply-questioning fragment ("Since when?", "How far?") or a thing the reply's authorized facts named. "What about X?" topic ellipsis also inherits.
+     - Only fresh untargeted shared questions rotate.
+     - Salience reads the replies' **authorized facts, never their wording**. An earlier draft read the wording, and the provider-independence test (ed28) caught it: semantics changed with the wording provider.
+  2. **Remarks and sarcasm** (`tools/dialogue-interpretation.js`, `cardinalityFor`). Cardinality is `none`, and an untargeted or group remark gets silence.
+     - A remark addressed to someone by name gets that person's one short acknowledgment.
+     - The authored beat-scoped "I'm so tired" / "long day" exception keeps one listener (pinned by y111).
+     - A previously failing y80 test ("…without forcing multiple replies") now passes.
+  3. **Tonya's prior Complex experience is SOME** (`data/worldpacks/clear-q4/personhood-constraints.json`, now marked as the owner's decision). No count, expedition history, anomaly history or specific event is established. The existing precision and backstory validators enforce this.
+  4. **"There"** resolves only to a place the exchange made active. That includes the player's own previous question, and a place named earlier in the same line ("What about Outpost A? Been there?"). With no such place it is clarified. The old "any anchor ⇒ the Complex" default is removed. "Going in" / "inside" still mean the Complex; "in there" needs an antecedent.
+  5. **Genders are not established.** No change: he/she for a coworker is rejected.
+  6. **Unsettled place history** keeps "I couldn't say for sure." No change.
+- **Independent defects fixed along the way** (found by probing and by the metamorphic test, before the measurement):
+  - "Who has the startup materials?" asked "which thing?", and later answered "I don't know". This already happened at HEAD. Items now resolve by any 2+-word part of their label, and a label-named item counts as a custody question.
+  - "what is it for" was misread as a facet repair; the repair reading now needs "No, …".
+  - A bare "Been there?" had no predicate cue.
+- **Tests:**
+  - New `tests/ed30e-owner-decisions.test.js` (7 tests) pins all six decisions through the production service.
+  - Updated expectations with owner-decision comments: ed2, ed26, ed29 (the fairness test now separates fresh questions from a follow-up).
+  - Dev corpus relabelled to the decisions; 151 items, 100%.
+- **Fresh held-out corpus:** 341 items, SHA-256 `2b7c8991…0de6`. Written blind by a new subagent and hashed before any parser change. Measured once, after all checks.
+
+  | Speech act | Addressee | Predicate | Relation | Cardinality | Temporal | Question form | Clarify rate | Confident-wrong |
+  | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+  | 84.8 | 85.0 | 62.2 | 85.0 | 81.2 | 88.6 | 73.3 | 21.7 | 24.3 |
+
+  **The L2 gates are not met.**
+  - Root causes: 94 fresh phrasings that no Tier-1 registry cue matches (the instrument does not run the Tier-2 advisory, which production uses for exactly these gaps), and 26 follow-up fragments that question the reply's words.
+  - The corpus is spent (`docs/acceptance/ed30/heldout2-*`). Nothing was tuned against it.
+- **Other checks:**
+  - Fuzz: 3,000 turns (seed 30027; garbage, fallback and leaky providers), 0 violations.
+  - Real model J15, re-run: 149 turns. 0 semantic mismatches, 0 private-state claims, 0 nonresponsive lines, 0 dropped questions.
+  - Full suite: 176 files, 1,426 tests, 1,350 pass, 76 fail. No new failures; the 76 are the existing set minus y80 #9.
+  - Inventory: 57 existing errors.
+
 ## ED-30 Compositional Conversation, Dialogue Information State & Personhood Convergence — 2026-09-26
 
 - **Architecture: one turn pipeline.** Every LOCAL line now goes through the same staged pipeline, with the legacy frame builder kept as input:
@@ -24,10 +62,10 @@
   - **Inverted and count questions.** Inverted questions ("Is this your first time?") and count questions are answered correctly.
   - **Tier 2 fills only real gaps.** The Tier-2 advisory (v2, constrained JSON schema) may fill only gaps that Tier 1 reports, and only from spans the player actually typed.
   - **Provider independence.** Tested by semantic digest across fallback, garbage, throwing, scripted and leaky providers.
-- **Owner decisions made fail-closed and recorded for review:**
+- **Fail-closed defaults at the time** (superseded where the owner decided on 2026-09-27; see the follow-up entry above):
   - Veteran-doctor prior Complex/expedition experience: a generated "some" band, overridable in data.
   - Acquaintance is complete when every coworker has introduced themself, or when the player closes the round.
-  - "There" defaults to the Complex only for experience questions, and only once the conversation has an anchor.
+  - "There" defaulted to the Complex for experience questions once the conversation had any anchor (replaced: it now needs an active place).
   - Coworker gender is not established. Lines use names or "they"; he/she for a coworker is rejected.
   - The wording for a place history the profile does not settle is "I couldn't say for sure."
 - **Tooling:**
@@ -59,12 +97,7 @@
   - **Independent reviews:** two rounds. All blocking findings fixed and pinned.
   - **Full suite, per file:** 175 files, 1,419 tests, 1,342 pass, 77 fail. The baseline was 171 files, 1,361 tests, 1,284 pass, 77 fail, and the 77 failing tests are the identical pre-existing set. The verification inventory is back to its 57 pre-existing errors; ED-30 added none.
   - **Performance:** Tier 1 costs 0.21 / 0.35 ms (p50/p90). Per-turn persistence cost grows with conversation length because the whole save is cloned and hashed on every persist. This is pre-existing and flagged for a separate incremental-persistence pass.
-- **Design decisions needed from the owner.** Each is recorded here and implemented fail-closed until decided.
-  1. **Follow-up routing.** Untargeted follow-ups currently rotate to the least-recently-spoken knower (ED-29 fairness). The blind corpus author expected them to go to the person who just spoke, and 26 held-out items differ on this alone.
-  2. **Acknowledging remarks.** Should ordinary remarks and sarcasm get one short acknowledgment (current behaviour) or silence (the blind author's reading)?
-  3. **Veteran doctor's history.** The prior Complex/expedition experience band is currently "some".
-  4. **"There".** Should "there" default to the Complex once the conversation has an anchor?
-  5. **Coworker genders.** None are established; lines use names or "they".
+- **Design decisions raised to the owner** (all six decided on 2026-09-27 and applied; see the follow-up entry above): follow-up routing, acknowledging remarks, the veteran doctor's history, "there", coworker genders, and unsettled place-history wording.
 - **Not in scope.** The known raw-media provenance failure was not touched. Dialogue is not declared frozen.
 
 ## Day-1 Canon Ratification + Knowledge Completion + Dialogue Convergence Pass — 2026-09-25

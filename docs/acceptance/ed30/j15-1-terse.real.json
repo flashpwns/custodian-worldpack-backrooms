@@ -1,19 +1,19 @@
 [
  {
   "player": "hey all",
-  "ms": 7770,
+  "ms": 7272,
   "lines": [
    {
     "speaker": "Giselle",
-    "text": "Morning."
-   },
-   {
-    "speaker": "Malcolm",
     "text": "Well, hello."
    },
    {
+    "speaker": "Malcolm",
+    "text": "Morning."
+   },
+   {
     "speaker": "Tonya",
-    "text": "Hey."
+    "text": "Hi there. Morning."
    }
   ],
   "semantic": {
@@ -41,6 +41,16 @@
   "sources": [
    {
     "speaker": "Giselle",
+    "source": "deterministic-fallback",
+    "accepted": false,
+    "rejection": "LOCAL_PRESENTATION_FORBIDDEN_CLAIM",
+    "detail": "speaks for other coworkers",
+    "candidate": "Hey there. Glad we're all here.",
+    "private_ok": true,
+    "responsive_ok": true
+   },
+   {
+    "speaker": "Malcolm",
     "source": "local-model",
     "accepted": true,
     "rejection": null,
@@ -50,22 +60,12 @@
     "responsive_ok": true
    },
    {
-    "speaker": "Malcolm",
-    "source": "deterministic-fallback",
-    "accepted": false,
-    "rejection": "LOCAL_PRESENTATION_SHAPE_VIOLATION",
-    "detail": "answers with a question",
-    "candidate": "Morning. How's it going?",
-    "private_ok": true,
-    "responsive_ok": true
-   },
-   {
     "speaker": "Tonya",
-    "source": "deterministic-fallback",
-    "accepted": false,
-    "rejection": "LOCAL_PRESENTATION_SHAPE_VIOLATION",
-    "detail": "answers with a question",
-    "candidate": "Morning. How are things?",
+    "source": "local-model",
+    "accepted": true,
+    "rejection": null,
+    "detail": null,
+    "candidate": "Hi there. Morning.",
     "private_ok": true,
     "responsive_ok": true
    }
@@ -73,7 +73,7 @@
  },
  {
   "player": "first day for everyone",
-  "ms": 8928,
+  "ms": 8482,
   "lines": [
    {
     "speaker": "Giselle",
@@ -150,11 +150,11 @@
  },
  {
   "player": "giselle hows it going",
-  "ms": 8527,
+  "ms": 8586,
   "lines": [
    {
     "speaker": "Giselle",
-    "text": "A little nervous right now. Just feeling a bit keyed up."
+    "text": "A little nervous right now. I'm feeling a bit keyed up."
    }
   ],
   "semantic": {
@@ -187,7 +187,7 @@
     "accepted": true,
     "rejection": null,
     "detail": null,
-    "candidate": "A little nervous right now. Just feeling a bit keyed up.",
+    "candidate": "A little nervous right now. I'm feeling a bit keyed up.",
     "private_ok": true,
     "responsive_ok": true
    }
@@ -195,11 +195,11 @@
  },
  {
   "player": "and u malcolm",
-  "ms": 7900,
+  "ms": 7239,
   "lines": [
    {
     "speaker": "Malcolm",
-    "text": "Doing all right, thanks."
+    "text": "I'm doing all right."
    }
   ],
   "semantic": {
@@ -228,11 +228,11 @@
   "sources": [
    {
     "speaker": "Malcolm",
-    "source": "deterministic-fallback",
-    "accepted": false,
-    "rejection": "LOCAL_PRESENTATION_SHAPE_VIOLATION",
-    "detail": "answers with a question",
-    "candidate": "I'm doing all right. You okay?",
+    "source": "local-model",
+    "accepted": true,
+    "rejection": null,
+    "detail": null,
+    "candidate": "I'm doing all right.",
     "private_ok": true,
     "responsive_ok": true
    }
@@ -240,11 +240,11 @@
  },
  {
   "player": "tonya u been in there b4",
-  "ms": 2783,
+  "ms": 9755,
   "lines": [
    {
     "speaker": "Tonya",
-    "text": "I've been in the Complex before."
+    "text": "Where are you referring to?"
    }
   ],
   "semantic": {
@@ -256,17 +256,17 @@
    },
    "speech_act": "question",
    "predicate": "person.complex_experience",
-   "fn": "ask_predicate",
+   "fn": "ambiguous_reference",
    "cardinality": "each_self_concise",
    "temporal": "ever",
-   "clarify": false,
+   "clarify": true,
    "owners": [
     "Tonya"
    ],
    "requests": [
     {
      "predicate": "person.complex_experience",
-     "state": "SATISFIED"
+     "state": "CLARIFYING"
     }
    ]
   },
@@ -277,7 +277,7 @@
     "accepted": true,
     "rejection": null,
     "detail": null,
-    "candidate": "I've been in the Complex before.",
+    "candidate": "Where are you referring to?",
     "private_ok": true,
     "responsive_ok": true
    }
@@ -285,11 +285,11 @@
  },
  {
   "player": "why",
-  "ms": 3214,
+  "ms": 2965,
   "lines": [
    {
     "speaker": "Tonya",
-    "text": "That's just my own history."
+    "text": "I wasn't sure what you meant."
    }
   ],
   "semantic": {
@@ -320,9 +320,9 @@
     "speaker": "Tonya",
     "source": "deterministic-fallback",
     "accepted": false,
-    "rejection": "LOCAL_PRESENTATION_UNLICENSED_SELF_CLAIM",
-    "detail": "claims complex_experience about the speaker that this turn does not supply (\"I just meant what I said about having been in the Complex before\")",
-    "candidate": "I just meant what I said about having been in the Complex before; I've been in the Complex before.",
+    "rejection": "LOCAL_PRESENTATION_FORBIDDEN_CLAIM",
+    "detail": "narrates history or experience the plan does not supply",
+    "candidate": "I said where are you referring to because I was not sure what you meant. That was my question again.",
     "private_ok": true,
     "responsive_ok": true
    }
@@ -330,11 +330,11 @@
  },
  {
   "player": "malcolm same q",
-  "ms": 2855,
+  "ms": 10138,
   "lines": [
    {
     "speaker": "Malcolm",
-    "text": "I haven't been in the Complex."
+    "text": "What are you referring to exactly? Where did that come from?"
    }
   ],
   "semantic": {
@@ -346,17 +346,17 @@
    },
    "speech_act": "elliptical_continuation",
    "predicate": "person.complex_experience",
-   "fn": "ask_predicate",
+   "fn": "ambiguous_reference",
    "cardinality": "each_self_concise",
    "temporal": "ever",
-   "clarify": false,
+   "clarify": true,
    "owners": [
     "Malcolm"
    ],
    "requests": [
     {
      "predicate": "person.complex_experience",
-     "state": "SATISFIED"
+     "state": "CLARIFYING"
     }
    ]
   },
@@ -367,7 +367,7 @@
     "accepted": true,
     "rejection": null,
     "detail": null,
-    "candidate": "I haven't been in the Complex.",
+    "candidate": "What are you referring to exactly? Where did that come from?",
     "private_ok": true,
     "responsive_ok": true
    }
@@ -375,7 +375,7 @@
  },
  {
   "player": "wheres maxwell",
-  "ms": 2726,
+  "ms": 2629,
   "lines": [
    {
     "speaker": "Giselle",
@@ -418,11 +418,11 @@
  },
  {
   "player": "who has teh camera",
-  "ms": 2791,
+  "ms": 2400,
   "lines": [
    {
     "speaker": "Giselle",
-    "text": "The 35mm field camera is with you; you've got it."
+    "text": "You've got the 35mm field camera."
    }
   ],
   "semantic": {
@@ -453,7 +453,7 @@
     "accepted": true,
     "rejection": null,
     "detail": null,
-    "candidate": "The 35mm field camera is with you; you've got it.",
+    "candidate": "You've got the 35mm field camera.",
     "private_ok": true,
     "responsive_ok": true
    }
@@ -461,7 +461,7 @@
  },
  {
   "player": "whats the duffle for",
-  "ms": 3943,
+  "ms": 3787,
   "lines": [
    {
     "speaker": "Malcolm",
@@ -496,7 +496,7 @@
     "accepted": false,
     "rejection": "LOCAL_PRESENTATION_CONTRIBUTION_UNMET",
     "detail": "partial knowledge: say what is not known as well as what is",
-    "candidate": "I'm carrying the startup materials duffle, and I'm delivering those to Outpost A, Bermuda branch. Nobody told me what's inside.",
+    "candidate": "The startup materials are cargo I'm delivering to Outpost A, Bermuda branch. I'm carrying the duffle, but nobody told me what's in it.",
     "private_ok": true,
     "responsive_ok": true
    }
@@ -504,7 +504,7 @@
  },
  {
   "player": "where r we going",
-  "ms": 3703,
+  "ms": 3428,
   "lines": [
    {
     "speaker": "Tonya",
@@ -547,7 +547,7 @@
  },
  {
   "player": "why r we going",
-  "ms": 9324,
+  "ms": 8582,
   "lines": [
    {
     "speaker": "Giselle",
@@ -590,7 +590,7 @@
  },
  {
   "player": "we all going",
-  "ms": 3081,
+  "ms": 2826,
   "lines": [
    {
     "speaker": "Malcolm",
@@ -637,7 +637,7 @@
  },
  {
   "player": "ok",
-  "ms": 110,
+  "ms": 85,
   "lines": [],
   "semantic": {
    "address": {
@@ -657,11 +657,11 @@
  },
  {
   "player": "tonya tell me abt urself",
-  "ms": 3490,
+  "ms": 3351,
   "lines": [
    {
     "speaker": "Tonya",
-    "text": "I'm Tonya, a field medical doctor. I'm compiling the layout record right now."
+    "text": "I'm Tonya; I'm a field medical doctor. Right now, I'm compiling the layout record."
    }
   ],
   "semantic": {
@@ -694,7 +694,7 @@
     "accepted": true,
     "rejection": null,
     "detail": null,
-    "candidate": "I'm Tonya, a field medical doctor. I'm compiling the layout record right now.",
+    "candidate": "I'm Tonya; I'm a field medical doctor. Right now, I'm compiling the layout record.",
     "private_ok": true,
     "responsive_ok": true
    }
@@ -702,11 +702,11 @@
  },
  {
   "player": "malcolm ur turn",
-  "ms": 3294,
+  "ms": 3033,
   "lines": [
    {
     "speaker": "Malcolm",
-    "text": "I'm Malcolm, a field technician. I'm delivering the startup materials."
+    "text": "I'm Malcolm, a field technician; I'm delivering the startup materials."
    }
   ],
   "semantic": {
@@ -739,7 +739,7 @@
     "accepted": true,
     "rejection": null,
     "detail": null,
-    "candidate": "I'm Malcolm, a field technician. I'm delivering the startup materials.",
+    "candidate": "I'm Malcolm, a field technician; I'm delivering the startup materials.",
     "private_ok": true,
     "responsive_ok": true
    }
@@ -747,7 +747,7 @@
  },
  {
   "player": "giselle ur turn",
-  "ms": 3446,
+  "ms": 3449,
   "lines": [
    {
     "speaker": "Giselle",
@@ -784,7 +784,7 @@
     "accepted": false,
     "rejection": "LOCAL_PRESENTATION_SHAPE_VIOLATION",
     "detail": "the speaker refers to themselves by name (\"Giselle here\")",
-    "candidate": "Giselle here; I'm a field researcher. I'm handling observation and verbal recall.",
+    "candidate": "Giselle here; I'm a field researcher. Right now I'm handling observation and verbal recall, with this portable mass spectrometer.",
     "private_ok": true,
     "responsive_ok": true
    }
@@ -792,7 +792,7 @@
  },
  {
   "player": "whats next",
-  "ms": 2500,
+  "ms": 2316,
   "lines": [
    {
     "speaker": "Tonya",
@@ -835,7 +835,7 @@
  },
  {
   "player": "wat did maxwell tell us to do",
-  "ms": 3330,
+  "ms": 3065,
   "lines": [
    {
     "speaker": "Malcolm",
@@ -878,11 +878,11 @@
  },
  {
   "player": "u nervous giselle",
-  "ms": 2717,
+  "ms": 2654,
   "lines": [
    {
     "speaker": "Giselle",
-    "text": "Yeah, a little tense, actually."
+    "text": "Yeah, I feel it a bit."
    }
   ],
   "semantic": {
@@ -915,7 +915,7 @@
     "accepted": true,
     "rejection": null,
     "detail": null,
-    "candidate": "Yeah, a little tense, actually.",
+    "candidate": "Yeah, I feel it a bit.",
     "private_ok": true,
     "responsive_ok": true
    }
@@ -923,11 +923,11 @@
  },
  {
   "player": "how come",
-  "ms": 3260,
+  "ms": 3140,
   "lines": [
    {
     "speaker": "Giselle",
-    "text": "It's just how I feel right now; that feeling of being a little tense, actually."
+    "text": "It's just how I feel right now. Meaning when I said, \"Yeah, I feel it a bit.\""
    }
   ],
   "semantic": {
@@ -960,7 +960,7 @@
     "accepted": true,
     "rejection": null,
     "detail": null,
-    "candidate": "It's just how I feel right now; that feeling of being a little tense, actually.",
+    "candidate": "It's just how I feel right now. Meaning when I said, \"Yeah, I feel it a bit.\"",
     "private_ok": true,
     "responsive_ok": true
    }
@@ -968,11 +968,11 @@
  },
  {
   "player": "hello",
-  "ms": 2502,
+  "ms": 2287,
   "lines": [
    {
     "speaker": "Giselle",
-    "text": "Hi there."
+    "text": "Hey."
    }
   ],
   "semantic": {
@@ -998,7 +998,7 @@
     "accepted": true,
     "rejection": null,
     "detail": null,
-    "candidate": "Hi there.",
+    "candidate": "Hey.",
     "private_ok": true,
     "responsive_ok": true
    }
@@ -1006,7 +1006,7 @@
  },
  {
   "player": "what did tonya say",
-  "ms": 3560,
+  "ms": 3293,
   "lines": [
    {
     "speaker": "Malcolm",
@@ -1049,11 +1049,11 @@
  },
  {
   "player": "how do u know",
-  "ms": 3486,
+  "ms": 3216,
   "lines": [
    {
     "speaker": "Malcolm",
-    "text": "I heard Tonya say that they're a field medical doctor and that they are compiling the layout record."
+    "text": "I heard Tonya say that. So, they are a field medical doctor and compiling the layout record."
    }
   ],
   "semantic": {
@@ -1086,7 +1086,7 @@
     "accepted": true,
     "rejection": null,
     "detail": null,
-    "candidate": "I heard Tonya say that they're a field medical doctor and that they are compiling the layout record.",
+    "candidate": "I heard Tonya say that. So, they are a field medical doctor and compiling the layout record.",
     "private_ok": true,
     "responsive_ok": true
    }
@@ -1094,11 +1094,11 @@
  },
  {
   "player": "excited malcolm",
-  "ms": 2602,
+  "ms": 2708,
   "lines": [
    {
     "speaker": "Malcolm",
-    "text": "Not especially."
+    "text": "Not especially. I feel all right about it."
    }
   ],
   "semantic": {
@@ -1127,11 +1127,11 @@
   "sources": [
    {
     "speaker": "Malcolm",
-    "source": "local-model",
-    "accepted": true,
-    "rejection": null,
-    "detail": null,
-    "candidate": "Not especially.",
+    "source": "deterministic-fallback",
+    "accepted": false,
+    "rejection": "LOCAL_PRESENTATION_FORBIDDEN_CLAIM",
+    "detail": "invents what the speaker is doing or waiting for",
+    "candidate": "Not especially, honestly. Just waiting it out.",
     "private_ok": true,
     "responsive_ok": true
    }
@@ -1139,7 +1139,7 @@
  },
  {
   "player": "whens departure",
-  "ms": 9008,
+  "ms": 8360,
   "lines": [
    {
     "speaker": "Tonya",
@@ -1182,7 +1182,7 @@
  },
  {
   "player": "wat do u mean",
-  "ms": 3953,
+  "ms": 3315,
   "lines": [
    {
     "speaker": "Tonya",
@@ -1218,8 +1218,8 @@
     "source": "deterministic-fallback",
     "accepted": false,
     "rejection": "LOCAL_PRESENTATION_FORBIDDEN_CLAIM",
-    "detail": "invented suggestion or plan: \"we need to\"",
-    "candidate": "It's 10:00 AM for departure; we need to be back by noon, and the latest cutoff is 1:00 PM.",
+    "detail": "states something this turn does not authorize: \"by twelve\"",
+    "candidate": "It's ten o'clock for leaving, then back by twelve noon, with the final time being one.",
     "private_ok": true,
     "responsive_ok": true
    }
@@ -1227,7 +1227,7 @@
  },
  {
   "player": "cool",
-  "ms": 131,
+  "ms": 121,
   "lines": [],
   "semantic": {
    "address": {
@@ -1247,7 +1247,7 @@
  },
  {
   "player": "tonya u know malcolm",
-  "ms": 2953,
+  "ms": 2785,
   "lines": [
    {
     "speaker": "Tonya",
@@ -1292,7 +1292,7 @@
  },
  {
   "player": "anyone been on an expedition b4",
-  "ms": 8715,
+  "ms": 8140,
   "lines": [
    {
     "speaker": "Giselle",
@@ -1350,8 +1350,8 @@
     "source": "deterministic-fallback",
     "accepted": false,
     "rejection": "LOCAL_PRESENTATION_SHAPE_VIOLATION",
-    "detail": "repeats an earlier speaker's line this turn",
-    "candidate": "This is my first expedition.",
+    "detail": "near-identical to an earlier speaker's line this turn",
+    "candidate": "No, this is my first expedition.",
     "private_ok": true,
     "responsive_ok": true
    },
@@ -1369,7 +1369,7 @@
  },
  {
   "player": "giselle is it tonyas first day",
-  "ms": 11184,
+  "ms": 10460,
   "lines": [
    {
     "speaker": "Giselle",
@@ -1414,7 +1414,7 @@
  },
  {
   "player": "who is maxwell",
-  "ms": 3359,
+  "ms": 3205,
   "lines": [
    {
     "speaker": "Malcolm",
@@ -1457,7 +1457,7 @@
  },
  {
   "player": "wat does async do",
-  "ms": 4073,
+  "ms": 3924,
   "lines": [
    {
     "speaker": "Tonya",
@@ -1500,7 +1500,7 @@
  },
  {
   "player": "wheres equipment staging",
-  "ms": 4014,
+  "ms": 3765,
   "lines": [
    {
     "speaker": "Giselle",
@@ -1543,7 +1543,7 @@
  },
  {
   "player": "is the threshold dangerous",
-  "ms": 9352,
+  "ms": 8703,
   "lines": [
    {
     "speaker": "Malcolm",
@@ -1578,7 +1578,7 @@
     "accepted": false,
     "rejection": "LOCAL_PRESENTATION_ENTITY_CEILING",
     "detail": "brings in Standard, which this turn does not involve",
-    "candidate": "It's the fixed crossing between Standard and the Complex. I don't know its current state.",
+    "candidate": "The Threshold is the fixed crossing between Standard and the Complex. I don't know its current state.",
     "private_ok": true,
     "responsive_ok": true
    }
@@ -1586,7 +1586,7 @@
  },
  {
   "player": "malcolm what do u do",
-  "ms": 3507,
+  "ms": 3222,
   "lines": [
    {
     "speaker": "Malcolm",
@@ -1622,8 +1622,8 @@
     "source": "deterministic-fallback",
     "accepted": false,
     "rejection": "LOCAL_PRESENTATION_SHAPE_VIOLATION",
-    "detail": "the speaker refers to themselves by name (\"Malcolm here\")",
-    "candidate": "Malcolm here; I'm a field technician, and I'm delivering the startup materials.",
+    "detail": "addresses themselves by their own name",
+    "candidate": "Malcolm, I'm a field technician; I'm delivering the startup materials.",
     "private_ok": true,
     "responsive_ok": true
    }
@@ -1631,7 +1631,7 @@
  },
  {
   "player": "nice",
-  "ms": 151,
+  "ms": 150,
   "lines": [],
   "semantic": {
    "address": {
@@ -1651,7 +1651,7 @@
  },
  {
   "player": "whos going to outpost a",
-  "ms": 3860,
+  "ms": 3644,
   "lines": [
    {
     "speaker": "Tonya",
@@ -1694,7 +1694,7 @@
  },
  {
   "player": "tonya how r u",
-  "ms": 10721,
+  "ms": 10073,
   "lines": [
    {
     "speaker": "Tonya",
@@ -1739,7 +1739,7 @@
  },
  {
   "player": "same q giselle",
-  "ms": 8721,
+  "ms": 7981,
   "lines": [
    {
     "speaker": "Giselle",
@@ -1776,7 +1776,7 @@
     "accepted": false,
     "rejection": "LOCAL_PRESENTATION_FORBIDDEN_CLAIM",
     "detail": "invents a character state not established by canonical context: \"I'm a little nervous\"",
-    "candidate": "I'm a little nervous right now. It's just how I feel.",
+    "candidate": "I'm a little nervous right now. Just feeling that way.",
     "private_ok": true,
     "responsive_ok": true
    }
@@ -1784,7 +1784,7 @@
  },
  {
   "player": "thx",
-  "ms": 158,
+  "ms": 157,
   "lines": [],
   "semantic": {
    "address": {
@@ -1804,7 +1804,7 @@
  },
  {
   "player": "whats the camera for",
-  "ms": 3125,
+  "ms": 2978,
   "lines": [
    {
     "speaker": "Malcolm",

@@ -861,6 +861,11 @@
       "file": "tests/ed30d-properties-independence.test.js",
       "status": "included",
       "tier": "aggregate"
+    },
+    {
+      "file": "tests/ed30e-owner-decisions.test.js",
+      "status": "included",
+      "tier": "aggregate"
     }
   ],
   "report_tools": [

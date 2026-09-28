@@ -95,7 +95,8 @@ test("ED-2 B/C — plan-carrying packets carry style only; no personality lore c
   const state = setup("ed2-bc", capture(packets, "First time for me."));
   try {
     const before = state.session.run.expedition.dialogue_history.length;
-    await say(state, "Have you been in there before?", { target: state.coworkers[0].first_name });
+    // Owner decision (2026-09-27): an unanchored "in there" is clarified, so the place is named here.
+    await say(state, "Have you been in the Complex before?", { target: state.coworkers[0].first_name });
     const packet = packets.at(-1);
     const json = JSON.stringify(packet);
     for (const banned of ["personality", "archetype", "recent_attribution", "sentiment", "primary_task", "nervous-first-day", "first-day-observer"]) assert.ok(!json.includes(banned), `${banned} must not be model-visible`);

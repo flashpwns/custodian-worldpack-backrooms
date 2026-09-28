@@ -1,7 +1,7 @@
 [
  {
   "player": "Good morning, everyone! I'm Jack, it's nice to meet you all.",
-  "ms": 125,
+  "ms": 108,
   "lines": [
    {
     "speaker": "Giselle",
@@ -73,7 +73,7 @@
  },
  {
   "player": "I was wondering whether any of you have been on one of these expeditions before?",
-  "ms": 136,
+  "ms": 111,
   "lines": [
    {
     "speaker": "Giselle",
@@ -150,7 +150,7 @@
  },
  {
   "player": "Sorry, but could you tell me a little about yourself, Giselle?",
-  "ms": 127,
+  "ms": 106,
   "lines": [
    {
     "speaker": "Giselle",
@@ -195,7 +195,7 @@
  },
  {
   "player": "That's really interesting, thank you. Malcolm, would you mind introducing yourself as well?",
-  "ms": 134,
+  "ms": 114,
   "lines": [
    {
     "speaker": "Malcolm",
@@ -240,7 +240,7 @@
  },
  {
   "player": "And Tonya, if you don't mind, what about you?",
-  "ms": 137,
+  "ms": 119,
   "lines": [
    {
     "speaker": "Tonya",
@@ -285,7 +285,7 @@
  },
  {
   "player": "Would anyone happen to know where exactly we're headed today?",
-  "ms": 144,
+  "ms": 123,
   "lines": [
    {
     "speaker": "Giselle",
@@ -332,7 +332,7 @@
  },
  {
   "player": "I see. And what is the actual purpose of the expedition, if I may ask?",
-  "ms": 153,
+  "ms": 130,
   "lines": [
    {
     "speaker": "Malcolm",
@@ -375,7 +375,7 @@
  },
  {
   "player": "Just out of curiosity, who is carrying the camera?",
-  "ms": 157,
+  "ms": 135,
   "lines": [
    {
     "speaker": "Giselle",
@@ -418,7 +418,7 @@
  },
  {
   "player": "Sorry, what did you mean by that?",
-  "ms": 164,
+  "ms": 139,
   "lines": [
    {
     "speaker": "Giselle",
@@ -463,7 +463,7 @@
  },
  {
   "player": "How do you know that, if you don't mind me asking?",
-  "ms": 174,
+  "ms": 143,
   "lines": [
    {
     "speaker": "Giselle",
@@ -508,7 +508,7 @@
  },
  {
   "player": "How is everyone feeling this morning?",
-  "ms": 191,
+  "ms": 166,
   "lines": [
    {
     "speaker": "Giselle",
@@ -585,7 +585,7 @@
  },
  {
   "player": "Malcolm, I hope you don't mind me asking, but are you nervous at all?",
-  "ms": 174,
+  "ms": 159,
   "lines": [
    {
     "speaker": "Malcolm",
@@ -630,7 +630,7 @@
  },
  {
   "player": "Why do you say that?",
-  "ms": 176,
+  "ms": 161,
   "lines": [
    {
     "speaker": "Malcolm",
@@ -675,7 +675,7 @@
  },
  {
   "player": "Is this your first day at ASYNC, Tonya, or have you been here a while?",
-  "ms": 178,
+  "ms": 166,
   "lines": [
    {
     "speaker": "Tonya",
@@ -720,7 +720,7 @@
  },
  {
   "player": "Have you ever been inside the Complex yourself?",
-  "ms": 182,
+  "ms": 171,
   "lines": [
    {
     "speaker": "Tonya",
@@ -765,7 +765,7 @@
  },
  {
   "player": "Could someone remind me what Maxwell told us to do after the briefing?",
-  "ms": 192,
+  "ms": 178,
   "lines": [
    {
     "speaker": "Giselle",
@@ -812,7 +812,7 @@
  },
  {
   "player": "And what should we be doing right now?",
-  "ms": 203,
+  "ms": 183,
   "lines": [
    {
     "speaker": "Malcolm",
@@ -855,7 +855,7 @@
  },
  {
   "player": "Will all of us be going to Equipment Staging together, or are we splitting up?",
-  "ms": 220,
+  "ms": 190,
   "lines": [
    {
     "speaker": "Tonya",
@@ -902,7 +902,7 @@
  },
  {
   "player": "Do you two know each other already, Giselle and Malcolm?",
-  "ms": 224,
+  "ms": 206,
   "lines": [
    {
     "speaker": "Giselle",
@@ -963,7 +963,7 @@
  },
  {
   "player": "That's good to hear. Would you say you're looking forward to this, Giselle?",
-  "ms": 223,
+  "ms": 200,
   "lines": [
    {
     "speaker": "Giselle",
@@ -1008,7 +1008,7 @@
  },
  {
   "player": "Malcolm, could you tell me what Tonya said earlier?",
-  "ms": 227,
+  "ms": 212,
   "lines": [
    {
     "speaker": "Malcolm",
@@ -1053,7 +1053,7 @@
  },
  {
   "player": "Thank you, that's very helpful.",
-  "ms": 113,
+  "ms": 104,
   "lines": [],
   "semantic": {
    "address": {
@@ -1073,7 +1073,7 @@
  },
  {
   "player": "Who exactly is Maxwell, and what does he do here?",
-  "ms": 242,
+  "ms": 223,
   "lines": [
    {
     "speaker": "Tonya",
@@ -1120,7 +1120,7 @@
  },
  {
   "player": "What is the Threshold, if you don't mind me asking?",
-  "ms": 246,
+  "ms": 223,
   "lines": [
    {
     "speaker": "Giselle",
@@ -1163,7 +1163,7 @@
  },
  {
   "player": "Out of curiosity, when are we supposed to leave?",
-  "ms": 318,
+  "ms": 229,
   "lines": [
    {
     "speaker": "Malcolm",
@@ -1206,7 +1206,7 @@
  },
  {
   "player": "Could you tell me what the startup materials are for?",
-  "ms": 261,
+  "ms": 234,
   "lines": [
    {
     "speaker": "Malcolm",
@@ -1249,7 +1249,7 @@
  },
  {
   "player": "And where are the startup materials going?",
-  "ms": 259,
+  "ms": 237,
   "lines": [
    {
     "speaker": "Malcolm",
@@ -1294,7 +1294,7 @@
  },
  {
   "player": "Sorry, I wasn't asking you, I was asking Tonya.",
-  "ms": 265,
+  "ms": 242,
   "lines": [
    {
     "speaker": "Tonya",
@@ -1334,7 +1334,7 @@
  },
  {
   "player": "I'm sorry, I didn't quite catch that. Could you say it again?",
-  "ms": 289,
+  "ms": 251,
   "lines": [
    {
     "speaker": "Tonya",
@@ -1379,7 +1379,7 @@
  },
  {
   "player": "What does ASYNC actually do as a company?",
-  "ms": 280,
+  "ms": 252,
   "lines": [
    {
     "speaker": "Giselle",
@@ -1422,7 +1422,7 @@
  },
  {
   "player": "Is it alright if I ask whether any of you are tired?",
-  "ms": 307,
+  "ms": 284,
   "lines": [
    {
     "speaker": "Giselle",
@@ -1499,13 +1499,8 @@
  },
  {
   "player": "It seems like a lovely morning for it.",
-  "ms": 291,
-  "lines": [
-   {
-    "speaker": "Giselle",
-    "text": "Hm. Maybe so."
-   }
-  ],
+  "ms": 129,
+  "lines": [],
   "semantic": {
    "address": {
     "scope": "untargeted",
@@ -1513,31 +1508,18 @@
    },
    "speech_act": "statement",
    "predicate": null,
-   "fn": "social_observation",
-   "cardinality": "one_spokesperson",
+   "fn": null,
+   "cardinality": null,
    "temporal": null,
    "clarify": false,
-   "owners": [
-    "Giselle"
-   ],
+   "owners": [],
    "requests": []
   },
-  "sources": [
-   {
-    "speaker": "Giselle",
-    "source": "deterministic-fallback",
-    "accepted": false,
-    "rejection": "LOCAL_PROVIDER_UNAVAILABLE",
-    "detail": null,
-    "candidate": null,
-    "private_ok": true,
-    "responsive_ok": true
-   }
-  ]
+  "sources": []
  },
  {
   "player": "Tonya, how long have you been with ASYNC?",
-  "ms": 295,
+  "ms": 264,
   "lines": [
    {
     "speaker": "Tonya",
@@ -1582,7 +1564,7 @@
  },
  {
   "player": "And have you been on an expedition before?",
-  "ms": 291,
+  "ms": 271,
   "lines": [
    {
     "speaker": "Tonya",
@@ -1627,7 +1609,7 @@
  },
  {
   "player": "Giselle, same question.",
-  "ms": 310,
+  "ms": 283,
   "lines": [
    {
     "speaker": "Giselle",
@@ -1672,7 +1654,7 @@
  },
  {
   "player": "Would you mind telling me what you're doing right now, Malcolm?",
-  "ms": 312,
+  "ms": 285,
   "lines": [
    {
     "speaker": "Malcolm",
@@ -1717,7 +1699,7 @@
  },
  {
   "player": "I appreciate it. I think that's everyone introduced now.",
-  "ms": 160,
+  "ms": 140,
   "lines": [],
   "semantic": {
    "address": {
@@ -1737,7 +1719,7 @@
  },
  {
   "player": "So where do we go next, if you don't mind me asking?",
-  "ms": 328,
+  "ms": 291,
   "lines": [
    {
     "speaker": "Tonya",
@@ -1780,7 +1762,7 @@
  },
  {
   "player": "And is everyone coming along?",
-  "ms": 343,
+  "ms": 297,
   "lines": [
    {
     "speaker": "Giselle",
@@ -1827,7 +1809,7 @@
  },
  {
   "player": "Thank you all very much.",
-  "ms": 162,
+  "ms": 147,
   "lines": [],
   "semantic": {
    "address": {

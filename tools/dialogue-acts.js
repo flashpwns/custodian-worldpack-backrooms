@@ -114,7 +114,9 @@ const FACET_REPAIR = [
   /^(?:no,?\s+)?not\s+(?<not>today|now|ever|earlier|before)\s*[.!,]+\s*(?<want>today|now|ever|earlier|before|in general)\s*[.!?]*$/i,
   /^(?:no,?\s+)?(?:i meant\s+)?(?<want>ever|before that|earlier|in general|at all)\s*[.!?]*$/i,
   /^(?:no,?\s+|nope,?\s+)?i\s+(?:meant|mean|was asking about|was talking about)\s+(?<referent>(?:the\s+)?[A-Za-z][\w -]{1,40}?)\s*[.!?]*$/i,
-  /^(?:no,?\s+)?what\s+(?:are|is)\s+(?:they|it|those|that)\s+for\b/i
+  // "No, what are they for?" re-asks the facet; without the "no" it is an ordinary purpose question
+  // (and "what is it for" must read the same as "what's it for").
+  /^no,?\s+what\s+(?:are|is)\s+(?:they|it|those|that)\s+for\b/i
 ];
 // Elliptical continuation: the predicate comes from the antecedent request / activity.
 const ELLIPSIS = [

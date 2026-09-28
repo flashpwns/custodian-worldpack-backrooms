@@ -100,6 +100,8 @@ const ENTRIES = [
       { re: re("\\b(?:you|you all|y'all|you guys|you two|anyone|anybody) (?:have |has )?(?:ever |already |actually )?(?:been|gone) (?:in|into|inside|in there|down there|there|through|across|to the complex)(?: before| already| yet)?\\b"), form: "yes_no", temporal: "ever" },
       { re: re("\\bbeen (?:in|inside|in there|down there|there|through|to) (?:the complex|there|before)\\b"), form: "yes_no", temporal: "ever" },
       { re: re("\\bever been (?:in|inside|there|to|through|down)\\b"), form: "yes_no", temporal: "ever" },
+      // The bare fragment "Been there?" / "ever been inside?" (the subject is the one asked).
+      { re: re("^(?:(?:so|and|but|ok|okay)[, ]+)?(?:ever )?been (?:there|in there|inside|in)\\s*[?!.]*$"), form: "yes_no", temporal: "ever" },
       { re: re("\\bfirst time (?:going |being )?(?:in|inside|in there|into the complex|in the complex|through|through the threshold|down there|going in)\\b"), form: "yes_no", temporal: "ever", polarity: "inverted" },
       { re: re("\\bhow many times (?:have|has) (?:you|anyone|[a-z]+) been (?:in|inside|there)\\b"), form: "count", temporal: "ever" }
     ],

@@ -152,9 +152,12 @@ test("property — response count follows the semantic group policy, not the phr
     const cases = [
       ["Hello everyone", all()], ["Good morning, y'all.", all()],
       ["How are you guys feeling?", all()], ["Are you all nervous?", all()],
-      ["Have any of you been there before?", all()], ["What do each of you think?", all()],
+      ["Have any of you been in the Complex before?", all()], ["What do each of you think?", all()],
+      // Owner decision (2026-09-27): "there" with no active place is clarified (one voice), never defaulted.
+      ["Have any of you been there before?", 1],
       ["What time do we leave?", 1], ["What's next, everyone?", 1],
-      ["Well, this seems incredibly safe.", 1], ["Excited?", 1]
+      // Owner decision (2026-09-27): a remark or sarcasm to the room requires no response.
+      ["Well, this seems incredibly safe.", 0], ["Excited?", 1]
     ];
     for (const [text, expected] of cases) assert.equal((await turn(state, text)).owners.length, expected, text);
     const named = state.team[1].first_name;

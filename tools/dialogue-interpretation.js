@@ -752,6 +752,8 @@ function interpretUtterance(text, { isGroup = false } = {}) {
  * The model never participates in this decision.
  */
 // Questions whose answer belongs to each listener personally (never a shared fact).
+// Remarks: they ask nothing, so nobody owes a reply (owner decision 2026-09-27).
+const REMARK_ACTS = new Set(["joke_or_sarcasm", "social_observation", "uncertainty"]);
 const INDIVIDUAL_ANSWER_FUNCTIONS = new Set(["ask_personal_experience", "ask_opinion", "ask_role_or_assignment", "ask_current_action"]);
 /**
  * The spokesperson for a SHARED answer (several present people know the same thing): deterministic and
@@ -892,14 +894,20 @@ function resolveResponseOwners({ recipient_type, interpretation, player_text, ca
       return eligible.map((candidate) => candidate.id);
     }
     if (act === "group_question") return eligible.slice(0, 1).map((candidate) => candidate.id);
-    if (act === "joke_or_sarcasm") return eligible.slice(0, 2).map((candidate) => candidate.id);
+    // Owner decision (2026-09-27): a remark or sarcasm to the room requires no response; silence is normal.
+    if (REMARK_ACTS.has(act) && !["question", "request", "elliptical_continuation", "repair"].includes(frame?.turn?.speech_act)) return [];
+    if (["statement", "sarcasm"].includes(frame?.turn?.speech_act) || (act === "statement" && !frame?.turn)) return [];
     return eligible.slice(0, 1).map((candidate) => candidate.id);
   }
 
   // ED-30: Tier 1 found a question or request the legacy reading took for a remark (no "?"): one listener
   // answers or asks -- a question is never left in silence.
   if (["question", "request", "elliptical_continuation", "repair"].includes(frame?.turn?.speech_act)) return [(spokesperson(eligible) ?? eligible[0]).id];
-  if (["warning", "uncertainty", "joke_or_sarcasm", "social_observation", "factual_question", "personal_question", "request", "ambiguous", "greeting", "introduction"].includes(act)) {
+  // Owner decision (2026-09-27): an untargeted remark, sarcasm or musing requires no response. The one
+  // authored exception stays: a plain "I'm so tired" / "long day" line gets one listener (below). A remark
+  // addressed to someone by name is answered by that person (direct scope, above).
+  if (REMARK_ACTS.has(act)) return [];
+  if (["warning", "factual_question", "personal_question", "request", "ambiguous", "greeting", "introduction"].includes(act)) {
     return eligible.slice(0, 1).map((candidate) => candidate.id);
   }
   if (act === "statement" && SOCIAL_UNTARGETED_PATTERNS.test(text)) {

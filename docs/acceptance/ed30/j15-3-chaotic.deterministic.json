@@ -1,13 +1,8 @@
 [
  {
   "player": "Well this seems incredibly safe.",
-  "ms": 104,
-  "lines": [
-   {
-    "speaker": "Giselle",
-    "text": "Sure. Very comforting."
-   }
-  ],
+  "ms": 50,
+  "lines": [],
   "semantic": {
    "address": {
     "scope": "untargeted",
@@ -15,8 +10,33 @@
    },
    "speech_act": "sarcasm",
    "predicate": null,
-   "fn": "joke_or_sarcasm",
-   "cardinality": "one_spokesperson",
+   "fn": null,
+   "cardinality": null,
+   "temporal": null,
+   "clarify": false,
+   "owners": [],
+   "requests": []
+  },
+  "sources": []
+ },
+ {
+  "player": "Maxwell said the Complex is basically an aquarium.",
+  "ms": 92,
+  "lines": [
+   {
+    "speaker": "Giselle",
+    "text": "Huh. If you say so."
+   }
+  ],
+  "semantic": {
+   "address": {
+    "scope": "untargeted",
+    "to": []
+   },
+   "speech_act": "statement",
+   "predicate": null,
+   "fn": "make_statement",
+   "cardinality": "none",
    "temporal": null,
    "clarify": false,
    "owners": [
@@ -38,46 +58,8 @@
   ]
  },
  {
-  "player": "Maxwell said the Complex is basically an aquarium.",
-  "ms": 105,
-  "lines": [
-   {
-    "speaker": "Malcolm",
-    "text": "Huh. If you say so."
-   }
-  ],
-  "semantic": {
-   "address": {
-    "scope": "untargeted",
-    "to": []
-   },
-   "speech_act": "statement",
-   "predicate": null,
-   "fn": "make_statement",
-   "cardinality": "one_spokesperson",
-   "temporal": null,
-   "clarify": false,
-   "owners": [
-    "Malcolm"
-   ],
-   "requests": []
-  },
-  "sources": [
-   {
-    "speaker": "Malcolm",
-    "source": "deterministic-fallback",
-    "accepted": false,
-    "rejection": "LOCAL_PROVIDER_UNAVAILABLE",
-    "detail": null,
-    "candidate": null,
-    "private_ok": true,
-    "responsive_ok": true
-   }
-  ]
- },
- {
   "player": "Tonya, is that true?",
-  "ms": 107,
+  "ms": 96,
   "lines": [
    {
     "speaker": "Tonya",
@@ -122,7 +104,7 @@
  },
  {
   "player": "lol ok. Who has the camera?",
-  "ms": 116,
+  "ms": 102,
   "lines": [
    {
     "speaker": "Giselle",
@@ -165,7 +147,7 @@
  },
  {
   "player": "No, I meant who has the duffle.",
-  "ms": 118,
+  "ms": 107,
   "lines": [
    {
     "speaker": "Giselle",
@@ -205,7 +187,7 @@
  },
  {
   "player": "Actually, forget that. Is it anyone's first day?",
-  "ms": 143,
+  "ms": 126,
   "lines": [
    {
     "speaker": "Giselle",
@@ -282,7 +264,7 @@
  },
  {
   "player": "Malcolm, you've been here for years right?",
-  "ms": 135,
+  "ms": 123,
   "lines": [
    {
     "speaker": "Malcolm",
@@ -327,7 +309,7 @@
  },
  {
   "player": "I heard Tonya has never been in the Complex.",
-  "ms": 147,
+  "ms": 129,
   "lines": [
    {
     "speaker": "Giselle",
@@ -342,7 +324,7 @@
    "speech_act": "statement",
    "predicate": null,
    "fn": "make_statement",
-   "cardinality": "one_spokesperson",
+   "cardinality": "none",
    "temporal": null,
    "clarify": false,
    "owners": [
@@ -365,7 +347,7 @@
  },
  {
   "player": "Tonya, have you?",
-  "ms": 146,
+  "ms": 132,
   "lines": [
    {
     "speaker": "Tonya",
@@ -410,7 +392,7 @@
  },
  {
   "player": "Why?",
-  "ms": 155,
+  "ms": 138,
   "lines": [
    {
     "speaker": "Tonya",
@@ -455,7 +437,7 @@
  },
  {
   "player": "Hello?",
-  "ms": 154,
+  "ms": 141,
   "lines": [
    {
     "speaker": "Malcolm",
@@ -493,7 +475,7 @@
  },
  {
   "player": "Giselle?",
-  "ms": 159,
+  "ms": 143,
   "lines": [
    {
     "speaker": "Giselle",
@@ -538,7 +520,7 @@
  },
  {
   "player": "Anyway, where are we going?",
-  "ms": 161,
+  "ms": 151,
   "lines": [
    {
     "speaker": "Tonya",
@@ -581,7 +563,7 @@
  },
  {
   "player": "Can you even go in there?",
-  "ms": 164,
+  "ms": 154,
   "lines": [
    {
     "speaker": "Tonya",
@@ -626,7 +608,7 @@
  },
  {
   "player": "The camera is broken, by the way.",
-  "ms": 172,
+  "ms": 159,
   "lines": [
    {
     "speaker": "Malcolm",
@@ -641,7 +623,7 @@
    "speech_act": "statement",
    "predicate": null,
    "fn": "make_statement",
-   "cardinality": "one_spokesperson",
+   "cardinality": "none",
    "temporal": null,
    "clarify": false,
    "owners": [
@@ -664,7 +646,7 @@
  },
  {
   "player": "Malcolm, is the camera broken?",
-  "ms": 174,
+  "ms": 170,
   "lines": [
    {
     "speaker": "Malcolm",
@@ -709,7 +691,7 @@
  },
  {
   "player": "How do you know?",
-  "ms": 179,
+  "ms": 170,
   "lines": [
    {
     "speaker": "Malcolm",
@@ -754,7 +736,7 @@
  },
  {
   "player": "Who are you, again?",
-  "ms": 188,
+  "ms": 175,
   "lines": [
    {
     "speaker": "Malcolm",
@@ -799,7 +781,7 @@
  },
  {
   "player": "Not you, Tonya.",
-  "ms": 194,
+  "ms": 198,
   "lines": [
    {
     "speaker": "Malcolm",
@@ -839,7 +821,7 @@
  },
  {
   "player": "whatever. how are you all",
-  "ms": 226,
+  "ms": 204,
   "lines": [
    {
     "speaker": "Giselle",
@@ -916,7 +898,7 @@
  },
  {
   "player": "Excited?",
-  "ms": 209,
+  "ms": 196,
   "lines": [
    {
     "speaker": "Giselle",
@@ -959,7 +941,7 @@
  },
  {
   "player": "What did Giselle say earlier?",
-  "ms": 215,
+  "ms": 199,
   "lines": [
    {
     "speaker": "Malcolm",
@@ -1002,7 +984,7 @@
  },
  {
   "player": "That's not what I asked.",
-  "ms": 219,
+  "ms": 200,
   "lines": [
    {
     "speaker": "Malcolm",
@@ -1042,7 +1024,7 @@
  },
  {
   "player": "Sure. Totally fine. We're all going to die.",
-  "ms": 111,
+  "ms": 102,
   "lines": [],
   "semantic": {
    "address": {
@@ -1062,7 +1044,7 @@
  },
  {
   "player": "Anyone know what the Threshold is?",
-  "ms": 234,
+  "ms": 214,
   "lines": [
    {
     "speaker": "Tonya",
@@ -1109,17 +1091,19 @@
  },
  {
   "player": "What about Outpost A?",
-  "ms": 237,
+  "ms": 215,
   "lines": [
    {
-    "speaker": "Giselle",
+    "speaker": "Tonya",
     "text": "All I know is the startup materials are going to Outpost A, Bermuda branch. Beyond that, nobody's told me."
    }
   ],
   "semantic": {
    "address": {
-    "scope": "untargeted",
-    "to": []
+    "scope": "direct",
+    "to": [
+     "Tonya"
+    ]
    },
    "speech_act": "elliptical_continuation",
    "predicate": "place.definition",
@@ -1128,7 +1112,7 @@
    "temporal": null,
    "clarify": false,
    "owners": [
-    "Giselle"
+    "Tonya"
    ],
    "requests": [
     {
@@ -1139,7 +1123,7 @@
   },
   "sources": [
    {
-    "speaker": "Giselle",
+    "speaker": "Tonya",
     "source": "deterministic-fallback",
     "accepted": false,
     "rejection": "LOCAL_PROVIDER_UNAVAILABLE",
@@ -1152,7 +1136,7 @@
  },
  {
   "player": "Tonya what's your deal",
-  "ms": 239,
+  "ms": 220,
   "lines": [
    {
     "speaker": "Tonya",
@@ -1197,7 +1181,7 @@
  },
  {
   "player": "Do you two know each other?",
-  "ms": 257,
+  "ms": 239,
   "lines": [
    {
     "speaker": "Giselle",
@@ -1258,7 +1242,7 @@
  },
  {
   "player": "What does Maxwell do?",
-  "ms": 254,
+  "ms": 236,
   "lines": [
    {
     "speaker": "Tonya",
@@ -1301,7 +1285,7 @@
  },
  {
   "player": "What did he say?",
-  "ms": 260,
+  "ms": 252,
   "lines": [
    {
     "speaker": "Giselle",
@@ -1344,7 +1328,7 @@
  },
  {
   "player": "Okay, well that's that. What's next?",
-  "ms": 266,
+  "ms": 245,
   "lines": [
    {
     "speaker": "Malcolm",
@@ -1387,7 +1371,7 @@
  },
  {
   "player": "Are we all going?",
-  "ms": 272,
+  "ms": 251,
   "lines": [
    {
     "speaker": "Tonya",
@@ -1434,7 +1418,7 @@
  },
  {
   "player": "I asked if we were all going there together.",
-  "ms": 273,
+  "ms": 252,
   "lines": [
    {
     "speaker": "Tonya",
@@ -1474,7 +1458,7 @@
  },
  {
   "player": "Is Tonya coming?",
-  "ms": 282,
+  "ms": 259,
   "lines": [
    {
     "speaker": "Giselle",
@@ -1517,7 +1501,7 @@
  },
  {
   "player": "Where is Maxwell?",
-  "ms": 290,
+  "ms": 265,
   "lines": [
    {
     "speaker": "Malcolm",
@@ -1560,7 +1544,7 @@
  },
  {
   "player": "You didn't answer me.",
-  "ms": 296,
+  "ms": 271,
   "lines": [
    {
     "speaker": "Malcolm",
@@ -1600,7 +1584,7 @@
  },
  {
   "player": "Malcolm, what are you doing right now?",
-  "ms": 298,
+  "ms": 274,
   "lines": [
    {
     "speaker": "Malcolm",
@@ -1645,7 +1629,7 @@
  },
  {
   "player": "Nice.",
-  "ms": 146,
+  "ms": 135,
   "lines": [],
   "semantic": {
    "address": {
@@ -1665,7 +1649,7 @@
  },
  {
   "player": "Giselle, how were you feeling earlier?",
-  "ms": 306,
+  "ms": 290,
   "lines": [
    {
     "speaker": "Giselle",
@@ -1710,7 +1694,7 @@
  },
  {
   "player": "Hello?",
-  "ms": 303,
+  "ms": 300,
   "lines": [
    {
     "speaker": "Tonya",
@@ -1748,7 +1732,7 @@
  },
  {
   "player": "Giselle, how are you?",
-  "ms": 306,
+  "ms": 288,
   "lines": [
    {
     "speaker": "Giselle",
@@ -1793,7 +1777,7 @@
  },
  {
   "player": "Why?",
-  "ms": 322,
+  "ms": 296,
   "lines": [
    {
     "speaker": "Giselle",
@@ -1838,7 +1822,7 @@
  },
  {
   "player": "Fair enough. What about Tonya?",
-  "ms": 324,
+  "ms": 297,
   "lines": [
    {
     "speaker": "Tonya",
@@ -1883,7 +1867,7 @@
  },
  {
   "player": "Have you done this before?",
-  "ms": 326,
+  "ms": 301,
   "lines": [
    {
     "speaker": "Tonya",
@@ -1928,7 +1912,7 @@
  },
  {
   "player": "I meant the Complex.",
-  "ms": 332,
+  "ms": 306,
   "lines": [
    {
     "speaker": "Tonya",

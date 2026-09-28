@@ -36,10 +36,30 @@ function placeOf(text, entities, dis, { apposition = null } = {}) {
   if (THERE_DEIXIS.test(text) || INSIDE_DEIXIS.test(text)) {
     const salient = dis?.salient_place ?? null;
     if (salient) return { place_id: salient, basis: "salient_topic" };
-    if (INSIDE_DEIXIS.test(text) || /\bin there\b/i.test(text)) return { place_id: "complex", basis: "domain_default_inside" };
+    // "Going in" / "inside" at this table is the Complex; anything said as "there" ("in there", "down
+    // there") needs an active place (owner decision 2026-09-27).
+    if (INSIDE_DEIXIS.test(text) && !THERE_DEIXIS.test(text)) return { place_id: "complex", basis: "domain_default_inside" };
     return { place_id: null, basis: "unresolved_deixis" };
   }
   return null;
+}
+
+// A follow-up picks up the last reply: an anaphor ("What's in it?", "Is that far?", "Who gave them that?"),
+// a fragment that only questions the reply ("Since when?", "How far?", "Which one?"), or a thing that reply
+// named. Dummy "it" ("What time is it?", "Is it just me?") and a complementizer "that" ("Did Maxwell say
+// that we...") are not anaphors.
+const FOLLOW_UP_ANAPHOR = /\b(?:it|its|those|them)\b|\bthat\b(?!\s+(?:we|you|i|he|she|they|it|there)\b)/i;
+const DUMMY_IT = /\b(?:what time is it|is it just (?:me|us)|it'?s (?:time|going to be|gonna be|my|our|a)\b|is it (?:ok(?:ay)?|fine|alright|all right) (?:if|to)|it seems|it looks like|make it)\b/gi;
+const FOLLOW_UP_FRAGMENT = /^(?:(?:and|so|but|okay|ok|wait|huh|oh|hm+)[,.!]?\s+)?(?:since when|how come|what for|like what|such as|how so|which one|how long|how far|how many|how much|who else|where exactly|when exactly|why not|in what way|for what|from where|with who(?:m)?|how do you know that)\b/i;
+function isFollowUp(act, dis) {
+  if (!["question", "request"].includes(act.speech_act)) return false;
+  const text = String(act.body_expanded ?? act.body ?? "").replace(DUMMY_IT, " ");
+  const answeredBySpeaker = (dis?.last_request?.answered_by ?? []).includes(dis?.active_speaker?.speaker_id);
+  const names = dis?.salient_names ?? [];
+  const namesReply = names.some((n) => new RegExp(`\\b${n.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\b`, "i").test(text));
+  if (namesReply) return true;
+  if (!answeredBySpeaker) return false;
+  return FOLLOW_UP_FRAGMENT.test(text.trim()) || FOLLOW_UP_ANAPHOR.test(text);
 }
 
 /**
@@ -94,6 +114,10 @@ function resolveAddressee(act, { present = [], dis = null, explicit_target_id = 
   const personFragment = subjectless && (act.predicate_candidates ?? []).some((c) => /^person\./.test(c.id)) && act.body_expanded.split(/\s+/).length <= 4;
   const deixisToSpeaker = /\bthere\b/i.test(act.body_expanded) && dis?.salient_place;
   if (speaker && presentIds.includes(speaker) && (act.bare_wh || act.reflex || personFragment || deixisToSpeaker)) return { kind: "inherited", ids: [speaker], quantifier: null, source: "active_speaker" };
+  // Owner decision (2026-09-27): a genuine semantic follow-up inherits its responder from the immediately
+  // relevant exchange -- it picks up what that one speaker just said (an anaphor, or a thing their reply
+  // named) -- and is never rotated for fairness. A fresh shared question stays untargeted (rotation).
+  if (!secondPerson && speaker && presentIds.includes(speaker) && (dis?.active_speaker?.speaker_ids?.length ?? 1) <= 1 && isFollowUp(act, dis)) return { kind: "inherited", ids: [speaker], quantifier: null, source: "antecedent_owner" };
   if (secondPerson && (dis?.active_speaker?.speaker_ids?.length ?? 0) > 1) return { kind: "inherited", ids: [], quantifier: null, source: "active_speakers_several", ambiguous: dis.active_speaker.speaker_ids.filter((id) => presentIds.includes(id)) };
   return { kind: "untargeted", ids: [], quantifier: null, source: "none", second_person: secondPerson };
 }
@@ -129,7 +153,9 @@ function cardinalityFor(predicate, addressee, act) {
   let card = entry?.default_cardinality ?? null;
   if (!card) {
     if (["greeting", "self_introduction", "farewell"].includes(act.speech_act)) return addressee.kind === "explicit" || addressee.kind === "inherited" ? "each_ack" : "each_ack";
-    if (SOCIAL.has(act.speech_act)) return "none";
+    // Owner decision (2026-09-27): a remark or sarcasm asks nothing and requires no response; silence is a
+    // normal outcome (the deterministic social policy may still pick one short acknowledgment).
+    if (SOCIAL.has(act.speech_act) || ["statement", "sarcasm"].includes(act.speech_act)) return "none";
     return "one_spokesperson";
   }
   if (card === "one_spokesperson" && addressee.quantifier === "any") card = "one_knower";
@@ -170,6 +196,7 @@ function analyzeTurn({ raw, present = [], entities = [], dis = null, explicit_ta
   const effective = [];
   const missing = [];
   const presentIds = people.map((p) => p.id);
+  let turnPlace = null;
 
   for (const original of (substantive.length ? substantive : parsed.acts.slice(0, 1))) {
     // "I mean for the day" names no canonical thing: it is the legacy self-repair fragment of the last
@@ -327,7 +354,13 @@ function analyzeTurn({ raw, present = [], entities = [], dis = null, explicit_ta
           const ITEM_KINDS = ["equipment", "task"];
           const family = (k) => (PLACE_KINDS.includes(k) ? PLACE_KINDS : ITEM_KINDS.includes(k) ? ITEM_KINDS : [k]);
           const before = named ? (priorMentions.find((x) => x.kind === named.kind) ?? priorMentions.find((x) => family(named.kind).includes(x.kind)) ?? null) : null;
-          if (named && before) { e.request_text = String(last.request_text).replace(new RegExp(before.matched.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "i"), act.ellipsis.topic_text); e.predicate = last.predicate; e.reissue_of = null; e.relation_target = last.request_id; }
+          if (named && before) {
+            e.request_text = String(last.request_text).replace(new RegExp(before.matched.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "i"), act.ellipsis.topic_text); e.predicate = last.predicate; e.reissue_of = null; e.relation_target = last.request_id;
+            // The same question about another thing continues the exchange with the one who answered it
+            // (owner decision 2026-09-27: follow-ups inherit, they are not rotated).
+            const answered = (last.answered_by ?? []).filter((id) => presentIds.includes(id));
+            if (e.addressee.kind === "untargeted" && answered.length === 1) e.addressee = { kind: "inherited", ids: answered, quantifier: null, source: "antecedent_owner" };
+          }
           else { e.clarify = { reason: "ellipsis_no_antecedent", slot: "topic" }; missing.push("ellipsis_no_antecedent"); }
         } else { e.clarify = { reason: "ellipsis_no_antecedent", slot: "topic" }; missing.push("ellipsis_no_antecedent"); }
       } else {
@@ -430,14 +463,12 @@ function analyzeTurn({ raw, present = [], entities = [], dis = null, explicit_ta
     // Arguments the predicate's slots need.
     const entry = e.predicate ? registry.get(e.predicate) : null;
     if (entry?.slots?.place && !e.args.place_id) {
-      const place = placeOf(e.request_text ?? act.body, entities, dis, { apposition: act.apposition });
+      // A place named earlier in the same line is the active antecedent ("What about Outpost A? Been there?").
+      const place = placeOf(e.request_text ?? act.body, entities, turnPlace ? { ...(dis ?? {}), salient_place: turnPlace } : dis, { apposition: act.apposition });
       if (place?.place_id) e.args.place_id = place.place_id;
-      else if (place?.basis === "unresolved_deixis" && e.predicate === "person.complex_experience" && (dis?.last_request || dis?.salient_place || dis?.active_speaker)) {
-        // "Have you been there before?" mid-conversation with no other place salient: at this table "there" is
-        // where the expedition goes (the Complex). As the very first thing said, nothing anchors it: clarify
-        // (review F10). Any other predicate with an unresolved "there" is clarified.
-        e.args.place_id = "complex"; place.basis = "domain_default_there";
-      } else if (place?.basis === "unresolved_deixis") { e.clarify = { reason: "deixis_unresolved", slot: "location" }; missing.push("deixis_unresolved"); }
+      // Owner decision (2026-09-27): "there" resolves only to a place the exchange made active (placeOf's
+      // salient place); with none, it is clarified -- never defaulted to the Complex.
+      else if (place?.basis === "unresolved_deixis") { e.clarify = { reason: "deixis_unresolved", slot: "location" }; missing.push("deixis_unresolved"); }
       if (place) e.args.place_basis = place.basis;
     }
     if (e.predicate === "transition.participants" || e.predicate === "mission.participants") {
@@ -458,6 +489,8 @@ function analyzeTurn({ raw, present = [], entities = [], dis = null, explicit_ta
     // types it (checked by the caller with the frame); ambiguous closed-vocabulary repairs never are.
     if (parsed.normalized.ambiguous_repairs.length) missing.push("ambiguous_name_repair");
     effective.push(e);
+    const named = placeOf(act.body || act.text || "", entities, null);
+    if (named?.place_id && named.basis === "named") turnPlace = named.place_id;
   }
   if (parsed.dropped.length) missing.push("acts_dropped");
   // Social framing clauses that ride along with a substantive act ("Good to hear!") need no reply.
@@ -542,7 +575,19 @@ function withSalience(snapshot, discourse = null, entities = []) {
     const found = canonicalKnowledge.resolveEntityMentions(text, entities).find((e) => ["complex", "outpost-a", "equipment-staging", "threshold", "threshold-room", "async-briefing-room"].includes(e.id));
     place = found?.id ?? null;
   }
-  return Object.freeze({ ...(snapshot ?? {}), salient_place: place, npc_question: Boolean(snapshot?.npc_question ?? discourse?.pending_question) });
+  // What the immediately relevant exchange talked about: the last request and the AUTHORIZED facts of the
+  // replies to it -- never their wording, which differs by provider (semantics must not). A follow-up that
+  // picks one of these up belongs to the one who answered.
+  const replies = discourse?.last_turn?.responses ?? [];
+  const replyFacts = replies.flatMap((r) => [...(r.facts?.required ?? []), ...(r.facts?.optional ?? [])]).map((f) => (typeof f.value === "string" ? f.value : JSON.stringify(f.value ?? ""))).join(" ");
+  const exchangeText = [snapshot?.last_request?.request_text ?? "", discourse?.last_turn?.player_text ?? "", replyFacts].join(" ");
+  const mentioned = canonicalKnowledge.resolveEntityMentions(exchangeText, entities).filter((e) => e.kind !== "person" && !e.is_player);
+  // Owner decision (2026-09-27): "there" is a place only when the exchange actually made one active -- the
+  // player's own previous question counts ("Nervous about going into the Complex?" -> "Been there before?").
+  if (!place) place = mentioned.find((e) => ["complex", "outpost-a", "equipment-staging", "threshold", "threshold-room", "async-briefing-room"].includes(e.id))?.id ?? null;
+  // The names the REPLY itself used (not the player's own words): picking one up is a follow-up to its speaker.
+  const replyNamed = canonicalKnowledge.resolveEntityMentions(replyFacts, entities).filter((e) => e.kind !== "person" && !e.is_player);
+  return Object.freeze({ ...(snapshot ?? {}), salient_place: place, salient_entities: [...new Set(mentioned.map((e) => e.id))], salient_names: [...new Set(replyNamed.map((e) => e.matched).filter((n) => n && n.length >= 3))], npc_question: Boolean(snapshot?.npc_question ?? discourse?.pending_question) });
 }
 
 /**
