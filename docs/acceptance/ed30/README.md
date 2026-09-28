@@ -89,3 +89,34 @@ The full developer-trace transcripts (JSONL, about 150 KB per session) are not c
 2. **Accepted readings that did not help.** 32 wrong predicates had an accepted Tier-2 reading ("whats the deal today", "where we headed"). The reading either named no facet or was dropped by the plausibility check. The saved run cannot separate the two without querying the model on corpus lines again, which would be a second measurement.
 3. **Follow-ups that are not word echoes.** 23 addressee misses: "since when" unpunctuated, "and you?" after a reply, and corrective repairs ("no the flashlight lol", "ugh no, whats IN it", "no like ever").
 4. **Tier-2 timeouts:** 10 readings hit the 8 s limit (advisory p90 is 7.1 s).
+
+## Fourth held-out corpus: ED-30G (2026-09-28)
+
+- **Corpus:** `heldout4-corpus-2026-09-28.spent.jsonl`, 325 items, SHA-256 `264c6307c2f10dec6e9b7ba46b507e03cde32a9f059ca234259795cce42f709f`.
+  - Written by a fresh subagent after the ED-30G implementation and verification were frozen. Its only readable input was the brief (`heldout4-authoring-brief.txt`), which quotes none of the test phrasings.
+  - Hashed at 2026-09-28T09:54:41Z. **Measured exactly once**, Tier 1 and full pipeline in the same run (`heldout4-run.json`). **It is spent.**
+
+| Measure | Gate | Tier 1 only | Full production pipeline |
+| --- | --- | --- | --- |
+| Speech act | ≥ 95 | 78.2 | 78.5 |
+| Addressee | ≥ 98 | 81.8 | 81.8 |
+| Predicate / facet | ≥ 95 | 56.3 | 67.4 |
+| Relation | ≥ 95 | 85.8 | 85.8 |
+| Cardinality | — | 72.6 | 76.6 |
+| Temporal scope | — | 84.3 | 84.3 |
+| Question form | — | 76.6 | 76.6 |
+| **Whole turn correct** | — | 38.8 | 46.2 |
+| Clarification rate | ≤ 8 | 23.4 | 11.1 |
+| Confident-wrong | ≤ 1 | 31.7 | 34.5 |
+| Tier-2 invocation | — | — | 32.6% (106) |
+| Tier-2 decoded / schema-valid / semantically complete / accepted | — | — | 106 / 83 / 71 / 71 (67.0% accepted) |
+| Tier-2 rejections | — | — | low confidence 23, contradictory speech act 6, missing facet 5, wh-incompatible facet 1 |
+| Timeout rate | — | — | 0% |
+| Advisory latency p50 / p90 | — | — | 4,336 / 4,459 ms |
+
+**Every gate fails.** Remaining general failure classes (diagnosed after the measurement; nothing was tuned against it):
+
+1. **Utterance force is still over-confident on statements.** 133 of 199 full-pipeline failures never reached Tier 2, including 46 lines Tier 1 was sure were statements. Examples: echo plus wh commentary ("short hauls how short"), a wh-word late in the line without a comma, social acts in chat form (greetings, farewells, "btw" introductions), and corrections whose thing does not resolve. The completeness gate trusts Tier 1's certainty, so these never get the bounded reading.
+2. **The legacy "what is X" reading takes item questions.** In 35 questions the older frame builder's entity-definition route answered an item-purpose, contents or holder question, so the gate saw a complete turn.
+3. **Discourse follow-ups with commentary, and answers to a coworker's question.** 23 addressee misses ("X, really", "the first hallway, seriously", answering "kinda?" to a coworker's question).
+4. **Tier-2 low-confidence declines on short fragments.** 19 readings; they fail closed, so these lines were clarified or kept their Tier-1 reading.

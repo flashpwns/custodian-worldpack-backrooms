@@ -1,7 +1,7 @@
 [
  {
   "player": "Hello everyone!",
-  "ms": 102,
+  "ms": 103,
   "lines": [
    {
     "speaker": "Giselle",
@@ -73,7 +73,7 @@
  },
  {
   "player": "Giselle, how are you?",
-  "ms": 97,
+  "ms": 98,
   "lines": [
    {
     "speaker": "Giselle",
@@ -118,7 +118,7 @@
  },
  {
   "player": "Why?",
-  "ms": 103,
+  "ms": 105,
   "lines": [
    {
     "speaker": "Giselle",
@@ -163,7 +163,7 @@
  },
  {
   "player": "Fair enough. What about Tonya?",
-  "ms": 107,
+  "ms": 109,
   "lines": [
    {
     "speaker": "Tonya",
@@ -208,7 +208,7 @@
  },
  {
   "player": "Have you done this before?",
-  "ms": 112,
+  "ms": 114,
   "lines": [
    {
     "speaker": "Tonya",
@@ -253,7 +253,7 @@
  },
  {
   "player": "I meant the Complex.",
-  "ms": 118,
+  "ms": 119,
   "lines": [
    {
     "speaker": "Tonya",

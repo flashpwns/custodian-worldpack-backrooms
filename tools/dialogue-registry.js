@@ -404,6 +404,7 @@ const ENTRIES = [
       { re: re("\\b(?:am i|are you|is [a-z]+) (?:carrying|holding|bringing|in charge of|responsible for) (?:the |that )?(?:[a-z]+ )?(?:camera|duffle|duffel|materials|startup materials|lamp|light|field light|flashlight|torch|spectrometer|mass spectrometer|layout record|record|bag|gear|kit|stuff|equipment)\\b"), form: "yes_no" },
       { re: re("\\b(?:everybody|everyone|you all|all of you|you guys|y'?all) (?:got|have) (?:their|your) (?:gear|stuff|equipment|kit|things|lights|lamps)\\b"), form: "yes_no" },], lexicon: [] },
   { id: "item.purpose", domain: "item", slots: { item: "equipment" }, question_forms: ["wh"], resolver: null, route: { fn: "ask_assignment_purpose", concept: "assignment_purpose" }, epistemic_class: EPISTEMIC.INSTITUTIONAL, default_cardinality: CARDINALITY.ONE_SPOKESPERSON, temporal_support: ["now"], granularity: "record", answer_contract: { kind: "known_concept", facet: "purpose" }, neighbors: ["item.destination", "item.holder"], priority: 20, cues: [
+      { re: re("^(?:so |and |okay |ok )?what (?:does|do|did) (?:it|that|this|those|these) (?:even |actually |really )?do\\b"), form: "wh" },
       { re: re("\\bwhat(?:'?s| is) the deal with (?:the |that |this )?(?:[a-z]+ )?(?:camera|duffle|duffel|materials|startup materials|lamp|light|field light|flashlight|torch|spectrometer|mass spectrometer|layout record|record|bag|gear|kit|stuff|equipment)\\b"), form: "wh" },
       { re: re("\\bwhat (?:does|do) (?:the |that |this )(?:[a-z]+ )?(?:camera|duffle|duffel|materials|startup materials|lamp|light|field light|flashlight|torch|spectrometer|mass spectrometer|layout record|record|bag|gear|kit|stuff|equipment) (?:actually |even )?do\\b"), form: "wh" },
       { re: re("\\bwhy (?:are|do) we (?:bringing|taking|carrying|need) (?:the |a |an |this |that )?(?:[a-z]+ )?(?:camera|duffle|duffel|materials|startup materials|lamp|light|field light|flashlight|torch|spectrometer|mass spectrometer|layout record|record|bag|gear|kit|stuff|equipment)\\b"), form: "wh" },], lexicon: [] },
@@ -501,7 +502,10 @@ function ids() { return [...compiled.keys()]; }
 // determiner and its noun ("the actual job", "our real goal"), so "is this real" keeps its meaning.
 const HEDGE_ADVERBS = /\b(?:exactly|precisely|basically|actually|really|honestly|seriously|literally|even|anyway|like)\s+/g;
 const HEDGE_ADJECTIVES = /\b(the|our|this|that|your|today's|an?)\s+(?:actual|real|exact|specific|whole|main|overall|precise|official)\s+/g;
-function stripHedges(text) { return String(text).replace(HEDGE_ADVERBS, "").replace(HEDGE_ADJECTIVES, "$1 "); }
+// "we all" / "you all" is the collective (the quantifier is read elsewhere): it carries no facet of its own.
+// A tag or alternative tail ("... or what", "..., right") only marks the line as asked: no facet either.
+const TAG_TAIL = /(?:,\s*(?:right|yeah|yea|huh|eh|correct|no)|\s+(?:or what|or not|or no|or nah|or something|or nothing|or anything|right))\s*[?!.]*$/;
+function stripHedges(text) { return String(text).replace(HEDGE_ADVERBS, "").replace(HEDGE_ADJECTIVES, "$1 ").replace(/\b(are|were|do|did|have|will) (we|you|they) all\b/g, "$1 $2").replace(TAG_TAIL, ""); }
 // Typo repair for facet detection only (never for the words the line is framed or quoted with): a word
 // that is not common English and not already a cue word is mapped onto the ONE closest cue word ("reprot"
 // -> "report"), same first letter, within 1 edit (2 for 7+ letters), never across an inflection. The
@@ -545,11 +549,28 @@ function matchCues(text) {
   }
   return out.sort((a, b) => (b.entry.priority ?? 0) - (a.entry.priority ?? 0) || a.span[0] - b.span[0]);
 }
+// Aux restoration: chat drops the auxiliary ("how long you been here", "where we headed", "you been in there
+// before", "anyone seen the lamp"). For facet detection only, the missing auxiliary is put back the way
+// English requires it, and the cues read the full question.
+const PRONOUN = "(?:you|we|they|he|she|it|anyone|anybody|everyone|everybody|someone|somebody|y'?all|you guys|you two|you all)";
+function restoreAux(text) {
+  let t = String(text).replace(/\bu\b/g, "you").replace(/\br\b/g, "are").replace(/\bur\b/g, "your").replace(/\by'?all\b/g, "you all").replace(/\b(\w+)in\b(?=\s)/g, (m, w) => (/^(?:go|do|talk|feel|hold|com|head|leav|stay|work|carry|bring|mak|tak|runn|hav)$/.test(w) ? `${w}ing` : m));
+  const wh = "(who|what|where|when|why|how(?: long| many| much| far| come)?|which(?: one)?)";
+  t = t.replace(new RegExp(`^${wh}\\s+(${PRONOUN})\\s+(been|done|seen|got|gotten|had|met|heard)\\b`), "$1 have $2 $3");
+  t = t.replace(new RegExp(`^${wh}\\s+(${PRONOUN})\\s+(\\w+ing|headed|supposed|gonna|going)\\b`), "$1 are $2 $3");
+  t = t.replace(new RegExp(`^${wh}\\s+(${PRONOUN})\\s+(do|know|think|want|need|mean|say|have|like)\\b`), "$1 do $2 $3");
+  t = t.replace(new RegExp(`^(${PRONOUN})\\s+(been|done|seen|got|gotten|had|met|heard|ever been)\\b`), "have $1 $2");
+  t = t.replace(new RegExp(`^(${PRONOUN})\\s+(all\\s+)?(\\w+ing|headed|supposed|gonna|ready|ok|okay|alright|good|fine|set|nervous|scared|tired|excited|new)\\b`), "are $1 $2$3");
+  return t === text ? null : t;
+}
 function detectPredicates(expandedClause) {
   const text = stripHedges(String(expandedClause ?? "").toLowerCase());
   const found = matchCues(text);
   if (found.length) return found;
-  const repaired = repairAgainstLexicon(text);
+  const restoredRaw = restoreAux(text);
+  const restored = restoredRaw ? stripHedges(restoredRaw) : null;
+  if (restored) { const again = matchCues(restored); if (again.length) return again.map((d) => ({ ...d, aux_restored: true })); }
+  const repaired = repairAgainstLexicon(restored ?? text);
   return repaired ? matchCues(repaired).map((d) => ({ ...d, typo_repaired: true })) : [];
 }
 
@@ -589,41 +610,41 @@ function advisoryFacets() {
 // One-line meaning of each facet for the bounded Tier-2 classifier (what a question ABOUT it asks). Data:
 // a facet without a gloss is offered by id alone. Glosses never contain facts or answers.
 const FACET_GLOSS = Object.freeze({
-  "institution.purpose": "what the company (ASYNC) does or why it exists",
-  "item.contents": "what is inside an item or container",
-  "item.destination": "where an item is being taken",
-  "item.holder": "who has, carries or holds an item",
-  "item.purpose": "what an item is for or why it is needed",
-  "item.status": "the condition or state of an item",
-  "mission.destination": "where the group is going today (the destination)",
-  "mission.objective": "what the group's job, task or assignment is today",
-  "mission.participants": "who is part of the expedition overall",
-  "mission.route": "how to get somewhere, or how far it is",
-  "mission.schedule": "when something happens or when they leave",
-  "person.anticipation": "whether someone is excited or looking forward to it",
-  "person.async_tenure": "how long someone has worked at ASYNC",
-  "person.authority": "who is in charge or who someone reports to",
-  "person.complex_experience": "whether someone has been inside the Complex before",
-  "person.current_activity": "what someone is doing right now",
-  "person.current_assignment": "what someone's task is today",
-  "person.expedition_experience": "whether someone has been on an expedition before",
-  "person.familiarity": "whether people know each other or have met",
-  "person.fatigue": "whether someone is tired",
-  "person.first_day_at_async": "whether it is someone's first day",
+  "institution.purpose": "what ASYNC does",
+  "item.contents": "what is inside an item",
+  "item.destination": "where an item is taken",
+  "item.holder": "who has an item",
+  "item.purpose": "what an item is for",
+  "item.status": "an item's condition",
+  "mission.destination": "where the group is going",
+  "mission.objective": "the group's job today",
+  "mission.participants": "who is on the expedition",
+  "mission.route": "how to get somewhere / how far",
+  "mission.schedule": "when something happens",
+  "person.anticipation": "excited or looking forward",
+  "person.async_tenure": "how long someone has worked here",
+  "person.authority": "who is in charge",
+  "person.complex_experience": "been inside the Complex before",
+  "person.current_activity": "what someone is doing now",
+  "person.current_assignment": "someone's task today",
+  "person.expedition_experience": "been on an expedition before",
+  "person.familiarity": "whether people know each other",
+  "person.fatigue": "tired",
+  "person.first_day_at_async": "someone's first day",
   "person.identity": "who someone is",
-  "person.intent": "what someone plans or intends to do",
-  "person.nervousness": "whether someone is nervous, scared or worried",
-  "person.opinion": "what someone thinks about something",
-  "person.presence": "whether someone is here or where they are",
-  "person.role": "what someone's job or role is in general",
-  "person.self_description": "a request for someone to tell about themselves",
-  "person.wellbeing": "how someone is doing or feeling",
-  "place.access": "whether one can go into a place",
+  "person.intent": "what someone plans to do",
+  "person.nervousness": "nervous or scared",
+  "person.opinion": "what someone thinks of something",
+  "person.presence": "whether/where someone is",
+  "person.role": "someone's job or role",
+  "person.self_description": "tell about yourself",
+  "person.wellbeing": "how someone is doing",
+  "place.access": "whether one can go in",
   "place.definition": "what a place is",
-  "place.status": "the state or condition of a place",
-  "procedure.instruction_history": "what they were told to do earlier",
-  "procedure.next_incomplete_step": "what to do next or where to go next / report to",
-  "transition.participants": "who is going along to the next place, or whether all go together"
+  "place.status": "a place's condition",
+  "procedure.instruction_history": "what they were told to do",
+  "procedure.next_incomplete_step": "what to do or where to go next",
+  "transition.participants": "who goes along / all together"
 });
 // The question words a question ABOUT a facet can open with (only where confusable facets differ). A
 // Tier-2 reading whose facet cannot be asked with the line's own wh-word is implausible: "where do we show
@@ -648,4 +669,4 @@ function cueLexicon() {
   return [...words].sort();
 }
 
-module.exports = { REGISTRY_VERSION, EPISTEMIC, CARDINALITY, ANSWER_VALUES, ENTRIES, registerPredicate, unregisterPredicate, get, all, ids, detectPredicates, predicateForFrame, advisoryFacets, advisoryFacetGuide, whCompatible, cueLexicon, stripHedges, validateEntry };
+module.exports = { REGISTRY_VERSION, EPISTEMIC, CARDINALITY, ANSWER_VALUES, ENTRIES, registerPredicate, unregisterPredicate, get, all, ids, detectPredicates, predicateForFrame, advisoryFacets, advisoryFacetGuide, whCompatible, cueLexicon, stripHedges, restoreAux, validateEntry };

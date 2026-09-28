@@ -871,6 +871,11 @@
       "file": "tests/ed30f-end-to-end.test.js",
       "status": "included",
       "tier": "aggregate"
+    },
+    {
+      "file": "tests/ed30g-utterance-force-followups.test.js",
+      "status": "included",
+      "tier": "aggregate"
     }
   ],
   "report_tools": [

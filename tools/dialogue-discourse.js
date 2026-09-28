@@ -586,8 +586,11 @@ function resolveEquipmentReferent(text, equipment = {}, { loose = false } = {}) 
   const subPhrases = (label) => { const w = label.split(/\s+/).filter(Boolean); const out = []; for (let i = 0; i < w.length; i += 1) for (let j = i + 2; j <= w.length; j += 1) out.push(w.slice(i, j).join(" ")); return out; };
   // What kind of thing an item's head noun IS ("that bag" is the duffle, "the light" is the lamp): a closed
   // list of everyday hypernyms, still resolved only when unique.
-  const hypernyms = (p) => { const head = p.split(/\s+/).at(-1); return ITEM_HYPERNYMS[head] ?? []; };
-  const phrases = (item) => [...new Set([item.label, item.type, item.id].filter(Boolean).map((v) => String(v).toLowerCase().replace(/-/g, " ")).flatMap((p) => [p, ...subPhrases(p), ...hypernyms(p)]))];
+  // The label's own head noun names the item too ("the lamp", "the camera"), unless it is a generic word.
+  // ...only when no OTHER item's label contains that word ("the camera" stays ambiguous beside a "camera bag").
+  const labelOf = (item) => [item.label, item.type, item.id].filter(Boolean).map((v) => String(v).toLowerCase().replace(/-/g, " ")).join(" | ");
+  const hypernyms = (p, item) => { const head = p.split(/\s+/).at(-1); const headOk = head && head.length >= 4 && !GENERIC.has(head) && p.includes(" ") && items.every((o) => o === item || !labelOf(o).includes(head)); return [...(ITEM_HYPERNYMS[head] ?? []), ...(headOk ? [head] : [])]; };
+  const phrases = (item) => [...new Set([item.label, item.type, item.id].filter(Boolean).map((v) => String(v).toLowerCase().replace(/-/g, " ")).flatMap((p) => [p, ...subPhrases(p), ...hypernyms(p, item)]))];
   const hasPhrase = (p) => new RegExp(`(?:^|[^a-z0-9])${p.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}(?:$|[^a-z0-9])`).test(normalized);
   let matches = items.filter((item) => phrases(item).some(hasPhrase));
   if (matches.length === 0 && loose) {

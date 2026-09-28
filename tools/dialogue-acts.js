@@ -81,12 +81,21 @@ const TARGET_REPAIR = [
 // Repair fillers around the core ("Scratch that, I meant Tonya", "Oops, wrong person.", "... actually").
 const REPAIR_LEAD = /^(?:(?:scratch that|oops|whoops|my bad|wrong person|hold on|hang on|wait|sorry|no|nope|actually|um+|uh|ok|okay|glad to hear(?: it)?|thanks|cool|right|good|great)[,.!]*\s+(?:but\s+)?)+/i;
 const REPAIR_TAIL = /\s*,?\s*\b(?:actually|though|btw|by the way|then|please)\s*([.!?]*)$/i;
+// Corrections typed without "I meant" are rewritten into the canonical repair form the patterns below read:
+// "no the flashlight" -> "i meant the flashlight"; "not Outpost A, the Complex" -> "i meant the Complex, not
+// Outpost A"; "the other bag" -> "i meant the other bag" (an "other" referent then clarifies, never guesses).
+const CORRECTION_REWRITES = [
+  [/^(?:no|nah|nope|naw)[,.!]?\s+((?:the|that|this|my|your)\s+[a-z][\w -]{1,30}?)\s*(?:lol|lmao|haha|obviously)?\s*[.!?]*$/i, "i meant $1"],
+  [/^not\s+((?:the\s+)?[A-Za-z][\w -]{0,30}?),\s*((?:the\s+)?[A-Za-z][\w -]{1,30}?)\s*[.!?]*$/i, "i meant $2, not $1"],
+  [/^(?:no[,.!]?\s+)?((?:the|that)\s+other\s+[a-z][\w -]{0,20}?)\s*[.!?]*$/i, "i meant $1"]
+];
 function repairSources(...texts) {
   const out = [];
   for (const text of texts) {
     const t = String(text ?? "").trim();
     if (!t) continue;
     out.push(t);
+    for (const [pattern, to] of CORRECTION_REWRITES) if (pattern.test(t)) out.push(t.replace(pattern, to));
     const core = t.replace(REPAIR_LEAD, "").replace(REPAIR_TAIL, "$1").trim();
     if (core && core !== t) out.push(core);
     // Hedging adverbs inside the repair ("I was actually asking all of you").
@@ -385,7 +394,86 @@ function unwrapIndirect(expanded) {
 /**
  * Classifies one clause into an act (without context). Returns a partial act frame.
  */
-function clauseAct(clause, { people = [] } = {}) {
+// ─── utterance force: questionhood that does not depend on a question mark ─────────────────────────────
+// Chat is typed without punctuation. A clause is asked when its SYNTAX asks: a wh-word or an inverted
+// auxiliary leading the clause (after hedges and a vocative), a subject with no finite verb ("y'all doing
+// ok", "anyone seen the camera"), a tag or alternative tail ("... or what", "..., right"), a wh-clause after a
+// comma ("this Threshold thing, what is that"), or a follow-up fragment ("since when", "how long"). The
+// inverse holds too: a "?" is not enough when the rest is a first-person claim or a report. Each clause
+// records how sure this is; "uncertain" alone sends the turn to the bounded Tier-2 reading.
+const FORCE_LEAD = /^(?:(?:so|and|but|ok|okay|k|well|like|um+|uh+|hm+|er|erm|hey|yo|oh|ah|wait|alright|right|anyway|anyways|honestly|seriously|basically|actually|also|then|now|sry|sorry|lol|lmao|ugh|man|dude|guys|y'?all|quick question|real quick|random but)[,.!]?\s+)+/i;
+const FORCE_WH = /^(?:who|whom|whose|what|where|when|why|how|which|wat|wut|wha|wher|whre|whr|wen|hw)\b/i;
+const FORCE_AUX = /^(?:is|are|am|was|were|do|does|did|can|could|will|would|should|shall|have|has|had|may|might|must|r|isn'?t|aren'?t|don'?t|doesn'?t|didn'?t|can'?t|won'?t|haven'?t|hasn'?t|wasn'?t|weren'?t)\s+(?:you|u|ya|we|they|he|she|it|there|this|that|these|those|anyone|anybody|everyone|everybody|someone|somebody|y'?all|the|our|your|my|today|tomorrow|maxwell|kirk|[a-z]+)\b/i;
+const FORCE_SUBJECT = "(?:you|u|ya|y'?all|you guys|you two|you all|you both|you three|anyone|anybody|everyone|everybody|someone|somebody|any of you|we|we all|all of us|us all)";
+// A subject followed by a participle, adjective or base verb with NO finite verb is an aux-dropped question.
+const FORCE_DROPPED = new RegExp(`^${FORCE_SUBJECT}\\s+(?:all\\s+|both\\s+|still\\s+|ever\\s+|already\\s+|even\\s+)?(?:\\w+ing|been|done|seen|got|gotten|heard|met|ready|ok|okay|alright|all right|good|fine|set|sure|new|nervous|scared|tired|excited|gonna|supposed|headed|going|coming|staying|leaving|here|there|in|out|on)\\b`, "i");
+// "anyone see who took the camera", "anybody know where...": an indefinite subject with a bare verb asks.
+const FORCE_INDEF_BARE = /^(?:anyone|anybody|any of you|someone|somebody|y'?all|you guys)\s+(?:see|know|have|get|want|need|hear|remember|think|mind|notice|catch|wanna)\b/i;
+const FORCE_TAG = /(?:,\s*(?:right|yeah|yea|yes|no|huh|eh|correct|true|ok|okay|yeah\?)|\s+(?:or what|or not|or no|or nah|or something|or nothing|or anything|isn'?t it|aren'?t (?:we|you|they)|don'?t (?:we|you|they)|won'?t (?:we|you|they)|didn'?t (?:we|you|they)|right))\s*[?!.]*$/i;
+const FORCE_LATE_WH = /,\s*(?:(?:so|like|and|but)\s+)?(?:what|where|who|how|why|when|which|whats|wheres|whos)\b[^,]{0,40}$/i;
+const FORCE_FRAGMENT = /^(?:since when|how long|how come|how so|how many|how much|how often|for how long|what for|for what|like what|such as|which one|which ones|who else|what else|where to|you too|same for you|ever|before|before that|still|yet|already|seriously|for real|really|how)\s*[?!.]*$/i;
+const FORCE_STATEMENT_LEAD = /^(?:i|i'm|im|i am|i've|ive|i have|i was|i'd|i will|i'll|i think|i guess|i feel|i mean|i know|my|me|let's|lets|he said|she said|they said|maxwell said|kirk said)\b/i;
+const FORCE_REPORT = /\b(?:said|says|asked|told (?:me|us|him|her|them))\b\s*[:,]?\s*["“']/i;
+function utteranceForce(act, clause) {
+  const raw = String(clause.text ?? "").trim();
+  const hasQ = /\?\s*$/.test(raw);
+  const body = String(act.body_expanded ?? act.body ?? act.text ?? "").trim();
+  const core = body.replace(FORCE_LEAD, "").replace(/^(?:[A-Z][a-z]+|[a-z]+),\s+(?=\S)/, (m) => m); // vocatives are already stripped from the body
+  const plain = core.replace(/[?!.]+$/, "").trim();
+  const words = plain.split(/\s+/).filter(Boolean).length;
+  if (["question", "request", "elliptical_continuation", "repair", "attention_call"].includes(act.speech_act)) {
+    // The "?" was the ONLY cue, and the rest is a first-person claim or a report: not sure it asks.
+    const onlyMark = act.speech_act === "question" && act.question_form === "declarative" && !FORCE_WH.test(plain) && !FORCE_AUX.test(plain) && !FORCE_DROPPED.test(plain) && !FORCE_TAG.test(raw);
+    if (onlyMark && hasQ && (FORCE_STATEMENT_LEAD.test(plain) || FORCE_REPORT.test(raw))) return { confidence: "uncertain", cue: "question_mark_only" };
+    // A question an earlier rule typed as declarative takes its form from its syntax when it has one.
+    const reform = act.speech_act === "question" && ["declarative", null].includes(act.question_form) ? (FORCE_WH.test(plain) ? "wh" : FORCE_AUX.test(plain) ? "yes_no" : null) : null;
+    return { confidence: onlyMark ? "likely" : "certain", cue: onlyMark ? (hasQ ? "question_mark" : "declarative_form") : "syntax", ...(reform ? { reform } : {}) };
+  }
+  if (act.speech_act !== "statement") return { confidence: "certain", cue: act.speech_act };
+  if (FORCE_REPORT.test(raw)) return { confidence: "certain", cue: "report" };
+  if (FORCE_STATEMENT_LEAD.test(plain) && !FORCE_TAG.test(raw)) return { confidence: "certain", cue: "first_person" };
+  if (FORCE_WH.test(plain)) return { confidence: "certain", cue: "wh", promote: "wh" };
+  if (FORCE_AUX.test(plain) && words >= 2) return { confidence: "certain", cue: "aux_inversion", promote: "yes_no" };
+  if (FORCE_FRAGMENT.test(plain)) return { confidence: "likely", cue: "fragment", promote: "wh" };
+  if (FORCE_TAG.test(raw) && words >= 2) return { confidence: "likely", cue: "tag", promote: /\bor\s+(?:what|not|no|nah|something|nothing|anything)\b/i.test(raw) ? "choice" : "tag" };
+  if (FORCE_LATE_WH.test(raw)) return { confidence: "likely", cue: "late_wh", promote: "wh" };
+  if (FORCE_INDEF_BARE.test(plain)) return { confidence: "likely", cue: "indefinite_bare_verb", promote: "yes_no" };
+  if (FORCE_DROPPED.test(plain) && !hasQ && words <= 10) return { confidence: "likely", cue: "aux_dropped", promote: "declarative" };
+  // Unpunctuated, short, addressed to someone or the group, and not a claim: could be either -- Tier 2 reads it.
+  if (!hasQ && UNPUNCTUATED(raw) && words <= 8 && new RegExp(`^${FORCE_SUBJECT}\\b`, "i").test(plain)) return { confidence: "uncertain", cue: "unpunctuated_second_person" };
+  return { confidence: "certain", cue: "declarative" };
+}
+
+// "tonya is today ur first day" / "malcolm do you have the duffle": a leading name followed by an inverted
+// auxiliary and an explicit subject is an ADDRESS, not the subject ("Tonya is nervous" stays a claim).
+const FORCE_AUX_STRICT = /^(?:is|are|am|was|were|do|does|did|can|could|will|would|should|have|has|r)\s+(?:you|u|ya|we|they|it|there|this|that|today|tomorrow|anyone|anybody|everyone|y'?all|your|ur)\b/i;
+function clauseAct(clause, opts = {}) {
+  const act = clauseActCore(clause, opts);
+  if (act.speech_act === "statement" && !act.vocatives?.length && act.mentions?.length) {
+    const lead = act.mentions.find((m) => m.id && new RegExp(`^${escapeRe(String(m.name))}[,]?\\s+`, "i").test(String(act.body_expanded ?? act.body ?? "")));
+    const rest = lead ? String(act.body_expanded ?? act.body ?? "").replace(new RegExp(`^${escapeRe(String(lead.name))}[,]?\\s+`, "i"), "") : "";
+    if (lead && FORCE_AUX_STRICT.test(rest)) {
+      act.vocatives = [{ name: lead.name, id: lead.id, form: "leading" }];
+      act.mentions = act.mentions.filter((m) => m !== lead);
+      act.body = rest; act.body_expanded = rest;
+      act.predicate_candidates = registry.detectPredicates(rest).map((d) => ({ id: d.id, form: d.form, temporal: d.temporal, polarity: d.polarity }));
+      act.temporal_scope = act.temporal_scope ?? temporalOf(rest);
+    }
+  }
+  const force = utteranceForce(act, clause);
+  if (force.promote && act.speech_act === "statement") {
+    act.speech_act = "question";
+    act.question_form = force.promote === "tag" ? "declarative" : force.promote;
+    // The question's own words decide its facet (re-read without the lead-in).
+    if (!act.predicate_candidates?.length) act.predicate_candidates = registry.detectPredicates(String(act.body_expanded ?? act.body ?? "").replace(FORCE_LEAD, "")).map((d) => ({ id: d.id, form: d.form, temporal: d.temporal, polarity: d.polarity }));
+    if (force.cue === "fragment" && !act.bare_wh) act.bare_wh = String(act.body_expanded ?? act.body ?? "").replace(FORCE_LEAD, "").replace(/[?!.\s]+$/, "").toLowerCase();
+  }
+  if (force.reform) act.question_form = force.reform;
+  act.force = { confidence: force.confidence, cue: force.cue };
+  return act;
+}
+
+function clauseActCore(clause, { people = [] } = {}) {
   // "@Nora what?" / "@Nora, what?": an @mention is a vocative (the name, without the sigil).
   const cleanText = String(clause.text).replace(/(^|\s)@\s?(?=[A-Za-z])/g, "$1");
   // "Now what?" / "and then what" are questions in their own right, not a marker before a bare "what".
@@ -442,6 +530,9 @@ function clauseAct(clause, { people = [] } = {}) {
   // "Thanks Malcolm" / "thanks man": thanks (to that person), not a call for attention.
   const thanked = markers.some((m) => /\b(?:thanks|thank you)$/i.test(m));
   if (thanked && (!trimmed || /^(?:man|mate|dude|guys|all|everyone|everybody|so much|a lot|again|buddy|folks|y'?all|pal|friend)[.!]*$/i.test(trimmed))) { act.speech_act = "thanks"; return act; }
+  // A target correction without "I meant": "no, Malcolm" / "not you, Tonya" / "Tonya, not you" -- the last
+  // request, re-asked of the one named (resolved against the ledger; no request -> clarify).
+  if (voc.vocatives.length === 1 && ((!trimmed && markers.some((m) => /^(?:no|nah|nope|naw)$/i.test(m))) || /^not (?:you|him|her|them)[.!?]*$/i.test(trimmed))) { act.speech_act = "repair"; act.repair = { kind: "target", name: voc.vocatives[0].name, exclude: null }; return act; }
   if (!trimmed && voc.vocatives.length) { act.speech_act = "attention_call"; act.attention = true; return act; }
   if (ATTENTION_WORDS.test(trimmed) || ATTENTION_PHRASES.test(trimmed) || ATTENTION_PHRASES.test(String(raw).trim())) {
     // "Earth to Malcolm": the name is who is being called.
@@ -451,7 +542,7 @@ function clauseAct(clause, { people = [] } = {}) {
     act.speech_act = "attention_call"; act.attention = true; return act;
   }
   if (ONLY_MARKERS.test(trimmed)) { act.speech_act = /\b(?:thanks|thank you)\b/i.test(trimmed) ? "thanks" : "social_acknowledgment"; return act; }
-  const repairTexts = repairSources(trimmed, raw);
+  const repairTexts = repairSources(trimmed, raw, clause.text);
   for (const [index, pattern] of TARGET_REPAIR.entries()) {
     const match = repairTexts.map((t) => t.match(pattern)).find(Boolean);
     if (!match) continue;
@@ -609,4 +700,4 @@ function parseActs(raw, { people = [], vocabulary = [], protect = [] } = {}) {
   return { version: ACTS_VERSION, normalized, clauses, acts: acts.filter((a) => !a.absorbed), dropped };
 }
 
-module.exports = { unwrapIndirect, directQuestion, ACTS_VERSION, MAX_ACTS, parseActs, segment, stripMarkers, findVocatives, questionForm, quantifierOf, temporalOf, clauseAct, MARKERS, TARGET_REPAIR, UNANSWERED_REPAIR, FACET_REPAIR, ELLIPSIS };
+module.exports = { utteranceForce, unwrapIndirect, directQuestion, ACTS_VERSION, MAX_ACTS, parseActs, segment, stripMarkers, findVocatives, questionForm, quantifierOf, temporalOf, clauseAct, MARKERS, TARGET_REPAIR, UNANSWERED_REPAIR, FACET_REPAIR, ELLIPSIS };

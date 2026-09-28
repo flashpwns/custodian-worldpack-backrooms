@@ -95,7 +95,10 @@ function labelsFor(item, sc = scene(), { advice = null } = {}) {
   const { dis, discourse } = contextState(item.context ?? {}, sc);
   let analysis = dialogueTurn.analyzeTurn({ raw: item.utterance, present: sc.present, entities: sc.entities, dis });
   // Full pipeline: an accepted v2 reading fills only what Tier 1 left incomplete (as the service does).
-  if (advice?.accepted && advice.version === dialogueAdvisory.ADVISORY_V2_VERSION) analysis = dialogueTurn.applyAdvisory(analysis, advice, { present: sc.present, entities: sc.entities });
+  // (applyAdvisory assesses every reading and applies only a semantically complete one.)
+  if (advice) analysis = dialogueTurn.applyAdvisory(analysis, advice, { present: sc.present, entities: sc.entities });
+  const advisoryState = analysis.advisory?.state ?? null;
+  if (advisoryState && !advisoryState.accepted) advice = null;
   const e = analysis.primary;
   const socialOnly = !analysis.effective.some((x) => !["social_acknowledgment", "thanks"].includes(x.speech_act));
   const frame0 = dialogueDiscourse.buildSemanticFrame({ text: e?.request_text ?? item.utterance, recipient_type: e?.addressee?.kind === "group" ? "group" : e?.addressee?.ids?.length ? "direct" : "none", discourse, entities: sc.entities, equipment: sc.equipment, addressee_ids: e?.addressee?.ids ?? [], people: sc.present, ...(advice?.accepted ? { advice } : {}) });
@@ -119,7 +122,7 @@ function labelsFor(item, sc = scene(), { advice = null } = {}) {
   const predicate = socialOnly || (e?.speech_act === "attention_call" && !e.request_text) || e?.repair?.vacuous ? null : (frame.predicate ?? null);
   // "each_self_concise" is a wording variant of each_self (a follow-up answered briefly), not a label.
   const card = socialOnly ? "none" : ({ each_self_concise: "each_self" }[frame.turn?.cardinality ?? e?.cardinality] ?? frame.turn?.cardinality ?? e?.cardinality ?? "none");
-  return { speech_act: speech, question_form: qf, addressee_kind: kindOf(), addressees: ids.map((id) => sc.nameOf(id)).filter(Boolean), predicate, discourse_relation: relation, cardinality: card, temporal_scope: predicate ? (frame.turn?.temporal_scope ?? null) : (e?.temporal_scope ?? null), should_clarify: clarify, _fn: frame.discourse_function, _missing: completeness.missing };
+  return { _advisory_state: advisoryState, speech_act: speech, question_form: qf, addressee_kind: kindOf(), addressees: ids.map((id) => sc.nameOf(id)).filter(Boolean), predicate, discourse_relation: relation, cardinality: card, temporal_scope: predicate ? (frame.turn?.temporal_scope ?? null) : (e?.temporal_scope ?? null), should_clarify: clarify, _fn: frame.discourse_function, _missing: completeness.missing };
 }
 
 const sameSet = (a = [], b = []) => a.length === b.length && a.every((x) => b.includes(x));
@@ -151,7 +154,7 @@ function gateFor(item, sc = scene()) {
 async function evaluateFull(items, { provider, log = () => {} } = {}) {
   const sc = scene();
   const gots = [];
-  const tier2 = { invoked: 0, accepted: 0, rejected: 0, reasons: {}, latency_ms: [], turn_ms: [] };
+  const tier2 = { invoked: 0, accepted: 0, rejected: 0, decoded: 0, schema_valid: 0, semantically_complete: 0, timeouts: 0, reasons: {}, latency_ms: [], turn_ms: [] };
   for (const [i, item] of items.entries()) {
     const started = Date.now();
     const gate = gateFor(item, sc);
@@ -160,17 +163,26 @@ async function evaluateFull(items, { provider, log = () => {} } = {}) {
       tier2.invoked += 1;
       const raw = await dialogueAdvisory.requestAdvisoryV2(provider, gate.v2);
       advice = raw && typeof raw === "object" ? { ...raw, tier1_missing: [...(gate.completeness?.missing ?? [])] } : raw;
-      if (advice?.accepted) tier2.accepted += 1; else { tier2.rejected += 1; tier2.reasons[advice?.reason ?? "unknown"] = (tier2.reasons[advice?.reason ?? "unknown"] ?? 0) + 1; }
       tier2.latency_ms.push(advice?.latency_ms ?? 0);
     }
-    gots.push({ ...labelsFor(item, sc, { advice }), _tier2: gate.needed ? (advice?.accepted ? "accepted" : `rejected:${advice?.reason ?? "unknown"}`) : "not_invoked" });
+    const got = labelsFor(item, sc, { advice });
+    const st = got._advisory_state;
+    if (gate.needed) {
+      if (st?.decoded) tier2.decoded += 1;
+      if (st?.schema_valid) tier2.schema_valid += 1;
+      if (st?.semantically_complete) tier2.semantically_complete += 1;
+      if (advice?.reason === "timeout") tier2.timeouts += 1;
+      if (st?.accepted) tier2.accepted += 1; else { tier2.rejected += 1; const why = st?.reason ?? advice?.reason ?? "unknown"; tier2.reasons[why] = (tier2.reasons[why] ?? 0) + 1; }
+    }
+    gots.push({ ...got, _tier2: gate.needed ? (st?.accepted ? "accepted" : `rejected:${st?.reason ?? advice?.reason ?? "unknown"}`) : "not_invoked" });
     tier2.turn_ms.push(Date.now() - started);
     log(`${i + 1}/${items.length}`);
   }
   const q = (a, p) => (a.length ? [...a].sort((x, y) => x - y)[Math.floor(p * (a.length - 1))] : 0);
   const n = items.length || 1;
   const result = score(items, gots);
-  result.tier2 = { invocation_rate: Math.round((tier2.invoked / n) * 1000) / 10, invoked: tier2.invoked, accepted: tier2.accepted, rejected: tier2.rejected, accepted_rate: tier2.invoked ? Math.round((tier2.accepted / tier2.invoked) * 1000) / 10 : null, rejection_reasons: tier2.reasons, advisory_latency_ms: { p50: q(tier2.latency_ms, 0.5), p90: q(tier2.latency_ms, 0.9) }, turn_latency_ms: { p50: q(tier2.turn_ms, 0.5), p90: q(tier2.turn_ms, 0.9) } };
+  const rate = (x) => (tier2.invoked ? Math.round((x / tier2.invoked) * 1000) / 10 : null);
+  result.tier2 = { invocation_rate: Math.round((tier2.invoked / n) * 1000) / 10, invoked: tier2.invoked, decoded: tier2.decoded, schema_valid: tier2.schema_valid, semantically_complete: tier2.semantically_complete, accepted: tier2.accepted, rejected: tier2.rejected, accepted_rate: rate(tier2.accepted), completion_rate: rate(tier2.decoded), timeout_rate: rate(tier2.timeouts), rejection_reasons: tier2.reasons, advisory_latency_ms: { p50: q(tier2.latency_ms, 0.5), p90: q(tier2.latency_ms, 0.9) }, turn_latency_ms: { p50: q(tier2.turn_ms, 0.5), p90: q(tier2.turn_ms, 0.9) } };
   return result;
 }
 

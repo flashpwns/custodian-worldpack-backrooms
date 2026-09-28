@@ -2145,7 +2145,7 @@ class DesktopService {
   }
   submitQ4CommunicationCanonical({ world_id, channel, text, target = null, request_id = null, input_fingerprint = null, spatial_selection = null, interpretation_advice = null }) {
     // Only a validated advisory frame may reach framing; anything else leaves Tier 1 standing.
-    const interpretationAdvice = interpretation_advice?.accepted ? interpretation_advice : null;
+    let interpretationAdvice = interpretation_advice?.accepted ? interpretation_advice : null;
     if (this.commandBusy(world_id)) return publicError("SESSION_BUSY", "Wait for the current action to finish before changing this operation.");
     if (outcomes.isRetired(this.getWorld(world_id))) return publicError("WORLD_RETIRED", "This world is a read-only historical record.");
     let entry = null; let world = null; let beforeRun = null; let beforeWorld = null; let beforePhase = null;
@@ -2313,7 +2313,13 @@ class DesktopService {
       const turnPeople = channel === "local" ? coworkers.filter((member) => presentLocalIds.includes(member.personnel_id ?? member.id)).map((member) => ({ id: member.personnel_id ?? member.id, name: member.first_name ?? member.display_name, names: [member.first_name, member.last_name, member.display_name, ...(member.aliases ?? [])].filter(Boolean) })) : [];
       let turnAnalysis = channel === "local" ? dialogueTurn.analyzeTurn({ raw: message, present: turnPeople, entities: canonicalEntities, dis: dialogueTurn.withSalience(dialogueState.snapshot(entry.run, { player_id: playerId, location_id: entry.run.spatial?.player_location ?? null, present_ids: presentLocalIds }), discourseState, canonicalEntities), explicit_target_id: targetMember ? (targetMember.personnel_id ?? targetMember.id) : null }) : null;
       // An accepted v2 advisory reading fills only what Tier 1 left incomplete (never truth, never ids).
-      if (turnAnalysis && interpretationAdvice?.version === dialogueAdvisory.ADVISORY_V2_VERSION) turnAnalysis = dialogueTurn.applyAdvisory(turnAnalysis, interpretationAdvice, { present: turnPeople, entities: canonicalEntities });
+      // Every reading is assessed (decoded -> schema valid -> semantically complete -> accepted); only a complete
+      // one fills Tier-1 gaps. Anything less is not understanding: it is dropped here, and a turn Tier 1 did not
+      // understand is then clarified (dialogueTurn.finalizeFrame).
+      if (turnAnalysis && interpretation_advice && (interpretation_advice.version === dialogueAdvisory.ADVISORY_V2_VERSION || !interpretation_advice.accepted)) {
+        turnAnalysis = dialogueTurn.applyAdvisory(turnAnalysis, interpretation_advice, { present: turnPeople, entities: canonicalEntities });
+        if (!turnAnalysis.advisory?.state?.accepted) interpretationAdvice = null;
+      }
       let turnPrimary = turnAnalysis?.primary ?? null;
       const chipTarget = typeof target === "string" && target.trim();
       // The established address-correction rule ("No, I meant Brady.", "Not Daisy.") keeps precedence when it
@@ -2754,7 +2760,7 @@ class DesktopService {
             has_relevant_knowledge: Boolean((predicateResultById[recId] && !["unknown", "not_established"].includes(predicateResultById[recId].value)) || ["known", "partial"].includes(knowledge?.status) || equipmentRelevant || (knownAnswerFact && dialogueDiscourse.KNOWN_ANSWER_FUNCTIONS.includes(semanticFrame.discourse_function)) || topicFactsKnown || (semanticFrame.discourse_function === "ask_next_step" && selfKnowledgeById[recId]?.procedure))
           };
         });
-        const responders = Object.fromEntries(Object.entries(selfKnowledgeById).map(([id, self]) => [id, { self, knowledge: knowledgeById[id] ?? null, custody_history: custodyHistoryById[id] ?? null, predicate_result: predicateResultById[id] ?? null, agenda: dialogueAgents.admitAgenda(entry.run, id, dialogueAgents.speakerAgenda(entry.run, id)).admitted, repeat_of: semanticFrame.predicate && !String(semanticFrame.predicate).startsWith("conversation.") && !semanticFrame.unresolved_reference && !semanticFrame.resumed_question && !semanticFrame.turn?.args?.third_party_subject && !semanticFrame.turn?.args?.count_asked ? ((({ r }) => (r && (r.temporal ?? null) === (semanticFrame.turn?.temporal_scope ?? null) && (r.args?.place_id ?? null) === (semanticFrame.turn?.args?.place_id ?? null) ? r.request_id : null))({ r: dialogueState.recentlyAnswered(entry.run, semanticFrame.predicate, id) })) : null }]));
+        const responders = Object.fromEntries(Object.entries(selfKnowledgeById).map(([id, self]) => [id, { self, knowledge: knowledgeById[id] ?? null, custody_history: custodyHistoryById[id] ?? null, predicate_result: predicateResultById[id] ?? null, agenda: dialogueAgents.admitAgenda(entry.run, id, dialogueAgents.speakerAgenda(entry.run, id)).admitted, repeat_of: semanticFrame.predicate && !String(semanticFrame.predicate).startsWith("conversation.") && !semanticFrame.unresolved_reference && !semanticFrame.resumed_question && !semanticFrame.turn?.args?.third_party_subject && !semanticFrame.turn?.args?.count_asked ? ((({ r }) => (r && (r.temporal ?? null) === (semanticFrame.turn?.temporal_scope ?? null) && (r.args?.place_id ?? null) === (semanticFrame.turn?.args?.place_id ?? null) && (!String(semanticFrame.predicate).startsWith("item.") || String(r.request_text ?? "").toLowerCase().replace(/[^a-z ]/g, "").trim() === String(semanticFrame.turn?.request_text ?? "").toLowerCase().replace(/[^a-z ]/g, "").trim()) ? r.request_id : null))({ r: dialogueState.recentlyAnswered(entry.run, semanticFrame.predicate, id) })) : null }]));
         return { responseCandidates, responders };
         };
         const { responseCandidates, responders: primaryResponders } = buildCandidates(semanticFrame);

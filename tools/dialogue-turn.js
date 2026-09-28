@@ -236,7 +236,8 @@ function analyzeTurn({ raw, present = [], entities = [], dis = null, explicit_ta
   for (const original of (substantive.length ? substantive : parsed.acts.slice(0, 1))) {
     // "I mean for the day" names no canonical thing: it is the legacy self-repair fragment of the last
     // question, not a referent repair (the legacy frame narrows the question with it).
-    const unresolvedReferent = original.speech_act === "repair" && original.repair?.kind === "referent" && !placeOf(original.repair.referent ?? "", entities, null)?.place_id && !canonicalKnowledge.resolveEntityMentions(original.repair.referent ?? "", entities).length;
+    // ("The other bag" is a real correction whose thing is ambiguous: it stays a repair and is clarified.)
+    const unresolvedReferent = original.speech_act === "repair" && original.repair?.kind === "referent" && !/^(?:the|that)\s+other\b/i.test(original.repair.referent ?? "") && !placeOf(original.repair.referent ?? "", entities, null)?.place_id && !canonicalKnowledge.resolveEntityMentions(original.repair.referent ?? "", entities).length;
     const act = unresolvedReferent ? { ...original, speech_act: "statement", repair: null, body: original.body || original.text } : original;
     // A repair-lead marker ("I mean ...", "No, ...") stays in the text the legacy frame reads: it is the
     // self-repair cue of the previous question.
@@ -300,9 +301,13 @@ function analyzeTurn({ raw, present = [], entities = [], dis = null, explicit_ta
         } else {
           e.relation_target = target.request_id;
           e.reissue_of = target.request_id;
-          e.predicate = embeddedPredicate ?? target.predicate;
-          e.request_text = embeddedPredicate && embeddedPredicate !== target.predicate ? act.repair.embedded : target.request_text;
-          e.fn_hint = embeddedPredicate && embeddedPredicate !== target.predicate ? null : target.fn;
+          // "I mean what does it do": a NEW wh-question the ledger's request does not match is its own question
+          // -- its facet is not the old one's by default (Tier 2 reads it, or it is clarified). "I asked if we
+          // were all going" re-issues the request as it was.
+          const newWh = Boolean(act.repair.embedded) && !embeddedPredicate && /^(?:who|what|where|when|why|how|which|whose)\b/i.test(act.repair.embedded);
+          e.predicate = newWh ? null : (embeddedPredicate ?? target.predicate);
+          e.request_text = newWh || (embeddedPredicate && embeddedPredicate !== target.predicate) ? act.repair.embedded : target.request_text;
+          e.fn_hint = newWh || (embeddedPredicate && embeddedPredicate !== target.predicate) ? null : target.fn;
           e.args = target.args ? { ...target.args } : {};
           e.temporal_scope = target.temporal;
           e.question_form = null; e.reissued_form = target.question_form;
@@ -350,7 +355,9 @@ function analyzeTurn({ raw, present = [], entities = [], dis = null, explicit_ta
               e.clarify = { reason: "referent_repair_mismatch", slot: "topic" }; missing.push("referent_repair_mismatch");
             } else if (entity) {
               const before = canonicalKnowledge.resolveEntityMentions(last.request_text, entities).find((x) => x.kind === entity.kind) ?? null;
-              e.request_text = before ? String(last.request_text).replace(new RegExp(before.matched.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "i"), act.repair.referent) : `${String(last.request_text).replace(/[?.!\s]+$/, "")} -- ${act.repair.referent}?`;
+              // The original phrase keeps its own article ("the camera" -> "the lamp", never "the the lamp").
+              const bare = String(act.repair.referent).replace(/^(?:the|that|this|my|your)\s+/i, "");
+              e.request_text = before ? String(last.request_text).replace(new RegExp(before.matched.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "i"), bare) : `${String(last.request_text).replace(/[?.!\s]+$/, "")} -- ${act.repair.referent}?`;
               if (place?.place_id) e.args = { ...e.args, place_id: place.place_id };
             } else { e.clarify = { reason: "referent_repair_unresolved", slot: "referent" }; missing.push("referent_repair_unresolved"); }
           }
@@ -513,6 +520,24 @@ function analyzeTurn({ raw, present = [], entities = [], dis = null, explicit_ta
         e.relation = "continuation"; e.relation_target = span.request_id ?? null;
         e.addressee = { kind: "inherited", ids: [echo.speaker_id], quantifier: null, source: "surface_anchor" };
       }
+      // Temporal / degree / reason fragments ask more about the answer just given: "since when?", "how long?",
+      // "before?", "ever?", "still?" keep its facet (and target); "what for?", "how come?" ask for its reason.
+      // Only a UNIQUE answered antecedent in the ledger licenses this; otherwise nothing is inherited.
+      const fragment = String(act.body_expanded ?? act.body ?? "").toLowerCase().replace(/^(?:(?:and|so|but|ok|okay|wait|oh|hm+|really)[,.]?\s+)+/, "").replace(/[?!.\s]+$/, "");
+      const last = dis?.last_substantive_request ?? dis?.last_request ?? null;
+      const answeredBy = (last?.answered_by ?? []).filter((id) => presentIds.includes(id));
+      if (!e.predicate && !act.vocatives.length && last?.predicate && !String(last.predicate).startsWith("conversation.") && answeredBy.length === 1) {
+        const TEMPORAL = { "since when": null, "how long": null, "how long ago": null, "how long now": null, "for how long": null, "how many times": null, "how often": null, "since": null, "until when": null, before: "ever", ever: "ever", "and before": "ever", "what about before": "ever", still: "now", yet: "now", already: "now" };
+        if (fragment in TEMPORAL) {
+          e.speech_act = "question"; e.predicate = last.predicate; e.fn_hint = last.fn ?? null; e.request_text = last.request_text; e.args = { ...(last.args ?? {}), followup: { kind: "temporal", word: fragment } };
+          e.temporal_scope = TEMPORAL[fragment] ?? last.temporal ?? null; e.relation = "continuation"; e.relation_target = last.request_id ?? null; e.facet_source = "discourse_followup";
+          e.addressee = { kind: "inherited", ids: answeredBy, quantifier: null, source: "answer_owner" };
+        }
+      }
+      if (!e.predicate && ["what for", "for what", "how come", "why not", "why so", "how so"].includes(fragment) && dis?.active_speaker?.speaker_id && presentIds.includes(dis.active_speaker.speaker_id)) {
+        e.predicate = "conversation.explanation"; e.relation = "continuation"; e.facet_source = "discourse_followup";
+        if (!(e.addressee?.ids ?? []).length) e.addressee = { kind: "inherited", ids: [dis.active_speaker.speaker_id], quantifier: null, source: "active_speaker" };
+      }
       if (act.bare_wh) e.relation = "continuation";
       if (act.declarative_candidate && dis?.active_speaker?.speaker_id && e.predicate) { e.question_form = "declarative"; e.speech_act = "question"; }
       if (e.addressee.kind === "inherited" && e.relation === "new") e.relation = "continuation";
@@ -588,7 +613,12 @@ function completenessWithFrame(analysis, frame, effective = analysis?.primary) {
     // inside that bag"): with no facet, Tier 2 still gets its one bounded reading (the legacy reading stands
     // if it cannot help).
     const generic = !frame || (frame.discourse_function === "ask_factual" && !frame.addressee_state && !frame.past_perception) || (frame.discourse_function === "make_statement" && !frame.addressee_state && !frame.past_perception && !(frame.referents ?? []).some((r) => r.resolved)) || (frame.discourse_function === "ambiguous_reference" && frame.tier1_generic);
-    if (interrogative && !e.predicate && generic) missing.push("facet_unresolved");
+    // A factual question whose THING resolved (the legacy entity-anchored reading can still answer it) is a
+    // different gap from one Tier 1 did not understand at all: only the latter fails closed to a clarification.
+    const anchored = frame?.discourse_function === "ask_factual" && (frame.referents ?? []).some((r) => r.resolved);
+    if (interrogative && !e.predicate && generic) missing.push(anchored ? "facet_unresolved_referent" : "facet_unresolved");
+    // Tier 1 not sure whether the line asks at all: that uncertainty alone earns the bounded reading.
+    if (e.act?.force?.confidence === "uncertain") missing.push("force_uncertain");
     if (e.act?.vocatives?.length && !(e.addressee?.ids ?? []).length && !e.absent_addressees) missing.push("name_unresolved");
     if (e.addressee?.second_person && e.relation !== "new" && !(e.addressee?.ids ?? []).length) missing.push("second_person_no_target");
   }
@@ -703,6 +733,14 @@ function argsFor(frame, responderId) {
  */
 function finalizeFrame(frame, primary, rec, { completeness = null, entities = [] } = {}) {
   if (!frame) return frame;
+  // Fail closed (ED-30G): a question Tier 1 did not understand and no complete Tier-2 reading filled is never
+  // answered as a generic question -- it is clarified.
+  // (Only when the legacy reading has no route of its own either: a known-answer or temporal question the
+  // legacy frame understands keeps it.)
+  // (Equipment-topic questions are answered from canonical custody -- "anybody know what we're carrying?".)
+  const legacyRoute = Boolean(frame.knowledge_query || frame.past_perception || frame.addressee_state || frame.topic === "equipment" || (frame.referents ?? []).some((r) => r.resolved)
+    || (frame.temporal_reference && /\b(?:happened|did|was|were|went|said|saw|heard|told|earlier|ago|yesterday|last (?:time|night|week))\b/i.test(String(primary?.request_text ?? primary?.act?.body ?? ""))));
+  if (!primary?.clarify && ASKING.has(primary?.speech_act) && !primary?.predicate && (completeness?.missing ?? []).includes("facet_unresolved") && (!legacyRoute || ["make_statement", "social_observation", "acknowledge"].includes(frame.discourse_function))) primary = { ...primary, clarify: { reason: "facet_unresolved", slot: "topic" } };
   const predicate = rec?.predicate ?? registry.predicateForFrame(frame);
   const entry = predicate ? registry.get(predicate) : null;
   // A named third person is the SUBJECT only in a fresh question/request, and never someone being addressed
@@ -864,8 +902,51 @@ function advisoryFacetPlausible(facet, e, entities = []) {
   return { ok: true };
 }
 
+// Reasons a reading never got past decoding / schema validation (fail closed; Tier 1 or a clarification).
+const UNDECODED = new Set(["timeout", "provider_error", "advisory_unavailable", "malformed", "malformed_act", "malformed_confidence"]);
+const ASKING = new Set(["question", "request", "elliptical_continuation", "repair", "attention_call"]);
+/**
+ * The explicit states of one Tier-2 reading against the gaps Tier 1 reported (ED-30G):
+ *   decoded                 a JSON object came back in time
+ *   schema_valid            every field is from the offered sets and the player's own words, confidence ok
+ *   semantically_complete   it FILLS what was missing: a valid, plausible registry facet where a facet was
+ *                           needed, a speech act where force was uncertain, a named addressee where a name
+ *                           did not resolve -- with no field contradicting what Tier 1 is sure of
+ *   accepted                = semantically complete. Anything less is NOT understanding: Tier 1 stands, or the
+ *                           turn is clarified.
+ */
+function assessAdvisory(advice, analysis, { entities = [] } = {}) {
+  const e = analysis?.primary ?? null;
+  const decoded = Boolean(advice) && !UNDECODED.has(advice.reason);
+  const schemaValid = Boolean(advice?.accepted) && advice?.version === "yellow-beast-dialogue-advisory@v2" && Array.isArray(advice.acts) && advice.acts.length > 0;
+  const state = (complete, reason) => Object.freeze({ decoded, schema_valid: schemaValid, semantically_complete: complete, accepted: complete, reason });
+  if (!advice) return state(false, "not_requested");
+  if (!decoded) return state(false, advice.reason ?? "undecoded");
+  if (!schemaValid) return state(false, advice.reason ?? "schema_invalid");
+  if (!e) return state(false, "no_turn");
+  const act = advice.acts.at(-1);
+  const gaps = new Set(Array.isArray(advice.tier1_missing) ? advice.tier1_missing : []);
+  const forceUncertain = gaps.has("force_uncertain");
+  // What the reading says the line IS, where Tier 1 was not sure; where Tier 1 was sure, it must agree.
+  const readsAsking = ASKING.has(act.speech_act);
+  if (!forceUncertain && ASKING.has(e.speech_act) && !readsAsking && e.act?.force?.confidence === "certain") return state(false, "contradictory_speech_act");
+  const willAsk = forceUncertain ? readsAsking : ASKING.has(e.speech_act);
+  const needsFacet = willAsk && !e.predicate && (gaps.has("facet_unresolved") || gaps.has("facet_unresolved_referent") || forceUncertain);
+  if (needsFacet) {
+    if (!act.facet) return state(false, "missing_facet");
+    if (!registry.get(act.facet)) return state(false, "invalid_facet");
+    const plausible = advisoryFacetPlausible(act.facet, e, entities);
+    if (!plausible.ok) return state(false, `incompatible_facet:${plausible.reason}`);
+  }
+  if ((gaps.has("name_unresolved") || gaps.has("second_person_no_target")) && !act.addressee_id && !["all", "each", "any"].includes(act.quantifier)) return state(false, "unresolved_addressee");
+  if (act.discourse_relation === "repair" && !["repair"].includes(e.speech_act) && !e.relation_target && !analysis?.dis_has_request) { /* a repair of nothing is not filled by the reading */ }
+  return state(true, "complete");
+}
+
 function applyAdvisory(analysis, advice, { present = [], entities = [] } = {}) {
-  if (!analysis?.primary || !advice?.accepted || advice.version !== "yellow-beast-dialogue-advisory@v2") return analysis;
+  if (!analysis?.primary) return analysis;
+  const assessment = assessAdvisory(advice, analysis, { entities });
+  if (!assessment.accepted) return Object.freeze({ ...analysis, advisory: { applied: false, state: assessment } });
   const e = { ...analysis.primary, overrides: [...(analysis.primary.overrides ?? [])] };
   const act = advice.acts.at(-1);
   const presentIds = present.map((p) => p.id);
@@ -873,10 +954,15 @@ function applyAdvisory(analysis, advice, { present = [], entities = [] } = {}) {
   // addressee; a question the legacy frame typed is not missing a facet).
   const gaps = Array.isArray(advice.tier1_missing) ? new Set(advice.tier1_missing) : null;
   const may = (...reasons) => !gaps || reasons.some((r) => gaps.has(r));
-  if (!may("facet_unresolved", "name_unresolved", "second_person_no_target")) return analysis;
+  // Where Tier 1 could not tell whether the line asks, the (complete) reading says: asked, or a remark.
+  if (gaps?.has("force_uncertain")) {
+    if (ASKING.has(act.speech_act) && !ASKING.has(e.speech_act)) { e.speech_act = act.speech_act === "request" ? "request" : "question"; e.question_form = e.question_form ?? "declarative"; e.overrides.push({ field: "speech_act", to: e.speech_act, reason: "advisory_resolved_force" }); }
+    else if (!ASKING.has(act.speech_act) && ASKING.has(e.speech_act)) { e.speech_act = act.speech_act === "sarcasm" ? "sarcasm" : "statement"; e.question_form = null; e.predicate = null; e.overrides.push({ field: "speech_act", to: e.speech_act, reason: "advisory_resolved_force" }); }
+  }
+  if (!may("facet_unresolved", "facet_unresolved_referent", "force_uncertain", "name_unresolved", "second_person_no_target")) return Object.freeze({ ...analysis, advisory: { applied: false, state: assessment } });
   const plausible = act.facet ? advisoryFacetPlausible(act.facet, e, entities) : { ok: false };
   if (act.facet && !plausible.ok) e.overrides.push({ field: "predicate", to: act.facet, reason: `advisory_rejected_${plausible.reason}` });
-  if (!e.predicate && act.facet && registry.get(act.facet) && plausible.ok && may("facet_unresolved")) {
+  if (!e.predicate && ASKING.has(e.speech_act) && act.facet && registry.get(act.facet) && plausible.ok && may("facet_unresolved", "facet_unresolved_referent", "force_uncertain")) {
     e.predicate = act.facet; e.facet_source = "tier2_advisory"; e.overrides.push({ field: "predicate", to: act.facet, reason: "advisory_filled_missing_facet" });
     // The facet's canonical time frame (what its plain phrasing asks: "How are you?" -> now), unless the
     // line itself said one.
@@ -896,7 +982,7 @@ function applyAdvisory(analysis, advice, { present = [], entities = [] } = {}) {
   if (e.clarify && e.predicate && (e.addressee?.ids ?? []).length && !["quantifier_mismatch", "repair_target_unresolved", "misunderstood", "referent_repair_mismatch", "ellipsis_meta_not_transferable"].includes(e.clarify.reason)) { e.overrides.push({ field: "clarify", from: e.clarify.reason, reason: "advisory_completed" }); e.clarify = null; }
   if (e.addressee) e.cardinality = cardinalityFor(e.predicate, e.addressee, e);
   const effective = [...analysis.effective.slice(0, -1), e];
-  return Object.freeze({ ...analysis, effective, primary: e, advisory: { applied: true, acts: advice.acts.length } });
+  return Object.freeze({ ...analysis, effective, primary: e, advisory: { applied: true, acts: advice.acts.length, state: assessment } });
 }
 
 /**
@@ -934,9 +1020,10 @@ function turnRecord(analysis, { frame = null, request_ids = [], completeness = n
     extra_acts: analysis.effective.slice(0, -1).map((x) => ({ speech_act: x.speech_act, predicate: x.predicate, request_text: x.request_text })),
     closes_activity: analysis.closes_activity,
     completeness: completeness ?? analysis.completeness,
+    advisory_state: analysis.advisory?.state ? { ...analysis.advisory.state } : null,
     request_ids: [...request_ids],
     dropped: [...analysis.dropped]
   };
 }
 
-module.exports = { advisoryGate, advisoryFacetPlausible, TURN_VERSION, analyzeTurn, completenessWithFrame, reconcile, resolveAddressee, peopleIndex, placeOf, cardinalityFor, STRUCTURAL_KEEP, withSalience, addressFromTurn, argsFor, finalizeFrame, subjectCheckIn, ownersByCardinality, turnRecord, applyAdvisory, advisoryCandidates };
+module.exports = { assessAdvisory, advisoryGate, advisoryFacetPlausible, TURN_VERSION, analyzeTurn, completenessWithFrame, reconcile, resolveAddressee, peopleIndex, placeOf, cardinalityFor, STRUCTURAL_KEEP, withSalience, addressFromTurn, argsFor, finalizeFrame, subjectCheckIn, ownersByCardinality, turnRecord, applyAdvisory, advisoryCandidates };

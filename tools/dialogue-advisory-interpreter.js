@@ -155,6 +155,9 @@ const V2_RELATIONS = Object.freeze(["new", "continuation", "repair", "topic_retu
 const V2_QUANTIFIERS = Object.freeze(["none", "one", "each", "any", "all", "subset", "except"]);
 const V2_CONFIDENCE = Object.freeze(["low", "medium", "high"]);
 const MAX_ACTS = 4;
+// Generation bound (latency, ED-30G): a reading carries at most two acts. Tier 1 already segments the line;
+// the reading is used for the act that carries the question. Validation still accepts up to MAX_ACTS.
+const MAX_GENERATED_ACTS = 1;
 
 /** The v2 JSON schema for one scene: facet enum = registry ids offered, candidate enums = opaque labels. */
 function advisoryV2Schema({ facets = [], people = [], referents = [] } = {}) {
@@ -165,7 +168,7 @@ function advisoryV2Schema({ facets = [], people = [], referents = [] } = {}) {
     required: ["acts", "confidence"],
     properties: {
       acts: {
-        type: "array", minItems: 1, maxItems: MAX_ACTS,
+        type: "array", minItems: 1, maxItems: MAX_GENERATED_ACTS,
         items: {
           type: "object", additionalProperties: false,
           required: ["speech_act", "facet", "addressee_candidate", "referent_candidate", "quantifier", "discourse_relation"],
@@ -183,7 +186,6 @@ function advisoryV2Schema({ facets = [], people = [], referents = [] } = {}) {
           }
         }
       },
-      turn_relation: { type: "string", enum: [...V2_RELATIONS] },
       confidence: { type: "string", enum: [...V2_CONFIDENCE] }
     }
   };
@@ -191,7 +193,7 @@ function advisoryV2Schema({ facets = [], people = [], referents = [] } = {}) {
 
 const ADVISORY_V2_SYSTEM_TEXT = [
   "You classify the LANGUAGE of one line a person said at a work table. You do not answer it and you know nothing about the world.",
-  "Split the line into at most four acts. For each act choose: speech_act; facet (what is asked about, from the list, or null); who is addressed (addressee_candidate label, or null); what place/thing it is about (referent_candidate label, or null); quantifier; discourse_relation.",
+  "Describe the line as ONE act: the part that asks or requests something (if any), otherwise the main thing said. Choose: speech_act; facet (what is asked about, from the list, or null); who is addressed (addressee_candidate label, or null); what place/thing it is about (referent_candidate label, or null); quantifier; discourse_relation.",
   "Every *_text field must be copied EXACTLY from the line, or null. Use only the labels given. If you cannot tell, say confidence low.",
   "Reply with exactly one compact JSON object and nothing else."
 ].join("\n");

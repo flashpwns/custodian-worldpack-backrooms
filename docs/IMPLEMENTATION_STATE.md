@@ -1,5 +1,57 @@
 # Yellow Beast Implementation State
 
+## ED-30G utterance force, Tier-2 semantic completeness, discourse follow-ups — 2026-09-28
+
+- **Architecture: unchanged.** DIS, ledger, registry, personhood, private-state gates and provider-independent truth are unchanged. Changes are at the language-entry / discourse-resolution boundary:
+  - **Utterance force** (`dialogue-acts` `utteranceForce`). Questionhood does not depend on "?". It is recognised from wh / auxiliary inversion (typo-tolerant, after hedges and a vocative), aux-dropped subjects, tag and alternative tails, a late wh-clause, fragments, and a leading lowercase name followed by an inverted auxiliary.
+    - A "?" on a first-person claim or a report is *uncertain*, not a question.
+    - Each clause records a force confidence. Uncertainty alone sends the turn to Tier 2 (`force_uncertain`).
+  - **Aux restoration** for facet detection ("how long you been", "where we headed", "we all going … or what"). Collective "we/you all" and tag tails carry no facet.
+  - **Tier-2 states** (`dialogueTurn.assessAdvisory`):
+    - decoded → schema_valid → semantically_complete → accepted.
+    - Only a complete reading fills gaps: a valid, plausible registry facet where one is needed, a speech act where force was uncertain, a named addressee where a name did not resolve. A reading that contradicts what Tier 1 is sure of is rejected.
+    - The state is recorded on every turn (`turn.advisory_state`) and by the evaluator.
+  - **Fail closed.** A question Tier 1 did not understand, with no complete reading and no legacy route of its own, is a bounded clarification. Legacy routes are a knowledge query, a perception or past-event question, the addressee's state, a resolved thing, or an equipment topic.
+  - **Discourse follow-ups** (DIS-resolved; a unique antecedent is required):
+    - temporal / degree fragments keep the answered facet and its speaker;
+    - reason fragments ask for the explanation;
+    - target corrections ("no, <name>", "not you, <name>");
+    - referent corrections ("no the X", "not Y, the X", "the other X" → clarify);
+    - a new wh-question inside "I mean …" is its own question;
+    - item-aware repeat policy.
+  - **Tier-2 latency** (safe mechanisms only):
+    - one generated act (validation unchanged);
+    - `turn_relation` dropped;
+    - shorter facet glosses (static prefix 800 → 688 tokens).
+
+    Measured: warm p50 4.3 s, cold about 6.6 s; blind run p90 4.46 s with 0 timeouts (previously 10 timeouts and p90 7.1 s). A compact output grammar would save about 40% but made the model return null facets, so it was not used.
+- **Verification:**
+  - `tests/ed30g-utterance-force-followups.test.js` (9 tests, service-level for the critical cases).
+  - All ED suites pass.
+  - Fuzz: 3,000 turns, seed 30029, 177 echo moves, 0 violations.
+  - Gemma J15: 149 turns, 0 mismatches, leaks, non-answers or dropped questions.
+  - Full suite: 1,447 tests, 1,371 pass, 76 fail. No new failures; y80 #9 now passes.
+  - Inventory: 57 existing errors. `ed30g` hash `2ce979e2`.
+- **Fourth blind corpus** (325 items, SHA-256 `264c6307…709f`, measured once; full pipeline vs gate):
+
+  | Measure | Full pipeline | Gate |
+  | --- | --- | --- |
+  | Speech act | 78.5 | ≥95 |
+  | Addressee | 81.8 | ≥98 |
+  | Predicate | 67.4 | ≥95 |
+  | Relation | 85.8 | ≥95 |
+  | Clarification rate | 11.1 | ≤8 |
+  | Confident-wrong | 34.5 | ≤1 |
+  | Whole turn correct | 46.2 | — |
+
+  Tier 1 alone: 38.8% whole-turn correct. Tier 2 was invoked on 32.6% of turns, with 67% of readings accepted.
+- **Remaining general failure classes** (details in `docs/acceptance/ed30/README.md`):
+  1. Tier-1 force over-confidence keeps many turns away from the gate.
+  2. The legacy entity-definition route answers item questions.
+  3. Follow-ups carrying commentary, and answers to a coworker's question.
+  4. Tier-2 low-confidence declines on fragments.
+- **Jack retest: not yet.** Synthetic convergence is halted as instructed. These are general classes for a future decision, not a repair pass started here.
+
 ## ED-30 end-to-end pass: full-pipeline evaluation, novel phrasing, echo follow-ups — 2026-09-28
 
 - **Evaluation** (`tools/dialogue-eval.js`). Tier-1-only metrics are kept. A separate full-production-pipeline mode (`--full`) runs:

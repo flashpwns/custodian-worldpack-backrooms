@@ -1,11 +1,11 @@
 [
  {
   "player": "Hello everyone!",
-  "ms": 6677,
+  "ms": 6419,
   "lines": [
    {
     "speaker": "Giselle",
-    "text": "Hey."
+    "text": "Hey there. Glad to be here."
    },
    {
     "speaker": "Malcolm",
@@ -13,7 +13,7 @@
    },
    {
     "speaker": "Tonya",
-    "text": "Hello."
+    "text": "Hi. Good to see everyone."
    }
   ],
   "semantic": {
@@ -41,11 +41,11 @@
   "sources": [
    {
     "speaker": "Giselle",
-    "source": "deterministic-fallback",
-    "accepted": false,
-    "rejection": "LOCAL_PRESENTATION_FORBIDDEN_CLAIM",
-    "detail": "speaks for other coworkers",
-    "candidate": "Hey. Glad we're all here.",
+    "source": "local-model",
+    "accepted": true,
+    "rejection": null,
+    "detail": null,
+    "candidate": "Hey there. Glad to be here.",
     "private_ok": true,
     "responsive_ok": true
    },
@@ -61,11 +61,11 @@
    },
    {
     "speaker": "Tonya",
-    "source": "deterministic-fallback",
-    "accepted": false,
-    "rejection": "LOCAL_PRESENTATION_SHAPE_VIOLATION",
-    "detail": "answers with a question",
-    "candidate": "Hi there. How's it going?",
+    "source": "local-model",
+    "accepted": true,
+    "rejection": null,
+    "detail": null,
+    "candidate": "Hi. Good to see everyone.",
     "private_ok": true,
     "responsive_ok": true
    }
@@ -73,7 +73,7 @@
  },
  {
   "player": "Giselle, how are you?",
-  "ms": 6441,
+  "ms": 6927,
   "lines": [
    {
     "speaker": "Giselle",
@@ -110,7 +110,7 @@
     "accepted": false,
     "rejection": "LOCAL_PRESENTATION_THIRD_PARTY_PRIVATE_STATE",
     "detail": "says something about Malcolm this turn does not license (\"A little nervous right now.\")",
-    "candidate": "A little nervous right now. I'm okay.",
+    "candidate": "A little nervous right now. I am feeling a little nervous.",
     "private_ok": true,
     "responsive_ok": true
    }
@@ -118,11 +118,11 @@
  },
  {
   "player": "Why?",
-  "ms": 2635,
+  "ms": 3112,
   "lines": [
    {
     "speaker": "Giselle",
-    "text": "It is just how I feel right now; honestly, a little nervous."
+    "text": "A little nervous. That's all."
    }
   ],
   "semantic": {
@@ -151,11 +151,11 @@
   "sources": [
    {
     "speaker": "Giselle",
-    "source": "local-model",
-    "accepted": true,
-    "rejection": null,
-    "detail": null,
-    "candidate": "It is just how I feel right now; honestly, a little nervous.",
+    "source": "deterministic-fallback",
+    "accepted": false,
+    "rejection": "LOCAL_PRESENTATION_SHAPE_VIOLATION",
+    "detail": "answers with a question",
+    "candidate": "It's just how I feel right now, that 'Honestly, a little nervous.' Did everyone catch that?",
     "private_ok": true,
     "responsive_ok": true
    }
@@ -163,7 +163,7 @@
  },
  {
   "player": "Fair enough. What about Tonya?",
-  "ms": 8948,
+  "ms": 6622,
   "lines": [
    {
     "speaker": "Tonya",
@@ -208,7 +208,7 @@
  },
  {
   "player": "Have you done this before?",
-  "ms": 2939,
+  "ms": 2844,
   "lines": [
    {
     "speaker": "Tonya",
@@ -243,9 +243,9 @@
     "speaker": "Tonya",
     "source": "deterministic-fallback",
     "accepted": false,
-    "rejection": "LOCAL_PRESENTATION_FORBIDDEN_CLAIM",
-    "detail": "states something this turn does not authorize: \"procedure\"",
-    "candidate": "I've been on expeditions before. It's just procedure, really.",
+    "rejection": "LOCAL_PRESENTATION_MANUFACTURED_PRECISION",
+    "detail": "adds backstory canon does not store: \"a while ago\"",
+    "candidate": "I've been on expeditions before. It was quite a while ago.",
     "private_ok": true,
     "responsive_ok": true
    }
@@ -253,7 +253,7 @@
  },
  {
   "player": "I meant the Complex.",
-  "ms": 2695,
+  "ms": 2718,
   "lines": [
    {
     "speaker": "Tonya",
