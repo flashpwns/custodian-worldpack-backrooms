@@ -58,3 +58,34 @@ The full developer-trace transcripts (JSONL, about 150 KB per session) are not c
 - **The L2 gates are not met.** Two failure classes dominate (diagnosed after the measurement; nothing was tuned against it):
   - **No Tier-1 predicate** for 94 of the 129 predicate misses. These are fresh phrasings and typos outside the registry cue table ("so whats the actual job here", "Who else is coming with us?", "ok so where do we reprot after this"). Most of them become unnecessary clarifications (57 over-clarifications). In the game, a line with no facet is sent to the constrained Tier-2 advisory. This instrument does not run Tier 2.
   - **Follow-up fragments that question the reply's own words** ("Sealed how?", "Terrified of what?", "harder how", "even Maxwell?"). These are 26 of the 51 addressee misses. They are not recognised as follow-ups because the rule knows fixed fragments, anaphors and canonical names, not echoes of the reply.
+
+## Third held-out corpus: end-to-end evaluation (2026-09-28)
+
+- **Corpus:** `heldout3-corpus-2026-09-28.spent.jsonl`, 334 items, SHA-256 `eb0b30d45850760e485cfa969c904bfbe8ad67456488ba9aaa6adbe39dcd4dc6`.
+  - Written blind by a fresh subagent after the implementation was frozen and verified. It had no access to the repository, the earlier corpora, parser output or test fixtures.
+  - The author was cut off by a usage limit after 267 lines and was resumed to finish. It disclosed one breach of its rules: a single `sed` on its own `part2.jsonl` to fix three `question_form` labels. That is a label edit inside the corpus; it involves no access to the software.
+  - Hashed at 2026-09-28T04:34:10Z. **Measured exactly once**, scoring Tier 1 and the full production pipeline in the same run. Results: `heldout3-run.json`. **It is spent.**
+
+| Measure | Tier 1 only | Full production pipeline |
+| --- | --- | --- |
+| Speech act | 82.3 | 82.3 |
+| Addressee | 85.0 | 85.0 |
+| Predicate | 61.4 | 67.4 |
+| Relation | 90.1 | 90.1 |
+| Cardinality | 76.6 | 77.2 |
+| Temporal scope | 88.3 | 88.3 |
+| Question form | 76.3 | 76.3 |
+| **Whole turn correct** (release-gate fields) | 46.7 | 51.2 |
+| Clarify rate | 18.0 | 10.8 |
+| Confident-wrong | 29.6 | 31.1 |
+| Tier-2 invocation | — | 30.8% (103 turns) |
+| Tier-2 accepted / rejected | — | 82 / 21 (79.6% accepted; 11 low confidence, 10 timeouts) |
+| Advisory latency p50 / p90 | — | 4,180 / 7,106 ms |
+| Turn latency p50 / p90 (interpretation) | — | 1 / 4,287 ms |
+
+**The gates are not met.** Diagnosis (after the measurement; nothing was tuned against it):
+
+1. **The gate never saw most failures.** 119 of the 178 full-pipeline failures never reached Tier 2, because the completeness gate judged them complete. The largest group is 32 unpunctuated chat questions that Tier 1 reads as statements ("yall doin ok", "we all going in together or what", "ok and this Threshold thing, what is that", "since when"). The gate only fires for lines Tier 1 already calls questions, so statement-vs-question is decided by Tier 1 alone.
+2. **Accepted readings that did not help.** 32 wrong predicates had an accepted Tier-2 reading ("whats the deal today", "where we headed"). The reading either named no facet or was dropped by the plausibility check. The saved run cannot separate the two without querying the model on corpus lines again, which would be a second measurement.
+3. **Follow-ups that are not word echoes.** 23 addressee misses: "since when" unpunctuated, "and you?" after a reply, and corrective repairs ("no the flashlight lol", "ugh no, whats IN it", "no like ever").
+4. **Tier-2 timeouts:** 10 readings hit the 8 s limit (advisory p90 is 7.1 s).

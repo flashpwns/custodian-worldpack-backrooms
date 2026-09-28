@@ -99,6 +99,24 @@ in our code either way.
   slot KV cache for a shared prefix by default. The measured effect is in the ED-30 report
   (Performance).
 
+## 5. End-to-end pass (2026-09-28): no new dependency
+
+The novel-phrasing recovery uses the runtime already bundled and code already in the repository:
+
+- **Tier 1:**
+  - hedge and intensifier stripping before cue matching;
+  - typo repair against the registry's own closed cue lexicon, used only when the repaired clause
+    matches a cue and the original did not;
+  - a closed list of item hypernyms (a duffle is a bag).
+- **Tier 2:**
+  - the constrained v2 reading, now given one-line facet glosses from the registry;
+  - its prompt puts the static parts first, so the runtime can reuse the cached prefix;
+  - the output cap is 360 tokens (160 truncated v2 act lists).
+- **Code validation:**
+  - a guessed addressee is dropped, not trusted;
+  - a facet the line's own wh-word cannot ask, or a person facet for a line that names only an item, is
+    not filled.
+
 ## Not added
 
 - No Python sidecar.

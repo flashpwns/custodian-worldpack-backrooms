@@ -866,6 +866,11 @@
       "file": "tests/ed30e-owner-decisions.test.js",
       "status": "included",
       "tier": "aggregate"
+    },
+    {
+      "file": "tests/ed30f-end-to-end.test.js",
+      "status": "included",
+      "tier": "aggregate"
     }
   ],
   "report_tools": [

@@ -208,6 +208,14 @@ const INTRODUCE_BY_EXPRESSION = { "dryly observant": "Good to meet you, I think.
 const INTRODUCE_ALTERNATES = ["Nice to meet you.", "Glad to meet you."];
 const ACK_BY_TEMPERAMENT = { "brief and direct": "Got it.", "measured and reflective": "Understood.", "warm but guarded": "Okay.", "talkative when uneasy": "Sounds good.", "deadpan": "Noted." };
 const ACK_ALTERNATES = ["Understood.", "Okay.", "Noted."];
+// Acknowledgments that fit an adverse remark about how it is for the player: sympathy only -- no claim
+// about one's own feelings, no promise, no fact.
+const AFFECT_ACK = Object.freeze({
+  fatigue: ["Hang in there.", "That's rough. Hang in there.", "Yeah, hang in there."],
+  fear: ["That's fair. It's a lot.", "Can't blame you.", "Understandable."],
+  discomfort: ["That's no fun.", "That's rough.", "Hang in there."],
+  negative: ["Yeah, I hear you.", "Fair enough.", "I hear you."]
+});
 // A reaction to a remark that is not about the speaker: no state, no agreement that something was seen.
 const OBSERVATION_BY_TEMPERAMENT = { "brief and direct": "Fair enough.", "measured and reflective": "Hm. Maybe so.", "warm but guarded": "Could be.", "talkative when uneasy": "Hm. Fair enough.", "deadpan": "Noted." };
 // Acknowledging an order/request that conversation does not perform: heard, neither accepted nor refused.
@@ -356,7 +364,15 @@ function keepsCapital(line, plan) {
   return new RegExp(`"${bare}"|[a-z,] ${bare}\\b`).test(blob);
 }
 
-function presentFallback({ frame, plan = null, prior = [] } = {}) {
+function presentFallback(input = {}) {
+  const line = presentFallbackCore(input);
+  // An echo asked for more about one's own answer: the facts are restated, and nothing more is established.
+  // Only a substantive answer says so: never a clarifying question, never a brief social check-in.
+  const plan = input.plan;
+  if (line && optionalFact(plan, "elaboration_request") && !plan?.may_ask_clarifying_question && plan?.expected_response_shape !== "short_social_acknowledgment" && !/\?\s*$/.test(line) && !/\ball I (?:know|can tell you)\b/i.test(line)) return `${line} That's all I can tell you about it.`;
+  return line;
+}
+function presentFallbackCore({ frame, plan = null, prior = [] } = {}) {
   // One line answering several acts: each part worded from its own frame and plan, in order.
   if (plan?.discourse_function === "compound") return plan.parts.map((part) => presentFallback({ frame: part.frame, plan: part.plan, prior })).filter(Boolean).join(" ") || null;
   const line = presentFallbackLine({ frame, plan, prior });
@@ -368,6 +384,10 @@ function presentFallback({ frame, plan = null, prior = [] } = {}) {
 function presentFallbackLine({ frame, plan = null, prior = [] } = {}) {
   const fn = frame?.discourse_function;
   const style = plan?.style_hints ?? {};
+  // A licensed reply to an adverse remark (tired, scared, cold, "this sucks") fits it, whatever the remark's
+  // function: sympathy only.
+  const affect = ["make_statement", "social_observation", "express_uncertainty", "joke_or_sarcasm"].includes(fn) && !fact(plan, "player_claim") && !fact(plan, "known_answer") ? fact(plan, "player_affect") : null;
+  if (affect?.kind && AFFECT_ACK[affect.kind]) return variant(AFFECT_ACK[affect.kind][0], AFFECT_ACK[affect.kind].slice(1), prior);
 
   // Knowledge answers: exactly the granted statements (provenance kept in the plan), or a truthful unknown.
   // PARTIAL knowledge says both what is known and that the asked detail is not.
@@ -565,7 +585,8 @@ function presentFallbackLine({ frame, plan = null, prior = [] } = {}) {
       // A claim about the world is theirs: heard, not endorsed.
       if (fact(plan, "player_claim")) return variant("Huh. If you say so.", ["Huh. Okay.", "Hm. All right."], prior);
       const recalled = renderKnownAnswer(fact(plan, "known_answer"));
-      return recalled ?? variant(ACK_BY_TEMPERAMENT[style.conversational_temperament] ?? "Understood.", ACK_ALTERNATES, prior);
+      if (recalled) return recalled;
+      return variant(ACK_BY_TEMPERAMENT[style.conversational_temperament] ?? "Understood.", ACK_ALTERNATES, prior);
     }
     case "make_request": {
       const holder = fact(plan, "item_holder");

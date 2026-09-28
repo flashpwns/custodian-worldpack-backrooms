@@ -1,5 +1,67 @@
 # Yellow Beast Implementation State
 
+## ED-30 end-to-end pass: full-pipeline evaluation, novel phrasing, echo follow-ups — 2026-09-28
+
+- **Evaluation** (`tools/dialogue-eval.js`). Tier-1-only metrics are kept. A separate full-production-pipeline mode (`--full`) runs:
+  - Tier 1;
+  - the ONE Tier-2 gate (`dialogueTurn.advisoryGate`, now also what `desktop/service.js` calls);
+  - one bounded v2 reading from the pinned local model;
+  - the production validation and reconciliation.
+
+  It reports the same fields plus whole-turn correctness (the release-gate fields), Tier-2 invocation, accepted/rejected counts with reasons, and latency.
+- **Novel phrasing: general rules, no phrase lists:**
+  - hedges and intensifiers carry no facet ("the actual job");
+  - typo repair against the registry's own closed cue lexicon, used only when it turns no cue into a cue ("reprot", "camra", "charg");
+  - an aux-dropped second-person line with no finite verb is asked ("you holding up ok"), so the gate sends its facet to Tier 2;
+  - a resolved referent no longer makes a factual question "complete" when its facet is unknown;
+  - items resolve by any 2+-word label part and a closed list of everyday hypernyms (a duffle is a bag);
+  - a lead-in "so" continues only an existing exchange;
+  - "what do you do?" is `person.role`, as for the group form.
+- **Tier 2:**
+  - the model gets one-line facet glosses;
+  - the static prompt comes first, for the prefix cache;
+  - the output cap is 360 tokens (160 truncated v2 act lists).
+- **Code validation of Tier 2:**
+  - a guessed addressee is dropped (field only);
+  - a facet the line's wh-word cannot ask is not filled, and neither is a person facet for a line that names only an item;
+  - a filled facet takes its canonical time frame.
+- **Echo follow-ups: surface anchors** (`dialogue-state` `surface_anchors`).
+  - When a spoken coworker line is accepted, its sentences are recorded with the request/predicate whose plan licensed them. These are conversational metadata only: words and request ids, never facts.
+  - A later echo is a fragment, or a word with a trailing wh ("Sealed how?", "cargo?", "the Bermuda branch?"). It re-asks that EXISTING request of the one who said the words, as an elaboration: the facts again, then "That's all I can tell you about it."
+  - An echo resolves only while fresh (nothing said by the player since). A wh-initial line ("What recall?") stays a meaning question. Several speakers matching the word means no echo.
+- **Provider independence, updated:**
+  - World truth and state (custody, locations, clock, personhood profiles) are identical for every wording provider, always.
+  - The conversation digest is identical unless a turn was resolved through words only one provider spoke. That is legitimate: the player heard different words.
+  - Pinned by `tests/ed30d` J16 (incl. the new surface-anchor test).
+- **Adverse remarks:**
+  - The player's own fatigue, fear, discomfort or negative verdict is carried as `player_affect`. It is not "You look tired." (that is about someone else), and negation is respected.
+  - A licensed reply fits it ("Hang in there.", "That's fair. It's a lot."), never "Sounds good.".
+- **Validator fix:** "Like I said, no, ..." (restating one's own answer) is neither a report nor a contradiction; a restated leak still is. Found by the new fuzz echo moves.
+- **Tests:**
+  - `tests/ed30f-end-to-end.test.js` (11 tests).
+  - Updated: ed30a (dropped addressee), ed30d (J16 invariant and a surface-anchor test).
+  - Dev sets: `dev-corpus` (151 items, 100% in both modes) and the new `dev-novel` (22 items).
+- **Verification:**
+  - All ED suites pass.
+  - Fuzz: 3,000 turns, seed 30028, 153 echo moves, 0 violations.
+  - Gemma J15: 149 turns, 0 mismatches, leaks, non-answers or dropped questions.
+  - Full suite: 1,438 tests, 1,362 pass, 76 fail. No new failures.
+  - Inventory: 57 existing errors.
+- **Third blind corpus** (334 items, SHA-256 `eb0b30d4…4dc6`, measured once):
+
+  | Measure | Tier 1 | Full pipeline |
+  | --- | --- | --- |
+  | Whole turn correct | 46.7 | 51.2 |
+  | Predicate | 61.4 | 67.4 |
+  | Confident-wrong | 29.6 | 31.1 |
+  | Clarify rate | 18.0 | 10.8 |
+
+  Tier 2 was invoked on 30.8% of turns, with 79.6% of readings accepted. **The gates are not met.** The blocking classes are in `docs/acceptance/ed30/README.md`:
+  1. unpunctuated questions read as statements never reach the gate;
+  2. accepted readings that filled no facet;
+  3. non-echo follow-ups and corrective repairs;
+  4. Tier-2 timeouts.
+
 ## ED-30 follow-up: owner decisions applied + fresh held-out measurement — 2026-09-27
 
 - **Owner decisions (2026-09-27), applied at the lowest correct authority:**

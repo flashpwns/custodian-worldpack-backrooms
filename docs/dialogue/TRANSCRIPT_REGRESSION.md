@@ -83,9 +83,24 @@ passes silently.
 
 ## Other tools
 
-- `npm run dialogue:eval -- tests/fixtures/ed30/dev-corpus.jsonl [--failures] [--json]` scores a
-  labelled corpus: speech act, addressee, predicate, relation, cardinality, temporal scope, clarify rate
-  and confident-wrong rate.
+- `npm run dialogue:eval -- <corpus.jsonl> [--failures] [--json]` scores a labelled corpus. It reports:
+  - speech act, addressee, predicate, relation, cardinality, temporal scope and question form;
+  - whole-turn correctness (the release-gate fields all right, and a clarification only where one is
+    expected);
+  - the clarify rate and the confident-wrong rate.
+
+  There are two modes, always reported separately:
+  - **Tier 1 only** (default): the deterministic pipeline.
+  - **Full production pipeline** (`--full [--endpoint URL]`): Tier 1, then the production Tier-2 gate
+    (`dialogueTurn.advisoryGate`, the same function the service calls), then one bounded v2 reading from
+    the pinned local model wherever the gate asks for it, validated and reconciled exactly as the service
+    does it. It adds the Tier-2 invocation rate, accepted/rejected counts with reasons, and advisory and
+    turn latency (p50/p90). Without `--endpoint` it launches the pinned runtime itself.
+
+  The full pipeline is the player-facing measure. The Tier-1 numbers are never hidden behind it.
+- Dev sets (tunable, never held out):
+  - `tests/fixtures/ed30/dev-corpus.jsonl`;
+  - `tests/fixtures/ed30/dev-novel.jsonl`: paraphrases, typos and echo follow-ups.
 - `npm run dialogue:fuzz -- [--seed N] [--sessions N] [--turns N] [--provider garbage|fallback|leaky]`
   runs seeded random-walk conversations through the service and checks the J13 invariants after every
   turn.

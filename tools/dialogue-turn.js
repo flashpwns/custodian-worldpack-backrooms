@@ -15,6 +15,8 @@
 const registry = require("./dialogue-registry");
 const acts = require("./dialogue-acts");
 const canonicalKnowledge = require("./canonical-knowledge");
+const dialogueState = require("./dialogue-state");
+const { normalizeUtterance } = require("./dialogue-normalize");
 
 const TURN_VERSION = "yellow-beast-dialogue-turn@v1";
 const SOCIAL = new Set(["social_acknowledgment", "thanks"]);
@@ -42,6 +44,39 @@ function placeOf(text, entities, dis, { apposition = null } = {}) {
     return { place_id: null, basis: "unresolved_deixis" };
   }
   return null;
+}
+
+// ─── echo follow-ups (surface anchors) ────────────────────────────────────────────────────────────────
+// "Sealed how?" / "Terrified of what?" / "harder how" / "the Bermuda branch?": a short line that repeats a
+// word or phrase the last reply actually used. The spoken words only LOCATE the reply's anchored request
+// (dialogue-state surface anchors); the answer comes from that request's canonical resolver, never from the
+// words. Several speakers matching is ambiguous: no echo.
+const ECHO_TAIL = /\s*\b(?:how|what|why|where|when|who|exactly|so|of what|about what|for what|with what|like what|in what way|how so|how come|meaning)\s*$/i;
+const ECHO_LEAD = /^(?:(?:wait|so|and|but|oh|huh|hm+|really|seriously|sorry)[,.!]?\s+)+/i;
+function echoOf(act, dis, { phraseOnly = false } = {}) {
+  const anchors = dis?.surface_anchors ?? [];
+  if (!anchors.length || act.vocatives?.length || act.mentions?.length) return null;
+  const body = String(act.body_expanded ?? act.body ?? act.text ?? "").trim();
+  const words = body.split(/\s+/).filter(Boolean);
+  if (!words.length || words.length > 6) return null;
+  const core = body.toLowerCase().replace(/[?!.,;:"]+/g, " ").replace(/\s+/g, " ").trim().replace(ECHO_LEAD, "").replace(ECHO_TAIL, "").trim();
+  if (!core) return null;
+  const tokens = dialogueState.echoTokens(core);
+  // Person-shift neutral: the player says back "you" what the speaker said as "me" ("nobody's told you?").
+  const persons = (t) => t.replace(/\b(?:you|me|i|your|my|yours|mine|yourself|myself)\b/g, "P");
+  const phrase = persons(core.replace(/^(?:the|a|an)\s+/, ""));
+  const hits = [];
+  for (const anchor of anchors) for (const span of anchor.spans) {
+    // Compared in the same expanded form as the player's line ("we've" = "we have").
+    const spanText = persons(normalizeUtterance(span.text).expanded.toLowerCase().replace(/[?!.,;:"]+/g, " ").replace(/\s+/g, " "));
+    const phraseHit = phrase.split(" ").length >= 2 && ` ${spanText} `.includes(` ${phrase} `);
+    const tokenHit = !phraseOnly && tokens.length && tokens.some((t) => span.tokens.includes(t));
+    if (phraseHit || tokenHit) hits.push({ anchor, span, matched: phraseHit ? core.replace(/^(?:the|a|an)\s+/, "") : tokens.find((t) => span.tokens.includes(t)) });
+  }
+  const speakers = new Set(hits.map((h) => h.anchor.speaker_id));
+  if (speakers.size !== 1) return null;
+  const hit = hits.at(-1);
+  return { speaker_id: hit.anchor.speaker_id, event_id: hit.anchor.event_id, span: hit.span, matched: hit.matched };
 }
 
 // A follow-up picks up the last reply: an anaphor ("What's in it?", "Is that far?", "Who gave them that?"),
@@ -188,7 +223,7 @@ function analyzeTurn({ raw, present = [], entities = [], dis = null, explicit_ta
   // Repair targets: people's names and distinctive canonical place/entity names (6+ letters). Every canonical
   // word (item nouns included) is protected from being "repaired" into something else.
   const words = (kinds) => entities.filter((e) => kinds.includes(e.kind)).flatMap((e) => e.names ?? []).flatMap((n) => String(n).split(/\s+/));
-  const entityVocab = words(["entity", "location", "person", "institution"]).filter((n) => /^[a-z]{6,}$/.test(n));
+  const entityVocab = words(["entity", "location", "person", "institution", "equipment"]).filter((n) => /^[a-z]{6,}$/.test(n));
   const protect = words(["entity", "location", "person", "institution", "equipment", "procedure", "task"]).filter((n) => /^[a-z]{3,}$/.test(n));
   const parsed = acts.parseActs(raw, { people, vocabulary: [...new Set([...vocabulary, ...entityVocab])], protect });
   const substantive = parsed.acts.filter((a) => !SOCIAL.has(a.speech_act));
@@ -209,7 +244,9 @@ function analyzeTurn({ raw, present = [], entities = [], dis = null, explicit_ta
     const top = act.predicate_candidates[0] ?? null;
     // "Is this your first time going in?" asks the predicate inverted: a yes means NO experience. Carried in the
     // args so a repair or ellipsis re-asking the same question keeps it (review F2).
-    if (act.marker_relation === "continuation") e.relation = "continuation";
+    // A continuation marker ("So", "And") continues only an exchange that exists; opening the conversation it
+    // is just a lead-in.
+    if (act.marker_relation === "continuation" && (dis?.last_request || dis?.active_speaker || dis?.activity)) e.relation = "continuation";
     if (act.marker_relation === "topic_return") e.relation = "topic_return";
 
     if (act.speech_act === "repair") {
@@ -448,6 +485,34 @@ function analyzeTurn({ raw, present = [], entities = [], dis = null, explicit_ta
         e.args = { ...(e.args ?? {}), count_asked: true };
       }
       e.facet_source = e.predicate ? "tier1_registry" : null;
+      // An echo of the last reply's own words re-asks the request that reply answered, of its speaker, as a
+      // request to say more (only when Tier 1 found no facet, or the line is a bare fragment).
+      const echoForm = ["question", "request"].includes(act.speech_act) || (act.speech_act === "statement" && ECHO_TAIL.test(String(act.body_expanded ?? act.body ?? "").replace(/[?!.]+$/, "")));
+      // The echo SHAPE. A full question of more than three words is never an echo, even if it shares a
+      // word ("Who has the case?"). A bare fragment ("sealed??") or a word questioned by a trailing wh
+      // ("Sealed how?", "Terrified of what?") may echo one word; anything longer must repeat a phrase of the
+      // reply verbatim ("once we've all met?").
+      const echoBody = String(act.body_expanded ?? act.body ?? "").replace(/[?!.\s]+$/, "").replace(/^(?:(?:and|so|but|wait|oh|ok|okay)[,]?\s+)+/i, "");
+      // Counted in the words the player TYPED ("Nobody's told you?" is three words, not four expanded ones).
+      const echoWords = String(act.body ?? act.text ?? "").replace(/[?!.\s]+$/, "").replace(/^(?:(?:and|so|but|wait|oh|ok|okay)[,]?\s+)+/i, "").split(/\s+/).filter(Boolean).length;
+      // A line OPENING with a wh-word is an ordinary question ("What recall?" asks what a term meant -- the
+      // meaning anchor answers it); an echo questions a word by trailing wh or none at all.
+      const fullQuestion = /^(?:who|whom|whose|what|where|when|why|how|which)\b/i.test(echoBody) || (echoWords > 3 && /^(?:is|are|was|were|do|does|did|can|could|will|would|have|has)\b/i.test(echoBody));
+      const wordEcho = echoWords <= 3 || /\b(?:how|what|why|where|when|who|so|exactly|meaning)$/i.test(echoBody);
+      const echo = echoForm && !fullQuestion && presentIds.length ? echoOf(act, dis, { phraseOnly: !wordEcho }) : null;
+      if (echo && presentIds.includes(echo.speaker_id)) {
+        const span = echo.span;
+        e.speech_act = "question";
+        // "Sealed how?" asks wh; "sealed??" / "the Bermuda branch?" checks the word back (yes/no).
+        e.question_form = /\b(?:how|what|why|where|when|who|meaning)\s*$/i.test(String(act.body_expanded ?? act.body ?? "").replace(/[?!.\s]+$/, "")) ? "wh" : "yes_no";
+        e.predicate = span.predicate ?? "conversation.explanation";
+        e.facet_source = "surface_anchor";
+        if (span.request_text) e.request_text = span.request_text;
+        e.args = { ...(span.args ?? {}), echo: { matched: echo.matched, event_id: echo.event_id } };
+        e.temporal_scope = span.temporal ?? null;
+        e.relation = "continuation"; e.relation_target = span.request_id ?? null;
+        e.addressee = { kind: "inherited", ids: [echo.speaker_id], quantifier: null, source: "surface_anchor" };
+      }
       if (act.bare_wh) e.relation = "continuation";
       if (act.declarative_candidate && dis?.active_speaker?.speaker_id && e.predicate) { e.question_form = "declarative"; e.speech_act = "question"; }
       if (e.addressee.kind === "inherited" && e.relation === "new") e.relation = "continuation";
@@ -519,7 +584,10 @@ function completenessWithFrame(analysis, frame, effective = analysis?.primary) {
   if (e && !e.clarify) {
     // A bare attention call ("Giselle?") or a repair/ellipsis carried by the ledger asks no new facet.
     const interrogative = (["question", "request"].includes(e.speech_act) || /\?\s*$/.test(e.act?.text ?? "")) && !(e.speech_act === "attention_call" && !e.request_text);
-    const generic = !frame || (["make_statement", "ask_factual"].includes(frame.discourse_function) && !frame.addressee_state && !frame.past_perception && !(frame.referents ?? []).some((r) => r.resolved)) || (frame.discourse_function === "ambiguous_reference" && frame.tier1_generic);
+    // A resolved referent says WHICH thing a factual question is about, not WHAT about it is asked ("what's
+    // inside that bag"): with no facet, Tier 2 still gets its one bounded reading (the legacy reading stands
+    // if it cannot help).
+    const generic = !frame || (frame.discourse_function === "ask_factual" && !frame.addressee_state && !frame.past_perception) || (frame.discourse_function === "make_statement" && !frame.addressee_state && !frame.past_perception && !(frame.referents ?? []).some((r) => r.resolved)) || (frame.discourse_function === "ambiguous_reference" && frame.tier1_generic);
     if (interrogative && !e.predicate && generic) missing.push("facet_unresolved");
     if (e.act?.vocatives?.length && !(e.addressee?.ids ?? []).length && !e.absent_addressees) missing.push("name_unresolved");
     if (e.addressee?.second_person && e.relation !== "new" && !(e.addressee?.ids ?? []).length) missing.push("second_person_no_target");
@@ -780,7 +848,23 @@ function subjectCheckIn(frame, ownerIds = []) {
  * incomplete -- a missing facet, a missing addressee, a missing place -- never overwrite a resolved one.
  * Every id comes from code's own candidate map; overrides are traced.
  */
-function applyAdvisory(analysis, advice, { present = [] } = {}) {
+/**
+ * Code's plausibility check of a Tier-2 facet against the player's own words (Tier 2 classifies; code
+ * validates): the facet must be askable with the line's wh-word, and a line that names an item but no
+ * person is not a question about a person's attributes. An implausible facet is not filled (-> clarify).
+ */
+function advisoryFacetPlausible(facet, e, entities = []) {
+  const text = String(e?.act?.body_expanded ?? e?.request_text ?? "").toLowerCase();
+  const wh = e?.question_form === "wh" ? (text.replace(/^(?:(?:so|and|but|ok|okay|well|wait|hey)[,]?\s+)+/, "").match(/^(who|whose|what|where|when|why|how|which)\b/)?.[1] ?? null) : null;
+  if (!registry.whCompatible(facet, wh)) return { ok: false, reason: "facet_wh_incompatible" };
+  const mentions = canonicalKnowledge.resolveEntityMentions(text, entities);
+  const namesItem = mentions.some((m) => m.kind === "equipment");
+  const namesPerson = mentions.some((m) => m.kind === "person") || (e?.act?.vocatives ?? []).length > 0 || /\b(?:you|your|yourself)\b/.test(text);
+  if (namesItem && !namesPerson && String(facet).startsWith("person.")) return { ok: false, reason: "facet_item_named" };
+  return { ok: true };
+}
+
+function applyAdvisory(analysis, advice, { present = [], entities = [] } = {}) {
   if (!analysis?.primary || !advice?.accepted || advice.version !== "yellow-beast-dialogue-advisory@v2") return analysis;
   const e = { ...analysis.primary, overrides: [...(analysis.primary.overrides ?? [])] };
   const act = advice.acts.at(-1);
@@ -790,7 +874,21 @@ function applyAdvisory(analysis, advice, { present = [] } = {}) {
   const gaps = Array.isArray(advice.tier1_missing) ? new Set(advice.tier1_missing) : null;
   const may = (...reasons) => !gaps || reasons.some((r) => gaps.has(r));
   if (!may("facet_unresolved", "name_unresolved", "second_person_no_target")) return analysis;
-  if (!e.predicate && act.facet && registry.get(act.facet) && may("facet_unresolved")) { e.predicate = act.facet; e.facet_source = "tier2_advisory"; e.overrides.push({ field: "predicate", to: act.facet, reason: "advisory_filled_missing_facet" }); }
+  const plausible = act.facet ? advisoryFacetPlausible(act.facet, e, entities) : { ok: false };
+  if (act.facet && !plausible.ok) e.overrides.push({ field: "predicate", to: act.facet, reason: `advisory_rejected_${plausible.reason}` });
+  if (!e.predicate && act.facet && registry.get(act.facet) && plausible.ok && may("facet_unresolved")) {
+    e.predicate = act.facet; e.facet_source = "tier2_advisory"; e.overrides.push({ field: "predicate", to: act.facet, reason: "advisory_filled_missing_facet" });
+    // The facet's canonical time frame (what its plain phrasing asks: "How are you?" -> now), unless the
+    // line itself said one.
+    const entry = registry.get(act.facet);
+    if (!e.temporal_scope) {
+      // The most common time frame of the facet's own phrasings (none counts too): wellbeing -> now.
+      const counts = new Map();
+      for (const cue of entry.cues ?? []) counts.set(cue.temporal ?? null, (counts.get(cue.temporal ?? null) ?? 0) + 1);
+      const modal = [...counts.entries()].sort((a, b) => b[1] - a[1])[0]?.[0] ?? null;
+      e.temporal_scope = entry.default_temporal ?? modal;
+    }
+  }
   if (!(e.addressee?.ids ?? []).length && act.addressee_id && presentIds.includes(act.addressee_id) && may("name_unresolved", "second_person_no_target")) { e.addressee = { kind: "explicit", ids: [act.addressee_id], quantifier: null, source: "advisory_candidate" }; e.overrides.push({ field: "addressee", to: act.addressee_id, reason: "advisory_filled_missing_addressee" }); }
   if (!(e.addressee?.ids ?? []).length && ["all", "each", "any"].includes(act.quantifier) && e.predicate && may("name_unresolved", "second_person_no_target")) { e.addressee = { kind: "group", ids: presentIds, quantifier: act.quantifier === "any" ? "any" : "all", source: "advisory_quantifier" }; }
   const entry = e.predicate ? registry.get(e.predicate) : null;
@@ -799,6 +897,19 @@ function applyAdvisory(analysis, advice, { present = [] } = {}) {
   if (e.addressee) e.cardinality = cardinalityFor(e.predicate, e.addressee, e);
   const effective = [...analysis.effective.slice(0, -1), e];
   return Object.freeze({ ...analysis, effective, primary: e, advisory: { applied: true, acts: advice.acts.length } });
+}
+
+/**
+ * The Tier-2 gate (D14): Tier 1 may skip the bounded advisory only when the turn is COMPLETE, not merely
+ * confident. Returns whether a reading is needed and, if so, the v2 request (surface text, opaque candidate
+ * labels, registry facets with their glosses -- never ids or facts). The production service and the
+ * end-to-end evaluator both call this, so the measured path is the shipped path.
+ */
+function advisoryGate({ message, analysis, frame, completeness, present = [], entities = [], recent = [] }) {
+  const needed = Boolean(frame?.tier1_generic) || !completeness?.complete;
+  if (!needed) return { needed: false, v2: null };
+  const candidates = advisoryCandidates(present, entities);
+  return { needed: true, v2: { utterance: message, repaired: analysis?.normalized?.repaired ?? null, recent, people: candidates.people, referents: candidates.referents, facets: candidates.facets, facet_guide: registry.advisoryFacetGuide() } };
 }
 
 /** Scene candidates for the advisory (opaque labels -> ids; code owns the mapping). */
@@ -828,4 +939,4 @@ function turnRecord(analysis, { frame = null, request_ids = [], completeness = n
   };
 }
 
-module.exports = { TURN_VERSION, analyzeTurn, completenessWithFrame, reconcile, resolveAddressee, peopleIndex, placeOf, cardinalityFor, STRUCTURAL_KEEP, withSalience, addressFromTurn, argsFor, finalizeFrame, subjectCheckIn, ownersByCardinality, turnRecord, applyAdvisory, advisoryCandidates };
+module.exports = { advisoryGate, advisoryFacetPlausible, TURN_VERSION, analyzeTurn, completenessWithFrame, reconcile, resolveAddressee, peopleIndex, placeOf, cardinalityFor, STRUCTURAL_KEEP, withSalience, addressFromTurn, argsFor, finalizeFrame, subjectCheckIn, ownersByCardinality, turnRecord, applyAdvisory, advisoryCandidates };

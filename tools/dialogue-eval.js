@@ -16,6 +16,8 @@ const dialogueTurn = require("./dialogue-turn");
 const dialogueDiscourse = require("./dialogue-discourse");
 const registry = require("./dialogue-registry");
 const canonicalKnowledge = require("./canonical-knowledge");
+const dialogueAdvisory = require("./dialogue-advisory-interpreter");
+const dialogueState = require("./dialogue-state");
 
 const SCENE_NAMES = ["Giselle", "Malcolm", "Tonya"];
 let sceneCache = null;
@@ -79,18 +81,24 @@ function contextState(context = {}, sc = scene()) {
   }
   const activity = context.active_activity && ACTIVITY_TEMPLATE[context.active_activity] ? { activity_id: "act-1", kind: context.active_activity, template: { ...ACTIVITY_TEMPLATE[context.active_activity] }, completed: (context.activity_done ?? []).map((n) => sc.idOf(n)).filter(Boolean), pending: [], eligible: sc.present.map((p) => p.id), last_target: null } : null;
   const npcAsked = /\?\s*$/.test(context.last_npc_line ?? "");
-  const dis = { active_speaker: speakerId ? { speaker_id: speakerId, speaker_ids: [speakerId] } : null, last_request: lastRequest, pending_requests: pending, activity, npc_question: npcAsked };
+  // The NPC line was actually spoken: its sentences are anchored to the request it answered, exactly as the
+  // ledger anchors an accepted line (dialogue-state.anchorSpans).
+  const answered = lastRequest && lastRequest.request_id === "req-prior" ? lastRequest : null;
+  const surface_anchors = speakerId && context.last_npc_line ? [{ speaker_id: speakerId, event_id: "e-prior", spans: dialogueState.anchorSpans(context.last_npc_line, [{ request_id: answered?.request_id ?? null, predicate: answered?.predicate ?? null }]).map((span) => ({ ...span, request_text: answered?.request_text ?? null, args: answered?.args ? { ...answered.args } : null, temporal: answered?.temporal ?? null })) }] : [];
+  const dis = { active_speaker: speakerId ? { speaker_id: speakerId, speaker_ids: [speakerId] } : null, last_request: lastRequest, pending_requests: pending, activity, npc_question: npcAsked, surface_anchors };
   const discourse = context.last_player_line || context.last_npc_line ? { turns: [], last_turn: { kind: "player_exchange", interaction_id: "i-prior", player_text: context.last_player_line ?? null, responder_ids: speakerId ? [speakerId] : [], responses: speakerId && context.last_npc_line ? [{ speaker_id: speakerId, speaker_name: context.active_speaker, text: context.last_npc_line, basis: { kind: "social" }, facts: { required: [{ key: "known_fact", value: context.last_npc_line }], optional: [] } }] : [], address: { scope: speakerId ? "direct" : "untargeted", addressee_ids: speakerId ? [speakerId] : [] } }, active_thread: speakerId ? { kind: "direct", member_ids: [speakerId], responder_ids: [speakerId] } : null, pending_question: npcAsked ? { discourse_function: lastRequest?.fn ?? "ask_factual", player_text: context.last_player_line ?? "", responder_ids: speakerId ? [speakerId] : [], asker_ids: speakerId ? [speakerId] : [], expected_slot: "topic" } : null } : null;
   return { dis: dialogueTurn.withSalience(dis, discourse, sc.entities), discourse };
 }
 
 /** The labels the pipeline produces for one corpus item. */
-function labelsFor(item, sc = scene()) {
+function labelsFor(item, sc = scene(), { advice = null } = {}) {
   const { dis, discourse } = contextState(item.context ?? {}, sc);
-  const analysis = dialogueTurn.analyzeTurn({ raw: item.utterance, present: sc.present, entities: sc.entities, dis });
+  let analysis = dialogueTurn.analyzeTurn({ raw: item.utterance, present: sc.present, entities: sc.entities, dis });
+  // Full pipeline: an accepted v2 reading fills only what Tier 1 left incomplete (as the service does).
+  if (advice?.accepted && advice.version === dialogueAdvisory.ADVISORY_V2_VERSION) analysis = dialogueTurn.applyAdvisory(analysis, advice, { present: sc.present, entities: sc.entities });
   const e = analysis.primary;
   const socialOnly = !analysis.effective.some((x) => !["social_acknowledgment", "thanks"].includes(x.speech_act));
-  const frame0 = dialogueDiscourse.buildSemanticFrame({ text: e?.request_text ?? item.utterance, recipient_type: e?.addressee?.kind === "group" ? "group" : e?.addressee?.ids?.length ? "direct" : "none", discourse, entities: sc.entities, equipment: sc.equipment, addressee_ids: e?.addressee?.ids ?? [], people: sc.present });
+  const frame0 = dialogueDiscourse.buildSemanticFrame({ text: e?.request_text ?? item.utterance, recipient_type: e?.addressee?.kind === "group" ? "group" : e?.addressee?.ids?.length ? "direct" : "none", discourse, entities: sc.entities, equipment: sc.equipment, addressee_ids: e?.addressee?.ids ?? [], people: sc.present, ...(advice?.accepted ? { advice } : {}) });
   const completeness = dialogueTurn.completenessWithFrame(analysis, frame0, e);
   const frame = e ? dialogueTurn.finalizeFrame(frame0, e, dialogueTurn.reconcile(frame0, e), { completeness, entities: sc.entities }) : frame0;
   const clarify = Boolean(e?.clarify) || frame.discourse_function === "ambiguous_reference" || (frame.discourse_function === "ask_factual" && frame.tier1_generic && completeness.missing.includes("facet_unresolved"));
@@ -115,17 +123,70 @@ function labelsFor(item, sc = scene()) {
 }
 
 const sameSet = (a = [], b = []) => a.length === b.length && a.every((x) => b.includes(x));
-/** Scores a corpus; returns per-field accuracy, clarify stats and the failures. */
+/** Scores a corpus with the Tier-1 pipeline only; returns per-field accuracy, clarify stats and failures. */
 function evaluate(items) {
   const sc = scene();
+  return score(items, items.map((item) => labelsFor(item, sc)));
+}
+
+/**
+ * The production gate's view of one item (Tier 1 only): does the service send it to Tier 2, and with what
+ * request? Uses dialogueTurn.advisoryGate -- the same function desktop/service.js calls.
+ */
+function gateFor(item, sc = scene()) {
+  const { dis, discourse } = contextState(item.context ?? {}, sc);
+  const analysis = dialogueTurn.analyzeTurn({ raw: item.utterance, present: sc.present, entities: sc.entities, dis });
+  const e = analysis.primary;
+  const frame = dialogueDiscourse.buildSemanticFrame({ text: e?.request_text ?? item.utterance, recipient_type: e?.addressee?.kind === "group" ? "group" : e?.addressee?.ids?.length ? "direct" : "none", discourse, entities: sc.entities, equipment: sc.equipment, addressee_ids: e?.addressee?.ids ?? [], people: sc.present });
+  const completeness = dialogueTurn.completenessWithFrame(analysis, frame, e);
+  const recent = [item.context?.last_player_line, item.context?.last_npc_line].filter(Boolean);
+  return { ...dialogueTurn.advisoryGate({ message: item.utterance, analysis, frame, completeness, present: sc.present, entities: sc.entities, recent }), completeness };
+}
+
+/**
+ * End-to-end production interpretation: Tier 1, the production Tier-2 gate, ONE bounded v2 reading from
+ * the real local model where the gate asks for it (validated by the production validator), then the same
+ * reconciliation. `provider` is the production local-model provider.
+ */
+async function evaluateFull(items, { provider, log = () => {} } = {}) {
+  const sc = scene();
+  const gots = [];
+  const tier2 = { invoked: 0, accepted: 0, rejected: 0, reasons: {}, latency_ms: [], turn_ms: [] };
+  for (const [i, item] of items.entries()) {
+    const started = Date.now();
+    const gate = gateFor(item, sc);
+    let advice = null;
+    if (gate.needed) {
+      tier2.invoked += 1;
+      const raw = await dialogueAdvisory.requestAdvisoryV2(provider, gate.v2);
+      advice = raw && typeof raw === "object" ? { ...raw, tier1_missing: [...(gate.completeness?.missing ?? [])] } : raw;
+      if (advice?.accepted) tier2.accepted += 1; else { tier2.rejected += 1; tier2.reasons[advice?.reason ?? "unknown"] = (tier2.reasons[advice?.reason ?? "unknown"] ?? 0) + 1; }
+      tier2.latency_ms.push(advice?.latency_ms ?? 0);
+    }
+    gots.push({ ...labelsFor(item, sc, { advice }), _tier2: gate.needed ? (advice?.accepted ? "accepted" : `rejected:${advice?.reason ?? "unknown"}`) : "not_invoked" });
+    tier2.turn_ms.push(Date.now() - started);
+    log(`${i + 1}/${items.length}`);
+  }
+  const q = (a, p) => (a.length ? [...a].sort((x, y) => x - y)[Math.floor(p * (a.length - 1))] : 0);
+  const n = items.length || 1;
+  const result = score(items, gots);
+  result.tier2 = { invocation_rate: Math.round((tier2.invoked / n) * 1000) / 10, invoked: tier2.invoked, accepted: tier2.accepted, rejected: tier2.rejected, accepted_rate: tier2.invoked ? Math.round((tier2.accepted / tier2.invoked) * 1000) / 10 : null, rejection_reasons: tier2.reasons, advisory_latency_ms: { p50: q(tier2.latency_ms, 0.5), p90: q(tier2.latency_ms, 0.9) }, turn_latency_ms: { p50: q(tier2.turn_ms, 0.5), p90: q(tier2.turn_ms, 0.9) } };
+  return result;
+}
+
+// Human-level release gate fields (a turn is correct only if ALL hold; a clarification is never a
+// confident wrong answer).
+const GATE_FIELDS = ["speech_act", "addressee", "predicate", "discourse_relation", "cardinality", "temporal_scope"];
+function score(items, gots) {
   const fields = ["speech_act", "addressee", "predicate", "discourse_relation", "cardinality", "temporal_scope", "question_form"];
   const hits = Object.fromEntries(fields.map((f) => [f, 0]));
   let clarified = 0;
   let confidentWrong = 0;
   let shouldClarifyMissed = 0;
+  let turnCorrect = 0;
   const failures = [];
-  for (const item of items) {
-    const got = labelsFor(item, sc);
+  for (const [index, item] of items.entries()) {
+    const got = gots[index];
     const exp = item.expected;
     const ok = {
       speech_act: got.speech_act === exp.speech_act,
@@ -140,24 +201,41 @@ function evaluate(items) {
     if (got.should_clarify) clarified += 1;
     if (!got.should_clarify && exp.should_clarify) shouldClarifyMissed += 1;
     if (!got.should_clarify && (exp.should_clarify || !ok.addressee || !ok.predicate)) confidentWrong += 1;
+    if (GATE_FIELDS.every((f) => ok[f]) && got.should_clarify === Boolean(exp.should_clarify)) turnCorrect += 1;
     if (Object.values(ok).some((v) => !v) || got.should_clarify !== Boolean(exp.should_clarify)) failures.push({ id: item.id, utterance: item.utterance, context: item.context, got, expected: exp, wrong: fields.filter((f) => !ok[f]).concat(got.should_clarify !== Boolean(exp.should_clarify) ? ["should_clarify"] : []) });
   }
   const n = items.length || 1;
   const pct = (x) => Math.round((x / n) * 1000) / 10;
-  return { n: items.length, accuracy: Object.fromEntries(fields.map((f) => [f, pct(hits[f])])), clarify_rate: pct(clarified), confident_wrong: pct(confidentWrong), should_clarify_missed: shouldClarifyMissed, failures };
+  return { n: items.length, accuracy: Object.fromEntries(fields.map((f) => [f, pct(hits[f])])), turn_correct: pct(turnCorrect), clarify_rate: pct(clarified), confident_wrong: pct(confidentWrong), should_clarify_missed: shouldClarifyMissed, failures };
 }
 
 function readCorpus(file) { return fs.readFileSync(file, "utf8").split("\n").map((l) => l.trim()).filter(Boolean).map((l) => JSON.parse(l)); }
 
-if (require.main === module) {
+// CLI:
+//   node tools/dialogue-eval.js <corpus.jsonl> [--failures] [--json]                 Tier 1 only
+//   node tools/dialogue-eval.js <corpus.jsonl> --full [--endpoint URL] [--json]      full production pipeline
+// --full uses the production local-model provider against the pinned runtime (launched here unless an
+// --endpoint of a running one is given).
+async function main() {
   const file = process.argv[2];
-  if (!file) { console.error("usage: node tools/dialogue-eval.js <corpus.jsonl> [--failures] [--json]"); process.exit(2); }
-  const result = evaluate(readCorpus(file));
+  if (!file) { console.error("usage: node tools/dialogue-eval.js <corpus.jsonl> [--full [--endpoint URL]] [--failures] [--json]"); process.exit(2); }
+  const argOf = (name) => { const i = process.argv.indexOf(name); return i > 0 ? process.argv[i + 1] : null; };
+  let result;
+  if (process.argv.includes("--full")) {
+    const { createLocalModelProvider } = require("./ai-local-model-provider");
+    let runtime = null;
+    let endpoint = argOf("--endpoint");
+    if (!endpoint) { runtime = await require("./dialogue-session").startLocalModel(); endpoint = runtime.endpoint; }
+    try { result = await evaluateFull(readCorpus(file), { provider: createLocalModelProvider({ endpoint }), log: (m) => process.stderr.write(`\r${m}`) }); }
+    finally { if (runtime) await runtime.stop(); }
+  } else result = evaluate(readCorpus(file));
   if (process.argv.includes("--json")) console.log(JSON.stringify(result, null, 2));
   else {
-    console.log(JSON.stringify({ n: result.n, accuracy: result.accuracy, clarify_rate: result.clarify_rate, confident_wrong: result.confident_wrong, should_clarify_missed: result.should_clarify_missed }, null, 2));
+    console.log(JSON.stringify({ n: result.n, accuracy: result.accuracy, turn_correct: result.turn_correct, clarify_rate: result.clarify_rate, confident_wrong: result.confident_wrong, should_clarify_missed: result.should_clarify_missed, ...(result.tier2 ? { tier2: result.tier2 } : {}) }, null, 2));
     if (process.argv.includes("--failures")) for (const f of result.failures) console.log(`${f.id} [${f.wrong.join(",")}] ${f.utterance}\n   got ${JSON.stringify({ sa: f.got.speech_act, qf: f.got.question_form, to: `${f.got.addressee_kind}:${f.got.addressees.join("+")}`, P: f.got.predicate, rel: f.got.discourse_relation, card: f.got.cardinality, T: f.got.temporal_scope, clar: f.got.should_clarify, fn: f.got._fn })}\n   exp ${JSON.stringify({ sa: f.expected.speech_act, qf: f.expected.question_form, to: `${f.expected.addressee_kind}:${(f.expected.addressees ?? []).join("+")}`, P: f.expected.predicate, rel: f.expected.discourse_relation, card: f.expected.cardinality, T: f.expected.temporal_scope, clar: f.expected.should_clarify })}`);
   }
 }
 
-module.exports = { evaluate, labelsFor, contextState, readCorpus, scene };
+if (require.main === module) main().catch((error) => { console.error(error); process.exit(1); });
+
+module.exports = { evaluate, evaluateFull, gateFor, score, labelsFor, contextState, readCorpus, scene, GATE_FIELDS };

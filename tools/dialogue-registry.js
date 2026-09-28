@@ -192,7 +192,10 @@ const ENTRIES = [
     resolver: null, route: { fn: "ask_role_or_assignment" }, epistemic_class: EPISTEMIC.INSTITUTIONAL,
     default_cardinality: CARDINALITY.EACH_SELF, temporal_support: ["now"], granularity: "record",
     answer_contract: { kind: "role" }, neighbors: ["person.identity", "person.self_description"], priority: 20, cues: [
-      { re: re("^(?:so |and |okay |ok )?what (?:do|does) (?:everybody|everyone|you all|you guys|each of you|you two|y'?all) (?:actually )?do(?: (?:around )?here| on this (?:team|expedition|trip))?\\s*\\??$"), form: "wh" },], lexicon: []
+      { re: re("^(?:so |and |okay |ok )?what (?:do|does) (?:everybody|everyone|you all|you guys|each of you|you two|y'?all) (?:actually )?do(?: (?:around )?here| on this (?:team|expedition|trip))?\\s*\\??$"), form: "wh" },
+      // "What do you do?" asked of one coworker is the same question as of the group: their job -- not
+      // "what do we do now" (blocked below by the we/us/I form).
+      { re: re("^(?:so |and |okay |ok )?what (?:do|does) you (?:actually |even |exactly )?do(?: (?:here|for (?:a living|work|async)|exactly|again|on (?:this|the) (?:expedition|trip|team)))?\\s*\\??$"), form: "wh" },], lexicon: []
   },
   {
     id: "person.authority", domain: "person", slots: { subject: "person" }, question_forms: ["wh"],
@@ -200,7 +203,7 @@ const ENTRIES = [
     default_cardinality: CARDINALITY.ONE_SPOKESPERSON, temporal_support: ["now"], granularity: "record",
     answer_contract: { kind: "known_concept" }, neighbors: ["person.identity", "person.role"], priority: 20, cues: [
       { re: re("\\bwho(?:'s| is) (?:leading|running|in charge|the boss|our boss|in command|our lead|the lead)\\b"), form: "wh" },
-      { re: re("\\b(?:maxwell|kirk|he|she)(?:'s| is) (?:our|the) (?:boss|lead|leader|supervisor|manager)\\b"), form: "yes_no" },], lexicon: []
+      { re: re("\\b(?:maxwell|kirk|he|she)(?:'s| is) (?:our|the) (?:boss|lead|leader|supervisor|manager)\\b"), form: "yes_no" },], blockers: ["\\bin charge of (?:the |that |this |our )?(?:[a-z]+ )?(?:camera|duffle|duffel|materials|lamp|light|flashlight|torch|spectrometer|record|bag|gear|kit|equipment|radio)\\b"], lexicon: []
   },
   {
     id: "person.presence", domain: "person", slots: { subject: "person" }, question_forms: ["yes_no", "wh"],
@@ -238,9 +241,7 @@ const ENTRIES = [
     cues: [
       { re: re("\\bwhat (?:are|is) (?:you|you all|you two|you guys) (?:on|working on) (?:today|this (?:trip|expedition|morning))?\\b"), form: "wh" },
       { re: re("\\bwhat (?:are|is) (?:you|you two|you all|you guys) working on\\b"), form: "wh" },
-      { re: re("\\b(?:you'?re|you are) on (?:the )?(?:layout|layout record|observation|recall|verbal recall|camera|materials|delivery|the materials)\\b"), form: "yes_no" },
-      // "What do you do?" (asked of a coworker): their job here -- not "what do we do now".
-      { re: re("^(?:so |and |okay |ok )?what (?:do|does) you (?:actually |even |exactly )?do(?: (?:here|for (?:a living|work|async)|exactly|again|on (?:this|the) (?:expedition|trip|team)))?\\s*\\??$"), form: "wh" }
+      { re: re("\\b(?:you'?re|you are) on (?:the )?(?:layout|layout record|observation|recall|verbal recall|camera|materials|delivery|the materials)\\b"), form: "yes_no" }
     ],
     blockers: ["\\bwhat (?:do|does) (?:we|us|i) (?:actually |even )?do\\b"], lexicon: []
   },
@@ -398,6 +399,8 @@ const ENTRIES = [
       { re: re("\\bwhose\\s+(?:[a-z]+\\s+)?(?:camera|duffle|duffel|materials|startup materials|lamp|light|field light|flashlight|torch|spectrometer|mass spectrometer|layout record|record|bag|gear|kit|stuff|equipment)\\b|\\bwhose (?:is (?:this|that|it))\\b"), form: "wh" },
       { re: re("\\bis (?:the |that |this )?(?:[a-z]+ )?(?:camera|duffle|duffel|materials|startup materials|lamp|light|field light|flashlight|torch|spectrometer|mass spectrometer|layout record|record|bag|gear|kit|stuff|equipment) (?:mine|yours|his|hers|theirs|[a-z]+'?s)\\b"), form: "yes_no" },
       { re: re("\\b(?:the one|who'?s the one|who is the one) (?:with|carrying|holding) the\\b"), form: "wh" },
+      // "Who's in charge of / responsible for the camera?": the item's custody, not a person's authority.
+      { re: re("\\bwho(?:'?s| is| was)? (?:in charge of|responsible for|looking after|minding) (?:the |that |this |our )?(?:[a-z]+ )?(?:camera|duffle|duffel|materials|startup materials|lamp|light|field light|flashlight|torch|spectrometer|mass spectrometer|layout record|record|bag|gear|kit|equipment|radio)\\b"), form: "wh" },
       { re: re("\\b(?:am i|are you|is [a-z]+) (?:carrying|holding|bringing|in charge of|responsible for) (?:the |that )?(?:[a-z]+ )?(?:camera|duffle|duffel|materials|startup materials|lamp|light|field light|flashlight|torch|spectrometer|mass spectrometer|layout record|record|bag|gear|kit|stuff|equipment)\\b"), form: "yes_no" },
       { re: re("\\b(?:everybody|everyone|you all|all of you|you guys|y'?all) (?:got|have) (?:their|your) (?:gear|stuff|equipment|kit|things|lights|lamps)\\b"), form: "yes_no" },], lexicon: [] },
   { id: "item.purpose", domain: "item", slots: { item: "equipment" }, question_forms: ["wh"], resolver: null, route: { fn: "ask_assignment_purpose", concept: "assignment_purpose" }, epistemic_class: EPISTEMIC.INSTITUTIONAL, default_cardinality: CARDINALITY.ONE_SPOKESPERSON, temporal_support: ["now"], granularity: "record", answer_contract: { kind: "known_concept", facet: "purpose" }, neighbors: ["item.destination", "item.holder"], priority: 20, cues: [
@@ -481,9 +484,10 @@ for (const entry of ENTRIES) { validateEntry(entry); compiled.set(entry.id, comp
 function registerPredicate(entry) {
   validateEntry(entry);
   compiled.set(entry.id, compile(entry));
+  lexiconCache = null;
   return compiled.get(entry.id);
 }
-function unregisterPredicate(id) { return compiled.delete(id); }
+function unregisterPredicate(id) { lexiconCache = null; return compiled.delete(id); }
 function get(id) { return compiled.get(id) ?? null; }
 function all() { return [...compiled.values()]; }
 function ids() { return [...compiled.keys()]; }
@@ -492,9 +496,42 @@ function ids() { return [...compiled.keys()]; }
  * Tier-1 predicate cues over one EXPANDED clause. Returns candidate matches ordered by priority (then
  * earliest match). Each: { id, entry, form, temporal, polarity, span:[start,end], cue_index }.
  */
-function detectPredicates(expandedClause) {
-  // Filler adverbs carry no facet ("who exactly is maxwell" asks who maxwell is).
-  const text = String(expandedClause ?? "").toLowerCase().replace(/\b(?:exactly|precisely|basically)\s+/g, "");
+// Hedges and intensifiers carry no facet: "who exactly is maxwell" asks who maxwell is, and "what is the
+// actual job here" asks what the job is. Adverbs go wherever they stand; the adjectives only between a
+// determiner and its noun ("the actual job", "our real goal"), so "is this real" keeps its meaning.
+const HEDGE_ADVERBS = /\b(?:exactly|precisely|basically|actually|really|honestly|seriously|literally|even|anyway|like)\s+/g;
+const HEDGE_ADJECTIVES = /\b(the|our|this|that|your|today's|an?)\s+(?:actual|real|exact|specific|whole|main|overall|precise|official)\s+/g;
+function stripHedges(text) { return String(text).replace(HEDGE_ADVERBS, "").replace(HEDGE_ADJECTIVES, "$1 "); }
+// Typo repair for facet detection only (never for the words the line is framed or quoted with): a word
+// that is not common English and not already a cue word is mapped onto the ONE closest cue word ("reprot"
+// -> "report"), same first letter, within 1 edit (2 for 7+ letters), never across an inflection. The
+// repaired clause is used only if the original matches no cue and the repaired one does.
+let lexiconCache = null;
+function repairAgainstLexicon(text) {
+  const { editDistance, PROTECTED_WORDS } = require("./dialogue-normalize");
+  lexiconCache ??= cueLexicon();
+  const lex = new Set(lexiconCache);
+  let changed = false;
+  const out = text.replace(/[a-z]{4,}/g, (word) => {
+    if (lex.has(word) || PROTECTED_WORDS.has(word) || /(?:ing|ed|ly|ies)$/.test(word)) return word;
+    const limit = word.length >= 7 ? 2 : 1;
+    let best = Infinity;
+    let hits = [];
+    for (const cand of lexiconCache) {
+      // A longer word that starts with a cue word is an inflection ("reports"), never a typo; a word missing
+      // only its final letter ("charg") is a typo from five letters up.
+      if (cand[0] !== word[0] || Math.abs(cand.length - word.length) > limit || word.startsWith(cand) || (cand.startsWith(word) && !(word.length >= 5 && cand.length === word.length + 1))) continue;
+      const d = editDistance(word, cand, limit);
+      if (d > limit) continue;
+      if (d < best) { best = d; hits = [cand]; } else if (d === best) hits.push(cand);
+    }
+    if (hits.length !== 1) return word;
+    changed = true;
+    return hits[0];
+  });
+  return changed ? out : null;
+}
+function matchCues(text) {
   const out = [];
   for (const entry of compiled.values()) {
     if (!entry.cues.length) continue;
@@ -507,6 +544,13 @@ function detectPredicates(expandedClause) {
     }
   }
   return out.sort((a, b) => (b.entry.priority ?? 0) - (a.entry.priority ?? 0) || a.span[0] - b.span[0]);
+}
+function detectPredicates(expandedClause) {
+  const text = stripHedges(String(expandedClause ?? "").toLowerCase());
+  const found = matchCues(text);
+  if (found.length) return found;
+  const repaired = repairAgainstLexicon(text);
+  return repaired ? matchCues(repaired).map((d) => ({ ...d, typo_repaired: true })) : [];
 }
 
 /** The registry id a legacy discourse function (+ knowledge concept/facet) answers, for ledger/contracts. */
@@ -542,4 +586,66 @@ function advisoryFacets() {
   return all().filter((entry) => entry.domain !== "conversation").map((entry) => entry.id).sort();
 }
 
-module.exports = { REGISTRY_VERSION, EPISTEMIC, CARDINALITY, ANSWER_VALUES, ENTRIES, registerPredicate, unregisterPredicate, get, all, ids, detectPredicates, predicateForFrame, advisoryFacets, validateEntry };
+// One-line meaning of each facet for the bounded Tier-2 classifier (what a question ABOUT it asks). Data:
+// a facet without a gloss is offered by id alone. Glosses never contain facts or answers.
+const FACET_GLOSS = Object.freeze({
+  "institution.purpose": "what the company (ASYNC) does or why it exists",
+  "item.contents": "what is inside an item or container",
+  "item.destination": "where an item is being taken",
+  "item.holder": "who has, carries or holds an item",
+  "item.purpose": "what an item is for or why it is needed",
+  "item.status": "the condition or state of an item",
+  "mission.destination": "where the group is going today (the destination)",
+  "mission.objective": "what the group's job, task or assignment is today",
+  "mission.participants": "who is part of the expedition overall",
+  "mission.route": "how to get somewhere, or how far it is",
+  "mission.schedule": "when something happens or when they leave",
+  "person.anticipation": "whether someone is excited or looking forward to it",
+  "person.async_tenure": "how long someone has worked at ASYNC",
+  "person.authority": "who is in charge or who someone reports to",
+  "person.complex_experience": "whether someone has been inside the Complex before",
+  "person.current_activity": "what someone is doing right now",
+  "person.current_assignment": "what someone's task is today",
+  "person.expedition_experience": "whether someone has been on an expedition before",
+  "person.familiarity": "whether people know each other or have met",
+  "person.fatigue": "whether someone is tired",
+  "person.first_day_at_async": "whether it is someone's first day",
+  "person.identity": "who someone is",
+  "person.intent": "what someone plans or intends to do",
+  "person.nervousness": "whether someone is nervous, scared or worried",
+  "person.opinion": "what someone thinks about something",
+  "person.presence": "whether someone is here or where they are",
+  "person.role": "what someone's job or role is in general",
+  "person.self_description": "a request for someone to tell about themselves",
+  "person.wellbeing": "how someone is doing or feeling",
+  "place.access": "whether one can go into a place",
+  "place.definition": "what a place is",
+  "place.status": "the state or condition of a place",
+  "procedure.instruction_history": "what they were told to do earlier",
+  "procedure.next_incomplete_step": "what to do next or where to go next / report to",
+  "transition.participants": "who is going along to the next place, or whether all go together"
+});
+// The question words a question ABOUT a facet can open with (only where confusable facets differ). A
+// Tier-2 reading whose facet cannot be asked with the line's own wh-word is implausible: "where do we show
+// up after this" is never a route (how) question. Facets without an entry accept any wh-word.
+const FACET_WH = Object.freeze({
+  "mission.route": ["how", "which"], "mission.destination": ["where", "what", "which"], "item.destination": ["where", "what"],
+  "mission.schedule": ["when", "what", "how"], "procedure.next_incomplete_step": ["what", "where", "which", "how"],
+  "item.holder": ["who", "whose", "which"], "person.authority": ["who", "whose"], "person.identity": ["who", "what"],
+  "person.async_tenure": ["how", "when"], "item.purpose": ["what", "why", "how"], "item.contents": ["what", "how"],
+  "place.definition": ["what", "where"], "person.role": ["what", "how"], "person.current_assignment": ["what", "which"],
+  "mission.objective": ["what", "why", "how"], "person.wellbeing": ["how", "what"], "institution.purpose": ["what", "why", "how"],
+  "person.presence": ["where", "who"], "transition.participants": ["who", "how", "which"], "mission.participants": ["who", "how", "which"]
+});
+function whCompatible(id, wh) { const allowed = FACET_WH[id]; return !allowed || !wh || allowed.includes(wh); }
+function advisoryFacetGuide() { return Object.fromEntries(advisoryFacets().map((id) => [id, FACET_GLOSS[id] ?? get(id)?.gloss ?? null]).filter(([, g]) => g)); }
+
+// The closed cue lexicon: every literal word (4+ letters) the registry's cues are written with. Typo repair
+// may map a misspelt word onto one of these ("reprot" -> "report") -- never onto open text.
+function cueLexicon() {
+  const words = new Set();
+  for (const entry of compiled.values()) for (const cue of entry.cues) for (const w of String(cue.re).replace(/\\[bsdwBSDW]/g, " ").toLowerCase().match(/[a-z]{4,}/g) ?? []) words.add(w);
+  return [...words].sort();
+}
+
+module.exports = { REGISTRY_VERSION, EPISTEMIC, CARDINALITY, ANSWER_VALUES, ENTRIES, registerPredicate, unregisterPredicate, get, all, ids, detectPredicates, predicateForFrame, advisoryFacets, advisoryFacetGuide, whCompatible, cueLexicon, stripHedges, validateEntry };

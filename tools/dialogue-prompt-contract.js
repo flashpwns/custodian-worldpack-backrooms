@@ -197,6 +197,8 @@ function renderContributionTask(packet) {
       const lines = (f.value?.claims ?? []).map((c) => (c.epistemic === "player_claim" ? `they themselves said: ${j(c.quote)} (their own claim, not something you know)` : `${c.speaker_name ?? "someone"} said: ${j(c.reported)}`));
       return `What you heard said -- report it as theirs ("<name> said ..."), plainly, without agreeing, correcting or adding to it:\n  ${lines.join("\n  ")}`;
     }
+    if (f.key === "elaboration_request") return `They repeated your word ${j(f.value?.matched)} to ask for more. Say again only what the facts above establish, then say plainly that is all you can tell them. Add no new detail.`;
+    if (f.key === "player_affect") return `They said something is hard for them (${f.value?.kind ?? "adverse"}). React with one short line of sympathy that fits that; do not say how you yourself feel, promise anything, or change the subject.`;
     if (f.key === "player_claim") return "They just told you something as a claim. It is THEIR claim, not something you know: acknowledge it briefly (for example, \"huh, if you say so\"). Do not agree it is true, repeat it as fact, or add to it.";
     if (f.key === "item_holder_history") {
       const item = `the ${String(f.value?.label ?? "item").toLowerCase()}`;

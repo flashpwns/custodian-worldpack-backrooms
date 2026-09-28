@@ -120,7 +120,7 @@
  },
  {
   "player": "How are you doing this morning Giselle?",
-  "ms": 102,
+  "ms": 103,
   "lines": [
    {
     "speaker": "Giselle",
@@ -165,7 +165,7 @@
  },
  {
   "player": "Good to hear! How about you two, Malcolm, and Tonya?",
-  "ms": 116,
+  "ms": 115,
   "lines": [
    {
     "speaker": "Malcolm",
@@ -226,7 +226,7 @@
  },
  {
   "player": "Are you all looking forward to doing whatever it is were actually supposed to do in there?",
-  "ms": 128,
+  "ms": 129,
   "lines": [
    {
     "speaker": "Giselle",
@@ -303,7 +303,7 @@
  },
  {
   "player": "Interesting. Does anyone know anything about where were going?",
-  "ms": 129,
+  "ms": 127,
   "lines": [
    {
     "speaker": "Giselle",
@@ -350,7 +350,7 @@
  },
  {
   "player": "So youve been there before? this, complex?",
-  "ms": 135,
+  "ms": 132,
   "lines": [
    {
     "speaker": "Giselle",
@@ -395,7 +395,7 @@
  },
  {
   "player": "Interesting. Tonya, can you tell me a bit about yourself?",
-  "ms": 139,
+  "ms": 136,
   "lines": [
    {
     "speaker": "Tonya",
@@ -440,7 +440,7 @@
  },
  {
   "player": "I was speaking to Tonya",
-  "ms": 149,
+  "ms": 141,
   "lines": [
    {
     "speaker": "Tonya",
@@ -480,7 +480,7 @@
  },
  {
   "player": "Tonya, tell me about yourself",
-  "ms": 144,
+  "ms": 146,
   "lines": [
    {
     "speaker": "Tonya",
@@ -525,7 +525,7 @@
  },
  {
   "player": "Malcolm, your turn",
-  "ms": 150,
+  "ms": 151,
   "lines": [
    {
     "speaker": "Malcolm",
@@ -615,7 +615,7 @@
  },
  {
   "player": "Okay, well that's that, where do we head to next?",
-  "ms": 161,
+  "ms": 163,
   "lines": [
    {
     "speaker": "Giselle",
@@ -658,7 +658,7 @@
  },
  {
   "player": "Alright cool. Are we all going together?",
-  "ms": 167,
+  "ms": 168,
   "lines": [
    {
     "speaker": "Tonya",
@@ -705,7 +705,7 @@
  },
  {
   "player": "I asked if we were all going there together",
-  "ms": 170,
+  "ms": 171,
   "lines": [
    {
     "speaker": "Tonya",
@@ -745,7 +745,7 @@
  },
  {
   "player": "Hello?",
-  "ms": 176,
+  "ms": 182,
   "lines": [
    {
     "speaker": "Malcolm",

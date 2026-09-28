@@ -106,7 +106,7 @@ function generationOptions(kind) {
     top_p: interpretation ? 0.8 : 0.9,
     repeat_penalty: 1.08,
     // The dialogue advisory reading is one small JSON object.
-    max_tokens: kind === "dialogue-interpretation" ? 160 : interpretation ? 1800 : (kind === "local-dialogue" ? LOCAL_DIALOGUE_MAX_TOKENS : 900)
+    max_tokens: kind === "dialogue-interpretation" ? 360 : interpretation ? 1800 : (kind === "local-dialogue" ? LOCAL_DIALOGUE_MAX_TOKENS : 900)
   };
 }
 

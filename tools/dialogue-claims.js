@@ -27,7 +27,10 @@ const reject = (code, reason) => ({ ok: false, code, reason });
 const escapeRe = (value) => String(value).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
 const PERSONAL = new Set([registry.EPISTEMIC.SELF_PRIVATE, registry.EPISTEMIC.SELF_HISTORY]);
-const FILLER = /^(?:(?:not really|not quite|not exactly|yeah|yes|yep|yup|no|nope|nah|well|honestly|so|oh|um|uh|hm+|right|sure|okay|ok|actually|nope|mm|ha|haha|heh|and|but|though|also|plus)[,.!]?\s+)+/i;
+// Leads that carry no claim -- including a speaker RESTATING their own earlier answer ("Like I said, no,
+// we only met today."), which is neither a report nor a new proposition.
+const FILLER = /^(?:(?:not really|not quite|not exactly|yeah|yes|yep|yup|no|nope|nah|well|honestly|so|oh|um|uh|hm+|right|sure|okay|ok|actually|nope|mm|ha|haha|heh|and|but|though|also|plus|like i said|as i said|like i told you|as i told you|like i mentioned|as i mentioned)[,.!]?\s+)+/i;
+const RESTATEMENT_LEAD = /^(?:like|as) i (?:said|told you|mentioned),?\s+/i;
 const NEGATION = /\b(?:not|never|no|nope|nah|n't|haven't|hasn't|isn't|wasn't|aren't|don't|didn't|won't|cannot|can't|neither|nor|none|nothing)\b/i;
 const REPORT_VERB = /\b(?:said|says|told|mentioned|reckoned|was saying|said so|according to)\b/i;
 const HEDGE = /\b(?:think|guess|probably|maybe|might|seems?|looks like|i'd say|as far as i know|apparently|i believe)\b/i;
@@ -323,7 +326,7 @@ const TENURE_WORDS = Object.freeze({ first_day: /\b(?:first day|today|new|just s
  * "I have no idea" is no answer at all (review F2/F8).
  */
 function polarityOf(speech, predicate, props, { inverted = false } = {}) {
-  const lead = String(speech).trim().replace(/^(?:well|honestly|so|oh|um|hm+|ha),?\s+/i, "");
+  const lead = String(speech).trim().replace(RESTATEMENT_LEAD, "").replace(/^(?:well|honestly|so|oh|um|hm+|ha),?\s+/i, "");
   if (LACK.test(lead.split(/[.!?]/)[0] ?? lead)) return null;
   const own = props.find((p) => ["self", "implicit_self"].includes(p.subject) && p.families.includes(predicate));
   if (own) return own.polarity === "negative" ? "no" : "yes";

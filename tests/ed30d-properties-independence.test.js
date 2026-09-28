@@ -188,8 +188,40 @@ test("J16 provider independence — identical semantic digests across fallback /
     scripted: await digestWith(constant()),
     leaky: await digestWith(H.leaky())
   };
+  // Provider independence (ED-30 end-to-end): world truth and canonical state are identical ALWAYS; the
+  // conversation is identical too unless a turn resolved through words only one provider spoke.
   const reference = runs.fallback;
-  for (const [name, run] of Object.entries(runs)) assert.equal(run.digest, reference.digest, `${name} digest differs:\n${run.json}\n---\n${reference.json}`);
+  for (const [name, run] of Object.entries(runs)) {
+    assert.equal(run.truth, reference.truth, `${name}: world truth differs`);
+    if (!run.anchored_turns.length && !reference.anchored_turns.length) assert.equal(run.digest, reference.digest, `${name} digest differs:\n${run.json}\n---\n${reference.json}`);
+  }
+});
+
+test("J16 surface anchors — an echo resolves only through words that were ACTUALLY spoken; world truth never differs", async () => {
+  // Two wording providers answer the same authorized contribution in different words. "cargo?" echoes a
+  // word only one of them used: only there does it resolve (to that speaker's anchored request).
+  const other = () => H.scriptedLocal((body) => (/classify the LANGUAGE/.test(body.messages[0].content) ? { raw: "{}" } : "No idea what's in them. Nobody's told me."));
+  const runWith = async (provider, offline) => {
+    const state = H.setup("ed30-anchors", provider, { offline });
+    try {
+      await H.turn(state, "Malcolm, what's in the duffle?");
+      const spoken = state.run.expedition.dialogue_history.filter((e) => e.speaker_id === state.id("Malcolm")).at(-1)?.text ?? "";
+      const echo = await H.turn(state, "cargo?");
+      return { spoken, echo, digest: H.semanticDigest(state.run), anchors: structuredClone(state.run.expedition.dialogue_state.surface_anchors) };
+    } finally { H.cleanup(state); }
+  };
+  const a = await runWith(null, true);
+  const b = await runWith(other(), false);
+  for (const r of [a, b]) {
+    const said = /\bcargo\b/i.test(r.spoken);
+    assert.equal(r.echo.turnRecord?.primary?.addressee?.source === "surface_anchor", said, `anchored iff "cargo" was spoken: ${r.spoken}`);
+    if (said) {
+      assert.deepEqual(r.echo.owners, [r.echo.owners[0]]);
+      assert.equal(r.echo.predicate, "item.contents", "the echo re-asks the EXISTING anchored request");
+      assert.ok(r.anchors.every((a) => a.spans.every((s) => !("value" in s) && !("facts" in s))), "anchors hold words -> request ids only, never facts");
+    }
+  }
+  assert.equal(a.digest.truth, b.digest.truth, "world truth is identical whatever words were spoken");
 });
 
 test("J16 advisory unavailable or malformed — only understand→clarify may differ; here nothing does (Tier 1 complete)", async () => {

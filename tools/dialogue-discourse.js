@@ -540,11 +540,39 @@ function threadDependent(raw) {
   return LP.explanation_request.test(text) || LP.bare_wh_followup.test(text) || Boolean(meaningRequest(text)) || LP.response_event.test(text) || LP.self_repair_lead.test(text);
 }
 
+// ─── adverse affect in a player's remark (for a compatible acknowledgment) ─────────────────────────────
+// What the player said about how something is FOR THEM -- their fatigue, fear, discomfort, or a negative
+// verdict on the situation. Language only; it licenses no fact and asks nothing. Negated forms ("not
+// tired") are not adverse.
+const AFFECT_WORDS = Object.freeze({
+  fatigue: /\b(?:tired|exhausted|beat|sleepy|drained|wiped(?: out)?|worn out|knackered|dead on my feet|long (?:day|morning|night|week)|need (?:a )?coffee|running on (?:empty|fumes))\b/,
+  fear: /\b(?:scared|nervous|anxious|worried|terrified|afraid|freaked(?: out)?|creeped out|gives me the creeps|creepy|on edge|uneasy|jumpy|spooked)\b/,
+  discomfort: /\b(?:cold|freezing|hot|boiling|hungry|starving|thirsty|sore|sick|nauseous|queasy|dizzy|headache|hurts?|aching|uncomfortable|itchy)\b/,
+  negative: /\b(?:sucks|awful|terrible|horrible|miserable|brutal|rough|the worst|hate (?:this|it|that)|ugh|this blows|not great|not good)\b/
+});
+function playerAffectOf(raw) {
+  const text = String(raw ?? "").toLowerCase().replace(/[’‘]/g, "'");
+  if (/\?\s*$/.test(text)) return null;
+  for (const [kind, pattern] of Object.entries(AFFECT_WORDS)) {
+    const m = text.match(pattern);
+    if (!m) continue;
+    const prefix = text.slice(0, m.index);
+    const before = prefix.split(/\s+/).slice(-3).join(" ");
+    if (/\b(?:not|never|no|isn't|aren't|wasn't|don't|doesn't|i'm not|am not|n't)\b|n't\s*$/.test(before) && !/^not (?:great|good)$/.test(m[0])) continue;
+    // Only the PLAYER's own state or their verdict on the situation: "You look nervous." / "She's tired." is
+    // an observation about someone else (a different act), never the player's affect.
+    if (/\b(?:you|you're|youre|your|he|she|they|he's|she's|they're|him|her|them)\b/.test(prefix) && !/\b(?:i|i'm|im|me|my)\b/.test(prefix)) continue;
+    return { valence: "adverse", kind };
+  }
+  return null;
+}
+
 // ─── 3. Referent resolution (the ONE canonical item resolver) ───────────────
 const STOP = new Set(["the", "who", "was", "were", "has", "have", "had", "got", "assigned", "carrying", "holding", "responsible", "which", "that", "this", "with", "for", "kit", "item", "gear", "equipment"]);
 // Words too generic to identify an item on their own.
 const GENERIC = new Set(["record", "device", "field", "survey", "layout", "startup", "materials", "stores"]);
 
+const ITEM_HYPERNYMS = Object.freeze({ duffle: ["bag", "case", "duffel", "duffle bag"], lamp: ["light", "flashlight", "torch"], camera: ["cam"], spectrometer: ["spectrometer"], record: ["layout"], radio: ["walkie", "walkie talkie"] });
 /**
  * Resolves a named item against canonical equipment. Only a UNIQUE match
  * resolves. Exact phrase matches always count; single-word matches only when
@@ -556,7 +584,10 @@ function resolveEquipmentReferent(text, equipment = {}, { loose = false } = {}) 
   // Every contiguous 2+-word part of a label names the item too ("startup materials" for the "Startup
   // materials duffle", "mass spectrometer" for the "Portable mass spectrometer"); a match must still be unique.
   const subPhrases = (label) => { const w = label.split(/\s+/).filter(Boolean); const out = []; for (let i = 0; i < w.length; i += 1) for (let j = i + 2; j <= w.length; j += 1) out.push(w.slice(i, j).join(" ")); return out; };
-  const phrases = (item) => [...new Set([item.label, item.type, item.id].filter(Boolean).map((v) => String(v).toLowerCase().replace(/-/g, " ")).flatMap((p) => [p, ...subPhrases(p)]))];
+  // What kind of thing an item's head noun IS ("that bag" is the duffle, "the light" is the lamp): a closed
+  // list of everyday hypernyms, still resolved only when unique.
+  const hypernyms = (p) => { const head = p.split(/\s+/).at(-1); return ITEM_HYPERNYMS[head] ?? []; };
+  const phrases = (item) => [...new Set([item.label, item.type, item.id].filter(Boolean).map((v) => String(v).toLowerCase().replace(/-/g, " ")).flatMap((p) => [p, ...subPhrases(p), ...hypernyms(p)]))];
   const hasPhrase = (p) => new RegExp(`(?:^|[^a-z0-9])${p.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}(?:$|[^a-z0-9])`).test(normalized);
   let matches = items.filter((item) => phrases(item).some(hasPhrase));
   if (matches.length === 0 && loose) {
@@ -1531,6 +1562,7 @@ function buildSemanticFrame({ text, recipient_type = "none", interpretation = nu
     semantic_intent: knowledgeQuery?.concept ?? null,
     // A statement asserting something about the world: the player's CLAIM, heard and remembered as theirs,
     // never canonical truth (listeners do not confirm it).
+    player_affect: ["make_statement", "social_observation", "express_uncertainty", "joke_or_sarcasm"].includes(fn) && !isQuestion ? playerAffectOf(raw) : null,
     player_claim: fn === "make_statement" && !isQuestion && canonicalKnowledge.resolveEntityMentions(raw, entities).some((e) => !e.is_player) && LP.claim_predicate.test(raw) && !LP.self_statement_lead.test(raw) ? { status: "player_claim", entity_ids: canonicalKnowledge.resolveEntityMentions(raw, entities).filter((e) => !e.is_player).map((e) => e.id) } : null,
     // "Who had the camera earlier?": custody at an earlier time (the actor's own snapshots), never current.
     custody_time: fn === "ask_item_ownership" && LP.custody_past.test(raw) && LP.custody_earlier.test(raw) ? "historical" : (fn === "ask_item_ownership" ? "current" : null),
@@ -1967,6 +1999,7 @@ function planResponses({ frame, owner_ids = [], responders = {}, names = {} } = 
       else if (frame.topic === "equipment" && !(frame.referents ?? []).length && self?.held_equipment?.length) required.push({ key: "held_equipment", value: self.held_equipment });
     } else if (fn === "make_statement") {
       if (self?.known_answer) required.push({ key: "known_answer", value: self.known_answer });
+
     } else if (fn === "make_request") {
       for (const ref of frame.referents ?? []) if (ref.resolved && ref.type === "equipment") required.push({ key: "item_holder", value: holderFact(ref) });
       // What the request MEANS is decided here, never by wording. LOCAL conversation performs no
@@ -1977,6 +2010,12 @@ function planResponses({ frame, owner_ids = [], responders = {}, names = {} } = 
       required.push({ key: "request_disposition", value: { kind, disposition: kind === "handoff" ? "requires_structured_handoff" : "heard_no_commitment", order_routing: "not_routed", ...(action ? { requested_action: action } : {}) } });
       forbidden.push("acceptance_or_commitment");
     }
+    // An adverse remark about how it is for them (tired, scared, cold, "this sucks"): a licensed reply must
+    // fit it -- never a cheerful "Sounds good." -- and claims nothing about the speaker's own state.
+    if (frame.player_affect && ["make_statement", "social_observation", "express_uncertainty", "joke_or_sarcasm"].includes(fn)) required.push({ key: "player_affect", value: { ...frame.player_affect } });
+    // An echo of one's own words ("Sealed how?") asks for more about that answer: the reply restates only
+    // what is established and says when that is all (the words located the answer; they add nothing).
+    if (frame.turn?.args?.echo?.matched) optional.push({ key: "elaboration_request", value: { matched: String(frame.turn.args.echo.matched).slice(0, 60) } });
     // The same person asked the same thing they just answered: the plan marks it so the reply restates
     // ("Like I said, ...") instead of performing a second first-time answer.
     if (responders[responder_id]?.repeat_of) optional.push({ key: "repeat_of_own_answer", value: true });
@@ -2338,7 +2377,7 @@ function buildAutonomousContribution({ kind = null, canonical_id = null, state =
 
 const KNOWN_ANSWER_FUNCTIONS = Object.freeze(["ask_personal_experience", "ask_factual", "challenge", "make_statement"]);
 
-module.exports = {
+module.exports = { playerAffectOf,
   compoundPlan,
   buildAutonomousContribution,
   safePhrase,

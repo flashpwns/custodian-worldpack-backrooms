@@ -1616,10 +1616,10 @@ class DesktopService {
       // The dry-run frame reads the SAME normalized request text the canonical turn will (never the raw typing).
       const frame = dialogueDiscourse.buildSemanticFrame({ text: analysis.primary?.request_text ?? address.residual_text, recipient_type: address.address_type === "direct" ? "direct" : address.address_type === "none" ? "none" : "group", discourse, equipment: run.expedition.equipment, people: coworkers.map((m) => ({ id: m.personnel_id ?? m.id, name: m.first_name })), addressee_ids: address.addressee_ids ?? [], entities, temporal_anchors: dialogueTemporalAnchors(run), now: run.expedition.clock?.interval ?? null });
       const completeness = dialogueTurn.completenessWithFrame(analysis, frame, analysis.primary);
-      const candidates = dialogueTurn.advisoryCandidates(present, entities);
       const recent = (discourse.turns ?? []).slice(-2).flatMap((t) => [t.player_text, ...(t.responses ?? []).map((r) => r.text)]).filter(Boolean);
-      const needed = Boolean(frame.tier1_generic) || !completeness.complete;
-      return { needed, completeness, utterance: address.residual_text, previous_line: previous, ask_addressee: address.address_type === "none" && !input.target, anchor_candidates: dialogueDiscourse.anchorCandidates(discourse).map((candidate) => candidate.label), v2: needed ? { utterance: message, repaired: analysis.normalized.repaired, recent, people: candidates.people, referents: candidates.referents, facets: candidates.facets } : null };
+      // The ONE Tier-2 gate (shared with the end-to-end evaluator, so what is measured is what ships).
+      const gate = dialogueTurn.advisoryGate({ message, analysis, frame, completeness, present, entities, recent });
+      return { needed: gate.needed, completeness, utterance: address.residual_text, previous_line: previous, ask_addressee: address.address_type === "none" && !input.target, anchor_candidates: dialogueDiscourse.anchorCandidates(discourse).map((candidate) => candidate.label), v2: gate.v2 };
     } catch (error) {
       this.log(`dialogue advisory precheck non-fatal: ${error.message}`);
       return null;
@@ -2009,7 +2009,7 @@ class DesktopService {
       item.committed_event_id = responseEvent.id;
     }
     // ED-30: only delivered, accepted (or plan-fallback) lines satisfy their request slot; a cancelled reply leaves it open.
-    this.commitDialogueLedger(currentEntry.run, prepared.map((item) => ({ speaker_id: item.context.speaker?.personnel_id ?? item.context.speaker?.id, event_id: item.committed_event_id ?? null, plan: item.context.response_plan, frame: item.context.semantic_frame, request_id: item.context.request_id ?? null, request_ids: item.context.request_ids ?? null, listeners: [currentEntry.run.session.startup.player.observer_id, ...(item.context.interaction?.listeners ?? [])], delivered: Boolean(item.committed_event_id && item.speech) })), { present_ids: (item0 => item0 ? (item0.context.interaction?.listeners ?? []) : [])(prepared[0]) });
+    this.commitDialogueLedger(currentEntry.run, prepared.map((item) => ({ speaker_id: item.context.speaker?.personnel_id ?? item.context.speaker?.id, event_id: item.committed_event_id ?? null, plan: item.context.response_plan, frame: item.context.semantic_frame, request_id: item.context.request_id ?? null, request_ids: item.context.request_ids ?? null, listeners: [currentEntry.run.session.startup.player.observer_id, ...(item.context.interaction?.listeners ?? [])], delivered: Boolean(item.committed_event_id && item.speech), text: item.speech ?? null })), { present_ids: (item0 => item0 ? (item0.context.interaction?.listeners ?? []) : [])(prepared[0]) });
 
     const first = prepared[0];
     const allModel = prepared.length > 0 && prepared.every((item) => item.validation.ok);
@@ -2313,7 +2313,7 @@ class DesktopService {
       const turnPeople = channel === "local" ? coworkers.filter((member) => presentLocalIds.includes(member.personnel_id ?? member.id)).map((member) => ({ id: member.personnel_id ?? member.id, name: member.first_name ?? member.display_name, names: [member.first_name, member.last_name, member.display_name, ...(member.aliases ?? [])].filter(Boolean) })) : [];
       let turnAnalysis = channel === "local" ? dialogueTurn.analyzeTurn({ raw: message, present: turnPeople, entities: canonicalEntities, dis: dialogueTurn.withSalience(dialogueState.snapshot(entry.run, { player_id: playerId, location_id: entry.run.spatial?.player_location ?? null, present_ids: presentLocalIds }), discourseState, canonicalEntities), explicit_target_id: targetMember ? (targetMember.personnel_id ?? targetMember.id) : null }) : null;
       // An accepted v2 advisory reading fills only what Tier 1 left incomplete (never truth, never ids).
-      if (turnAnalysis && interpretationAdvice?.version === dialogueAdvisory.ADVISORY_V2_VERSION) turnAnalysis = dialogueTurn.applyAdvisory(turnAnalysis, interpretationAdvice, { present: turnPeople });
+      if (turnAnalysis && interpretationAdvice?.version === dialogueAdvisory.ADVISORY_V2_VERSION) turnAnalysis = dialogueTurn.applyAdvisory(turnAnalysis, interpretationAdvice, { present: turnPeople, entities: canonicalEntities });
       let turnPrimary = turnAnalysis?.primary ?? null;
       const chipTarget = typeof target === "string" && target.trim();
       // The established address-correction rule ("No, I meant Brady.", "Not Daisy.") keeps precedence when it
@@ -2955,7 +2955,7 @@ class DesktopService {
           presentationBus.emit(entry.run, coworkerDialogueEvent);
           authorized.committed_event_id = coworkerDialogueEvent.id;
         }
-        if (!willBeHosted) this.commitDialogueLedger(entry.run, authorizedResponses.map((item) => ({ speaker_id: item.id, event_id: item.committed_event_id ?? null, plan: item.response_plan, frame: item.semantic_frame, request_id: item.request_id ?? null, request_ids: item.request_ids ?? null, listeners: item.listeners ?? [], delivered: Boolean(item.committed_event_id) })), { present_ids: presentLocalIds });
+        if (!willBeHosted) this.commitDialogueLedger(entry.run, authorizedResponses.map((item) => ({ speaker_id: item.id, event_id: item.committed_event_id ?? null, plan: item.response_plan, frame: item.semantic_frame, request_id: item.request_id ?? null, request_ids: item.request_ids ?? null, listeners: item.listeners ?? [], delivered: Boolean(item.committed_event_id), text: item.body ?? null })), { present_ids: presentLocalIds });
         if (this.developerMode && !willBeHosted && authorizedResponses.length) this.log(`[YB:COMMIT_TRACE] ${JSON.stringify({ request_id: requestId, presentation_source: "deterministic", committed: authorizedResponses.map((item) => ({ speaker: item.recipient?.first_name ?? null, text: item.body })) })}`);
 
         if (entry.run?.spatial && ["FIELD_OPERATION", "RETURN"].includes(entry.phase?.phase_id)) {

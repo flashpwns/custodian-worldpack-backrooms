@@ -1,15 +1,15 @@
 [
  {
   "player": "Hello everyone!",
-  "ms": 7327,
+  "ms": 6258,
   "lines": [
    {
     "speaker": "Giselle",
-    "text": "Hey. Good to see you."
+    "text": "Hey. Morning."
    },
    {
     "speaker": "Malcolm",
-    "text": "Morning. Hope things are well."
+    "text": "Morning."
    },
    {
     "speaker": "Tonya",
@@ -45,7 +45,7 @@
     "accepted": true,
     "rejection": null,
     "detail": null,
-    "candidate": "Hey. Good to see you.",
+    "candidate": "Hey. Morning.",
     "private_ok": true,
     "responsive_ok": true
    },
@@ -55,7 +55,7 @@
     "accepted": true,
     "rejection": null,
     "detail": null,
-    "candidate": "Morning. Hope things are well.",
+    "candidate": "Morning.",
     "private_ok": true,
     "responsive_ok": true
    },
@@ -63,9 +63,9 @@
     "speaker": "Tonya",
     "source": "deterministic-fallback",
     "accepted": false,
-    "rejection": "LOCAL_PRESENTATION_ENTITY_CEILING",
-    "detail": "brings in Giselle, which this turn does not involve",
-    "candidate": "Hi. Hope your day is starting okay.",
+    "rejection": "LOCAL_PRESENTATION_SHAPE_VIOLATION",
+    "detail": "a brief social line is expected",
+    "candidate": "Morning. Hope things are steady over there.",
     "private_ok": true,
     "responsive_ok": true
    }
@@ -73,7 +73,7 @@
  },
  {
   "player": "Is it everyone's first day here, at Async, today? Or just myself.",
-  "ms": 2842,
+  "ms": 2790,
   "lines": [
    {
     "speaker": "Giselle",
@@ -112,7 +112,7 @@
     "accepted": false,
     "rejection": "LOCAL_PRESENTATION_ENTITY_CEILING",
     "detail": "brings in ASYNC Briefing Room, which this turn does not involve",
-    "candidate": "It's my first day. Is this briefing room always set up like this?",
+    "candidate": "It's my first day. Are there specific protocols for this room?",
     "private_ok": true,
     "responsive_ok": true
    }
@@ -120,7 +120,7 @@
  },
  {
   "player": "How are you doing this morning Giselle?",
-  "ms": 2706,
+  "ms": 2603,
   "lines": [
    {
     "speaker": "Giselle",
@@ -157,7 +157,7 @@
     "accepted": false,
     "rejection": "LOCAL_PRESENTATION_SHAPE_VIOLATION",
     "detail": "answers with a question",
-    "candidate": "I'm a little nervous this morning. How are things on your end?",
+    "candidate": "I'm a little nervous right now. How about you?",
     "private_ok": true,
     "responsive_ok": true
    }
@@ -165,7 +165,7 @@
  },
  {
   "player": "Good to hear! How about you two, Malcolm, and Tonya?",
-  "ms": 5220,
+  "ms": 4951,
   "lines": [
    {
     "speaker": "Malcolm",
@@ -216,9 +216,9 @@
     "speaker": "Tonya",
     "source": "deterministic-fallback",
     "accepted": false,
-    "rejection": "LOCAL_PRESENTATION_SHAPE_VIOLATION",
-    "detail": "a brief social line is expected",
-    "candidate": "I'm fine, all good on my end. Is everything okay with the schedule for today?",
+    "rejection": "LOCAL_PRESENTATION_THIRD_PARTY_PRIVATE_STATE",
+    "detail": "states another person's wellbeing (\"Everything is alright on my end.\"); only that person may, or an attributed report the plan licenses",
+    "candidate": "I'm fine. Everything is alright on my end.",
     "private_ok": true,
     "responsive_ok": true
    }
@@ -226,7 +226,7 @@
  },
  {
   "player": "Are you all looking forward to doing whatever it is were actually supposed to do in there?",
-  "ms": 7018,
+  "ms": 7926,
   "lines": [
    {
     "speaker": "Giselle",
@@ -234,11 +234,11 @@
    },
    {
     "speaker": "Malcolm",
-    "text": "Not especially right now."
+    "text": "Not especially either way right now."
    },
    {
     "speaker": "Tonya",
-    "text": "Not especially either way right now."
+    "text": "Not especially. I feel all right about it."
    }
   ],
   "semantic": {
@@ -274,8 +274,8 @@
     "source": "deterministic-fallback",
     "accepted": false,
     "rejection": "LOCAL_PRESENTATION_FORBIDDEN_CLAIM",
-    "detail": "invents a character state not established by canonical context: \"I'm feeling a little nervous\"",
-    "candidate": "I'm feeling a little nervous right now.",
+    "detail": "invents a character state not established by canonical context: \"I'm a little nervous\"",
+    "candidate": "I'm a little nervous right now. I'm doing okay, though.",
     "private_ok": true,
     "responsive_ok": true
    },
@@ -285,17 +285,17 @@
     "accepted": true,
     "rejection": null,
     "detail": null,
-    "candidate": "Not especially right now.",
+    "candidate": "Not especially either way right now.",
     "private_ok": true,
     "responsive_ok": true
    },
    {
     "speaker": "Tonya",
-    "source": "local-model",
-    "accepted": true,
-    "rejection": null,
-    "detail": null,
-    "candidate": "Not especially either way right now.",
+    "source": "deterministic-fallback",
+    "accepted": false,
+    "rejection": "LOCAL_PRESENTATION_FORBIDDEN_CLAIM",
+    "detail": "narrates history or experience the plan does not supply",
+    "candidate": "Not especially either way right now. Are we confirming the location for that briefing again?",
     "private_ok": true,
     "responsive_ok": true
    }
@@ -303,7 +303,7 @@
  },
  {
   "player": "Interesting. Does anyone know anything about where were going?",
-  "ms": 3399,
+  "ms": 3427,
   "lines": [
    {
     "speaker": "Giselle",
@@ -350,7 +350,7 @@
  },
  {
   "player": "So youve been there before? this, complex?",
-  "ms": 10921,
+  "ms": 7384,
   "lines": [
    {
     "speaker": "Giselle",
@@ -387,7 +387,7 @@
     "accepted": false,
     "rejection": "LOCAL_PRESENTATION_SHAPE_VIOLATION",
     "detail": "answers with a question",
-    "candidate": "I've never been in the Complex. What part are you referring to?",
+    "candidate": "I've never been in the Complex. What part of it are you referring to?",
     "private_ok": true,
     "responsive_ok": true
    }
@@ -395,11 +395,11 @@
  },
  {
   "player": "Interesting. Tonya, can you tell me a bit about yourself?",
-  "ms": 3542,
+  "ms": 3412,
   "lines": [
    {
     "speaker": "Tonya",
-    "text": "Tonya. I'm a field medical doctor; I'm compiling the layout record right now. I have the Manifestation layout record."
+    "text": "I'm Tonya; I'm a field medical doctor. Right now, I'm compiling the layout record."
    }
   ],
   "semantic": {
@@ -432,7 +432,7 @@
     "accepted": true,
     "rejection": null,
     "detail": null,
-    "candidate": "Tonya. I'm a field medical doctor; I'm compiling the layout record right now. I have the Manifestation layout record.",
+    "candidate": "I'm Tonya; I'm a field medical doctor. Right now, I'm compiling the layout record.",
     "private_ok": true,
     "responsive_ok": true
    }
@@ -440,11 +440,11 @@
  },
  {
   "player": "I was speaking to Tonya",
-  "ms": 2296,
+  "ms": 2339,
   "lines": [
    {
     "speaker": "Tonya",
-    "text": "Right. That's what they said."
+    "text": "Right, that was me."
    }
   ],
   "semantic": {
@@ -468,11 +468,11 @@
   "sources": [
    {
     "speaker": "Tonya",
-    "source": "local-model",
-    "accepted": true,
-    "rejection": null,
-    "detail": null,
-    "candidate": "Right. That's what they said.",
+    "source": "deterministic-fallback",
+    "accepted": false,
+    "rejection": "LOCAL_PRESENTATION_SHAPE_VIOLATION",
+    "detail": "answers with a question",
+    "candidate": "Oh really? What did you discuss with them?",
     "private_ok": true,
     "responsive_ok": true
    }
@@ -480,11 +480,11 @@
  },
  {
   "player": "Tonya, tell me about yourself",
-  "ms": 3759,
+  "ms": 3428,
   "lines": [
    {
     "speaker": "Tonya",
-    "text": "My name is Tonya; I'm a field medical doctor, and I'm compiling the layout record right now with the Manifestation layout record."
+    "text": "My name is Tonya; I'm a field medical doctor. I'm compiling the layout record."
    }
   ],
   "semantic": {
@@ -517,7 +517,7 @@
     "accepted": true,
     "rejection": null,
     "detail": null,
-    "candidate": "My name is Tonya; I'm a field medical doctor, and I'm compiling the layout record right now with the Manifestation layout record.",
+    "candidate": "My name is Tonya; I'm a field medical doctor. I'm compiling the layout record.",
     "private_ok": true,
     "responsive_ok": true
    }
@@ -525,11 +525,11 @@
  },
  {
   "player": "Malcolm, your turn",
-  "ms": 3022,
+  "ms": 3113,
   "lines": [
    {
     "speaker": "Malcolm",
-    "text": "I'm Malcolm, a field technician. I'm delivering the startup materials."
+    "text": "I'm Malcolm; I'm a field technician. I'm delivering the startup materials."
    }
   ],
   "semantic": {
@@ -558,11 +558,11 @@
   "sources": [
    {
     "speaker": "Malcolm",
-    "source": "deterministic-fallback",
-    "accepted": false,
-    "rejection": "LOCAL_PRESENTATION_SHAPE_VIOLATION",
-    "detail": "the speaker refers to themselves by name (\"Malcolm here\")",
-    "candidate": "Malcolm here; I'm a field technician. I'm delivering the startup materials.",
+    "source": "local-model",
+    "accepted": true,
+    "rejection": null,
+    "detail": null,
+    "candidate": "I'm Malcolm; I'm a field technician. I'm delivering the startup materials.",
     "private_ok": true,
     "responsive_ok": true
    }
@@ -570,11 +570,11 @@
  },
  {
   "player": "Introduce yourself",
-  "ms": 2968,
+  "ms": 2974,
   "lines": [
    {
     "speaker": "Malcolm",
-    "text": "Like I said, I'm Malcolm, a field technician. I'm delivering the startup materials."
+    "text": "Malcolm. I am a field technician; I'm delivering the startup materials."
    }
   ],
   "semantic": {
@@ -603,11 +603,11 @@
   "sources": [
    {
     "speaker": "Malcolm",
-    "source": "deterministic-fallback",
-    "accepted": false,
-    "rejection": "LOCAL_PRESENTATION_SHAPE_VIOLATION",
-    "detail": "the speaker refers to themselves by name (\"Malcolm is my name\")",
-    "candidate": "Malcolm is my name; I'm a field technician, delivering the startup materials.",
+    "source": "local-model",
+    "accepted": true,
+    "rejection": null,
+    "detail": null,
+    "candidate": "Malcolm. I am a field technician; I'm delivering the startup materials.",
     "private_ok": true,
     "responsive_ok": true
    }
@@ -615,11 +615,11 @@
  },
  {
   "player": "Okay, well that's that, where do we head to next?",
-  "ms": 2570,
+  "ms": 2422,
   "lines": [
    {
     "speaker": "Giselle",
-    "text": "Report to Equipment Staging, that's what was mentioned next."
+    "text": "We're supposed to report to Equipment Staging next."
    }
   ],
   "semantic": {
@@ -650,7 +650,7 @@
     "accepted": true,
     "rejection": null,
     "detail": null,
-    "candidate": "Report to Equipment Staging, that's what was mentioned next.",
+    "candidate": "We're supposed to report to Equipment Staging next.",
     "private_ok": true,
     "responsive_ok": true
    }
@@ -658,7 +658,7 @@
  },
  {
   "player": "Alright cool. Are we all going together?",
-  "ms": 10616,
+  "ms": 10063,
   "lines": [
    {
     "speaker": "Tonya",
@@ -697,7 +697,7 @@
     "accepted": false,
     "rejection": "LOCAL_PRESENTATION_SHAPE_VIOLATION",
     "detail": "answers with a question",
-    "candidate": "Maxwell told all of us to report to Equipment Staging. Are we going together right now?",
+    "candidate": "Maxwell told all of us to report to Equipment Staging. Are we supposed to proceed immediately after the briefing?",
     "private_ok": true,
     "responsive_ok": true
    }
@@ -705,11 +705,11 @@
  },
  {
   "player": "I asked if we were all going there together",
-  "ms": 10598,
+  "ms": 12105,
   "lines": [
    {
     "speaker": "Tonya",
-    "text": "Maxwell told all of us to report to Equipment Staging. So, yes."
+    "text": "Like I said, yes, as far as I know. Maxwell told all of us to report to Equipment Staging."
    }
   ],
   "semantic": {
@@ -733,11 +733,11 @@
   "sources": [
    {
     "speaker": "Tonya",
-    "source": "local-model",
-    "accepted": true,
-    "rejection": null,
-    "detail": null,
-    "candidate": "Maxwell told all of us to report to Equipment Staging. So, yes.",
+    "source": "deterministic-fallback",
+    "accepted": false,
+    "rejection": "LOCAL_PRESENTATION_SHAPE_VIOLATION",
+    "detail": "answers with a question",
+    "candidate": "Maxwell told all of us to report to Equipment Staging. Is that what they meant by 'going together'?",
     "private_ok": true,
     "responsive_ok": true
    }
@@ -745,7 +745,7 @@
  },
  {
   "player": "Hello?",
-  "ms": 2132,
+  "ms": 2593,
   "lines": [
    {
     "speaker": "Malcolm",
@@ -775,7 +775,7 @@
     "accepted": false,
     "rejection": "LOCAL_PRESENTATION_SHAPE_VIOLATION",
     "detail": "an attention response is a word or two",
-    "candidate": "Right.",
+    "candidate": "Mm-hmm.",
     "private_ok": true,
     "responsive_ok": true
    }

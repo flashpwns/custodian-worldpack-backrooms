@@ -108,7 +108,26 @@ function semanticDigest(run) {
   const ledger = (run.expedition.dialogue_state?.requests ?? []).map((r) => ({ id: r.request_id, predicate: r.predicate, state: r.state, slots: Object.fromEntries(Object.entries(r.slots).map(([k, v]) => [k, v.state])) }));
   const acquaintance = run.expedition.dialogue_state?.acquaintance ?? null;
   const json = JSON.stringify({ turns, ledger, acquaintance: acquaintance ? { complete: acquaintance.complete_at != null, by: acquaintance.completed_by ?? null } : null });
-  return { digest: crypto.createHash("sha256").update(json).digest("hex").slice(0, 16), json };
+  // Turns resolved through a SURFACE ANCHOR (an echo of words actually spoken): their routing may legitimately
+  // differ by wording provider, because the player heard different words.
+  const anchored_turns = (run.expedition.communication_receipts ?? []).map((r, i) => [i, run.expedition.interaction_history.find((x) => x.submission_id === r.id)]).filter(([, x]) => x?.turn?.primary?.addressee?.source === "surface_anchor").map(([i]) => i);
+  return { digest: crypto.createHash("sha256").update(json).digest("hex").slice(0, 16), json, anchored_turns, truth: truthDigest(run) };
 }
 
-module.exports = { SCENE_NAMES, setup, cleanup, turn, scriptedLocal, garbage, throwing, leaky, semanticDigest };
+/**
+ * World truth and canonical state (never conversation): custody, where everyone is, the clock, and each
+ * coworker's canonical personhood profile. Identical for every wording provider, always.
+ */
+function truthDigest(run) {
+  const profiles = (run.expedition.team?.members ?? []).map((m) => { const p = m.personhood ?? null; return p ? { id: p.actor_id, first_day: p.first_day_at_async, tenure: p.async_tenure, expedition: p.expedition_experience, complex: p.complex_experience, baseline: p.baseline } : null; });
+  const json = JSON.stringify({
+    custody: Object.fromEntries(Object.entries(run.expedition.equipment ?? {}).map(([k, v]) => [k, v?.holder ?? null])),
+    locations: run.spatial?.personnel_locations ?? null,
+    player_location: run.spatial?.player_location ?? null,
+    clock: run.expedition.clock?.interval ?? null,
+    profiles
+  });
+  return crypto.createHash("sha256").update(json).digest("hex").slice(0, 16);
+}
+
+module.exports = { SCENE_NAMES, setup, cleanup, turn, scriptedLocal, garbage, throwing, leaky, semanticDigest, truthDigest };

@@ -32,14 +32,19 @@ const GRAMMAR = {
   claim: ["Maxwell said the Complex is an aquarium.", "The camera is broken.", "I heard Tonya has been in before.", "I'm a little nervous."],
   noise: ["blorp?", "the thing by the thing", "ok so like where", "you two?", "give him the thing"]
 };
-const MIX = [["question", 0.38], ["followup", 0.16], ["repair", 0.12], ["attention", 0.08], ["social", 0.14], ["claim", 0.06], ["noise", 0.06]];
-function utterance(r) {
+const MIX = [["question", 0.33], ["followup", 0.15], ["echo", 0.06], ["repair", 0.12], ["attention", 0.08], ["social", 0.14], ["claim", 0.06], ["noise", 0.06]];
+// Echo follow-ups question a word the last coworker line actually used ("sealed how?", "cargo?").
+const ECHO_FORMS = ["{W}?", "{W} how?", "{W}, really?", "{W} of what?", "wait, {W}?"];
+const ECHO_SKIP = new Set("that this with what where when have been they them their there from your about just like going were will would could should into then than some said told know".split(" "));
+function utterance(r, lastNpcText = null) {
   let x = r();
   let kind = MIX[0][0];
   for (const [k, w] of MIX) { if (x < w) { kind = k; break; } x -= w; }
   const n = pick(r, NAMES);
   const m = pick(r, NAMES.filter((name) => name !== n));
-  let text = pick(r, GRAMMAR[kind]).replace(/\{N\}/g, n).replace(/\{M\}/g, m);
+  const words = (String(lastNpcText ?? "").toLowerCase().match(/[a-z]{4,}/g) ?? []).filter((w) => !ECHO_SKIP.has(w));
+  if (kind === "echo" && !words.length) kind = "followup";
+  let text = kind === "echo" ? pick(r, ECHO_FORMS).replace(/\{W\}/g, pick(r, words)) : pick(r, GRAMMAR[kind]).replace(/\{N\}/g, n).replace(/\{M\}/g, m);
   // Typing noise: lowercase / no punctuation / missing apostrophes.
   const style = r();
   if (style < 0.15) text = text.toLowerCase();
@@ -71,7 +76,8 @@ async function runFuzz({ seed = 30013, sessions = 4, turns = 100, provider = "ga
     try {
       const people = state.ids.map((id, i) => ({ id, name: state.names[i] }));
       for (let t = 0; t < turns; t += 1) {
-        const { kind, text } = utterance(r);
+        const lastNpc = [...state.run.expedition.dialogue_history].reverse().find((e) => e.speaker_id !== state.playerId && state.ids.includes(e.speaker_id))?.text ?? null;
+        const { kind, text } = utterance(r, lastNpc);
         stats.by_kind[kind] = (stats.by_kind[kind] ?? 0) + 1;
         const worldBefore = snapshotWorld(state.run);
         const playerLinesBefore = state.run.expedition.dialogue_history.filter((e) => e.speaker_id === state.playerId).map((e) => e.text);

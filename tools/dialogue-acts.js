@@ -562,6 +562,9 @@ function clauseAct(clause, { people = [] } = {}) {
   // Chat-style question with no "?": an aux-dropped second-person predicate spoken TO someone ("you done
   // this before malcolm", "you nervous tonya") is a declarative question.
   if (act.speech_act === "statement" && act.declarative_candidate && act.predicate_candidates.length && (voc.vocatives.length || /^(?:so\s+)?you\s+(?!are\b|have\b|were\b|had\b|know\b|see\b|said\b)\w+/i.test(bodyExpanded))) { act.speech_act = "question"; act.question_form = "declarative"; }
+  // The same aux-dropped shape with NO finite verb is a question even when no cue knows its facet ("you
+  // holding up ok", "you all set"): it is asked, so the completeness gate hands the facet to Tier 2.
+  if (act.speech_act === "statement" && UNPUNCTUATED(clause.text) && /^(?:so\s+|and\s+)?you(?:\s+(?:guys|two|all))?\s+(?:\w+ing|ready|good|ok|okay|alright|all right|fine|set|sure|new|done|scared|nervous|tired|excited|cool|holding)\b/i.test(bodyExpanded)) { act.speech_act = "question"; act.question_form = "declarative"; }
   // Typed with no punctuation at all, a line that asks a registry question and is not the speaker talking
   // about themselves, reporting someone, or asserting something of a named third person is a question:
   // "first day for everyone", "we all going", "anyone been on an expedition b4", "excited malcolm".

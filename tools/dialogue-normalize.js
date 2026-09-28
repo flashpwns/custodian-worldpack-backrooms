@@ -235,4 +235,4 @@ function spanInUtterance(span, normalized) {
   return raw.includes(s) || repaired.includes(s) || String(normalized?.expanded ?? "").includes(s);
 }
 
-module.exports = { COMMON_TYPOS, NORMALIZE_VERSION, normalizeUtterance, expandContractions, expandNameClitics, editDistance, rawSpanOf, spanInUtterance, APOSTROPHE, SLANG };
+module.exports = { PROTECTED_WORDS, COMMON_TYPOS, NORMALIZE_VERSION, normalizeUtterance, expandContractions, expandNameClitics, editDistance, rawSpanOf, spanInUtterance, APOSTROPHE, SLANG };

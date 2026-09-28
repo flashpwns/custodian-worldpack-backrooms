@@ -99,7 +99,7 @@ const ROWS = [
   ["I'd love to hear about you, Malcolm.", "0", "request", null, "explicit", ["Malcolm"], "person.self_description", "new", "each_self", null, false],
   ["Tonya, tell me about Malcolm.", "0", "request", null, "explicit", ["Tonya"], "person.identity", "new", "one_spokesperson", null, false],
   ["Tonya told me about Malcolm.", "0", "statement", null, "untargeted", [], null, "new", "none", null, false],
-  ["What do you do, Malcolm?", "0", "question", "wh", "explicit", ["Malcolm"], "person.current_assignment", "new", "each_self", null, false],
+  ["What do you do, Malcolm?", "0", "question", "wh", "explicit", ["Malcolm"], "person.role", "new", "each_self", null, false],
   ["Who is Maxwell?", "0", "question", "wh", "untargeted", [], "person.identity", "new", "one_spokesperson", null, false],
   ["who's kirk anyway", "0", "question", "wh", "untargeted", [], "person.identity", "new", "one_spokesperson", null, false],
   ["Do you two know each other?", "Gw", "question", "yes_no", "subset", ["Malcolm", "Tonya"], "person.familiarity", "new", "each_self", null, false],

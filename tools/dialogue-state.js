@@ -10,6 +10,10 @@
 //   activities    structured conversational activities: SELF_INTRODUCTION_ROUND, GROUP_CHECK_IN, ... (F5)
 //   acquaintance  deterministic completion state of the briefing's "get acquainted" step (G2)
 //   learning      "actor X learned proposition P from source S at time T" events (C6 learning hook)
+//   surface_anchors  conversational metadata only: which sentence of an ACCEPTED, spoken coworker line was
+//                 licensed by which request/predicate ("sealed" -> the item.contents answer). A later echo
+//                 ("Sealed how?") may resolve through it to that EXISTING request; it never holds or creates
+//                 a fact. Words differ by wording provider -- legitimately, the player heard those words.
 //
 // Persistence class: all components live on run.expedition.dialogue_state and are saved with the session
 // (they survive a full app close). The active speaker and addressee are DERIVED from dialogue_history on
@@ -43,6 +47,7 @@ function stateOf(run) {
   state.activities ??= [];
   state.acquaintance ??= { self_referential: {}, introduced: {}, closed_by_player_at: null, complete_at: null };
   state.learning ??= [];
+  state.surface_anchors ??= [];
   return state;
 }
 const nextId = (state, prefix) => `${prefix}-${String(++state.sequence).padStart(4, "0")}`;
@@ -291,7 +296,8 @@ function snapshot(run, { player_id, location_id = null, present_ids = [] } = {})
     last_player_claim: lastPlayerClaim(run, last),
     pending_requests: pending.map(brief),
     activity: activity ? { activity_id: activity.activity_id, kind: activity.kind, template: { ...activity.template }, completed: [...activity.completed], pending: [...activity.pending], eligible: [...activity.eligible], last_target: activity.last_target } : null,
-    acquaintance_complete: state?.acquaintance?.complete_at != null
+    acquaintance_complete: state?.acquaintance?.complete_at != null,
+    surface_anchors: freshAnchors(run, { player_id })
   });
 }
 
@@ -354,6 +360,51 @@ function verdictOf(plan) {
  * After commit: satisfaction for each DELIVERED line's slot, activity/acquaintance progress, self-state
  * history, and learning events for every listener. Undelivered items change nothing.
  */
+// ─── surface anchors (echo follow-ups) ───────────────────────────────────────────────────────────────
+const MAX_ANCHORS = 12;
+// Words that carry no echo on their own: function words, pronouns, wh-words, fillers and hedges.
+const ECHO_STOP = new Set("the a an and or but so of to in on at for with from by as is are was were be been being am do does did done have has had having it its it's this that these those there here then than i me my mine you your yours we us our he him his she her they them their what who whom whose which when where why how yes no not yeah yep nope yup okay ok well oh uh um hm hmm just really actually honestly like kind sort pretty very too also still even ever never now today some any all each one two lot lots thing things stuff guess think know sure right got get going go gonna can could would should will might must may let lets let's about into out up down over again more most much many mean meant say said says tell told think thought knew sounds thanks thank sorry hello hey please welcome cheers anyway".split(" "));
+const stem = (w) => w.replace(/(?:'s|’s)$/, "").replace(/(?:ies)$/, "y").replace(/(?:ing|ed|es|s|ly)$/, "");
+/** Content tokens of a line (lowercased, simple stems), for echo matching. */
+function echoTokens(text) {
+  return [...new Set((String(text ?? "").toLowerCase().replace(/[’‘]/g, "'").match(/[a-z][a-z']*/g) ?? []).filter((w) => w.length >= 3 && !ECHO_STOP.has(w)).map(stem).filter((w) => w.length >= 3))];
+}
+/** The anchor spans of one spoken line: each sentence, with the part (request/predicate) that licensed it. */
+function anchorSpans(text, parts = []) {
+  const sentences = String(text ?? "").split(/(?<=[.!?])\s+/).map((t) => t.trim()).filter(Boolean);
+  if (!parts.length) return [];
+  return sentences.map((sentence, i) => {
+    const part = parts[Math.min(i, parts.length - 1)];
+    return { text: sentence.slice(0, 200), tokens: echoTokens(sentence).slice(0, 16), request_id: part.request_id ?? null, predicate: part.predicate ?? null };
+  }).filter((span) => span.tokens.length || span.text.split(/\s+/).length >= 2);
+}
+function recordSurfaceAnchors(run, { event_id, speaker_id, text, parts }) {
+  const state = stateOf(run);
+  if (!state || !event_id || !speaker_id || !text) return null;
+  const spans = anchorSpans(text, parts);
+  if (!spans.length) return null;
+  const anchor = { event_id, speaker_id, spans };
+  state.surface_anchors = [...state.surface_anchors.filter((a) => a.event_id !== event_id), anchor].slice(-MAX_ANCHORS);
+  return anchor;
+}
+/**
+ * The anchors of the immediately relevant exchange: coworker lines spoken since the player last spoke
+ * (a later player line makes older anchors stale). Each span carries the request it answered.
+ */
+function freshAnchors(run, { player_id } = {}) {
+  const state = stateOf(run);
+  const history = run?.expedition?.dialogue_history ?? [];
+  if (!state?.surface_anchors?.length || !history.length) return [];
+  let lastPlayer = -1;
+  history.forEach((e, i) => { if (e.speaker_id === player_id) lastPlayer = i; });
+  const since = new Set(history.slice(lastPlayer + 1).map((e) => e.id));
+  const requests = new Map(state.requests.map((r) => [r.request_id, r]));
+  return state.surface_anchors.filter((a) => since.has(a.event_id)).map((a) => ({ speaker_id: a.speaker_id, event_id: a.event_id, spans: a.spans.map((span) => {
+    const r = span.request_id ? requests.get(span.request_id) : null;
+    return { ...span, predicate: span.predicate ?? r?.predicate ?? null, request_text: r?.request_text ?? null, args: r?.args ? { ...r.args } : null, temporal: r?.temporal ?? null };
+  }) }));
+}
+
 function commitTurnLines(run, items = [], { present_ids = [] } = {}) {
   const knowledge = require("./canonical-knowledge");
   const personhood = require("./dialogue-personhood");
@@ -371,6 +422,8 @@ function commitTurnLines(run, items = [], { present_ids = [] } = {}) {
         completeActivitySlot(run, predicate, item.speaker_id);
       }
     }
+    // The accepted spoken line's sentences, anchored to what licensed them (conversational metadata only).
+    if (item.text && item.event_id) recordSurfaceAnchors(run, { event_id: item.event_id, speaker_id: item.speaker_id, text: item.text, parts: parts.map((part) => ({ request_id: part.request_id, predicate: part.frame?.predicate ?? null })) });
     personhood.recordSelfStateSnapshot(run, item.speaker_id, { source: "turn_commit" });
     for (const proposition of knowledge.propositionsOfPlan(item.plan, { speaker_id: item.speaker_id })) {
       for (const listener of new Set(item.listeners ?? [])) {
@@ -382,4 +435,4 @@ function commitTurnLines(run, items = [], { present_ids = [] } = {}) {
   return results;
 }
 
-module.exports = { recentlyAnswered, openTurnRequests, commitTurnLines, verdictOf, STATE_VERSION, REQUEST_STATES, ACTIVITY_KINDS, ABANDON_AFTER_TURNS, PENDING, TERMINAL, SELF_REFERENTIAL, ACTIVITY_OF, stateOf, openRequest, reopenRequest, recordSatisfaction, supersede, ageRequests, findRequest, requestsOfInteraction, lastRequest, pendingRequests, recordRepair, activeActivity, noteActivityRequest, completeActivitySlot, closeActivity, noteSelfReferentialAnswer, noteAcquaintanceClosed, evaluateAcquaintance, acquaintanceComplete, recordLearning, activeSpeaker, snapshot };
+module.exports = { echoTokens, anchorSpans, recordSurfaceAnchors, freshAnchors, recentlyAnswered, openTurnRequests, commitTurnLines, verdictOf, STATE_VERSION, REQUEST_STATES, ACTIVITY_KINDS, ABANDON_AFTER_TURNS, PENDING, TERMINAL, SELF_REFERENTIAL, ACTIVITY_OF, stateOf, openRequest, reopenRequest, recordSatisfaction, supersede, ageRequests, findRequest, requestsOfInteraction, lastRequest, pendingRequests, recordRepair, activeActivity, noteActivityRequest, completeActivitySlot, closeActivity, noteSelfReferentialAnswer, noteAcquaintanceClosed, evaluateAcquaintance, acquaintanceComplete, recordLearning, activeSpeaker, snapshot };

@@ -196,13 +196,14 @@ const ADVISORY_V2_SYSTEM_TEXT = [
   "Reply with exactly one compact JSON object and nothing else."
 ].join("\n");
 
+// Static parts first (facets, then the scene's labels), the turn last: the runtime reuses the cached prefix.
 function buildAdvisoryV2Prompt({ utterance, recent = [], people = [], referents = [], facets = [], facet_guide = {} }) {
   return [
-    recent.length ? `Recent lines (words only):\n${recent.slice(-3).map((l) => `- ${String(l).slice(0, 160)}`).join("\n")}` : null,
-    `The line: ${JSON.stringify(String(utterance).slice(0, 400))}`,
+    `Facets:\n${facets.map((f) => `- ${f}${facet_guide[f] ? `: ${facet_guide[f]}` : ""}`).join("\n")}`,
     people.length ? `People at the table (addressee labels): ${people.map((p) => `${p.label}=${p.name}`).join(", ")}` : null,
     referents.length ? `Places/things (referent labels): ${referents.map((r) => `${r.label}=${r.name}`).join(", ")}` : null,
-    `Facets:\n${facets.map((f) => `- ${f}${facet_guide[f] ? `: ${facet_guide[f]}` : ""}`).join("\n")}`
+    recent.length ? `Recent lines (words only):\n${recent.slice(-3).map((l) => `- ${String(l).slice(0, 160)}`).join("\n")}` : null,
+    `The line: ${JSON.stringify(String(utterance).slice(0, 400))}`
   ].filter(Boolean).join("\n");
 }
 
@@ -228,8 +229,10 @@ function validateAdvisoryV2(raw, utterance, { people = [], referents = [], facet
     if (act.referent_candidate != null && !refLabels.has(act.referent_candidate)) return { accepted: false, reason: "unknown_candidate" };
     for (const key of ["addressee_text", "referent_text", "temporal_text"]) if (act[key] != null && (typeof act[key] !== "string" || act[key].length > MAX_SPAN || !within2(act[key], utterance, repaired))) return { accepted: false, reason: `${key}_not_in_utterance` };
     // A named addressee must actually be named in the line (code maps the label; the words must be the player's).
-    const person = act.addressee_candidate ? peopleLabels.get(act.addressee_candidate) : null;
-    if (person && !(person.names ?? [person.name]).some((n) => within2(n, utterance, repaired)) && !(act.addressee_text && within2(act.addressee_text, utterance, repaired))) return { accepted: false, reason: "addressee_not_in_utterance" };
+    // An addressee the line does not name is DROPPED (that field only): the rest of the reading may still
+    // fill a Tier-1 gap, and no one is ever addressed by the model's guess.
+    const guessed = act.addressee_candidate ? peopleLabels.get(act.addressee_candidate) : null;
+    const person = guessed && ((guessed.names ?? [guessed.name]).some((n) => within2(n, utterance, repaired)) || (act.addressee_text && within2(act.addressee_text, utterance, repaired) && (guessed.names ?? [guessed.name]).some((n) => String(act.addressee_text).toLowerCase().includes(String(n).toLowerCase())))) ? guessed : null;
     // A referent the player never named (neither its name nor a verbatim span) is dropped: the model may not
     // choose a place or thing the line does not mention (review F12).
     const ref = act.referent_candidate ? refLabels.get(act.referent_candidate) : null;
@@ -237,7 +240,7 @@ function validateAdvisoryV2(raw, utterance, { people = [], referents = [], facet
     // span that contains a word of that name (review F12 residual).
     const nameWords = String(ref?.name ?? "").toLowerCase().split(/\s+/).filter((w) => w.length > 2 && !["the", "and"].includes(w));
     const refNamed = ref && (within2(String(ref.name ?? ""), utterance, repaired) || (act.referent_text && within2(act.referent_text, utterance, repaired) && nameWords.some((w) => String(act.referent_text).toLowerCase().includes(w))));
-    acts.push(Object.freeze({ speech_act: act.speech_act, facet: act.facet ?? null, addressee_id: person?.id ?? null, referent_id: refNamed ? ref.id : null, quantifier: act.quantifier, discourse_relation: act.discourse_relation, polarity: act.polarity ?? "positive", temporal_text: act.temporal_text ?? null }));
+    acts.push(Object.freeze({ speech_act: act.speech_act, facet: act.facet ?? null, addressee_id: person?.id ?? null, ...(guessed && !person ? { dropped: ["addressee"] } : {}), referent_id: refNamed ? ref.id : null, quantifier: act.quantifier, discourse_relation: act.discourse_relation, polarity: act.polarity ?? "positive", temporal_text: act.temporal_text ?? null }));
   }
   return Object.freeze({ version: ADVISORY_V2_VERSION, accepted: true, acts, turn_relation: raw.turn_relation ?? null, confidence: raw.confidence });
 }

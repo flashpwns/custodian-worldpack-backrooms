@@ -287,7 +287,12 @@ test("D15 Tier-2 v2 — opaque labels, spans from the player's words, registry f
   assert.equal(bad({ addressee_candidate: "p9" }).reason, "unknown_candidate");
   assert.equal(bad({ facet: "person.secret_trauma" }).reason, "unsupported_facet");
   assert.equal(bad({ referent_text: "the Backrooms" }).reason, "referent_text_not_in_utterance");
-  assert.equal(bad({ addressee_candidate: "p1" }).reason, "addressee_not_in_utterance", "a label for someone not named in the line");
+  // A label for someone not named in the line is DROPPED (that field only): nobody is addressed by the
+  // model's guess, and the rest of the reading may still fill a Tier-1 gap.
+  const guessed = bad({ addressee_candidate: "p1" });
+  assert.equal(guessed.accepted, true);
+  assert.equal(guessed.acts[0].addressee_id, null, "a label for someone not named in the line addresses no one");
+  assert.deepEqual(guessed.acts[0].dropped, ["addressee"]);
   assert.equal(ADV.validateAdvisoryV2({ acts: [], confidence: "low" }, "x", {}).accepted, false);
   // Reconciliation fills only what Tier 1 left missing.
   const analysis = T.analyzeTurn({ raw: "so what about in there", present: [{ id: "yb-personnel-2", name: "Tonya" }], entities: [], dis: null });
