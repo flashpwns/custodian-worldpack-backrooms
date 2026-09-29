@@ -416,10 +416,15 @@ const FORCE_LATE_WH = /,\s*(?:(?:so|like|and|but)\s+)?(?:what|where|who|how|why|
 const FORCE_FRAGMENT = /^(?:since when|how long|how come|how so|how many|how much|how often|for how long|what for|for what|like what|such as|which one|which ones|who else|what else|where to|you too|same for you|ever|before|before that|still|yet|already|seriously|for real|really|how)\s*[?!.]*$/i;
 const FORCE_STATEMENT_LEAD = /^(?:i|i'm|im|i am|i've|ive|i have|i was|i'd|i will|i'll|i think|i guess|i feel|i mean|i know|my|me|let's|lets|he said|she said|they said|maxwell said|kirk said)\b/i;
 const FORCE_REPORT = /\b(?:said|says|asked|told (?:me|us|him|her|them))\b\s*[:,]?\s*["“']/i;
+// Positive evidence that a line STATES something: a finite verb, a first-person claim, or a subject with a
+// third-person / past verb ("this sucks", "it broke"). Shared with the completeness contract.
+const STATEMENT_EVIDENCE = /\b(?:am|is|are|was|were|have|has|had|do|does|did|will|would|can|could|should|must|might|may|seems?|looks?|sounds?|feels?|gets?|got|went|said|says|told|know|knew|think|thought|guess|love|hate|like|need|want|wish|hope|bet|mean|meant|heard|saw|made|took|came)\b|^(?:i|i'm|im|i've|my|we're|we've)\b|\b(?:this|that|it|he|she|everything|nothing|something|someone|everyone|nobody|which|who)\s+(?:\w+s|\w+ed)\b/i;
+// An imperative: the clause opens with a base-form verb addressed to the listener ("wait here", "hold this").
+const IMPERATIVE = /^(?:(?:please|ok|okay|hey|just)[,.]?\s+)*(?:wait|stay|come|go|hold|give|take|look|stop|tell|show|bring|grab|follow|let|keep|put|move|hurry|listen|watch|check|help|hang|pass|hand|carry|leave|get)\b(?!\s+(?:it|that)\?)/i;
 function utteranceForce(act, clause) {
   const raw = String(clause.text ?? "").trim();
   const hasQ = /\?\s*$/.test(raw);
-  const body = String(act.body_expanded ?? act.body ?? act.text ?? "").trim();
+  const body = String(act.body_semantic ?? act.body_expanded ?? act.body ?? act.text ?? "").trim();
   const core = body.replace(FORCE_LEAD, "").replace(/^(?:[A-Z][a-z]+|[a-z]+),\s+(?=\S)/, (m) => m); // vocatives are already stripped from the body
   const plain = core.replace(/[?!.]+$/, "").trim();
   const words = plain.split(/\s+/).filter(Boolean).length;
@@ -438,6 +443,7 @@ function utteranceForce(act, clause) {
     return { confidence: onlyMark ? "likely" : "certain", cue: onlyMark ? (hasQ ? "question_mark" : "declarative_form") : "syntax", ...(reform ? { reform } : {}) };
   }
   if (act.speech_act !== "statement") return { confidence: "certain", cue: act.speech_act };
+  if (IMPERATIVE.test(raw.replace(/[?!.]+$/, "")) && !hasQ) return { confidence: "certain", cue: "imperative", promote: "request" };
   if (FORCE_REPORT.test(raw)) return { confidence: "certain", cue: "report" };
   if (FORCE_STATEMENT_LEAD.test(plain) && !FORCE_TAG.test(raw)) return { confidence: "certain", cue: "first_person" };
   // "When I greeted them" / "where we left it": a wh-word + subject + PAST verb is a subordinate clause (how
@@ -456,13 +462,30 @@ function utteranceForce(act, clause) {
   // "we report where again", "six years really"). Tier 1 cannot tell; the bounded reading can.
   if (!hasQ && UNPUNCTUATED(raw) && words <= 10 && (/\b(?:you|u|ya|your|ur|y'?all)\b/i.test(plain) || /\s(?:who|what|where|when|why|how|which)\b/i.test(plain) || /\s(?:really|seriously|for real|tho|though|again|yet|still|huh|right)$/i.test(plain))) return { confidence: "uncertain", cue: "colloquial_declarative" };
   // A short line that names nothing it asks and nothing it claims ("the lamp", "six years") after an exchange.
-  if (words <= 3 && !/\b(?:is|are|was|were|am|have|has|had|do|does|did|will|can)\b/i.test(plain) && !FORCE_STATEMENT_LEAD.test(plain)) return { confidence: "uncertain", cue: "fragment" };
+  if (words <= 3 && !STATEMENT_EVIDENCE.test(plain) && !FORCE_STATEMENT_LEAD.test(plain)) return { confidence: "uncertain", cue: "fragment" };
   return { confidence: "certain", cue: "declarative" };
 }
 
 // "tonya is today ur first day" / "malcolm do you have the duffle": a leading name followed by an inverted
 // auxiliary and an explicit subject is an ADDRESS, not the subject ("Tonya is nervous" stays a claim).
 const FORCE_AUX_STRICT = /^(?:is|are|am|was|were|do|does|did|can|could|will|would|should|have|has|r)\s+(?:you|u|ya|we|they|it|there|this|that|today|tomorrow|anyone|anybody|everyone|y'?all|your|ur)\b/i;
+// ─── chat-surface normalization for semantic decisions (ED-30I) ───────────────────────────────────────────
+// Presentation noise only: trailing chat particles ("... for tho", "... lol", "... man") and leading fillers
+// ("like", "well", "ok so") are removed from the text that force, facet and item-role decisions read. Names,
+// negation, question words, time words, correction ("no", "I meant") and contrast ("not X, Y") markers are
+// never removed. The raw clause and the removal record stay on the act (reproducible: raw + record + state).
+const CHAT_TRAILING = /(?:[,\s]+(?:tho|though|lol|lmao|lmfao|haha+|hah|heh|man|dude|bro|anyway|anyways|actually|honestly|eh|fr|tbh|i guess|or whatever|and stuff|or something|then\s+lol))+\s*([?!.]*)\s*$/i;
+const CHAT_LEADING = /^(?:(?:like|well|so|ok|okay|k|um+|uh+|honestly|actually|basically|anyway|anyways|man|dude|yo|lol|ugh|hmm+|welp|alright|right)[,.!]?\s+)+/i;
+function chatSemantic(text) {
+  const removed = [];
+  let t = String(text ?? "").trim();
+  const trail = t.match(CHAT_TRAILING);
+  if (trail && trail.index > 0) { removed.push({ kind: "trailing_particle", text: trail[0].trim() }); t = `${t.slice(0, trail.index)}${trail[1] ?? ""}`.trim(); }
+  const lead = t.match(CHAT_LEADING);
+  if (lead && lead[0].length < t.length) { removed.push({ kind: "leading_filler", text: lead[0].trim() }); t = t.slice(lead[0].length).trim(); }
+  return { text: t, removed };
+}
+
 function clauseAct(clause, opts = {}) {
   const act = clauseActCore(clause, opts);
   if (act.speech_act === "statement" && !act.vocatives?.length && act.mentions?.length) {
@@ -476,8 +499,16 @@ function clauseAct(clause, opts = {}) {
       act.temporal_scope = act.temporal_scope ?? temporalOf(rest);
     }
   }
+  // The semantic text (chat noise removed) that force / facet / item-role decisions read; raw kept.
+  const sem = chatSemantic(act.body_expanded ?? act.body ?? act.text ?? "");
+  act.body_semantic = sem.text;
+  act.normalization = { raw: clause.text, semantic: sem.text, removed: sem.removed };
+  if (sem.removed.length && !act.predicate_candidates?.length && sem.text) act.predicate_candidates = registry.detectPredicates(sem.text).map((d) => ({ id: d.id, form: d.form, temporal: d.temporal, polarity: d.polarity }));
+  // "why tho" is the bare "why" once the particle is gone.
+  if (sem.removed.length && !act.bare_wh && BARE_WH.test(sem.text)) { act.bare_wh = sem.text.replace(/[?!.\s]+$/, "").toLowerCase(); if (act.speech_act === "statement") { act.speech_act = "question"; act.question_form = "wh"; } }
   const force = utteranceForce(act, clause);
-  if (force.promote && act.speech_act === "statement") {
+  if (force.promote === "request" && act.speech_act === "statement") { act.speech_act = "request"; act.question_form = null; }
+  else if (force.promote && act.speech_act === "statement") {
     act.speech_act = "question";
     act.question_form = force.promote === "tag" ? "declarative" : force.promote;
     // The question's own words decide its facet (re-read without the lead-in).
@@ -727,4 +758,4 @@ function parseActs(raw, { people = [], vocabulary = [], protect = [] } = {}) {
   return { version: ACTS_VERSION, normalized, clauses, acts: acts.filter((a) => !a.absorbed), dropped };
 }
 
-module.exports = { utteranceForce, unwrapIndirect, directQuestion, ACTS_VERSION, MAX_ACTS, parseActs, segment, stripMarkers, findVocatives, questionForm, quantifierOf, temporalOf, clauseAct, MARKERS, TARGET_REPAIR, UNANSWERED_REPAIR, FACET_REPAIR, ELLIPSIS };
+module.exports = { STATEMENT_EVIDENCE, IMPERATIVE, chatSemantic, utteranceForce, unwrapIndirect, directQuestion, ACTS_VERSION, MAX_ACTS, parseActs, segment, stripMarkers, findVocatives, questionForm, quantifierOf, temporalOf, clauseAct, MARKERS, TARGET_REPAIR, UNANSWERED_REPAIR, FACET_REPAIR, ELLIPSIS };

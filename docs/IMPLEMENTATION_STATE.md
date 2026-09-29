@@ -1,5 +1,67 @@
 # Yellow Beast Implementation State
 
+## ED-30I evidence-based completeness, required facets, discourse frames, inbound answer shapes — 2026-09-29
+
+- **Architecture: unchanged.** DIS, request ledger, registry, personhood, private-state gates, surface anchors, provider-independent truth and canonical-before-presentation are unchanged. Changes at the language-entry / discourse boundary:
+  - **Positive evidence for Tier-1 completeness** (`dialogueTurn.tier1Contract`, `completenessWithFrame`).
+    - A facet reached only through the generic `ask_factual` / `ambiguous_reference` route is unresolved.
+    - New evidence gaps: `force_uncertain` (short declarative with no statement evidence), `facet_weak`, `addressee_no_evidence`, `addressee_ambiguous`, `fragment_unresolved`.
+    - Gaps a Tier-2 reading did not fill fail closed to a clarification (`finalizeFrame`).
+    - A located echo of the coworker's own words is positive force evidence.
+    - An imperative ("Wait here.") is a request.
+  - **Chat-surface normalization.**
+    - `dialogue-acts.chatSemantic` strips leading fillers and trailing chat particles only. It never touches names, negation, question words, time words, references, or correction and contrast markers.
+    - Additions: a closed g-drop set and a small typo lexicon.
+    - The turn record now keeps `raw` plus a per-clause `chat_normalization` record, so the reading is reproducible from the raw line, the record and the DIS.
+  - **Required facet, one recovery pass** (`dialogue-advisory-interpreter`).
+    - Schema: `facet` is a required enum of the offered ids plus `NONE`; NONE decodes to no facet and fails closed.
+    - `requestAdvisoryWithFacetRecovery` makes at most ONE facet-only second pass. It runs only when a facet is required, the first reading said NONE, and the line asks, follows up or repairs.
+    - The second pass sees the normalized line, facet ids and glosses, the read speech act, and the compact state (facet ids and opaque labels).
+    - NONE again means clarify. There is never a third pass.
+    - The service and the evaluator use the same function. `advisory_state` records `facet_first_pass` and `second_pass`.
+    - A reading whose facet contradicts the canonical item Tier 1 found is rejected (`facet_contradicts_item`).
+  - **Discourse frames** (`dialogue-state.discourseFrames`, snapshot `discourse_frames`). Covers player requests and coworker questions to the player: request id, speaker, addressee, speech act, predicate, subject, referent, temporal, answer type, cardinality, status (pending / answered / repaired / abandoned).
+    - "when was that" → `temporal_elaboration` (`time_asked`); an undated history answers "I couldn't say exactly when", never a date.
+    - "before?" → an earlier time, within the predicate's `temporal_support`.
+    - "who else" → the same predicate for the people who have not answered.
+    - A referent repair also repairs the structured `item_id`.
+    - A lone "which one" with nothing offered clarifies.
+  - **Inbound answer shapes.**
+    - A coworker's question records `answer_shape` (yes_no / person / item / place / time / choice / free_short_answer; uncertainty and refusal always allowed) and the offered options as semantic ids.
+    - The shape comes from the plan only; wording is read only in offline evaluation.
+    - A short reply resolves to `args.answer_option` (option id / yes / no / none / both / either) only when compatible with the pending question. An incompatible reply clarifies.
+    - The player's answer is never world truth.
+  - **Fuzz findings fixed (seed 30031):**
+    - a legacy meta request ("what do you mean?") no longer carries to a new person;
+    - a carried "do you know each other" keeps its `asked_among` set;
+    - a plan-licensed attributed report ("Tonya said …") is not rejected as an echo.
+- **Verification:**
+  - `tests/ed30i-evidence-facets-discourse.test.js` (10 tests, service-level for the critical cases); hash `f67482a7`.
+  - All 25 ED suites pass. Dev corpus 100% (confident-wrong 0).
+  - Fuzz: 3,000 turns, seed 30031, three providers, 0 violations.
+  - Gemma J15: 149 turns, all zeros.
+  - Full suite: 180 files, 1,464 tests, 1,388 pass, 76 fail. No new failures; y80 #9 still passes.
+  - Inventory: 57 existing errors.
+- **Sixth blind corpus** (402 items, SHA-256 `6216979b…9a5e`, measured once). See `docs/acceptance/ed30/README.md`.
+
+  | Measure | Full pipeline | Gate |
+  | --- | --- | --- |
+  | Whole turn correct | 48.3 | — |
+  | Speech act | 79.6 | ≥95 |
+  | Addressee | 80.8 | ≥98 |
+  | Predicate | 74.9 | ≥95 |
+  | Relation | 84.6 | ≥95 |
+  | Clarification rate | 14.2 | ≤8 |
+  | Confident-wrong | 29.4 | ≤1 |
+
+  Tier 1 alone: 42.8% whole-turn correct, confident-wrong 20.6%.
+- **Remaining general blockers:**
+  1. Confident addressee resolution (61 of 118 confident-wrong).
+  2. Lexical / legacy positive evidence that is wrong (79 confident-wrong never reached Tier 2).
+  3. Accepted Tier-2 readings that are wrong (39; 37 of them were Tier-1 clarifications).
+  4. Low facet recovery (first-pass NONE 30.2%, second-pass recovery 30.8%).
+- **Jack retest: no.** ED-30J is not started automatically.
+
 ## ED-30H Tier-1 completeness contract, item question roles, bidirectional adjacency, fragment context — 2026-09-29
 
 - **Architecture: unchanged.** DIS, ledger, registry, personhood, private-state gates, surface anchors and provider-independent truth are unchanged. Changes at the language-entry / discourse boundary:

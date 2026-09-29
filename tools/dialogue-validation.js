@@ -318,7 +318,11 @@ function validateContribution(contribution, rawSpeech, options = {}) {
   }
   if (!compound_part && MAX_WORDS[fn] && words(speech).length > MAX_WORDS[fn]) return reject(CODES.SHAPE, "a brief social line is expected");
   // Echoing the player's own words back is not an answer or a clarification.
-  if (player_text && !REPAIR_FUNCTIONS.has(fn) && contentWords(player_text).length >= 2 && coverage(speech, player_text) >= 0.8 && coverage(player_text, speech) >= 0.6) return reject(CODES.SHAPE, "echoes the player instead of responding");
+  // (An attributed report the plan licenses -- "Tonya said they'd been in before." to "Has Tonya been in?" --
+  // shares the question's words but answers it: who said it is the new content.)
+  const reported = (contribution.required_facts ?? []).find((f) => f.key === "predicate_answer" && f.value?.answer?.reported)?.value?.answer ?? null;
+  const attributes = reported?.speaker_name && new RegExp(`\\b${String(reported.speaker_name).replace(/[.*+?^${}()|[\]\\]/g, "\\$&")} said\\b`, "i").test(speech);
+  if (player_text && !REPAIR_FUNCTIONS.has(fn) && !attributes && contentWords(player_text).length >= 2 && coverage(speech, player_text) >= 0.8 && coverage(player_text, speech) >= 0.6) return reject(CODES.SHAPE, "echoes the player instead of responding");
   const norm = (t) => words(t).join(" ");
   if (player_text && !REPAIR_FUNCTIONS.has(fn) && norm(speech) && norm(speech) === norm(player_text)) return reject(CODES.SHAPE, "repeats the player verbatim");
   // Same-turn coordination: a later responder does not repeat an accepted line.

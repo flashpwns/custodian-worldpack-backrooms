@@ -162,3 +162,56 @@ The full developer-trace transcripts (JSONL, about 150 KB per session) are not c
    - 31 failures differ only in secondary fields (question form, temporal scope, clarify flag).
 2. **Tier-2 readings that name no facet.** 24 readings; they fail closed to clarifications, which raises the clarification rate.
 3. **Discourse links.** Reason / temporal / "who else" follow-ups whose reading has no facet, and fragment answers to a coworker's choice question.
+
+## Sixth held-out corpus: ED-30I (2026-09-29)
+
+- **Corpus:** `heldout6-corpus-2026-09-28.spent.jsonl`, 402 items, SHA-256 `6216979bbe4a22e01cdcbb0576cbeb8bfcd7df0771309a2889dcf943fbf89a5e`.
+  - Written by a fresh subagent after the ED-30I implementation and verification were frozen. Its only readable input was `heldout6-authoring-brief.txt`, whose category descriptions quote none of the pass's test phrasings.
+  - Hashed before measurement. **Measured exactly once**, Tier 1 and full pipeline in the same run (`heldout6-run.json`, measured 2026-09-29T02:27Z). **Spent.**
+
+| Measure | Gate | Tier 1 only | Full production pipeline |
+| --- | --- | --- | --- |
+| Speech act | ≥ 95 | 79.4 | 79.6 |
+| Addressee | ≥ 98 | 80.8 | 80.8 |
+| Predicate / facet | ≥ 95 | 69.4 | 74.9 |
+| Relation | ≥ 95 | 84.6 | 84.6 |
+| Cardinality | — | 75.4 | 78.1 |
+| Temporal scope | — | 88.8 | 89.3 |
+| Question form | — | 79.4 | 79.4 |
+| **Whole turn correct** | — | 42.8 | 48.3 |
+| Clarification rate | ≤ 8 | 29.4 | 14.2 |
+| **Confident-wrong** | ≤ 1 | **20.6** | **29.4** |
+| Outcomes: true positive / safe clarification / false clarification / wrong unclarified | — | 41.3 / 3.0 / 26.4 / 29.4 | 47.0 / 2.2 / 11.9 / 38.8 |
+| Tier-2 invocation | — | — | 26.4% (106) |
+| Decoded / schema-valid / semantically complete / accepted | — | — | 106 / 102 / 74 / 74 (69.8% accepted) |
+| Tier-2 rejections | — | — | no compatible antecedent 10, contradictory speech act 8, missing facet 6, low confidence 4, wh-incompatible 3, facet contradicts item 1 |
+| First-pass facet NONE | — | — | 30.2% of readings |
+| Second pass: invoked / recovered | — | — | 26 (24.5%) / 8 (30.8%); p50 1,407 ms, p90 2,777 ms |
+| Second-pass effect on confident-wrong | — | — | 3 of the 8 recovered facets ended confident-wrong |
+| Advisory latency p50 / p90 | — | — | 4,488 / 5,777 ms |
+| Timeout rate | — | — | 0% |
+
+**Failure classes** (full pipeline, 225 failures; criteria fixed before the measurement, `heldout6-failure-classes.json`):
+
+| Class | Failures | Share of failures | Share of turns |
+| --- | --- | --- | --- |
+| Never reached Tier 2 | 143 | 63.6% | 35.6% |
+| Missing-facet failure | 63 | 28.0% | 15.7% |
+| Discourse-link failure | 57 | 25.3% | 14.2% |
+| Answer to a coworker's question | 30 | 13.3% | 7.5% |
+| Definition / purpose confusion | 0 | 0% | 0% |
+| Short-fragment low confidence | 2 | 0.9% | 0.5% |
+| **Confident-wrong** | **118** | 52.4% | **29.4%** |
+| Safe but unneeded clarification | 48 | 21.3% | 11.9% |
+
+**Confident-wrong, not hidden behind accuracy.**
+- 79 of the 118 never reached Tier 2: Tier 1 held positive evidence for a reading that was wrong.
+  - 39 had the wrong addressee, 29 had no predicate where one was asked, 16 had the wrong predicate.
+- 39 followed an *accepted* Tier-2 reading. 37 of them were clarified by Tier 1 alone, so the reading turned a safe clarification into a wrong answer. Of these, 22 had the wrong addressee and 13 the wrong predicate.
+- The largest single field is the addressee: 61 of the 118 confident-wrong turns.
+
+**Every gate fails.** Remaining general blockers:
+1. **Confident addressee resolution.** Inherited, rotated and "who else" targets are resolved with confidence when a human would pick someone else or ask.
+2. **Positive evidence that is wrong.** A lexical cue or a legacy route counts as evidence even when the line means something else. Tier 1 marks such lines complete, so Tier 2 is never consulted.
+3. **Accepted Tier-2 readings that are wrong.** The deterministic plausibility checks accept readings that contradict the context. They turn safe Tier-1 clarifications into confident-wrong answers.
+4. **Facet recovery.** 30% of first readings name no facet, and the one second pass recovers only 31% of those.

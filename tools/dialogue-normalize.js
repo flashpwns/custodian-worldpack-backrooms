@@ -66,8 +66,9 @@ const SLANG = Object.freeze({
   tmrw: "tomorrow", bc: "because", idk: "I don't know", nvm: "never mind", brb: "be right back"
 });
 // Frequent keyboard typos of function words (a fixed list: open-text words are never fuzzily "corrected").
-const COMMON_TYPOS = Object.freeze({ teh: "the", hte: "the", taht: "that", thta: "that", waht: "what", whta: "what", yuo: "you", yoiu: "you", jsut: "just", adn: "and", abotu: "about", abuot: "about", baout: "about", whre: "where", wehre: "where", tehre: "there", thier: "their", becuase: "because", beacuse: "because", knwo: "know", konw: "know", cna: "can", wiht: "with", yourslef: "yourself", yourelf: "yourself", youself: "yourself", yoruself: "yourself", hwo: "how", hoe: "how", ot: "to", fo: "of", si: "is", ti: "it", aer: "are", evryone: "everyone", everone: "everyone", evreyone: "everyone", anyoen: "anyone", somethign: "something", tomorow: "tomorrow", firts: "first", frist: "first", befor: "before", beofre: "before" });
+const COMMON_TYPOS = Object.freeze({ wher: "where", wat: "what", wut: "what", whn: "when", wen: "when", hw: "how", actualy: "actually", acutally: "actually", realy: "really", probly: "probably", definately: "definitely", wierd: "weird", becuz: "because", tommorow: "tomorrow", tomorow: "tomorrow", togther: "together", togeather: "together", teh: "the", hte: "the", taht: "that", thta: "that", waht: "what", whta: "what", yuo: "you", yoiu: "you", jsut: "just", adn: "and", abotu: "about", abuot: "about", baout: "about", whre: "where", wehre: "where", tehre: "there", thier: "their", becuase: "because", beacuse: "because", knwo: "know", konw: "know", cna: "can", wiht: "with", yourslef: "yourself", yourelf: "yourself", youself: "yourself", yoruself: "yourself", hwo: "how", hoe: "how", ot: "to", fo: "of", si: "is", ti: "it", aer: "are", evryone: "everyone", everone: "everyone", evreyone: "everyone", anyoen: "anyone", somethign: "something", tomorow: "tomorrow", firts: "first", frist: "first", befor: "before", beofre: "before" });
 // Words after which a bare "were" is the contraction "we're" (it cannot be a verb: no subject precedes it).
+const G_DROPPED = new Set(["goin", "doin", "comin", "headin", "leavin", "gettin", "feelin", "sayin", "talkin", "thinkin", "workin", "waitin", "lookin", "carryin", "bringin", "takin", "holdin", "startin", "meetin", "stayin", "walkin", "askin", "tellin", "kiddin", "messin", "movin", "runnin", "sittin", "standin", "tryin", "hangin", "packin", "trippin"]);
 const WERE_LEAD = new Set(["", "where", "what", "when", "why", "how", "who", "which", "if", "that", "because", "cause", "and", "but", "so", "is", "think", "know", "guess", "hope", "wonder", "whether", "while", "until", "before", "after", "like", "since", "maybe", "okay", "ok", "well", "now", "then", "once", "unless", "though", "sure", "whatever", "wherever", "whenever", "cool", "alright", "right", "yeah", "yes", "no"]);
 // ...and what follows it reads as a progressive / predicate of "we are".
 const WERE_FOLLOW = /^(?:all|gonna|going|supposed|about|ready|here|there|in|done|good|fine|not|headed|heading|leaving|meant|expected|stuck|late|early|actually|really|just|still|even|both|getting|doing|walking|waiting|looking|working|staying|coming|taking|bringing|carrying|told|allowed|off|on|at|out|almost|nearly|so|pretty|kind|meeting|starting|splitting)$/i;
@@ -153,6 +154,11 @@ function normalizeUtterance(raw, { vocabulary = [], names = [], protect = [] } =
       const fixed = `${name.charAt(0).toUpperCase()}${name.slice(1)}'s`;
       repairs.push({ kind: "name_possessive", from: text, to: fixed, at: tok.start });
       text = fixed;
+    } else if (G_DROPPED.has(lower.replace(/'$/, ""))) {
+      // A dropped final g ("goin", "doin'") is the -ing form of an everyday verb (closed set).
+      const fixed = `${lower.replace(/'$/, "")}g`;
+      repairs.push({ kind: "g_dropped", from: text, to: fixed, at: tok.start });
+      text = /^[A-Z]/.test(text) ? fixed.charAt(0).toUpperCase() + fixed.slice(1) : fixed;
     } else if (COMMON_TYPOS[lower]) {
       repairs.push({ kind: "common_typo", from: text, to: COMMON_TYPOS[lower], at: tok.start });
       text = /^[A-Z]/.test(text) ? COMMON_TYPOS[lower].charAt(0).toUpperCase() + COMMON_TYPOS[lower].slice(1) : COMMON_TYPOS[lower];

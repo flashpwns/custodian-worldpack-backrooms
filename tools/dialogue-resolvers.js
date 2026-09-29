@@ -71,6 +71,8 @@ const RESOLVERS = {
     const none = profile.expedition_experience === "none";
     // "How many?" -- the profile holds a band, never a count: none is zero; otherwise the number is not established.
     if (args?.count_asked && !none) return result("not_established", { answer: { predicate: "person.expedition_experience", count_asked: true, band: profile.expedition_experience } });
+    // "When was that?" -- the profile holds no dated events: the time is not established (never invented).
+    if (args?.time_asked && !none) return result("not_established", { answer: { predicate: "person.expedition_experience", time_asked: true, band: profile.expedition_experience } });
     return result(none ? "no" : "yes", { answer: { predicate: "person.expedition_experience", polarity: none ? "no" : "yes", band: profile.expedition_experience, first_day: profile.first_day_at_async }, statements: [none ? "This is my first expedition." : "I've been on expeditions before."], provenance: ["self"], sources: ["member.personhood.expedition_experience"] });
   },
   profile_place_experience(run, { actor_id, args }) {
@@ -85,6 +87,7 @@ const RESOLVERS = {
     if (place === "complex" || place === "threshold") {
       const none = profile.complex_experience === "none";
       if (args?.count_asked && !none) return result("not_established", { answer: { predicate: "person.complex_experience", place, count_asked: true, band: profile.complex_experience } });
+      if (args?.time_asked && !none) return result("not_established", { answer: { predicate: "person.complex_experience", place, time_asked: true, band: profile.complex_experience } });
       return result(none ? "no" : "yes", { answer: { predicate: "person.complex_experience", place, polarity: none ? "no" : "yes", band: profile.complex_experience, first_day: profile.first_day_at_async }, statements: [none ? "I've never been in the Complex." : "I've been in the Complex before."], provenance: ["self"], sources: ["member.personhood.complex_experience"] });
     }
     if (COMPLEX_PLACES.has(place)) {

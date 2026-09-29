@@ -178,7 +178,9 @@ function advisoryV2Schema({ facets = [], people = [], referents = [] } = {}) {
             addressee_candidate: nullableEnum(people.map((p) => p.label)),
             referent_text: { type: ["string", "null"] },
             referent_candidate: nullableEnum(referents.map((r) => r.label)),
-            facet: nullableEnum(facets),
+            // REQUIRED (ED-30I): one registry id, or the explicit "NONE" ("I cannot map this safely"). Never
+            // omitted, never free text.
+            facet: { type: "string", enum: [...facets, "NONE"] },
             polarity: { type: "string", enum: ["positive", "negative"] },
             temporal_text: { type: ["string", "null"] },
             quantifier: { type: "string", enum: [...V2_QUANTIFIERS] },
@@ -193,11 +195,63 @@ function advisoryV2Schema({ facets = [], people = [], referents = [] } = {}) {
 
 const ADVISORY_V2_SYSTEM_TEXT = [
   "You classify the LANGUAGE of one line a person said at a work table. You do not answer it and you know nothing about the world.",
-  "Describe the line as ONE act: the part that asks or requests something (if any), otherwise the main thing said. Choose: speech_act; facet (what is asked about, from the list, or null); who is addressed (addressee_candidate label, or null); what place/thing it is about (referent_candidate label, or null); quantifier; discourse_relation.",
+  "Describe the line as ONE act: the part that asks or requests something (if any), otherwise the main thing said. Choose: speech_act; facet (what is asked about: one id from the list, or NONE if none fits); who is addressed (addressee_candidate label, or null); what place/thing it is about (referent_candidate label, or null); quantifier; discourse_relation.",
   "speech_act: \"question\" when the person wants information or a confirmation, even typed without a question mark (a statement said to check it, e.g. \"the bag's still with you\", asks); \"statement\" only when they tell something and expect nothing back.",
   "Every *_text field must be copied EXACTLY from the line, or null. Use only the labels given. A short fragment (\"since when\", \"and you\", \"the lamp\") continues the conversation state given: read it against that. If you cannot tell, say confidence low.",
   "Reply with exactly one compact JSON object and nothing else."
 ].join("\n");
+
+// ─── facet recovery: ONE optional constrained second pass (ED-30I) ───────────────────────────────────────
+// Only when the turn needs a facet, the first reading said NONE, and the line asks / follows up / repairs.
+// The second pass may ONLY choose a facet id or NONE -- from the normalized line, the facet glosses and the
+// compact conversation state (labels and facet ids; no prose, no facts). NONE again means: clarify. Never a
+// third pass.
+const FACET_ONLY_SYSTEM_TEXT = [
+  "You choose which topic a short line at a work table asks about. You do not answer it and you know nothing about the world.",
+  "Pick exactly one facet id from the list that the line asks about, read against the conversation state given; or NONE if no facet fits safely.",
+  "Reply with one compact JSON object and nothing else."
+].join("\n");
+function facetOnlySchema(facets = []) {
+  return { type: "object", additionalProperties: false, required: ["facet", "confidence"], properties: { facet: { type: "string", enum: [...facets, "NONE"] }, confidence: { type: "string", enum: ["low", "medium", "high"] } } };
+}
+async function requestFacetSecondPass(provider, { repaired = null, utterance, facets = [], facet_guide = {}, context = null, speech_act = null, timeout_ms = 8000 } = {}) {
+  const started = Date.now();
+  let timer = null;
+  try {
+    const user = [
+      `Facets:\n${facets.map((f) => `- ${f}${facet_guide[f] ? `: ${facet_guide[f]}` : ""}`).join("\n")}`,
+      renderContext(context),
+      speech_act ? `The line was read as: ${speech_act}.` : null,
+      `The line: ${JSON.stringify(String(repaired ?? utterance).slice(0, 300))}`
+    ].filter(Boolean).join("\n");
+    const raw = await Promise.race([
+      provider.interpretDialogue({ system: FACET_ONLY_SYSTEM_TEXT, user, schema: facetOnlySchema(facets) }),
+      new Promise((_, reject) => { timer = setTimeout(() => reject(Object.assign(new Error("advisory timeout"), { code: "TIMEOUT" })), timeout_ms); })
+    ]);
+    const facet = raw?.facet;
+    const ok = typeof facet === "string" && (facet === "NONE" || facets.includes(facet)) && ["low", "medium", "high"].includes(raw?.confidence);
+    if (!ok) return { recovered: false, reason: "malformed", latency_ms: Date.now() - started };
+    if (facet === "NONE" || raw.confidence === "low") return { recovered: false, reason: facet === "NONE" ? "none" : "low_confidence", latency_ms: Date.now() - started };
+    return { recovered: true, facet, latency_ms: Date.now() - started };
+  } catch (error) {
+    return { recovered: false, reason: error?.code === "TIMEOUT" ? "timeout" : "provider_error", latency_ms: Date.now() - started };
+  } finally { if (timer) clearTimeout(timer); }
+}
+const RECOVERABLE_ACTS = new Set(["question", "request", "elliptical_continuation", "repair"]);
+/**
+ * The bounded Tier-2 reading with facet recovery (the ONE function the service and the evaluator call): the
+ * first reading, then -- only if a facet is required, the first said NONE and the line asks / continues /
+ * repairs -- one facet-only pass. The recovered facet is still validated by code like any other.
+ */
+async function requestAdvisoryWithFacetRecovery(provider, v2) {
+  const first = await requestAdvisoryV2(provider, v2);
+  const act = first?.accepted ? first.acts?.at(-1) : null;
+  const wantsFacet = Boolean(v2?.needs_facet) && first?.accepted && act && !act.facet && (RECOVERABLE_ACTS.has(act.speech_act) || ["continuation", "repair"].includes(act.discourse_relation));
+  if (!wantsFacet) return { ...first, facet_first_pass: act ? (act.facet ?? "NONE") : null, second_pass: null };
+  const second = await requestFacetSecondPass(provider, { ...v2, speech_act: act.speech_act });
+  const acts = second.recovered ? [...first.acts.slice(0, -1), Object.freeze({ ...act, facet: second.facet, facet_source: "second_pass" })] : first.acts;
+  return { ...first, acts, facet_first_pass: "NONE", second_pass: { used: true, recovered: second.recovered, reason: second.reason ?? null, latency_ms: second.latency_ms }, latency_ms: (first.latency_ms ?? 0) + (second.latency_ms ?? 0) };
+}
 
 // Static parts first (facets, then the scene's labels), the turn last: the runtime reuses the cached prefix.
 // The conversation state a short fragment needs (facets and labels only, never prose or facts).
@@ -210,12 +264,13 @@ function renderContext(context) {
   if (context.activity) parts.push(`an ongoing round: ${context.activity}`);
   return parts.length ? `Conversation state: ${parts.join("; ")}.` : null;
 }
-function buildAdvisoryV2Prompt({ utterance, recent = [], people = [], referents = [], facets = [], facet_guide = {}, context = null }) {
+function buildAdvisoryV2Prompt({ utterance, recent = [], people = [], referents = [], facets = [], facet_guide = {}, context = null, needs_facet = false }) {
   return [
     `Facets:\n${facets.map((f) => `- ${f}${facet_guide[f] ? `: ${facet_guide[f]}` : ""}`).join("\n")}`,
     people.length ? `People at the table (addressee labels): ${people.map((p) => `${p.label}=${p.name}`).join(", ")}` : null,
     referents.length ? `Places/things (referent labels): ${referents.map((r) => `${r.label}=${r.name}`).join(", ")}` : null,
     renderContext(context),
+    needs_facet ? "A facet is REQUIRED for this line: choose the closest facet id, or NONE if none fits safely." : null,
     recent.length ? `Recent lines (words only):\n${recent.slice(-3).map((l) => `- ${String(l).slice(0, 160)}`).join("\n")}` : null,
     `The line: ${JSON.stringify(String(utterance).slice(0, 400))}`
   ].filter(Boolean).join("\n");
@@ -238,6 +293,7 @@ function validateAdvisoryV2(raw, utterance, { people = [], referents = [], facet
   for (const act of raw.acts) {
     if (!act || typeof act !== "object") return { accepted: false, reason: "malformed_act" };
     if (!V2_SPEECH_ACTS.includes(act.speech_act) || !V2_RELATIONS.includes(act.discourse_relation) || !V2_QUANTIFIERS.includes(act.quantifier)) return { accepted: false, reason: "unsupported_value" };
+    if (act.facet === "NONE") act.facet = null;
     if (act.facet != null && !facets.includes(act.facet)) return { accepted: false, reason: "unsupported_facet" };
     if (act.addressee_candidate != null && !peopleLabels.has(act.addressee_candidate)) return { accepted: false, reason: "unknown_candidate" };
     if (act.referent_candidate != null && !refLabels.has(act.referent_candidate)) return { accepted: false, reason: "unknown_candidate" };
@@ -260,13 +316,13 @@ function validateAdvisoryV2(raw, utterance, { people = [], referents = [], facet
 }
 
 /** One bounded v2 advisory call (never throws; timeout/malformed/unavailable -> not accepted). */
-async function requestAdvisoryV2(provider, { utterance, repaired = null, recent = [], people = [], referents = [], facets = [], facet_guide = {}, context = null, timeout_ms = 8000 } = {}) {
+async function requestAdvisoryV2(provider, { utterance, repaired = null, recent = [], people = [], referents = [], facets = [], facet_guide = {}, context = null, needs_facet = false, timeout_ms = 8000 } = {}) {
   if (!provider || typeof provider.interpretDialogue !== "function") return { accepted: false, reason: "advisory_unavailable", latency_ms: 0 };
   const started = Date.now();
   let timer = null;
   try {
     const raw = await Promise.race([
-      provider.interpretDialogue({ system: ADVISORY_V2_SYSTEM_TEXT, user: buildAdvisoryV2Prompt({ utterance, recent, people, referents, facets, facet_guide, context }), schema: advisoryV2Schema({ facets, people, referents }) }),
+      provider.interpretDialogue({ system: ADVISORY_V2_SYSTEM_TEXT, user: buildAdvisoryV2Prompt({ utterance, recent, people, referents, facets, facet_guide, context, needs_facet }), schema: advisoryV2Schema({ facets, people, referents }) }),
       new Promise((_, reject) => { timer = setTimeout(() => reject(Object.assign(new Error("advisory timeout"), { code: "TIMEOUT" })), timeout_ms); })
     ]);
     // A v1-shaped reply (older scripted providers) is still validated by the v1 rules.
@@ -277,4 +333,4 @@ async function requestAdvisoryV2(provider, { utterance, repaired = null, recent 
   } finally { if (timer) clearTimeout(timer); }
 }
 
-module.exports = { ADVISORY_V2_VERSION, advisoryV2Schema, ADVISORY_V2_SYSTEM_TEXT, buildAdvisoryV2Prompt, validateAdvisoryV2, requestAdvisoryV2, ADVISORY_VERSION, INTENTS, ADVISORY_SCHEMA, ADVISORY_SYSTEM_TEXT, MIN_CONFIDENCE, buildAdvisoryPrompt, validateAdvisory, requestAdvisory };
+module.exports = { requestAdvisoryWithFacetRecovery, requestFacetSecondPass, facetOnlySchema, ADVISORY_V2_VERSION, advisoryV2Schema, ADVISORY_V2_SYSTEM_TEXT, buildAdvisoryV2Prompt, validateAdvisoryV2, requestAdvisoryV2, ADVISORY_VERSION, INTENTS, ADVISORY_SCHEMA, ADVISORY_SYSTEM_TEXT, MIN_CONFIDENCE, buildAdvisoryPrompt, validateAdvisory, requestAdvisory };

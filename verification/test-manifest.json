@@ -881,6 +881,11 @@
       "file": "tests/ed30h-confidence-items-adjacency.test.js",
       "status": "included",
       "tier": "aggregate"
+    },
+    {
+      "file": "tests/ed30i-evidence-facets-discourse.test.js",
+      "status": "included",
+      "tier": "aggregate"
     }
   ],
   "report_tools": [

@@ -46,6 +46,9 @@ function placeOf(text, entities, dis, { apposition = null } = {}) {
   return null;
 }
 
+// Positive evidence that a line STATES something (ED-30I): a finite verb or a first-person claim.
+const { STATEMENT_EVIDENCE } = acts;
+
 // Replies to a coworker's question (ED-30H).
 const REPLY_UNCERTAIN = /^(?:(?:um+|uh+|hm+|honestly|well|so)[,.]?\s+)*(?:i\s+)?(?:do not know|don't know|dont know|dunno|no idea|not sure|idk|beats me|no clue|couldn'?t (?:tell you|say)|can'?t (?:say|remember)|hard to say|who knows)\b/;
 const REPLY_REFUSAL = /\b(?:rather not|would rather not|'d rather not|not telling|none of your business|not saying|don'?t want to (?:say|talk|get into)|pass on that|skip that|no comment|not gonna say|mind your own)\b|^pass\b/;
@@ -74,12 +77,92 @@ const ITEM_ROLES = [
   ["item.location", new RegExp(`${LEAD}where(?:'s| is| are| did (?:\\w+ )?(?:put|leave|stash)| can i find| would i find|s)\\b`, "i")],
   ["item.definition", new RegExp(`${LEAD}what(?:'s| is| are| exactly is|s)\\s+(?:a |an |the |that |this |these |those |our |your )?[\\w -]+?\\s*[?.!]*$|${LEAD}what kind of\\b`, "i")]
 ];
+
+/**
+ * A short reply read against the answer SHAPE of a coworker's pending question to the player (ED-30I). Returns
+ * null when the reply is not an answer form (a question, a clause with its own verb, a long line); otherwise
+ * { shape, kind: answer | uncertainty | refusal, option, compatible }. The option is a semantic id: a canonical
+ * item or person id, or one of yes / no / none / both / either for choice and yes/no questions. An answer the
+ * question could not take (an item to "who...?", something not offered in an either/or) is incompatible and is
+ * clarified, never guessed. The player's answer is their reply, not world truth.
+ */
+/** The reply is only a person's name (the vocative IS the answer, not an address). */
+function personOfAnswer(act, people) {
+  const t = String(act.text ?? "").toLowerCase().replace(/[.!,?]+/g, " ").replace(/\b(?:i guess|i think|probably|maybe|prolly)\b/g, " ").trim();
+  return people.some((p) => (p.names ?? [p.name]).some((n) => String(n).toLowerCase() === t));
+}
+
+function inboundAnswer(act, inbound, { people = [], entities = [] } = {}) {
+  if (!inbound || inbound.kind === "attention" || !inbound.answer_shape) return null;
+  const raw = String((personOfAnswer(act, people) ? act.text : null) || act.body_semantic || act.body_expanded || act.body || act.text || "").toLowerCase();
+  // A question back ("why?", "you?", "how come") is a counter-question, not an answer.
+  if (/\?\s*$/.test(String(act.text ?? "")) || /^(?:(?:and|but|so|ok|okay)\s+)?(?:why|how come|what|who|where|when|which|how)\b/.test(raw.trim())) return null;
+  const t = raw.replace(/[.!,]+/g, " ").replace(/\b(?:i guess|i think|i suppose|probably|maybe|prolly|i'd say|id say|for sure|definitely|please|thanks|then)\b/g, " ").replace(/\s+/g, " ").trim();
+  const shape = inbound.answer_shape;
+  if (REPLY_UNCERTAIN.test(t) || /^(?:not sure|unsure|no idea|idk)$/.test(t)) return { shape, kind: "uncertainty", option: null, compatible: true };
+  if (REPLY_REFUSAL.test(t)) return { shape, kind: "refusal", option: null, compatible: true };
+  if (!t || t.split(" ").length > 4 || acts.STATEMENT_EVIDENCE.test(t)) return null;
+  const equipment = Object.fromEntries(entities.filter((x) => x.kind === "equipment").map((x) => [x.id, { id: x.id, label: x.label ?? x.names?.[0] ?? x.id, type: x.names?.find((n) => /-/.test(n)) ?? null }]));
+  const itemOf = (text) => require("./dialogue-discourse").resolveEquipmentReferent(text, equipment)?.item?.id ?? null;
+  const personOf = (text) => { const hit = people.filter((p) => (p.names ?? [p.name]).some((n) => new RegExp(`\\b${String(n).toLowerCase()}\\b`).test(text))); return hit.length === 1 ? hit[0].id : null; };
+  const selfOf = (text) => /^(?:me|myself|i do|i will|i am|me i guess)$/.test(text) ? "player" : null;
+  const item = itemOf(t); const person = personOf(t) ?? selfOf(t);
+  const yesNo = /^(?:yes|yeah|yep|yup|yea|sure|of course|definitely|kind of|kinda|sort of|a bit|a little|once|twice)\b/.test(t) ? "yes" : /^(?:no|nope|nah|naw|not really|never)\b/.test(t) ? "no" : null;
+  if (shape === "choice") {
+    // Offered options are canonical ids (from a plan) or, offline, words resolved to ids where possible.
+    const byId = (o) => (entities.some((x) => x.id === o) || people.some((p) => p.id === o) ? o : null);
+    const labelOf = (id) => String(entities.find((x) => x.id === id)?.label ?? entities.find((x) => x.id === id)?.names?.[0] ?? people.find((p) => p.id === id)?.name ?? id).toLowerCase();
+    const options = (inbound.options ?? []).map((o) => (byId(o) ? { text: labelOf(o), id: o } : { text: String(o).toLowerCase(), id: itemOf(String(o)) ?? personOf(String(o).toLowerCase()) ?? `option:${String(o).toLowerCase()}` }));
+    if (/^(?:neither|none|neither one|neither of them|none of them)$/.test(t)) return { shape, kind: "answer", option: "none", compatible: true };
+    if (/^(?:both|both of them|both please)$/.test(t)) return { shape, kind: "answer", option: "both", compatible: true };
+    if (/^(?:either|either one|whichever|either is fine|don't care|dont care|doesn't matter|doesnt matter)$/.test(t)) return { shape, kind: "answer", option: "either", compatible: true };
+    const ordinal = /\b(?:first|former)\b/.test(t) ? 0 : /\b(?:second|latter|last)\b/.test(t) && options.length === 2 ? 1 : null;
+    if (ordinal != null && options[ordinal]) return { shape, kind: "answer", option: options[ordinal].id, compatible: true };
+    const hits = options.filter((o) => (item && o.id === item) || (person && o.id === person) || new RegExp(`(?:^|\\s)${o.text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}(?:\\s|$)`).test(t));
+    if (hits.length === 1) return { shape, kind: "answer", option: hits[0].id, compatible: true };
+    return { shape, kind: "answer", option: null, compatible: false, reason: hits.length > 1 ? "answer_ambiguous_option" : "answer_not_offered" };
+  }
+  if (shape === "person") {
+    if (person) return { shape, kind: "answer", option: person, compatible: true };
+    if (item) return { shape, kind: "answer", option: null, compatible: false, reason: "answer_shape_mismatch" };
+    return { shape, kind: "answer", option: null, compatible: true };
+  }
+  if (shape === "item") {
+    if (item) return { shape, kind: "answer", option: item, compatible: true };
+    if (person && !selfOf(t)) return { shape, kind: "answer", option: null, compatible: false, reason: "answer_shape_mismatch" };
+    return { shape, kind: "answer", option: null, compatible: true };
+  }
+  if (shape === "yes_no") {
+    // A bare name to a yes/no question is not an answer form (it addresses someone).
+    if (personOf(t) && t.split(" ").length === 1) return null;
+    return { shape, kind: "answer", option: yesNo, compatible: true };
+  }
+  if (shape === "place" || shape === "time") {
+    if (person && t.split(" ").length === 1) return null;
+    return { shape, kind: "answer", option: null, compatible: true };
+  }
+  return { shape, kind: "answer", option: yesNo, compatible: true };
+}
+
 /** The item a clause is about (named, or "it/that" with exactly one item in play) and what is asked of it. */
 function itemRole(text, entities = [], dis = null) {
-  const t = String(text ?? "").toLowerCase();
+  // Hedges carry no relation ("what's ACTUALLY in it") -- the same stripping facet detection applies.
+  const t = registry.stripHedges(String(text ?? "").toLowerCase());
   const named = canonicalKnowledge.resolveEntityMentions(t, entities).filter((m) => m.kind === "equipment");
   const uniqueNamed = [...new Map(named.map((m) => [m.id, m])).values()];
   let item = uniqueNamed.length === 1 ? uniqueNamed[0] : null;
+  // The one canonical item resolver (label sub-phrases, unique only): "the layout record" names the
+  // "Manifestation layout record" even where the knowledge index maps the phrase to its task.
+  if (!item && !uniqueNamed.length) {
+    const equipment = Object.fromEntries(entities.filter((x) => x.kind === "equipment").map((x) => [x.id, { id: x.id, label: x.label ?? x.names?.[0] ?? x.id, type: x.names?.find((n) => /-/.test(n)) ?? null }]));
+    const found = require("./dialogue-discourse").resolveEquipmentReferent?.(t, equipment);
+    if (found?.status === "unique") {
+      // The phrase actually used: the longest tail of the label present in the line ("layout record").
+      const words = String(found.item.label).toLowerCase().split(/\s+/);
+      const used = [...Array(words.length).keys()].map((k) => words.slice(k).join(" ")).find((suffix) => t.includes(suffix)) ?? words.at(-1);
+      item = { id: found.item.id, kind: "equipment", matched: used };
+    }
+  }
   if (!item && !uniqueNamed.length && /\b(?:it|that|this|those|these|them)\b/.test(t)) {
     const salient = (dis?.salient_entities ?? []).filter((id) => entities.some((x) => x.id === id && x.kind === "equipment"));
     if (salient.length === 1) item = { id: salient[0], kind: "equipment", anaphoric: true };
@@ -101,7 +184,8 @@ function itemRole(text, entities = [], dis = null) {
 // word or phrase the last reply actually used. The spoken words only LOCATE the reply's anchored request
 // (dialogue-state surface anchors); the answer comes from that request's canonical resolver, never from the
 // words. Several speakers matching is ambiguous: no echo.
-const ECHO_TAIL = /\s*\b(?:how|what|why|where|when|who|exactly|so|of what|about what|for what|with what|like what|in what way|how so|how come|meaning)\s*$/i;
+// A trailing tag ("..., huh", "..., right") checks the echoed words back like a "?" would.
+const ECHO_TAIL = /\s*\b(?:how|what|why|where|when|who|exactly|so|of what|about what|for what|with what|like what|in what way|how so|how come|meaning|huh|right|yeah|eh)\s*$/i;
 const ECHO_LEAD = /^(?:(?:wait|so|and|but|oh|huh|hm+|really|seriously|sorry)[,.!]?\s+)+/i;
 function echoOf(act, dis, { phraseOnly = false } = {}) {
   const anchors = dis?.surface_anchors ?? [];
@@ -220,6 +304,11 @@ const CANONICAL_QUESTION = Object.freeze({
   "person.familiarity": "Do you know each other?"
 });
 
+// A question ABOUT the conversation itself (what a reply meant, why, say again, what someone said): by registry
+// facet, or -- for a legacy-routed request with no facet -- by its discourse function.
+const META_FNS = new Set(["clarify_previous", "ask_meaning", "ask_explanation", "request_repetition", "ask_heard_confirmation", "ask_response_event", "challenge"]);
+const isMetaRequest = (r) => String(r?.predicate ?? "").startsWith("conversation.") || (!r?.predicate && META_FNS.has(r?.fn));
+
 /** The request an elliptical line inherits: the active activity's template, else the most recent request. */
 function antecedentOf(act, dis) {
   if (["turn", "same_question"].includes(act.ellipsis?.kind) && dis?.activity) return { from: "activity", request: { predicate: dis.activity.template.predicate, fn: dis.activity.template.fn, request_text: dis.activity.template.request_text, targets: [...dis.activity.completed], answered_by: [...dis.activity.completed], request_id: null, args: null }, activity: dis.activity };
@@ -227,7 +316,7 @@ function antecedentOf(act, dis) {
   if (act.ellipsis?.aux && dis?.last_player_claim?.predicate && CANONICAL_QUESTION[dis.last_player_claim.predicate]) return { from: "player_claim", request: { predicate: dis.last_player_claim.predicate, fn: null, request_text: CANONICAL_QUESTION[dis.last_player_claim.predicate], targets: [], answered_by: [], request_id: null, args: null, temporal: registry.get(dis.last_player_claim.predicate)?.default_temporal ?? null } };
   // A meta question ("Why?", "What do you mean?") is about one reply; "What about Tonya?" after it carries the
   // substantive question before it.
-  if (dis?.last_request?.request_text && String(dis.last_request.predicate ?? "").startsWith("conversation.") && dis?.last_substantive_request?.request_text && ["how_about", "turn", "same_question"].includes(act.ellipsis?.kind)) return { from: "last_substantive_request", request: dis.last_substantive_request };
+  if (dis?.last_request?.request_text && isMetaRequest(dis.last_request) && dis?.last_substantive_request?.request_text && ["how_about", "turn", "same_question"].includes(act.ellipsis?.kind)) return { from: "last_substantive_request", request: dis.last_substantive_request };
   if (dis?.last_request?.request_text) return { from: "last_request", request: dis.last_request };
   if (dis?.activity) return { from: "activity", request: { predicate: dis.activity.template.predicate, fn: dis.activity.template.fn, request_text: dis.activity.template.request_text, targets: [...dis.activity.completed], answered_by: [...dis.activity.completed], request_id: null, args: null }, activity: dis.activity };
   return null;
@@ -289,10 +378,19 @@ function analyzeTurn({ raw, present = [], entities = [], dis = null, explicit_ta
     // question, not a referent repair (the legacy frame narrows the question with it).
     // ("The other bag" is a real correction whose thing is ambiguous: it stays a repair and is clarified.)
     const unresolvedReferent = original.speech_act === "repair" && original.repair?.kind === "referent" && !/^(?:the|that)\s+other\b/i.test(original.repair.referent ?? "") && !placeOf(original.repair.referent ?? "", entities, null)?.place_id && !canonicalKnowledge.resolveEntityMentions(original.repair.referent ?? "", entities).length;
-    const act = unresolvedReferent ? { ...original, speech_act: "statement", repair: null, body: original.body || original.text } : original;
+    let act = unresolvedReferent ? { ...original, speech_act: "statement", repair: null, body: original.body || original.text } : original;
+    // A short reply to a coworker's question is read against that question's answer shape first ("not sure",
+    // "the first one", "Tonya", "flashlight"): an answer, not a repair, a vocative or a topic ellipsis.
+    const pendingInbound = dis?.pending_inbound_request ?? null;
+    const shaped = substantive.length <= 1 && pendingInbound && presentIds.includes(pendingInbound.from) && !(act.vocatives ?? []).some((v) => v.id !== pendingInbound.from && !personOfAnswer(act, people)) ? inboundAnswer(act, pendingInbound, { people, entities }) : null;
+    // Only a reply the shape actually decides is re-read (an offered option, a name or item the question takes,
+    // "not sure", a refusal, or a fragment the question cannot take); anything else keeps its own reading.
+    if (shaped && (shaped.option || shaped.kind !== "answer" || (!shaped.compatible && ["statement", "social_acknowledgment"].includes(act.speech_act)))) act = { ...act, speech_act: "statement", repair: null, ellipsis: null, vocatives: [], question_form: null, inbound_answer: shaped, body: act.body || act.text };
     // A repair-lead marker ("I mean ...", "No, ...") stays in the text the legacy frame reads: it is the
     // self-repair cue of the previous question.
-    const e = { act, speech_act: act.speech_act, question_form: act.question_form, relation: "new", relation_target: null, request_text: act.marker_relation === "repair" && act.speech_act === "statement" ? act.text : (act.body || act.text), predicate: null, facet_source: null, addressee: null, cardinality: null, temporal_scope: null, polarity: act.polarity, alternatives: act.alternatives, args: {}, reissue_of: null, repair: null, clarify: null, overrides: [] };
+    // The text the legacy frame reads: chat noise removed when the normalization record says so (raw kept on the act).
+    const bodyText = act.normalization?.removed?.length && act.body_semantic ? act.body_semantic : (act.body || act.text);
+    const e = { act, speech_act: act.speech_act, question_form: act.question_form, relation: "new", relation_target: null, request_text: act.marker_relation === "repair" && act.speech_act === "statement" ? act.text : bodyText, predicate: null, facet_source: null, addressee: null, cardinality: null, temporal_scope: null, polarity: act.polarity, alternatives: act.alternatives, args: {}, reissue_of: null, repair: null, clarify: null, overrides: [] };
     const top = act.predicate_candidates[0] ?? null;
     // "Is this your first time going in?" asks the predicate inverted: a yes means NO experience. Carried in the
     // args so a repair or ellipsis re-asking the same question keeps it (review F2).
@@ -410,6 +508,8 @@ function analyzeTurn({ raw, present = [], entities = [], dis = null, explicit_ta
               const bare = String(act.repair.referent).replace(/^(?:the|that|this|my|your)\s+/i, "");
               e.request_text = before ? String(last.request_text).replace(new RegExp(before.matched.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "i"), bare) : `${String(last.request_text).replace(/[?.!\s]+$/, "")} -- ${act.repair.referent}?`;
               if (place?.place_id) e.args = { ...e.args, place_id: place.place_id };
+              // The repaired thing replaces the old one in the structured frame too, not only in the words.
+              if (entity.kind === "equipment" && e.args?.item_id) e.args = { ...e.args, item_id: entity.id };
             } else { e.clarify = { reason: "referent_repair_unresolved", slot: "referent" }; missing.push("referent_repair_unresolved"); }
           }
           if (act.repair.kind === "facet_purpose") { e.predicate = "item.purpose"; e.fn_hint = null; e.request_text = "What are they for?"; }
@@ -467,6 +567,7 @@ function analyzeTurn({ raw, present = [], entities = [], dis = null, explicit_ta
         e.fn_hint = ante_request.fn;
         e.request_text = ante_request.request_text;
         e.args = ante_request.args ? { ...ante_request.args } : {};
+        if (ante_request.predicate === "person.familiarity" && (ante_request.targets ?? []).length > 1 && !e.args.asked_among) e.args.asked_among = [...ante_request.targets];
         e.temporal_scope = ante_request.temporal ?? null;
         e.relation_target = ante_request.request_id;
         e.activity = ante.activity ? { activity_id: ante.activity.activity_id, kind: ante.activity.kind } : null;
@@ -484,7 +585,7 @@ function analyzeTurn({ raw, present = [], entities = [], dis = null, explicit_ta
         if (!addressee.ids.length) { e.clarify = { reason: "ellipsis_target_unresolved", slot: "person" }; missing.push("ellipsis_target_unresolved"); }
         // A question ABOUT one person's reply ("Why?", "What do you mean?") does not carry to people who did
         // not give that reply: "you two?" after "Why?" is asked, never silently dropped.
-        else if (String(e.predicate ?? "").startsWith("conversation.") && !(ante_request.targets ?? []).some((id) => addressee.ids.includes(id))) { e.clarify = { reason: "ellipsis_meta_not_transferable", slot: "topic" }; missing.push("ellipsis_meta_not_transferable"); }
+        else if (isMetaRequest({ predicate: e.predicate, fn: ante_request.fn }) && !(ante_request.targets ?? []).some((id) => addressee.ids.includes(id))) { e.clarify = { reason: "ellipsis_meta_not_transferable", slot: "topic" }; missing.push("ellipsis_meta_not_transferable"); }
         if (addressee.mismatch) { e.clarify = { reason: "quantifier_mismatch", slot: "person" }; missing.push("quantifier_mismatch"); }
       }
     } else if (act.speech_act === "attention_call") {
@@ -533,9 +634,12 @@ function analyzeTurn({ raw, present = [], entities = [], dis = null, explicit_ta
         // "When I greeted them." to "when do you mean?": the subordinate-clause form ANSWERS the pending question.
         if (act.force?.cue === "subordinate_clause_or_question") { act.speech_act = "statement"; e.speech_act = "statement"; e.question_form = null; }
         const yesNoReply = act.speech_act === "social_acknowledgment" && inbound?.kind === "question" && /^(?:yes|yeah|yep|yup|yea|no|nope|nah|naw|sure|of course|definitely|not really|kind of|kinda|sort of|maybe|a bit|a little|once|twice|never)\b/.test(String(act.text ?? "").toLowerCase().trim());
-        if (act.speech_act === "statement" || yesNoReply || kind) {
+        const shaped = act.inbound_answer ?? null;
+        if (act.speech_act === "statement" || yesNoReply || kind || shaped) {
           e.addressee = { kind: "inherited", ids: [asker], quantifier: null, source: "open_question_answer" }; e.relation = "answer"; e.speech_act = "answer";
-          e.args = { ...(e.args ?? {}), reply_kind: kind ?? "answer", inbound_kind: inbound?.kind ?? "question", ...(inbound?.predicate ? { answers_predicate: inbound.predicate } : {}) };
+          e.args = { ...(e.args ?? {}), reply_kind: shaped?.kind ?? kind ?? "answer", inbound_kind: inbound?.kind ?? "question", ...(inbound?.predicate ? { answers_predicate: inbound.predicate } : {}), ...(inbound?.answer_shape ? { answer_shape: inbound.answer_shape } : {}), ...(shaped?.option ? { answer_option: shaped.option } : {}) };
+          // An answer the pending question could not take is clarified, never guessed.
+          if (shaped && !shaped.compatible) { e.clarify = { reason: shaped.reason ?? "answer_incompatible", slot: "answer" }; missing.push(shaped.reason ?? "answer_incompatible"); }
         } else if (["question", "request"].includes(act.speech_act) && !act.vocatives.length) {
           // "why do you ask?" asks the asker's reason; any other unaddressed question goes back to the asker.
           if (REPLY_COUNTER_WHY.test(replyText)) e.counter_why = true;
@@ -571,6 +675,8 @@ function analyzeTurn({ raw, present = [], entities = [], dis = null, explicit_ta
         e.args = { ...(e.args ?? {}), count_asked: true };
       }
       e.facet_source = e.predicate ? "tier1_registry" : null;
+      // An imperative's frame reads the whole clause ("Wait here.", not the marker-stripped "here.").
+      if (act.force?.cue === "imperative") e.request_text = act.text;
       // Replies to a coworker's question: an answer opens no request of its own; "why do you ask?" asks the
       // asker's reason.
       if (e.speech_act === "answer") { e.predicate = null; e.facet_source = null; }
@@ -578,7 +684,7 @@ function analyzeTurn({ raw, present = [], entities = [], dis = null, explicit_ta
       // About a thing, the clause's own structure decides the facet (definition / purpose / holder / location /
       // provenance / contents / destination), over any weaker word-level reading.
       if (["question", "request"].includes(act.speech_act)) {
-        const role = itemRole(act.body_expanded ?? act.body ?? "", entities, dis);
+        const role = itemRole(act.body_semantic ?? act.body_expanded ?? act.body ?? "", entities, dis);
         if (role && (!e.predicate || String(e.predicate).startsWith("item.") || String(e.predicate).startsWith("place.") || e.predicate === "institution.purpose")) {
           e.predicate = role.predicate; e.facet_source = "item_role"; e.args = { ...(e.args ?? {}), item_id: role.item_id, ...(role.anaphoric ? { item_anaphoric: true } : {}) };
         }
@@ -614,16 +720,38 @@ function analyzeTurn({ raw, present = [], entities = [], dis = null, explicit_ta
       // Temporal / degree / reason fragments ask more about the answer just given: "since when?", "how long?",
       // "before?", "ever?", "still?" keep its facet (and target); "what for?", "how come?" ask for its reason.
       // Only a UNIQUE answered antecedent in the ledger licenses this; otherwise nothing is inherited.
-      const fragment = String(act.body_expanded ?? act.body ?? "").toLowerCase().replace(/^(?:(?:and|so|but|ok|okay|wait|oh|hm+|really)[,.]?\s+)+/, "").replace(/[?!.\s]+$/, "");
+      const fragment = String(act.body_semantic ?? act.body_expanded ?? act.body ?? "").toLowerCase().replace(/^(?:(?:and|so|but|ok|okay|wait|oh|hm+|really)[,.]?\s+)+/, "").replace(/[?!.\s]+$/, "");
       const last = dis?.last_substantive_request ?? dis?.last_request ?? null;
       const answeredBy = (last?.answered_by ?? []).filter((id) => presentIds.includes(id));
       if (!e.predicate && !act.vocatives.length && last?.predicate && !String(last.predicate).startsWith("conversation.") && answeredBy.length === 1) {
+        // "when was that" / "when did that happen": the same proposition, asked about its time (earlier).
+        // "when was that" asks the TIME of the proposition just answered (an elaboration, same temporal frame);
+        // "before?" asks the same predicate at an earlier time, in the scope the predicate supports.
+        const ELABORATE_TIME = new Set(["when was that", "when was this", "when did that happen", "when did that happen then", "when", "when was it"]);
         const TEMPORAL = { "since when": null, "how long": null, "how long ago": null, "how long now": null, "for how long": null, "how many times": null, "how often": null, "since": null, "until when": null, before: "ever", "before that": "ever", ever: "ever", "and before": "ever", "and before that": "ever", "what about before": "ever", "in general": "ever", "at all": "ever", earlier: "earlier", still: "now", yet: "now", already: "now" };
-        if (fragment in TEMPORAL) {
+        if (ELABORATE_TIME.has(fragment)) {
+          e.speech_act = "question"; e.question_form = "wh"; e.predicate = last.predicate; e.fn_hint = last.fn ?? null; e.request_text = last.request_text; e.args = { ...(last.args ?? {}), followup: { kind: "temporal_elaboration", word: fragment }, time_asked: true };
+          e.temporal_scope = last.temporal ?? null; e.relation = "continuation"; e.relation_target = last.request_id ?? null; e.facet_source = "discourse_followup";
+          e.addressee = { kind: "inherited", ids: answeredBy, quantifier: null, source: "answer_owner" };
+        } else if (fragment in TEMPORAL) {
+          const support = registry.get(last.predicate)?.temporal_support ?? null;
+          let scope = TEMPORAL[fragment];
+          // "before?" of a present state ("how are you?") is earlier; of a history ("been in?") it is ever.
+          if (scope && support && !support.includes(scope)) scope = scope === "ever" && support.includes("earlier") ? "earlier" : scope === "earlier" && support.includes("ever") ? "ever" : scope;
           e.speech_act = "question"; e.predicate = last.predicate; e.fn_hint = last.fn ?? null; e.request_text = last.request_text; e.args = { ...(last.args ?? {}), followup: { kind: "temporal", word: fragment } };
-          e.temporal_scope = TEMPORAL[fragment] ?? last.temporal ?? null; e.relation = "continuation"; e.relation_target = last.request_id ?? null; e.facet_source = "discourse_followup";
+          e.temporal_scope = scope ?? last.temporal ?? null; e.relation = "continuation"; e.relation_target = last.request_id ?? null; e.facet_source = "discourse_followup";
           e.addressee = { kind: "inherited", ids: answeredBy, quantifier: null, source: "answer_owner" };
         }
+      }
+      // "who else" / "anyone else": the same question, to the people who have not answered it (self facets),
+      // or its answer extended (shared facets) -- from the answered frame, never a new topic.
+      if (!e.predicate && !act.vocatives.length && /^(?:and |so |ok |okay )?(?:who else|anyone else|anybody else|what about the others|the rest of you|who else is)\b/.test(fragment) && last?.predicate && !String(last.predicate).startsWith("conversation.")) {
+        const entry = registry.get(last.predicate);
+        const others = presentIds.filter((id) => !(last.answered_by ?? []).includes(id));
+        e.speech_act = "question"; e.question_form = "wh"; e.predicate = last.predicate; e.fn_hint = last.fn ?? null; e.request_text = last.request_text; e.args = { ...(last.args ?? {}), followup: { kind: "person_set", word: fragment } };
+        e.temporal_scope = last.temporal ?? null; e.relation = "continuation"; e.relation_target = last.request_id ?? null; e.facet_source = "discourse_followup";
+        if (SELF_CARDINALITY.has(entry?.default_cardinality) && others.length) e.addressee = { kind: others.length > 1 ? "subset" : "inherited", ids: others, quantifier: "rest", source: "person_set_continuation" };
+        else if (answeredBy.length === 1) e.addressee = { kind: "inherited", ids: answeredBy, quantifier: null, source: "answer_owner" };
       }
       if (!e.predicate && ["what for", "for what", "how come", "why not", "why so", "how so"].includes(fragment) && dis?.active_speaker?.speaker_id && presentIds.includes(dis.active_speaker.speaker_id)) {
         e.predicate = "conversation.explanation"; e.relation = "continuation"; e.facet_source = "discourse_followup";
@@ -642,6 +770,8 @@ function analyzeTurn({ raw, present = [], entities = [], dis = null, explicit_ta
           if (answeredBy.length === 1) e.addressee = { kind: "inherited", ids: answeredBy, quantifier: null, source: "answer_owner" };
         }
       }
+      // "which one?" with nothing offered to choose from: which thing is meant cannot be read from the state.
+      if (!e.predicate && !e.clarify && !act.vocatives.length && !dis?.pending_inbound_request && /^which(?: one| ones)?$/.test(fragment)) { e.clarify = { reason: "which_unresolved", slot: "referent" }; missing.push("which_unresolved"); }
       const shortWh = /^(?:who|what|where|when|why|how|which)\b/i.test(fragment) && fragment.split(/\s+/).length <= 2;
       if ((act.bare_wh || shortWh) && !e.predicate && !act.vocatives.length && !dis?.active_speaker?.speaker_id && !dis?.last_request && !dis?.pending_inbound_request) { e.clarify = { reason: "fragment_no_antecedent", slot: "topic" }; missing.push("fragment_no_antecedent"); }
       if (act.bare_wh) e.relation = "continuation";
@@ -714,7 +844,8 @@ function completenessWithFrame(analysis, frame, effective = analysis?.primary) {
   const e = effective;
   if (e && !e.clarify) {
     // A bare attention call ("Giselle?") or a repair/ellipsis carried by the ledger asks no new facet.
-    const interrogative = (["question", "request"].includes(e.speech_act) || /\?\s*$/.test(e.act?.text ?? "")) && !(e.speech_act === "attention_call" && !e.request_text);
+    // (An imperative is an action request -- the legacy request / order handling owns it; it asks no facet.)
+    const interrogative = (["question", "request"].includes(e.speech_act) || /\?\s*$/.test(e.act?.text ?? "")) && !(e.speech_act === "attention_call" && !e.request_text) && e.act?.force?.cue !== "imperative";
     // A resolved referent says WHICH thing a factual question is about, not WHAT about it is asked ("what's
     // inside that bag"): with no facet, Tier 2 still gets its one bounded reading (the legacy reading stands
     // if it cannot help).
@@ -725,9 +856,29 @@ function completenessWithFrame(analysis, frame, effective = analysis?.primary) {
     if (interrogative && !e.predicate && generic) missing.push(anchored ? "facet_unresolved_referent" : "facet_unresolved");
     // Tier 1 not sure whether the line asks at all: that uncertainty alone earns the bounded reading -- unless
     // the conversation settled it (an answer to the coworker's pending question).
-    if (e.act?.force?.confidence === "uncertain" && e.speech_act !== "answer") missing.push("force_uncertain");
+    const filled = new Set(e.advisory_filled ?? []);
+    // The legacy reading's own specific route (a meaning / explanation / repetition / knowledge question) is
+    // itself evidence of what is asked and of who answers.
+    const legacyRoute = Boolean(frame) && !(["ask_factual", "make_statement", "ambiguous_reference"].includes(frame.discourse_function) && (frame.tier1_generic || frame.discourse_function !== "ask_factual"));
+    // An echo of the coworker's own words (a located surface anchor) is positive evidence the line checks back.
+    if (e.act?.force?.confidence === "uncertain" && e.speech_act !== "answer" && !filled.has("force") && e.facet_source !== "surface_anchor") missing.push("force_uncertain");
     if (e.act?.vocatives?.length && !(e.addressee?.ids ?? []).length && !e.absent_addressees) missing.push("name_unresolved");
     if (e.addressee?.second_person && e.relation !== "new" && !(e.addressee?.ids ?? []).length) missing.push("second_person_no_target");
+    // ── ED-30I: POSITIVE evidence, not the absence of problems ──
+    const semantic = String(e.act?.body_semantic ?? e.act?.body_expanded ?? e.act?.text ?? "").trim();
+    const words = semantic.replace(/[?!.,]/g, " ").trim().split(/\s+/).filter(Boolean).length;
+    // A statement needs statement evidence: a finite verb, a first-person claim, a report, or a social formula.
+    if (e.speech_act === "statement" && !filled.has("force") && e.act?.force?.cue === "declarative" && !STATEMENT_EVIDENCE.test(semantic) && words <= 6) missing.push("force_uncertain");
+    // A facet chosen among competing, equally-ranked readings is weak.
+    const cands = e.act?.predicate_candidates ?? [];
+    if (ASKING.has(e.speech_act) && e.predicate && !filled.has("facet") && cands.length >= 2 && cands[0].id !== cands[1].id && String(cands[0].id).split(".")[0] !== String(cands[1].id).split(".")[0] && registry.get(cands[0].id)?.priority === registry.get(cands[1].id)?.priority && !/item_role|discourse_followup|surface_anchor|inbound_counter|tier2_advisory/.test(e.facet_source ?? "")) missing.push("facet_weak");
+    // An untargeted short or anaphoric question has no evidence of being a fresh shared question.
+    // (A room-wide attention call, or a question with its own shared facet, is legitimately untargeted.)
+    if (ASKING.has(e.speech_act) && e.speech_act !== "attention_call" && e.act?.force?.cue !== "imperative" && e.addressee?.kind === "untargeted" && !e.predicate && !legacyRoute && !filled.has("addressee") && (words <= 2 || /\b(?:it|that|this|those|them|there|then)\b/.test(semantic))) missing.push("addressee_no_evidence");
+    // Inheritance with no unique person is not evidence.
+    if (e.addressee?.kind === "inherited" && !(e.addressee.ids ?? []).length && !e.clarify && !legacyRoute) missing.push("addressee_ambiguous");
+    // A short fragment that resolved to nothing in the conversation.
+    if (e.act?.force?.cue === "fragment" && !e.predicate && !legacyRoute && e.relation === "new" && e.speech_act !== "answer" && !filled.has("fragment")) missing.push("fragment_unresolved");
   }
   const unique = [...new Set(missing)];
   return { complete: unique.length === 0, missing: unique };
@@ -831,7 +982,9 @@ function argsFor(frame, responderId) {
   const args = { ...(frame?.turn?.args ?? {}) };
   const entry = frame?.predicate ? registry.get(frame.predicate) : null;
   if (entry?.domain === "person") args.subject_id = args.third_party_subject ?? responderId;
-  if (entry?.id === "person.familiarity" && !args.other_id) args.others = (frame?.turn?.addressee_ids ?? []).filter((id) => id !== responderId);
+  // "Do you two know each other?" is asked AMONG a set of people; carried to one of them ("your turn,
+  // Tonya") it is still about that set, not about nobody.
+  if (entry?.id === "person.familiarity" && !args.other_id) { const among = (frame?.turn?.addressee_ids ?? []).length > 1 ? frame.turn.addressee_ids : (args.asked_among ?? frame?.turn?.addressee_ids ?? []); args.others = among.filter((id) => id !== responderId); }
   return args;
 }
 
@@ -853,6 +1006,11 @@ function finalizeFrame(frame, primary, rec, { completeness = null, entities = []
   const legacyRoute = Boolean(frame.knowledge_query || frame.past_perception || frame.addressee_state || frame.topic === "equipment" || (frame.referents ?? []).some((r) => r.resolved)
     || (frame.temporal_reference && /\b(?:happened|did|was|were|went|said|saw|heard|told|earlier|ago|yesterday|last (?:time|night|week))\b/i.test(String(primary?.request_text ?? primary?.act?.body ?? ""))));
   if (!primary?.clarify && ASKING.has(primary?.speech_act) && !primary?.predicate && (completeness?.missing ?? []).includes("facet_unresolved") && (!legacyRoute || ["make_statement", "social_observation", "acknowledge"].includes(frame.discourse_function))) primary = { ...primary, clarify: { reason: "facet_unresolved", slot: "topic" } };
+  // Clarify over guess (ED-30I): a competing facet, an unevidenced or ambiguous addressee, an unresolved
+  // fragment, an uncertain reading while a coworker's question is pending, or a question-like uncertainty
+  // that no complete reading settled -- never a best guess.
+  const unsettled = (completeness?.missing ?? []).find((m) => ["facet_weak", "addressee_ambiguous", "addressee_no_evidence", "fragment_unresolved", "context_uncertain"].includes(m)) ?? ((completeness?.missing ?? []).includes("force_uncertain") && QUESTION_LIKE_CUES.has(primary?.act?.force?.cue) ? "force_uncertain" : null);
+  if (!primary?.clarify && primary && unsettled) primary = { ...primary, clarify: { reason: unsettled, slot: "topic" } };
   const predicate = rec?.predicate ?? registry.predicateForFrame(frame);
   const entry = predicate ? registry.get(predicate) : null;
   // A named third person is the SUBJECT only in a fresh question/request, and never someone being addressed
@@ -1011,12 +1169,18 @@ function advisoryFacetPlausible(facet, e, entities = []) {
   const namesItem = mentions.some((m) => m.kind === "equipment");
   const namesPerson = mentions.some((m) => m.kind === "person") || (e?.act?.vocatives ?? []).length > 0 || /\b(?:you|your|yourself)\b/.test(text);
   if (namesItem && !namesPerson && String(facet).startsWith("person.")) return { ok: false, reason: "facet_item_named" };
+  // Tier 1 found a canonical item in the line and nothing else it could be about: a reading about a person's
+  // history or the mission contradicts that evidence (a material Tier-1/Tier-2 disagreement -> clarify).
+  const namesPlace = mentions.some((m) => ["location", "entity", "institution"].includes(m.kind));
+  if (namesItem && !namesPlace && !/^(?:item|conversation)\./.test(String(facet)) && !mentions.some((m) => m.kind === "person")) return { ok: false, reason: "facet_contradicts_item" };
   return { ok: true };
 }
 
 // Reasons a reading never got past decoding / schema validation (fail closed; Tier 1 or a clarification).
 const UNDECODED = new Set(["timeout", "provider_error", "advisory_unavailable", "malformed", "malformed_act", "malformed_confidence"]);
 const ASKING = new Set(["question", "request", "elliptical_continuation", "repair", "attention_call"]);
+// Force cues that suggest the line ASKS (an unsettled one is clarified rather than taken as a remark).
+const QUESTION_LIKE_CUES = new Set(["colloquial_declarative", "fragment", "unpunctuated_second_person", "question_mark_only"]);
 /**
  * The explicit states of one Tier-2 reading against the gaps Tier 1 reported (ED-30G):
  *   decoded                 a JSON object came back in time
@@ -1046,7 +1210,9 @@ function assessAdvisory(advice, analysis, { entities = [], dis = null } = {}) {
   const e = analysis?.primary ?? null;
   const decoded = Boolean(advice) && !UNDECODED.has(advice.reason);
   const schemaValid = Boolean(advice?.accepted) && advice?.version === "yellow-beast-dialogue-advisory@v2" && Array.isArray(advice.acts) && advice.acts.length > 0;
-  const state = (complete, reason) => Object.freeze({ decoded, schema_valid: schemaValid, semantically_complete: complete, accepted: complete, reason });
+  // The facet-recovery record travels with the state (first-pass facet or NONE; the one second pass, if any).
+  const recovery = advice && typeof advice === "object" && "facet_first_pass" in advice ? { facet_first_pass: advice.facet_first_pass ?? null, second_pass: advice.second_pass ? { ...advice.second_pass } : null } : {};
+  const state = (complete, reason) => Object.freeze({ decoded, schema_valid: schemaValid, semantically_complete: complete, accepted: complete, reason, ...recovery });
   if (!advice) return state(false, "not_requested");
   if (!decoded) return state(false, advice.reason ?? "undecoded");
   if (!schemaValid) return state(false, advice.reason ?? "schema_invalid");
@@ -1122,6 +1288,8 @@ function applyAdvisory(analysis, advice, { present = [], entities = [], dis = nu
   if (entry?.slots?.place && !e.args?.place_id && act.referent_id && may("place_unresolved", "deixis_unresolved")) e.args = { ...(e.args ?? {}), place_id: act.referent_id, place_basis: "advisory_candidate" };
   if (e.clarify && e.predicate && (e.addressee?.ids ?? []).length && !["quantifier_mismatch", "repair_target_unresolved", "misunderstood", "referent_repair_mismatch", "ellipsis_meta_not_transferable"].includes(e.clarify.reason)) { e.overrides.push({ field: "clarify", from: e.clarify.reason, reason: "advisory_completed" }); e.clarify = null; }
   if (e.addressee) e.cardinality = cardinalityFor(e.predicate, e.addressee, e);
+  // What a complete reading settled (the contract then has positive evidence for those fields).
+  e.advisory_filled = [...new Set([...(e.advisory_filled ?? []), "force", "fragment", "context", ...(e.predicate ? ["facet"] : []), ...((e.addressee?.ids ?? []).length || act.speech_act === "statement" ? ["addressee"] : [])])];
   const effective = [...analysis.effective.slice(0, -1), e];
   return Object.freeze({ ...analysis, effective, primary: e, advisory: { applied: true, acts: advice.acts.length, state: assessment } });
 }
@@ -1158,6 +1326,9 @@ function tier1Contract(analysis, frame, completeness = null, { dis = null } = {}
   else if (e?.predicate) push("facet", competing ? "weak" : "resolved", competing ? `competing:${cands.slice(0, 2).map((x) => x.id).join("|")}` : `${e.predicate}:${e.facet_source ?? "legacy"}`);
   else if ((c.missing ?? []).includes("facet_unresolved_referent")) push("facet", "unresolved", "facet_unresolved_referent");
   else if ((c.missing ?? []).includes("facet_unresolved")) push("facet", "unresolved", "facet_unresolved");
+  // Positive evidence only: a legacy route counts when it names a specific function, never the generic
+  // "ask something" / "unclear reference" fallbacks.
+  else if (["ambiguous_reference", "ask_factual"].includes(frame?.discourse_function) && e?.speech_act !== "attention_call") push("facet", "unresolved", `no_positive_evidence:${frame.discourse_function}`);
   else push("facet", "resolved", `legacy:${frame?.discourse_function ?? "none"}`);
   const ids = e?.addressee?.ids ?? [];
   if ((c.missing ?? []).some((m) => ["name_unresolved", "second_person_no_target", "ellipsis_target_unresolved", "repair_target_unresolved"].includes(m))) push("addressee", "unresolved", c.missing.find((m) => /name|target/.test(m)));
@@ -1184,7 +1355,11 @@ function advisoryGate({ message, analysis, frame, completeness, present = [], en
   const needed = contract.tier2_required;
   if (!needed) return { needed: false, v2: null, contract };
   const candidates = advisoryCandidates(present, entities);
-  return { needed: true, contract, v2: { utterance: message, repaired: analysis?.normalized?.repaired ?? null, recent, people: candidates.people, referents: candidates.referents, facets: candidates.facets, facet_guide: registry.advisoryFacetGuide(), context: advisoryContext(analysis, dis, candidates) } };
+  // Whether this turn REQUIRES a facet from the reading (facet unresolved / weak, an unresolved fragment, or
+  // question-like uncertainty): then the facet is the primary output and one recovery pass is allowed.
+  const e = analysis?.primary ?? null;
+  const needsFacet = (contract.missing ?? []).some((m) => ["facet_unresolved", "facet_unresolved_referent", "facet_weak", "fragment_unresolved"].includes(m)) || ((contract.missing ?? []).includes("force_uncertain") && QUESTION_LIKE_CUES.has(e?.act?.force?.cue));
+  return { needed: true, contract, v2: { needs_facet: needsFacet, utterance: message, repaired: analysis?.normalized?.repaired ?? null, recent, people: candidates.people, referents: candidates.referents, facets: candidates.facets, facet_guide: registry.advisoryFacetGuide(), context: advisoryContext(analysis, dis, candidates) } };
 }
 
 /**
@@ -1221,9 +1396,10 @@ function turnRecord(analysis, { frame = null, request_ids = [], completeness = n
   const e = analysis.primary;
   return {
     version: TURN_VERSION,
+    raw: analysis.normalized.raw,
     normalized: analysis.normalized.repaired,
     repairs_applied: analysis.normalized.repairs.map((r) => `${r.kind}:${r.from}>${r.to}`),
-    clauses: analysis.acts.map((a) => ({ text: a.text, speech_act: a.speech_act, question_form: a.question_form, markers: a.markers, vocatives: a.vocatives.map((v) => v.id ?? v.name), mentions: a.mentions.map((m) => m.id ?? m.name), predicate_candidates: a.predicate_candidates.map((c) => c.id), repair: a.repair?.kind ?? null, ellipsis: a.ellipsis?.kind ?? null, quantifier: a.quantifier?.kind ?? null, temporal: a.temporal_scope ?? null, polarity: a.polarity ?? null, indirect: a.indirect ? a.indirect.wrapper : null })),
+    clauses: analysis.acts.map((a) => ({ text: a.text, speech_act: a.speech_act, question_form: a.question_form, markers: a.markers, vocatives: a.vocatives.map((v) => v.id ?? v.name), mentions: a.mentions.map((m) => m.id ?? m.name), predicate_candidates: a.predicate_candidates.map((c) => c.id), repair: a.repair?.kind ?? null, ellipsis: a.ellipsis?.kind ?? null, quantifier: a.quantifier?.kind ?? null, temporal: a.temporal_scope ?? null, polarity: a.polarity ?? null, indirect: a.indirect ? a.indirect.wrapper : null, chat_normalization: a.normalization ? { semantic: a.normalization.semantic, removed: a.normalization.removed.map((r) => ({ kind: r.kind, text: r.text })) } : null })),
     primary: e ? { speech_act: e.speech_act, question_form: e.question_form, relation: e.relation, relation_target: e.relation_target, reissue_of: e.reissue_of, predicate: frame?.predicate ?? e.predicate, request_text: e.request_text, addressee: e.addressee ? { kind: e.addressee.kind, ids: [...e.addressee.ids], quantifier: e.addressee.quantifier, source: e.addressee.source } : null, cardinality: e.cardinality, temporal_scope: e.temporal_scope, alternatives: e.alternatives, args: e.args, clarify: e.clarify, repair: e.repair ?? null } : null,
     extra_acts: analysis.effective.slice(0, -1).map((x) => ({ speech_act: x.speech_act, predicate: x.predicate, request_text: x.request_text })),
     closes_activity: analysis.closes_activity,

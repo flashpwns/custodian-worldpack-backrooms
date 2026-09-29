@@ -299,6 +299,7 @@ function snapshot(run, { player_id, location_id = null, present_ids = [] } = {})
     activity: activity ? { activity_id: activity.activity_id, kind: activity.kind, template: { ...activity.template }, completed: [...activity.completed], pending: [...activity.pending], eligible: [...activity.eligible], last_target: activity.last_target } : null,
     acquaintance_complete: state?.acquaintance?.complete_at != null,
     surface_anchors: freshAnchors(run, { player_id }),
+    discourse_frames: discourseFrames(run, { player_id }),
     ...(() => { const inbound = inboundFor(run, { player_id }); return { pending_inbound_request: inbound.pending, just_answered_inbound: inbound.just_answered }; })()
   });
 }
@@ -426,6 +427,28 @@ function inboundKind(text, plan) {
   if (/\b(?:do|did) you mean\b|\byou mean\b|^sorry\b[^.?!]*\?\s*$/i.test(String(text).trim())) return "clarification";
   return /\?\s*$/.test(String(text).trim()) ? "question" : null;
 }
+/**
+ * The answer SHAPE a coworker's question to the player expects (ED-30I): yes_no / person / item / place /
+ * time / choice / free_short_answer, with the offered options of an either/or question (words; resolved to
+ * ids by the turn analysis against present people and canonical entities). Uncertainty and refusal are
+ * always acceptable replies. From the plan's clarification slot when there is a plan; else the words.
+ */
+function inboundShape(text, plan = null) {
+  const SLOT = { temporal: "time", person: "person", location: "place", place: "place", topic: "free_short_answer", referent: "item", item: "item" };
+  if (plan?.expected_slot && SLOT[plan.expected_slot]) return { answer_shape: SLOT[plan.expected_slot], options: [] };
+  if (plan) return { answer_shape: "free_short_answer", options: [] };
+  const q = String(text ?? "").split(/(?<=[.!?])\s+/).filter((t) => /\?\s*$/.test(t)).at(-1) ?? String(text ?? "");
+  const body = q.toLowerCase().replace(/[?!.]+$/, "").trim();
+  const alt = body.match(/^(?:(?:so|and|well|ok|okay)[,]?\s+)?(?:do you want|would you rather|did you want|should|is it|are you|is that|are we|do we|was it)?\s*(.*?\S)\s*,?\s+or\s+(.+)$/);
+  if (alt && !/\bor (?:not|no|something|what)\b/.test(body)) return { answer_shape: "choice", options: [alt[1], alt[2]].map((o) => o.replace(/^(?:the|a|an)\s+/, "").trim()) };
+  if (/^(?:who|whose|whom)\b/.test(body)) return { answer_shape: "person", options: [] };
+  if (/^where\b/.test(body)) return { answer_shape: "place", options: [] };
+  if (/^(?:when|how long|what time)\b/.test(body)) return { answer_shape: "time", options: [] };
+  if (/^(?:which|what) (?:one|thing|item|of)\b/.test(body)) return { answer_shape: "item", options: [] };
+  if (/^(?:is|are|am|was|were|do|does|did|have|has|had|can|could|will|would|should|you|u)\b/.test(body)) return { answer_shape: "yes_no", options: [] };
+  return { answer_shape: "free_short_answer", options: [] };
+}
+
 function recordInboundRequest(run, { event_id, speaker_id, text, plan, request_id = null }) {
   const state = stateOf(run);
   const kind = inboundKind(text, plan);
@@ -433,7 +456,11 @@ function recordInboundRequest(run, { event_id, speaker_id, text, plan, request_i
   // What the expectation is about is canonical too: the facet of the request the plan answered (a
   // clarification is about the player's own question).
   const predicate = plan?.predicate ?? (plan?.required_facts ?? []).find((f) => f.key === "predicate_answer")?.value?.predicate ?? null;
-  const inbound = { event_id, speaker_id, text: String(text ?? "").slice(0, 200), kind, predicate, in_reply_to: request_id };
+  // The expected answer shape is canonical: from the plan that asked (its declared shape and offered option
+  // ids, or its clarification slot), never from the words a wording provider chose. Only without a plan (an
+  // offline evaluation context) are the words read.
+  const shape = plan ? (plan.answer_shape ? { answer_shape: plan.answer_shape, options: [...(plan.options ?? [])] } : inboundShape(null, plan)) : inboundShape(text, null);
+  const inbound = { event_id, speaker_id, text: String(text ?? "").slice(0, 200), kind, predicate, in_reply_to: request_id, answer_shape: shape.answer_shape, options: shape.options, uncertainty_allowed: true, refusal_allowed: true };
   state.inbound_requests = [...state.inbound_requests, inbound].slice(-MAX_INBOUND);
   return inbound;
 }
@@ -451,10 +478,36 @@ function inboundFor(run, { player_id } = {}) {
   const pos = (id) => history.findIndex((e) => e.id === id);
   const latest = state.inbound_requests.at(-1);
   const at = pos(latest.event_id);
-  const view = (x) => ({ kind: x.kind, from: x.speaker_id, text: x.text, predicate: x.predicate ?? null, event_id: x.event_id });
+  const view = (x) => ({ kind: x.kind, from: x.speaker_id, text: x.text, predicate: x.predicate ?? null, event_id: x.event_id, answer_shape: x.answer_shape ?? null, options: [...(x.options ?? [])] });
   if (at > lastPlayer) return { pending: view(latest), just_answered: null };
   if (at > prevPlayer && at < lastPlayer) return { pending: null, just_answered: view(latest) };
   return { pending: null, just_answered: null };
+}
+
+// ─── discourse frames (ED-30I): the compact, structured view follow-ups resolve against ──────────────────
+// One per recent substantive exchange; canonical request state only (no wording).
+const FRAME_STATUS = { OPEN: "pending", PARTIALLY_SATISFIED: "pending", CLARIFYING: "pending", SATISFIED: "answered", ANSWERED_UNKNOWN: "answered", ANSWERED_NOT_ESTABLISHED: "answered", SUPERSEDED: "repaired", ABANDONED: "abandoned" };
+function discourseFrames(run, { limit = 4, player_id = null } = {}) {
+  const registry = require("./dialogue-registry");
+  const state = stateOf(run);
+  // A coworker's question to the player is a frame too: its answer shape and offered options, pending until
+  // the player next speaks.
+  const history = run?.expedition?.dialogue_history ?? [];
+  const lastPlayer = player_id ? history.map((e, i) => (e.speaker_id === player_id ? i : -1)).filter((i) => i >= 0).at(-1) ?? -1 : -1;
+  const inbound = (state?.inbound_requests ?? []).filter((x) => x.kind !== "attention").slice(-2).map((x) => ({
+    request_id: `inbound:${x.event_id}`, speaker: x.speaker_id, addressee: ["player"], speech_act: "question", predicate: x.predicate ?? null, subject: "player",
+    referent: null, temporal: null, answer_type: x.answer_shape ?? null, options: [...(x.options ?? [])], cardinality: "one", answered_by: [],
+    status: history.findIndex((e) => e.id === x.event_id) > lastPlayer ? "pending" : "answered"
+  }));
+  return [...(state?.requests ?? []).filter((r) => r.predicate && !String(r.predicate).startsWith("conversation.")).slice(-limit).map((r) => {
+    const entry = registry.get(r.predicate);
+    return {
+      request_id: r.request_id, speaker: "player", addressee: [...(r.targets ?? [])], speech_act: r.question_form ? "question" : "request",
+      predicate: r.predicate, subject: r.args?.third_party_subject ?? (entry?.domain === "person" ? "addressee" : null),
+      referent: r.args?.item_id ?? r.args?.place_id ?? null, temporal: r.temporal ?? null, answer_type: entry?.answer_contract?.kind ?? null,
+      cardinality: r.cardinality ?? entry?.default_cardinality ?? null, answered_by: [...(r.answered_by ?? [])], status: FRAME_STATUS[r.state] ?? String(r.state ?? "").toLowerCase()
+    };
+  }), ...inbound];
 }
 
 function commitTurnLines(run, items = [], { present_ids = [] } = {}) {
@@ -489,4 +542,4 @@ function commitTurnLines(run, items = [], { present_ids = [] } = {}) {
   return results;
 }
 
-module.exports = { recordInboundRequest, inboundFor, inboundKind, echoTokens, anchorSpans, recordSurfaceAnchors, freshAnchors, recentlyAnswered, openTurnRequests, commitTurnLines, verdictOf, STATE_VERSION, REQUEST_STATES, ACTIVITY_KINDS, ABANDON_AFTER_TURNS, PENDING, TERMINAL, SELF_REFERENTIAL, ACTIVITY_OF, stateOf, openRequest, reopenRequest, recordSatisfaction, supersede, ageRequests, findRequest, requestsOfInteraction, lastRequest, pendingRequests, recordRepair, activeActivity, noteActivityRequest, completeActivitySlot, closeActivity, noteSelfReferentialAnswer, noteAcquaintanceClosed, evaluateAcquaintance, acquaintanceComplete, recordLearning, activeSpeaker, snapshot };
+module.exports = { inboundShape, discourseFrames, recordInboundRequest, inboundFor, inboundKind, echoTokens, anchorSpans, recordSurfaceAnchors, freshAnchors, recentlyAnswered, openTurnRequests, commitTurnLines, verdictOf, STATE_VERSION, REQUEST_STATES, ACTIVITY_KINDS, ABANDON_AFTER_TURNS, PENDING, TERMINAL, SELF_REFERENTIAL, ACTIVITY_OF, stateOf, openRequest, reopenRequest, recordSatisfaction, supersede, ageRequests, findRequest, requestsOfInteraction, lastRequest, pendingRequests, recordRepair, activeActivity, noteActivityRequest, completeActivitySlot, closeActivity, noteSelfReferentialAnswer, noteAcquaintanceClosed, evaluateAcquaintance, acquaintanceComplete, recordLearning, activeSpeaker, snapshot };

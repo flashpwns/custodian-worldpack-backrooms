@@ -1,7 +1,7 @@
 [
  {
   "player": "Hello everyone!",
-  "ms": 105,
+  "ms": 134,
   "lines": [
    {
     "speaker": "Giselle",
@@ -73,7 +73,7 @@
  },
  {
   "player": "Is it everyone's first day here, at Async, today? Or just myself.",
-  "ms": 103,
+  "ms": 130,
   "lines": [
    {
     "speaker": "Giselle",
@@ -120,7 +120,7 @@
  },
  {
   "player": "How are you doing this morning Giselle?",
-  "ms": 106,
+  "ms": 125,
   "lines": [
    {
     "speaker": "Giselle",
@@ -165,7 +165,7 @@
  },
  {
   "player": "Good to hear! How about you two, Malcolm, and Tonya?",
-  "ms": 119,
+  "ms": 138,
   "lines": [
    {
     "speaker": "Malcolm",
@@ -226,7 +226,7 @@
  },
  {
   "player": "Are you all looking forward to doing whatever it is were actually supposed to do in there?",
-  "ms": 133,
+  "ms": 157,
   "lines": [
    {
     "speaker": "Giselle",
@@ -303,7 +303,7 @@
  },
  {
   "player": "Interesting. Does anyone know anything about where were going?",
-  "ms": 132,
+  "ms": 156,
   "lines": [
    {
     "speaker": "Giselle",
@@ -350,7 +350,7 @@
  },
  {
   "player": "So youve been there before? this, complex?",
-  "ms": 135,
+  "ms": 161,
   "lines": [
    {
     "speaker": "Giselle",
@@ -395,7 +395,7 @@
  },
  {
   "player": "Interesting. Tonya, can you tell me a bit about yourself?",
-  "ms": 150,
+  "ms": 167,
   "lines": [
    {
     "speaker": "Tonya",
@@ -440,7 +440,7 @@
  },
  {
   "player": "I was speaking to Tonya",
-  "ms": 149,
+  "ms": 174,
   "lines": [
    {
     "speaker": "Tonya",
@@ -480,7 +480,7 @@
  },
  {
   "player": "Tonya, tell me about yourself",
-  "ms": 153,
+  "ms": 182,
   "lines": [
    {
     "speaker": "Tonya",
@@ -525,7 +525,7 @@
  },
  {
   "player": "Malcolm, your turn",
-  "ms": 157,
+  "ms": 191,
   "lines": [
    {
     "speaker": "Malcolm",
@@ -570,7 +570,7 @@
  },
  {
   "player": "Introduce yourself",
-  "ms": 164,
+  "ms": 196,
   "lines": [
    {
     "speaker": "Malcolm",
@@ -615,7 +615,7 @@
  },
  {
   "player": "Okay, well that's that, where do we head to next?",
-  "ms": 171,
+  "ms": 204,
   "lines": [
    {
     "speaker": "Giselle",
@@ -658,7 +658,7 @@
  },
  {
   "player": "Alright cool. Are we all going together?",
-  "ms": 176,
+  "ms": 220,
   "lines": [
    {
     "speaker": "Tonya",
@@ -705,7 +705,7 @@
  },
  {
   "player": "I asked if we were all going there together",
-  "ms": 181,
+  "ms": 213,
   "lines": [
    {
     "speaker": "Tonya",
@@ -745,7 +745,7 @@
  },
  {
   "player": "Hello?",
-  "ms": 189,
+  "ms": 220,
   "lines": [
    {
     "speaker": "Malcolm",

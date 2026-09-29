@@ -294,6 +294,7 @@ function presentPredicateAnswer(answer, { prior = [] } = {}) {
     if (answer.predicate === "item.provenance") return variant("I don't know where it came from.", ["No idea where it came from, honestly.", "Couldn't tell you where it came from."], prior);
     // One's own history that canon does not settle: an honest hedge, never an invented yes or no.
     if (a.count_asked) return variant("I couldn't say how many, exactly.", ["Couldn't tell you how many, honestly.", "I couldn't say exactly how many."], prior);
+    if (a.time_asked) return variant("I couldn't say exactly when.", ["Couldn't tell you exactly when, honestly.", "I couldn't say when, exactly."], prior);
     // A place the profile does not settle ("Have you been to Outpost A?"): no lean either way.
     if (a.place && !["complex", "threshold"].includes(a.place)) return variant("I couldn't say for sure.", ["Couldn't say for sure, honestly.", "I'm not sure, honestly."], prior);
     if (/^person\.(?:complex|expedition)_experience$/.test(answer.predicate)) return "Not that I can think of.";

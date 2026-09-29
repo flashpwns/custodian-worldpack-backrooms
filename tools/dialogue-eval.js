@@ -86,7 +86,7 @@ function contextState(context = {}, sc = scene()) {
   const answered = lastRequest && lastRequest.request_id === "req-prior" ? lastRequest : null;
   const surface_anchors = speakerId && context.last_npc_line ? [{ speaker_id: speakerId, event_id: "e-prior", spans: dialogueState.anchorSpans(context.last_npc_line, [{ request_id: answered?.request_id ?? null, predicate: answered?.predicate ?? null }]).map((span) => ({ ...span, request_text: answered?.request_text ?? null, args: answered?.args ? { ...answered.args } : null, temporal: answered?.temporal ?? null })) }] : [];
   // A coworker line ending in a question opens an inbound expectation (as the ledger records it).
-  const pending_inbound_request = speakerId && npcAsked ? { kind: dialogueState.inboundKind(context.last_npc_line, null), from: speakerId, text: context.last_npc_line, predicate: registry.detectPredicates(String(context.last_npc_line).toLowerCase())[0]?.id ?? null } : null;
+  const pending_inbound_request = speakerId && npcAsked ? { kind: dialogueState.inboundKind(context.last_npc_line, null), from: speakerId, text: context.last_npc_line, predicate: registry.detectPredicates(String(context.last_npc_line).toLowerCase())[0]?.id ?? null, ...dialogueState.inboundShape(context.last_npc_line, null) } : null;
   const dis = { active_speaker: speakerId ? { speaker_id: speakerId, speaker_ids: [speakerId] } : null, last_request: lastRequest, pending_requests: pending, activity, surface_anchors, pending_inbound_request };
   const discourse = context.last_player_line || context.last_npc_line ? { turns: [], last_turn: { kind: "player_exchange", interaction_id: "i-prior", player_text: context.last_player_line ?? null, responder_ids: speakerId ? [speakerId] : [], responses: speakerId && context.last_npc_line ? [{ speaker_id: speakerId, speaker_name: context.active_speaker, text: context.last_npc_line, basis: { kind: "social" }, facts: { required: [{ key: "known_fact", value: context.last_npc_line }], optional: [] } }] : [], address: { scope: speakerId ? "direct" : "untargeted", addressee_ids: speakerId ? [speakerId] : [] } }, active_thread: speakerId ? { kind: "direct", member_ids: [speakerId], responder_ids: [speakerId] } : null, pending_question: npcAsked ? { discourse_function: lastRequest?.fn ?? "ask_factual", player_text: context.last_player_line ?? "", responder_ids: speakerId ? [speakerId] : [], asker_ids: speakerId ? [speakerId] : [], expected_slot: "topic" } : null } : null;
   return { dis: dialogueTurn.withSalience(dis, discourse, sc.entities), discourse };
@@ -157,14 +157,16 @@ function gateFor(item, sc = scene()) {
 async function evaluateFull(items, { provider, log = () => {} } = {}) {
   const sc = scene();
   const gots = [];
-  const tier2 = { invoked: 0, accepted: 0, rejected: 0, decoded: 0, schema_valid: 0, semantically_complete: 0, timeouts: 0, reasons: {}, latency_ms: [], turn_ms: [] };
+  const tier2 = { invoked: 0, accepted: 0, rejected: 0, decoded: 0, schema_valid: 0, semantically_complete: 0, timeouts: 0, first_pass_none: 0, second_pass: 0, second_pass_recovered: 0, second_pass_ms: [], reasons: {}, latency_ms: [], turn_ms: [] };
   for (const [i, item] of items.entries()) {
     const started = Date.now();
     const gate = gateFor(item, sc);
     let advice = null;
     if (gate.needed) {
       tier2.invoked += 1;
-      const raw = await dialogueAdvisory.requestAdvisoryV2(provider, gate.v2);
+      const raw = await dialogueAdvisory.requestAdvisoryWithFacetRecovery(provider, gate.v2);
+      if (raw?.facet_first_pass === "NONE") tier2.first_pass_none += 1;
+      if (raw?.second_pass?.used) { tier2.second_pass += 1; if (raw.second_pass.recovered) tier2.second_pass_recovered += 1; tier2.second_pass_ms.push(raw.second_pass.latency_ms ?? 0); }
       advice = raw && typeof raw === "object" ? { ...raw, tier1_missing: [...(gate.completeness?.missing ?? [])] } : raw;
       tier2.latency_ms.push(advice?.latency_ms ?? 0);
     }
@@ -185,7 +187,7 @@ async function evaluateFull(items, { provider, log = () => {} } = {}) {
   const n = items.length || 1;
   const result = score(items, gots);
   const rate = (x) => (tier2.invoked ? Math.round((x / tier2.invoked) * 1000) / 10 : null);
-  result.tier2 = { invocation_rate: Math.round((tier2.invoked / n) * 1000) / 10, invoked: tier2.invoked, decoded: tier2.decoded, schema_valid: tier2.schema_valid, semantically_complete: tier2.semantically_complete, accepted: tier2.accepted, rejected: tier2.rejected, accepted_rate: rate(tier2.accepted), completion_rate: rate(tier2.decoded), timeout_rate: rate(tier2.timeouts), rejection_reasons: tier2.reasons, advisory_latency_ms: { p50: q(tier2.latency_ms, 0.5), p90: q(tier2.latency_ms, 0.9) }, turn_latency_ms: { p50: q(tier2.turn_ms, 0.5), p90: q(tier2.turn_ms, 0.9) } };
+  result.tier2 = { invocation_rate: Math.round((tier2.invoked / n) * 1000) / 10, invoked: tier2.invoked, decoded: tier2.decoded, schema_valid: tier2.schema_valid, semantically_complete: tier2.semantically_complete, accepted: tier2.accepted, rejected: tier2.rejected, accepted_rate: rate(tier2.accepted), completion_rate: rate(tier2.decoded), timeout_rate: rate(tier2.timeouts), rejection_reasons: tier2.reasons, first_pass_facet_none_rate: rate(tier2.first_pass_none), second_pass_invocations: tier2.second_pass, second_pass_rate: rate(tier2.second_pass), second_pass_recovered: tier2.second_pass_recovered, second_pass_recovery_rate: tier2.second_pass ? Math.round((tier2.second_pass_recovered / tier2.second_pass) * 1000) / 10 : null, second_pass_latency_ms: { p50: q(tier2.second_pass_ms, 0.5), p90: q(tier2.second_pass_ms, 0.9) }, advisory_latency_ms: { p50: q(tier2.latency_ms, 0.5), p90: q(tier2.latency_ms, 0.9) }, turn_latency_ms: { p50: q(tier2.turn_ms, 0.5), p90: q(tier2.turn_ms, 0.9) } };
   return result;
 }
 
@@ -199,6 +201,7 @@ function score(items, gots) {
   let confidentWrong = 0;
   let shouldClarifyMissed = 0;
   let turnCorrect = 0;
+  const outcomes = { true_positive: 0, correct_clarification: 0, false_clarification: 0, wrong_unclarified: 0 };
   const failures = [];
   for (const [index, item] of items.entries()) {
     const got = gots[index];
@@ -217,11 +220,17 @@ function score(items, gots) {
     if (!got.should_clarify && exp.should_clarify) shouldClarifyMissed += 1;
     if (!got.should_clarify && (exp.should_clarify || !ok.addressee || !ok.predicate)) confidentWrong += 1;
     if (GATE_FIELDS.every((f) => ok[f]) && got.should_clarify === Boolean(exp.should_clarify)) turnCorrect += 1;
+    // Safety outcomes (ED-30I): a true positive interpretation, a correct clarification, a false (unneeded)
+    // clarification, or a confident wrong answer.
+    if (!got.should_clarify && GATE_FIELDS.every((f) => ok[f]) && !exp.should_clarify) outcomes.true_positive += 1;
+    else if (got.should_clarify && exp.should_clarify) outcomes.correct_clarification += 1;
+    else if (got.should_clarify && !exp.should_clarify) outcomes.false_clarification += 1;
+    else if (!got.should_clarify) outcomes.wrong_unclarified += 1;
     if (Object.values(ok).some((v) => !v) || got.should_clarify !== Boolean(exp.should_clarify)) failures.push({ id: item.id, utterance: item.utterance, context: item.context, got, expected: exp, wrong: fields.filter((f) => !ok[f]).concat(got.should_clarify !== Boolean(exp.should_clarify) ? ["should_clarify"] : []) });
   }
   const n = items.length || 1;
   const pct = (x) => Math.round((x / n) * 1000) / 10;
-  return { n: items.length, accuracy: Object.fromEntries(fields.map((f) => [f, pct(hits[f])])), turn_correct: pct(turnCorrect), clarify_rate: pct(clarified), confident_wrong: pct(confidentWrong), should_clarify_missed: shouldClarifyMissed, failures };
+  return { n: items.length, accuracy: Object.fromEntries(fields.map((f) => [f, pct(hits[f])])), turn_correct: pct(turnCorrect), outcomes: Object.fromEntries(Object.entries(outcomes).map(([k, v]) => [k, pct(v)])), clarify_rate: pct(clarified), confident_wrong: pct(confidentWrong), should_clarify_missed: shouldClarifyMissed, failures };
 }
 
 function readCorpus(file) { return fs.readFileSync(file, "utf8").split("\n").map((l) => l.trim()).filter(Boolean).map((l) => JSON.parse(l)); }
