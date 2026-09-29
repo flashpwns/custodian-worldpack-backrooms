@@ -11,8 +11,8 @@ opened or created.**
 | Artifact | What | Pinned by |
 | --- | --- | --- |
 | `characterization.json` | the equivalence authority for Phase 1 (v2, value-level) | `ed31a` SHA-256 pin; `ed31b` full replay |
-| `roundtrip.json` | legacy → ReaderFrame → frame-driven resolver → frame assembly, every fixture turn | `ed31a` SHA-256 pin + scenario replay; `ed31b` full replay |
-| `legacy-adapter-coverage.json` | how much legacy behaviour ReaderFrame v1 expresses exactly, and why not | regenerable report (not an authority) |
+| `roundtrip.json` | legacy → ReaderFrame → frame-driven resolver → frame assembly, every fixture turn. **Regenerated in Reader Phase 1** with the Phase-1 resolver (verdict-consuming, owner rulings applied): 80.0% behaviour-equivalent / 26.1% exact; the §2 figures below are the Phase-0.5 values. Superseded as a measure by `../reader-phase1/shadow-diff.json` | `ed31a` SHA-256 pin + scenario replay; `ed31b` full replay |
+| `legacy-adapter-coverage.json` | how much legacy behaviour ReaderFrame v1 expresses exactly, and why not (regenerated in Phase 1: 89.8%) | regenerable report (not an authority) |
 | `baseline-failing-tests.json` | the full-repository failing set at `9e51842` (79 tests) | `ed31a` SHA-256 pin; `tools/compare-failing-tests.js` |
 | `runtime-spike.json` | pinned-runtime measurements (non-authoritative; live model) | not in CI |
 
@@ -80,7 +80,7 @@ and the result is compared with what production decided.
 | --- | --- |
 | Turns evaluated | 471 / 471 (0 resolver errors) |
 | **Exact round trip** (every effective-act field, args and overrides included) | **37 / 471 = 7.9%** |
-| **Behaviour-equivalent** (discourse function, predicate, speech act, addressees, cardinality, temporal, clarify, relation target, reissue, routing args) | **410 / 471 = 87.0%** |
+| **Behaviour-equivalent** (discourse function, predicate, speech act, addressees, cardinality, temporal, clarify, relation target, reissue, routing args) | **410 / 471 = 87.0%** (a coarse Phase-0.5 measure; **not readiness**, see the correction below) |
 
 Turns per class (a turn can carry several):
 
@@ -94,17 +94,37 @@ Turns per class (a turn can carry several):
 | owner-decision | 11 | contested conventions (see the rulings) |
 | legacy-overlay | 1 | the service's address-correction overlay decided the turn |
 
-The 61 behaviour-different turns by class combination:
-- resolver-policy: 25;
-- frame-assembly-text: 10;
-- owner-decision: 9;
-- frame-assembly-text + resolver-policy: 7;
-- legacy-quirk + resolver-policy: 4;
-- frame-assembly-text + legacy-quirk + resolver-policy: 3;
-- frame-assembly-text + owner-decision + resolver-policy: 2;
-- legacy-overlay + resolver-policy: 1.
+The 61 behaviour-different turns by class combination.
+
+**Correction (Phase 1):** an earlier version listed these combinations with `schema-loss` silently removed; it
+appears on 58 of the 61 turns. With every class shown:
+
+| Classes | Turns |
+| --- | --- |
+| resolver-policy + schema-loss | 22 |
+| frame-assembly-text + schema-loss | 10 |
+| owner-decision + schema-loss | 9 |
+| frame-assembly-text + resolver-policy + schema-loss | 7 |
+| legacy-quirk + resolver-policy + schema-loss | 4 |
+| resolver-policy (only) | 3 |
+| frame-assembly-text + legacy-quirk + resolver-policy + schema-loss | 3 |
+| frame-assembly-text + owner-decision + resolver-policy + schema-loss | 2 |
+| legacy-overlay + resolver-policy | 1 |
+
+The classes are not causes: "resolver-policy" and "schema-loss" each name a kind of difference, not why it
+happened. Phase 1 replaces them with evidence-based cause codes (`docs/reader/READER_PHASE1.md` §6).
 
 Every one is listed in `roundtrip.json` (`unresolved`).
+
+**Correction (Phase 1): the 87.0% is not readiness.** It compares a behaviour subset and hides the request's own
+words. Under the reviewed comparison:
+- **strict semantic equivalence = 328 / 471 = 69.6%**;
+- **exact excluding `request_text` = 304 / 471 = 64.5%**.
+
+The Phase-1 shadow comparator supersedes both: **317 / 471 = 67.3%** equal at all four levels (act, routing,
+lifecycle, planner frame; `request_text` excluded), with every remaining difference classified by cause. The
+regenerated round trip (Phase-1 resolver, verdict-consuming, owner rulings applied) measures 80.0% on its own coarse
+behaviour subset. That figure is kept only as a regression pin.
 
 **Reading.** Exact expressibility (below) is **not** migration readiness. 13% of fixture turns do not survive
 the round trip with the same behaviour, and 7.9% survive with every field intact. The largest movable pieces

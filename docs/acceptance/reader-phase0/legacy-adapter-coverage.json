@@ -4,13 +4,13 @@
  "seam_recorded": 471,
  "frames": 471,
  "acts": 506,
- "exact_turns": 422,
- "exact_pct": 89.6,
+ "exact_turns": 423,
+ "exact_pct": 89.8,
  "by_fixture_kind": {
   "script": {
    "turns": 149,
-   "exact": 131,
-   "exact_pct": 87.9
+   "exact": 132,
+   "exact_pct": 88.6
   },
   "transcript": {
    "turns": 16,
@@ -29,27 +29,18 @@
   }
  },
  "validation_disposition_of_legacy_frames": {
-  "accept": 419,
-  "clarify": 40,
-  "reject_fields": 12
+  "accept": 422,
+  "reject_fields": 12,
+  "clarify": 37
  },
  "validation_errors_on_legacy_frames": {
-  "V3:no_antecedent": 39,
+  "V3:no_antecedent": 35,
   "V1:question_form_incompatible": 11,
   "V3:others_count_mismatch": 3,
   "V2:contradicts_chip_target": 1,
   "V2:non_asking_reading_with_asking_features": 1
  },
  "validation_vs_legacy_decision": {
-  "V3:no_antecedent": {
-   "legacy_also_declined": 35,
-   "legacy_proceeded": 4,
-   "examples_legacy_proceeded": [
-    "Malcolm, I hope you don't mind me asking, but are you nervous at all?",
-    "So where do we go next, if you don't mind me asking?",
-    "Tonya, have you?"
-   ]
-  },
   "V1:question_form_incompatible": {
    "legacy_also_declined": 0,
    "legacy_proceeded": 11,
@@ -72,6 +63,11 @@
    "examples_legacy_proceeded": [
     "what could possibly go wrong lol"
    ]
+  },
+  "V3:no_antecedent": {
+   "legacy_also_declined": 35,
+   "legacy_proceeded": 0,
+   "examples_legacy_proceeded": []
   },
   "V3:others_count_mismatch": {
    "legacy_also_declined": 3,
@@ -164,15 +160,15 @@
    }
   },
   "legacy-only artifact": {
-   "turns": 12,
-   "notes": 13,
+   "turns": 11,
+   "notes": 12,
    "codes": {
     "relation_without_antecedent": {
-     "count": 4,
+     "count": 3,
      "examples": [
       "Malcolm, I hope you don't mind me asking, but are you nervous at all?",
       "So where do we go next, if you don't mind me asking?",
-      "Tonya, have you?"
+      "Anyway, where are we going?"
      ]
     },
     "player_claim_not_typed_by_legacy": {
@@ -230,8 +226,8 @@
    }
   }
  },
- "non_exact_turns": 49,
- "class_turn_sum": 52,
+ "non_exact_turns": 48,
+ "class_turn_sum": 51,
  "multi_class_turns": [
   {
    "fixture": "scenario/ed30i-inbound",

@@ -1,7 +1,9 @@
 # Owner rulings needed before Phase 1 (from the Phase-0.5 round trip)
 
-**Status:** prepared for owner approval. **Nothing here is decided or implemented.** Production behaviour
-is unchanged. Each ruling lists:
+**Status (updated in Reader Phase 1, 2026-09-29):** the owner ruled on A (default adopted), B (#1, #2, #4 read as
+`new`; #3 gets a reader-state `c1` label), C3 (chip-wins in production, conflict recorded in the shadow; wh-led
+sarcasm fails closed). **C1 and C2 remain undecided.** Implementation: `docs/reader/READER_PHASE1.md` (shadow only).
+Production behaviour is unchanged. The original preparation follows, with the corrections marked below. Each ruling lists:
 - the exact fixture cases (from `docs/acceptance/reader-phase0/roundtrip.json` and
   `legacy-adapter-coverage.json`);
 - what production does now;
@@ -44,7 +46,14 @@ per-person targets.
 - which coworker is chosen (spokesperson among targets, versus the untargeted rotation);
 - the ledger's `targets` / `address.scope` (`group` versus `untargeted`).
 
-In the round trip this is the only difference on all 10 turns (`addressee` group → []).
+**Correction (Phase 1):** an earlier version said the addressee (group → []) was "the only difference on all 10
+turns". That was false. Per the committed Phase-0.5 `roundtrip.json`:
+- every one of the 10 turns also differed in effective-act fields: addressee kind / source / quantifier, plus
+  `place_basis` / `asks_split` on 3 turns;
+- `dev-corpus.jsonl#d110` ("are we all going in together") also differed in behaviour on `routing_args` (the
+  place), and carried the `frame-assembly-text` and `resolver-policy` classes;
+- "Will all of us be going to Equipment Staging together, or are we splitting up?" is additionally rejected by V1
+  (`question_form_incompatible`, ruling C1).
 
 **Recommendation (default):**
 - `subject = group_inclusive`;
@@ -114,7 +123,7 @@ harness artifacts, now fixed (#5 and #6).
 
 ## D. Round-trip classes the owner should know (not rulings)
 
-- **frame-assembly-text** (24 turns). `finalizeFrame` reads the act's own words and clause for subjects, the
+- **frame-assembly-text** (**22** turns; an earlier version said 24, and the committed `roundtrip.json` shows 22). `finalizeFrame` reads the act's own words and clause for subjects, the
   legacy route and clarify-over-guess. Phase 1 must pass subject and route from the frame. This is an
   architecture task, not a ruling.
 - **legacy-overlay** (1 turn: "No, the other one."). The service's `resolveAddressCorrection` overlay decides

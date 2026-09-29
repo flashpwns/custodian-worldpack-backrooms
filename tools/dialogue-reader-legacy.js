@@ -125,7 +125,12 @@ function frameFromLegacy(analysisIn, readerInput, { frame: legacyFrame = null, p
     // facet (registry predicate; the finalized frame's reconciled predicate is the legacy's final word)
     const isPrimary = e && e === analysis?.primary;
     const predicate = (isPrimary && legacyFrame?.predicate !== undefined ? legacyFrame.predicate : null) ?? base.predicate ?? null;
+    // On a statement the facet is what the player CLAIMS about (ReaderFrame v1): the legacy reading of the clause
+    // (its first registry predicate candidate), read live from this line -- the reader state a later "Tonya, have
+    // you?" continues (owner ruling 3). Never the persisted clause record.
+    const claimFacet = speech === "statement" && !predicate ? (clauseAct.predicate_candidates ?? []).map((c) => c?.id).find((id) => id && registry.get(id)) ?? null : null;
     if (predicate && registry.get(predicate)) out.facet = predicate;
+    else if (claimFacet) out.facet = claimFacet;
     else {
       out.facet = ASKING.has(speech) && speech !== "attention_call" ? "NONE_ASKING" : "NOT_APPLICABLE";
       const fn = isPrimary ? legacyFrame?.discourse_function ?? null : null;
@@ -188,27 +193,41 @@ function frameFromLegacy(analysisIn, readerInput, { frame: legacyFrame = null, p
     // before. Have you, Giselle?") -- is the antecedent.
     else if (relation.kind === "continuation" && i > 0 && acts[i - 1] && (ASKING.has(acts[i - 1].speech_act) || acts[i - 1].speech_act === "statement")) relation.target = `s${i - 1}`;
     else if (relation.kind === "continuation" && input.conversation.activity && (base.activity || a?.source === "activity_remaining" || (predicate && predicate === input.conversation.activity.facet && clauseAct.speech_act === "attention_call"))) relation.target = input.conversation.activity.label;
+    // The player's own previous claim, asked back ("I've been in the Complex before." -> "Tonya, have you?"): the
+    // reader-state claim label (owner ruling 3).
+    else if (relation.kind === "continuation" && input.conversation.player_claim && predicate && predicate === input.conversation.player_claim.facet && !(clauseAct.mentions ?? []).length) relation.target = input.conversation.player_claim.label;
     else if (["continuation", "repair"].includes(relation.kind) && (a?.ids ?? []).length === 1 && lastHeardFrom(personLabel(a.ids[0]))) relation.target = lastHeardFrom(personLabel(a.ids[0]));
     else if (["continuation", "repair", "topic_return"].includes(relation.kind) && !base.clarify) {
+      // Owner ruling 2 (Reader Phase 1): a marker-led line ("So...", "Anyway...", "but...") is a continuation or a
+      // topic return only when a compatible canonical antecedent exists; otherwise it is read as NEW.
       const inherited = a?.source === "active_speaker" || a?.source === "answer_owner" || a?.source === "antecedent_owner" || a?.source === "surface_anchor";
-      note(i, "relation", inherited ? "resolver-policy concern" : "legacy-only artifact", "relation_without_antecedent", inherited ? "the continuation is established by addressee inheritance, not by a request antecedent" : null);
+      note(i, "relation", inherited ? "resolver-policy concern" : "legacy-only artifact", "relation_without_antecedent", inherited ? "the continuation is established by addressee inheritance, not by a request antecedent; read as new (owner ruling 2)" : "marker-led relation without an antecedent; read as new (owner ruling 2)");
+      if (relation.kind !== "repair") relation.kind = "new";
     }
     out.relation = relation;
     const repairKind = base.repair?.kind ? REPAIR_KIND[base.repair.kind] ?? null : base.args?.reply_kind === "answer_repair" ? "own_answer" : base.addressee?.source === "legacy_correction" ? "addressee" : null;
-    out.repair_kind = relation.kind === "repair" || base.args?.reply_kind === "answer_repair" ? repairKind : null;
+    out.repair_kind = relation.kind === "repair" || speech === "repair" || base.args?.reply_kind === "answer_repair" ? repairKind : null;
 
     // referent (pronoun / deictic choice, or a named thing)
-    const refId = base.args?.item_id ?? base.args?.place_id ?? null;
+    // The thing the act is about, as production decided it: the act's own argument, else (primary act) the entity
+    // the finalized frame's knowledge query or resolved equipment referent names -- when it is a referent candidate.
+    const frameEntity = isPrimary ? (legacyFrame?.knowledge_query?.entity?.id ?? (legacyFrame?.referents ?? []).find((r) => r.type === "equipment" && r.resolved)?.id ?? null) : null;
+    const refId = base.args?.item_id ?? base.args?.place_id ?? (frameEntity && referentLabel(frameEntity) ? frameEntity : null);
     if (refId) {
       const candidate = referentLabel(refId);
       const spanHere = input.features.entity_spans.find((s) => bindings.entities[s.label] === refId && s.tokens[0] >= span[0] && s.tokens[1] <= span[1]) ?? null;
       // "going in" / "inside" -> the Complex is owner decision #4's canonical DEFAULT (resolver policy), not a
       // referent the line names or the conversation made salient.
+      // Deixis (Reader Phase 1): the line pointed at a place without naming it; which place is the resolver's.
+      // (Which deictic word the act used is a ReaderInput feature: "there" needs an active place, an entry word
+      // takes the default.)
+      const deicticWords = input.features.place_deixis.filter((t) => t.token >= span[0] && t.token <= span[1]).map((t) => t.kind);
+      const deixis = base.args?.place_basis === "domain_default_inside" ? "DEIXIS_INSIDE" : base.args?.place_basis === "salient_topic" && !spanHere ? (deicticWords.includes("there") ? "DEIXIS_THERE" : deicticWords.includes("inside") ? "DEIXIS_INSIDE" : null) : null;
       if (!candidate && base.args?.place_basis === "domain_default_inside") note(i, "referent", "resolver-policy concern", "deictic_default_place", "owner decision #4: 'going in' / 'inside' default to the Complex");
       // A place legacy took from its salience (which reads OPTIONAL facts): not in the required-facts ReaderInput (B7).
       else if (!candidate && base.args?.place_basis === "salient_topic") note(i, "referent", "needs-owner-decision", "salient_place_from_legacy_salience", "B7: legacy salience includes optional (possibly unspoken) facts");
       else if (!candidate) note(i, "referent", "reader-schema gap", "referent_not_in_candidates", { id_kind: base.args?.item_id ? "item" : "place" });
-      out.referent = { span: spanHere?.label ?? null, candidate: candidate ?? "NONE" };
+      out.referent = { span: spanHere?.label ?? null, candidate: deixis && !spanHere ? deixis : candidate ?? "NONE" };
       if (!spanHere && base.args?.place_basis && !["named", "deixis_active_place"].includes(base.args.place_basis)) out._referent_basis = base.args.place_basis;
     } else out.referent = null;
 
@@ -243,6 +262,8 @@ function frameFromLegacy(analysisIn, readerInput, { frame: legacyFrame = null, p
       out.subject = { kind: "named", names: spans };
       if (!spans.length) note(i, "subject", "reader-schema gap", "subject_without_name_span", "a pronoun subject ('she', 'he') has no name span to point at");
     } else if (q === "we_all" || q === "we" || a?.source === "collective") out.subject = { kind: "group_inclusive", names: [] };
+    // A claim (a statement carrying a claim facet) is about the player, or about the people it names.
+    else if (speech === "statement" && claimFacet && registry.get(claimFacet)?.domain === "person") { const named = nameSpansFor(mentionIds, span).map((n) => n.label); out.subject = named.length ? { kind: "named", names: named } : { kind: "speaker", names: [] }; }
     else if (out.facet !== "NONE_ASKING" && out.facet !== "NOT_APPLICABLE" && registry.get(out.facet)?.domain === "person") out.subject = { kind: "addressee", names: [] };
     else out.subject = null;
 

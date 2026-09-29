@@ -28,7 +28,7 @@ const ARTIFACTS = path.join(ROOT, "docs", "acceptance", "reader-phase0");
 // ── PINNED AUTHORITIES (governance): changing an artifact without updating these pins fails this suite; updating
 // a pin changes this file's hash, which verification/verification-authority.json governs. ──
 const CHARACTERIZATION_SHA256 = "cae21415ebc5a1a1af9d9dfe8c93e3b01276ad2ac8006f9e5f11df6dc0d06c88";
-const ROUNDTRIP_SHA256 = "feaad44777396a8bec2bdcb7460ca47757923904d9f2cdb20564d28acfd008b5";
+const ROUNDTRIP_SHA256 = "3e6ae5647f69f68fbc995d279e12e50a3dcff7d0ff977e49ab6559cc735883ea";
 const BASELINE_FAILING_SHA256 = "cf4d4d86207e7b856fa3a8c08977e98ba49c863af39d8b70d556f54a4d9c40c0";
 
 const sc = E.scene();
@@ -358,10 +358,11 @@ test("Resolver spec (frame-driven, measurement only): address ops, answers, acti
     const { ledger, snapshot: base } = ledgerFixture();
     const snap = { ...base, ...snapshot };
     const built = buildReaderInput({ raw, chip_target_id: chip, present: people, player: PLAYER, entities: sc.entities, snapshot: snap, ledger });
-    return resolveTurn(frameOf(...frameActs(built.input)), { snapshot: snap, ledger }, people, { input: built.input, bindings: built.bindings }).primary;
+    const frame = frameOf(...frameActs(built.input));
+    return resolveTurn(frame, { snapshot: snap, ledger }, people, { verdict: RF.validateReaderFrame(frame, built.input), input: built.input, bindings: built.bindings }).primary;
   };
   const r1 = run("everyone but Tonya, how are you?", (i) => [act(i, { facet: "person.wellbeing", address: op("EXCEPT", [i.features.name_spans[0].label]) })]);
-  assert.deepEqual(r1.addressee.ids.sort(), [GISELLE, MALCOLM].sort());
+  assert.deepEqual([...r1.addressee.ids].sort(), [GISELLE, MALCOLM].sort());
   assert.equal(r1.cardinality, "each_self");
   const r2 = run("how are you?", (i) => [act(i, { facet: "person.wellbeing", address: op("SECOND_PERSON") })], { chip: MALCOLM });
   assert.deepEqual(r2.addressee, { kind: "explicit", ids: [MALCOLM], quantifier: null, source: "chip" }, "the chip wins");

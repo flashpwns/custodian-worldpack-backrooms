@@ -43,7 +43,7 @@ const reader = require("./dialogue-reader");
 const { resolveTurn } = require("./dialogue-resolve-turn");
 const { openScenario, providerFor, ledgerView } = require("./dialogue-characterize");
 
-const GOLD_EVAL_VERSION = "yellow-beast-reader-gold-eval@v2";
+const GOLD_EVAL_VERSION = "yellow-beast-reader-gold-eval@v3";
 const ROUTING_FIELDS = ["speech_act", "address", "facet", "relation"];
 const FIELDS = ["speech_act", "question_form", "address", "name_roles", "facet", "relation", "repair_kind", "subject", "referent", "temporal", "respondent_mode", "inbound_answer", "abstain"];
 
@@ -57,6 +57,7 @@ function resolveGoldFrame(gold, input) {
     if (typeof ref !== "string") return ref ?? null;
     if (ref === "inbound") return input.conversation.inbound?.label ?? "UNRESOLVED:inbound";
     if (ref === "activity") return input.conversation.activity?.label ?? "UNRESOLVED:activity";
+    if (ref === "claim") return input.conversation.player_claim?.label ?? "UNRESOLVED:claim";
     if (ref.startsWith("anchor:")) { const who = input.people.find((p) => p.name.toLowerCase() === ref.slice(7).toLowerCase())?.label; return input.heard.anchors.filter((a) => a.speaker === who).at(-1)?.label ?? `UNRESOLVED:${ref}`; }
     if (!ref.startsWith("req:")) return ref;
     const want = ref.slice(4);
@@ -130,6 +131,8 @@ function checkpointProblem(checkpoint, s) {
     if (checkpoint.inbound === false) { if (ib) return { check: "inbound", expected: false, got: true }; }
     else if (!ib || names[ib.from ?? ib.speaker_id] !== checkpoint.inbound.from || (checkpoint.inbound.answer_shape && ib.answer_shape !== checkpoint.inbound.answer_shape) || (checkpoint.inbound.options != null && (ib.options ?? []).length !== checkpoint.inbound.options)) return { check: "inbound", expected: checkpoint.inbound, got: ib ? { from: names[ib.from ?? ib.speaker_id], answer_shape: ib.answer_shape, options: (ib.options ?? []).length } : null };
   }
+  // Reader state (owner ruling 3): the player's previous claim, as the seam will offer it to the next reading.
+  if (checkpoint.claim) { const c = s.service.readerClaimFor?.(run) ?? null; if (!c || c.facet !== checkpoint.claim.facet || (checkpoint.claim.state && c.state !== checkpoint.claim.state)) return { check: "claim", expected: checkpoint.claim, got: c ? { facet: c.facet, state: c.state } : null }; }
   if (checkpoint.active_speaker && !same(n(snap.active_speaker?.speaker_ids ?? []), [...checkpoint.active_speaker].sort())) return { check: "active_speaker", expected: checkpoint.active_speaker, got: n(snap.active_speaker?.speaker_ids ?? []) };
   return null;
 }
@@ -141,7 +144,7 @@ function requiredVerification(goldFrame) {
   const kind = act.relation?.kind;
   const target = String(act.relation?.target ?? "");
   if (kind === "answer" || (act.inbound_answer && act.inbound_answer.kind !== "none") || target === "inbound") need.push(["inbound"]);
-  if (["continuation", "repair", "topic_return", "attention"].includes(kind) && target !== "inbound") need.push(target === "activity" ? ["activity"] : target.startsWith("anchor:") ? ["anchors"] : ["requests", "activity", "anchors"]);
+  if (["continuation", "repair", "topic_return", "attention"].includes(kind) && target && target !== "inbound") need.push(target === "activity" ? ["activity"] : target === "claim" ? ["claim"] : target.startsWith("anchor:") ? ["anchors"] : ["requests", "activity", "anchors"]);
   if (["OTHERS", "SECOND_PERSON"].includes(act.address?.op)) need.push(["requests", "active_speaker", "activity"]);
   return need;
 }
@@ -190,11 +193,44 @@ function compareResolution(resolved, gold, names, ledger, bindings) {
   return out;
 }
 
+/**
+ * The Phase-1 RESOLVER SPEC: the shadow resolution of the gold frame against doctrine / owner-ruling gold (never
+ * legacy output). Names are compared by first name; spec keys are optional and only the ones given are checked.
+ */
+function shadowView(shadow, names) {
+  const res = shadow?.resolution ?? {};
+  const p = res.primary ?? {};
+  const n = (id) => names[id] ?? id;
+  const ns = (ids) => (ids ?? []).map(n).sort();
+  const lc = res.lifecycle ?? {};
+  return {
+    disposition: res.disposition ?? null, outcome: res.outcome ?? null,
+    addressees: ns(p.addressee?.ids), responders: ns(res.routing?.responders), responders_count: (res.routing?.responders ?? []).length,
+    recipients: ns(res.routing?.recipients), owner_basis: res.routing?.owner_basis ?? null, cardinality: res.routing?.cardinality ?? null,
+    silence: res.routing ? Boolean(res.routing.silence) : null, response_required: res.routing ? Boolean(res.routing.response_required) : null,
+    speech_act: p.speech_act ?? null, facet: p.predicate ?? null, facet_source: p.facet_source ?? null, claim_facet: p.claim_facet ?? null,
+    relation: p.relation ?? null, relation_target_facet: p.relation_target ? "(request)" : null, reissue: Boolean(p.reissue_of),
+    clarify: Boolean(res.clarification), clarify_slot: res.clarification?.slot ?? null,
+    subject_kind: p.subject?.kind ?? null, third_party: p.args?.third_party_subject ? n(p.args.third_party_subject) : null, quoted_speaker: p.quoted_speaker ? n(p.quoted_speaker) : null, other: p.args?.other_id ? n(p.args.other_id) : null, mentions: ns(p.mentions),
+    temporal: shadow?.frame?.turn?.temporal_scope ?? p.temporal_scope ?? null, place: p.args?.place_id ?? null, place_basis: p.args?.place_basis ?? null, item: p.args?.item_id ?? null,
+    reply_kind: p.args?.reply_kind ?? null, answer_option: p.args?.answer_option != null ? (names[p.args.answer_option] ?? p.args.answer_option) : null,
+    request: lc.request?.intent ?? null, duplicate: Boolean(lc.duplicate_of), abandons: (lc.abandons ?? []).length, activity: lc.activity && lc.activity.intent !== "none" ? `${lc.activity.intent}:${lc.activity.kind}` : null, inbound: lc.inbound && lc.inbound.intent !== "none" ? lc.inbound.intent : null,
+    conflicts: [...(res.conflicts ?? [])].sort(), discourse_function: shadow?.frame?.discourse_function ?? null, request_text: p.request_text ?? null
+  };
+}
+function compareShadow(shadow, spec, names) {
+  if (!shadow) return { status: "no_shadow", correct: false, fields: {} };
+  const got = shadowView(shadow, names);
+  const fields = {};
+  for (const [k, want] of Object.entries(spec)) fields[k] = same(Array.isArray(want) ? [...want].sort() : want, got[k]);
+  return { status: "evaluated", correct: Object.values(fields).every(Boolean), fields, got };
+}
+
 /** Plays one item through a fresh production service with an oracle reader. */
 async function evaluateItem(item, { onInput = null } = {}) {
   const script = new Map();
   const oracle = reader.createOracleReader(script);
-  const s = openScenario({ seed: item.seed ?? `gold-${item.id}`, names: item.names, provider: providerFor(item, item.provider ?? "fallback"), offline: (item.provider ?? "fallback") === "fallback", serviceOptions: { dialogueReader: oracle } });
+  const s = openScenario({ seed: item.seed ?? `gold-${item.id}`, names: item.names, provider: providerFor(item, item.provider ?? "fallback"), offline: (item.provider ?? "fallback") === "fallback", serviceOptions: { dialogueReader: oracle, readerShadow: true } });
   try {
     const verified = new Set();
     let n = 0;
@@ -202,11 +238,18 @@ async function evaluateItem(item, { onInput = null } = {}) {
       if (step.reload) s.reload();
       else if (step.open_request) s.openRequest(step.open_request);
       else if (step.coworker_asks) s.coworkerAsks(step.coworker_asks);
-      else if (step.say) await s.say(step.say, { target: step.target ?? null, request_id: `p-${++n}` });
+      else if (step.say) {
+        const id = `p-${++n}`;
+        // A prefix line may carry its own gold frame (reader state the target turn depends on, e.g. a claim).
+        if (step.frame) script.set(id, (input) => completeFrame(resolveGoldFrame(step.frame, input)));
+        await s.say(step.say, { target: step.target ?? null, request_id: id });
+      }
       const problem = checkpointProblem(step.checkpoint, s);
       if (problem) return { id: item.id, status: "prefix_invalid", at: n, problem };
       for (const k of Object.keys(step.checkpoint ?? {})) verified.add(k);
     }
+    // An item-level checkpoint verifies the state right before the target turn (e.g. a fresh conversation).
+    if (item.checkpoint) { const problem = checkpointProblem(item.checkpoint, s); if (problem) return { id: item.id, status: "prefix_invalid", at: "target", problem }; for (const k of Object.keys(item.checkpoint)) verified.add(k); }
     // The gold frame's claims must rest on verified canonical state.
     const need = item.gold?.frame ? requiredVerification(item.gold.frame) : [];
     const missing = need.filter((alternatives) => !alternatives.some((k) => verified.has(k)));
@@ -231,11 +274,14 @@ async function evaluateItem(item, { onInput = null } = {}) {
     if (goldFrame && item.gold?.resolution) {
       try {
         const ctx = record.context;
-        const resolved = resolveTurn(goldFrame, { snapshot: ctx.snapshot, ledger: ctx.ledger ?? { requests: [] } }, ctx.present, { input: record.input, bindings: ctx.bindings });
+        // The Phase-1 shadow resolution the service computed for the oracle's gold frame (real pre-turn DIS, real
+        // present actors, real bindings, the validator verdict, canonical knowledge flags).
+        const resolved = record.shadow?.resolution ?? resolveTurn(goldFrame, { snapshot: ctx.snapshot, ledger: ctx.ledger ?? { requests: [] } }, ctx.present, { verdict: record.receipt.verdict, input: record.input, bindings: ctx.bindings });
         const fields = compareResolution(resolved, item.gold.resolution, names, ctx.ledger, ctx.bindings);
         resolver = { status: "evaluated", fields, correct: Object.values(fields).every(Boolean), got: { addressees: (resolved.primary?.addressee?.ids ?? []).map((id) => names[id] ?? id), source: resolved.primary?.addressee?.source ?? null, facet: resolved.primary?.predicate ?? null, relation: resolved.primary?.relation ?? null, cardinality: resolved.primary?.cardinality ?? null, clarify: resolved.primary?.clarify ?? null } };
       } catch (error) { resolver = { status: "error", detail: error.message }; }
     }
+    const shadow = item.gold?.shadow ? compareShadow(record.shadow, item.gold.shadow, names) : null;
     const gotBehaviour = behaviourOf(s, targetId, before);
     const behaviour = item.gold?.behavior ? compareBehaviour(gotBehaviour, item.gold.behavior) : {};
     return {
@@ -243,6 +289,7 @@ async function evaluateItem(item, { onInput = null } = {}) {
       gold_frame_verdict: record.receipt.verdict,
       reader: { id: record.legacy_v0.reader.id, fields: readerCompare, routing_match: ROUTING_FIELDS.filter((f) => f in readerCompare).every((f) => readerCompare[f]) },
       resolver,
+      shadow,
       behaviour: { got: gotBehaviour, fields: behaviour, correct: Object.values(behaviour).every(Boolean) }
     };
   } finally { s.close(); }
@@ -264,6 +311,7 @@ function summarize(results) {
     incomplete_state_verification: results.filter((r) => r.status === "incomplete_state_verification").map((r) => ({ id: r.id, missing: r.missing })),
     gold_frames_rejected_by_validators: scored.filter((r) => r.gold_frame_verdict && !r.gold_frame_verdict.ok).map((r) => ({ id: r.id, verdict: r.gold_frame_verdict.disposition, errors: (r.gold_frame_verdict.errors ?? []).map((e) => e.code) })),
     reader: { id: scored[0]?.reader.id ?? null, fields: field },
+    shadow_spec: (() => { const ev = scored.filter((r) => r.shadow); return { n: ev.length, correct: ev.filter((r) => r.shadow.correct).length, pct: pct(ev.filter((r) => r.shadow.correct).length, ev.length), failures: ev.filter((r) => !r.shadow.correct).map((r) => ({ id: r.id, fields: Object.fromEntries(Object.entries(r.shadow.fields).filter(([, v]) => !v)), got: r.shadow.got })) }; })(),
     resolver_spec: { n: resolved.length, correct: resolved.filter((r) => r.resolver.correct).length, pct: pct(resolved.filter((r) => r.resolver.correct).length, resolved.length), errors: scored.filter((r) => r.resolver?.status === "error").map((r) => ({ id: r.id, detail: r.resolver.detail })), failures: resolved.filter((r) => !r.resolver.correct).map((r) => ({ id: r.id, fields: r.resolver.fields, got: r.resolver.got })) },
     behaviour: { n: withBehaviour.length, correct: withBehaviour.filter((r) => r.behaviour.correct).length, pct: pct(withBehaviour.filter((r) => r.behaviour.correct).length, withBehaviour.length), failures: withBehaviour.filter((r) => !r.behaviour.correct).map((r) => ({ id: r.id, fields: r.behaviour.fields, got: r.behaviour.got })) }
   };
@@ -294,4 +342,4 @@ async function main() {
 
 if (require.main === module) main().catch((error) => { console.error(error.stack ?? error.message); process.exit(1); });
 
-module.exports = { GOLD_EVAL_VERSION, evaluateGold, evaluateItem, resolveGoldFrame, completeFrame, compareFrames, requiredVerification, checkpointProblem, summarize, readJsonl, showInput };
+module.exports = { shadowView, compareShadow, GOLD_EVAL_VERSION, evaluateGold, evaluateItem, resolveGoldFrame, completeFrame, compareFrames, requiredVerification, checkpointProblem, summarize, readJsonl, showInput };

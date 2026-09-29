@@ -1,4 +1,4 @@
-# Raw player-language reads outside the reader boundary (Phase 0.5 inventory)
+# Raw player-language reads outside the reader boundary (Phase 0.5 inventory, Phase 1 additions)
 
 **Scope.** Every code path that reads the player's typed words — by regex, word lists or word overlap —
 outside the single reader boundary (ReaderInput feature extraction → reader → ReaderFrame). Line numbers
@@ -94,3 +94,29 @@ is listed first for completeness.
   state, not create it" and "no keyword matching over speech" (Doctrine 4.10 / 7.19 comments in the code
   itself). It needs an owner decision on whether disclosures and warnings become reader outputs (a claim /
   warning act) validated before any attitude change.
+
+## G. Sites added in Reader Phase 1 (inventoried, NOT migrated)
+
+Line numbers are at the Phase-1 commit.
+
+| # | Site | Reads | Effect | Class |
+| --- | --- | --- | --- | --- |
+| G1 | `desktop/service.js:3160` `evidenceReport` regex (`evidence\|record\|photograph\|…`) on the radio line; `:3163–3165` report purpose / geography / environment-condition regexes (with B5); `q4-phenomenon-ecology.recordSpeech` (`service.js:1520, 2661`) storing the spoken phrase in phenomenon state | raw radio / local text | report-delivery keyword classification (`evidenceReport` is computed and currently unused); verbatim phrase capture by a phenomenon | **C** (report classification) / **C** (verbatim capture: physical, not interpretation; owner to confirm) |
+| G2 | `desktop/service.js:4156` drop / deliver + bag words → the delivery action; `:4195` begin-return words; `:4198` complete-return words; `:4201–4203` `namesWorker` + `localPhrase` → `submitQ4LocalIntent`; `:4209` look-around words → `LOOK` vs `INSPECT` | raw free text | which action / phase / channel a line enters (radio, order, wait, refuse, deliver, return) | **Ch** / **R** |
+| G3 | `tools/canonical-knowledge.js:545–549` `heardPropositions`: `/\?\s*$/` and a leading wh / auxiliary regex decide whether a player line is a CLAIM; `resolveEntityMentions` over it gives its entities | the player's committed line | canonical-knowledge player-claim propagation (what coworkers "heard the player claim") | **C** |
+| G4 | `tools/dialogue-state.js:336` `openTurnRequests` re-opens a request only when `prior.request_text === e.request_text`; `desktop/service.js:2853` `repeat_of` compares normalized `request_text` for `item.*` predicates | the act's request text | request identity (re-open vs supersede) and repeat detection keyed by words | **R** (the Phase-1 shadow's identity is canonical: target + predicate) |
+| G5 | `tools/dialogue-state.js:162` `lastPlayerClaim` → DIS `last_player_claim` → `dialogue-turn.antecedentOf` (`CANONICAL_QUESTION`) | the persisted legacy clause `predicate_candidates` of the previous turn | the antecedent of "Tonya, have you?" | **M** (Phase-1 shadow: reader-state claim `c1`, owner ruling 3) |
+| G6 | `tools/dialogue-acts.js:544, 570` `closes_activity` regexes ("that's that", "that's everyone") → `dialogue-turn.js:370` → `desktop/service.js:2704` `closeActivity` + `noteAcquaintanceClosed`, and `dialogue-state.js:325` | raw markers | canonical activity close and acquaintance completion | **C** (the ReaderFrame has no close; fenced) |
+
+## H. Ownership after Reader Phase 1
+
+| Responsibility | Owner in PRODUCTION | Owner in the SHADOW (Phase 1) |
+| --- | --- | --- |
+| dialogue-interpretation-derived routing: address → ids, subject, relation / repair / continuation targets, responder set, cardinality, silence, temporal and deictic defaults, activity-round and inbound-answer routing, request lifecycle INTENT, clarification | legacy (Tier 1 + overlays C1–C16, D1–D4) | `dialogue-resolve-turn` + `dialogue-response-policy` + `dialogue-frame-assembly` (no raw text; fenced by `ed32a`) |
+| personnel-continuity keyword writes (B1–B3) | legacy | **not owned** |
+| `geography_shared` (B4) | legacy | **not owned** |
+| radio / order / mission text routers (B5, E1, E2, G2) | legacy | **not owned** |
+| report-delivery keyword classification (G1) | legacy | **not owned** |
+| canonical-knowledge player-claim propagation (G3) | legacy | **not owned** |
+| `localIntent` / order channel (E1) | legacy | **not owned** (ReaderFrame `requested_action` is a hand-off only) |
+| request identity by text (G4), activity close (G6), `lastPlayerClaim` (G5) | legacy | shadow computes a canonical INTENT only; the ledger is written by legacy |

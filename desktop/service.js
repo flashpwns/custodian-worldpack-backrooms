@@ -37,6 +37,10 @@ const dialogueState = require("../tools/dialogue-state");
 const dialogueReaderInput = require("../tools/dialogue-reader-input");
 const dialogueReader = require("../tools/dialogue-reader");
 const dialogueResolveTurn = require("../tools/dialogue-resolve-turn");
+// Reader Phase 1 (SHADOW only): the frame-driven resolver + response policy + frame assembly, run developer-gated
+// on cloned, frozen inputs after production decided the turn. Its record never feeds production.
+const dialogueReaderShadow = require("../tools/dialogue-reader-shadow");
+const dialogueFrameAssembly = require("../tools/dialogue-frame-assembly");
 const dialogueResolvers = require("../tools/dialogue-resolvers");
 const dialoguePersonhood = require("../tools/dialogue-personhood");
 const dialogueAgents = require("../tools/dialogue-agents");
@@ -185,7 +189,7 @@ function sessionRuntimeCandidate(entry) {
 function redactDiagnostic(value) { if (Array.isArray(value)) return value.map(redactDiagnostic); if (value && typeof value === "object") return Object.fromEntries(Object.entries(value).map(([key, item]) => [key, /key|token|password|secret|credential/i.test(key) ? "[redacted]" : redactDiagnostic(item)])); return typeof value === "string" ? value.replace(/\b(?:sk|rk|pk)-[A-Za-z0-9_-]+\b/g, "[redacted]") : value; }
 
 class DesktopService {
-  constructor({ appDataPath = null, paths = null, logger = null, credentials = null, evidenceMediaProviders = {}, livingTurnProvider = null, localDialogueProvider = null, dialogueReader: injectedDialogueReader = null, readerInputBuilder = null, readerReceiptLimit = null, defaultQ4Scenario = "procedural-survey", developerMode = process.env.YELLOW_BEAST_DEVELOPER_MODE === "1", nowFn = null, notifyProjectionChanged = null, dialogueWordingConcurrency = DIALOGUE_WORDING_CONCURRENCY } = {}) {
+  constructor({ appDataPath = null, paths = null, logger = null, credentials = null, evidenceMediaProviders = {}, livingTurnProvider = null, localDialogueProvider = null, dialogueReader: injectedDialogueReader = null, readerInputBuilder = null, readerReceiptLimit = null, readerShadow = null, defaultQ4Scenario = "procedural-survey", developerMode = process.env.YELLOW_BEAST_DEVELOPER_MODE === "1", nowFn = null, notifyProjectionChanged = null, dialogueWordingConcurrency = DIALOGUE_WORDING_CONCURRENCY } = {}) {
     this.dialogueWordingConcurrency = Number.isInteger(dialogueWordingConcurrency) && dialogueWordingConcurrency > 0 ? dialogueWordingConcurrency : 1;
     // Pass 9C-2: the only main->renderer push in the app. Electron's IPC here
     // is otherwise invoke/response only (see preload.js), so an autonomous
@@ -225,6 +229,10 @@ class DesktopService {
     this.legacyReaderV0 = this.dialogueReader.kind === "legacy" ? this.dialogueReader : dialogueReader.createLegacyReaderV0();
     this.readerInputBuilder = typeof readerInputBuilder === "function" ? readerInputBuilder : dialogueReaderInput.buildReaderInput;
     this.readerReceipts = dialogueReader.createReceiptStore(Number.isInteger(readerReceiptLimit) && readerReceiptLimit > 0 ? readerReceiptLimit : undefined);
+    // Reader Phase 1: the SHADOW resolver runs only when enabled (default: developer mode) -- production overhead is
+    // nil otherwise. Reader-state claims (owner ruling 3) are seam memory: never persisted, never consumed.
+    this.readerShadow = typeof readerShadow === "boolean" ? readerShadow : Boolean(developerMode);
+    this.readerClaims = new Map();
     this.dialogueRestartFailures = 0;
     this.dialogueRestartBackoffMs = 2000;
     this.defaultQ4Scenario = cq4Day1Opener.isOpener(defaultQ4Scenario)
@@ -1638,16 +1646,23 @@ class DesktopService {
     }
   }
   /** Reader Phase 0: the ReaderInput for a LOCAL turn (pure; null on any failure -- never affects the turn). */
-  buildReaderSeamInput({ raw, chip_target_id, present, entities, snapshot, ledger, discourse }) {
+  buildReaderSeamInput({ raw, chip_target_id, present, entities, snapshot, ledger, discourse, claim = null }) {
     try {
       const player = (entities ?? []).find((e) => e.kind === "person" && e.is_player) ?? null;
-      const built = this.readerInputBuilder({ raw, chip_target_id, present, player: player ? { id: player.id, names: player.names ?? [player.label] } : null, entities, snapshot, ledger, discourse });
+      const built = this.readerInputBuilder({ raw, chip_target_id, present, player: player ? { id: player.id, names: player.names ?? [player.label] } : null, entities, snapshot, ledger, discourse, claim });
       if (!built?.input || !built?.bindings) return null;
       // The PRE-TURN ledger the reading was made against (requests, inbound, anchors, activities), kept with the
       // receipt for the round-trip and gold-DIS harnesses. Developer memory only; never persisted.
       const pre = ledger ? structuredClone({ requests: ledger.requests ?? [], inbound_requests: ledger.inbound_requests ?? [], surface_anchors: ledger.surface_anchors ?? [], activities: ledger.activities ?? [] }) : null;
-      return { ...built, ledger: pre, snapshot, entities };
+      return { ...built, ledger: pre, snapshot, entities, player_id: player?.id ?? null };
     } catch (error) { this.log(`reader seam input non-fatal: ${error.message}`); return null; }
+  }
+  /** Reader Phase 1: the player's previous claim as reader state (owner ruling 3), with canonical freshness. */
+  readerClaimFor(run) {
+    try {
+      const claim = this.readerClaims.get(run?.run_id ?? null) ?? null;
+      return claim ? dialogueReaderShadow.claimState(claim, { interactions: run?.expedition?.interaction_history ?? [], ledger: run?.expedition?.dialogue_state ?? null }) : null;
+    } catch (error) { this.log(`reader claim state non-fatal: ${error.message}`); return null; }
   }
   /**
    * Reader Phase 0: reads the turn through the injected reader, validates the frame (V0-V3) and passes it to the
@@ -1660,17 +1675,37 @@ class DesktopService {
       const receipt = dialogueReader.readTurn(this.dialogueReader, args);
       const legacyV0 = this.dialogueReader === this.legacyReaderV0 ? receipt : dialogueReader.readTurn(this.legacyReaderV0, args);
       const resolution = dialogueResolveTurn.resolveTurn(receipt.frame, dis, present, { legacy });
+      // Reader state (owner ruling 3): a validated reading of a player CLAIM is remembered for the next line.
+      const claim = dialogueReaderShadow.claimFromReading(receipt, readerInput.bindings, { player_id: readerInput.player_id ?? null, request_id: requestId });
+      if (claim && readerInput.run_id) this.readerClaims.set(readerInput.run_id, claim);
       this.readerReceipts.put(requestId, {
         input: readerInput.input, receipt, legacy_v0: legacyV0,
         resolution: { version: resolution.version, source: resolution.source, handed: resolution.handed, same_analysis: resolution.analysis === legacy.analysis },
         // Value-level record of what the legacy pipeline decided (facet_source, overrides, args...): the
         // characterization / round-trip view. Never shown to a reader; never persisted.
-        legacy: dialogueReader.legacyRecord(legacy),
+        legacy: { ...dialogueReader.legacyRecord(legacy), closes_activity: Boolean(legacy.analysis?.closes_activity) },
         // Code-side context for the round-trip and gold-DIS harnesses (bindings hold canonical ids): kept out
         // of the developer trace view.
         context: { bindings: readerInput.bindings, snapshot: readerInput.snapshot ?? dis, ledger: readerInput.ledger ?? null, present, entities: readerInput.entities ?? [], raw_frame: legacy.raw_frame ?? null, completeness: legacy.completeness ?? null, primary: legacy.primary ?? null, finalized_frame: legacy.frame ?? null }
       });
     } catch (error) { this.log(`reader seam non-fatal: ${error.message}`); }
+  }
+  /**
+   * Reader Phase 1 (SHADOW only): after production decided WHO answers, record production's routing and -- when
+   * the shadow is enabled -- run the frame-driven resolver, response policy and frame assembly on cloned, frozen
+   * inputs. Nothing here changes the turn, the ledger, the save or any output; the record stays in developer
+   * memory and is never shown in the trace view.
+   */
+  recordReaderShadow(requestId, { owner_ids = [], responder_ids = [], recipient_ids = [], listener_ids = [], recipient_type = null, address = null, candidates = [], frame = null, equipment = {} } = {}) {
+    try {
+      const record = this.readerReceipts.get(requestId);
+      if (!record?.context) return;
+      const flags = Object.fromEntries((candidates ?? []).map((c) => [c.id, { knows_fully: Boolean(c.knows_fully), has_relevant_knowledge: Boolean(c.has_relevant_knowledge), last_spoke_seq: Number.isFinite(c.last_spoke_seq) ? c.last_spoke_seq : -1, owns_entity: Boolean(c.owns_entity), response_eligible: Boolean(c.response_eligible) }]));
+      record.production_routing = structuredClone({ owner_ids, responder_ids, recipient_ids, listener_ids, recipient_type, address_scope: address?.scope ?? null, address_source: address?.source ?? null, address_form: address?.form ?? null, frame_predicate: frame?.predicate ?? null, frame_function: frame?.discourse_function ?? null, candidate_flags: flags });
+      if (!this.readerShadow) return;
+      const canonical = { ...dialogueFrameAssembly.canonicalContext({ entities: record.context.entities ?? [], equipment }), candidates: flags, candidates_facet: frame?.predicate ?? null };
+      record.shadow = dialogueReaderShadow.runShadow({ receipt: record.receipt, input: record.input, bindings: record.context.bindings, snapshot: record.context.snapshot, ledger: record.context.ledger, present: record.context.present, canonical });
+    } catch (error) { this.log(`reader shadow non-fatal: ${error.message}`); }
   }
   /** ED-30 ledger: open / re-open the requests a committed player turn makes (see dialogue-state). */
   openDialogueRequests(run, options) {
@@ -2361,7 +2396,8 @@ class DesktopService {
       const turnDis = channel === "local" ? dialogueTurn.withSalience(dialogueState.snapshot(entry.run, { player_id: playerId, location_id: entry.run.spatial?.player_location ?? null, present_ids: presentLocalIds }), discourseState, canonicalEntities) : null;
       // Reader Phase 0 seam: the observer-safe ReaderInput is built from the PRE-TURN canonical state (additive;
       // a failure here is logged and changes nothing).
-      const readerSeamInput = channel === "local" ? this.buildReaderSeamInput({ raw: message, chip_target_id: targetMember ? (targetMember.personnel_id ?? targetMember.id) : null, present: turnPeople, entities: canonicalEntities, snapshot: turnDis, ledger: entry.run.expedition.dialogue_state ?? null, discourse: discourseState }) : null;
+      const readerSeamInput = channel === "local" ? this.buildReaderSeamInput({ raw: message, chip_target_id: targetMember ? (targetMember.personnel_id ?? targetMember.id) : null, present: turnPeople, entities: canonicalEntities, snapshot: turnDis, ledger: entry.run.expedition.dialogue_state ?? null, discourse: discourseState, claim: this.readerClaimFor(entry.run) }) : null;
+      if (readerSeamInput) readerSeamInput.run_id = entry.run.run_id ?? null;
       let turnAnalysis = channel === "local" ? dialogueTurn.analyzeTurn({ raw: message, present: turnPeople, entities: canonicalEntities, dis: turnDis, explicit_target_id: targetMember ? (targetMember.personnel_id ?? targetMember.id) : null }) : null;
       // An accepted v2 advisory reading fills only what Tier 1 left incomplete (never truth, never ids).
       // Every reading is assessed (decoded -> schema valid -> semantically complete -> accepted); only a complete
@@ -2864,6 +2900,8 @@ class DesktopService {
           }
           act.frame_predicate = actFrame.predicate;
         }
+        // Reader Phase 1 (SHADOW only): production's routing is decided; record it and run the shadow resolver.
+        if (readerSeamInput && turnAnalysis) this.recordReaderShadow(requestId, { owner_ids: ownerIds, responder_ids: authorizedResponses.map((item) => item.id), recipient_ids: recipients.map((member) => member.personnel_id ?? member.id), listener_ids: localPeers.map((member) => member.personnel_id ?? member.id), recipient_type, address: addressRecord, candidates: responseCandidates, frame: semanticFrame, equipment: expedition.equipment });
         const priorTexts = [];
         for (const item of authorizedResponses) {
           const itemFrame = item.own_frame ?? semanticFrame;

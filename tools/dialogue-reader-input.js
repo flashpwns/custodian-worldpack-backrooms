@@ -32,6 +32,10 @@ const WH = new Set(["who", "whom", "whose", "what", "where", "when", "why", "how
 const SECOND_PERSON = new Set(["you", "your", "yours", "yourself", "yourselves", "u", "ya", "yall", "y'all", "ur"]);
 const QUANTIFIERS = new Set(["all", "everyone", "everybody", "both", "rest", "others", "other", "anyone", "anybody", "each", "except", "two", "three", "just", "only", "whole", "else", "guys", "team"]);
 const DEICTICS = new Set(["it", "its", "that", "this", "those", "these", "there", "them"]);
+// Place deixis (Reader Phase 1): closed-vocabulary tokens a deictic place reference is made with -- "there" /
+// "that place" (needs an active place) and the entry words "inside" / "in" / "into" / "through" / "across".
+// A feature, never a decision: the reader says whether the act refers to a place this way.
+const PLACE_DEIXIS = Object.freeze({ there: "there", inside: "inside", in: "inside", into: "inside", through: "inside", across: "inside" });
 
 const NAME_STOP = new Set(["the", "and", "for", "dr", "mr", "mrs", "ms", "sir", "doctor", "desk", "team", "you", "your", "all"]);
 const isWord = (t) => /^[A-Za-z@]/.test(t.text);
@@ -85,13 +89,19 @@ function requiredFactText(facts) {
 /** Character offset (in the normalized line) -> token index. */
 function tokenAt(tokens, offset) { const i = tokens.findIndex((t) => offset >= t.start && offset < t.end); return i; }
 
-function buildReaderInput({ raw, chip_target_id = null, present = [], player = null, entities = [], snapshot = null, ledger = null, discourse = null, window = REQUEST_WINDOW } = {}) {
+/**
+ * @param claim  Reader Phase 1 (owner ruling 3): the player's previous claim as READER STATE -- the facet /
+ *               polarity / subject a validated reading of the player's previous line gave its statement act, and
+ *               whether it is still fresh ({ facet, polarity, subject_ids, state }). Never the persisted legacy
+ *               clause predicates. Absent (null) when no reader state exists (e.g. after a cold reload).
+ */
+function buildReaderInput({ raw, chip_target_id = null, present = [], player = null, entities = [], snapshot = null, ledger = null, discourse = null, claim = null, window = REQUEST_WINDOW } = {}) {
   const line = String(raw ?? "");
   const vocab = nameVocabulary({ present, entities, player });
   const normalized = normalizeUtterance(line, { names: [...vocab.keys()] });
   const tokens = normalized.tokens.map((t, i) => ({ i, text: t.text, start: t.raw_start, end: t.raw_end, n_start: t.start, n_end: t.end }));
   const words = tokens.filter(isWord);
-  const bindings = { people: {}, names: {}, entities: {}, requests: {}, inbound: {}, options: {}, referents: {}, anchors: {}, activity: {} };
+  const bindings = { people: {}, names: {}, entities: {}, requests: {}, inbound: {}, options: {}, referents: {}, anchors: {}, activity: {}, claims: {} };
 
   // People: present coworkers only, opaque labels in canonical (team) order.
   const people = present.map((p, i) => { bindings.people[`p${i + 1}`] = p.id; return { label: `p${i + 1}`, name: p.name, present: true, eligible: true }; });
@@ -146,6 +156,7 @@ function buildReaderInput({ raw, chip_target_id = null, present = [], player = n
     second_person: classOf(SECOND_PERSON).map((x) => x.token),
     quantifiers: classOf(QUANTIFIERS),
     deictics: classOf(DEICTICS),
+    place_deixis: tokens.filter((t) => isWord(t) && PLACE_DEIXIS[low(t.text)]).map((t) => ({ token: t.i, word: low(t.text), kind: PLACE_DEIXIS[low(t.text)] })),
     punctuation: { question_mark: /\?/.test(line), exclamation: /!/.test(line), terminal: /[?]\s*$/.test(trimmed) ? "?" : /[!]\s*$/.test(trimmed) ? "!" : /[.]\s*$/.test(trimmed) ? "." : "none", commas: (line.match(/,/g) ?? []).length },
     word_count: words.length
   };
@@ -170,6 +181,12 @@ function buildReaderInput({ raw, chip_target_id = null, present = [], player = n
   const justAnsweredView = justAnswered ? (() => { bindings.inbound.i0 = justAnswered.event_id ?? null; return { label: "i0", from: labelOf(justAnswered.from ?? justAnswered.speaker_id) }; })() : null;
   const activity = snapshot?.activity ? { label: "v1", kind: snapshot.activity.kind, facet: snapshot.activity.template?.predicate ?? null, done: labels(snapshot.activity.completed), remaining: labels((snapshot.activity.eligible ?? []).filter((id) => !(snapshot.activity.completed ?? []).includes(id))) } : null;
   if (activity) bindings.activity = { v1: snapshot.activity.activity_id ?? null };
+  // The player's previous claim (reader state; owner ruling 3): facet, polarity, whom it was about, freshness.
+  const claimView = claim?.facet ? (() => {
+    bindings.claims.c1 = { facet: claim.facet, polarity: claim.polarity ?? "positive", subject_ids: [...(claim.subject_ids ?? [])], state: claim.state ?? "stale" };
+    const about = (claim.subject_ids ?? []).map((id) => (player && id === player.id ? "player" : labelOf(id))).filter(Boolean);
+    return { label: "c1", facet: claim.facet, polarity: claim.polarity ?? "positive", subject: about, state: claim.state ?? "stale" };
+  })() : null;
 
   // Salience: the player's own words and the replies' REQUIRED facts (never optional facts, never wording).
   const replies = discourse?.last_turn?.responses ?? [];
@@ -216,6 +233,7 @@ function buildReaderInput({ raw, chip_target_id = null, present = [], player = n
       inbound,
       just_answered_inbound: justAnsweredView,
       activity,
+      player_claim: claimView,
       salient_entities: salientIds.map(refLabel).filter(Boolean),
       active_place: activePlaceId ? refLabel(activePlaceId) : null,
       anaphora_candidates: anaphoraIds.map(refLabel).filter(Boolean),
@@ -236,4 +254,4 @@ function buildReaderInput({ raw, chip_target_id = null, present = [], player = n
   return { input, bindings };
 }
 
-module.exports = { READER_INPUT_VERSION, SALIENCE_SOURCE, REQUEST_WINDOW, buildReaderInput, nameVocabulary, referentCandidates, optionText, requiredFactText };
+module.exports = { READER_INPUT_VERSION, SALIENCE_SOURCE, REQUEST_WINDOW, PLACE_DEIXIS, buildReaderInput, nameVocabulary, referentCandidates, optionText, requiredFactText };

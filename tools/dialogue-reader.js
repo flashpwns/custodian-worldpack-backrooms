@@ -125,7 +125,9 @@ function legacyRecord(legacy) {
 /** What the developer trace shows of a seam record: never the code-side context (bindings carry canonical ids). */
 function traceView(record) {
   if (!record) return null;
-  const { context, ...visible } = record;
+  // Never shown: the code-side context (bindings carry canonical ids), production's routing record and the
+  // Phase-1 shadow resolution (developer memory for the harnesses only; no renderer / UI exposure).
+  const { context, shadow, production_routing, ...visible } = record;
   return visible;
 }
 

@@ -91,7 +91,9 @@ function roundTripRaw(record) {
   if (!receipt?.frame || !ctx || !record.legacy) return { status: "no_seam_record" };
   const notes = receipt.conversion?.notes ?? [];
   let resolved;
-  try { resolved = resolveTurn(receipt.frame, { snapshot: ctx.snapshot, ledger: ctx.ledger ?? { requests: [] } }, ctx.present, { input: record.input, bindings: ctx.bindings }); }
+  // (Reader Phase 1: the resolver consumes the validator's verdict; the Phase-1 shadow comparator,
+  // tools/dialogue-shadow-compare.js, supersedes this measurement.)
+  try { resolved = resolveTurn(receipt.frame, { snapshot: ctx.snapshot, ledger: ctx.ledger ?? { requests: [] } }, ctx.present, { verdict: receipt.verdict, input: record.input, bindings: ctx.bindings, opaque: { request_texts: require("./dialogue-reader-shadow").opaqueRequestTexts(receipt.frame, record.input) } }); }
   catch (error) { return { status: "resolver_error", error: error.message }; }
   const legacyPrimary = record.legacy.primary_used;
   const resolvedPrimary = legacyActRecord(resolved.primary);

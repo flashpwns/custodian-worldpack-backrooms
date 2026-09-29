@@ -1,5 +1,60 @@
 # Yellow Beast Implementation State
 
+## Reader Phase 1: shadow-only resolver (no player-facing change) — 2026-09-29
+
+- **Scope (owner instruction):**
+  - SHADOW-ONLY.
+  - No model reader, no cutover, no planner / UI / renderer / fallback / provider-flag / order-channel /
+    personnel-continuity change.
+  - No B2 / B6 / B7 / B8.
+  - No blind corpus; spent corpora untouched.
+  - Design and results: `docs/reader/READER_PHASE1.md`. Artifacts: `docs/acceptance/reader-phase1/`.
+- **Owner rulings applied (shadow / seam only):**
+  1. group_inclusive subject with no address;
+  2. marker-led lines are `new` without a compatible antecedent;
+  3. reader-state `c1` for the player's previous claim;
+  4. chip-wins kept in production, the conflict recorded;
+  5. wh-led sarcasm fails closed.
+- **Built:**
+  - `resolveTurn` v2: pure, consumes the V0–V3 verdict; dispositions ACCEPT / CLARIFY / REJECT_FIELDS / INVALID;
+  - `dialogue-response-policy.js`: table-driven, owner priority unchanged;
+  - `dialogue-frame-assembly.js`: pure, no text;
+  - `dialogue-reader-shadow.js`: opaque `request_text`, frozen clones, reader-state claims;
+  - developer-gated `recordReaderShadow` in `desktop/service.js`, additive, never consumed, never persisted, not in
+    the trace view;
+  - the four-level comparator with evidence-based causes;
+  - the inertness harness;
+  - gold evaluator v3 with prefix gold frames, claim / item-level checkpoints and a shadow spec.
+- **Measured:**
+
+  | Measure | Value |
+  | --- | --- |
+  | Gold resolver spec | **36 / 36 = 100%** |
+  | ACT | 454 / 471 = 96.4% |
+  | ROUTING | 372 / 471 = 79.0% |
+  | LIFECYCLE | 444 / 471 = 94.3% |
+  | FRAME | 333 / 471 = 70.7% |
+  | All four levels | **317 / 471 = 67.3%** |
+  | Unclassified | **0** |
+  | Pending owner decision (ruling C1: validator / registry question forms) | **8 turns** |
+  | Characterization authority | **identical** with the shadow on |
+  | Shadow inertness | **426 / 426** sessions deep-equal (live and cold reload; three providers) |
+
+- **Governance:**
+  - `ed31a` hash updated (round-trip pin regenerated, verdict-consuming resolver);
+  - `ed32a` registered (aggregate) and `ed32b` registered (long-world) in `verification-authority.json` and
+    `test-manifest.json`.
+- **Full suite** (`node --test tests/*.test.js`): 1,514 tests, 1,435 pass, 79 fail.
+  - `tools/compare-failing-tests.js` against `baseline-failing-tests.json`: unchanged 79, **new 0**, fixed 0.
+  - Passed within that run: `ed31b` (full characterization and round trip), `ed32b` (full shadow replay and
+    inertness), J16 and every provider-independence and transcript-replay test.
+  - Inventory: the 57 pre-existing errors only; none for `ed31` / `ed32`.
+- **Doctrine conflicts:** none recorded.
+- **Blocker for completing Phase 1:**
+  - owner ruling C1 on the 8 PENDING_OWNER turns;
+  - the proposed metadata-only registry fixes and validator exemptions are listed in `READER_PHASE1.md` §6. They are
+    not applied.
+
 ## Reader Phase 0.5: making Phase 0 trustworthy (no behaviour change) — 2026-09-29
 
 - **Scope:**

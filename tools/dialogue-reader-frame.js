@@ -35,7 +35,11 @@ const NAME_ROLES = Object.freeze(["vocative", "mention", "answer_to_inbound", "g
 const ADDRESS_OPS = Object.freeze(["NAMED", "ALL", "OTHERS", "EXCEPT", "SECOND_PERSON", "NONE"]);
 const RELATIONS = Object.freeze(["new", "continuation", "repair", "topic_return", "attention", "answer", "withdraw"]);
 const REPAIR_KINDS = Object.freeze(["addressee", "referent", "facet", "temporal", "unanswered", "own_answer"]);
-const REFERENT_CHOICE_SPECIAL = Object.freeze(["NONE", "AMBIGUOUS"]);
+// Deixis (Reader Phase 1): the act refers to a place deictically without naming it. DEIXIS_THERE ("there", "that
+// place") needs an active place; DEIXIS_INSIDE ("going in", "inside") takes the canonical default (owner decision
+// 2026-09-27 #4) when nothing is active. Which place it is stays the resolver's decision, never the reader's.
+const DEIXIS_SPECIAL = Object.freeze(["DEIXIS_THERE", "DEIXIS_INSIDE"]);
+const REFERENT_CHOICE_SPECIAL = Object.freeze(["NONE", "AMBIGUOUS", ...DEIXIS_SPECIAL]);
 const TEMPORALS = Object.freeze(["unspecified", "now", "today", "earlier", "ever", "historical"]);
 const RESPONDENT_MODES = Object.freeze(["unspecified", "each", "any", "all"]);
 const INBOUND_KINDS = Object.freeze(["answer", "uncertainty", "refusal", "counter_question", "none"]);
@@ -47,7 +51,17 @@ const ACTION_FAMILIES = Object.freeze(["STAY", "FOLLOW", "WAIT", "MOVE", "RETURN
 const ABSTAIN_FIELDS = Object.freeze(["force", "address", "facet", "relation", "referent", "subject", "temporal", "inbound_answer"]);
 
 // Label shapes code supplies in the ReaderInput. A reader may use only labels present in the input.
-const LABEL = Object.freeze({ name: /^n\d+$/, entity: /^e\d+$/, request: /^q\d+$/, inbound: /^i\d+$/, referent: /^r\d+$/, anchor: /^a\d+$/, option: /^o\d+$/, person: /^p\d+$/, same_turn: /^s[0-2]$/, activity: /^v\d+$/ });
+// claim (Reader Phase 1, owner ruling 3): the player's own previous claim ("I've been in the Complex before." ->
+// "Tonya, have you?"), from reader state, never from persisted legacy clause predicates.
+const LABEL = Object.freeze({ name: /^n\d+$/, entity: /^e\d+$/, request: /^q\d+$/, inbound: /^i\d+$/, referent: /^r\d+$/, anchor: /^a\d+$/, option: /^o\d+$/, person: /^p\d+$/, same_turn: /^s[0-2]$/, activity: /^v\d+$/, claim: /^c\d+$/ });
+
+// Validator dispositions (Reader Phase 1): what the shadow resolver consumes. INVALID = no frame, or a frame that
+// failed V0 (not a reading at all).
+const DISPOSITIONS = Object.freeze({ ACCEPT: "ACCEPT", CLARIFY: "CLARIFY", REJECT_FIELDS: "REJECT_FIELDS", INVALID: "INVALID" });
+function dispositionOf(verdict) {
+  if (!verdict) return DISPOSITIONS.INVALID;
+  return { accept: DISPOSITIONS.ACCEPT, clarify: DISPOSITIONS.CLARIFY, reject_fields: DISPOSITIONS.REJECT_FIELDS, reject: DISPOSITIONS.INVALID }[verdict.disposition] ?? DISPOSITIONS.INVALID;
+}
 
 // Keys allowed at each level (additionalProperties: false). Anything else is rejected at V0.
 const FRAME_KEYS = ["version", "acts"];
@@ -103,7 +117,7 @@ function readerFrameSchema(input = {}) {
     address: strict({ op: { type: "string", enum: [...ADDRESS_OPS] }, names: { type: "array", maxItems: 4, items: { type: "string", enum: nameLabels.length ? nameLabels : ["n0"] } }, relative_to: enumOrNull(requestLabels), count: nullable({ type: "integer", minimum: 2, maximum: 6 }) }),
     // A relation's antecedent: a ledger request, a coworker question, an earlier act of this line, the active
     // activity round ("your turn"), or a heard line (a surface anchor: "what do you mean?").
-    relation: strict({ kind: { type: "string", enum: [...RELATIONS] }, target: enumOrNull([...requestLabels, ...inboundLabels, "s0", "s1", ...(input.conversation?.activity?.label ? [input.conversation.activity.label] : []), ...anchorLabels]) }),
+    relation: strict({ kind: { type: "string", enum: [...RELATIONS] }, target: enumOrNull([...requestLabels, ...inboundLabels, "s0", "s1", ...(input.conversation?.activity?.label ? [input.conversation.activity.label] : []), ...anchorLabels, ...(input.conversation?.player_claim?.label ? [input.conversation.player_claim.label] : [])]) }),
     repair_kind: nullable({ type: "string", enum: [...REPAIR_KINDS] }),
     referent: nullable(strict({ span: enumOrNull(entityLabels), candidate: { type: "string", enum: [...referentLabels, ...REFERENT_CHOICE_SPECIAL] } })),
     temporal: { type: "string", enum: [...TEMPORALS] },
@@ -180,7 +194,7 @@ function validateSchema(frame, input = {}) {
     } else if ("address" in act) errors.push(err("V0", "missing", { where: at("address") }));
     if (checkNested(errors, act.relation, "relation", at("relation"))) {
       checkEnum(errors, act.relation.kind, RELATIONS, at("relation.kind"));
-      checkNullableLabel(errors, act.relation.target, [LABEL.request, LABEL.inbound, LABEL.same_turn, LABEL.activity, LABEL.anchor], at("relation.target"));
+      checkNullableLabel(errors, act.relation.target, [LABEL.request, LABEL.inbound, LABEL.same_turn, LABEL.activity, LABEL.anchor, LABEL.claim], at("relation.target"));
     } else if ("relation" in act) errors.push(err("V0", "missing", { where: at("relation") }));
     if (act.repair_kind != null) checkEnum(errors, act.repair_kind, REPAIR_KINDS, at("repair_kind"));
     if (checkNested(errors, act.referent, "referent", at("referent"))) {
@@ -236,6 +250,7 @@ function validateCandidates(frame, input = {}) {
     if (target && LABEL.same_turn.test(target) && Number(target.slice(1)) >= i) reject("relation", "same_turn_forward_reference", { value: target });
     if (target && LABEL.activity.test(target) && input.conversation?.activity?.label !== target) reject("relation", "unknown_activity", { value: target });
     if (target && LABEL.anchor.test(target) && !has(anchors, target)) reject("relation", "unknown_anchor", { value: target });
+    if (target && LABEL.claim.test(target) && input.conversation?.player_claim?.label !== target) reject("relation", "unknown_claim", { value: target });
     if (act.referent?.span && !has(entities, act.referent.span)) reject("referent", "unknown_entity_span", { value: act.referent.span });
     if (act.referent?.candidate && !REFERENT_CHOICE_SPECIAL.includes(act.referent.candidate) && !has(referents, act.referent.candidate)) reject("referent", "unknown_referent", { value: act.referent.candidate });
     if (act.echo?.anchor && !has(anchors, act.echo.anchor)) reject("echo", "unknown_anchor", { value: act.echo.anchor });
@@ -266,6 +281,8 @@ function validateCandidates(frame, input = {}) {
     const candidate = act.referent?.candidate && !REFERENT_CHOICE_SPECIAL.includes(act.referent.candidate) ? referents.find((r) => r.label === act.referent.candidate) : null;
     const slotKinds = Object.values(entry.slots ?? {}).map((k) => SLOT_KIND[k]).filter(Boolean);
     if (candidate && slotKinds.length && !slotKinds.includes(candidate.kind)) reject("referent", "referent_kind_incompatible", { facet: act.facet, kind: candidate.kind });
+    // A deictic place reference needs a facet that takes a place.
+    if (DEIXIS_SPECIAL.includes(act.referent?.candidate) && !slotKinds.includes("place")) reject("referent", "deixis_without_place_slot", { facet: act.facet });
   });
   return { ok: errors.length === 0, errors };
 }
@@ -351,6 +368,10 @@ function validateSurface(frame, input = {}) {
       if (!cue) flag("address", "except_without_evidence", "clarify", { slot: "person" });
     }
     if (op === "SECOND_PERSON" && !secondPerson) flag("address", "second_person_without_evidence", "clarify", { slot: "person" });
+    // Deixis needs a deictic place word in the act (a code feature).
+    const deixis = (input.features?.place_deixis ?? []).filter((t) => t.token >= a0 && t.token <= b0).map((t) => t.kind);
+    if (act.referent?.candidate === "DEIXIS_THERE" && !deixis.includes("there")) flag("referent", "deixis_without_evidence", "clarify", { slot: "referent" });
+    if (act.referent?.candidate === "DEIXIS_INSIDE" && !deixis.includes("inside")) flag("referent", "deixis_without_evidence", "clarify", { slot: "referent" });
     // The respondent mode the player EXPRESSED must be expressed, and must not contradict the address.
     if (act.respondent_mode && act.respondent_mode !== "unspecified") {
       if (!has(MODE_WORDS)) flag("respondent_mode", "respondent_mode_without_evidence", "clarify", { slot: "person" });
@@ -384,9 +405,18 @@ function validateDiscourse(frame, input = {}) {
       const sameTurn = target && LABEL.same_turn.test(target);
       if (!target && !(kind === "repair" && act.repair_kind === "own_answer" && conv.just_answered_inbound)) flag("relation", "no_antecedent", "topic", { kind });
       else if (request && !ELIGIBLE_ANTECEDENT_STATES.has(request.state)) flag("relation", "antecedent_not_eligible", "topic", { target, state: request.state });
-      else if (!sameTurn && target && !request && !LABEL.inbound.test(target) && !LABEL.activity.test(target) && !LABEL.anchor.test(target)) flag("relation", "antecedent_unknown", "topic", { target });
+      else if (!sameTurn && target && !request && !LABEL.inbound.test(target) && !LABEL.activity.test(target) && !LABEL.anchor.test(target) && !LABEL.claim.test(target)) flag("relation", "antecedent_unknown", "topic", { target });
       if (target && LABEL.activity.test(target) && kind !== "continuation") flag("relation", "activity_antecedent_only_continues", "topic", { kind });
       if (target && LABEL.anchor.test(target) && kind === "topic_return") flag("relation", "topic_return_to_a_heard_line", "topic");
+      // The player's own previous claim is an antecedent only for an ellipsis over it ("Tonya, have you?"), only
+      // while it is fresh (the immediately previous player line, which opened no request), and only for a facet a
+      // person can be asked back.
+      if (target && LABEL.claim.test(target)) {
+        const claim = conv.player_claim?.label === target ? conv.player_claim : null;
+        if (kind !== "continuation") flag("relation", "claim_antecedent_only_continues", "topic", { kind });
+        else if (!claim || claim.state !== "fresh") flag("relation", "claim_antecedent_not_eligible", "topic", { state: claim?.state ?? null });
+        else if (registry.get(claim.facet)?.domain !== "person") flag("relation", "claim_antecedent_not_askable", "topic", { facet: claim.facet });
+      }
       if (kind === "repair" && act.repair_kind === "unanswered" && request && !OPEN_STATES.has(request.state) && request.state !== "SATISFIED") flag("relation", "unanswered_repair_of_closed_request", "topic", { target });
       if (kind === "topic_return" && request && request.distance === 0) flag("relation", "topic_return_to_current_request", "topic", { target });
     }
@@ -439,7 +469,7 @@ function validateReaderFrame(frame, input = {}) {
 }
 
 module.exports = {
-  READER_FRAME_VERSION, MAX_ACTS, SPEECH_ACTS, QUESTION_FORMS, FACET_SPECIAL, POLARITIES, NAME_ROLES, ADDRESS_OPS, RELATIONS, REPAIR_KINDS,
+  READER_FRAME_VERSION, MAX_ACTS, SPEECH_ACTS, QUESTION_FORMS, FACET_SPECIAL, POLARITIES, NAME_ROLES, ADDRESS_OPS, RELATIONS, REPAIR_KINDS, DEIXIS_SPECIAL, REFERENT_CHOICE_SPECIAL, DISPOSITIONS, dispositionOf,
   TEMPORALS, RESPONDENT_MODES, INBOUND_KINDS, INBOUND_OPTION_SPECIAL, SUBJECT_KINDS, ACTION_FAMILIES, ABSTAIN_FIELDS, LABEL, ACT_KEYS,
   ELIGIBLE_ANTECEDENT_STATES, OPEN_STATES,
   readerFrameSchema, validateSchema, validateCandidates, validateSurface, validateDiscourse, validateReaderFrame, whWordOf, licensedReferents, wordsIn

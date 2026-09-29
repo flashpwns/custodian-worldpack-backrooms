@@ -896,6 +896,16 @@
       "file": "tests/ed31b-reader-characterization-full.test.js",
       "status": "included",
       "tier": "long-world"
+    },
+    {
+      "file": "tests/ed32a-reader-phase1-shadow.test.js",
+      "status": "included",
+      "tier": "aggregate"
+    },
+    {
+      "file": "tests/ed32b-reader-phase1-shadow-full.test.js",
+      "status": "included",
+      "tier": "long-world"
     }
   ],
   "report_tools": [

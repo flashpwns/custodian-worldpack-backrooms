@@ -317,7 +317,7 @@ async function characterizeSession(spec, providerKind, { onTurn = null } = {}) {
  * Plays one fixture through production and calls onTurn(session, requestId, step, result) after every player
  * turn (the shared driver of the characterization, coverage, round-trip and inertness harnesses).
  */
-async function playFixture(spec, providerKind, onTurn, { serviceOptions = {} } = {}) {
+async function playFixture(spec, providerKind, onTurn, { serviceOptions = {}, onEnd = null } = {}) {
   const s = openScenario({ seed: spec.seed, names: spec.names?.length ? spec.names : SCENE_NAMES, player: spec.player, provider: providerFor(spec, providerKind), offline: providerKind === "fallback", brief: spec.brief !== false, serviceOptions });
   let n = 0;
   try {
@@ -331,6 +331,7 @@ async function playFixture(spec, providerKind, onTurn, { serviceOptions = {} } =
       const result = await s.say(step.text, { target: step.target ?? null, request_id: requestId });
       await onTurn(s, requestId, step, result);
     }
+    if (onEnd) await onEnd(s);
   } finally { s.close(); }
 }
 
