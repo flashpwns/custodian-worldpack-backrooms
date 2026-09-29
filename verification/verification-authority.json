@@ -127,7 +127,8 @@
       "tests/ed30f-end-to-end.test.js",
       "tests/ed30g-utterance-force-followups.test.js",
       "tests/ed30h-confidence-items-adjacency.test.js",
-      "tests/ed30i-evidence-facets-discourse.test.js"
+      "tests/ed30i-evidence-facets-discourse.test.js",
+      "tests/ed31a-reader-phase0.test.js"
     ],
     "long-world": [
       "tests/profile-model.test.js",
@@ -367,7 +368,8 @@
     "tests/ed30f-end-to-end.test.js": "46cc645b1a2e2f5d943633ee5eee19052b299bb1e945aa66f5bf1c303379ae3d",
     "tests/ed30g-utterance-force-followups.test.js": "2ce979e21e8d93ac902d6b9cd8ef7c43062d1cf9d6afad093047057e62cdd3d1",
     "tests/ed30h-confidence-items-adjacency.test.js": "bf91b356d5b1551111eeadb01e83b1afaa97009738579b3689ec508a26179810",
-    "tests/ed30i-evidence-facets-discourse.test.js": "f67482a7f216b7edacaee8aca9fade3edd6a18ec85f6edc0ac87a7abe3e1cf68"
+    "tests/ed30i-evidence-facets-discourse.test.js": "f67482a7f216b7edacaee8aca9fade3edd6a18ec85f6edc0ac87a7abe3e1cf68",
+    "tests/ed31a-reader-phase0.test.js": "b222774ed02225eca0226551bbadbb150154e2be81d0456c8ec875dfeb48f9e2"
   },
   "verification_core_hashes": {
     "tools/verification-inventory.js": "0f27da4645f1d85e48b52133475371bbbce55072807b6900108c3a1afd344f3b",

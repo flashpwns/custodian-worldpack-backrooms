@@ -1,0 +1,198 @@
+{
+ "version": "yellow-beast-reader-legacy-coverage@v1",
+ "turns": 364,
+ "seam_recorded": 364,
+ "frames": 364,
+ "acts": 396,
+ "exact_turns": 337,
+ "exact_pct": 92.6,
+ "by_fixture_kind": {
+  "script": {
+   "turns": 149,
+   "exact": 131,
+   "exact_pct": 87.9
+  },
+  "transcript": {
+   "turns": 16,
+   "exact": 14,
+   "exact_pct": 87.5
+  },
+  "probe": {
+   "turns": 199,
+   "exact": 192,
+   "exact_pct": 96.5
+  }
+ },
+ "validation_disposition_of_legacy_frames": {
+  "accept": 315,
+  "reject_fields": 9,
+  "clarify": 40
+ },
+ "validation_errors_on_legacy_frames": {
+  "V3:no_antecedent": 42,
+  "V1:question_form_incompatible": 5,
+  "V1:temporal_unsupported": 4,
+  "V3:others_count_mismatch": 3
+ },
+ "validation_vs_legacy_decision": {
+  "V1:temporal_unsupported": {
+   "legacy_also_declined": 0,
+   "legacy_proceeded": 4,
+   "examples_legacy_proceeded": [
+    "How is everyone feeling this morning?",
+    "How are you doing this morning Giselle?"
+   ]
+  },
+  "V3:no_antecedent": {
+   "legacy_also_declined": 35,
+   "legacy_proceeded": 7,
+   "examples_legacy_proceeded": [
+    "Malcolm, I hope you don't mind me asking, but are you nervous at all?",
+    "So where do we go next, if you don't mind me asking?",
+    "Tonya, have you?"
+   ]
+  },
+  "V1:question_form_incompatible": {
+   "legacy_also_declined": 0,
+   "legacy_proceeded": 5,
+   "examples_legacy_proceeded": [
+    "Will all of us be going to Equipment Staging together, or are we splitting up?",
+    "Tonya, have you?",
+    "I've been in the Complex before. Have you, Giselle?"
+   ]
+  },
+  "V3:others_count_mismatch": {
+   "legacy_also_declined": 3,
+   "legacy_proceeded": 0,
+   "examples_legacy_proceeded": []
+  }
+ },
+ "mismatch_classes": {
+  "reader-schema gap": {
+   "turns": 4,
+   "notes": 4,
+   "codes": {
+    "legacy_route_without_registry_facet": {
+     "count": 2,
+     "examples": [
+      "wat do u mean",
+      "why do you wanna know"
+     ]
+    },
+    "subject_without_name_span": {
+     "count": 2,
+     "examples": [
+      "giselle is it tonyas first day",
+      "You didn't answer me."
+     ]
+    }
+   }
+  },
+  "resolver-policy concern": {
+   "turns": 5,
+   "notes": 5,
+   "codes": {
+    "inherited_via_raw_text:antecedent_owner": {
+     "count": 2,
+     "examples": [
+      "And where are the startup materials going?",
+      "What about Outpost A?"
+     ]
+    },
+    "rewrite:attention_call>elliptical_continuation": {
+     "count": 1,
+     "examples": [
+      "Giselle?"
+     ]
+    },
+    "rewrite:repair>social_acknowledgment": {
+     "count": 2,
+     "examples": [
+      "I was speaking to Tonya"
+     ]
+    }
+   }
+  },
+  "legacy-only artifact": {
+   "turns": 11,
+   "notes": 12,
+   "codes": {
+    "relation_without_antecedent": {
+     "count": 7,
+     "examples": [
+      "Malcolm, I hope you don't mind me asking, but are you nervous at all?",
+      "So where do we go next, if you don't mind me asking?",
+      "Tonya, have you?"
+     ]
+    },
+    "player_claim_not_typed_by_legacy": {
+     "count": 4,
+     "examples": [
+      "Maxwell said the Complex is basically an aquarium.",
+      "I heard Tonya has never been in the Complex.",
+      "The camera is broken, by the way."
+     ]
+    },
+    "name_span_without_legacy_role": {
+     "count": 1,
+     "examples": [
+      "I didn't ask you, Giselle"
+     ]
+    }
+   }
+  },
+  "needs-owner-decision": {
+   "turns": 8,
+   "notes": 8,
+   "codes": {
+    "collective_subject_routed_as_group_address": {
+     "count": 8,
+     "examples": [
+      "we all going",
+      "Will all of us be going to Equipment Staging together, or are we splitting up?",
+      "Are we all going?"
+     ]
+    }
+   }
+  }
+ },
+ "raw_text_dependencies": {
+  "facet_source:item_role": {
+   "count": 25,
+   "what": "itemRole: ITEM_ROLES clause regex table",
+   "examples": [
+    "who has teh camera",
+    "whats the duffle for",
+    "whats the camera for"
+   ]
+  },
+  "addressee:antecedent_owner": {
+   "count": 2,
+   "what": "isFollowUp: FOLLOW_UP_FRAGMENT / FOLLOW_UP_ANAPHOR regex + salient_names (reply facts incl. OPTIONAL facts)",
+   "examples": [
+    "And where are the startup materials going?",
+    "What about Outpost A?"
+   ]
+  },
+  "facet_source:inbound_counter": {
+   "count": 1,
+   "what": "REPLY_COUNTER_WHY regex",
+   "examples": [
+    "why"
+   ]
+  },
+  "facet_source:discourse_followup": {
+   "count": 1,
+   "what": "fragment tables (ELABORATE_TIME / TEMPORAL / who-else / what-for) over the raw fragment",
+   "examples": [
+    "how come"
+   ]
+  }
+ },
+ "resolver_derived_addressees": {
+  "inbound_asker": 2,
+  "active_speaker": 6,
+  "repaired_request": 8
+ },
+ "resolution_passthrough_identity": true
+}

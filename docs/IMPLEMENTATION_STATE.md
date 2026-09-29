@@ -1,5 +1,81 @@
 # Yellow Beast Implementation State
 
+## Reader Phase 0: seam construction (no behaviour change) — 2026-09-29
+
+- **Scope:** Phase 0 of the adjudicated reader architecture (review of 2026-09-28). This is seams only.
+  - There is no cutover and no player-facing, routing, Tier-1, advisory, renderer or runtime-flag change.
+  - The spent corpora, `verification/*` and the doctrine and canon documents are untouched.
+  - No blind corpus was created. The legacy parser was not tuned.
+- **Added:**
+  - ReaderFrame v1 contract and validators V0–V3 (`tools/dialogue-reader-frame.js`).
+  - Observer-safe ReaderInput builder (`tools/dialogue-reader-input.js`).
+  - Legacy adapter `frameFromLegacy` (`tools/dialogue-reader-legacy.js`).
+  - Reader interface: legacy reader v0, scripted oracle and receipts (`tools/dialogue-reader.js`).
+  - `resolveTurn` contract with a Phase-0 identity passthrough (`tools/dialogue-resolve-turn.js`).
+  - Additive reader seam in `desktop/service.js`: the `dialogueReader` option, in-memory receipts and the
+    developer trace only.
+  - Characterization authority (`tools/dialogue-characterize.js` → `docs/acceptance/reader-phase0/characterization.json`).
+  - Coverage tool, gold-DIS evaluator and runtime spike.
+  - Pre-registration: `docs/reader/READER_BAKEOFF_PREREGISTRATION.md`.
+- **Design and results:** `docs/reader/READER_PHASE0.md` and `docs/acceptance/reader-phase0/README.md`.
+- **Behaviour:** identical. The characterization snapshot (205 sessions, 364 turns, fallback + garbage
+  providers) was captured at unmodified `9e51842` and replays identically with the seam in place.
+
+### Owner decisions recorded, NOT resolved (Phase 0 does not decide these)
+
+- **B2: offline completeness contract (Doctrine 17.26).**
+  - If a model reader becomes primary, what is the offline / reader-unavailable dialogue contract?
+  - Options:
+    1. the legacy reader v0 stays permanently as the offline reader, behind the same validators;
+    2. structured affordances (address chips, clarification choices) carry offline communication;
+    3. both.
+  - Until decided, no legacy reading code may be deleted (Phase 5 depends on this).
+- **B6: canonical structured option ids for coworker questions.**
+  - `dialogue-state.recordInboundRequest` can take `plan.answer_shape` / `plan.options`, but **no planner
+    sets them**. In production, every coworker question therefore carries `options: []`.
+  - Only the offline evaluator reads options from words (`inboundShape(text, null)`).
+  - ReaderFrame `inbound_answer.option` has nothing canonical to choose from until the planner emits
+    options for choice questions.
+- **B7: salience source.**
+  - Production `dialogueTurn.withSalience` (and `anchorCandidates`, `anchorTerms` → `resolveRecipientScope`
+    anchored follow-ups, `isFollowUp` via `salient_names`) reads replies' `facts.required` **and
+    `facts.optional`**.
+  - Optional facts (`held_equipment`, `current_activity`, `identity_fact`, `agenda_mention`) may never
+    have been spoken. A later follow-up can then be routed as picking up something the coworker never
+    said.
+  - Owner decision #1 (2026-09-27) chose authorized facts over wording for provider independence, so
+    "use what was actually spoken" conflicts with it.
+  - Options:
+    1. required facts only (provider-independent);
+    2. required facts plus optional facts the validator records as expressed (provider-dependent, like
+       surface anchors);
+    3. surface anchors only.
+  - The Phase-0 ReaderInput uses the player's own words plus **required** facts
+    (`salience_source: player_words+required_facts`). Production is unchanged.
+  - Adjacent item to verify: `commitTurnLines` records listener learning from `propositionsOfPlan(plan)`,
+    i.e. from plan content, not from the facts actually expressed.
+- **B8: reader uncertainty presentation (Doctrine 7.26).**
+  - In-character clarification (the current `CLARIFY_BY_SLOT`, "Sorry, who do you mean?"), versus an
+    interface-level affordance (for example an address chip) when the uncertainty is the reader's rather
+    than genuine linguistic ambiguity.
+  - This is player-facing; the renderer is untouched until decided.
+- **Verification authority.**
+  - Retiring phrase-pin tests (`ed30a`/`f`/`g`/`h`/`i` parse pins, the dev-corpus 100% gate) in Phase 5
+    changes `verification/verification-authority.json`, which requires owner approval.
+  - `tests/ed31a-reader-phase0.test.js` is registered, with owner approval (2026-09-29), per
+    `docs/VERIFICATION_GOVERNANCE.md` §6:
+    - `required_tests.aggregate`;
+    - a manifest `test_files` entry (`included`, `aggregate`);
+    - `test_hashes`.
+  - No other verification entry changed. Inventory: 57 errors, the pre-existing baseline, with none for
+    `ed31a`. The verification core integrity check passes.
+- **Renderer:** `desktop/renderer/*` is untouched in Phase 0 and stays so until B8.
+- **Needs owner decision (from coverage):**
+  - The legacy parser routes the collective subject quantifier ("we all going?", "are we all…") as a group
+    **address**. ReaderFrame reads it as subject `group_inclusive` with address `NONE`, and the resolver
+    must decide who answers.
+  - This is the contested group-vs-untargeted convention.
+
 ## ED-30I evidence-based completeness, required facets, discourse frames, inbound answer shapes — 2026-09-29
 
 - **Architecture: unchanged.** DIS, request ledger, registry, personhood, private-state gates, surface anchors, provider-independent truth and canonical-before-presentation are unchanged. Changes at the language-entry / discourse boundary:

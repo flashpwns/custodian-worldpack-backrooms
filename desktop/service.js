@@ -33,6 +33,10 @@ const dialogueValidation = require("../tools/dialogue-validation");
 const dialogueFallback = require("../tools/dialogue-fallback");
 const dialogueTurn = require("../tools/dialogue-turn");
 const dialogueState = require("../tools/dialogue-state");
+// Reader Phase 0 seam (additive): ReaderInput -> reader -> V0-V3 -> receipt. Nothing downstream consumes it yet.
+const dialogueReaderInput = require("../tools/dialogue-reader-input");
+const dialogueReader = require("../tools/dialogue-reader");
+const dialogueResolveTurn = require("../tools/dialogue-resolve-turn");
 const dialogueResolvers = require("../tools/dialogue-resolvers");
 const dialoguePersonhood = require("../tools/dialogue-personhood");
 const dialogueAgents = require("../tools/dialogue-agents");
@@ -181,7 +185,7 @@ function sessionRuntimeCandidate(entry) {
 function redactDiagnostic(value) { if (Array.isArray(value)) return value.map(redactDiagnostic); if (value && typeof value === "object") return Object.fromEntries(Object.entries(value).map(([key, item]) => [key, /key|token|password|secret|credential/i.test(key) ? "[redacted]" : redactDiagnostic(item)])); return typeof value === "string" ? value.replace(/\b(?:sk|rk|pk)-[A-Za-z0-9_-]+\b/g, "[redacted]") : value; }
 
 class DesktopService {
-  constructor({ appDataPath = null, paths = null, logger = null, credentials = null, evidenceMediaProviders = {}, livingTurnProvider = null, localDialogueProvider = null, defaultQ4Scenario = "procedural-survey", developerMode = process.env.YELLOW_BEAST_DEVELOPER_MODE === "1", nowFn = null, notifyProjectionChanged = null, dialogueWordingConcurrency = DIALOGUE_WORDING_CONCURRENCY } = {}) {
+  constructor({ appDataPath = null, paths = null, logger = null, credentials = null, evidenceMediaProviders = {}, livingTurnProvider = null, localDialogueProvider = null, dialogueReader: injectedDialogueReader = null, defaultQ4Scenario = "procedural-survey", developerMode = process.env.YELLOW_BEAST_DEVELOPER_MODE === "1", nowFn = null, notifyProjectionChanged = null, dialogueWordingConcurrency = DIALOGUE_WORDING_CONCURRENCY } = {}) {
     this.dialogueWordingConcurrency = Number.isInteger(dialogueWordingConcurrency) && dialogueWordingConcurrency > 0 ? dialogueWordingConcurrency : 1;
     // Pass 9C-2: the only main->renderer push in the app. Electron's IPC here
     // is otherwise invoke/response only (see preload.js), so an autonomous
@@ -215,6 +219,11 @@ class DesktopService {
     this.authorityRegistry = createAuthorityRegistry();
     this.livingTurnProvider = livingTurnProvider;
     this.localDialogueProvider = localDialogueProvider;
+    // Reader Phase 0: the injectable reader (legacy reader v0 by default; a scripted oracle in tests). Its
+    // receipts are developer-trace records only (in memory, never persisted, never consumed downstream).
+    this.dialogueReader = injectedDialogueReader ?? dialogueReader.createLegacyReaderV0();
+    this.legacyReaderV0 = this.dialogueReader.kind === "legacy" ? this.dialogueReader : dialogueReader.createLegacyReaderV0();
+    this.readerReceipts = dialogueReader.createReceiptStore();
     this.dialogueRestartFailures = 0;
     this.dialogueRestartBackoffMs = 2000;
     this.defaultQ4Scenario = cq4Day1Opener.isOpener(defaultQ4Scenario)
@@ -390,7 +399,7 @@ class DesktopService {
     if (!entry?.run?.expedition) return publicError("TRACE_UNAVAILABLE", "A Clear-Q4 session is required for this trace.");
     const id = request_id ?? (entry.run.expedition.communication_receipts ?? []).filter((r) => String(r.channel ?? "local").toLowerCase() === "local").at(-1)?.id ?? null;
     if (!id) return publicError("TRACE_UNAVAILABLE", "No conversation turn to trace yet.");
-    return { ok: true, developer_only: true, trace: clone(dialogueDevtrace.turnTrace(entry.run, id, { wordsmith: this.dialogueWordsmithTraces.find((t) => t.request_id === id) ?? null })) };
+    return { ok: true, developer_only: true, trace: clone({ ...dialogueDevtrace.turnTrace(entry.run, id, { wordsmith: this.dialogueWordsmithTraces.find((t) => t.request_id === id) ?? null }), reader: this.readerReceipts.get(id) }) };
   }
   /**
    * ED-30 I6: export this session's conversation as a JSONL transcript (developer mode only). Written to the
@@ -1627,6 +1636,27 @@ class DesktopService {
       return null;
     }
   }
+  /** Reader Phase 0: the ReaderInput for a LOCAL turn (pure; null on any failure -- never affects the turn). */
+  buildReaderSeamInput({ raw, chip_target_id, present, entities, snapshot, ledger, discourse }) {
+    try {
+      const player = (entities ?? []).find((e) => e.kind === "person" && e.is_player) ?? null;
+      return dialogueReaderInput.buildReaderInput({ raw, chip_target_id, present, player: player ? { id: player.id, names: player.names ?? [player.label] } : null, entities, snapshot, ledger, discourse });
+    } catch (error) { this.log(`reader seam input non-fatal: ${error.message}`); return null; }
+  }
+  /**
+   * Reader Phase 0: reads the turn through the injected reader, validates the frame (V0-V3) and passes it to the
+   * resolution seam (a legacy passthrough). Recorded for the developer trace only: nothing here changes the
+   * turn, the ledger, the save or any output.
+   */
+  recordReaderSeam(requestId, readerInput, legacy, dis, present) {
+    try {
+      const args = { request_id: requestId, input: readerInput.input, bindings: readerInput.bindings, legacy };
+      const receipt = dialogueReader.readTurn(this.dialogueReader, args);
+      const legacyV0 = this.dialogueReader === this.legacyReaderV0 ? receipt : dialogueReader.readTurn(this.legacyReaderV0, args);
+      const resolution = dialogueResolveTurn.resolveTurn(receipt.frame, dis, present, { legacy });
+      this.readerReceipts.put(requestId, { input: readerInput.input, receipt, legacy_v0: legacyV0, resolution: { version: resolution.version, source: resolution.source, handed: resolution.handed, same_analysis: resolution.analysis === legacy.analysis } });
+    } catch (error) { this.log(`reader seam non-fatal: ${error.message}`); }
+  }
   /** ED-30 ledger: open / re-open the requests a committed player turn makes (see dialogue-state). */
   openDialogueRequests(run, options) {
     try { return dialogueState.openTurnRequests(run, options); } catch (error) { this.log(`dialogue ledger open non-fatal: ${error.message}`); return []; }
@@ -2314,6 +2344,9 @@ class DesktopService {
       if (channel === "local") dialoguePersonhood.ensurePersonhood(entry.run);
       const turnPeople = channel === "local" ? coworkers.filter((member) => presentLocalIds.includes(member.personnel_id ?? member.id)).map((member) => ({ id: member.personnel_id ?? member.id, name: member.first_name ?? member.display_name, names: [member.first_name, member.last_name, member.display_name, ...(member.aliases ?? [])].filter(Boolean) })) : [];
       const turnDis = channel === "local" ? dialogueTurn.withSalience(dialogueState.snapshot(entry.run, { player_id: playerId, location_id: entry.run.spatial?.player_location ?? null, present_ids: presentLocalIds }), discourseState, canonicalEntities) : null;
+      // Reader Phase 0 seam: the observer-safe ReaderInput is built from the PRE-TURN canonical state (additive;
+      // a failure here is logged and changes nothing).
+      const readerSeamInput = channel === "local" ? this.buildReaderSeamInput({ raw: message, chip_target_id: targetMember ? (targetMember.personnel_id ?? targetMember.id) : null, present: turnPeople, entities: canonicalEntities, snapshot: turnDis, ledger: entry.run.expedition.dialogue_state ?? null, discourse: discourseState }) : null;
       let turnAnalysis = channel === "local" ? dialogueTurn.analyzeTurn({ raw: message, present: turnPeople, entities: canonicalEntities, dis: turnDis, explicit_target_id: targetMember ? (targetMember.personnel_id ?? targetMember.id) : null }) : null;
       // An accepted v2 advisory reading fills only what Tier 1 left incomplete (never truth, never ids).
       // Every reading is assessed (decoded -> schema valid -> semantically complete -> accepted); only a complete
@@ -2612,6 +2645,8 @@ class DesktopService {
           const turnCompleteness = dialogueTurn.completenessWithFrame(turnAnalysis, semanticFrame, turnPrimary);
           semanticFrame = dialogueTurn.finalizeFrame(semanticFrame, turnPrimary, dialogueTurn.reconcile(semanticFrame, turnPrimary), { completeness: turnCompleteness, entities: canonicalEntities });
         } else semanticFrame = dialogueTurn.finalizeFrame(semanticFrame, null, null);
+        // Reader Phase 0 seam: record what the reader says about this turn (legacy v0 = the decisions above).
+        if (readerSeamInput && turnAnalysis) this.recordReaderSeam(requestId, readerSeamInput, { analysis: turnAnalysis, frame: semanticFrame }, turnDis, turnPeople);
         // The lead closing the round ("Okay, that's that") ends getting acquainted before this turn's own
         // procedure question is answered (same canonical transaction; rolled back with it on failure).
         if (turnAnalysis?.closes_activity) { dialogueState.closeActivity(entry.run, "player_closed"); dialogueState.noteAcquaintanceClosed(entry.run, presentLocalIds); }
