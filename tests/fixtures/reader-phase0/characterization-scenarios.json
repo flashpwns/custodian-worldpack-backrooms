@@ -1,0 +1,582 @@
+{
+  "note": "Reader Phase 0.5 characterization scenarios. REGRESSION / CHARACTERIZATION fixtures, not an evaluation corpus. Every scenario reuses the lines and the ledger-level setup of an existing deterministic ED-30 test (see `source`); a few are the same patterns combined so that every addressee source, facet source and lifecycle state production uses is exercised. Steps: say {text, target?} | coworker_asks {name, predicate?, text, answer_shape?, options?} (the ED-30 tests' canonical ledger API: dialogue-state.recordInboundRequest) | open_request {predicate, fn, request_text, targets: [names] | \"all\", cardinality} (the ED-30 J10 tests' canonical ledger API: dialogue-state.openRequest) | reload (persist, new service over the same save, resume).",
+  "option_ids": {
+    "CAMERA": "item-b2b47214d72b45d159",
+    "LAMP": "q4-field-light-01"
+  },
+  "scenarios": [
+    {
+      "id": "ed30i-inbound",
+      "source": "tests/ed30i-evidence-facets-discourse.test.js 'inbound \u2014 through the service'",
+      "provider": "garbage",
+      "steps": [
+        {
+          "say": "Tonya, how are you?"
+        },
+        {
+          "coworker_asks": {
+            "name": "Tonya",
+            "predicate": "person.expedition_experience",
+            "text": "Have you been on one of these before?",
+            "answer_shape": "yes_no"
+          }
+        },
+        {
+          "say": "yeah"
+        },
+        {
+          "coworker_asks": {
+            "name": "Giselle",
+            "text": "Camera or flashlight?",
+            "answer_shape": "choice",
+            "options": [
+              "@CAMERA",
+              "@LAMP"
+            ]
+          }
+        },
+        {
+          "say": "the flashlight"
+        },
+        {
+          "say": "I mean, the camera"
+        },
+        {
+          "coworker_asks": {
+            "name": "Malcolm",
+            "text": "Who do you think is leading this?",
+            "answer_shape": "person"
+          }
+        },
+        {
+          "say": "Tonya"
+        },
+        {
+          "coworker_asks": {
+            "name": "Giselle",
+            "text": "Which one did you grab?",
+            "answer_shape": "item"
+          }
+        },
+        {
+          "say": "the camera"
+        },
+        {
+          "coworker_asks": {
+            "name": "Malcolm",
+            "text": "Camera or flashlight?",
+            "answer_shape": "choice",
+            "options": [
+              "@CAMERA",
+              "@LAMP"
+            ]
+          }
+        },
+        {
+          "say": "not sure"
+        },
+        {
+          "coworker_asks": {
+            "name": "Malcolm",
+            "text": "Camera or flashlight?",
+            "answer_shape": "choice",
+            "options": [
+              "@CAMERA",
+              "@LAMP"
+            ]
+          }
+        },
+        {
+          "say": "I'd rather not say"
+        },
+        {
+          "coworker_asks": {
+            "name": "Tonya",
+            "text": "Camera or flashlight?",
+            "answer_shape": "choice",
+            "options": [
+              "@CAMERA",
+              "@LAMP"
+            ]
+          }
+        },
+        {
+          "say": "why do you ask"
+        },
+        {
+          "coworker_asks": {
+            "name": "Tonya",
+            "text": "Camera or flashlight?",
+            "answer_shape": "choice",
+            "options": [
+              "@CAMERA",
+              "@LAMP"
+            ]
+          }
+        },
+        {
+          "say": "the spectrometer"
+        }
+      ]
+    },
+    {
+      "id": "ed30i-inbound-reload",
+      "source": "tests/ed30i-evidence-facets-discourse.test.js 'inbound \u2014 a fragment answer after a cold reload'",
+      "provider": "garbage",
+      "steps": [
+        {
+          "say": "Giselle, what should I carry?"
+        },
+        {
+          "coworker_asks": {
+            "name": "Giselle",
+            "text": "Your call. Camera or flashlight?",
+            "answer_shape": "choice",
+            "options": [
+              "@CAMERA",
+              "@LAMP"
+            ]
+          }
+        },
+        {
+          "reload": true
+        },
+        {
+          "say": "flashlight"
+        }
+      ]
+    },
+    {
+      "id": "ed30e-routing",
+      "source": "tests/ed30e-owner-decisions.test.js '1 follow-up routing'",
+      "provider": "garbage",
+      "steps": [
+        {
+          "say": "Who has the startup materials?"
+        },
+        {
+          "say": "What's in it?"
+        },
+        {
+          "say": "What's next?"
+        },
+        {
+          "say": "Where is Equipment Staging?"
+        },
+        {
+          "say": "Tonya, what's in the duffle?"
+        },
+        {
+          "say": "No, I was asking Malcolm."
+        }
+      ]
+    },
+    {
+      "id": "ed30e-remarks",
+      "source": "tests/ed30e-owner-decisions.test.js '2 remarks and sarcasm'",
+      "provider": "garbage",
+      "steps": [
+        {
+          "say": "Well, this seems incredibly safe."
+        },
+        {
+          "say": "You guys, love how nobody explains anything."
+        },
+        {
+          "say": "The paint in here is beige."
+        },
+        {
+          "say": "Oh great, a mystery duffle."
+        },
+        {
+          "say": "Malcolm, this room gives me the creeps."
+        }
+      ]
+    },
+    {
+      "id": "ed30f-anchor",
+      "source": "tests/ed30f-end-to-end.test.js 'surface anchors'",
+      "provider": "garbage",
+      "steps": [
+        {
+          "say": "Malcolm, what's in the duffle?"
+        },
+        {
+          "say": "cargo?"
+        },
+        {
+          "say": "Okay."
+        }
+      ]
+    },
+    {
+      "id": "ed30i-discourse",
+      "source": "tests/ed30i-evidence-facets-discourse.test.js 'discourse \u2014 why / when was that / who else ...'",
+      "provider": "garbage",
+      "steps": [
+        {
+          "say": "Tonya, have you been in the Complex before?"
+        },
+        {
+          "say": "why"
+        },
+        {
+          "say": "when was that"
+        },
+        {
+          "say": "Is it your first day, Malcolm?"
+        },
+        {
+          "say": "who else"
+        },
+        {
+          "say": "Giselle and Tonya, how are you doing?"
+        },
+        {
+          "say": "and you, Malcolm?"
+        },
+        {
+          "say": "Tonya, how are you feeling?"
+        },
+        {
+          "say": "before?"
+        },
+        {
+          "say": "Who has the camera?"
+        },
+        {
+          "say": "no, the flashlight"
+        },
+        {
+          "say": "Malcolm, how long have you been with ASYNC?"
+        },
+        {
+          "say": "huh ok, and Tonya?"
+        }
+      ]
+    },
+    {
+      "id": "ed30i-discourse-reload",
+      "source": "tests/ed30i-evidence-facets-discourse.test.js 'discourse \u2014 a follow-up after save / cold reload'",
+      "provider": "garbage",
+      "steps": [
+        {
+          "say": "Malcolm, how long have you been with ASYNC?"
+        },
+        {
+          "reload": true
+        },
+        {
+          "say": "and Tonya?"
+        },
+        {
+          "say": "Tonya, have you been in the Complex before?"
+        },
+        {
+          "reload": true
+        },
+        {
+          "say": "when was that"
+        }
+      ]
+    },
+    {
+      "id": "ed30d-j16",
+      "source": "tests/ed30d-properties-independence.test.js J16 SCRIPT (activity rounds, meta questions, attention)",
+      "provider": "garbage",
+      "steps": [
+        {
+          "say": "Hello everyone!"
+        },
+        {
+          "say": "Is it everyone's first day here, at Async, today? Or just myself."
+        },
+        {
+          "say": "How are you doing this morning Giselle?"
+        },
+        {
+          "say": "Good to hear! How about you two, Malcolm, and Tonya?"
+        },
+        {
+          "say": "Does anyone know anything about where were going?"
+        },
+        {
+          "say": "So youve been there before? this, complex?"
+        },
+        {
+          "say": "Tonya, tell me about yourself"
+        },
+        {
+          "say": "Malcolm, your turn"
+        },
+        {
+          "say": "Who is Maxwell and what does he do?"
+        },
+        {
+          "say": "Okay, well that's that, where do we head to next?"
+        },
+        {
+          "say": "Are we all going together?"
+        },
+        {
+          "say": "Malcolm, how is Tonya?"
+        },
+        {
+          "say": "Who has the camera?"
+        },
+        {
+          "say": "Why?"
+        },
+        {
+          "say": "Hello?"
+        }
+      ]
+    },
+    {
+      "id": "rounds-and-repairs",
+      "source": "patterns of tests/ed30c-conversation-management.test.js (activity rounds, target repairs, unanswered repair, attention re-ask), combined",
+      "provider": "garbage",
+      "steps": [
+        {
+          "say": "Tonya, tell me about yourself"
+        },
+        {
+          "say": "Giselle, you?"
+        },
+        {
+          "say": "and you?"
+        },
+        {
+          "say": "Who has the camera?"
+        },
+        {
+          "say": "Not you."
+        },
+        {
+          "say": "I didn't ask you, Giselle"
+        },
+        {
+          "say": "Are we all going together?"
+        },
+        {
+          "say": "I asked if we were all going"
+        },
+        {
+          "say": "Malcolm, how is Tonya?"
+        },
+        {
+          "say": "Tonya?"
+        },
+        {
+          "say": "You didn't answer me."
+        }
+      ]
+    },
+    {
+      "id": "chip-target",
+      "source": "chip / UI target (the `target` field the Electron composer sends; tests/y109, y111 pattern)",
+      "provider": "garbage",
+      "steps": [
+        {
+          "say": "how are you?",
+          "target": "Malcolm"
+        },
+        {
+          "say": "what's in the duffle?",
+          "target": "Tonya"
+        },
+        {
+          "say": "Tonya, how are you?",
+          "target": "Malcolm"
+        },
+        {
+          "say": "and you?",
+          "target": "Giselle"
+        }
+      ]
+    },
+    {
+      "id": "advisory-accepted-recovery",
+      "source": "tests/ed30i-evidence-facets-discourse.test.js facet recovery case 'recovered' (scripted Tier-2: first NONE, second mission.objective)",
+      "provider": "scripted-advisory",
+      "advisory": {
+        "first": "NONE",
+        "second": "mission.objective"
+      },
+      "steps": [
+        {
+          "say": "so whats the story"
+        }
+      ]
+    },
+    {
+      "id": "advisory-accepted-agree",
+      "source": "tests/ed30i-evidence-facets-discourse.test.js 'an agreeing reading fills the gap' (scripted Tier-2: item.holder)",
+      "provider": "scripted-advisory",
+      "advisory": {
+        "first": "item.holder"
+      },
+      "steps": [
+        {
+          "say": "Who has the camera?"
+        },
+        {
+          "say": "camera's still on you"
+        }
+      ]
+    },
+    {
+      "id": "advisory-rejected-conflict",
+      "source": "tests/ed30i-evidence-facets-discourse.test.js 'facet_contradicts_item' (scripted Tier-2: person.async_tenure)",
+      "provider": "scripted-advisory",
+      "advisory": {
+        "first": "person.async_tenure"
+      },
+      "steps": [
+        {
+          "say": "Who has the camera?"
+        },
+        {
+          "say": "camera's still on you"
+        }
+      ]
+    },
+    {
+      "id": "ed30c-attention",
+      "source": "tests/ed30c-conversation-management.test.js 'J10 attention calls \u2014 pending request re-opened and answered; named attention; nothing pending'",
+      "provider": "garbage",
+      "steps": [
+        {
+          "say": "Hello?"
+        },
+        {
+          "open_request": {
+            "predicate": "transition.participants",
+            "fn": "ask_predicate",
+            "request_text": "Are we all going together?",
+            "targets": "all",
+            "cardinality": "one_spokesperson"
+          }
+        },
+        {
+          "say": "Hello?"
+        },
+        {
+          "open_request": {
+            "predicate": "person.first_day_at_async",
+            "fn": "ask_predicate",
+            "request_text": "Is this your first day?",
+            "targets": [
+              "Tonya"
+            ],
+            "cardinality": "each_self"
+          }
+        },
+        {
+          "say": "Tonya?"
+        },
+        {
+          "open_request": {
+            "predicate": "mission.schedule",
+            "fn": "ask_predicate",
+            "request_text": "When do we leave?",
+            "targets": "all",
+            "cardinality": "one_spokesperson"
+          }
+        },
+        {
+          "say": "Nice."
+        },
+        {
+          "say": "Cool."
+        },
+        {
+          "say": "Okay."
+        },
+        {
+          "say": "Right."
+        },
+        {
+          "say": "Hello?"
+        }
+      ]
+    },
+    {
+      "id": "ed30c-repairs",
+      "source": "tests/ed30c-conversation-management.test.js 'J10 target repairs' + 'J10 facet / temporal / referent repairs'",
+      "provider": "garbage",
+      "steps": [
+        {
+          "say": "Giselle, what do you do?"
+        },
+        {
+          "say": "I was speaking to Malcolm"
+        },
+        {
+          "say": "Giselle and Tonya, where are we going?"
+        },
+        {
+          "say": "No, the other one."
+        },
+        {
+          "say": "Where are we going?"
+        },
+        {
+          "say": "I meant why, not where."
+        },
+        {
+          "say": "Tonya, have you done this before?"
+        },
+        {
+          "say": "I meant the Complex."
+        },
+        {
+          "say": "Tonya, have you been in the Complex today?"
+        },
+        {
+          "say": "Not today. Ever."
+        }
+      ]
+    },
+    {
+      "id": "ed30c-ellipsis",
+      "source": "tests/ed30c-conversation-management.test.js 'J10 ellipsis \u2014 the antecedent's FRAME carries to new targets'",
+      "provider": "garbage",
+      "steps": [
+        {
+          "say": "How are you doing, Giselle?"
+        },
+        {
+          "say": "What about Tonya?"
+        },
+        {
+          "say": "What about the others?"
+        },
+        {
+          "say": "Giselle, have you been in the Complex before?"
+        },
+        {
+          "say": "Same question, Malcolm."
+        },
+        {
+          "say": "And Tonya?"
+        },
+        {
+          "say": "Giselle, tell me about yourself."
+        },
+        {
+          "say": "Your turn."
+        },
+        {
+          "say": "Malcolm, your turn."
+        },
+        {
+          "say": "Your turn."
+        },
+        {
+          "say": "Why?"
+        }
+      ]
+    }
+  ]
+}

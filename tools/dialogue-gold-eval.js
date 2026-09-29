@@ -1,52 +1,64 @@
 #!/usr/bin/env node
 "use strict";
 
-// Reader Phase 0 -- the GOLD-DIS EVALUATOR (developer tooling only).
+// Reader Phase 0 / 0.5 -- the GOLD-DIS EVALUATOR (developer tooling only).
 //
-// Evaluates the ACTUAL shipped service composition (DesktopService, every overlay and owner rule included),
-// never a re-implementation of it. Discourse context is built canonically: each item carries a scripted PREFIX
-// that is played through the real service (real ledger APIs), with CHECKPOINTS asserted against the canonical
-// ledger. An item whose prefix does not build the stated state is reported `prefix_invalid` and never scored --
-// context is never rebuilt by re-parsing prose.
+// Evaluates the ACTUAL shipped service composition (DesktopService, every overlay and owner rule included). The
+// discourse state each item needs is BUILT canonically and VERIFIED: a scripted prefix is played through the real
+// service (say / chip target / coworker question via dialogue-state.recordInboundRequest / an unanswered request
+// via dialogue-state.openRequest / cold reload), and CHECKPOINTS assert the canonical state it produced. Context is
+// never rebuilt by re-parsing prose. An item whose prefix does not build its stated state is `prefix_invalid`; an
+// item whose gold frame depends on state its checkpoints do not verify is `incomplete_state_verification`.
+// Neither is scored.
 //
-// The service runs with a scripted ORACLE reader that returns the item's gold ReaderFrame for the target turn;
-// the legacy reader v0 is recorded alongside it through the same seam. Three measurements, kept separate:
-//   reader     the reader under test (legacy v0 in Phase 0) vs the gold frame, per field
-//   resolver   resolveTurn(gold frame, DIS) vs gold behaviour -- a SPEC SUITE expected to reach 100%. In Phase 0
-//              the frame-driven resolver does not exist (RESOLVER_NOT_IMPLEMENTED); reported as such, plus the
-//              conditional proxy: production behaviour on items whose legacy frame matched gold on routing fields
-//   behaviour  what production actually did (responders, facet, clarification, silence) vs gold behaviour
+// The service runs with a scripted ORACLE reader returning the item's gold ReaderFrame for the target turn; the
+// legacy reader v0 is recorded alongside it through the same seam. Three measurements, kept separate:
+//   reader     legacy v0 frame vs gold frame, every routing-relevant field the gold specifies
+//   resolver   resolveTurn(gold frame, the REAL pre-turn DIS + ledger, the REAL present actors, input + bindings)
+//              vs the gold resolution -- a SPEC SUITE expected to reach 100% (frame-driven resolver, measurement
+//              only; production still uses the legacy passthrough)
+//   behaviour  what production actually did: responders, facet, relation, cardinality, clarification, silence,
+//              request lifecycle (opened / changed), inbound routing, ledger effects
 //
-// Item format (JSONL):
-//   { id, names?: [..3], prefix: [{ text, checkpoint?: { requests?: [{ predicate, targets?, state? }], inbound?: bool } }],
-//     utterance, gold: { frame?: ReaderFrame (symbolic refs allowed), behavior?: { responders?, facet?, clarify?, silence? } } }
-// Symbolic references in a gold frame (resolved against the target turn's ReaderInput):
-//   name "@Tonya" -> the name span with that text; request "req:<facet>" -> the latest request with that facet;
-//   "req:latest" -> distance 0; referent "ref:<name>" -> the candidate with that name; "inbound" -> i1.
+// Item format (JSONL; lines starting // are comments):
+//   { id, provider?: "fallback"|"garbage", prefix: [ step & { checkpoint? } ], utterance, target?,
+//     checks?: { salient?: [names], active_place?: name, inbound_options?: n },
+//     gold: { frame?: ReaderFrame (symbolic refs allowed), resolution?: { addressees, facet, relation, cardinality,
+//             clarify, source }, behavior?: { responders, facet, relation, cardinality, clarify, silence,
+//             requests_opened: [{predicate, state?}], requests_changed: [{predicate, state}], answered_to } } }
+//   step: { say, target? } | { coworker_asks: {...} } | { open_request: {...} } | { reload: true }
+//   checkpoint: { requests?: [{ predicate, targets?, state?, answered_by? }], activity?: { kind, done? },
+//                 anchors?: { speaker, contains? }, inbound?: { from, answer_shape?, options? } | false,
+//                 active_speaker?: [names] }
+// Symbolic references in a gold frame (resolved against the target turn's own ReaderInput):
+//   "@Tonya" -> the name span with that text; "req:<facet>" / "req:latest" -> a request label; "inbound" -> i1;
+//   "ref:<name>" -> a referent candidate; "anchor:<speaker>" -> that speaker's latest heard sentence; "activity" -> v1;
+//   inbound_answer.option "opt:<option text>" -> that offered option's label.
 //
 //   node tools/dialogue-gold-eval.js <items.jsonl> [--json] [--show-input <item id>]
 
 const fs = require("node:fs");
-const os = require("node:os");
-const path = require("node:path");
-const { DesktopService } = require("../desktop/service");
 const RF = require("./dialogue-reader-frame");
 const reader = require("./dialogue-reader");
 const { resolveTurn } = require("./dialogue-resolve-turn");
+const { openScenario, providerFor, ledgerView } = require("./dialogue-characterize");
 
-const GOLD_EVAL_VERSION = "yellow-beast-reader-gold-eval@v1";
-const SCENE_NAMES = ["Giselle", "Malcolm", "Tonya"];
+const GOLD_EVAL_VERSION = "yellow-beast-reader-gold-eval@v2";
 const ROUTING_FIELDS = ["speech_act", "address", "facet", "relation"];
-const FIELDS = ["speech_act", "question_form", "address", "facet", "relation", "subject", "referent", "temporal", "inbound_answer", "abstain"];
+const FIELDS = ["speech_act", "question_form", "address", "name_roles", "facet", "relation", "repair_kind", "subject", "referent", "temporal", "respondent_mode", "inbound_answer", "abstain"];
 
 const readJsonl = (file) => fs.readFileSync(file, "utf8").split("\n").map((l) => l.trim()).filter((l) => l && !l.startsWith("//")).map((l) => JSON.parse(l));
+const same = (a, b) => JSON.stringify(a ?? null) === JSON.stringify(b ?? null);
 
 /** Resolve symbolic references in a gold frame against one ReaderInput (labels are per-turn). */
 function resolveGoldFrame(gold, input) {
   const name = (ref) => (typeof ref === "string" && ref.startsWith("@") ? input.features.name_spans.find((n) => n.text.toLowerCase() === ref.slice(1).toLowerCase())?.label ?? `UNRESOLVED:${ref}` : ref);
-  const request = (ref) => {
-    if (typeof ref !== "string" || !ref.startsWith("req:") && ref !== "inbound") return ref;
+  const target = (ref) => {
+    if (typeof ref !== "string") return ref ?? null;
     if (ref === "inbound") return input.conversation.inbound?.label ?? "UNRESOLVED:inbound";
+    if (ref === "activity") return input.conversation.activity?.label ?? "UNRESOLVED:activity";
+    if (ref.startsWith("anchor:")) { const who = input.people.find((p) => p.name.toLowerCase() === ref.slice(7).toLowerCase())?.label; return input.heard.anchors.filter((a) => a.speaker === who).at(-1)?.label ?? `UNRESOLVED:${ref}`; }
+    if (!ref.startsWith("req:")) return ref;
     const want = ref.slice(4);
     const pool = want === "latest" ? input.conversation.requests.filter((r) => r.distance === 0) : input.conversation.requests.filter((r) => r.facet === want);
     return pool.sort((a, b) => a.distance - b.distance)[0]?.label ?? `UNRESOLVED:${ref}`;
@@ -55,11 +67,13 @@ function resolveGoldFrame(gold, input) {
   const acts = (gold.acts ?? []).map((a) => {
     const out = structuredClone(a);
     if (out.span === "all" || !out.span) out.span = [0, input.line.tokens.length - 1];
-    if (out.address) { out.address = { op: out.address.op, names: (out.address.names ?? []).map(name), relative_to: request(out.address.relative_to ?? null), count: out.address.count ?? null }; }
+    if (out.address) out.address = { op: out.address.op, names: (out.address.names ?? []).map(name), relative_to: target(out.address.relative_to ?? null), count: out.address.count ?? null };
     if (out.name_roles) out.name_roles = out.name_roles.map((r) => ({ name: name(r.name), role: r.role }));
-    if (out.relation) out.relation = { kind: out.relation.kind, target: request(out.relation.target ?? null) };
+    if (out.relation) out.relation = { kind: out.relation.kind, target: target(out.relation.target ?? null) };
     if (out.subject) out.subject = { kind: out.subject.kind, names: (out.subject.names ?? []).map(name) };
     if (out.referent) out.referent = { span: out.referent.span ?? null, candidate: referent(out.referent.candidate) };
+    if (out.echo?.anchor) out.echo = { anchor: target(out.echo.anchor) };
+    if (out.inbound_answer?.option && String(out.inbound_answer.option).startsWith("opt:")) out.inbound_answer = { ...out.inbound_answer, option: (input.conversation.inbound?.options ?? []).find((o) => String(o.text ?? "").toLowerCase() === out.inbound_answer.option.slice(4).toLowerCase())?.label ?? `UNRESOLVED:${out.inbound_answer.option}` };
     return out;
   });
   return { version: RF.READER_FRAME_VERSION, acts };
@@ -73,10 +87,11 @@ function completeFrame(frame) {
 
 const fieldValue = (act, field) => {
   if (!act) return null;
-  if (field === "address") return act.address ? { op: act.address.op, names: [...(act.address.names ?? [])].sort() } : null;
+  if (field === "address") return act.address ? { op: act.address.op, names: [...(act.address.names ?? [])].sort(), relative_to: act.address.relative_to ?? null } : null;
   if (field === "relation") return act.relation ? { kind: act.relation.kind, target: act.relation.target ?? null } : null;
   if (field === "subject") return act.subject ? { kind: act.subject.kind, names: [...(act.subject.names ?? [])].sort() } : null;
   if (field === "referent") return act.referent ? act.referent.candidate : null;
+  if (field === "name_roles") return [...(act.name_roles ?? [])].map((r) => `${r.name}:${r.role}`).sort();
   if (field === "abstain") return [...(act.abstain ?? [])].sort();
   return act[field] ?? null;
 };
@@ -84,81 +99,145 @@ const fieldValue = (act, field) => {
 function compareFrames(got, gold, goldSpecified) {
   const out = {};
   const primary = (f) => f?.acts?.at(-1) ?? null;
-  for (const field of FIELDS) {
-    if (!goldSpecified.has(field)) continue;
-    out[field] = JSON.stringify(fieldValue(primary(got), field)) === JSON.stringify(fieldValue(primary(gold), field));
-  }
+  for (const field of FIELDS) if (goldSpecified.has(field)) out[field] = same(fieldValue(primary(got), field), fieldValue(primary(gold), field));
   return out;
 }
 
-function behaviourOf(run, requestId, names) {
+// ─── state verification ────────────────────────────────────────────────────────────────────────────────
+function checkpointProblem(checkpoint, s) {
+  if (!checkpoint) return null;
+  const run = s.run;
+  const names = Object.fromEntries(s.coworkers().map((m) => [m.personnel_id ?? m.id, m.first_name]));
+  const n = (ids) => (ids ?? []).map((id) => names[id] ?? id).sort();
+  const view = ledgerView(run);
+  for (const want of checkpoint.requests ?? []) {
+    const hit = [...view.requests].reverse().find((r) => r.predicate === want.predicate && (!want.targets || same(n(r.targets), [...want.targets].sort())) && (!want.state || r.state === want.state) && (!want.answered_by || same(n(r.answered_by), [...want.answered_by].sort())));
+    if (!hit) return { check: "requests", expected: want, ledger: view.requests.slice(-4).map((r) => ({ predicate: r.predicate, targets: n(r.targets), state: r.state, answered_by: n(r.answered_by) })) };
+  }
+  const snap = require("./dialogue-state").snapshot(run, { player_id: s.playerId, location_id: run.spatial?.player_location ?? null, present_ids: s.coworkers().map((m) => m.personnel_id ?? m.id) });
+  if (checkpoint.activity) {
+    const a = snap.activity;
+    if (!a || a.kind !== checkpoint.activity.kind || (checkpoint.activity.done && !same(n(a.completed), [...checkpoint.activity.done].sort()))) return { check: "activity", expected: checkpoint.activity, got: a ? { kind: a.kind, done: n(a.completed) } : null };
+  }
+  if (checkpoint.anchors) {
+    const who = s.id(checkpoint.anchors.speaker);
+    const anchors = (snap.surface_anchors ?? []).filter((a) => a.speaker_id === who);
+    const text = anchors.flatMap((a) => a.spans.map((x) => x.text)).join(" ");
+    if (!anchors.length || (checkpoint.anchors.contains && !text.toLowerCase().includes(checkpoint.anchors.contains.toLowerCase()))) return { check: "anchors", expected: checkpoint.anchors, got: text || null };
+  }
+  if ("inbound" in checkpoint) {
+    const ib = snap.pending_inbound_request;
+    if (checkpoint.inbound === false) { if (ib) return { check: "inbound", expected: false, got: true }; }
+    else if (!ib || names[ib.from ?? ib.speaker_id] !== checkpoint.inbound.from || (checkpoint.inbound.answer_shape && ib.answer_shape !== checkpoint.inbound.answer_shape) || (checkpoint.inbound.options != null && (ib.options ?? []).length !== checkpoint.inbound.options)) return { check: "inbound", expected: checkpoint.inbound, got: ib ? { from: names[ib.from ?? ib.speaker_id], answer_shape: ib.answer_shape, options: (ib.options ?? []).length } : null };
+  }
+  if (checkpoint.active_speaker && !same(n(snap.active_speaker?.speaker_ids ?? []), [...checkpoint.active_speaker].sort())) return { check: "active_speaker", expected: checkpoint.active_speaker, got: n(snap.active_speaker?.speaker_ids ?? []) };
+  return null;
+}
+/** Which checkpoint kinds a gold frame's claims depend on; an item that verifies none of them is incomplete. */
+function requiredVerification(goldFrame) {
+  const act = goldFrame?.acts?.at(-1) ?? null;
+  if (!act) return [];
+  const need = [];
+  const kind = act.relation?.kind;
+  const target = String(act.relation?.target ?? "");
+  if (kind === "answer" || (act.inbound_answer && act.inbound_answer.kind !== "none") || target === "inbound") need.push(["inbound"]);
+  if (["continuation", "repair", "topic_return", "attention"].includes(kind) && target !== "inbound") need.push(target === "activity" ? ["activity"] : target.startsWith("anchor:") ? ["anchors"] : ["requests", "activity", "anchors"]);
+  if (["OTHERS", "SECOND_PERSON"].includes(act.address?.op)) need.push(["requests", "active_speaker", "activity"]);
+  return need;
+}
+
+function behaviourOf(s, requestId, before) {
+  const run = s.run;
+  const names = Object.fromEntries(s.coworkers().map((m) => [m.personnel_id ?? m.id, m.first_name]));
   const receipt = (run.expedition.communication_receipts ?? []).find((r) => r.id === requestId) ?? null;
   const contexts = receipt?.response_contexts ?? [];
   const first = contexts[0]?.semantic_frame ?? null;
   const interaction = (run.expedition.interaction_history ?? []).find((i) => i.submission_id === requestId) ?? null;
+  const after = ledgerView(run);
+  const beforeIds = new Set(before.requests.map((r) => r.request_id));
   return {
     responders: contexts.map((c) => names[c.target_worker_id] ?? c.target_worker_id).sort(),
     facet: first?.predicate ?? interaction?.turn?.primary?.predicate ?? null,
+    relation: interaction?.turn?.primary?.relation ?? null,
+    cardinality: first?.turn?.cardinality ?? null,
     clarify: contexts.some((c) => c.response_plan?.may_ask_clarifying_question) || first?.discourse_function === "ambiguous_reference",
-    silence: contexts.length === 0
+    silence: contexts.length === 0,
+    requests_opened: after.requests.filter((r) => !beforeIds.has(r.request_id)).map((r) => ({ predicate: r.predicate, state: r.state })),
+    requests_changed: after.requests.filter((r) => beforeIds.has(r.request_id)).map((r) => ({ r, was: before.requests.find((x) => x.request_id === r.request_id) })).filter(({ r, was }) => r.state !== was.state).map(({ r, was }) => ({ predicate: r.predicate, state: `${was.state}->${r.state}` })),
+    // Inbound routing: who the player's line was put to (the effective act's addressee).
+    answered_to: (interaction?.turn?.primary?.addressee?.ids ?? interaction?.address?.addressee_ids ?? []).map((id) => names[id] ?? id).sort()
   };
 }
 function compareBehaviour(got, gold) {
   const out = {};
-  for (const key of ["responders", "facet", "clarify", "silence"]) if (key in gold) out[key] = JSON.stringify(key === "responders" ? [...gold[key]].sort() : gold[key]) === JSON.stringify(got[key]);
+  for (const key of ["responders", "facet", "relation", "cardinality", "clarify", "silence", "answered_to"]) if (key in gold) out[key] = same(Array.isArray(gold[key]) ? [...gold[key]].sort() : gold[key], got[key]);
+  for (const key of ["requests_opened", "requests_changed"]) if (key in gold) out[key] = gold[key].every((want) => got[key].some((x) => x.predicate === want.predicate && (!want.state || x.state === want.state))) && (gold[key].length > 0 || got[key].length === 0);
+  return out;
+}
+function compareResolution(resolved, gold, names, ledger, bindings) {
+  const p = resolved?.primary ?? null;
+  const out = {};
+  if ("addressees" in gold) out.addressees = same((p?.addressee?.ids ?? []).map((id) => names[id] ?? id).sort(), [...gold.addressees].sort());
+  if ("source" in gold) out.source = (p?.addressee?.source ?? null) === gold.source;
+  if ("facet" in gold) out.facet = (p?.predicate ?? null) === gold.facet;
+  if ("relation" in gold) {
+    const target = p?.relation_target ? (ledger?.requests ?? []).find((r) => r.request_id === p.relation_target)?.predicate ?? "unknown" : null;
+    out.relation = (p?.relation ?? null) === gold.relation.kind && (!("target_facet" in gold.relation) || target === gold.relation.target_facet);
+  }
+  if ("cardinality" in gold) out.cardinality = (p?.cardinality ?? null) === gold.cardinality;
+  if ("clarify" in gold) out.clarify = Boolean(p?.clarify) === gold.clarify;
+  if ("args" in gold) out.args = Object.entries(gold.args).every(([k, v]) => same(p?.args?.[k], v));
   return out;
 }
 
-/** Plays one item through a fresh production service. */
-async function evaluateItem(item, { log = () => {}, onInput = null } = {}) {
-  const root = fs.mkdtempSync(path.join(os.tmpdir(), "yb-gold-"));
+/** Plays one item through a fresh production service with an oracle reader. */
+async function evaluateItem(item, { onInput = null } = {}) {
   const script = new Map();
   const oracle = reader.createOracleReader(script);
-  const service = new DesktopService({ appDataPath: root, defaultQ4Scenario: "day1-opener", developerMode: true, dialogueReader: oracle });
-  service.updateSettings({ provider: "offline" });
-  service.log = () => {};
+  const s = openScenario({ seed: item.seed ?? `gold-${item.id}`, names: item.names, provider: providerFor(item, item.provider ?? "fallback"), offline: (item.provider ?? "fallback") === "fallback", serviceOptions: { dialogueReader: oracle } });
   try {
-    const worldId = service.createWorld({ name: "GOLD", seed: item.seed ?? `gold-${item.id}` }).world.id;
-    service.createQ4Personnel({ world_id: worldId, first_name: "Jack", last_name: "Tester" });
-    service.confirmQ4Personnel({ world_id: worldId });
-    service.startSession({ world_id: worldId, mode: "field-researcher", scenario: "day1-opener" });
-    const run = () => service.session(worldId, "field-researcher").run;
-    const playerId = run().session.startup.player.observer_id;
-    const team = () => run().expedition.team.members.filter((m) => (m.personnel_id ?? m.id) !== playerId);
-    const wanted = item.names ?? SCENE_NAMES;
-    const world = service.getWorld(worldId);
-    team().forEach((m, i) => {
-      if (!wanted[i]) return;
-      const id = m.personnel_id ?? m.id;
-      m.first_name = wanted[i];
-      m.display_name = `${wanted[i]} ${m.last_name}`;
-      for (const w of [world, run()._world]) { const c = w?.characters?.[id]; if (c) { c.first_name = wanted[i]; c.display_name = `${wanted[i]} ${c.last_name}`; } }
-    });
-    service.persistSession(world, "field-researcher", service.session(worldId, "field-researcher"));
-    service.submitAction({ world_id: worldId, mode: "field-researcher", action: "ATTEND_BRIEFING" });
-    for (let b = 0; b < 3; b += 1) service.submitAction({ world_id: worldId, mode: "field-researcher", action: "CONTINUE_BRIEFING" });
-    service.submitAction({ world_id: worldId, mode: "field-researcher", action: "CONCLUDE_BRIEFING" });
-    const names = Object.fromEntries(team().map((m) => [m.personnel_id ?? m.id, m.first_name]));
-    // Prefix: real turns, real ledger. Checkpoints are canonical assertions, not re-parsing.
+    const verified = new Set();
     let n = 0;
     for (const step of item.prefix ?? []) {
-      await service.submitQ4Communication({ world_id: worldId, channel: "local", text: step.text, request_id: `p-${++n}` });
-      const problem = checkpointProblem(step.checkpoint, run(), names);
+      if (step.reload) s.reload();
+      else if (step.open_request) s.openRequest(step.open_request);
+      else if (step.coworker_asks) s.coworkerAsks(step.coworker_asks);
+      else if (step.say) await s.say(step.say, { target: step.target ?? null, request_id: `p-${++n}` });
+      const problem = checkpointProblem(step.checkpoint, s);
       if (problem) return { id: item.id, status: "prefix_invalid", at: n, problem };
+      for (const k of Object.keys(step.checkpoint ?? {})) verified.add(k);
     }
-    // Target turn: the oracle returns the gold frame (resolved against this turn's own ReaderInput labels).
+    // The gold frame's claims must rest on verified canonical state.
+    const need = item.gold?.frame ? requiredVerification(item.gold.frame) : [];
+    const missing = need.filter((alternatives) => !alternatives.some((k) => verified.has(k)));
+    if (missing.length) return { id: item.id, status: "incomplete_state_verification", missing: missing.map((m) => m.join("|")) };
     const targetId = "target";
     script.set(targetId, (input) => { onInput?.(input); return item.gold?.frame ? completeFrame(resolveGoldFrame(item.gold.frame, input)) : null; });
-    await service.submitQ4Communication({ world_id: worldId, channel: "local", text: item.utterance, request_id: targetId });
-    const record = service.readerReceipts.get(targetId);
+    const before = ledgerView(s.run);
+    await s.say(item.utterance, { target: item.target ?? null, request_id: targetId });
+    const record = s.service.readerReceipts.get(targetId);
     if (!record) return { id: item.id, status: "no_seam_record" };
+    // Target-time checks against what the reader was given (observer-safe state).
+    const checkFailures = [];
+    if (item.checks?.salient) for (const nm of item.checks.salient) { const label = record.input.referent_candidates.find((r) => r.name === nm)?.label; if (!label || !record.input.conversation.salient_entities.includes(label)) checkFailures.push(`salient:${nm}`); }
+    if (item.checks?.active_place) { const label = record.input.referent_candidates.find((r) => r.name === item.checks.active_place)?.label; if (record.input.conversation.active_place !== label) checkFailures.push(`active_place:${item.checks.active_place}`); }
+    if (item.checks?.inbound_options != null && (record.input.conversation.inbound?.options ?? []).length !== item.checks.inbound_options) checkFailures.push("inbound_options");
+    if (checkFailures.length) return { id: item.id, status: "prefix_invalid", problem: { check: "target_state", failed: checkFailures } };
     const goldFrame = record.receipt.frame;
     const goldSpecified = new Set(Object.keys(item.gold?.frame?.acts?.at(-1) ?? {}));
     const readerCompare = goldFrame ? compareFrames(record.legacy_v0.frame, goldFrame, goldSpecified) : {};
-    const gotBehaviour = behaviourOf(run(), targetId, names);
+    const names = Object.fromEntries(s.coworkers().map((m) => [m.personnel_id ?? m.id, m.first_name]));
+    let resolver = null;
+    if (goldFrame && item.gold?.resolution) {
+      try {
+        const ctx = record.context;
+        const resolved = resolveTurn(goldFrame, { snapshot: ctx.snapshot, ledger: ctx.ledger ?? { requests: [] } }, ctx.present, { input: record.input, bindings: ctx.bindings });
+        const fields = compareResolution(resolved, item.gold.resolution, names, ctx.ledger, ctx.bindings);
+        resolver = { status: "evaluated", fields, correct: Object.values(fields).every(Boolean), got: { addressees: (resolved.primary?.addressee?.ids ?? []).map((id) => names[id] ?? id), source: resolved.primary?.addressee?.source ?? null, facet: resolved.primary?.predicate ?? null, relation: resolved.primary?.relation ?? null, cardinality: resolved.primary?.cardinality ?? null, clarify: resolved.primary?.clarify ?? null } };
+      } catch (error) { resolver = { status: "error", detail: error.message }; }
+    }
+    const gotBehaviour = behaviourOf(s, targetId, before);
     const behaviour = item.gold?.behavior ? compareBehaviour(gotBehaviour, item.gold.behavior) : {};
-    let resolver;
-    try { resolveTurn(goldFrame, null, [], {}); resolver = { status: "evaluated" }; } catch (e) { resolver = { status: e.code === "RESOLVER_NOT_IMPLEMENTED" ? "not_implemented" : "error", detail: e.message }; }
     return {
       id: item.id, status: "scored", utterance: item.utterance,
       gold_frame_verdict: record.receipt.verdict,
@@ -166,25 +245,7 @@ async function evaluateItem(item, { log = () => {}, onInput = null } = {}) {
       resolver,
       behaviour: { got: gotBehaviour, fields: behaviour, correct: Object.values(behaviour).every(Boolean) }
     };
-  } finally {
-    try { service.shutdown?.(); } catch {}
-    fs.rmSync(root, { recursive: true, force: true });
-    log(item.id);
-  }
-}
-
-function checkpointProblem(checkpoint, run, names) {
-  if (!checkpoint) return null;
-  const requests = run.expedition.dialogue_state?.requests ?? [];
-  for (const want of checkpoint.requests ?? []) {
-    const hit = [...requests].reverse().find((r) => r.predicate === want.predicate && (!want.targets || JSON.stringify(r.targets.map((id) => names[id] ?? id).sort()) === JSON.stringify([...want.targets].sort())) && (!want.state || r.state === want.state));
-    if (!hit) return { expected: want, ledger: requests.slice(-4).map((r) => ({ predicate: r.predicate, targets: r.targets.map((id) => names[id] ?? id), state: r.state })) };
-  }
-  if ("inbound" in checkpoint) {
-    const pending = (run.expedition.dialogue_state?.inbound_requests ?? []).length > 0;
-    if (pending !== checkpoint.inbound) return { expected: { inbound: checkpoint.inbound }, got: { inbound: pending } };
-  }
-  return null;
+  } finally { s.close(); }
 }
 
 function summarize(results) {
@@ -193,23 +254,24 @@ function summarize(results) {
   const field = {};
   for (const r of scored) for (const [k, v] of Object.entries(r.reader.fields)) { field[k] ??= { n: 0, correct: 0 }; field[k].n += 1; if (v) field[k].correct += 1; }
   for (const v of Object.values(field)) v.pct = pct(v.correct, v.n);
+  const resolved = scored.filter((r) => r.resolver?.status === "evaluated");
   const withBehaviour = scored.filter((r) => Object.keys(r.behaviour.fields).length);
-  const routingMatched = withBehaviour.filter((r) => r.reader.routing_match);
   return {
     version: GOLD_EVAL_VERSION,
     items: results.length,
     scored: scored.length,
     prefix_invalid: results.filter((r) => r.status === "prefix_invalid").map((r) => r.id),
-    gold_frames_rejected_by_validators: scored.filter((r) => r.gold_frame_verdict && !r.gold_frame_verdict.ok).map((r) => ({ id: r.id, verdict: r.gold_frame_verdict.disposition })),
+    incomplete_state_verification: results.filter((r) => r.status === "incomplete_state_verification").map((r) => ({ id: r.id, missing: r.missing })),
+    gold_frames_rejected_by_validators: scored.filter((r) => r.gold_frame_verdict && !r.gold_frame_verdict.ok).map((r) => ({ id: r.id, verdict: r.gold_frame_verdict.disposition, errors: (r.gold_frame_verdict.errors ?? []).map((e) => e.code) })),
     reader: { id: scored[0]?.reader.id ?? null, fields: field },
-    resolver_spec: { status: scored.every((r) => r.resolver.status === "not_implemented") ? "not_implemented (Phase 1)" : "evaluated", conditional_proxy: { note: "production behaviour on items whose legacy frame matched gold on routing fields", n: routingMatched.length, correct: routingMatched.filter((r) => r.behaviour.correct).length, pct: pct(routingMatched.filter((r) => r.behaviour.correct).length, routingMatched.length) } },
-    behaviour: { n: withBehaviour.length, correct: withBehaviour.filter((r) => r.behaviour.correct).length, pct: pct(withBehaviour.filter((r) => r.behaviour.correct).length, withBehaviour.length) }
+    resolver_spec: { n: resolved.length, correct: resolved.filter((r) => r.resolver.correct).length, pct: pct(resolved.filter((r) => r.resolver.correct).length, resolved.length), errors: scored.filter((r) => r.resolver?.status === "error").map((r) => ({ id: r.id, detail: r.resolver.detail })), failures: resolved.filter((r) => !r.resolver.correct).map((r) => ({ id: r.id, fields: r.resolver.fields, got: r.resolver.got })) },
+    behaviour: { n: withBehaviour.length, correct: withBehaviour.filter((r) => r.behaviour.correct).length, pct: pct(withBehaviour.filter((r) => r.behaviour.correct).length, withBehaviour.length), failures: withBehaviour.filter((r) => !r.behaviour.correct).map((r) => ({ id: r.id, fields: r.behaviour.fields, got: r.behaviour.got })) }
   };
 }
 
 async function evaluateGold(items, { log = () => {} } = {}) {
   const results = [];
-  for (const item of items) results.push(await evaluateItem(item, { log }));
+  for (const item of items) { results.push(await evaluateItem(item)); log(item.id); }
   return { summary: summarize(results), results };
 }
 
@@ -232,4 +294,4 @@ async function main() {
 
 if (require.main === module) main().catch((error) => { console.error(error.stack ?? error.message); process.exit(1); });
 
-module.exports = { GOLD_EVAL_VERSION, evaluateGold, evaluateItem, resolveGoldFrame, completeFrame, compareFrames, summarize, readJsonl, showInput };
+module.exports = { GOLD_EVAL_VERSION, evaluateGold, evaluateItem, resolveGoldFrame, completeFrame, compareFrames, requiredVerification, checkpointProblem, summarize, readJsonl, showInput };

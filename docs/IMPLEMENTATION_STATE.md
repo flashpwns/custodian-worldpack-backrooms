@@ -1,10 +1,71 @@
 # Yellow Beast Implementation State
 
+## Reader Phase 0.5: making Phase 0 trustworthy (no behaviour change) — 2026-09-29
+
+- **Scope:**
+  - No Phase 1, no cutover, no player-facing / routing / Tier-1 / advisory / renderer / runtime-flag /
+    planner / dialogue-state API change.
+  - No new corpus; no legacy tuning; spent corpora untouched.
+  - Design: `docs/reader/READER_PHASE0_5.md`. Results: `docs/acceptance/reader-phase0/README.md`.
+- **Behaviour.** Unchanged:
+  - the v1 characterizer against the v1 authority, with the Phase-0.5 seam in place: identical;
+  - seam-inertness tests (throwing / malformed reader, throwing input builder, receipt overflow, developer
+    mode off, cold reload, provider variation): no canonical or dialogue change.
+- **Characterization authority v2** (value-level; 221 sessions, 471 turns; 16 ED-30 scenarios added).
+  Addressee sources go from 12 to 23, facet sources from none recorded to 10. Coworker questions, chip targets,
+  cold reloads, accepted Tier-2 readings, reopen and abandonment are now exercised. Pinned (SHA-256) in
+  `ed31a`; the full replay is in `ed31b` (long-world).
+- **Round trip** (legacy → ReaderFrame → frame-driven resolver → frame assembly): **87.0% behaviour-equivalent,
+  7.9% exact** (471 turns). Exact expressibility (89.6%) is not migration readiness.
+- **Gold-DIS evaluator v2:** the real DIS, present actors and bindings on the resolver leg; strengthened
+  checkpoints; `incomplete_state_verification`. Resolver spec 7/7 on the harness self-test.
+- **ReaderInput safety fixes (seam only):**
+  - anchors in the heard channel;
+  - observer-safe referent candidates;
+  - string-only required-fact salience;
+  - option ids mapped to labels;
+  - proper-name vocabulary; possessive names.
+- **Validator gaps closed (seam only):** address-op evidence, respondent-mode compatibility, referent
+  licensing, and no silent remark on asking lines.
+- **Raw-text inventory:** 35 sites (`docs/reader/READER_RAW_TEXT_INVENTORY.md`). This includes raw-keyword
+  **canonical writes**: `desktop/service.js` `isDisclosure` / `isWarning` → `recordAttitudeChange`;
+  `geography_shared`; the radio `purpose`. Recorded, not migrated.
+- **Governance (per `docs/VERIFICATION_GOVERNANCE.md` §6):**
+  - `ed31a` hash updated;
+  - `tests/ed31b-reader-characterization-full.test.js` registered in the long-world tier;
+  - the baseline failing set committed (`docs/acceptance/reader-phase0/baseline-failing-tests.json`, 79
+    tests) with `tools/compare-failing-tests.js`;
+  - inventory 57 errors (the pre-existing baseline), none for `ed31a` / `ed31b`.
+- **Pre-registration revised** to the reviewed thresholds (κ ≥ 0.80; ≥ 200 double-labeled; teacher ceilings;
+  E4B within 6 points of the teacher; calibration ≤ 3% at ≥ 88% coverage; sealed gates; reader p50 ≤ 2.0 s /
+  p90 ≤ 3.0 s; whole-turn delta ≤ 2.5 s; a family-error policy required).
+- **Documentation corrections:**
+  - "verification untouched" was false after the `ed31a` registration;
+  - the Phase-0 class counts (28) exceeded the 27 non-exact turns because "Giselle?" carried two classes.
+- **Owner rulings prepared, not decided** (`docs/reader/READER_PHASE0_5_OWNER_RULINGS.md`):
+  - "we all going?";
+  - the relation-without-antecedent cases (4 remain: 2 legacy quirks, 1 hedge continuation, 1 real schema gap
+    — the player's own prior claim);
+  - V1 question-form / temporal strictness;
+  - the chip-versus-vocative conflict.
+
+  B2 / B6 / B7 / B8 remain unresolved in code; the recommendations are refined in `READER_PHASE0_5.md` §6.
+- **Verification:**
+  - `ed31a` 21/21;
+  - full repository `node --test tests/*.test.js`: 1,497 tests, 1,418 pass, 79 fail;
+    `tools/compare-failing-tests.js` against the committed baseline: unchanged 79, **new 0**, fixed 0;
+  - `ed31b` (the full characterization replay of 221 sessions and the full round trip of 471 turns) passes
+    within that run;
+  - `git diff --check` clean;
+  - the protected modules, the ED-30 tests and fixtures, the spent corpora and the renderer are untouched.
+
 ## Reader Phase 0: seam construction (no behaviour change) — 2026-09-29
 
 - **Scope:** Phase 0 of the adjudicated reader architecture (review of 2026-09-28). This is seams only.
   - There is no cutover and no player-facing, routing, Tier-1, advisory, renderer or runtime-flag change.
-  - The spent corpora, `verification/*` and the doctrine and canon documents are untouched.
+  - The spent corpora and the doctrine and canon documents are untouched.
+  - `verification/*` changed only by the owner-approved `ed31a` registration at the Phase-0 finish. (This
+    bullet originally said `verification/*` was untouched; corrected in Phase 0.5.)
   - No blind corpus was created. The legacy parser was not tuned.
 - **Added:**
   - ReaderFrame v1 contract and validators V0–V3 (`tools/dialogue-reader-frame.js`).

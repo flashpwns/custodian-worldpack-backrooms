@@ -27,7 +27,9 @@ const SPEECH_ACTS = Object.freeze(["greeting", "farewell", "self_introduction", 
 const QUESTION_FORMS = Object.freeze(["wh", "yes_no", "choice", "declarative", "indirect", "tag", "count", "none"]);
 const FACET_SPECIAL = Object.freeze(["NONE_ASKING", "NOT_APPLICABLE"]);
 const POLARITIES = Object.freeze(["positive", "negative", "inverted"]);
-const NAME_ROLES = Object.freeze(["vocative", "mention", "answer_to_inbound", "greeting_target"]);
+// repair_target: the person an addressee repair re-addresses ("No, I was asking Malcolm") -- named as a mention,
+// meant as the new addressee.
+const NAME_ROLES = Object.freeze(["vocative", "mention", "answer_to_inbound", "greeting_target", "repair_target"]);
 // Language-level address operations ONLY. Responder policy values (KEEP_RESPONDER, SHARED, ASKER_OF_INBOUND,
 // ANSWERER_OF) are resolver outcomes and are deliberately absent.
 const ADDRESS_OPS = Object.freeze(["NAMED", "ALL", "OTHERS", "EXCEPT", "SECOND_PERSON", "NONE"]);
@@ -84,7 +86,7 @@ function readerFrameSchema(input = {}) {
   const requestLabels = labels(input.conversation?.requests);
   const inboundLabels = [input.conversation?.inbound?.label, input.conversation?.just_answered_inbound?.label].filter(Boolean);
   const referentLabels = labels(input.referent_candidates);
-  const anchorLabels = labels(input.conversation?.surface_anchors);
+  const anchorLabels = labels(input.heard?.anchors);
   const optionLabels = labels(input.conversation?.inbound?.options);
   const tokenMax = Math.max(0, (input.line?.tokens?.length ?? 1) - 1);
   const nullable = (schema) => ({ anyOf: [schema, { type: "null" }] });
@@ -218,7 +220,7 @@ function validateCandidates(frame, input = {}) {
   const requests = input.conversation?.requests ?? [];
   const inbound = [input.conversation?.inbound, input.conversation?.just_answered_inbound].filter(Boolean);
   const referents = input.referent_candidates ?? [];
-  const anchors = input.conversation?.surface_anchors ?? [];
+  const anchors = input.heard?.anchors ?? [];
   const options = input.conversation?.inbound?.options ?? [];
   const facets = new Set(FACETS());
   frame.acts.forEach((act, i) => {
@@ -239,6 +241,11 @@ function validateCandidates(frame, input = {}) {
     if (act.echo?.anchor && !has(anchors, act.echo.anchor)) reject("echo", "unknown_anchor", { value: act.echo.anchor });
     if (act.inbound_answer?.option && !INBOUND_OPTION_SPECIAL.includes(act.inbound_answer.option) && !has(options, act.inbound_answer.option)) reject("inbound_answer", "unknown_option", { value: act.inbound_answer.option });
     if (act.requested_action?.object && !has(referents, act.requested_action.object)) reject("requested_action", "unknown_referent", { value: act.requested_action.object });
+    // A referent is LICENSED only by an entity span in this act, conversation salience (incl. the active place)
+    // or the explicit anaphoric set -- never merely because a candidate exists.
+    const licensed = licensedReferents(act, input);
+    if (act.referent?.candidate && !REFERENT_CHOICE_SPECIAL.includes(act.referent.candidate) && has(referents, act.referent.candidate) && !licensed.has(act.referent.candidate)) reject("referent", "referent_not_licensed", { value: act.referent.candidate });
+    if (act.requested_action?.object && has(referents, act.requested_action.object) && !licensed.has(act.requested_action.object)) reject("requested_action", "referent_not_licensed", { value: act.requested_action.object });
     // Facet: in the registry, or one of the two special values.
     const special = FACET_SPECIAL.includes(act.facet);
     if (!special && !facets.has(act.facet)) { reject("facet", "unknown_facet", { value: act.facet }); return; }
@@ -262,6 +269,31 @@ function validateCandidates(frame, input = {}) {
   });
   return { ok: errors.length === 0, errors };
 }
+
+/** Referent labels an act may choose: entity spans inside the act, salient entities, the active place, anaphora. */
+function licensedReferents(act, input) {
+  const [a, b] = Array.isArray(act.span) ? act.span : [0, -1];
+  const conv = input.conversation ?? {};
+  return new Set([
+    ...(input.features?.entity_spans ?? []).filter((e) => e.tokens[0] >= a && e.tokens[1] <= b).map((e) => e.candidate),
+    // Things the player's own line named, incl. the items a named task canonically carries (basis "line").
+    ...(input.referent_candidates ?? []).filter((r) => r.basis === "line").map((r) => r.label),
+    ...(conv.salient_entities ?? []), conv.active_place, ...(conv.anaphora_candidates ?? [])
+  ].filter(Boolean));
+}
+/** Lower-cased words of an act's span (code features: the tokens the input already carries). */
+function wordsIn(act, input) {
+  const [a, b] = Array.isArray(act.span) ? act.span : [0, -1];
+  // Possessives count as the word itself ("everyone's first day" is evidence for "everyone").
+  return (input.line?.tokens ?? []).slice(a, b + 1).map((t) => String(t.text).toLowerCase().replace(/['\u2019]s$/, ""));
+}
+// Room-wide address evidence, universal ("everyone") or existential ("anyone", "someone": respondent mode any).
+const ALL_WORDS = new Set(["all", "everyone", "everybody", "both", "guys", "team", "whole", "yall", "y'all", "anyone", "anybody", "any", "someone", "somebody", "each", "every", "yourselves", "folks"]);
+const OTHERS_WORDS = new Set(["rest", "others", "other", "else"]);
+const EXCEPT_WORDS = new Set(["except", "besides", "excluding", "apart"]);
+const MODE_WORDS = new Set(["each", "every", "everyone", "everybody", "all", "any", "anyone", "anybody", "someone", "somebody", "both", "whole", "yall", "y'all", "guys", "yourselves", "folks"]);
+const NON_ASKING = new Set(["statement", "aside", "sarcasm", "social_acknowledgment"]);
+const WH_WORDS = new Set(["who", "whom", "whose", "what", "where", "when", "why", "how", "which"]);
 
 /** The first wh-word token inside an act's span (a code feature, never a reader output). */
 function whWordOf(act, input) {
@@ -296,7 +328,7 @@ function validateSurface(frame, input = {}) {
     }
     // Name-role consistency with the address: a NAMED name must be read as a vocative / greeting target.
     const roleOf = new Map((act.name_roles ?? []).map((r) => [r.name, r.role]));
-    if (op === "NAMED") for (const l of act.address.names) if (roleOf.has(l) && !["vocative", "greeting_target"].includes(roleOf.get(l))) flag("address", "named_span_not_vocative", "reject_field", { name: l });
+    if (op === "NAMED") for (const l of act.address.names) if (roleOf.has(l) && !["vocative", "greeting_target", ...(act.repair_kind === "addressee" ? ["repair_target"] : [])].includes(roleOf.get(l))) flag("address", "named_span_not_vocative", "reject_field", { name: l });
     // A standalone name ("Tonya.") is read against the DIS: never a passing mention; an answer only when a
     // coworker's question that takes a person is pending.
     for (const [label, role] of roleOf) {
@@ -306,6 +338,27 @@ function validateSurface(frame, input = {}) {
       if (role === "answer_to_inbound" && !inboundPending) flag("name_roles", "answer_role_without_inbound", "reject_field", { name: label });
       if (span.standalone && role === "answer_to_inbound" && inboundPending && !inboundWantsPerson && input.conversation.inbound.answer_shape !== "free_short_answer") flag("name_roles", "name_answer_shape_mismatch", "clarify", { name: label, slot: "answer" });
     }
+    // Set-valued and second-person address operations need surface evidence in the act itself.
+    const words = wordsIn(act, input);
+    const [a0, b0] = Array.isArray(act.span) ? act.span : [0, -1];
+    const secondPerson = (input.features?.second_person ?? []).some((t) => t >= a0 && t <= b0);
+    const has = (set) => words.some((w) => set.has(w));
+    if (op === "ALL" && !has(ALL_WORDS) && !(secondPerson && words.includes("all"))) flag("address", "all_without_evidence", "clarify", { slot: "person" });
+    if (op === "OTHERS" && !has(OTHERS_WORDS) && !((words.includes("two") || words.includes("three")) && secondPerson)) flag("address", "others_without_evidence", "clarify", { slot: "person" });
+    if (op === "EXCEPT") {
+      const excludedSpans = (act.address?.names ?? []).map((l) => names.get(l)).filter(Boolean);
+      const cue = has(EXCEPT_WORDS) || excludedSpans.some((n) => ["but", "not"].includes(String(input.line?.tokens?.[n.tokens[0] - 1]?.text ?? "").toLowerCase()));
+      if (!cue) flag("address", "except_without_evidence", "clarify", { slot: "person" });
+    }
+    if (op === "SECOND_PERSON" && !secondPerson) flag("address", "second_person_without_evidence", "clarify", { slot: "person" });
+    // The respondent mode the player EXPRESSED must be expressed, and must not contradict the address.
+    if (act.respondent_mode && act.respondent_mode !== "unspecified") {
+      if (!has(MODE_WORDS)) flag("respondent_mode", "respondent_mode_without_evidence", "clarify", { slot: "person" });
+      if (op === "NAMED" && (act.address?.names ?? []).length === 1 && ["each", "all"].includes(act.respondent_mode)) flag("respondent_mode", "respondent_mode_contradicts_address", "reject_field");
+    }
+    // A line with asking features never silently becomes a remark (a statement / aside is silence by policy).
+    const firstWord = words.find((w) => /^[a-z]/.test(w));
+    if (NON_ASKING.has(act.speech_act) && (words.includes("?") || WH_WORDS.has(firstWord)) && !(act.abstain ?? []).includes("force")) flag("speech_act", "non_asking_reading_with_asking_features", "clarify", { slot: "topic" });
   });
   return { ok: errors.length === 0, errors };
 }
@@ -389,5 +442,5 @@ module.exports = {
   READER_FRAME_VERSION, MAX_ACTS, SPEECH_ACTS, QUESTION_FORMS, FACET_SPECIAL, POLARITIES, NAME_ROLES, ADDRESS_OPS, RELATIONS, REPAIR_KINDS,
   TEMPORALS, RESPONDENT_MODES, INBOUND_KINDS, INBOUND_OPTION_SPECIAL, SUBJECT_KINDS, ACTION_FAMILIES, ABSTAIN_FIELDS, LABEL, ACT_KEYS,
   ELIGIBLE_ANTECEDENT_STATES, OPEN_STATES,
-  readerFrameSchema, validateSchema, validateCandidates, validateSurface, validateDiscourse, validateReaderFrame, whWordOf
+  readerFrameSchema, validateSchema, validateCandidates, validateSurface, validateDiscourse, validateReaderFrame, whWordOf, licensedReferents, wordsIn
 };

@@ -32,7 +32,7 @@ function createLegacyReaderV0() {
     version: "yellow-beast-reader-legacy-v0@v1",
     read({ input, bindings, legacy }) {
       if (!legacy?.analysis) return { frame: null, conversion: null };
-      return frameFromLegacy(legacy.analysis, { input, bindings }, { frame: legacy.frame ?? null });
+      return frameFromLegacy(legacy.analysis, { input, bindings }, { frame: legacy.frame ?? null, primary: legacy.primary ?? null });
     }
   });
 }
@@ -87,8 +87,51 @@ function readTurn(reader, { request_id, input, bindings, legacy = null }) {
   });
 }
 
+/**
+ * The VALUE-LEVEL record of what the legacy pipeline decided for one turn: every effective act with its facet
+ * source, addressee source, args, overrides, repair metadata and clarification. This is the characterization
+ * and round-trip view of production behaviour (the stored turn record drops facet_source and overrides). It is
+ * never given to a reader and never persisted.
+ */
+function legacyActRecord(e) {
+  if (!e) return null;
+  return {
+    speech_act: e.speech_act ?? null, question_form: e.question_form ?? null, relation: e.relation ?? null,
+    relation_target: e.relation_target ?? null, reissue_of: e.reissue_of ?? null, reopen: Boolean(e.reopen),
+    predicate: e.predicate ?? null, facet_source: e.facet_source ?? null,
+    fn_hint: e.fn_hint ?? null, request_text: e.request_text ?? null,
+    addressee: e.addressee ? { kind: e.addressee.kind ?? null, ids: [...(e.addressee.ids ?? [])], quantifier: e.addressee.quantifier ?? null, source: e.addressee.source ?? null, ...(e.addressee.second_person ? { second_person: true } : {}), ...(e.addressee.mismatch ? { mismatch: true } : {}), ...(e.addressee.absent ? { absent: [...e.addressee.absent] } : {}) } : null,
+    cardinality: e.cardinality ?? null, temporal_scope: e.temporal_scope ?? null, polarity: e.polarity ?? e.act?.polarity ?? null,
+    args: e.args ? structuredClone(e.args) : {}, repair: e.repair ? structuredClone(e.repair) : null,
+    clarify: e.clarify ? { reason: e.clarify.reason ?? null, slot: e.clarify.slot ?? null } : null,
+    overrides: (e.overrides ?? []).map((o) => ({ ...o })), advisory_filled: [...(e.advisory_filled ?? [])],
+    activity: e.activity ? { ...e.activity } : null, alternatives: e.alternatives ?? null,
+    clause_speech_act: e.act?.speech_act ?? null
+  };
+}
+function legacyRecord(legacy) {
+  const analysis = legacy?.analysis ?? null;
+  if (!analysis) return null;
+  return {
+    effective: (analysis.effective ?? []).map(legacyActRecord),
+    primary_index: (analysis.effective ?? []).indexOf(analysis.primary),
+    // The primary act the service actually finalized (an address correction may have replaced it).
+    primary_used: legacyActRecord(legacy.primary ?? analysis.primary),
+    social: (analysis.social ?? []).map((x) => ({ speech_act: x.speech_act })),
+    completeness: analysis.completeness ? { complete: analysis.completeness.complete, missing: [...analysis.completeness.missing] } : null,
+    advisory: analysis.advisory?.state ? { applied: Boolean(analysis.advisory.applied), accepted: Boolean(analysis.advisory.state.accepted), reason: analysis.advisory.state.reason ?? null } : null
+  };
+}
+/** What the developer trace shows of a seam record: never the code-side context (bindings carry canonical ids). */
+function traceView(record) {
+  if (!record) return null;
+  const { context, ...visible } = record;
+  return visible;
+}
+
 /** A bounded in-memory receipt store (developer trace only; never persisted in Phase 0). */
 function createReceiptStore(limit = MAX_RECEIPTS) {
+  if (!Number.isInteger(limit) || limit < 1) limit = MAX_RECEIPTS;
   const map = new Map();
   return Object.freeze({
     put(requestId, record) { map.set(requestId, record); while (map.size > limit) map.delete(map.keys().next().value); },
@@ -98,4 +141,4 @@ function createReceiptStore(limit = MAX_RECEIPTS) {
   });
 }
 
-module.exports = { READER_SEAM_VERSION, RECEIPT_VERSION, createLegacyReaderV0, createOracleReader, readTurn, createReceiptStore, digest };
+module.exports = { READER_SEAM_VERSION, RECEIPT_VERSION, MAX_RECEIPTS, createLegacyReaderV0, createOracleReader, readTurn, createReceiptStore, legacyActRecord, legacyRecord, traceView, digest };

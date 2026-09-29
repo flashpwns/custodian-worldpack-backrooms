@@ -33,24 +33,53 @@ const SECOND_PERSON = new Set(["you", "your", "yours", "yourself", "yourselves",
 const QUANTIFIERS = new Set(["all", "everyone", "everybody", "both", "rest", "others", "other", "anyone", "anybody", "each", "except", "two", "three", "just", "only", "whole", "else", "guys", "team"]);
 const DEICTICS = new Set(["it", "its", "that", "this", "those", "these", "there", "them"]);
 
+const NAME_STOP = new Set(["the", "and", "for", "dr", "mr", "mrs", "ms", "sir", "doctor", "desk", "team", "you", "your", "all"]);
 const isWord = (t) => /^[A-Za-z@]/.test(t.text);
 const low = (s) => String(s ?? "").toLowerCase();
 
 /** Person-name vocabulary: present coworkers (labelled), other known persons (absent) and the player. */
 function nameVocabulary({ present, entities, player }) {
   const vocab = new Map();
-  const add = (word, ref) => { const w = low(word).replace(/[^a-z'-]/g, ""); if (w.length >= 3 && w !== "dr" && !vocab.has(w)) vocab.set(w, ref); };
+  // Name words only: function words and titles inside multi-word names ("the Control desk", "Dr. Kirk Maxwell")
+  // are never name spans.
+  const add = (word, ref) => { const w = low(word).replace(/[^a-z'-]/g, ""); if (w.length >= 3 && !NAME_STOP.has(w) && !vocab.has(w)) vocab.set(w, ref); };
   present.forEach((p, i) => { for (const n of [p.name, ...(p.names ?? [])]) for (const w of String(n ?? "").split(/\s+/)) add(w, { kind: "present", person: `p${i + 1}`, id: p.id }); });
   for (const w of (player?.names ?? []).flatMap((n) => String(n).split(/\s+/))) add(w, { kind: "player", id: player.id });
-  for (const e of entities.filter((x) => x.kind === "person" && !x.is_player && !present.some((p) => p.id === x.id))) for (const w of (e.names ?? [e.label]).flatMap((n) => String(n).split(/\s+/))) add(w, { kind: "absent", id: e.id });
+  // Known people who are not present: proper-name words of the canonical label ("Dr. Kirk Maxwell" -> Kirk,
+  // Maxwell) and single-word canonical names -- never the words of a descriptive name phrase.
+  for (const e of entities.filter((x) => x.kind === "person" && !x.is_player && !present.some((p) => p.id === x.id))) {
+    const words = [...String(e.label ?? "").split(/\s+/).filter((w) => /^[A-Z][a-z]/.test(w)), ...(e.names ?? []).filter((n) => !/\s/.test(String(n).trim()))];
+    for (const w of words) add(w, { kind: "absent", id: e.id });
+  }
   return vocab;
 }
 
-/** Referent candidates (places and items), salient first; opaque labels r1..rN. */
-function referentCandidates(entities, salientIds, lineIds) {
-  const pool = entities.filter((e) => e.kind === "equipment" || e.kind === "location" || (e.kind === "entity" && PLACE_ENTITY_IDS.has(e.id)));
-  const rank = (e) => (salientIds.includes(e.id) ? 0 : lineIds.includes(e.id) ? 1 : 2);
-  return [...pool].sort((a, b) => rank(a) - rank(b) || pool.indexOf(a) - pool.indexOf(b)).slice(0, MAX_REFERENTS).map((e, i) => ({ label: `r${i + 1}`, id: e.id, kind: e.kind === "equipment" ? "item" : "place", name: e.label }));
+const isReferentKind = (e) => e && (e.kind === "equipment" || e.kind === "location" || (e.kind === "entity" && PLACE_ENTITY_IDS.has(e.id)));
+/**
+ * Referent candidates (places and items) -- OBSERVER-SAFE by construction, never the canonical world index:
+ * only things the conversation made salient, the explicit anaphoric set (what the last requests were about,
+ * the active place), and things the player's own line names. Opaque labels r1..rN, salient first.
+ */
+function referentCandidates(entities, { salientIds = [], anaphoraIds = [], lineIds = [] } = {}) {
+  const byId = new Map(entities.map((e) => [e.id, e]));
+  const ordered = [...new Set([...salientIds, ...anaphoraIds, ...lineIds])].map((id) => byId.get(id)).filter(isReferentKind);
+  return ordered.slice(0, MAX_REFERENTS).map((e, i) => ({ label: `r${i + 1}`, id: e.id, kind: e.kind === "equipment" ? "item" : "place", name: e.label, basis: salientIds.includes(e.id) ? "salient" : anaphoraIds.includes(e.id) ? "anaphora" : "line" }));
+}
+/** Text a coworker-question option may show a reader: an entity's name, an object's label -- never an id. */
+const ID_LIKE = /^[a-z0-9]+(?:[-:][a-z0-9]+)+$/i;
+function optionText(option, entities) {
+  if (typeof option === "string") {
+    const entity = entities.find((e) => e.id === option);
+    if (entity) return entity.label ?? null;
+    return ID_LIKE.test(option) ? null : option;
+  }
+  if (option && typeof option === "object") return typeof option.label === "string" ? option.label : null;
+  return null;
+}
+/** Salience text from REQUIRED facts: string values (and string lists) only -- a structured value is not
+ * scanned wholesale, so an unrelated nested name never becomes salient. */
+function requiredFactText(facts) {
+  return (facts ?? []).flatMap((f) => (typeof f?.value === "string" ? [f.value] : Array.isArray(f?.value) ? f.value.filter((v) => typeof v === "string") : [])).join(" ");
 }
 
 /** Character offset (in the normalized line) -> token index. */
@@ -72,7 +101,11 @@ function buildReaderInput({ raw, chip_target_id = null, present = [], player = n
   // ── surface features (code, paraphrase-invariant; no decisions) ──
   const nameSpans = [];
   for (let k = 0; k < tokens.length; k += 1) {
-    const ref = isWord(tokens[k]) ? vocab.get(low(tokens[k].text)) : null;
+    // A possessive or s-suffixed name ("Tonya's", "tonyas") is still that person's name span (closed vocabulary).
+    const word = isWord(tokens[k]) ? low(tokens[k].text) : null;
+    const bare = word ? word.replace(/(?:['’]s|s)$/, "") : null;
+    const ref = word ? vocab.get(word) ?? (bare && bare !== word ? vocab.get(bare) : null) : null;
+    const possessive = Boolean(word && !vocab.get(word) && ref);
     if (!ref) continue;
     let end = k;
     while (end + 1 < tokens.length && isWord(tokens[end + 1]) && vocab.get(low(tokens[end + 1].text))?.id === ref.id) end += 1;
@@ -86,7 +119,8 @@ function buildReaderInput({ raw, chip_target_id = null, present = [], player = n
       position: firstWord ? "initial" : lastWord ? "final" : "medial",
       delimited: tokens[k - 1]?.text === "," || tokens[end + 1]?.text === ",",
       capitalized: /^[A-Z]/.test(line.slice(tokens[k].start, tokens[k].end)),
-      standalone: words.every((w) => w.i >= k && w.i <= end)
+      standalone: words.every((w) => w.i >= k && w.i <= end),
+      ...(possessive ? { possessive: true } : {})
     });
     k = end;
   }
@@ -129,7 +163,7 @@ function buildReaderInput({ raw, chip_target_id = null, present = [], player = n
   const pendingInbound = snapshot?.pending_inbound_request ?? null;
   const inbound = pendingInbound ? (() => {
     bindings.inbound.i1 = pendingInbound.event_id ?? null;
-    const options = (pendingInbound.options ?? []).map((o, i) => { bindings.options[`o${i + 1}`] = o; return { label: `o${i + 1}`, text: typeof o === "string" ? o : String(o?.label ?? o?.id ?? "") }; });
+    const options = (pendingInbound.options ?? []).map((o, i) => { bindings.options[`o${i + 1}`] = o; return { label: `o${i + 1}`, text: optionText(o, entities) }; });
     return { label: "i1", from: labelOf(pendingInbound.from ?? pendingInbound.speaker_id), kind: pendingInbound.kind ?? null, facet: pendingInbound.predicate ?? null, answer_shape: pendingInbound.answer_shape ?? null, options, options_source: options.length ? "ledger" : "none" };
   })() : null;
   const justAnswered = snapshot?.just_answered_inbound ?? null;
@@ -139,24 +173,32 @@ function buildReaderInput({ raw, chip_target_id = null, present = [], player = n
 
   // Salience: the player's own words and the replies' REQUIRED facts (never optional facts, never wording).
   const replies = discourse?.last_turn?.responses ?? [];
-  const requiredText = replies.flatMap((r) => r.facts?.required ?? []).map((f) => (typeof f.value === "string" ? f.value : JSON.stringify(f.value ?? ""))).join(" ");
+  const requiredText = replies.map((r) => requiredFactText(r.facts?.required)).join(" ");
   const salienceText = [snapshot?.last_request?.request_text ?? "", discourse?.last_turn?.player_text ?? "", requiredText].join(" ");
   const salientMentions = canonicalKnowledge.resolveEntityMentions(salienceText, entities).filter((e) => e.kind !== "person");
-  const salientIds = [...new Set([snapshot?.last_request?.args?.place_id, snapshot?.last_request?.args?.item_id, ...salientMentions.map((e) => e.id)].filter(Boolean))];
-  const referents = referentCandidates(entities, salientIds, lineMentions.map((m) => m.id));
+  const salientIds = [...new Set(salientMentions.map((e) => e.id))];
+  // The explicit anaphoric / deictic set: what the most recent requests were about (canonical args), and the
+  // active place. "it", "that", "there" may choose only among these (or salient / named things).
+  const anaphoraIds = [...new Set([snapshot?.last_request?.args?.item_id, snapshot?.last_request?.args?.place_id, snapshot?.last_substantive_request?.args?.item_id, snapshot?.last_substantive_request?.args?.place_id].filter(Boolean))];
+  // Items a named TASK canonically carries ("the startup materials" -> its duffle): canonical association of
+  // something the player's own line named (canonical-knowledge TASK_ITEMS), never a guess.
+  const taskItems = lineMentions.filter((m) => m.kind === "task").flatMap((m) => {
+    const pattern = canonicalKnowledge.TASK_ITEMS?.[String(m.id).replace(/^task:/, "")] ?? null;
+    return pattern ? entities.filter((e) => e.kind === "equipment" && (pattern.test(e.id) || pattern.test(String(e.label ?? "")))).map((e) => e.id) : [];
+  });
+  const referents = referentCandidates(entities, { salientIds, anaphoraIds, lineIds: [...lineMentions.map((m) => m.id), ...taskItems] });
   for (const r of referents) bindings.referents[r.label] = r.id;
   const refLabel = (id) => referents.find((r) => r.id === id)?.label ?? null;
   for (const span of entitySpans) span.candidate = refLabel(bindings.entities[span.label]);
   const activePlaceId = snapshot?.last_request?.args?.place_id ?? salientIds.find((id) => referents.find((r) => r.id === id)?.kind === "place") ?? null;
 
-  // Surface anchors: which request each spoken sentence answered (ledger metadata); their TEXT is heard wording.
-  const anchors = [];
+  // Surface anchors: sentences a coworker actually SPOKE, mapped to the request that licensed them. Their
+  // number, split and words depend on the wording provider, so they live only in the heard channel.
   const heardAnchors = [];
   for (const a of snapshot?.surface_anchors ?? []) (a.spans ?? []).forEach((span, j) => {
-    const label = `a${anchors.length + 1}`;
+    const label = `a${heardAnchors.length + 1}`;
     bindings.anchors[label] = { event_id: a.event_id ?? null, span: j };
-    anchors.push({ label, speaker: labelOf(a.speaker_id), request: requestLabel(span.request_id), facet: span.predicate ?? null });
-    heardAnchors.push({ anchor: label, text: String(span.text ?? "").slice(0, 200) });
+    heardAnchors.push({ label, speaker: labelOf(a.speaker_id), request: requestLabel(span.request_id), facet: span.predicate ?? null, text: String(span.text ?? "").slice(0, 200) });
   });
 
   const input = {
@@ -165,7 +207,7 @@ function buildReaderInput({ raw, chip_target_id = null, present = [], player = n
     features,
     chip_target: chip_target_id ? labelOf(chip_target_id) : null,
     people,
-    referent_candidates: referents.map(({ label, kind, name }) => ({ label, kind, name })),
+    referent_candidates: referents.map(({ label, kind, name, basis }) => ({ label, kind, name, basis })),
     conversation: {
       last_responders: labels(snapshot?.active_speaker?.speaker_ids ?? (snapshot?.active_speaker?.speaker_id ? [snapshot.active_speaker.speaker_id] : [])),
       last_speakers: [...new Set(labels(replies.map((r) => r.speaker_id)))],
@@ -176,20 +218,22 @@ function buildReaderInput({ raw, chip_target_id = null, present = [], player = n
       activity,
       salient_entities: salientIds.map(refLabel).filter(Boolean),
       active_place: activePlaceId ? refLabel(activePlaceId) : null,
-      surface_anchors: anchors,
-      freshness: { exchange_fresh: Boolean(discourse?.last_turn), requests_in_window: requestView.length, anchors_fresh: anchors.length > 0 },
+      anaphora_candidates: anaphoraIds.map(refLabel).filter(Boolean),
+      freshness: { exchange_fresh: Boolean(discourse?.last_turn), requests_in_window: requestView.length },
       previous_player_line: discourse?.last_turn?.player_text ? String(discourse.last_turn.player_text).slice(0, 200) : null,
       salience_source: SALIENCE_SOURCE
     },
-    // Presentation-dependent: words a wording provider chose. A reader may use them only to recognise an echo
-    // or a comment on what was said; canonical routing never depends on them except through a surface anchor.
+    // Presentation-dependent (differs by wording provider): the words coworkers chose, and the surface anchors
+    // cut from them (their count and shape included). A reader may use these only to recognise an echo or a
+    // comment on what was said; they are kept apart from the canonical conversation state above.
     heard: {
       presentation_dependent: true,
       lines: replies.map((r) => ({ speaker: labelOf(r.speaker_id), text: String(r.text ?? "").slice(0, 200) })).filter((l) => l.speaker && l.text),
-      anchors: heardAnchors
+      anchors: heardAnchors,
+      anchor_count: heardAnchors.length
     }
   };
   return { input, bindings };
 }
 
-module.exports = { READER_INPUT_VERSION, SALIENCE_SOURCE, REQUEST_WINDOW, buildReaderInput, nameVocabulary };
+module.exports = { READER_INPUT_VERSION, SALIENCE_SOURCE, REQUEST_WINDOW, buildReaderInput, nameVocabulary, referentCandidates, optionText, requiredFactText };

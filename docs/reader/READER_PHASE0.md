@@ -5,7 +5,12 @@
 **Scope:** architecture seams only.
 - No player-facing, routing, Tier-1, advisory, renderer or runtime-flag change.
 - No cutover.
-- The spent corpora and `verification/*` are untouched.
+- The spent corpora are untouched.
+- **Correction (Phase 0.5):** an earlier version of this document said `verification/*` was untouched. That
+  was true of the Phase-0 implementation, but not of the Phase-0 **finish**:
+  - `tests/ed31a-reader-phase0.test.js` was registered in `verification/verification-authority.json` and
+    `verification/test-manifest.json`, with owner approval, per `docs/VERIFICATION_GOVERNANCE.md` §6.
+  - Phase 0.5 adds further governed entries (see `docs/reader/READER_PHASE0_5.md` §2).
 - No new blind corpus.
 
 **Authority:** the adjudicated architecture review of 2026-09-28, under `SIMULATION_DOCTRINE.md`
@@ -51,7 +56,7 @@ The reader expresses **linguistic interpretation only**:
 | `question_form` | wh, yes_no, choice, declarative, indirect, tag, count, none | |
 | `facet` | registry id, `NONE_ASKING`, `NOT_APPLICABLE` | on a `statement` the facet is what the player **claims** about (claim facet) |
 | `polarity` | positive, negative, inverted | with `facet` on a statement, gives the claim's polarity |
-| `name_roles[]` | `{ name: nN, role: vocative / mention / answer_to_inbound / greeting_target }` | classifies **code-supplied** name spans only |
+| `name_roles[]` | `{ name: nN, role: vocative / mention / answer_to_inbound / greeting_target / repair_target }` | classifies **code-supplied** name spans only. `repair_target` (Phase 0.5) is the person an addressee repair re-addresses ("No, I was asking Malcolm"); it is allowed with NAMED only when `repair_kind` is `addressee` |
 | `address` | `{ op: NAMED / ALL / OTHERS / EXCEPT / SECOND_PERSON / NONE, names: [nN], relative_to: qN, count: 2..6 }` | language-level only; **no** KEEP_RESPONDER / SHARED / ASKER_OF_INBOUND / ANSWERER_OF |
 | `relation` | `{ kind: new / continuation / repair / topic_return / attention / answer / withdraw, target }` | target: `qN` request, `i1` / `i0` inbound, `s0` / `s1` an earlier act of this line, `v1` the active activity round, `aN` a heard sentence |
 | `repair_kind` | addressee, referent, facet, temporal, unanswered, own_answer | |
@@ -92,9 +97,9 @@ returns `{ input, bindings }`.
 | `features` | **code facts, never decisions**:<br>• name spans (label, tokens, present person label / absent person / player, position, comma-delimited, capitalized, standalone)<br>• closed-vocabulary entity spans (with their referent candidate)<br>• wh / second-person / quantifier / deictic token classes<br>• punctuation; word count |
 | `chip_target` | the explicit UI target as a person label |
 | `people` | present coworkers as `pN` labels, with the names the player uses |
-| `referent_candidates` | places and items as `rN`, salient first |
-| `conversation` | • last responders and last speakers<br>• last 4 requests `{ label, facet, targets, answered_by (from ledger slots), state, distance }` and the pending ones<br>• the pending coworker question `{ i1, from, kind, facet, answer_shape, options }` and the one just answered<br>• the active activity `{ v1, kind, facet, done, remaining }`<br>• salient entities and active place<br>• surface anchors `{ aN, speaker, request, facet }`<br>• freshness; the player's previous line<br>• `salience_source` |
-| `heard` | **presentation-dependent**, clearly marked: the coworkers' spoken lines and the anchor sentences |
+| `referent_candidates` | places and items as `rN`, **observer-safe by construction** (Phase 0.5): only things the conversation made salient, the explicit anaphoric set (`conversation.anaphora_candidates`: what the last requests were about), and things the player's own line names (including the items a named task canonically carries). Never the canonical world index. Each has a `basis` (salient / anaphora / line) |
+| `conversation` | • last responders and last speakers<br>• last 4 requests `{ label, facet, targets, answered_by (from ledger slots), state, distance }` and the pending ones<br>• the pending coworker question `{ i1, from, kind, facet, answer_shape, options }` and the one just answered<br>• the active activity `{ v1, kind, facet, done, remaining }`<br>• salient entities, active place and the anaphoric set<br>• freshness; the player's previous line<br>• `salience_source` |
+| `heard` | **presentation-dependent**, clearly marked: the coworkers' spoken lines, and the surface anchors `{ aN, speaker, request, facet, text }` with their count. Phase 0.5 moved the anchors here from `conversation`: their number and split depend on the wording provider |
 
 - **Absent by construction:**
   - canonical ids;
@@ -230,6 +235,18 @@ validated ReaderFrame):
 ## 8. Legacy adapter coverage
 
 See `docs/acceptance/reader-phase0/README.md` and `legacy-adapter-coverage.json`.
+
+**Correction (Phase 0.5): class counts versus non-exact turns.** The Phase-0 report gave 4 / 5 / 11 / 8
+turns per class, which sum to **28**, but only **27** turns were non-exact. The class counts are per class,
+and one turn carried notes of two classes:
+- the turn is **"Giselle?"** (`j15/3-chaotic.txt`);
+- its notes are `resolver-policy concern: rewrite:attention_call>elliptical_continuation` (a bare name after
+  someone answered is turned into a re-ask by ledger policy) **and** `legacy-only artifact:
+  relation_without_antecedent` (the continuation it became names no request antecedent).
+
+This was reconstructed by re-running the Phase-0 tools at `e90bff8` (read-only export). The coverage report
+now prints `non_exact_turns`, `class_turn_sum` and every `multi_class_turns` entry, so the overlap is visible
+rather than implied.
 
 ## 9. Gold-DIS evaluator design
 

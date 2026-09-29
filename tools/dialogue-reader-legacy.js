@@ -72,7 +72,10 @@ function tokenSpan(charSpan, tokens) {
  * @param options.frame  the finalized legacy semantic frame (dialogueTurn.finalizeFrame output), if available
  * @returns { frame, conversion: { version, exact, notes[], raw_text_dependencies[] } }
  */
-function frameFromLegacy(analysis, readerInput, { frame: legacyFrame = null } = {}) {
+function frameFromLegacy(analysisIn, readerInput, { frame: legacyFrame = null, primary: usedPrimary = null } = {}) {
+  // Express what production DECIDED: when the service replaced the analysis primary (an address correction),
+  // the replacement is the legacy decision for that act.
+  const analysis = usedPrimary && analysisIn?.primary && usedPrimary !== analysisIn.primary ? { ...analysisIn, effective: (analysisIn.effective ?? []).map((x) => (x === analysisIn.primary ? usedPrimary : x)), primary: usedPrimary } : analysisIn;
   const { input, bindings } = readerInput;
   const notes = [];
   const rawDeps = [];
@@ -85,7 +88,7 @@ function frameFromLegacy(analysis, readerInput, { frame: legacyFrame = null } = 
   const referentLabel = (id) => (id ? Object.entries(bindings.referents).find(([, v]) => v === id)?.[0] ?? null : null);
   const personLabel = (id) => Object.entries(bindings.people).find(([, v]) => v === id)?.[0] ?? null;
   // The latest sentence a person was heard to say (a surface anchor): what "why?" / "what do you mean?" question.
-  const lastHeardFrom = (label) => (label ? input.conversation.surface_anchors.filter((x) => x.speaker === label).at(-1)?.label ?? null : null);
+  const lastHeardFrom = (label) => (label ? input.heard.anchors.filter((x) => x.speaker === label).at(-1)?.label ?? null : null);
 
   const effective = analysis?.effective ?? [];
   // Social framing clauses ride along as their own acts when there is room (they are readable, not policy).
@@ -105,6 +108,9 @@ function frameFromLegacy(analysis, readerInput, { frame: legacyFrame = null } = 
     let span = tokenSpan(clauseAct.span, tokens);
     if (!span) { note(i, "span", "legacy-only artifact", "span_not_on_tokens"); span = [Math.max(previousEnd + 1, 0), Math.max(previousEnd + 1, 0)]; }
     if (span[0] <= previousEnd) { note(i, "span", "legacy-only artifact", "overlapping_clause_spans"); span = [previousEnd + 1, Math.max(previousEnd + 1, span[1])]; }
+    // No token left for this act (legacy produced more clauses than the line has room for): drop it, noted.
+    if (span[0] > tokens.length - 1) { note(i, "span", "legacy-only artifact", "act_without_tokens"); return; }
+    span = [span[0], Math.min(span[1], tokens.length - 1)];
     previousEnd = span[1];
     const out = { span };
 
@@ -144,7 +150,10 @@ function frameFromLegacy(analysis, readerInput, { frame: legacyFrame = null } = 
       note(i, "name_roles", "legacy-only artifact", "name_span_without_legacy_role", { name: n.text });
       return { name: n.label, role: "mention" };
     });
-    const vocSpans = out.name_roles.filter((r) => ["vocative", "greeting_target"].includes(r.role)).map((r) => r.name);
+    // An addressee repair names its intended addressee as a mention ("No, I was asking Malcolm"): repair_target.
+    const repairTargetIds = (base.addressee?.source === "legacy_correction" || (base.addressee?.source === "repair" && base.repair?.kind === "target")) ? (base.addressee.ids ?? []) : [];
+    if (repairTargetIds.length) out.name_roles = out.name_roles.map((r) => (repairTargetIds.includes(idOfName(r.name)) && r.role === "mention" ? { name: r.name, role: "repair_target" } : r));
+    const vocSpans = out.name_roles.filter((r) => ["vocative", "greeting_target", "repair_target"].includes(r.role)).map((r) => r.name);
 
     // language-level address operation (never the legacy responder decision)
     const a = base.addressee ?? null;
@@ -152,7 +161,8 @@ function frameFromLegacy(analysis, readerInput, { frame: legacyFrame = null } = 
     const address = { op: "NONE", names: [], relative_to: null, count: null };
     let mode = "unspecified";
     if (a?.source === "chip") address.op = vocSpans.length ? "NAMED" : "NONE";
-    if (vocSpans.length && (!a || ["vocative", "vocative_not_present", "repair", "chip"].includes(a.source) || (clauseAct.vocatives ?? []).length)) { address.op = "NAMED"; address.names = vocSpans; }
+    if (vocSpans.length && (!a || ["vocative", "vocative_not_present", "repair", "legacy_correction", "chip"].includes(a.source) || (clauseAct.vocatives ?? []).length)) { address.op = "NAMED"; address.names = vocSpans; }
+    else if (base.repair?.kind === "target" && clauseAct.repair?.kind === "other_one") { address.op = "OTHERS"; address.relative_to = base.relation_target ? requestLabel(base.relation_target) : null; }
     else if (q === "except") { address.op = "EXCEPT"; address.names = input.features.name_spans.filter((n) => n.tokens[0] >= span[0] && n.tokens[1] <= span[1] && String(clauseAct.quantifier?.name ?? "").toLowerCase() === n.text.toLowerCase()).map((n) => n.label); }
     else if (q === "just") { const only = nameSpansFor(a?.ids ?? [], span).map((n) => n.label); address.op = only.length ? "NAMED" : "NONE"; address.names = only; }
     else if (q === "rest") { address.op = "OTHERS"; address.relative_to = null; }
@@ -171,38 +181,50 @@ function frameFromLegacy(analysis, readerInput, { frame: legacyFrame = null } = 
     if (base.relation_target) {
       relation.target = requestLabel(base.relation_target);
       if (!relation.target) note(i, "relation", "reader-schema gap", "antecedent_outside_input_window", "the legacy antecedent is older than the ReaderInput request window");
-    } else if (relation.kind === "answer") relation.target = input.conversation.inbound?.label ?? null;
-    else if (relation.kind === "continuation" && i > 0 && ASKING.has(acts[i - 1]?.speech_act)) relation.target = `s${i - 1}`;
-    else if (relation.kind === "continuation" && input.conversation.activity && (base.activity || a?.source === "activity_remaining")) relation.target = input.conversation.activity.label;
+    } else if (relation.kind === "answer" || (base.args?.reply_kind === "counter_question" && input.conversation.inbound)) relation.target = input.conversation.inbound?.label ?? null;
+    // The player's own just-given answer, repaired ("I mean, the camera"): the inbound question just answered.
+    else if (base.args?.reply_kind === "answer_repair" && input.conversation.just_answered_inbound) relation.target = input.conversation.just_answered_inbound.label;
+    // An earlier act of the SAME line -- a question, or the player's own claim ("I've been in the Complex
+    // before. Have you, Giselle?") -- is the antecedent.
+    else if (relation.kind === "continuation" && i > 0 && acts[i - 1] && (ASKING.has(acts[i - 1].speech_act) || acts[i - 1].speech_act === "statement")) relation.target = `s${i - 1}`;
+    else if (relation.kind === "continuation" && input.conversation.activity && (base.activity || a?.source === "activity_remaining" || (predicate && predicate === input.conversation.activity.facet && clauseAct.speech_act === "attention_call"))) relation.target = input.conversation.activity.label;
     else if (["continuation", "repair"].includes(relation.kind) && (a?.ids ?? []).length === 1 && lastHeardFrom(personLabel(a.ids[0]))) relation.target = lastHeardFrom(personLabel(a.ids[0]));
     else if (["continuation", "repair", "topic_return"].includes(relation.kind) && !base.clarify) {
       const inherited = a?.source === "active_speaker" || a?.source === "answer_owner" || a?.source === "antecedent_owner" || a?.source === "surface_anchor";
       note(i, "relation", inherited ? "resolver-policy concern" : "legacy-only artifact", "relation_without_antecedent", inherited ? "the continuation is established by addressee inheritance, not by a request antecedent" : null);
     }
     out.relation = relation;
-    const repairKind = base.repair?.kind ? REPAIR_KIND[base.repair.kind] ?? null : base.args?.reply_kind === "answer_repair" ? "own_answer" : null;
+    const repairKind = base.repair?.kind ? REPAIR_KIND[base.repair.kind] ?? null : base.args?.reply_kind === "answer_repair" ? "own_answer" : base.addressee?.source === "legacy_correction" ? "addressee" : null;
     out.repair_kind = relation.kind === "repair" || base.args?.reply_kind === "answer_repair" ? repairKind : null;
-    if (base.args?.reply_kind === "answer_repair" && relation.kind === "repair" && !relation.target) relation.target = input.conversation.just_answered_inbound?.label ?? null;
 
     // referent (pronoun / deictic choice, or a named thing)
     const refId = base.args?.item_id ?? base.args?.place_id ?? null;
     if (refId) {
       const candidate = referentLabel(refId);
       const spanHere = input.features.entity_spans.find((s) => bindings.entities[s.label] === refId && s.tokens[0] >= span[0] && s.tokens[1] <= span[1]) ?? null;
-      if (!candidate) note(i, "referent", "reader-schema gap", "referent_not_in_candidates", { id_kind: base.args?.item_id ? "item" : "place" });
+      // "going in" / "inside" -> the Complex is owner decision #4's canonical DEFAULT (resolver policy), not a
+      // referent the line names or the conversation made salient.
+      if (!candidate && base.args?.place_basis === "domain_default_inside") note(i, "referent", "resolver-policy concern", "deictic_default_place", "owner decision #4: 'going in' / 'inside' default to the Complex");
+      // A place legacy took from its salience (which reads OPTIONAL facts): not in the required-facts ReaderInput (B7).
+      else if (!candidate && base.args?.place_basis === "salient_topic") note(i, "referent", "needs-owner-decision", "salient_place_from_legacy_salience", "B7: legacy salience includes optional (possibly unspoken) facts");
+      else if (!candidate) note(i, "referent", "reader-schema gap", "referent_not_in_candidates", { id_kind: base.args?.item_id ? "item" : "place" });
       out.referent = { span: spanHere?.label ?? null, candidate: candidate ?? "NONE" };
       if (!spanHere && base.args?.place_basis && !["named", "deixis_active_place"].includes(base.args.place_basis)) out._referent_basis = base.args.place_basis;
     } else out.referent = null;
 
     // temporal: only what the line expressed; defaults are the resolver's
-    const expressed = clauseAct.temporal_scope ?? null;
+    // The time the LINE sets: legacy's effective scope for a fresh act or a temporal follow-up (the cue's
+    // time frame, "before?", "ever?"); an inherited scope is the resolver's to carry.
+    const expressed = base.relation === "new" || base.args?.followup || base.repair?.kind === "temporal" ? (base.temporal_scope ?? clauseAct.temporal_scope ?? null) : (clauseAct.temporal_scope ?? null);
     out.temporal = RF.TEMPORALS.includes(expressed) ? expressed : "unspecified";
     if (!expressed && base.temporal_scope && base.args?.followup) note(i, "temporal", "resolver-policy concern", "temporal_from_fragment_table", "the follow-up table decided the time frame from the raw fragment");
     out.respondent_mode = mode;
 
     // inbound answer
     const replyKind = base.args?.reply_kind ?? null;
-    if (speech === "answer" || replyKind === "counter_question") {
+    // (reply_kind is also inherited with a repaired request's args: only THIS act's answer counts.)
+    const counterQuestion = replyKind === "counter_question" && relation.kind === "continuation" && Boolean(input.conversation.inbound);
+    if (speech === "answer" || counterQuestion) {
       const opt = base.args?.answer_option ?? null;
       let option = null;
       if (opt != null) {
@@ -233,7 +255,7 @@ function frameFromLegacy(analysis, readerInput, { frame: legacyFrame = null } = 
 
     // echo / surface-anchor choice
     if (a?.source === "surface_anchor" && base.args?.echo?.event_id) {
-      const anchor = input.conversation.surface_anchors.find((x) => bindings.anchors[x.label]?.event_id === base.args.echo.event_id && (input.heard.anchors.find((h) => h.anchor === x.label)?.text ?? "").toLowerCase().includes(String(base.args.echo.matched ?? "").toLowerCase())) ?? input.conversation.surface_anchors.find((x) => bindings.anchors[x.label]?.event_id === base.args.echo.event_id);
+      const anchor = input.heard.anchors.find((x) => bindings.anchors[x.label]?.event_id === base.args.echo.event_id && (x.text ?? "").toLowerCase().includes(String(base.args.echo.matched ?? "").toLowerCase())) ?? input.heard.anchors.find((x) => bindings.anchors[x.label]?.event_id === base.args.echo.event_id);
       out.echo = anchor ? { anchor: anchor.label } : null;
       if (!anchor) note(i, "echo", "reader-schema gap", "echo_anchor_not_in_input");
     } else out.echo = null;
@@ -245,7 +267,7 @@ function frameFromLegacy(analysis, readerInput, { frame: legacyFrame = null } = 
     // abstention: a legacy clarification is the reader's "I can't tell" on that slot
     const abstain = new Set();
     if (base.clarify?.slot && CLARIFY_SLOT_TO_ABSTAIN[base.clarify.slot]) abstain.add(CLARIFY_SLOT_TO_ABSTAIN[base.clarify.slot]);
-    if (clauseAct.force?.confidence === "uncertain" && !base.advisory_filled?.includes("force")) abstain.add("force");
+    // (Tier 1's internal force uncertainty is not an abstention: legacy declines only by clarifying.)
     out.abstain = [...abstain];
     acts.push(out);
   });
