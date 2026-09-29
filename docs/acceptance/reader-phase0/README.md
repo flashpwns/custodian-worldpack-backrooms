@@ -11,7 +11,7 @@ opened or created.**
 | Artifact | What | Pinned by |
 | --- | --- | --- |
 | `characterization.json` | the equivalence authority for Phase 1 (v2, value-level) | `ed31a` SHA-256 pin; `ed31b` full replay |
-| `roundtrip.json` | legacy → ReaderFrame → frame-driven resolver → frame assembly, every fixture turn. **Regenerated in Reader Phase 1** with the Phase-1 resolver (verdict-consuming, owner rulings applied): 80.0% behaviour-equivalent / 26.1% exact; the §2 figures below are the Phase-0.5 values. Superseded as a measure by `../reader-phase1/shadow-diff.json` | `ed31a` SHA-256 pin + scenario replay; `ed31b` full replay |
+| `roundtrip.json` | legacy → ReaderFrame → frame-driven resolver → frame assembly, every fixture turn. **Regenerated in Reader Phase 1** with the Phase-1 resolver (verdict-consuming, owner rulings incl. C1 applied): 82.2% behaviour-equivalent / 26.5% exact; the §2 figures below are the Phase-0.5 values. Superseded as a measure by `../reader-phase1/shadow-diff.json` | `ed31a` SHA-256 pin + scenario replay; `ed31b` full replay |
 | `legacy-adapter-coverage.json` | how much legacy behaviour ReaderFrame v1 expresses exactly, and why not (regenerated in Phase 1: 89.8%) | regenerable report (not an authority) |
 | `baseline-failing-tests.json` | the full-repository failing set at `9e51842` (79 tests) | `ed31a` SHA-256 pin; `tools/compare-failing-tests.js` |
 | `runtime-spike.json` | pinned-runtime measurements (non-authoritative; live model) | not in CI |
@@ -121,9 +121,9 @@ words. Under the reviewed comparison:
 - **strict semantic equivalence = 328 / 471 = 69.6%**;
 - **exact excluding `request_text` = 304 / 471 = 64.5%**.
 
-The Phase-1 shadow comparator supersedes both: **317 / 471 = 67.3%** equal at all four levels (act, routing,
+The Phase-1 shadow comparator supersedes both: **327 / 471 = 69.4%** equal at all four levels (act, routing,
 lifecycle, planner frame; `request_text` excluded), with every remaining difference classified by cause. The
-regenerated round trip (Phase-1 resolver, verdict-consuming, owner rulings applied) measures 80.0% on its own coarse
+regenerated round trip (Phase-1 resolver, verdict-consuming, owner rulings applied) measures 82.2% on its own coarse
 behaviour subset. That figure is kept only as a regression pin.
 
 **Reading.** Exact expressibility (below) is **not** migration readiness. 13% of fixture turns do not survive

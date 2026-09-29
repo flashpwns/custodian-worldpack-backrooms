@@ -3,13 +3,13 @@
  "turns": 471,
  "evaluated": 471,
  "not_evaluated": [],
- "exact": 123,
- "exact_pct": 26.1,
- "behaviour_equivalent": 377,
- "behaviour_equivalent_pct": 80,
+ "exact": 125,
+ "exact_pct": 26.5,
+ "behaviour_equivalent": 387,
+ "behaviour_equivalent_pct": 82.2,
  "classes_turns": {
   "schema-loss": 277,
-  "resolver-policy": 165,
+  "resolver-policy": 157,
   "owner-decision": 11,
   "frame-assembly-text": 16,
   "legacy-quirk": 11,
@@ -18,18 +18,18 @@
  },
  "effective_diff_fields": {
   "request_text": 258,
-  "cardinality": 79,
   "addressee.source": 75,
-  "predicate": 63,
+  "cardinality": 68,
+  "predicate": 52,
   "addressee.kind": 33,
-  "args.place_basis": 32,
+  "args.place_basis": 31,
   "addressee.quantifier": 21,
-  "clarify.slot": 19,
   "addressee.ids": 15,
-  "args.place_id": 15,
-  "temporal_scope": 13,
+  "temporal_scope": 12,
   "args.third_party_subject": 12,
-  "args.item_id": 9,
+  "args.place_id": 8,
+  "clarify.slot": 8,
+  "args.item_id": 8,
   "overrides": 5,
   "args.followup": 5,
   "args.mutual": 3,
@@ -46,13 +46,13 @@
   "reissue_of": 1
  },
  "behaviour_diff_fields": {
-  "discourse_function": 45,
-  "cardinality": 31,
-  "clarify": 28,
-  "routing_args": 27,
+  "discourse_function": 34,
+  "cardinality": 24,
+  "routing_args": 19,
+  "clarify": 17,
   "addressee": 15,
-  "predicate": 11,
-  "temporal": 5,
+  "temporal": 2,
+  "predicate": 1,
   "reissue_of": 1
  },
  "unresolved": [
@@ -282,20 +282,9 @@
    "text": "Will all of us be going to Equipment Staging together, or are we splitting up?",
    "classes": [
     "owner-decision",
-    "resolver-policy",
     "schema-loss"
    ],
    "behaviour_diffs": [
-    {
-     "field": "discourse_function",
-     "legacy": "ask_predicate",
-     "resolved": "ambiguous_reference"
-    },
-    {
-     "field": "predicate",
-     "legacy": "transition.participants",
-     "resolved": null
-    },
     {
      "field": "addressee",
      "legacy": [
@@ -304,31 +293,9 @@
       "yb-personnel-e21e4f0b6047a886a3d7"
      ],
      "resolved": []
-    },
-    {
-     "field": "clarify",
-     "legacy": false,
-     "resolved": true
-    },
-    {
-     "field": "routing_args",
-     "legacy": {
-      "place_id": "equipment-staging"
-     },
-     "resolved": {}
     }
    ],
    "effective_diffs": [
-    {
-     "field": "predicate",
-     "legacy": "transition.participants",
-     "resolved": null
-    },
-    {
-     "field": "cardinality",
-     "legacy": "one_spokesperson",
-     "resolved": "one_clarifier"
-    },
     {
      "field": "addressee.ids",
      "legacy": [
@@ -351,16 +318,6 @@
     {
      "field": "addressee.quantifier",
      "legacy": "we_all",
-     "resolved": null
-    },
-    {
-     "field": "clarify.slot",
-     "legacy": null,
-     "resolved": "topic"
-    },
-    {
-     "field": "args.place_id",
-     "legacy": "equipment-staging",
      "resolved": null
     }
    ]
@@ -423,80 +380,6 @@
      "field": "request_text",
      "legacy": "all very much.",
      "resolved": "Thank you all very much."
-    }
-   ]
-  },
-  {
-   "fixture": "j15/3-chaotic.txt",
-   "text": "Tonya, have you?",
-   "classes": [
-    "resolver-policy",
-    "schema-loss"
-   ],
-   "behaviour_diffs": [
-    {
-     "field": "discourse_function",
-     "legacy": "ask_predicate",
-     "resolved": "ambiguous_reference"
-    },
-    {
-     "field": "predicate",
-     "legacy": "person.complex_experience",
-     "resolved": null
-    },
-    {
-     "field": "cardinality",
-     "legacy": "each_self_concise",
-     "resolved": "one_spokesperson"
-    },
-    {
-     "field": "temporal",
-     "legacy": "ever",
-     "resolved": null
-    },
-    {
-     "field": "clarify",
-     "legacy": false,
-     "resolved": true
-    },
-    {
-     "field": "routing_args",
-     "legacy": {
-      "place_id": "complex"
-     },
-     "resolved": {}
-    }
-   ],
-   "effective_diffs": [
-    {
-     "field": "predicate",
-     "legacy": "person.complex_experience",
-     "resolved": null
-    },
-    {
-     "field": "cardinality",
-     "legacy": "each_self_concise",
-     "resolved": "one_clarifier"
-    },
-    {
-     "field": "temporal_scope",
-     "legacy": "ever",
-     "resolved": null
-    },
-    {
-     "field": "clarify.slot",
-     "legacy": null,
-     "resolved": "topic"
-    },
-    {
-     "field": "args.place_id",
-     "legacy": "complex",
-     "resolved": null
-    },
-    {
-     "field": "request_text",
-     "legacy": "Have you been in the Complex before?",
-     "resolved": "Tonya, have you?"
     }
    ]
   },
@@ -930,250 +813,6 @@
      "field": "args.place_id",
      "legacy": null,
      "resolved": "equipment-staging"
-    }
-   ]
-  },
-  {
-   "fixture": "scenario/ed30f-anchor",
-   "text": "cargo?",
-   "classes": [
-    "resolver-policy",
-    "schema-loss"
-   ],
-   "behaviour_diffs": [
-    {
-     "field": "discourse_function",
-     "legacy": "ask_assignment_purpose",
-     "resolved": "ambiguous_reference"
-    },
-    {
-     "field": "clarify",
-     "legacy": false,
-     "resolved": true
-    },
-    {
-     "field": "routing_args",
-     "legacy": {
-      "item_id": "q4-startup-materials-duffle-01"
-     },
-     "resolved": {}
-    }
-   ],
-   "effective_diffs": [
-    {
-     "field": "predicate",
-     "legacy": "item.contents",
-     "resolved": null
-    },
-    {
-     "field": "cardinality",
-     "legacy": "one_spokesperson",
-     "resolved": "one_clarifier"
-    },
-    {
-     "field": "addressee.source",
-     "legacy": "surface_anchor",
-     "resolved": "answer_owner"
-    },
-    {
-     "field": "clarify.slot",
-     "legacy": null,
-     "resolved": "topic"
-    },
-    {
-     "field": "args.item_id",
-     "legacy": "q4-startup-materials-duffle-01",
-     "resolved": null
-    },
-    {
-     "field": "request_text",
-     "legacy": "what's in the duffle?",
-     "resolved": "cargo?"
-    }
-   ]
-  },
-  {
-   "fixture": "scenario/ed30i-discourse",
-   "text": "when was that",
-   "classes": [
-    "resolver-policy",
-    "schema-loss"
-   ],
-   "behaviour_diffs": [
-    {
-     "field": "discourse_function",
-     "legacy": "ask_predicate",
-     "resolved": "ambiguous_reference"
-    },
-    {
-     "field": "predicate",
-     "legacy": "person.complex_experience",
-     "resolved": null
-    },
-    {
-     "field": "cardinality",
-     "legacy": "each_self_concise",
-     "resolved": "one_spokesperson"
-    },
-    {
-     "field": "clarify",
-     "legacy": false,
-     "resolved": true
-    },
-    {
-     "field": "routing_args",
-     "legacy": {
-      "place_id": "complex"
-     },
-     "resolved": {}
-    }
-   ],
-   "effective_diffs": [
-    {
-     "field": "predicate",
-     "legacy": "person.complex_experience",
-     "resolved": null
-    },
-    {
-     "field": "cardinality",
-     "legacy": "each_self_concise",
-     "resolved": "one_clarifier"
-    },
-    {
-     "field": "clarify.slot",
-     "legacy": null,
-     "resolved": "topic"
-    },
-    {
-     "field": "args.place_id",
-     "legacy": "complex",
-     "resolved": null
-    },
-    {
-     "field": "request_text",
-     "legacy": "have you been in the Complex before?",
-     "resolved": "when was that"
-    }
-   ]
-  },
-  {
-   "fixture": "scenario/ed30i-discourse",
-   "text": "who else",
-   "classes": [
-    "resolver-policy",
-    "schema-loss"
-   ],
-   "behaviour_diffs": [
-    {
-     "field": "discourse_function",
-     "legacy": "ask_predicate",
-     "resolved": "ambiguous_reference"
-    },
-    {
-     "field": "predicate",
-     "legacy": "person.first_day_at_async",
-     "resolved": null
-    },
-    {
-     "field": "cardinality",
-     "legacy": "each_self",
-     "resolved": "one_spokesperson"
-    },
-    {
-     "field": "clarify",
-     "legacy": false,
-     "resolved": true
-    }
-   ],
-   "effective_diffs": [
-    {
-     "field": "predicate",
-     "legacy": "person.first_day_at_async",
-     "resolved": null
-    },
-    {
-     "field": "cardinality",
-     "legacy": "each_self",
-     "resolved": "one_clarifier"
-    },
-    {
-     "field": "addressee.source",
-     "legacy": "person_set_continuation",
-     "resolved": "quantifier"
-    },
-    {
-     "field": "clarify.slot",
-     "legacy": null,
-     "resolved": "topic"
-    },
-    {
-     "field": "request_text",
-     "legacy": "Is it your first day?",
-     "resolved": "who else"
-    }
-   ]
-  },
-  {
-   "fixture": "scenario/ed30i-discourse-reload",
-   "text": "when was that",
-   "classes": [
-    "resolver-policy",
-    "schema-loss"
-   ],
-   "behaviour_diffs": [
-    {
-     "field": "discourse_function",
-     "legacy": "ask_predicate",
-     "resolved": "ambiguous_reference"
-    },
-    {
-     "field": "predicate",
-     "legacy": "person.complex_experience",
-     "resolved": null
-    },
-    {
-     "field": "cardinality",
-     "legacy": "each_self_concise",
-     "resolved": "one_spokesperson"
-    },
-    {
-     "field": "clarify",
-     "legacy": false,
-     "resolved": true
-    },
-    {
-     "field": "routing_args",
-     "legacy": {
-      "place_id": "complex"
-     },
-     "resolved": {}
-    }
-   ],
-   "effective_diffs": [
-    {
-     "field": "predicate",
-     "legacy": "person.complex_experience",
-     "resolved": null
-    },
-    {
-     "field": "cardinality",
-     "legacy": "each_self_concise",
-     "resolved": "one_clarifier"
-    },
-    {
-     "field": "clarify.slot",
-     "legacy": null,
-     "resolved": "topic"
-    },
-    {
-     "field": "args.place_id",
-     "legacy": "complex",
-     "resolved": null
-    },
-    {
-     "field": "request_text",
-     "legacy": "have you been in the Complex before?",
-     "resolved": "when was that"
     }
    ]
   },
@@ -1695,139 +1334,6 @@
      "field": "request_text",
      "legacy": "where are we going?",
      "resolved": "No, the other one."
-    }
-   ]
-  },
-  {
-   "fixture": "scenario/ed30c-repairs",
-   "text": "Not today. Ever.",
-   "classes": [
-    "resolver-policy",
-    "schema-loss"
-   ],
-   "behaviour_diffs": [
-    {
-     "field": "discourse_function",
-     "legacy": "ask_predicate",
-     "resolved": "ambiguous_reference"
-    },
-    {
-     "field": "predicate",
-     "legacy": "person.complex_experience",
-     "resolved": null
-    },
-    {
-     "field": "cardinality",
-     "legacy": "each_self_concise",
-     "resolved": "one_spokesperson"
-    },
-    {
-     "field": "clarify",
-     "legacy": false,
-     "resolved": true
-    },
-    {
-     "field": "routing_args",
-     "legacy": {
-      "place_id": "complex"
-     },
-     "resolved": {}
-    }
-   ],
-   "effective_diffs": [
-    {
-     "field": "predicate",
-     "legacy": "person.complex_experience",
-     "resolved": null
-    },
-    {
-     "field": "cardinality",
-     "legacy": "each_self_concise",
-     "resolved": "one_clarifier"
-    },
-    {
-     "field": "clarify.slot",
-     "legacy": null,
-     "resolved": "topic"
-    },
-    {
-     "field": "args.place_id",
-     "legacy": "complex",
-     "resolved": null
-    },
-    {
-     "field": "request_text",
-     "legacy": "have you been in the Complex today?",
-     "resolved": "Ever."
-    }
-   ]
-  },
-  {
-   "fixture": "scenario/ed30c-ellipsis",
-   "text": "And Tonya?",
-   "classes": [
-    "resolver-policy",
-    "schema-loss"
-   ],
-   "behaviour_diffs": [
-    {
-     "field": "discourse_function",
-     "legacy": "ask_predicate",
-     "resolved": "ambiguous_reference"
-    },
-    {
-     "field": "predicate",
-     "legacy": "person.complex_experience",
-     "resolved": null
-    },
-    {
-     "field": "cardinality",
-     "legacy": "each_self_concise",
-     "resolved": "one_spokesperson"
-    },
-    {
-     "field": "temporal",
-     "legacy": "ever",
-     "resolved": null
-    },
-    {
-     "field": "clarify",
-     "legacy": false,
-     "resolved": true
-    },
-    {
-     "field": "routing_args",
-     "legacy": {
-      "place_id": "complex"
-     },
-     "resolved": {}
-    }
-   ],
-   "effective_diffs": [
-    {
-     "field": "predicate",
-     "legacy": "person.complex_experience",
-     "resolved": null
-    },
-    {
-     "field": "cardinality",
-     "legacy": "each_self_concise",
-     "resolved": "one_clarifier"
-    },
-    {
-     "field": "clarify.slot",
-     "legacy": null,
-     "resolved": "topic"
-    },
-    {
-     "field": "args.place_id",
-     "legacy": "complex",
-     "resolved": null
-    },
-    {
-     "field": "request_text",
-     "legacy": "have you been in the Complex before?",
-     "resolved": "And Tonya?"
     }
    ]
   },
@@ -3053,80 +2559,6 @@
    ]
   },
   {
-   "fixture": "dev-corpus.jsonl#d128",
-   "text": "I've been in the Complex before. Have you, Giselle?",
-   "classes": [
-    "resolver-policy",
-    "schema-loss"
-   ],
-   "behaviour_diffs": [
-    {
-     "field": "discourse_function",
-     "legacy": "ask_predicate",
-     "resolved": "ambiguous_reference"
-    },
-    {
-     "field": "predicate",
-     "legacy": "person.complex_experience",
-     "resolved": null
-    },
-    {
-     "field": "cardinality",
-     "legacy": "each_self_concise",
-     "resolved": "one_spokesperson"
-    },
-    {
-     "field": "temporal",
-     "legacy": "ever",
-     "resolved": null
-    },
-    {
-     "field": "clarify",
-     "legacy": false,
-     "resolved": true
-    },
-    {
-     "field": "routing_args",
-     "legacy": {
-      "place_id": "complex"
-     },
-     "resolved": {}
-    }
-   ],
-   "effective_diffs": [
-    {
-     "field": "predicate",
-     "legacy": "person.complex_experience",
-     "resolved": null
-    },
-    {
-     "field": "cardinality",
-     "legacy": "each_self_concise",
-     "resolved": "one_clarifier"
-    },
-    {
-     "field": "temporal_scope",
-     "legacy": "ever",
-     "resolved": null
-    },
-    {
-     "field": "clarify.slot",
-     "legacy": null,
-     "resolved": "topic"
-    },
-    {
-     "field": "args.place_id",
-     "legacy": "complex",
-     "resolved": null
-    },
-    {
-     "field": "request_text",
-     "legacy": "Have you been in the Complex before?",
-     "resolved": "Have you, Giselle?"
-    }
-   ]
-  },
-  {
    "fixture": "dev-corpus.jsonl#d129",
    "text": "Does anybody have the lamp?",
    "classes": [
@@ -3169,88 +2601,6 @@
      "field": "args.item_id",
      "legacy": null,
      "resolved": "item-b2b47214d72b45d159"
-    }
-   ]
-  },
-  {
-   "fixture": "dev-corpus.jsonl#d132",
-   "text": "Is Staging far?",
-   "classes": [
-    "resolver-policy"
-   ],
-   "behaviour_diffs": [
-    {
-     "field": "discourse_function",
-     "legacy": "ask_predicate",
-     "resolved": "ambiguous_reference"
-    },
-    {
-     "field": "predicate",
-     "legacy": "mission.route",
-     "resolved": null
-    },
-    {
-     "field": "clarify",
-     "legacy": false,
-     "resolved": true
-    }
-   ],
-   "effective_diffs": [
-    {
-     "field": "predicate",
-     "legacy": "mission.route",
-     "resolved": null
-    },
-    {
-     "field": "cardinality",
-     "legacy": "one_spokesperson",
-     "resolved": "one_clarifier"
-    },
-    {
-     "field": "clarify.slot",
-     "legacy": null,
-     "resolved": "topic"
-    }
-   ]
-  },
-  {
-   "fixture": "dev-corpus.jsonl#d133",
-   "text": "Are we leaving soon?",
-   "classes": [
-    "resolver-policy"
-   ],
-   "behaviour_diffs": [
-    {
-     "field": "discourse_function",
-     "legacy": "ask_predicate",
-     "resolved": "ambiguous_reference"
-    },
-    {
-     "field": "predicate",
-     "legacy": "mission.schedule",
-     "resolved": null
-    },
-    {
-     "field": "clarify",
-     "legacy": false,
-     "resolved": true
-    }
-   ],
-   "effective_diffs": [
-    {
-     "field": "predicate",
-     "legacy": "mission.schedule",
-     "resolved": null
-    },
-    {
-     "field": "cardinality",
-     "legacy": "one_spokesperson",
-     "resolved": "one_clarifier"
-    },
-    {
-     "field": "clarify.slot",
-     "legacy": null,
-     "resolved": "topic"
     }
    ]
   },
@@ -5293,20 +4643,9 @@
    "behaviour_equivalent": false,
    "classes": [
     "owner-decision",
-    "resolver-policy",
     "schema-loss"
    ],
    "effective_diffs": [
-    {
-     "field": "predicate",
-     "legacy": "transition.participants",
-     "resolved": null
-    },
-    {
-     "field": "cardinality",
-     "legacy": "one_spokesperson",
-     "resolved": "one_clarifier"
-    },
     {
      "field": "addressee.ids",
      "legacy": [
@@ -5332,37 +4671,12 @@
      "resolved": null
     },
     {
-     "field": "clarify.slot",
-     "legacy": null,
-     "resolved": "topic"
-    },
-    {
-     "field": "args.place_id",
-     "legacy": "equipment-staging",
-     "resolved": null
-    },
-    {
-     "field": "args.place_basis",
-     "legacy": "named",
-     "resolved": null
-    },
-    {
      "field": "args.asks_split",
      "legacy": true,
      "resolved": null
     }
    ],
    "behaviour_diffs": [
-    {
-     "field": "discourse_function",
-     "legacy": "ask_predicate",
-     "resolved": "ambiguous_reference"
-    },
-    {
-     "field": "predicate",
-     "legacy": "transition.participants",
-     "resolved": null
-    },
     {
      "field": "addressee",
      "legacy": [
@@ -5371,26 +4685,12 @@
       "yb-personnel-e21e4f0b6047a886a3d7"
      ],
      "resolved": []
-    },
-    {
-     "field": "clarify",
-     "legacy": false,
-     "resolved": true
-    },
-    {
-     "field": "routing_args",
-     "legacy": {
-      "place_id": "equipment-staging"
-     },
-     "resolved": {}
     }
    ],
    "verdict": {
-    "ok": false,
-    "disposition": "reject_fields",
-    "errors": [
-     "V1:question_form_incompatible"
-    ]
+    "ok": true,
+    "disposition": "accept",
+    "errors": []
    },
    "adapter_notes": [
     "needs-owner-decision:collective_subject_routed_as_group_address"
@@ -6238,41 +5538,15 @@
    "text": "Tonya, have you?",
    "status": "ok",
    "exact": false,
-   "behaviour_equivalent": false,
+   "behaviour_equivalent": true,
    "classes": [
-    "resolver-policy",
     "schema-loss"
    ],
    "effective_diffs": [
     {
-     "field": "predicate",
-     "legacy": "person.complex_experience",
-     "resolved": null
-    },
-    {
-     "field": "cardinality",
-     "legacy": "each_self_concise",
-     "resolved": "one_clarifier"
-    },
-    {
-     "field": "temporal_scope",
-     "legacy": "ever",
-     "resolved": null
-    },
-    {
-     "field": "clarify.slot",
-     "legacy": null,
-     "resolved": "topic"
-    },
-    {
-     "field": "args.place_id",
-     "legacy": "complex",
-     "resolved": null
-    },
-    {
      "field": "args.place_basis",
      "legacy": "named",
-     "resolved": null
+     "resolved": "salient_topic"
     },
     {
      "field": "request_text",
@@ -6280,46 +5554,11 @@
      "resolved": "Tonya, have you?"
     }
    ],
-   "behaviour_diffs": [
-    {
-     "field": "discourse_function",
-     "legacy": "ask_predicate",
-     "resolved": "ambiguous_reference"
-    },
-    {
-     "field": "predicate",
-     "legacy": "person.complex_experience",
-     "resolved": null
-    },
-    {
-     "field": "cardinality",
-     "legacy": "each_self_concise",
-     "resolved": "one_spokesperson"
-    },
-    {
-     "field": "temporal",
-     "legacy": "ever",
-     "resolved": null
-    },
-    {
-     "field": "clarify",
-     "legacy": false,
-     "resolved": true
-    },
-    {
-     "field": "routing_args",
-     "legacy": {
-      "place_id": "complex"
-     },
-     "resolved": {}
-    }
-   ],
+   "behaviour_diffs": [],
    "verdict": {
-    "ok": false,
-    "disposition": "reject_fields",
-    "errors": [
-     "V1:question_form_incompatible"
-    ]
+    "ok": true,
+    "disposition": "accept",
+    "errors": []
    },
    "adapter_notes": [],
    "assembly_error": null
@@ -9167,36 +8406,16 @@
    "text": "cargo?",
    "status": "ok",
    "exact": false,
-   "behaviour_equivalent": false,
+   "behaviour_equivalent": true,
    "classes": [
     "resolver-policy",
     "schema-loss"
    ],
    "effective_diffs": [
     {
-     "field": "predicate",
-     "legacy": "item.contents",
-     "resolved": null
-    },
-    {
-     "field": "cardinality",
-     "legacy": "one_spokesperson",
-     "resolved": "one_clarifier"
-    },
-    {
      "field": "addressee.source",
      "legacy": "surface_anchor",
      "resolved": "answer_owner"
-    },
-    {
-     "field": "clarify.slot",
-     "legacy": null,
-     "resolved": "topic"
-    },
-    {
-     "field": "args.item_id",
-     "legacy": "q4-startup-materials-duffle-01",
-     "resolved": null
     },
     {
      "field": "args.echo",
@@ -9204,7 +8423,9 @@
       "matched": "cargo",
       "event_id": "dlg-<event>"
      },
-     "resolved": null
+     "resolved": {
+      "event_id": "dlg-<event>"
+     }
     },
     {
      "field": "request_text",
@@ -9212,31 +8433,11 @@
      "resolved": "cargo?"
     }
    ],
-   "behaviour_diffs": [
-    {
-     "field": "discourse_function",
-     "legacy": "ask_assignment_purpose",
-     "resolved": "ambiguous_reference"
-    },
-    {
-     "field": "clarify",
-     "legacy": false,
-     "resolved": true
-    },
-    {
-     "field": "routing_args",
-     "legacy": {
-      "item_id": "q4-startup-materials-duffle-01"
-     },
-     "resolved": {}
-    }
-   ],
+   "behaviour_diffs": [],
    "verdict": {
-    "ok": false,
-    "disposition": "reject_fields",
-    "errors": [
-     "V1:question_form_incompatible"
-    ]
+    "ok": true,
+    "disposition": "accept",
+    "errors": []
    },
    "adapter_notes": [
     "resolver-policy concern:inherited_via_raw_text:surface_anchor"
@@ -9324,36 +8525,15 @@
    "text": "when was that",
    "status": "ok",
    "exact": false,
-   "behaviour_equivalent": false,
+   "behaviour_equivalent": true,
    "classes": [
-    "resolver-policy",
     "schema-loss"
    ],
    "effective_diffs": [
     {
-     "field": "predicate",
-     "legacy": "person.complex_experience",
-     "resolved": null
-    },
-    {
-     "field": "cardinality",
-     "legacy": "each_self_concise",
-     "resolved": "one_clarifier"
-    },
-    {
-     "field": "clarify.slot",
-     "legacy": null,
-     "resolved": "topic"
-    },
-    {
-     "field": "args.place_id",
-     "legacy": "complex",
-     "resolved": null
-    },
-    {
      "field": "args.place_basis",
      "legacy": "named",
-     "resolved": null
+     "resolved": "salient_topic"
     },
     {
      "field": "args.followup",
@@ -9374,41 +8554,11 @@
      "resolved": "when was that"
     }
    ],
-   "behaviour_diffs": [
-    {
-     "field": "discourse_function",
-     "legacy": "ask_predicate",
-     "resolved": "ambiguous_reference"
-    },
-    {
-     "field": "predicate",
-     "legacy": "person.complex_experience",
-     "resolved": null
-    },
-    {
-     "field": "cardinality",
-     "legacy": "each_self_concise",
-     "resolved": "one_spokesperson"
-    },
-    {
-     "field": "clarify",
-     "legacy": false,
-     "resolved": true
-    },
-    {
-     "field": "routing_args",
-     "legacy": {
-      "place_id": "complex"
-     },
-     "resolved": {}
-    }
-   ],
+   "behaviour_diffs": [],
    "verdict": {
-    "ok": false,
-    "disposition": "reject_fields",
-    "errors": [
-     "V1:question_form_incompatible"
-    ]
+    "ok": true,
+    "disposition": "accept",
+    "errors": []
    },
    "adapter_notes": [],
    "assembly_error": null
@@ -9445,31 +8595,16 @@
    "text": "who else",
    "status": "ok",
    "exact": false,
-   "behaviour_equivalent": false,
+   "behaviour_equivalent": true,
    "classes": [
     "resolver-policy",
     "schema-loss"
    ],
    "effective_diffs": [
     {
-     "field": "predicate",
-     "legacy": "person.first_day_at_async",
-     "resolved": null
-    },
-    {
-     "field": "cardinality",
-     "legacy": "each_self",
-     "resolved": "one_clarifier"
-    },
-    {
      "field": "addressee.source",
      "legacy": "person_set_continuation",
      "resolved": "quantifier"
-    },
-    {
-     "field": "clarify.slot",
-     "legacy": null,
-     "resolved": "topic"
     },
     {
      "field": "args.followup",
@@ -9485,34 +8620,11 @@
      "resolved": "who else"
     }
    ],
-   "behaviour_diffs": [
-    {
-     "field": "discourse_function",
-     "legacy": "ask_predicate",
-     "resolved": "ambiguous_reference"
-    },
-    {
-     "field": "predicate",
-     "legacy": "person.first_day_at_async",
-     "resolved": null
-    },
-    {
-     "field": "cardinality",
-     "legacy": "each_self",
-     "resolved": "one_spokesperson"
-    },
-    {
-     "field": "clarify",
-     "legacy": false,
-     "resolved": true
-    }
-   ],
+   "behaviour_diffs": [],
    "verdict": {
-    "ok": false,
-    "disposition": "reject_fields",
-    "errors": [
-     "V1:question_form_incompatible"
-    ]
+    "ok": true,
+    "disposition": "accept",
+    "errors": []
    },
    "adapter_notes": [],
    "assembly_error": null
@@ -9809,36 +8921,15 @@
    "text": "when was that",
    "status": "ok",
    "exact": false,
-   "behaviour_equivalent": false,
+   "behaviour_equivalent": true,
    "classes": [
-    "resolver-policy",
     "schema-loss"
    ],
    "effective_diffs": [
     {
-     "field": "predicate",
-     "legacy": "person.complex_experience",
-     "resolved": null
-    },
-    {
-     "field": "cardinality",
-     "legacy": "each_self_concise",
-     "resolved": "one_clarifier"
-    },
-    {
-     "field": "clarify.slot",
-     "legacy": null,
-     "resolved": "topic"
-    },
-    {
-     "field": "args.place_id",
-     "legacy": "complex",
-     "resolved": null
-    },
-    {
      "field": "args.place_basis",
      "legacy": "named",
-     "resolved": null
+     "resolved": "salient_topic"
     },
     {
      "field": "args.followup",
@@ -9859,41 +8950,11 @@
      "resolved": "when was that"
     }
    ],
-   "behaviour_diffs": [
-    {
-     "field": "discourse_function",
-     "legacy": "ask_predicate",
-     "resolved": "ambiguous_reference"
-    },
-    {
-     "field": "predicate",
-     "legacy": "person.complex_experience",
-     "resolved": null
-    },
-    {
-     "field": "cardinality",
-     "legacy": "each_self_concise",
-     "resolved": "one_spokesperson"
-    },
-    {
-     "field": "clarify",
-     "legacy": false,
-     "resolved": true
-    },
-    {
-     "field": "routing_args",
-     "legacy": {
-      "place_id": "complex"
-     },
-     "resolved": {}
-    }
-   ],
+   "behaviour_diffs": [],
    "verdict": {
-    "ok": false,
-    "disposition": "reject_fields",
-    "errors": [
-     "V1:question_form_incompatible"
-    ]
+    "ok": true,
+    "disposition": "accept",
+    "errors": []
    },
    "adapter_notes": [],
    "assembly_error": null
@@ -11572,36 +10633,15 @@
    "text": "Not today. Ever.",
    "status": "ok",
    "exact": false,
-   "behaviour_equivalent": false,
+   "behaviour_equivalent": true,
    "classes": [
-    "resolver-policy",
     "schema-loss"
    ],
    "effective_diffs": [
     {
-     "field": "predicate",
-     "legacy": "person.complex_experience",
-     "resolved": null
-    },
-    {
-     "field": "cardinality",
-     "legacy": "each_self_concise",
-     "resolved": "one_clarifier"
-    },
-    {
-     "field": "clarify.slot",
-     "legacy": null,
-     "resolved": "topic"
-    },
-    {
-     "field": "args.place_id",
-     "legacy": "complex",
-     "resolved": null
-    },
-    {
      "field": "args.place_basis",
      "legacy": "named",
-     "resolved": null
+     "resolved": "salient_topic"
     },
     {
      "field": "args.followup",
@@ -11617,41 +10657,11 @@
      "resolved": "Ever."
     }
    ],
-   "behaviour_diffs": [
-    {
-     "field": "discourse_function",
-     "legacy": "ask_predicate",
-     "resolved": "ambiguous_reference"
-    },
-    {
-     "field": "predicate",
-     "legacy": "person.complex_experience",
-     "resolved": null
-    },
-    {
-     "field": "cardinality",
-     "legacy": "each_self_concise",
-     "resolved": "one_spokesperson"
-    },
-    {
-     "field": "clarify",
-     "legacy": false,
-     "resolved": true
-    },
-    {
-     "field": "routing_args",
-     "legacy": {
-      "place_id": "complex"
-     },
-     "resolved": {}
-    }
-   ],
+   "behaviour_diffs": [],
    "verdict": {
-    "ok": false,
-    "disposition": "reject_fields",
-    "errors": [
-     "V1:question_form_incompatible"
-    ]
+    "ok": true,
+    "disposition": "accept",
+    "errors": []
    },
    "adapter_notes": [
     "resolver-policy concern:rewrite:repair>social_acknowledgment"
@@ -11805,36 +10815,21 @@
    "text": "And Tonya?",
    "status": "ok",
    "exact": false,
-   "behaviour_equivalent": false,
+   "behaviour_equivalent": true,
    "classes": [
     "resolver-policy",
     "schema-loss"
    ],
    "effective_diffs": [
     {
-     "field": "predicate",
-     "legacy": "person.complex_experience",
-     "resolved": null
-    },
-    {
-     "field": "cardinality",
-     "legacy": "each_self_concise",
-     "resolved": "one_clarifier"
-    },
-    {
-     "field": "clarify.slot",
+     "field": "temporal_scope",
      "legacy": null,
-     "resolved": "topic"
-    },
-    {
-     "field": "args.place_id",
-     "legacy": "complex",
-     "resolved": null
+     "resolved": "ever"
     },
     {
      "field": "args.place_basis",
      "legacy": "named",
-     "resolved": null
+     "resolved": "salient_topic"
     },
     {
      "field": "request_text",
@@ -11842,46 +10837,11 @@
      "resolved": "And Tonya?"
     }
    ],
-   "behaviour_diffs": [
-    {
-     "field": "discourse_function",
-     "legacy": "ask_predicate",
-     "resolved": "ambiguous_reference"
-    },
-    {
-     "field": "predicate",
-     "legacy": "person.complex_experience",
-     "resolved": null
-    },
-    {
-     "field": "cardinality",
-     "legacy": "each_self_concise",
-     "resolved": "one_spokesperson"
-    },
-    {
-     "field": "temporal",
-     "legacy": "ever",
-     "resolved": null
-    },
-    {
-     "field": "clarify",
-     "legacy": false,
-     "resolved": true
-    },
-    {
-     "field": "routing_args",
-     "legacy": {
-      "place_id": "complex"
-     },
-     "resolved": {}
-    }
-   ],
+   "behaviour_diffs": [],
    "verdict": {
-    "ok": false,
-    "disposition": "reject_fields",
-    "errors": [
-     "V1:question_form_incompatible"
-    ]
+    "ok": true,
+    "disposition": "accept",
+    "errors": []
    },
    "adapter_notes": [],
    "assembly_error": null
@@ -15919,41 +14879,15 @@
    "text": "I've been in the Complex before. Have you, Giselle?",
    "status": "ok",
    "exact": false,
-   "behaviour_equivalent": false,
+   "behaviour_equivalent": true,
    "classes": [
-    "resolver-policy",
     "schema-loss"
    ],
    "effective_diffs": [
     {
-     "field": "predicate",
-     "legacy": "person.complex_experience",
-     "resolved": null
-    },
-    {
-     "field": "cardinality",
-     "legacy": "each_self_concise",
-     "resolved": "one_clarifier"
-    },
-    {
-     "field": "temporal_scope",
-     "legacy": "ever",
-     "resolved": null
-    },
-    {
-     "field": "clarify.slot",
-     "legacy": null,
-     "resolved": "topic"
-    },
-    {
-     "field": "args.place_id",
-     "legacy": "complex",
-     "resolved": null
-    },
-    {
      "field": "args.place_basis",
      "legacy": "named",
-     "resolved": null
+     "resolved": "salient_topic"
     },
     {
      "field": "request_text",
@@ -15961,46 +14895,11 @@
      "resolved": "Have you, Giselle?"
     }
    ],
-   "behaviour_diffs": [
-    {
-     "field": "discourse_function",
-     "legacy": "ask_predicate",
-     "resolved": "ambiguous_reference"
-    },
-    {
-     "field": "predicate",
-     "legacy": "person.complex_experience",
-     "resolved": null
-    },
-    {
-     "field": "cardinality",
-     "legacy": "each_self_concise",
-     "resolved": "one_spokesperson"
-    },
-    {
-     "field": "temporal",
-     "legacy": "ever",
-     "resolved": null
-    },
-    {
-     "field": "clarify",
-     "legacy": false,
-     "resolved": true
-    },
-    {
-     "field": "routing_args",
-     "legacy": {
-      "place_id": "complex"
-     },
-     "resolved": {}
-    }
-   ],
+   "behaviour_diffs": [],
    "verdict": {
-    "ok": false,
-    "disposition": "reject_fields",
-    "errors": [
-     "V1:question_form_incompatible"
-    ]
+    "ok": true,
+    "disposition": "accept",
+    "errors": []
    },
    "adapter_notes": [],
    "assembly_error": null
@@ -16096,51 +14995,15 @@
    "kind": "probe",
    "text": "Is Staging far?",
    "status": "ok",
-   "exact": false,
-   "behaviour_equivalent": false,
-   "classes": [
-    "resolver-policy"
-   ],
-   "effective_diffs": [
-    {
-     "field": "predicate",
-     "legacy": "mission.route",
-     "resolved": null
-    },
-    {
-     "field": "cardinality",
-     "legacy": "one_spokesperson",
-     "resolved": "one_clarifier"
-    },
-    {
-     "field": "clarify.slot",
-     "legacy": null,
-     "resolved": "topic"
-    }
-   ],
-   "behaviour_diffs": [
-    {
-     "field": "discourse_function",
-     "legacy": "ask_predicate",
-     "resolved": "ambiguous_reference"
-    },
-    {
-     "field": "predicate",
-     "legacy": "mission.route",
-     "resolved": null
-    },
-    {
-     "field": "clarify",
-     "legacy": false,
-     "resolved": true
-    }
-   ],
+   "exact": true,
+   "behaviour_equivalent": true,
+   "classes": [],
+   "effective_diffs": [],
+   "behaviour_diffs": [],
    "verdict": {
-    "ok": false,
-    "disposition": "reject_fields",
-    "errors": [
-     "V1:question_form_incompatible"
-    ]
+    "ok": true,
+    "disposition": "accept",
+    "errors": []
    },
    "adapter_notes": [],
    "assembly_error": null
@@ -16150,51 +15013,15 @@
    "kind": "probe",
    "text": "Are we leaving soon?",
    "status": "ok",
-   "exact": false,
-   "behaviour_equivalent": false,
-   "classes": [
-    "resolver-policy"
-   ],
-   "effective_diffs": [
-    {
-     "field": "predicate",
-     "legacy": "mission.schedule",
-     "resolved": null
-    },
-    {
-     "field": "cardinality",
-     "legacy": "one_spokesperson",
-     "resolved": "one_clarifier"
-    },
-    {
-     "field": "clarify.slot",
-     "legacy": null,
-     "resolved": "topic"
-    }
-   ],
-   "behaviour_diffs": [
-    {
-     "field": "discourse_function",
-     "legacy": "ask_predicate",
-     "resolved": "ambiguous_reference"
-    },
-    {
-     "field": "predicate",
-     "legacy": "mission.schedule",
-     "resolved": null
-    },
-    {
-     "field": "clarify",
-     "legacy": false,
-     "resolved": true
-    }
-   ],
+   "exact": true,
+   "behaviour_equivalent": true,
+   "classes": [],
+   "effective_diffs": [],
+   "behaviour_diffs": [],
    "verdict": {
-    "ok": false,
-    "disposition": "reject_fields",
-    "errors": [
-     "V1:question_form_incompatible"
-    ]
+    "ok": true,
+    "disposition": "accept",
+    "errors": []
    },
    "adapter_notes": [],
    "assembly_error": null

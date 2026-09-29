@@ -308,7 +308,7 @@ const ENTRIES = [
     lexicon: []
   },
   {
-    id: "mission.schedule", domain: "mission", slots: {}, question_forms: ["wh"],
+    id: "mission.schedule", domain: "mission", slots: {}, question_forms: ["wh", "yes_no"], // yes_no: owner ruling C1 (2026-09-29)
     resolver: "mission_schedule", route: { fn: "ask_predicate" }, epistemic_class: EPISTEMIC.INSTITUTIONAL,
     default_cardinality: CARDINALITY.ONE_SPOKESPERSON, temporal_support: ["today"], granularity: "briefing:clock_time",
     answer_contract: { kind: "time" }, neighbors: ["procedure.next_incomplete_step", "mission.destination"],
@@ -323,7 +323,7 @@ const ENTRIES = [
     lexicon: []
   },
   {
-    id: "mission.route", domain: "mission", slots: {}, question_forms: ["wh"],
+    id: "mission.route", domain: "mission", slots: {}, question_forms: ["wh", "yes_no"], // yes_no: owner ruling C1 ("Is Staging far?"; no distance facet in Phase 1)
     resolver: "mission_route", route: { fn: "ask_predicate" }, epistemic_class: EPISTEMIC.INSTITUTIONAL,
     default_cardinality: CARDINALITY.ONE_SPOKESPERSON, temporal_support: ["now"], granularity: "procedure_form",
     answer_contract: { kind: "route" }, neighbors: ["mission.destination"],
@@ -367,7 +367,7 @@ const ENTRIES = [
     answer_contract: { kind: "reported" }, neighbors: ["procedure.next_incomplete_step"], priority: 20, cues: [], lexicon: []
   },
   {
-    id: "transition.participants", domain: "transition", slots: { place: "place" }, question_forms: ["yes_no", "wh"],
+    id: "transition.participants", domain: "transition", slots: { place: "place" }, question_forms: ["yes_no", "wh", "choice"], // choice: owner ruling C1
     resolver: "transition_participants", route: { fn: "ask_predicate" }, epistemic_class: EPISTEMIC.INSTITUTIONAL,
     default_cardinality: CARDINALITY.ONE_SPOKESPERSON, temporal_support: ["now", "today"], granularity: "briefing",
     answer_contract: { kind: "participants" }, neighbors: ["procedure.next_incomplete_step", "mission.destination", "person.presence"],

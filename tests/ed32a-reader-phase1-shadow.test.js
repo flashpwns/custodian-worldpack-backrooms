@@ -33,7 +33,7 @@ const ROOT = path.join(__dirname, "..");
 const ARTIFACTS = path.join(ROOT, "docs", "acceptance", "reader-phase1");
 // ── PINNED AUTHORITY (governance): the shadow-diff artifact; changing it without updating this pin fails this suite,
 // and updating the pin changes this file's hash, which verification/verification-authority.json governs. ──
-const SHADOW_DIFF_SHA256 = "838b17af783fe07e57c25b61508038480c2bfec51a3bf5a48573fbcff1540af5";
+const SHADOW_DIFF_SHA256 = "6fe94efd6cadca754a85764fccda4e5cc834fd77ed06ba88dbee29ea15d3c54d";
 
 const sc = E.scene();
 const [GISELLE, MALCOLM, TONYA] = sc.present.map((p) => p.id);
@@ -54,8 +54,9 @@ function ledger() {
   return { ledger: { requests }, snapshot };
 }
 /** One shadow resolution of a hand-written frame against a small canonical state. */
-function shadowOf(raw, acts, { chip = null, claim = null, snapshot: extra = {}, candidates = null, candidates_facet = null } = {}) {
-  const { ledger: l, snapshot } = ledger();
+function shadowOf(raw, acts, { chip = null, claim = null, snapshot: extra = {}, candidates = null, candidates_facet = null, requests = [] } = {}) {
+  const { ledger: base, snapshot } = ledger();
+  const l = { requests: [...base.requests, ...requests] };
   const snap = { ...snapshot, ...extra };
   const built = buildReaderInput({ raw, chip_target_id: chip, present: sc.present, player: PLAYER, entities: sc.entities, snapshot: snap, ledger: l, claim });
   const frame = frameOf(...acts(built.input));
@@ -204,6 +205,48 @@ test("Owner ruling 2: the adapter reads a marker-led continuation / topic return
     assert.equal(frame.acts.at(-1).relation.kind, "new", raw);
     if (analysis.primary.relation !== "new") assert.ok(conversion.notes.some((n) => n.code === "relation_without_antecedent"), `${raw}: the legacy quirk is recorded`);
   }
+});
+
+// ─── owner ruling C1 ───────────────────────────────────────────────────────────────────────────────────
+test("Owner ruling C1: the question-form gate licenses NEW questions; a follow-up or echo that keeps its antecedent's facet inherits it; contradiction, stale or invalid antecedents still fail closed", () => {
+  const codesOf = (verdict) => Object.values(verdict.layers).flatMap((l) => l.errors ?? []).map((e) => e.code);
+  // "who else" after the complex-experience question: wh form, inherited facet -> no form rejection, recorded.
+  const cont = shadowOf("who else", (i) => [act(i, { question_form: "wh", facet: "person.wellbeing", address: op("OTHERS", [], { relative_to: "q2" }), relation: { kind: "continuation", target: "q2" } })]);
+  assert.ok(!codesOf(cont.verdict).includes("question_form_incompatible") && !codesOf(cont.verdict).includes("wh_incompatible"), JSON.stringify(codesOf(cont.verdict)));
+  assert.deepEqual(cont.verdict.form_gate_exemptions, [{ act: 0, code: "form_gate_continuation", facet: "person.wellbeing" }]);
+  assert.equal(cont.out.primary.predicate, "person.wellbeing");
+  // The same words asked as a NEW question meet the gate ("who" cannot ask wellbeing).
+  const fresh = shadowOf("who else", (i) => [act(i, { question_form: "wh", facet: "person.wellbeing" })]);
+  assert.ok(codesOf(fresh.verdict).includes("wh_incompatible"), "a new question is still gated");
+  assert.equal(fresh.out.outcome, "clarify");
+  // A follow-up that names a DIFFERENT facet than its antecedent contradicts it: gated like a new question.
+  const contra = shadowOf("who else", (i) => [act(i, { question_form: "wh", facet: "person.fatigue", relation: { kind: "continuation", target: "q2" } })]);
+  assert.ok(codesOf(contra.verdict).includes("question_form_incompatible") || codesOf(contra.verdict).includes("wh_incompatible"));
+  assert.equal(contra.verdict.form_gate_exemptions.length, 0);
+  // An invalid (unknown) or missing antecedent is never a basis for inheritance.
+  const unknown = shadowOf("when was that", (i) => [act(i, { question_form: "wh", facet: "person.wellbeing", relation: { kind: "continuation", target: "q9" } })]);
+  assert.equal(unknown.verdict.form_gate_exemptions.length, 0);
+  assert.equal(unknown.out.outcome, "clarify");
+  // A stale antecedent (superseded) keeps the facet but fails V3: the inherited reading clarifies.
+  const stale = shadowOf("when was that", (i) => [act(i, { question_form: "wh", facet: "person.fatigue", relation: { kind: "continuation", target: "q3" } })], { requests: [{ request_id: "req-4", predicate: "person.fatigue", targets: [MALCOLM], state: "SUPERSEDED", slots: {} }] });
+  assert.ok(codesOf(stale.verdict).includes("antecedent_not_eligible"));
+  assert.equal(stale.out.outcome, "clarify");
+  // Echo: the anchored heard sentence's facet is inherited ("cargo?"); a different facet is not.
+  const anchors = [{ speaker_id: TONYA, event_id: "ev-1", spans: [{ text: "Just cargo, I think.", request_id: "req-2", predicate: "item.contents" }] }];
+  const echo = shadowOf("cargo?", (i) => [act(i, { question_form: "yes_no", facet: "item.contents", echo: { anchor: i.heard.anchors[0].label }, relation: { kind: "continuation", target: i.heard.anchors[0].label } })], { snapshot: { surface_anchors: anchors } });
+  assert.deepEqual(echo.verdict.form_gate_exemptions.map((x) => x.code), ["form_gate_echo"]);
+  assert.deepEqual([echo.out.outcome, echo.out.primary.predicate, echo.out.primary.addressee.ids], ["resolved", "item.contents", [TONYA]]);
+  const echoOther = shadowOf("cargo?", (i) => [act(i, { question_form: "yes_no", facet: "item.purpose", echo: { anchor: i.heard.anchors[0].label } })], { snapshot: { surface_anchors: anchors } });
+  assert.equal(echoOther.verdict.form_gate_exemptions.length, 0, "no arbitrary lexical inheritance");
+  assert.ok(codesOf(echoOther.verdict).includes("question_form_incompatible"));
+  // Registry metadata (approved): choice on transition.participants, yes_no on mission.schedule and mission.route.
+  const registry = require("../tools/dialogue-registry");
+  assert.ok(registry.get("transition.participants").question_forms.includes("choice"));
+  assert.ok(registry.get("mission.schedule").question_forms.includes("yes_no"));
+  assert.ok(registry.get("mission.route").question_forms.includes("yes_no"));
+  assert.ok(!registry.ids().some((id) => /distance/.test(id)), "no distance facet in Phase 1");
+  const far = shadowOf("Is Staging far?", (i) => [act(i, { question_form: "yes_no", facet: "mission.route" })]);
+  assert.deepEqual([far.verdict.disposition, far.out.outcome], ["accept", "resolved"]);
 });
 
 // ─── the player's previous claim (owner ruling 3) ─────────────────────────────────────────────────────

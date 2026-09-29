@@ -24,6 +24,7 @@
 | 3 | "Tonya, have you?": a reader-state label `c1` for the player's previous claim, with deterministic eligibility; no persisted legacy clause predicates as authority | ReaderInput `conversation.player_claim`; V0 label, V1 `unknown_claim`, V3 eligibility; seam claim state (§5) |
 | 4 | Chip vs vocative: production stays chip-wins; the shadow records the conflict | resolver: a rejection only for `contradicts_chip_target` keeps the chip and records `chip_vs_vocative` |
 | 5 | Wh-led sarcasm / asking-looking remark: fail closed | V2 `non_asking_reading_with_asking_features` → CLARIFY → one clarifier |
+| C1 | The question-form gate licenses NEW questions; follow-ups / echoes keeping their antecedent's facet inherit it; registry forms widened; no distance facet; no dialogue-state change | V1 `inheritedFacetBasis` + `form_gate_exemptions`; `dialogue-registry.js` metadata (§6) |
 
 ## 2. Architecture
 
@@ -118,7 +119,7 @@ canonical:
 - staleness follows `ABANDON_AFTER_TURNS` without touching the ledger.
 
 Production's ledger is not changed. Measured: `request_text` differs from legacy on 258 / 471 turns and is the only
-difference on 193 of the 317 fully equivalent turns. Production's text-keyed identity (inventory G4) is the cause of 2
+difference on 201 of the 327 fully equivalent turns. Production's text-keyed identity (inventory G4) is the cause of 2
 lifecycle mismatches.
 
 **Player claim (item 4, ruling 3).**
@@ -133,8 +134,11 @@ lifecycle mismatches.
 - *Resolution:* the resolver inherits the facet (`facet_source: player_claim`).
 - *Persisted legacy clause predicates* (`dialogue-state.lastPlayerClaim`) are not read.
 - *The legacy reader v0* now gives a statement its claim facet from its live reading of the clause.
-- *Limitation:* seam memory does not survive a cold reload; after a reload `c1` is absent and the reading fails
-  closed. Persisting reader state needs a dialogue-state schema change (Phase 2 or later, owner decision).
+- *Limitation (accepted by owner ruling C1.4):* seam memory does not survive a cold reload. After a reload `c1` is
+  absent and a "have you?" reading fails closed.
+- **Phase-2 prerequisite:** persistent, observer-safe previous-player-claim SEMANTIC state (facet, polarity,
+  subject, freshness), with no dependence on legacy persisted clause `predicate_candidates`. Not patched in Phase 1:
+  no dialogue-state schema change.
 
 ## 6. Comparator and results (`docs/acceptance/reader-phase1/shadow-diff.json`, pinned)
 
@@ -142,36 +146,49 @@ The comparator uses production as the authority and compares four levels. Every 
 evidence-based cause rules (`dialogue-shadow-causes.js`). Each rule has a class, an evidence test and the fields it
 may explain; nothing is bucketed by default.
 
+**Owner ruling C1 (2026-09-29, applied in this pass):**
+
+| Rule | Implementation | Effect on the 471 turns |
+| --- | --- | --- |
+| 1. The question-form gate is for NEW questions. A continuation / follow-up with an eligible antecedent inherits its facet; it still fails closed on no / invalid / stale antecedent or an explicitly different facet | V1: `inheritedFacetBasis` exempts an act whose facet equals its named antecedent's facet (request, coworker question, earlier act, activity round, heard sentence, player claim). The exemption is recorded in `verdict.form_gate_exemptions`. V3 still validates the target; a different facet meets the gate | "when was that" ×2, "who else", "Not today. Ever." now ACCEPT and are **fully equal**. So are the 3 ellipses legacy labels `wh` ("Tonya, have you?", "And Tonya?", "I've been in the Complex before. Have you, Giselle?"): their antecedent is a request or the player's claim |
+| 2. Echoes skip the new-question gate; the anchor is validated; the anchored facet is inherited; no lexical inheritance | V1: an act with `echo` is exempt only when the anchored heard sentence carries the same facet | "cargo?" now ACCEPT and **fully equal** |
+| 3. Registry metadata: `choice` on `transition.participants`; `yes_no` on `mission.schedule` and `mission.route`; no distance facet | `tools/dialogue-registry.js` (only the seam validator reads `question_forms`; production unaffected) | "Is Staging far?" and "Are we leaving soon?" **fully equal**. "Will all of us … or are we splitting up?" ACCEPTs and now differs only under ruling 1 |
+| 4. No dialogue-state change; `c1` may be unavailable after a cold reload | unchanged; documented as a Phase-2 prerequisite (§5) | none |
+
+A new-question form rejection that remains is classified `owner_C1_new_question_form_gate` (OWNER_APPROVED). None
+occurs in the characterized turns.
+
 **Dispositions (legacy reader v0 frames):**
 
 | ACCEPT | CLARIFY | REJECT_FIELDS | INVALID |
 | --- | --- | --- | --- |
-| 422 | 37 | 12 | 0 |
+| 433 | 37 | 1 (the chip conflict, ruling 4) | 0 |
 
-**Equivalence (471 turns; `request_text` excluded):**
+**Equivalence (471 turns; `request_text` excluded).** Before C1, the same comparator gave 96.4 / 79.0 / 94.3 /
+70.7% and 317 fully equal.
 
 | Level | Equal | % |
 | --- | --- | --- |
-| A. ACT (speech act, facet, third-party subject, relation kind / target / reissue / reopen, temporal, repair) | 454 | 96.4 |
-| B. ROUTING (addressees, responders, recipients, listeners, cardinality, silence) | 372 | 79.0 |
-| C. LIFECYCLE (request intent / target / predicate / targets, abandons, activity, inbound) | 444 | 94.3 |
-| D. FRAME (planner frame fields, entity binding, routing args) | 333 | 70.7 |
-| all four | **317** | **67.3** |
-| ACT and ROUTING | 368 | 78.1 |
+| A. ACT (speech act, facet, third-party subject, relation kind / target / reissue / reopen, temporal, repair) | 465 | 98.7 |
+| B. ROUTING (addressees, responders, recipients, listeners, cardinality, silence) | 382 | 81.1 |
+| C. LIFECYCLE (request intent / target / predicate / targets, abandons, activity, inbound) | 455 | 96.6 |
+| D. FRAME (planner frame fields, entity binding, routing args) | 343 | 72.8 |
+| **all four** | **327** | **69.4** |
+| ACT and ROUTING | 378 | 80.3 |
 
-The 154 non-equivalent turns by cause class (a turn may carry several):
+`request_text` differs on 258 turns and is the only difference on 201 of the 327 fully equal turns.
+
+The 144 non-equivalent turns by cause class (a turn may carry several):
 
 | Classes | Turns |
 | --- | --- |
 | FENCED_RAW_TEXT | 68 |
-| OWNER_APPROVED | 58 |
+| OWNER_APPROVED | 59 |
 | FENCED_RAW_TEXT + OWNER_APPROVED | 7 |
 | FENCED_LEGACY + FENCED_RAW_TEXT | 7 |
-| FENCED_LEGACY | 5 |
-| FENCED_RAW_TEXT + PENDING_OWNER | 5 |
-| PENDING_OWNER | 2 |
-| OWNER_APPROVED + PENDING_OWNER | 1 |
+| FENCED_LEGACY | 2 |
 | FENCED_LEGACY + FENCED_RAW_TEXT + OWNER_APPROVED | 1 |
+| PENDING_OWNER | **0** |
 | UNCLASSIFIED | **0** |
 
 **Classified divergence list (turns per cause):**
@@ -181,38 +198,26 @@ The 154 non-equivalent turns by cause class (a turn may carry several):
 | OWNER_APPROVED | item 8: one clarifier, no inherited predicate / addressee / args (both sides clarify) | 51 |
 | OWNER_APPROVED | ruling 1: group_inclusive, no group address | 10 |
 | OWNER_APPROVED | ruling 2: marker-led line is new | 3 |
-| OWNER_APPROVED | ruling 5: wh-led sarcasm fails closed | 1 |
 | OWNER_APPROVED | decision #1: knower / rotation over legacy's first-eligible listener (item holder absent) | 2 |
+| OWNER_APPROVED | ruling 5: wh-led sarcasm fails closed | 1 |
 | FENCED_RAW_TEXT | D1/D2: discourse function from the second reader (`interpretUtterance` / `buildSemanticFrame` LP.* regexes) | 26 |
-| FENCED_RAW_TEXT | C11/C12: facet or temporal from fragment / item-role regex tables | 14 |
 | FENCED_RAW_TEXT | D2 half B: entity from `resolveEntityMentions` over text, not a referent candidate | 12 |
+| FENCED_RAW_TEXT | C11/C12: facet or temporal from fragment / item-role regex tables | 10 |
 | FENCED_RAW_TEXT | C14/C15: Tier-1 completeness / clarify-over-guess over the clause words | 9 |
 | FENCED_RAW_TEXT | C5/C6: an answer keeps the raw-text address parse (no recipient) | 8 |
 | FENCED_RAW_TEXT | C5/C6: `parseAddressees` / `inferLocalRecipientType` overlay set the recipients | 7 |
-| FENCED_RAW_TEXT | D2: the frame builder's own clarification (antecedent / ambiguity regexes) | 6 |
 | FENCED_RAW_TEXT | G6: `closes_activity` regex ("that's that") | 6 |
+| FENCED_RAW_TEXT | D2: the frame builder's own clarification (antecedent / ambiguity regexes) | 6 |
 | FENCED_RAW_TEXT | D2/C1: legacy "player claim" acknowledgment by regex | 3 |
 | FENCED_RAW_TEXT | G4: request identity by `request_text` | 2 |
 | FENCED_RAW_TEXT | C7: `resolveRecipientScope` word-overlap inheritance | 2 |
 | FENCED_RAW_TEXT | C4: address-correction overlay | 1 |
-| FENCED_RAW_TEXT | C8/C10: `isFollowUp` / echo inheritance | 1 |
 | FENCED_RAW_TEXT | D4: accepted Tier-2 advisory re-typed the act | 1 |
 | FENCED_RAW_TEXT | B7: legacy salience from optional facts | 1 |
 | FENCED_LEGACY | finalizeFrame's answer frame drops the answer option / reply kind | 7 |
-| FENCED_LEGACY | legacy labels an elliptical continuation `wh` by default ("Tonya, have you?", "And Tonya?", "…Have you, Giselle?") | 3 |
 | FENCED_LEGACY | own-answer repair acknowledged only because its address record is direct | 1 |
 | FENCED_LEGACY | legacy decided a clarification with no owner to ask it | 1 |
 | FENCED_LEGACY | a reply kind inherited with a repaired request's arguments | 1 |
-| PENDING_OWNER | ruling C1 (not decided): V1 form check on follow-ups / echoes ("cargo?", "when was that" ×2, "who else", "Not today. Ever.") | 5 |
-| PENDING_OWNER | ruling C1 (not decided): registry `question_forms` too strict ("Will all of us … or are we splitting up?", "Is Staging far?", "Are we leaving soon?") | 3 |
-
-**PENDING_OWNER turns (8): the Phase-1 blockers.**
-- Owner decision C1 decides them (see `READER_PHASE0_5_OWNER_RULINGS.md` §C1):
-  - validator exemption of echoes and non-`new` relations from the question-form check;
-  - metadata-only registry fixes: `choice` on `transition.participants`; `yes_no` on `mission.schedule`;
-    `yes_no` on `mission.route`, or a distance facet.
-- These are **proposed, not applied**. Until the owner decides, the shadow fails closed on these turns where
-  production answered.
 
 **Chip conflicts recorded (ruling 4):** 1 turn.
 
@@ -290,12 +295,13 @@ The inventory adds sites G1–G6 (`READER_RAW_TEXT_INVENTORY.md` §G).
 - **Pins:**
   - `SHADOW_DIFF_SHA256` in `ed32a`;
   - `ROUNDTRIP_SHA256` in `ed31a`: the round trip was regenerated because the adapter now applies rulings 2 / 3 and
-    deixis, and the resolver consumes the verdict. It now measures **80.0% behaviour-equivalent / 26.1% exact**. It
-    is a Phase-0.5 coarse measure, superseded by the comparator.
+    deixis, the resolver consumes the verdict, and C1 is applied. It now measures **82.2% behaviour-equivalent /
+    26.5% exact**. It is a Phase-0.5 coarse measure, superseded by the comparator.
 - **Governance:** `ed31a` hash updated; `ed32a` registered (aggregate) and `ed32b` registered (long-world) in
   `verification/verification-authority.json` and `test-manifest.json`, per `docs/VERIFICATION_GOVERNANCE.md` §6.
-- **Reports (not authorities):** `legacy-adapter-coverage.json` regenerated (89.8% exact).
-- **Full suite** (`node --test tests/*.test.js`): 1,514 tests, 1,435 pass, 79 fail.
+- **Reports (not authorities):** `legacy-adapter-coverage.json` regenerated (89.8% exact; dispositions accept 433 /
+  clarify 37 / reject_fields 1).
+- **Full suite** (`node --test tests/*.test.js`, after C1): 1,515 tests, 1,436 pass, 79 fail.
   - Against `baseline-failing-tests.json`: unchanged 79, **new 0**, fixed 0.
   - `ed31b` and `ed32b` passed within the run.
   - J16 / provider-independence / transcript-replay tests are green.

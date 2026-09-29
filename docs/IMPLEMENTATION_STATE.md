@@ -5,16 +5,19 @@
 - **Scope (owner instruction):**
   - SHADOW-ONLY.
   - No model reader, no cutover, no planner / UI / renderer / fallback / provider-flag / order-channel /
-    personnel-continuity change.
+    personnel-continuity / dialogue-state change.
   - No B2 / B6 / B7 / B8.
   - No blind corpus; spent corpora untouched.
   - Design and results: `docs/reader/READER_PHASE1.md`. Artifacts: `docs/acceptance/reader-phase1/`.
-- **Owner rulings applied (shadow / seam only):**
+- **Owner rulings applied (shadow / seam / seam-validator metadata only):**
   1. group_inclusive subject with no address;
   2. marker-led lines are `new` without a compatible antecedent;
   3. reader-state `c1` for the player's previous claim;
   4. chip-wins kept in production, the conflict recorded;
-  5. wh-led sarcasm fails closed.
+  5. wh-led sarcasm fails closed;
+  - **C1:** the question-form gate is for NEW questions; follow-ups and echoes that keep their antecedent's facet
+    inherit it; `choice` on `transition.participants`, `yes_no` on `mission.schedule` and `mission.route`; no
+    distance facet. Only the seam validator reads `question_forms`.
 - **Built:**
   - `resolveTurn` v2: pure, consumes the V0–V3 verdict; dispositions ACCEPT / CLARIFY / REJECT_FIELDS / INVALID;
   - `dialogue-response-policy.js`: table-driven, owner priority unchanged;
@@ -24,36 +27,37 @@
     the trace view;
   - the four-level comparator with evidence-based causes;
   - the inertness harness;
-  - gold evaluator v3 with prefix gold frames, claim / item-level checkpoints and a shadow spec.
+  - gold evaluator v3.
 - **Measured:**
 
   | Measure | Value |
   | --- | --- |
   | Gold resolver spec | **36 / 36 = 100%** |
-  | ACT | 454 / 471 = 96.4% |
-  | ROUTING | 372 / 471 = 79.0% |
-  | LIFECYCLE | 444 / 471 = 94.3% |
-  | FRAME | 333 / 471 = 70.7% |
-  | All four levels | **317 / 471 = 67.3%** |
-  | Unclassified | **0** |
-  | Pending owner decision (ruling C1: validator / registry question forms) | **8 turns** |
+  | Dispositions | accept 433, clarify 37, reject_fields 1 (the chip conflict), invalid 0 |
+  | ACT | 465 / 471 = 98.7% |
+  | ROUTING | 382 / 471 = 81.1% |
+  | LIFECYCLE | 455 / 471 = 96.6% |
+  | FRAME | 343 / 471 = 72.8% |
+  | All four levels | **327 / 471 = 69.4%** |
+  | Pending / unclassified | **0 / 0** |
   | Characterization authority | **identical** with the shadow on |
-  | Shadow inertness | **426 / 426** sessions deep-equal (live and cold reload; three providers) |
+  | Shadow inertness | 426 / 426 sessions deep-equal (live and cold reload; three providers) |
 
 - **Governance:**
-  - `ed31a` hash updated (round-trip pin regenerated, verdict-consuming resolver);
+  - `ed31a` hash updated (round-trip pin regenerated);
   - `ed32a` registered (aggregate) and `ed32b` registered (long-world) in `verification-authority.json` and
     `test-manifest.json`.
-- **Full suite** (`node --test tests/*.test.js`): 1,514 tests, 1,435 pass, 79 fail.
+- **Full suite** (`node --test tests/*.test.js`, after C1): 1,515 tests, 1,436 pass, 79 fail.
   - `tools/compare-failing-tests.js` against `baseline-failing-tests.json`: unchanged 79, **new 0**, fixed 0.
   - Passed within that run: `ed31b` (full characterization and round trip), `ed32b` (full shadow replay and
-    inertness), J16 and every provider-independence and transcript-replay test.
-  - Inventory: the 57 pre-existing errors only; none for `ed31` / `ed32`.
+    426 / 426 inertness), J16, every provider-independence and transcript-replay test, and the retry-idempotence
+    replay.
+  - `git diff --check`: clean.
+  - Inventory: only the 57 pre-existing errors; none for `ed31` / `ed32`.
 - **Doctrine conflicts:** none recorded.
-- **Blocker for completing Phase 1:**
-  - owner ruling C1 on the 8 PENDING_OWNER turns;
-  - the proposed metadata-only registry fixes and validator exemptions are listed in `READER_PHASE1.md` §6. They are
-    not applied.
+- **Phase-2 prerequisite (owner ruling C1.4):** persistent, observer-safe previous-player-claim semantic state, with
+  no dependence on legacy persisted clause `predicate_candidates`. Until then `c1` is unavailable after a cold
+  reload and the reading fails closed.
 
 ## Reader Phase 0.5: making Phase 0 trustworthy (no behaviour change) — 2026-09-29
 

@@ -2,7 +2,7 @@
 
 **Status (updated in Reader Phase 1, 2026-09-29):** the owner ruled on A (default adopted), B (#1, #2, #4 read as
 `new`; #3 gets a reader-state `c1` label), C3 (chip-wins in production, conflict recorded in the shadow; wh-led
-sarcasm fails closed). **C1 and C2 remain undecided.** Implementation: `docs/reader/READER_PHASE1.md` (shadow only).
+sarcasm fails closed). **C1 was ruled on 2026-09-29** (the form gate is for new questions; follow-ups and echoes inherit their antecedent's facet; `choice` on `transition.participants`, `yes_no` on `mission.schedule` and `mission.route`; no distance facet). **C2 remains undecided.** Implementation: `docs/reader/READER_PHASE1.md` (shadow only).
 Production behaviour is unchanged. The original preparation follows, with the corrections marked below. Each ruling lists:
 - the exact fixture cases (from `docs/acceptance/reader-phase0/roundtrip.json` and
   `legacy-adapter-coverage.json`);

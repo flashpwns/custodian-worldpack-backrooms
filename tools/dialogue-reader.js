@@ -80,7 +80,7 @@ function readTurn(reader, { request_id, input, bindings, legacy = null }) {
     frame_version: RF.READER_FRAME_VERSION,
     frame,
     conversion: output?.conversion ?? null,
-    verdict: verdict ? { ok: verdict.ok, disposition: verdict.disposition, clarify_slots: verdict.clarify_slots, rejected_fields: verdict.rejected_fields, errors: Object.values(verdict.layers).flatMap((l) => l.errors ?? []) } : null,
+    verdict: verdict ? { ok: verdict.ok, disposition: verdict.disposition, clarify_slots: verdict.clarify_slots, rejected_fields: verdict.rejected_fields, errors: Object.values(verdict.layers).flatMap((l) => l.errors ?? []), form_gate_exemptions: [...(verdict.form_gate_exemptions ?? [])] } : null,
     error,
     consumed: false, // Phase 0: no downstream consumer; production behaviour is the legacy pipeline
     elapsed_ms: Number(process.hrtime.bigint() - started) / 1e6

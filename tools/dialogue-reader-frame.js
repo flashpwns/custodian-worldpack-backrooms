@@ -226,8 +226,32 @@ function validateSchema(frame, input = {}) {
 const FORM_TO_REGISTRY = Object.freeze({ wh: "wh", yes_no: "yes_no", declarative: "yes_no", tag: "yes_no", choice: "choice", count: "count" });
 const SLOT_KIND = Object.freeze({ equipment: "item", place: "place" });
 
+/**
+ * Why an act's facet is INHERITED rather than asked anew (owner ruling C1), or null: an echo whose anchored heard
+ * sentence carries this facet ("echo"), or a continuation / repair / topic return / attention whose named
+ * antecedent (request, coworker question, earlier act of the line, activity round, heard sentence, player claim)
+ * carries this facet ("continuation"). Label existence and eligibility are checked elsewhere (V1 / V3); an
+ * unknown label yields no antecedent facet here, so the gate applies.
+ */
+function inheritedFacetBasis(act, i, frame, input = {}) {
+  const conv = input.conversation ?? {};
+  const anchors = input.heard?.anchors ?? [];
+  if (act.echo?.anchor) { const anchor = anchors.find((a) => a.label === act.echo.anchor); if (anchor?.facet && anchor.facet === act.facet) return "echo"; }
+  const kind = act.relation?.kind;
+  const target = act.relation?.target ?? null;
+  if (!target || !["continuation", "repair", "topic_return", "attention"].includes(kind)) return null;
+  const facet = LABEL.request.test(target) ? (conv.requests ?? []).find((r) => r.label === target)?.facet
+    : target === conv.inbound?.label ? conv.inbound?.facet
+      : LABEL.same_turn.test(target) && Number(target.slice(1)) < i ? frame.acts[Number(target.slice(1))]?.facet
+        : LABEL.activity.test(target) && conv.activity?.label === target ? conv.activity.facet
+          : LABEL.anchor.test(target) ? anchors.find((a) => a.label === target)?.facet
+            : LABEL.claim.test(target) && conv.player_claim?.label === target ? conv.player_claim.facet : null;
+  return facet && facet === act.facet ? "continuation" : null;
+}
+
 function validateCandidates(frame, input = {}) {
   const errors = [];
+  const exemptions = [];
   const has = (list, label) => (list ?? []).some((x) => x.label === label);
   const names = input.features?.name_spans ?? [];
   const entities = input.features?.entity_spans ?? [];
@@ -269,12 +293,21 @@ function validateCandidates(frame, input = {}) {
       return;
     }
     const entry = registry.get(act.facet);
-    // Question form <-> facet.
-    const form = FORM_TO_REGISTRY[act.question_form] ?? null;
-    if (form && ASKING.has(act.speech_act) && Array.isArray(entry.question_forms) && entry.question_forms.length && !entry.question_forms.includes(form)) reject("facet", "question_form_incompatible", { facet: act.facet, form: act.question_form });
-    // The act's own wh-word (a code feature) must be one the facet can be asked with.
-    const wh = whWordOf(act, input);
-    if (wh && act.question_form === "wh" && !registry.whCompatible(act.facet, wh)) reject("facet", "wh_incompatible", { facet: act.facet, wh });
+    // Owner ruling C1 (2026-09-29): the question-form gate (form and wh-word <-> facet) licenses a NEW question.
+    // A continuation / follow-up that keeps its named antecedent's facet ("when was that", "who else", "Not today.
+    // Ever.") and an echo of a heard sentence that keeps the anchored facet ("cargo?") inherit the facet: the
+    // shortened surface form need not license it on its own. The relation / anchor itself is still validated (V1
+    // labels, V3 eligibility), and a facet that DIFFERS from the antecedent's is a new question and meets the gate.
+    const inherited = inheritedFacetBasis(act, i, frame, input);
+    if (inherited) exemptions.push({ act: i, code: `form_gate_${inherited}`, facet: act.facet });
+    else {
+      // Question form <-> facet.
+      const form = FORM_TO_REGISTRY[act.question_form] ?? null;
+      if (form && ASKING.has(act.speech_act) && Array.isArray(entry.question_forms) && entry.question_forms.length && !entry.question_forms.includes(form)) reject("facet", "question_form_incompatible", { facet: act.facet, form: act.question_form });
+      // The act's own wh-word (a code feature) must be one the facet can be asked with.
+      const wh = whWordOf(act, input);
+      if (wh && act.question_form === "wh" && !registry.whCompatible(act.facet, wh)) reject("facet", "wh_incompatible", { facet: act.facet, wh });
+    }
     // Temporal scope the facet supports.
     if (act.temporal !== "unspecified" && Array.isArray(entry.temporal_support) && !entry.temporal_support.includes(act.temporal)) reject("temporal", "temporal_unsupported", { facet: act.facet, temporal: act.temporal });
     // Referent kind <-> the facet's slots.
@@ -284,7 +317,7 @@ function validateCandidates(frame, input = {}) {
     // A deictic place reference needs a facet that takes a place.
     if (DEIXIS_SPECIAL.includes(act.referent?.candidate) && !slotKinds.includes("place")) reject("referent", "deixis_without_place_slot", { facet: act.facet });
   });
-  return { ok: errors.length === 0, errors };
+  return { ok: errors.length === 0, errors, exemptions };
 }
 
 /** Referent labels an act may choose: entity spans inside the act, salient entities, the active place, anaphora. */
@@ -464,6 +497,8 @@ function validateReaderFrame(frame, input = {}) {
     disposition,
     layers: { V0: v0, V1: v1, V2: v2, V3: v3 },
     clarify_slots: [...new Set(clarify.map((e) => e.slot).filter(Boolean))],
+    // Owner ruling C1: acts whose facet was inherited past the new-question form gate (recorded, never silent).
+    form_gate_exemptions: [...(v1.exemptions ?? [])],
     rejected_fields: [...new Set(rejected.map((e) => `acts[${e.act}].${e.field}`))]
   });
 }
@@ -471,6 +506,6 @@ function validateReaderFrame(frame, input = {}) {
 module.exports = {
   READER_FRAME_VERSION, MAX_ACTS, SPEECH_ACTS, QUESTION_FORMS, FACET_SPECIAL, POLARITIES, NAME_ROLES, ADDRESS_OPS, RELATIONS, REPAIR_KINDS, DEIXIS_SPECIAL, REFERENT_CHOICE_SPECIAL, DISPOSITIONS, dispositionOf,
   TEMPORALS, RESPONDENT_MODES, INBOUND_KINDS, INBOUND_OPTION_SPECIAL, SUBJECT_KINDS, ACTION_FAMILIES, ABSTAIN_FIELDS, LABEL, ACT_KEYS,
-  ELIGIBLE_ANTECEDENT_STATES, OPEN_STATES,
+  ELIGIBLE_ANTECEDENT_STATES, OPEN_STATES, inheritedFacetBasis,
   readerFrameSchema, validateSchema, validateCandidates, validateSurface, validateDiscourse, validateReaderFrame, whWordOf, licensedReferents, wordsIn
 };

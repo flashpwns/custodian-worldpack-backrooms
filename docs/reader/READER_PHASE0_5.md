@@ -90,7 +90,7 @@ A real-state test shows the canonical `conversation` section identical under two
   `docs/acceptance/reader-phase0/README.md` §2.
   - **Correction (Phase 1):** this is not a readiness figure. Under the reviewed comparison, strict semantic
     equivalence is 328 / 471 = 69.6%, and exact excluding `request_text` is 304 / 471 = 64.5%.
-  - The Phase-1 comparator gives 317 / 471 = 67.3% at all four levels (`READER_PHASE1.md` §6).
+  - The Phase-1 comparator gives 327 / 471 = 69.4% at all four levels after owner ruling C1 (`READER_PHASE1.md` §6).
 - **Gold evaluator:** real DIS, present actors and bindings; checkpoints on requests, answered_by,
   activities, anchors, inbound, active speaker and salience; `incomplete_state_verification`; resolver spec
   7/7 on the self-test.

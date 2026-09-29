@@ -29,27 +29,17 @@
   }
  },
  "validation_disposition_of_legacy_frames": {
-  "accept": 422,
-  "reject_fields": 12,
+  "accept": 433,
+  "reject_fields": 1,
   "clarify": 37
  },
  "validation_errors_on_legacy_frames": {
   "V3:no_antecedent": 35,
-  "V1:question_form_incompatible": 11,
   "V3:others_count_mismatch": 3,
   "V2:contradicts_chip_target": 1,
   "V2:non_asking_reading_with_asking_features": 1
  },
  "validation_vs_legacy_decision": {
-  "V1:question_form_incompatible": {
-   "legacy_also_declined": 0,
-   "legacy_proceeded": 11,
-   "examples_legacy_proceeded": [
-    "Will all of us be going to Equipment Staging together, or are we splitting up?",
-    "Tonya, have you?",
-    "cargo?"
-   ]
-  },
   "V2:contradicts_chip_target": {
    "legacy_also_declined": 0,
    "legacy_proceeded": 1,

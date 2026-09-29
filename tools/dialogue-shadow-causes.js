@@ -13,7 +13,7 @@
 //   FENCED_RAW_TEXT  production decided from raw player words (a site in READER_RAW_TEXT_INVENTORY.md) that Phase 1
 //                    does not migrate
 //   FENCED_LEGACY    a legacy-only artifact of the production pipeline (not raw text), outside Phase-1 scope
-//   PENDING_OWNER    needs an owner decision before it can be classified (a Phase-1 BLOCKER)
+//   PENDING_OWNER    needs an owner decision before it can be classified (a Phase-1 BLOCKER; none since ruling C1)
 //   UNCLASSIFIED     no rule explains it (a Phase-1 BLOCKER)
 
 const registry = require("./dialogue-registry");
@@ -54,9 +54,10 @@ const CAUSES = Object.freeze({
   legacy_inherited_reply_kind: { class: "FENCED_LEGACY", title: "legacy carries a reply_kind inherited with a repaired request's arguments; the shadow carries the question's arguments only", fields: [/^frame\.args\.reply_kind$/, /^lifecycle\.inbound$/] },
   legacy_answer_repair_response: { class: "FENCED_LEGACY", title: "an own-answer repair gets an acknowledgment only because its address record is direct (answers get none)", fields: [/^routing\.(responders|silence)$/] },
   legacy_clarify_without_owner: { class: "FENCED_LEGACY", title: "legacy decided to clarify but no owner could ask (the answer's empty address record); the shadow's one clarifier asks", fields: [ROUTING, /^lifecycle\./] },
-  // ── pending owner decision (blockers) ──
-  pending_C1_follow_up_form: { class: "PENDING_OWNER", title: "Ruling C1 (not decided): V1's question-form check on follow-ups / echoes rejects the facet; the shadow fails closed", fields: [ANY] },
-  pending_C1_registry_forms: { class: "PENDING_OWNER", title: "Ruling C1 (not decided): registry question_forms metadata too strict for the facet; the shadow fails closed", fields: [ANY] }
+  // Owner ruling C1 (2026-09-29): the question-form gate licenses NEW questions (follow-ups / echoes that keep their
+  // antecedent's facet are exempt; registry forms widened for transition.participants, mission.schedule,
+  // mission.route). A form rejection that REMAINS is the approved gate failing closed.
+  owner_C1_new_question_form_gate: { class: "OWNER_APPROVED", title: "Ruling C1: a NEW question whose form does not license its facet fails closed", fields: [ANY] }
 });
 
 /** The discourse function a production frame WOULD have if its facet alone decided it (finalizeFrame's rules). */
@@ -91,8 +92,7 @@ function turnCauses(record, out, pl) {
   if (shadowClarify && prodClarify) add("owner_phase1_clarify");
   if (verdict.includes("question_form_incompatible")) {
     if (prod.speech_act === "elliptical_continuation" || legacyFrameAct?.speech_act === "elliptical_continuation") add("legacy_ellipsis_form_label");
-    else if (prod.relation !== "new" || legacyFrameAct?.echo || prod.facet_source === "surface_anchor") add("pending_C1_follow_up_form");
-    else add("pending_C1_registry_forms");
+    else add("owner_C1_new_question_form_gate");
   }
   // Item ownership with the holder absent: legacy answers with the first eligible listener; the shadow follows the
   // ratified priority (knower, else rotation).

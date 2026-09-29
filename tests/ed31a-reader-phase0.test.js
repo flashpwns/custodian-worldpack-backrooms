@@ -28,7 +28,7 @@ const ARTIFACTS = path.join(ROOT, "docs", "acceptance", "reader-phase0");
 // ── PINNED AUTHORITIES (governance): changing an artifact without updating these pins fails this suite; updating
 // a pin changes this file's hash, which verification/verification-authority.json governs. ──
 const CHARACTERIZATION_SHA256 = "cae21415ebc5a1a1af9d9dfe8c93e3b01276ad2ac8006f9e5f11df6dc0d06c88";
-const ROUNDTRIP_SHA256 = "3e6ae5647f69f68fbc995d279e12e50a3dcff7d0ff977e49ab6559cc735883ea";
+const ROUNDTRIP_SHA256 = "633edce6edb5c139b9a4ef2d1497e547b3eeb6f4b61e7bbb73564304fb0e0636";
 const BASELINE_FAILING_SHA256 = "cf4d4d86207e7b856fa3a8c08977e98ba49c863af39d8b70d556f54a4d9c40c0";
 
 const sc = E.scene();

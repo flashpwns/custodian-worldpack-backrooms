@@ -372,9 +372,9 @@
     "tests/ed30g-utterance-force-followups.test.js": "2ce979e21e8d93ac902d6b9cd8ef7c43062d1cf9d6afad093047057e62cdd3d1",
     "tests/ed30h-confidence-items-adjacency.test.js": "bf91b356d5b1551111eeadb01e83b1afaa97009738579b3689ec508a26179810",
     "tests/ed30i-evidence-facets-discourse.test.js": "f67482a7f216b7edacaee8aca9fade3edd6a18ec85f6edc0ac87a7abe3e1cf68",
-    "tests/ed31a-reader-phase0.test.js": "8681954d08f9a0567f674a527625d742cf13cdfd34721fb4125f0b9caf4b9377",
+    "tests/ed31a-reader-phase0.test.js": "4b2b3623ed76bd21fd56b417068324705ba9c6b92a5e4717d1f00ece6368de8f",
     "tests/ed31b-reader-characterization-full.test.js": "44b39517ce8dea5f7fbcd0419ae1af8113739752ceab0900eec7767d6bcee882",
-    "tests/ed32a-reader-phase1-shadow.test.js": "17b37e240853c5894477d7863de8e3b3fe14b9c70750c7d4b82a55c6a2f534ea",
+    "tests/ed32a-reader-phase1-shadow.test.js": "7add5ce42eb26280a5691962c51d17163b8ac67c5c8a82d3df7947adc440dd61",
     "tests/ed32b-reader-phase1-shadow-full.test.js": "dc9eeec3caae6380022945c15403e5f0e84251ec7dc84a0328788b400dc94db4"
   },
   "verification_core_hashes": {
