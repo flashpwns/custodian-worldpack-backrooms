@@ -1,7 +1,7 @@
 [
  {
   "player": "Hello everyone!",
-  "ms": 103,
+  "ms": 106,
   "lines": [
    {
     "speaker": "Giselle",
@@ -73,7 +73,7 @@
  },
  {
   "player": "Giselle, how are you?",
-  "ms": 98,
+  "ms": 102,
   "lines": [
    {
     "speaker": "Giselle",
@@ -118,7 +118,7 @@
  },
  {
   "player": "Why?",
-  "ms": 105,
+  "ms": 107,
   "lines": [
    {
     "speaker": "Giselle",
@@ -163,7 +163,7 @@
  },
  {
   "player": "Fair enough. What about Tonya?",
-  "ms": 109,
+  "ms": 111,
   "lines": [
    {
     "speaker": "Tonya",
@@ -208,7 +208,7 @@
  },
  {
   "player": "Have you done this before?",
-  "ms": 114,
+  "ms": 116,
   "lines": [
    {
     "speaker": "Tonya",

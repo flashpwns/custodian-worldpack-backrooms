@@ -29,8 +29,9 @@ const POLITE_LEAD = /^(?:sorry,?\s+but|(?:sorry|quick question|just (?:a )?quick
 const ONLY_MARKERS = new RegExp(`^(?:(?:${MARKER_ALT}|that'?s (?:good|great|nice|cool|fair|interesting)|good to (?:hear|know)|nice to (?:hear|know)|glad to hear(?: it)?|sounds good|makes sense|fair enough|got it|i see|no worries|same|me too|nice to meet you(?: all| both| two)?|pleasure|likewise)\\b[\\s,.!]*)+$`, "i");
 
 // ─── social acts ───────────────────────────────────────────────────────────────────────────────────────
-const GREETING = /^(?:hey|hi|hello|hiya|howdy|yo|greetings|good ?(?:morning|afternoon|evening|day)|morning|evening|hey there|hi there|hello there)\b/i;
-const FAREWELL = /^(?:bye|goodbye|good bye|see you|see ya|see y'?all|later|catch (?:you|ya|y'?all)(?: guys)? later|take care|so long|until next time)\b/i;
+// Chat stretches social words ("heyyy", "hiii", "byeee"): the stretched form is the same word.
+const GREETING = /^(?:he+y+|hi+|hello+|hiya+|howdy|yo+|greetings|good ?(?:morning|afternoon|evening|day)|morning|evening|hey+ there|hi+ there|hello there|sup)\b/i;
+const FAREWELL = /^(?:by+e+|goodbye|good bye|see you|see ya|see y'?all|later|laters|catch (?:you|ya|y'?all)(?: all| guys)?(?: later| there| in a bit| at [a-z]+)?|take care|so long|until next time|gotta go|gtg|peace out)\b/i;
 const THANKS = /^(?:thanks|thank you|thank ya|thx|cheers|appreciate it|much appreciated)\b/i;
 const SELF_INTRO = /\b(?:[Ii]'?m|[Ii] am|[Mm]y name is|[Mm]y name'?s|[Cc]all me|[Yy]ou can call me)\s+(?:[A-Z][A-Za-z'-]*\b(?!\s+(?:too|also))|your (?:new )?(?:expedition lead|lead|team lead|camera operator|teammate|coworker)|the new (?:guy|girl|one|hire|lead|camera operator))/;
 // Calls for attention without a "?" ("Earth to Malcolm", "You there?", "Is anybody listening?", "Did you hear
@@ -121,7 +122,8 @@ const UNANSWERED_REPAIR = [
 const FACET_REPAIR = [
   /^(?:no,?\s+)?(?:i\s+meant\s+|i\s+asked\s+)?(?<want>where|when|why|who|how|what)\s*,?\s*not\s+(?<not>where|when|why|who|how|what)\b/i,
   /^(?:no,?\s+)?not\s+(?<not>today|now|ever|earlier|before)\s*[.!,]+\s*(?<want>today|now|ever|earlier|before|in general)\s*[.!?]*$/i,
-  /^(?:no,?\s+)?(?:i meant\s+)?(?<want>ever|before that|earlier|in general|at all)\s*[.!?]*$/i,
+  // A time frame CORRECTED ("no, ever" / "I meant earlier"); a bare "ever?" after an answer is a follow-up.
+  /^(?:no,?\s+|nope,?\s+|i meant\s+|no,?\s+i meant\s+)(?<want>ever|before that|earlier|in general|at all)\s*[.!?]*$/i,
   /^(?:no,?\s+|nope,?\s+)?i\s+(?:meant|mean|was asking about|was talking about)\s+(?<referent>(?:the\s+)?[A-Za-z][\w -]{1,40}?)\s*[.!?]*$/i,
   // "No, what are they for?" re-asks the facet; without the "no" it is an ordinary purpose question
   // (and "what is it for" must read the same as "what's it for").
@@ -421,6 +423,12 @@ function utteranceForce(act, clause) {
   const core = body.replace(FORCE_LEAD, "").replace(/^(?:[A-Z][a-z]+|[a-z]+),\s+(?=\S)/, (m) => m); // vocatives are already stripped from the body
   const plain = core.replace(/[?!.]+$/, "").trim();
   const words = plain.split(/\s+/).filter(Boolean).length;
+  // "When I greeted them." / "Where we left it." -- a wh-led subordinate clause with a past verb and no "?" is
+  // an ANSWER form (to "when do you mean?"), not a question.
+  const SUBORDINATE = /^(?:when|where|while|after|before)\s+(?:i|we|you|he|she|they|it|someone)\s+(?:\w+ed|went|came|saw|said|told|got|left|took|made|met|heard|was|were|had|did|asked|spoke|talked)\b/i;
+  // (Whether it answers depends on the conversation: only while a coworker's question is pending -- decided in
+  // dialogue-turn. Without one, "where we headed" is simply asked.)
+  if (act.speech_act === "question" && !hasQ && SUBORDINATE.test(plain)) return { confidence: "likely", cue: "subordinate_clause_or_question" };
   if (["question", "request", "elliptical_continuation", "repair", "attention_call"].includes(act.speech_act)) {
     // The "?" was the ONLY cue, and the rest is a first-person claim or a report: not sure it asks.
     const onlyMark = act.speech_act === "question" && act.question_form === "declarative" && !FORCE_WH.test(plain) && !FORCE_AUX.test(plain) && !FORCE_DROPPED.test(plain) && !FORCE_TAG.test(raw);
@@ -432,6 +440,8 @@ function utteranceForce(act, clause) {
   if (act.speech_act !== "statement") return { confidence: "certain", cue: act.speech_act };
   if (FORCE_REPORT.test(raw)) return { confidence: "certain", cue: "report" };
   if (FORCE_STATEMENT_LEAD.test(plain) && !FORCE_TAG.test(raw)) return { confidence: "certain", cue: "first_person" };
+  // "When I greeted them" / "where we left it": a wh-word + subject + PAST verb is a subordinate clause (how
+  // one answers "when do you mean?"), not a question.
   if (FORCE_WH.test(plain)) return { confidence: "certain", cue: "wh", promote: "wh" };
   if (FORCE_AUX.test(plain) && words >= 2) return { confidence: "certain", cue: "aux_inversion", promote: "yes_no" };
   if (FORCE_FRAGMENT.test(plain)) return { confidence: "likely", cue: "fragment", promote: "wh" };
@@ -441,6 +451,12 @@ function utteranceForce(act, clause) {
   if (FORCE_DROPPED.test(plain) && !hasQ && words <= 10) return { confidence: "likely", cue: "aux_dropped", promote: "declarative" };
   // Unpunctuated, short, addressed to someone or the group, and not a claim: could be either -- Tier 2 reads it.
   if (!hasQ && UNPUNCTUATED(raw) && words <= 8 && new RegExp(`^${FORCE_SUBJECT}\\b`, "i").test(plain)) return { confidence: "uncertain", cue: "unpunctuated_second_person" };
+  // Colloquial declaratives that may well be asking (ED-30H): unpunctuated, not the speaker's own claim, and
+  // either about "you", carrying a wh-word later in the line, or ending in a checking word ("... still on you",
+  // "we report where again", "six years really"). Tier 1 cannot tell; the bounded reading can.
+  if (!hasQ && UNPUNCTUATED(raw) && words <= 10 && (/\b(?:you|u|ya|your|ur|y'?all)\b/i.test(plain) || /\s(?:who|what|where|when|why|how|which)\b/i.test(plain) || /\s(?:really|seriously|for real|tho|though|again|yet|still|huh|right)$/i.test(plain))) return { confidence: "uncertain", cue: "colloquial_declarative" };
+  // A short line that names nothing it asks and nothing it claims ("the lamp", "six years") after an exchange.
+  if (words <= 3 && !/\b(?:is|are|was|were|am|have|has|had|do|does|did|will|can)\b/i.test(plain) && !FORCE_STATEMENT_LEAD.test(plain)) return { confidence: "uncertain", cue: "fragment" };
   return { confidence: "certain", cue: "declarative" };
 }
 
@@ -673,7 +689,18 @@ function clauseActCore(clause, { people = [] } = {}) {
 function parseActs(raw, { people = [], vocabulary = [], protect = [] } = {}) {
   const names = people.flatMap((p) => p.names ?? [p.name]).filter(Boolean);
   const normalized = normalizeUtterance(raw, { names, vocabulary, protect });
-  const clauses = segment(normalized.repaired);
+  // Commentary then a follow-up in one comma-joined clause ("great, love that, and before that"): the tail is
+  // its own clause when it is itself a follow-up form -- a known fragment, a wh-/aux-led question, or "you ...".
+  // A list ("Malcolm, Tonya and Giselle") is never split.
+  const clauses = segment(normalized.repaired).flatMap((c) => {
+    const m = String(c.text).match(/^(.*\S),\s+((?:and|but|so|ok so|okay so)\s+(.+))$/i);
+    if (!m) return [c];
+    const tail = m[3].replace(/[?!.\s]+$/, "");
+    const followUp = FORCE_FRAGMENT.test(tail) || /^(?:before that|since when|and you|you|who|what|where|when|why|how|which)\b/i.test(tail) || FORCE_AUX.test(tail);
+    if (!followUp) return [c];
+    const headEnd = c.start + m[1].length;
+    return [{ text: `${m[1]}.`, start: c.start, end: headEnd }, { text: m[2], start: c.end - m[2].length, end: c.end }];
+  });
   const acts = [];
   const dropped = [];
   for (const clause of clauses) {

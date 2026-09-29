@@ -1,5 +1,60 @@
 # Yellow Beast Implementation State
 
+## ED-30H Tier-1 completeness contract, item question roles, bidirectional adjacency, fragment context — 2026-09-29
+
+- **Architecture: unchanged.** DIS, ledger, registry, personhood, private-state gates, surface anchors and provider-independent truth are unchanged. Changes at the language-entry / discourse boundary:
+  - **Tier-1 completeness contract** (`dialogueTurn.tier1Contract`).
+    - Evaluates, per field, speech-act force, facet (and its source; weak when competing facets tie), addressee, relation, referent, fragment status and DIS compatibility.
+    - Explains why Tier 1 is or is not sufficient. Tier 2 is required only for gaps it can fill.
+    - The single gate for the service and the evaluator.
+    - Developer trace: `tier1_frame`, `tier1_complete`, `tier1_confidence_reasons`, `tier2_required`, `tier2_reason`, `advisory_state`.
+  - **Colloquial force.**
+    - Unpunctuated lines about "you", with a late wh-word, or ending in a checking word, and bare fragments, are *uncertain*.
+    - Stretched social words and chat farewells are recognised.
+    - Commentary and a follow-up joined by a comma are split into two clauses.
+  - **Item question roles** (`dialogueTurn.itemRole`, new facets `item.definition` / `item.location` / `item.provenance`).
+    - The clause's relation decides the facet: definition, purpose/use/function, holder, location, provenance, contents, destination.
+    - An unknown purpose is bounded uncertainty, never the definition. Provenance is not established unless authored.
+  - **Bidirectional adjacency** (`dialogue-state` `inbound_requests`).
+    - A coworker's plan-licensed question to the player opens a canonical conversational expectation. The KIND comes from the plan, never the wording; it persists through reload.
+    - The player's next turn is read as answer / uncertainty / refusal / counter-question / repair of their own answer / topic shift, and addressed to the asker.
+    - A clarification answer still resumes the player's own question.
+  - **Fragment context for Tier 2.** Compact structured conversation state goes into the advisory (facets and opaque labels only). A deterministic check requires exactly one compatible antecedent for a fragment reading.
+  - **Other:** temporal follow-ups ("before that", "ever", "at all"), same-kind item fragments ("the lamp?"), and a lone wh-fragment with no antecedent clarifies.
+- **Verification:**
+  - `tests/ed30h-confidence-items-adjacency.test.js` (7 service-level tests). All ED suites pass.
+  - Fuzz: 3,000 turns, seed 30030, 0 violations.
+  - Gemma J15: 149 turns, all zeros; turn p90 3.6–5.7 s.
+  - Full suite: 1,454 tests, 1,378 pass, 76 fail. No new failures.
+  - Inventory: 57 existing errors. `ed30h` hash `bf91b356`.
+- **Fifth blind corpus** (330 items, SHA-256 `914ffc1e…e982`, measured once):
+
+  | Measure | Full pipeline | Gate |
+  | --- | --- | --- |
+  | Whole turn correct | 46.1 | — |
+  | Speech act | 80.6 | ≥95 |
+  | Addressee | 82.7 | ≥98 |
+  | Predicate | 66.7 | ≥95 |
+  | Relation | 85.8 | ≥95 |
+  | Clarification rate | 13.0 | ≤8 |
+  | Confident-wrong | 32.4 | ≤1 |
+
+  Tier 1 alone: 42.1% whole-turn correct.
+
+  | Failure class | Share of failures |
+  | --- | --- |
+  | Never reached Tier 2 | 64.3% |
+  | Definition / purpose confusion | 1.0% |
+  | Discourse-link failure | 23.1% |
+  | Short-fragment low confidence | 0.5% |
+
+  Classes 2 and 4 are resolved.
+- **Remaining general blockers:**
+  1. Tier-1 over-confidence (chat particles and typos defeat the force and role analysis).
+  2. Tier-2 readings with no facet (they fail closed to clarification).
+  3. Discourse-link follow-ups whose facet is not recovered.
+- **Jack retest: no.** Per the ED-30H rule, ED-30I is not started automatically.
+
 ## ED-30G utterance force, Tier-2 semantic completeness, discourse follow-ups — 2026-09-28
 
 - **Architecture: unchanged.** DIS, ledger, registry, personhood, private-state gates and provider-independent truth are unchanged. Changes are at the language-entry / discourse-resolution boundary:

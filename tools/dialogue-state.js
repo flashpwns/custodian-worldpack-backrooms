@@ -48,6 +48,7 @@ function stateOf(run) {
   state.acquaintance ??= { self_referential: {}, introduced: {}, closed_by_player_at: null, complete_at: null };
   state.learning ??= [];
   state.surface_anchors ??= [];
+  state.inbound_requests ??= [];
   return state;
 }
 const nextId = (state, prefix) => `${prefix}-${String(++state.sequence).padStart(4, "0")}`;
@@ -297,7 +298,8 @@ function snapshot(run, { player_id, location_id = null, present_ids = [] } = {})
     pending_requests: pending.map(brief),
     activity: activity ? { activity_id: activity.activity_id, kind: activity.kind, template: { ...activity.template }, completed: [...activity.completed], pending: [...activity.pending], eligible: [...activity.eligible], last_target: activity.last_target } : null,
     acquaintance_complete: state?.acquaintance?.complete_at != null,
-    surface_anchors: freshAnchors(run, { player_id })
+    surface_anchors: freshAnchors(run, { player_id }),
+    ...(() => { const inbound = inboundFor(run, { player_id }); return { pending_inbound_request: inbound.pending, just_answered_inbound: inbound.just_answered }; })()
   });
 }
 
@@ -405,6 +407,56 @@ function freshAnchors(run, { player_id } = {}) {
   }) }));
 }
 
+// ─── inbound requests (ED-30H): a coworker asked the PLAYER something ───────────────────────────────────
+// Conversational expectation only: who asked, what kind of question, which facet it is about. It never holds
+// an answer or a fact. The player's next turn is read against it (answer / uncertainty / refusal / counter-
+// question / repair of their own answer / topic shift); a later player turn makes it stale.
+const MAX_INBOUND = 6;
+// The KIND of expectation comes from the plan (canonical), never from whether the wording ends in "?": a
+// clarification the plan licensed, an attention reply ("Yes?"), or a question the plan asks the player. The
+// text is the words as spoken (display only). With no plan (a context line in the evaluator), the words decide.
+function inboundKind(text, plan) {
+  if (plan) {
+    if (plan.may_ask_clarifying_question || plan.discourse_function === "ambiguous_reference") return "clarification";
+    if (plan.discourse_function === "attend") return "attention";
+    if (plan.asks_player || (plan.required_facts ?? []).some((f) => f.key === "question_to_player")) return "question";
+    return null;
+  }
+  if (/^(?:yes|yeah|yep|hm+|huh|what|mm+)\?+$/i.test(String(text).trim())) return "attention";
+  if (/\b(?:do|did) you mean\b|\byou mean\b|^sorry\b[^.?!]*\?\s*$/i.test(String(text).trim())) return "clarification";
+  return /\?\s*$/.test(String(text).trim()) ? "question" : null;
+}
+function recordInboundRequest(run, { event_id, speaker_id, text, plan, request_id = null }) {
+  const state = stateOf(run);
+  const kind = inboundKind(text, plan);
+  if (!state || !event_id || !speaker_id || !kind) return null;
+  // What the expectation is about is canonical too: the facet of the request the plan answered (a
+  // clarification is about the player's own question).
+  const predicate = plan?.predicate ?? (plan?.required_facts ?? []).find((f) => f.key === "predicate_answer")?.value?.predicate ?? null;
+  const inbound = { event_id, speaker_id, text: String(text ?? "").slice(0, 200), kind, predicate, in_reply_to: request_id };
+  state.inbound_requests = [...state.inbound_requests, inbound].slice(-MAX_INBOUND);
+  return inbound;
+}
+/**
+ * The coworker question the player's next turn answers: the latest inbound request asked since the player
+ * last spoke (fresh), or -- for a repair of the answer just given -- the one the player answered last turn.
+ */
+function inboundFor(run, { player_id } = {}) {
+  const state = stateOf(run);
+  const history = run?.expedition?.dialogue_history ?? [];
+  if (!state?.inbound_requests?.length || !history.length) return { pending: null, just_answered: null };
+  const playerIdx = history.map((e, i) => (e.speaker_id === player_id ? i : -1)).filter((i) => i >= 0);
+  const lastPlayer = playerIdx.at(-1) ?? -1;
+  const prevPlayer = playerIdx.at(-2) ?? -1;
+  const pos = (id) => history.findIndex((e) => e.id === id);
+  const latest = state.inbound_requests.at(-1);
+  const at = pos(latest.event_id);
+  const view = (x) => ({ kind: x.kind, from: x.speaker_id, text: x.text, predicate: x.predicate ?? null, event_id: x.event_id });
+  if (at > lastPlayer) return { pending: view(latest), just_answered: null };
+  if (at > prevPlayer && at < lastPlayer) return { pending: null, just_answered: view(latest) };
+  return { pending: null, just_answered: null };
+}
+
 function commitTurnLines(run, items = [], { present_ids = [] } = {}) {
   const knowledge = require("./canonical-knowledge");
   const personhood = require("./dialogue-personhood");
@@ -422,6 +474,8 @@ function commitTurnLines(run, items = [], { present_ids = [] } = {}) {
         completeActivitySlot(run, predicate, item.speaker_id);
       }
     }
+    // A coworker line that asks the player something opens an inbound expectation (conversation only).
+    if (item.event_id && item.plan) recordInboundRequest(run, { event_id: item.event_id, speaker_id: item.speaker_id, text: item.text ?? "", plan: item.plan, request_id: item.request_id ?? null });
     // The accepted spoken line's sentences, anchored to what licensed them (conversational metadata only).
     if (item.text && item.event_id) recordSurfaceAnchors(run, { event_id: item.event_id, speaker_id: item.speaker_id, text: item.text, parts: parts.map((part) => ({ request_id: part.request_id, predicate: part.frame?.predicate ?? null })) });
     personhood.recordSelfStateSnapshot(run, item.speaker_id, { source: "turn_commit" });
@@ -435,4 +489,4 @@ function commitTurnLines(run, items = [], { present_ids = [] } = {}) {
   return results;
 }
 
-module.exports = { echoTokens, anchorSpans, recordSurfaceAnchors, freshAnchors, recentlyAnswered, openTurnRequests, commitTurnLines, verdictOf, STATE_VERSION, REQUEST_STATES, ACTIVITY_KINDS, ABANDON_AFTER_TURNS, PENDING, TERMINAL, SELF_REFERENTIAL, ACTIVITY_OF, stateOf, openRequest, reopenRequest, recordSatisfaction, supersede, ageRequests, findRequest, requestsOfInteraction, lastRequest, pendingRequests, recordRepair, activeActivity, noteActivityRequest, completeActivitySlot, closeActivity, noteSelfReferentialAnswer, noteAcquaintanceClosed, evaluateAcquaintance, acquaintanceComplete, recordLearning, activeSpeaker, snapshot };
+module.exports = { recordInboundRequest, inboundFor, inboundKind, echoTokens, anchorSpans, recordSurfaceAnchors, freshAnchors, recentlyAnswered, openTurnRequests, commitTurnLines, verdictOf, STATE_VERSION, REQUEST_STATES, ACTIVITY_KINDS, ABANDON_AFTER_TURNS, PENDING, TERMINAL, SELF_REFERENTIAL, ACTIVITY_OF, stateOf, openRequest, reopenRequest, recordSatisfaction, supersede, ageRequests, findRequest, requestsOfInteraction, lastRequest, pendingRequests, recordRepair, activeActivity, noteActivityRequest, completeActivitySlot, closeActivity, noteSelfReferentialAnswer, noteAcquaintanceClosed, evaluateAcquaintance, acquaintanceComplete, recordLearning, activeSpeaker, snapshot };

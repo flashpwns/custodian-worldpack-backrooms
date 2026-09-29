@@ -137,6 +137,14 @@ const RESOLVERS = {
     const dims = temporal === "earlier" ? (personhood.selfStateAt(member, null) ?? personhood.selfStateDimensions(member)) : personhood.selfStateDimensions(member);
     return result("value", { answer: { dimensions: dims ?? null, temporal: temporal ?? "now" }, provenance: ["self"], sources: [temporal === "earlier" ? "member.personhood.self_state_history" : "member.emotional_state + personhood.baseline"] });
   },
+  // Where an item came from: nobody at the table saw it issued, so unless the item carries an authored
+  // source fact, the honest answer is that it is not established (never a guess from the custody record).
+  item_provenance(run, { args }) {
+    const item = Object.values(run?.expedition?.equipment ?? {}).find((i) => i?.id === args?.item_id) ?? null;
+    const source = item?.authored_source ?? null;
+    if (source) return result("value", { answer: { predicate: "item.provenance", item: item.id }, statements: [String(source)], provenance: ["authored"] });
+    return result("not_established", { answer: { predicate: "item.provenance", item: item?.id ?? null, label: item?.label ?? null } });
+  },
   mission_destination(run, { actor_id }) {
     const grants = grantsOf(run, actor_id);
     const outpost = grants.find((g) => g.key === "outpost_destination") ?? grants.find((g) => g.key === "startup_material_destination");

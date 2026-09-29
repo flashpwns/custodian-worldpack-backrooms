@@ -291,6 +291,7 @@ function presentPredicateAnswer(answer, { prior = [] } = {}) {
   if (answer.value === "unknown") return a.third_party ? variant("I couldn't tell you. You'd have to ask them.", ["No idea, honestly. You'd have to ask them.", "I don't know. You'd have to ask them."], prior) : variant("No idea, honestly.", ["I don't know.", "Couldn't tell you."], prior);
   if (answer.value === "not_established") {
     if (answer.predicate === "person.intent") return "Couldn't tell you. Nothing in particular.";
+    if (answer.predicate === "item.provenance") return variant("I don't know where it came from.", ["No idea where it came from, honestly.", "Couldn't tell you where it came from."], prior);
     // One's own history that canon does not settle: an honest hedge, never an invented yes or no.
     if (a.count_asked) return variant("I couldn't say how many, exactly.", ["Couldn't tell you how many, honestly.", "I couldn't say exactly how many."], prior);
     // A place the profile does not settle ("Have you been to Outpost A?"): no lean either way.

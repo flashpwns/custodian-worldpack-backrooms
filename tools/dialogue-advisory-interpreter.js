@@ -194,16 +194,28 @@ function advisoryV2Schema({ facets = [], people = [], referents = [] } = {}) {
 const ADVISORY_V2_SYSTEM_TEXT = [
   "You classify the LANGUAGE of one line a person said at a work table. You do not answer it and you know nothing about the world.",
   "Describe the line as ONE act: the part that asks or requests something (if any), otherwise the main thing said. Choose: speech_act; facet (what is asked about, from the list, or null); who is addressed (addressee_candidate label, or null); what place/thing it is about (referent_candidate label, or null); quantifier; discourse_relation.",
-  "Every *_text field must be copied EXACTLY from the line, or null. Use only the labels given. If you cannot tell, say confidence low.",
+  "speech_act: \"question\" when the person wants information or a confirmation, even typed without a question mark (a statement said to check it, e.g. \"the bag's still with you\", asks); \"statement\" only when they tell something and expect nothing back.",
+  "Every *_text field must be copied EXACTLY from the line, or null. Use only the labels given. A short fragment (\"since when\", \"and you\", \"the lamp\") continues the conversation state given: read it against that. If you cannot tell, say confidence low.",
   "Reply with exactly one compact JSON object and nothing else."
 ].join("\n");
 
 // Static parts first (facets, then the scene's labels), the turn last: the runtime reuses the cached prefix.
-function buildAdvisoryV2Prompt({ utterance, recent = [], people = [], referents = [], facets = [], facet_guide = {} }) {
+// The conversation state a short fragment needs (facets and labels only, never prose or facts).
+function renderContext(context) {
+  if (!context) return null;
+  const parts = [];
+  if (context.last_question) parts.push(`the last question was about ${context.last_question.facet}${context.last_question.answered_by?.length ? `, answered by ${context.last_question.answered_by.join(", ")}` : ""}`);
+  if (context.pending_player_question) parts.push(`an unanswered question is about ${context.pending_player_question.facet}`);
+  if (context.coworker_asked_player) parts.push(`${context.coworker_asked_player.by ?? "a coworker"} just asked the person a question${context.coworker_asked_player.facet ? ` about ${context.coworker_asked_player.facet}` : ""}`);
+  if (context.activity) parts.push(`an ongoing round: ${context.activity}`);
+  return parts.length ? `Conversation state: ${parts.join("; ")}.` : null;
+}
+function buildAdvisoryV2Prompt({ utterance, recent = [], people = [], referents = [], facets = [], facet_guide = {}, context = null }) {
   return [
     `Facets:\n${facets.map((f) => `- ${f}${facet_guide[f] ? `: ${facet_guide[f]}` : ""}`).join("\n")}`,
     people.length ? `People at the table (addressee labels): ${people.map((p) => `${p.label}=${p.name}`).join(", ")}` : null,
     referents.length ? `Places/things (referent labels): ${referents.map((r) => `${r.label}=${r.name}`).join(", ")}` : null,
+    renderContext(context),
     recent.length ? `Recent lines (words only):\n${recent.slice(-3).map((l) => `- ${String(l).slice(0, 160)}`).join("\n")}` : null,
     `The line: ${JSON.stringify(String(utterance).slice(0, 400))}`
   ].filter(Boolean).join("\n");
@@ -248,13 +260,13 @@ function validateAdvisoryV2(raw, utterance, { people = [], referents = [], facet
 }
 
 /** One bounded v2 advisory call (never throws; timeout/malformed/unavailable -> not accepted). */
-async function requestAdvisoryV2(provider, { utterance, repaired = null, recent = [], people = [], referents = [], facets = [], facet_guide = {}, timeout_ms = 8000 } = {}) {
+async function requestAdvisoryV2(provider, { utterance, repaired = null, recent = [], people = [], referents = [], facets = [], facet_guide = {}, context = null, timeout_ms = 8000 } = {}) {
   if (!provider || typeof provider.interpretDialogue !== "function") return { accepted: false, reason: "advisory_unavailable", latency_ms: 0 };
   const started = Date.now();
   let timer = null;
   try {
     const raw = await Promise.race([
-      provider.interpretDialogue({ system: ADVISORY_V2_SYSTEM_TEXT, user: buildAdvisoryV2Prompt({ utterance, recent, people, referents, facets, facet_guide }), schema: advisoryV2Schema({ facets, people, referents }) }),
+      provider.interpretDialogue({ system: ADVISORY_V2_SYSTEM_TEXT, user: buildAdvisoryV2Prompt({ utterance, recent, people, referents, facets, facet_guide, context }), schema: advisoryV2Schema({ facets, people, referents }) }),
       new Promise((_, reject) => { timer = setTimeout(() => reject(Object.assign(new Error("advisory timeout"), { code: "TIMEOUT" })), timeout_ms); })
     ]);
     // A v1-shaped reply (older scripted providers) is still validated by the v1 rules.

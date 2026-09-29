@@ -125,7 +125,8 @@
       "tests/ed30d-properties-independence.test.js",
       "tests/ed30e-owner-decisions.test.js",
       "tests/ed30f-end-to-end.test.js",
-      "tests/ed30g-utterance-force-followups.test.js"
+      "tests/ed30g-utterance-force-followups.test.js",
+      "tests/ed30h-confidence-items-adjacency.test.js"
     ],
     "long-world": [
       "tests/profile-model.test.js",
@@ -363,7 +364,8 @@
     "tests/ed30d-properties-independence.test.js": "76ea9d144b1550d41f90f8040d4776dfab2d42705bfa74d7230a2267e5ad1826",
     "tests/ed30e-owner-decisions.test.js": "03ca694333f84a5a3b1348413e36dae0a5f8785724b92b4e19b06fe9fc9ccc8c",
     "tests/ed30f-end-to-end.test.js": "46cc645b1a2e2f5d943633ee5eee19052b299bb1e945aa66f5bf1c303379ae3d",
-    "tests/ed30g-utterance-force-followups.test.js": "2ce979e21e8d93ac902d6b9cd8ef7c43062d1cf9d6afad093047057e62cdd3d1"
+    "tests/ed30g-utterance-force-followups.test.js": "2ce979e21e8d93ac902d6b9cd8ef7c43062d1cf9d6afad093047057e62cdd3d1",
+    "tests/ed30h-confidence-items-adjacency.test.js": "bf91b356d5b1551111eeadb01e83b1afaa97009738579b3689ec508a26179810"
   },
   "verification_core_hashes": {
     "tools/verification-inventory.js": "0f27da4645f1d85e48b52133475371bbbce55072807b6900108c3a1afd344f3b",

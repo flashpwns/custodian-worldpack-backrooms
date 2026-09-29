@@ -1612,14 +1612,16 @@ class DesktopService {
       // confident. The advisory sees surface text and opaque candidate labels only -- never ids or facts.
       const presentIds = coworkers.filter((m) => m.status === "active").map((m) => m.personnel_id ?? m.id);
       const present = coworkers.filter((m) => presentIds.includes(m.personnel_id ?? m.id)).map((m) => ({ id: m.personnel_id ?? m.id, name: m.first_name ?? m.display_name, names: [m.first_name, m.last_name].filter(Boolean) }));
-      const analysis = dialogueTurn.analyzeTurn({ raw: message, present, entities, dis: dialogueTurn.withSalience(dialogueState.snapshot(run, { player_id: playerId, location_id: run.spatial?.player_location ?? null, present_ids: presentIds }), discourse, entities) });
+      const precheckDis = dialogueTurn.withSalience(dialogueState.snapshot(run, { player_id: playerId, location_id: run.spatial?.player_location ?? null, present_ids: presentIds }), discourse, entities);
+      const analysis = dialogueTurn.analyzeTurn({ raw: message, present, entities, dis: precheckDis });
       // The dry-run frame reads the SAME normalized request text the canonical turn will (never the raw typing).
       const frame = dialogueDiscourse.buildSemanticFrame({ text: analysis.primary?.request_text ?? address.residual_text, recipient_type: address.address_type === "direct" ? "direct" : address.address_type === "none" ? "none" : "group", discourse, equipment: run.expedition.equipment, people: coworkers.map((m) => ({ id: m.personnel_id ?? m.id, name: m.first_name })), addressee_ids: address.addressee_ids ?? [], entities, temporal_anchors: dialogueTemporalAnchors(run), now: run.expedition.clock?.interval ?? null });
       const completeness = dialogueTurn.completenessWithFrame(analysis, frame, analysis.primary);
       const recent = (discourse.turns ?? []).slice(-2).flatMap((t) => [t.player_text, ...(t.responses ?? []).map((r) => r.text)]).filter(Boolean);
       // The ONE Tier-2 gate (shared with the end-to-end evaluator, so what is measured is what ships).
-      const gate = dialogueTurn.advisoryGate({ message, analysis, frame, completeness, present, entities, recent });
-      return { needed: gate.needed, completeness, utterance: address.residual_text, previous_line: previous, ask_addressee: address.address_type === "none" && !input.target, anchor_candidates: dialogueDiscourse.anchorCandidates(discourse).map((candidate) => candidate.label), v2: gate.v2 };
+      const gate = dialogueTurn.advisoryGate({ message, analysis, frame, completeness, present, entities, recent, dis: precheckDis });
+      // The contract's gaps (incl. weak facet / uncertain context / unresolved fragment) travel with the reading.
+      return { needed: gate.needed, contract: gate.contract, completeness: { ...completeness, missing: [...gate.contract.missing] }, utterance: address.residual_text, previous_line: previous, ask_addressee: address.address_type === "none" && !input.target, anchor_candidates: dialogueDiscourse.anchorCandidates(discourse).map((candidate) => candidate.label), v2: gate.v2 };
     } catch (error) {
       this.log(`dialogue advisory precheck non-fatal: ${error.message}`);
       return null;
@@ -2311,13 +2313,14 @@ class DesktopService {
       // every person, place and request. Profiles exist before anyone is asked about themselves.
       if (channel === "local") dialoguePersonhood.ensurePersonhood(entry.run);
       const turnPeople = channel === "local" ? coworkers.filter((member) => presentLocalIds.includes(member.personnel_id ?? member.id)).map((member) => ({ id: member.personnel_id ?? member.id, name: member.first_name ?? member.display_name, names: [member.first_name, member.last_name, member.display_name, ...(member.aliases ?? [])].filter(Boolean) })) : [];
-      let turnAnalysis = channel === "local" ? dialogueTurn.analyzeTurn({ raw: message, present: turnPeople, entities: canonicalEntities, dis: dialogueTurn.withSalience(dialogueState.snapshot(entry.run, { player_id: playerId, location_id: entry.run.spatial?.player_location ?? null, present_ids: presentLocalIds }), discourseState, canonicalEntities), explicit_target_id: targetMember ? (targetMember.personnel_id ?? targetMember.id) : null }) : null;
+      const turnDis = channel === "local" ? dialogueTurn.withSalience(dialogueState.snapshot(entry.run, { player_id: playerId, location_id: entry.run.spatial?.player_location ?? null, present_ids: presentLocalIds }), discourseState, canonicalEntities) : null;
+      let turnAnalysis = channel === "local" ? dialogueTurn.analyzeTurn({ raw: message, present: turnPeople, entities: canonicalEntities, dis: turnDis, explicit_target_id: targetMember ? (targetMember.personnel_id ?? targetMember.id) : null }) : null;
       // An accepted v2 advisory reading fills only what Tier 1 left incomplete (never truth, never ids).
       // Every reading is assessed (decoded -> schema valid -> semantically complete -> accepted); only a complete
       // one fills Tier-1 gaps. Anything less is not understanding: it is dropped here, and a turn Tier 1 did not
       // understand is then clarified (dialogueTurn.finalizeFrame).
       if (turnAnalysis && interpretation_advice && (interpretation_advice.version === dialogueAdvisory.ADVISORY_V2_VERSION || !interpretation_advice.accepted)) {
-        turnAnalysis = dialogueTurn.applyAdvisory(turnAnalysis, interpretation_advice, { present: turnPeople, entities: canonicalEntities });
+        turnAnalysis = dialogueTurn.applyAdvisory(turnAnalysis, interpretation_advice, { present: turnPeople, entities: canonicalEntities, dis: turnDis });
         if (!turnAnalysis.advisory?.state?.accepted) interpretationAdvice = null;
       }
       let turnPrimary = turnAnalysis?.primary ?? null;
@@ -2929,7 +2932,7 @@ class DesktopService {
         }
         // (record() returns a copy: the analysis is written onto the stored interaction record itself.)
         const storedInteraction = interaction ? expedition.interaction_history.find((item) => item.id === interaction.id) : null;
-        if (storedInteraction && turnAnalysis) storedInteraction.turn = { ...dialogueTurn.turnRecord(turnAnalysis, { frame: semanticFrame, request_ids: ledgerRequestIds, completeness: semanticFrame.turn?.completeness ?? null }), beat: expedition.day1_opener?.beat ?? null };
+        if (storedInteraction && turnAnalysis) storedInteraction.turn = { ...dialogueTurn.turnRecord(turnAnalysis, { frame: semanticFrame, request_ids: ledgerRequestIds, completeness: semanticFrame.turn?.completeness ?? null, contract: (() => { try { return dialogueTurn.tier1Contract(turnAnalysis, semanticFrame, null, { dis: turnDis }); } catch { return null; } })() }), beat: expedition.day1_opener?.beat ?? null };
 
         // 2. Commit authorized coworker responses in deterministic owner order.
         // The response's displayed recipient scope follows the PLAYER's actual

@@ -414,6 +414,11 @@ const ENTRIES = [
     cues: [
       // "Where are we delivering the materials?" / "Where do we take the duffle?"
       { re: re("\\bwhere (?:are|do|will|should) (?:we|you|you all|you guys|i) (?:delivering|taking|bringing|dropping|sending|deliver|take|bring|drop|send) (?:the |those |these |our |that |this )?(?:[a-z]+ ){0,2}(?:materials|duffle|supplies|cargo|bag|stuff)\\b"), form: "wh" },{ re: re("\\bwhere (?:are |is |do |does )?(?:the |those |these |our |that |this )(?:[a-z]+ ){0,2}(?:materials|duffle|supplies|cargo|bag|record|camera|stuff)(?: are| is)? (?:going|headed|heading|being (?:delivered|taken|sent)|supposed to go|end(?:ing)? up|go)\\b"), form: "wh" }], lexicon: [] },
+  // ── ED-30H item question ROLES: what an item IS, where it IS, where it CAME FROM (purpose, holder, contents
+  // and destination are above). Chosen by the clause's role analysis (dialogue-turn itemRole), not by cues.
+  { id: "item.definition", domain: "item", slots: { item: "equipment" }, question_forms: ["wh"], resolver: null, route: { fn: "ask_entity_definition", concept: "entity_definition" }, epistemic_class: EPISTEMIC.INSTITUTIONAL, default_cardinality: CARDINALITY.ONE_SPOKESPERSON, temporal_support: ["now"], granularity: "record", answer_contract: { kind: "known_concept" }, neighbors: ["item.purpose", "place.definition"], priority: 20, cues: [], lexicon: [] },
+  { id: "item.location", domain: "item", slots: { item: "equipment" }, question_forms: ["wh", "yes_no"], resolver: null, route: { fn: "ask_item_ownership" }, epistemic_class: EPISTEMIC.OBSERVABLE, default_cardinality: CARDINALITY.ONE_SPOKESPERSON, temporal_support: ["now"], granularity: "custody", answer_contract: { kind: "holder" }, neighbors: ["item.holder"], priority: 20, cues: [], lexicon: [] },
+  { id: "item.provenance", domain: "item", slots: { item: "equipment" }, question_forms: ["wh"], resolver: "item_provenance", route: { fn: "ask_predicate" }, epistemic_class: EPISTEMIC.INSTITUTIONAL, default_cardinality: CARDINALITY.ONE_SPOKESPERSON, temporal_support: ["earlier"], granularity: "record", answer_contract: { kind: "known_concept" }, neighbors: ["item.holder", "item.purpose"], priority: 20, cues: [], lexicon: [] },
   { id: "place.definition", domain: "place", slots: { place: "place" }, question_forms: ["wh"], resolver: null, route: { fn: "ask_entity_definition", concept: "entity_definition" }, epistemic_class: EPISTEMIC.INSTITUTIONAL, default_cardinality: CARDINALITY.ONE_SPOKESPERSON, temporal_support: ["now"], granularity: "record", answer_contract: { kind: "known_concept", facet: "definition" }, neighbors: ["person.complex_experience", "place.status"], priority: 30,
     // "What is there?" / "What's in there?" about the place just talked about (the place slot resolves the deixis).
     blockers: ["\\b(?:camera|duffle|duffel|spectrometer|lamp|flashlight|torch|record|materials|bag|gear)\\b"], cues: [
@@ -591,7 +596,7 @@ function predicateForFrame(frame) {
     case "ask_next_step": return "procedure.next_incomplete_step";
     case "ask_item_ownership": return "item.holder";
     case "ask_assignment_purpose": return kq.facet === "destination" ? "item.destination" : kq.facet === "contents" ? "item.contents" : kq.facet === "custody" ? "item.holder" : "item.purpose";
-    case "ask_entity_definition": return kq.concept === "entity_state" ? "place.status" : "place.definition";
+    case "ask_entity_definition": return kq.concept === "entity_state" ? "place.status" : kq.entity?.kind === "equipment" || (frame.referents ?? []).some((r) => r.type === "equipment" && r.resolved) ? "item.definition" : "place.definition";
     case "ask_institution_purpose": return "institution.purpose";
     case "ask_meaning": return "conversation.meaning_of";
     case "ask_explanation": return "conversation.explanation";
@@ -616,6 +621,9 @@ const FACET_GLOSS = Object.freeze({
   "item.holder": "who has an item",
   "item.purpose": "what an item is for",
   "item.status": "an item's condition",
+  "item.definition": "what an item is",
+  "item.location": "where an item is right now",
+  "item.provenance": "where an item came from",
   "mission.destination": "where the group is going",
   "mission.objective": "the group's job today",
   "mission.participants": "who is on the expedition",

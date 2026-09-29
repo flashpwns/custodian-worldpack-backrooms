@@ -85,7 +85,9 @@ function contextState(context = {}, sc = scene()) {
   // ledger anchors an accepted line (dialogue-state.anchorSpans).
   const answered = lastRequest && lastRequest.request_id === "req-prior" ? lastRequest : null;
   const surface_anchors = speakerId && context.last_npc_line ? [{ speaker_id: speakerId, event_id: "e-prior", spans: dialogueState.anchorSpans(context.last_npc_line, [{ request_id: answered?.request_id ?? null, predicate: answered?.predicate ?? null }]).map((span) => ({ ...span, request_text: answered?.request_text ?? null, args: answered?.args ? { ...answered.args } : null, temporal: answered?.temporal ?? null })) }] : [];
-  const dis = { active_speaker: speakerId ? { speaker_id: speakerId, speaker_ids: [speakerId] } : null, last_request: lastRequest, pending_requests: pending, activity, npc_question: npcAsked, surface_anchors };
+  // A coworker line ending in a question opens an inbound expectation (as the ledger records it).
+  const pending_inbound_request = speakerId && npcAsked ? { kind: dialogueState.inboundKind(context.last_npc_line, null), from: speakerId, text: context.last_npc_line, predicate: registry.detectPredicates(String(context.last_npc_line).toLowerCase())[0]?.id ?? null } : null;
+  const dis = { active_speaker: speakerId ? { speaker_id: speakerId, speaker_ids: [speakerId] } : null, last_request: lastRequest, pending_requests: pending, activity, surface_anchors, pending_inbound_request };
   const discourse = context.last_player_line || context.last_npc_line ? { turns: [], last_turn: { kind: "player_exchange", interaction_id: "i-prior", player_text: context.last_player_line ?? null, responder_ids: speakerId ? [speakerId] : [], responses: speakerId && context.last_npc_line ? [{ speaker_id: speakerId, speaker_name: context.active_speaker, text: context.last_npc_line, basis: { kind: "social" }, facts: { required: [{ key: "known_fact", value: context.last_npc_line }], optional: [] } }] : [], address: { scope: speakerId ? "direct" : "untargeted", addressee_ids: speakerId ? [speakerId] : [] } }, active_thread: speakerId ? { kind: "direct", member_ids: [speakerId], responder_ids: [speakerId] } : null, pending_question: npcAsked ? { discourse_function: lastRequest?.fn ?? "ask_factual", player_text: context.last_player_line ?? "", responder_ids: speakerId ? [speakerId] : [], asker_ids: speakerId ? [speakerId] : [], expected_slot: "topic" } : null } : null;
   return { dis: dialogueTurn.withSalience(dis, discourse, sc.entities), discourse };
 }
@@ -96,7 +98,7 @@ function labelsFor(item, sc = scene(), { advice = null } = {}) {
   let analysis = dialogueTurn.analyzeTurn({ raw: item.utterance, present: sc.present, entities: sc.entities, dis });
   // Full pipeline: an accepted v2 reading fills only what Tier 1 left incomplete (as the service does).
   // (applyAdvisory assesses every reading and applies only a semantically complete one.)
-  if (advice) analysis = dialogueTurn.applyAdvisory(analysis, advice, { present: sc.present, entities: sc.entities });
+  if (advice) analysis = dialogueTurn.applyAdvisory(analysis, advice, { present: sc.present, entities: sc.entities, dis });
   const advisoryState = analysis.advisory?.state ?? null;
   if (advisoryState && !advisoryState.accepted) advice = null;
   const e = analysis.primary;
@@ -143,7 +145,8 @@ function gateFor(item, sc = scene()) {
   const frame = dialogueDiscourse.buildSemanticFrame({ text: e?.request_text ?? item.utterance, recipient_type: e?.addressee?.kind === "group" ? "group" : e?.addressee?.ids?.length ? "direct" : "none", discourse, entities: sc.entities, equipment: sc.equipment, addressee_ids: e?.addressee?.ids ?? [], people: sc.present });
   const completeness = dialogueTurn.completenessWithFrame(analysis, frame, e);
   const recent = [item.context?.last_player_line, item.context?.last_npc_line].filter(Boolean);
-  return { ...dialogueTurn.advisoryGate({ message: item.utterance, analysis, frame, completeness, present: sc.present, entities: sc.entities, recent }), completeness };
+  const gate = dialogueTurn.advisoryGate({ message: item.utterance, analysis, frame, completeness, present: sc.present, entities: sc.entities, recent, dis });
+  return { ...gate, completeness: { ...completeness, missing: [...gate.contract.missing] } };
 }
 
 /**

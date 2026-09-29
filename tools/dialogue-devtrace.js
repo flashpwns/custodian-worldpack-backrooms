@@ -82,6 +82,14 @@ function turnTrace(run, requestId, { wordsmith = null } = {}) {
     primary: record?.primary ? { ...record.primary, addressee: record.primary.addressee ? { ...record.primary.addressee, names: record.primary.addressee.ids.map((id) => names[id] ?? id) } : null } : null,
     extra_acts: record?.extra_acts ?? [],
     completeness: record?.completeness ?? null,
+    // The Tier-1 completeness contract (ED-30H): the frame, whether it sufficed, and why; whether Tier 2 was
+    // required and for which gap; and the reading's state (decoded / schema valid / complete / accepted).
+    tier1_frame: record?.tier1_frame ?? null,
+    tier1_complete: record?.tier1_complete ?? null,
+    tier1_confidence_reasons: record?.tier1_confidence_reasons ?? [],
+    tier2_required: record?.tier2_required ?? null,
+    tier2_reason: record?.tier2_reason ?? null,
+    advisory_state: record?.advisory_state ?? null,
     // Tier 2: why it was consulted (the Tier-1 gaps), what it returned and whether code accepted it.
     tier2: interaction?.interpretation ? { escalated: Boolean(interaction.interpretation.advisory_validation), validation: interaction.interpretation.advisory_validation ?? null, tier1_gaps: interaction.interpretation.advice?.tier1_missing ?? record?.completeness?.missing ?? [], spans: (interaction.interpretation.advice?.acts ?? []).map((a) => ({ facet: a.facet ?? null, addressee_text: a.addressee_text ?? null, referent_text: a.referent_text ?? null, quantifier: a.quantifier ?? null })), latency_ms: interaction.interpretation.advisory_latency_ms ?? null } : null,
     closes_activity: record?.closes_activity ?? false,

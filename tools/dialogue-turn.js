@@ -46,6 +46,56 @@ function placeOf(text, entities, dis, { apposition = null } = {}) {
   return null;
 }
 
+// Replies to a coworker's question (ED-30H).
+const REPLY_UNCERTAIN = /^(?:(?:um+|uh+|hm+|honestly|well|so)[,.]?\s+)*(?:i\s+)?(?:do not know|don't know|dont know|dunno|no idea|not sure|idk|beats me|no clue|couldn'?t (?:tell you|say)|can'?t (?:say|remember)|hard to say|who knows)\b/;
+const REPLY_REFUSAL = /\b(?:rather not|would rather not|'d rather not|not telling|none of your business|not saying|don'?t want to (?:say|talk|get into)|pass on that|skip that|no comment|not gonna say|mind your own)\b|^pass\b/;
+const REPLY_COUNTER_WHY = /^(?:(?:and|but|so|wait)[,.]?\s+)*why(?:\s+(?:do you|you|would you|are you))?(?:\s+(?:ask|asking|want to know|wanna know|need to know))?\s*[?!.]*$/;
+const REPLY_SELF_REPAIR = /^(?:(?:wait|sorry|actually|oh|no)[,.]?\s+)*(?:i mean|i meant|correction|scratch that|no wait|let me rephrase)\b/;
+
+// ─── item question roles (ED-30H) ─────────────────────────────────────────────────────────────────────────
+// About a THING, the clause's structure decides what is asked -- not which words happen to be in it:
+//   what + copula + noun            -> definition   ("what is the layout record")
+//   what + noun + for / used for    -> purpose      ("what's the layout record for")
+//   what + do/does + noun + do      -> purpose      ("what does the spectrometer do")
+//   why + carrying/bringing/needing -> purpose      ("why are we bringing the radio")
+//   who + has/got/carries, whose    -> holder
+//   where + is (now)                -> location
+//   where + come from / from        -> provenance
+//   what's in / inside              -> contents
+//   where + going / headed          -> destination
+// Order matters: the more specific relation is tested first.
+const LEAD = "^(?:(?:so|and|but|ok|okay|wait|um+|uh+|hey|well|like|yo|oh)[,.]?\\s+)*";
+const ITEM_ROLES = [
+  ["item.provenance", new RegExp(`\\bwhere (?:did|does|do|'d)\\b[\\s\\S]*\\bcome from\\b|\\bwhere(?:'s| is| was| are| were)\\b[\\s\\S]*\\bfrom\\s*[?.!]*$|\\bwho (?:gave|brought|sent|packed|issued|supplied|made)\\b|\\bwhere (?:did|do) (?:we|you|they) get\\b`, "i")],
+  ["item.destination", /\bwhere (?:is|are|'s|was) (?:it|that|this|those|these|the [\w -]+?) (?:going|headed|heading|being taken|off to)\b|\bwhere (?:is|are) (?:it|that|this|the [\w -]+?) supposed to go\b/i],
+  ["item.purpose", /\b(?:for|used for|good for|needed for|meant for)\s*[?.!]*$|\bwhat(?:'s| is) the (?:point|purpose) of\b|\bwhat (?:do|does|did|will|would|can) (?:it|that|this|those|these|the [\w -]+?) (?:even |actually |really )?do\b|\bwhy (?:are|do|did|should|would|must|is|have) (?:we|you|i|they|someone|anyone|he|she) (?:\w+ )?(?:bring|bringing|carry|carrying|take|taking|need|needing|have|having|haul|hauling|lug|lugging|pack|packing|got)\b|\bhow (?:do|does|would|will) (?:we|you|i) use\b|\bwhat (?:do|does|would) (?:we|you) (?:use|need) (?:it|that|this|the [\w -]+?) for\b/i],
+  ["item.contents", /\bwhat(?:'s| is| are|s)? (?:in|inside|packed in|in there)\b|\bwhat does [\s\S]* (?:contain|hold|have in it)\b|\bwhat(?:'s| is| got) packed\b/i],
+  ["item.holder", /\bwho(?:'s| is| has|'s got| got| took| grabbed| carries| carrying| holds| holding| has got)\b|\bwhose\b|\bwhich (?:one of )?(?:you|u|y'?all)\b[\s\S]*\b(?:has|got|carry|carrying|holding)\b/i],
+  ["item.location", new RegExp(`${LEAD}where(?:'s| is| are| did (?:\\w+ )?(?:put|leave|stash)| can i find| would i find|s)\\b`, "i")],
+  ["item.definition", new RegExp(`${LEAD}what(?:'s| is| are| exactly is|s)\\s+(?:a |an |the |that |this |these |those |our |your )?[\\w -]+?\\s*[?.!]*$|${LEAD}what kind of\\b`, "i")]
+];
+/** The item a clause is about (named, or "it/that" with exactly one item in play) and what is asked of it. */
+function itemRole(text, entities = [], dis = null) {
+  const t = String(text ?? "").toLowerCase();
+  const named = canonicalKnowledge.resolveEntityMentions(t, entities).filter((m) => m.kind === "equipment");
+  const uniqueNamed = [...new Map(named.map((m) => [m.id, m])).values()];
+  let item = uniqueNamed.length === 1 ? uniqueNamed[0] : null;
+  if (!item && !uniqueNamed.length && /\b(?:it|that|this|those|these|them)\b/.test(t)) {
+    const salient = (dis?.salient_entities ?? []).filter((id) => entities.some((x) => x.id === id && x.kind === "equipment"));
+    if (salient.length === 1) item = { id: salient[0], kind: "equipment", anaphoric: true };
+  }
+  if (!item) return null;
+  let role = ITEM_ROLES.find(([, re]) => re.test(t))?.[0] ?? null;
+  // "What is X" asks what X IS only when the item phrase itself ends the clause ("what's the deal with the
+  // camera" is not a definition question).
+  if (role === "item.definition") {
+    const phrase = String(item.matched ?? "").toLowerCase();
+    const stripped = t.replace(/[?.!\s]+$/, "");
+    if (!item.anaphoric && phrase && !new RegExp(`^(?:(?:a|an|the|that|this|these|those|our|your|my)\\s+)?(?:[a-z0-9-]+\\s+){0,2}?${phrase.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}$`).test(stripped.replace(/^.*?\bwhat(?:'s| is| are| exactly is|s)\s+/, ""))) role = null;
+  }
+  return role ? { predicate: role, item_id: item.id, anaphoric: Boolean(item.anaphoric) } : null;
+}
+
 // ─── echo follow-ups (surface anchors) ────────────────────────────────────────────────────────────────
 // "Sealed how?" / "Terrified of what?" / "harder how" / "the Bermuda branch?": a short line that repeats a
 // word or phrase the last reply actually used. The spoken words only LOCATE the reply's anchored request
@@ -190,7 +240,8 @@ function cardinalityFor(predicate, addressee, act) {
     if (["greeting", "self_introduction", "farewell"].includes(act.speech_act)) return addressee.kind === "explicit" || addressee.kind === "inherited" ? "each_ack" : "each_ack";
     // Owner decision (2026-09-27): a remark or sarcasm asks nothing and requires no response; silence is a
     // normal outcome (the deterministic social policy may still pick one short acknowledgment).
-    if (SOCIAL.has(act.speech_act) || ["statement", "sarcasm"].includes(act.speech_act)) return "none";
+    // An answer to a coworker's question requires no response of its own either (an acknowledgment may come).
+    if (SOCIAL.has(act.speech_act) || ["statement", "sarcasm"].includes(act.speech_act) || (act.speech_act === "answer" && act.args?.inbound_kind !== "clarification")) return "none";
     return "one_spokesperson";
   }
   if (card === "one_spokesperson" && addressee.quantifier === "any") card = "one_knower";
@@ -467,9 +518,37 @@ function analyzeTurn({ raw, present = [], entities = [], dis = null, explicit_ta
     } else {
       // Ordinary question / request / statement / social act.
       e.addressee = resolveAddressee(act, { present: people, dis, explicit_target_id });
-      // The coworker just asked the player something: a fragment/statement is the ANSWER, for the asker.
-      const asker = dis?.active_speaker?.speaker_id ?? null;
-      if (dis?.npc_question && act.speech_act === "statement" && !act.vocatives.length && asker && presentIds.includes(asker)) { e.addressee = { kind: "inherited", ids: [asker], quantifier: null, source: "open_question_answer" }; e.relation = "answer"; e.speech_act = "answer"; }
+      // Bidirectional adjacency (ED-30H): a coworker asked the PLAYER something. The player's next turn is read
+      // against that expectation -- an answer, "I don't know", a refusal, a counter-question, or a topic
+      // shift -- and is addressed to the one who asked. A "Yes?" attention reply expects the player's request,
+      // not an answer.
+      const inbound = dis?.pending_inbound_request ?? null;
+      const asker = inbound?.from ?? dis?.active_speaker?.speaker_id ?? null;
+      const expecting = inbound ? inbound.kind !== "attention" : Boolean(dis?.npc_question);
+      const replyText = String(act.body_expanded ?? act.body ?? act.text ?? "").toLowerCase().trim();
+      const otherNamed = act.vocatives.some((v) => v.id !== asker);
+      if (expecting && asker && presentIds.includes(asker) && !otherNamed) {
+        const kind = REPLY_UNCERTAIN.test(replyText) ? "uncertainty" : REPLY_REFUSAL.test(replyText) ? "refusal" : null;
+        // A filler ("good to hear") answers nothing; a yes/no-type reply answers a coworker's yes/no question.
+        // "When I greeted them." to "when do you mean?": the subordinate-clause form ANSWERS the pending question.
+        if (act.force?.cue === "subordinate_clause_or_question") { act.speech_act = "statement"; e.speech_act = "statement"; e.question_form = null; }
+        const yesNoReply = act.speech_act === "social_acknowledgment" && inbound?.kind === "question" && /^(?:yes|yeah|yep|yup|yea|no|nope|nah|naw|sure|of course|definitely|not really|kind of|kinda|sort of|maybe|a bit|a little|once|twice|never)\b/.test(String(act.text ?? "").toLowerCase().trim());
+        if (act.speech_act === "statement" || yesNoReply || kind) {
+          e.addressee = { kind: "inherited", ids: [asker], quantifier: null, source: "open_question_answer" }; e.relation = "answer"; e.speech_act = "answer";
+          e.args = { ...(e.args ?? {}), reply_kind: kind ?? "answer", inbound_kind: inbound?.kind ?? "question", ...(inbound?.predicate ? { answers_predicate: inbound.predicate } : {}) };
+        } else if (["question", "request"].includes(act.speech_act) && !act.vocatives.length) {
+          // "why do you ask?" asks the asker's reason; any other unaddressed question goes back to the asker.
+          if (REPLY_COUNTER_WHY.test(replyText)) e.counter_why = true;
+          // Unaddressed, it goes back to the one who asked (over any active-speaker guess).
+          if (!(e.addressee?.ids ?? []).length || ["active_speaker", "antecedent_owner"].includes(e.addressee?.source)) e.addressee = { kind: "inherited", ids: [asker], quantifier: null, source: "inbound_asker" };
+          e.relation = "continuation"; e.args = { ...(e.args ?? {}), reply_kind: "counter_question" };
+        }
+      } else if (!expecting && dis?.just_answered_inbound && ["statement", "repair"].includes(act.speech_act) && REPLY_SELF_REPAIR.test(String(act.text ?? "").toLowerCase()) && presentIds.includes(dis.just_answered_inbound.from)) {
+        // "I mean, once" right after answering: the player repairs their OWN answer, to the same asker.
+        e.speech_act = "answer"; e.relation = "repair"; e.predicate = null; e.repair = null;
+        e.addressee = { kind: "inherited", ids: [dis.just_answered_inbound.from], quantifier: null, source: "answer_repair" };
+        e.args = { ...(e.args ?? {}), reply_kind: "answer_repair" };
+      }
       // A statement ("First day.", "I'm nervous.") is the player's own claim, not a question about anyone:
       // it takes no registry predicate unless context makes it a declarative question.
       const asks = ["question", "request"].includes(act.speech_act) || (act.declarative_candidate && dis?.active_speaker?.speaker_id);
@@ -492,6 +571,18 @@ function analyzeTurn({ raw, present = [], entities = [], dis = null, explicit_ta
         e.args = { ...(e.args ?? {}), count_asked: true };
       }
       e.facet_source = e.predicate ? "tier1_registry" : null;
+      // Replies to a coworker's question: an answer opens no request of its own; "why do you ask?" asks the
+      // asker's reason.
+      if (e.speech_act === "answer") { e.predicate = null; e.facet_source = null; }
+      if (e.counter_why) { e.predicate = "conversation.explanation"; e.facet_source = "inbound_counter"; delete e.counter_why; }
+      // About a thing, the clause's own structure decides the facet (definition / purpose / holder / location /
+      // provenance / contents / destination), over any weaker word-level reading.
+      if (["question", "request"].includes(act.speech_act)) {
+        const role = itemRole(act.body_expanded ?? act.body ?? "", entities, dis);
+        if (role && (!e.predicate || String(e.predicate).startsWith("item.") || String(e.predicate).startsWith("place.") || e.predicate === "institution.purpose")) {
+          e.predicate = role.predicate; e.facet_source = "item_role"; e.args = { ...(e.args ?? {}), item_id: role.item_id, ...(role.anaphoric ? { item_anaphoric: true } : {}) };
+        }
+      }
       // An echo of the last reply's own words re-asks the request that reply answered, of its speaker, as a
       // request to say more (only when Tier 1 found no facet, or the line is a bare fragment).
       const echoForm = ["question", "request"].includes(act.speech_act) || (act.speech_act === "statement" && ECHO_TAIL.test(String(act.body_expanded ?? act.body ?? "").replace(/[?!.]+$/, "")));
@@ -527,7 +618,7 @@ function analyzeTurn({ raw, present = [], entities = [], dis = null, explicit_ta
       const last = dis?.last_substantive_request ?? dis?.last_request ?? null;
       const answeredBy = (last?.answered_by ?? []).filter((id) => presentIds.includes(id));
       if (!e.predicate && !act.vocatives.length && last?.predicate && !String(last.predicate).startsWith("conversation.") && answeredBy.length === 1) {
-        const TEMPORAL = { "since when": null, "how long": null, "how long ago": null, "how long now": null, "for how long": null, "how many times": null, "how often": null, "since": null, "until when": null, before: "ever", ever: "ever", "and before": "ever", "what about before": "ever", still: "now", yet: "now", already: "now" };
+        const TEMPORAL = { "since when": null, "how long": null, "how long ago": null, "how long now": null, "for how long": null, "how many times": null, "how often": null, "since": null, "until when": null, before: "ever", "before that": "ever", ever: "ever", "and before": "ever", "and before that": "ever", "what about before": "ever", "in general": "ever", "at all": "ever", earlier: "earlier", still: "now", yet: "now", already: "now" };
         if (fragment in TEMPORAL) {
           e.speech_act = "question"; e.predicate = last.predicate; e.fn_hint = last.fn ?? null; e.request_text = last.request_text; e.args = { ...(last.args ?? {}), followup: { kind: "temporal", word: fragment } };
           e.temporal_scope = TEMPORAL[fragment] ?? last.temporal ?? null; e.relation = "continuation"; e.relation_target = last.request_id ?? null; e.facet_source = "discourse_followup";
@@ -538,6 +629,21 @@ function analyzeTurn({ raw, present = [], entities = [], dis = null, explicit_ta
         e.predicate = "conversation.explanation"; e.relation = "continuation"; e.facet_source = "discourse_followup";
         if (!(e.addressee?.ids ?? []).length) e.addressee = { kind: "inherited", ids: [dis.active_speaker.speaker_id], quantifier: null, source: "active_speaker" };
       }
+      // A bare wh-fragment ("which one", "where") with nothing before it to ask about: clarify, never guess.
+      // "the lamp?" right after "who has the camera?": the same question about another thing of the same kind,
+      // to the one who answered -- only with no coworker question pending (then it would be an answer).
+      if (!e.predicate && !act.vocatives.length && !dis?.pending_inbound_request && /^(?:the|that|this|my|your)\s+[a-z][\w -]{1,30}$/.test(fragment) && last?.request_text && last?.predicate) {
+        const named = canonicalKnowledge.resolveEntityMentions(fragment, entities)[0] ?? null;
+        const before = named ? canonicalKnowledge.resolveEntityMentions(last.request_text, entities).find((x) => x.kind === named.kind && x.id !== named.id) : null;
+        if (named && before) {
+          e.speech_act = "elliptical_continuation"; e.question_form = "wh"; e.predicate = last.predicate; e.fn_hint = last.fn ?? null;
+          e.request_text = String(last.request_text).replace(new RegExp(before.matched.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "i"), fragment.replace(/^(?:the|that|this|my|your)\s+/, ""));
+          e.args = { ...(last.args ?? {}), ...(named.kind === "equipment" ? { item_id: named.id } : {}) }; e.relation = "continuation"; e.relation_target = last.request_id ?? null; e.facet_source = "discourse_followup";
+          if (answeredBy.length === 1) e.addressee = { kind: "inherited", ids: answeredBy, quantifier: null, source: "answer_owner" };
+        }
+      }
+      const shortWh = /^(?:who|what|where|when|why|how|which)\b/i.test(fragment) && fragment.split(/\s+/).length <= 2;
+      if ((act.bare_wh || shortWh) && !e.predicate && !act.vocatives.length && !dis?.active_speaker?.speaker_id && !dis?.last_request && !dis?.pending_inbound_request) { e.clarify = { reason: "fragment_no_antecedent", slot: "topic" }; missing.push("fragment_no_antecedent"); }
       if (act.bare_wh) e.relation = "continuation";
       if (act.declarative_candidate && dis?.active_speaker?.speaker_id && e.predicate) { e.question_form = "declarative"; e.speech_act = "question"; }
       if (e.addressee.kind === "inherited" && e.relation === "new") e.relation = "continuation";
@@ -617,8 +723,9 @@ function completenessWithFrame(analysis, frame, effective = analysis?.primary) {
     // different gap from one Tier 1 did not understand at all: only the latter fails closed to a clarification.
     const anchored = frame?.discourse_function === "ask_factual" && (frame.referents ?? []).some((r) => r.resolved);
     if (interrogative && !e.predicate && generic) missing.push(anchored ? "facet_unresolved_referent" : "facet_unresolved");
-    // Tier 1 not sure whether the line asks at all: that uncertainty alone earns the bounded reading.
-    if (e.act?.force?.confidence === "uncertain") missing.push("force_uncertain");
+    // Tier 1 not sure whether the line asks at all: that uncertainty alone earns the bounded reading -- unless
+    // the conversation settled it (an answer to the coworker's pending question).
+    if (e.act?.force?.confidence === "uncertain" && e.speech_act !== "answer") missing.push("force_uncertain");
     if (e.act?.vocatives?.length && !(e.addressee?.ids ?? []).length && !e.absent_addressees) missing.push("name_unresolved");
     if (e.addressee?.second_person && e.relation !== "new" && !(e.addressee?.ids ?? []).length) missing.push("second_person_no_target");
   }
@@ -645,7 +752,7 @@ function reconcile(frame, effective) {
   if (STRUCTURAL_KEEP.has(fn) && fn !== "make_request") return { ...out, predicate: legacyPredicate ?? predicate, override: { kept: fn, over: predicate, reason: "structural_legacy_function" } };
   if (fn === "make_request" && entry.id !== "person.self_description") return { ...out, predicate: legacyPredicate ?? predicate, override: { kept: fn, over: predicate, reason: "structural_legacy_function" } };
   // A more specific item facet (where it goes, what it's for, what's in it, its state) beats the legacy custody guess.
-  if (fn === "ask_item_ownership" && (frame.referents ?? []).some((r) => r.type === "equipment" && r.resolved) && entry.domain !== "person" && !["item.destination", "item.purpose", "item.contents", "item.status"].includes(entry.id)) return { ...out, predicate: "item.holder" };
+  if (fn === "ask_item_ownership" && (frame.referents ?? []).some((r) => r.type === "equipment" && r.resolved) && entry.domain !== "person" && !["item.destination", "item.purpose", "item.contents", "item.status", "item.location", "item.provenance", "item.definition"].includes(entry.id)) return { ...out, predicate: "item.holder" };
   if (legacyPredicate === predicate) return { ...out, predicate };
   // Person familiarity with someone who is not at the table (Maxwell) keeps the knowledge path.
   if (predicate === "person.familiarity" && effective.args?.other_non_present) return { ...out, predicate: "person.familiarity", route: { fn: "ask_person_identity", concept: "person_relation" }, override: { from: fn, to: "ask_person_identity", reason: "familiarity_with_non_present_person" }, keep_legacy: fn === "ask_person_identity" };
@@ -685,7 +792,9 @@ function withSalience(snapshot, discourse = null, entities = []) {
   if (!place) place = mentioned.find((e) => ["complex", "outpost-a", "equipment-staging", "threshold", "threshold-room", "async-briefing-room"].includes(e.id))?.id ?? null;
   // The names the REPLY itself used (not the player's own words): picking one up is a follow-up to its speaker.
   const replyNamed = canonicalKnowledge.resolveEntityMentions(replyFacts, entities).filter((e) => e.kind !== "person" && !e.is_player);
-  return Object.freeze({ ...(snapshot ?? {}), salient_place: place, salient_entities: [...new Set(mentioned.map((e) => e.id))], salient_names: [...new Set(replyNamed.map((e) => e.matched).filter((n) => n && n.length >= 3))], npc_question: Boolean(snapshot?.npc_question ?? discourse?.pending_question) });
+  const inbound = snapshot?.pending_inbound_request ?? null;
+  const npcQuestion = snapshot?.npc_question != null ? Boolean(snapshot.npc_question) : inbound ? inbound.kind !== "attention" : Boolean(discourse?.pending_question);
+  return Object.freeze({ ...(snapshot ?? {}), salient_place: place, salient_entities: [...new Set(mentioned.map((e) => e.id))], salient_names: [...new Set(replyNamed.map((e) => e.matched).filter((n) => n && n.length >= 3))], npc_question: npcQuestion });
 }
 
 /**
@@ -733,6 +842,9 @@ function argsFor(frame, responderId) {
  */
 function finalizeFrame(frame, primary, rec, { completeness = null, entities = [] } = {}) {
   if (!frame) return frame;
+  // The player ANSWERED a coworker's question: nothing is asked; the words are their answer, heard by the asker
+  // (a clarification answer instead resumes the player's own question -- the legacy resumed_question path).
+  if (primary?.speech_act === "answer" && primary?.args?.inbound_kind === "question") return Object.freeze({ ...frame, discourse_function: "make_statement", predicate: null, requested_content: null, knowledge_query: null, referents: [], turn: { ...(frame.turn ?? {}), speech_act: "answer", relation: "answer", cardinality: "none", reply_kind: primary.args.reply_kind ?? "answer", addressee_ids: [...(primary.addressee?.ids ?? [])] } });
   // Fail closed (ED-30G): a question Tier 1 did not understand and no complete Tier-2 reading filled is never
   // answered as a generic question -- it is clarified.
   // (Only when the legacy reading has no route of its own either: a known-answer or temporal question the
@@ -915,7 +1027,22 @@ const ASKING = new Set(["question", "request", "elliptical_continuation", "repai
  *   accepted                = semantically complete. Anything less is NOT understanding: Tier 1 stands, or the
  *                           turn is clarified.
  */
-function assessAdvisory(advice, analysis, { entities = [] } = {}) {
+/**
+ * Deterministic compatibility of a FRAGMENT reading with the conversation (ED-30H): a short line may inherit
+ * a facet only when exactly one antecedent in the DIS carries a compatible one.
+ */
+function fragmentAntecedents(dis) {
+  const out = [];
+  const last = dis?.last_substantive_request ?? dis?.last_request ?? null;
+  if (last?.predicate) out.push({ source: "last_request", predicate: last.predicate, responders: last.answered_by ?? [] });
+  for (const p of dis?.pending_requests ?? []) if (p?.predicate && !out.some((o) => o.predicate === p.predicate)) out.push({ source: "pending_request", predicate: p.predicate, responders: p.targets ?? [] });
+  if (dis?.pending_inbound_request?.predicate) out.push({ source: "inbound", predicate: dis.pending_inbound_request.predicate, responders: [dis.pending_inbound_request.from] });
+  if (dis?.activity?.template?.predicate) out.push({ source: "activity", predicate: dis.activity.template.predicate, responders: [] });
+  return out;
+}
+function isFragmentTurn(e) { return e?.act?.force?.cue === "fragment" || String(e?.act?.body ?? e?.act?.text ?? "").replace(/[?!.]+$/, "").trim().split(/\s+/).filter(Boolean).length <= 3; }
+
+function assessAdvisory(advice, analysis, { entities = [], dis = null } = {}) {
   const e = analysis?.primary ?? null;
   const decoded = Boolean(advice) && !UNDECODED.has(advice.reason);
   const schemaValid = Boolean(advice?.accepted) && advice?.version === "yellow-beast-dialogue-advisory@v2" && Array.isArray(advice.acts) && advice.acts.length > 0;
@@ -926,7 +1053,7 @@ function assessAdvisory(advice, analysis, { entities = [] } = {}) {
   if (!e) return state(false, "no_turn");
   const act = advice.acts.at(-1);
   const gaps = new Set(Array.isArray(advice.tier1_missing) ? advice.tier1_missing : []);
-  const forceUncertain = gaps.has("force_uncertain");
+  const forceUncertain = gaps.has("force_uncertain") || gaps.has("fragment_unresolved") || gaps.has("context_uncertain");
   // What the reading says the line IS, where Tier 1 was not sure; where Tier 1 was sure, it must agree.
   const readsAsking = ASKING.has(act.speech_act);
   if (!forceUncertain && ASKING.has(e.speech_act) && !readsAsking && e.act?.force?.confidence === "certain") return state(false, "contradictory_speech_act");
@@ -939,13 +1066,21 @@ function assessAdvisory(advice, analysis, { entities = [] } = {}) {
     if (!plausible.ok) return state(false, `incompatible_facet:${plausible.reason}`);
   }
   if ((gaps.has("name_unresolved") || gaps.has("second_person_no_target")) && !act.addressee_id && !["all", "each", "any"].includes(act.quantifier)) return state(false, "unresolved_addressee");
+  // A weak Tier-1 facet may only be settled by choosing one of the competing candidates.
+  if (gaps.has("facet_weak") && act.facet && !(e.act?.predicate_candidates ?? []).some((x) => x.id === act.facet)) return state(false, "incompatible_facet:not_a_candidate");
+  // A fragment read as continuing the conversation must fit exactly ONE antecedent.
+  if (dis && isFragmentTurn(e) && ["continuation", "repair", "answer"].includes(act.discourse_relation) && act.facet && !String(act.facet).startsWith("conversation.") && !e.predicate) {
+    const compatible = fragmentAntecedents(dis).filter((a) => a.predicate === act.facet || (registry.get(a.predicate)?.neighbors ?? []).includes(act.facet));
+    if (!compatible.length) return state(false, "no_compatible_antecedent");
+    if (new Set(compatible.map((a) => a.predicate)).size > 1) return state(false, "ambiguous_antecedent");
+  }
   if (act.discourse_relation === "repair" && !["repair"].includes(e.speech_act) && !e.relation_target && !analysis?.dis_has_request) { /* a repair of nothing is not filled by the reading */ }
   return state(true, "complete");
 }
 
-function applyAdvisory(analysis, advice, { present = [], entities = [] } = {}) {
+function applyAdvisory(analysis, advice, { present = [], entities = [], dis = null } = {}) {
   if (!analysis?.primary) return analysis;
-  const assessment = assessAdvisory(advice, analysis, { entities });
+  const assessment = assessAdvisory(advice, analysis, { entities, dis });
   if (!assessment.accepted) return Object.freeze({ ...analysis, advisory: { applied: false, state: assessment } });
   const e = { ...analysis.primary, overrides: [...(analysis.primary.overrides ?? [])] };
   const act = advice.acts.at(-1);
@@ -955,11 +1090,17 @@ function applyAdvisory(analysis, advice, { present = [], entities = [] } = {}) {
   const gaps = Array.isArray(advice.tier1_missing) ? new Set(advice.tier1_missing) : null;
   const may = (...reasons) => !gaps || reasons.some((r) => gaps.has(r));
   // Where Tier 1 could not tell whether the line asks, the (complete) reading says: asked, or a remark.
-  if (gaps?.has("force_uncertain")) {
+  if (gaps?.has("force_uncertain") || gaps?.has("fragment_unresolved")) {
+    // A stretched or chat-form social act the reading recognises ("catch y'all at staging").
+    if (["greeting", "farewell", "thanks", "self_introduction", "social_acknowledgment"].includes(act.speech_act) && !ASKING.has(e.speech_act)) { e.speech_act = act.speech_act; e.predicate = null; e.overrides.push({ field: "speech_act", to: act.speech_act, reason: "advisory_resolved_force" }); }
     if (ASKING.has(act.speech_act) && !ASKING.has(e.speech_act)) { e.speech_act = act.speech_act === "request" ? "request" : "question"; e.question_form = e.question_form ?? "declarative"; e.overrides.push({ field: "speech_act", to: e.speech_act, reason: "advisory_resolved_force" }); }
     else if (!ASKING.has(act.speech_act) && ASKING.has(e.speech_act)) { e.speech_act = act.speech_act === "sarcasm" ? "sarcasm" : "statement"; e.question_form = null; e.predicate = null; e.overrides.push({ field: "speech_act", to: e.speech_act, reason: "advisory_resolved_force" }); }
   }
-  if (!may("facet_unresolved", "facet_unresolved_referent", "force_uncertain", "name_unresolved", "second_person_no_target")) return Object.freeze({ ...analysis, advisory: { applied: false, state: assessment } });
+  if (!may("facet_unresolved", "facet_unresolved_referent", "force_uncertain", "context_uncertain", "facet_weak", "fragment_unresolved", "name_unresolved", "second_person_no_target")) return Object.freeze({ ...analysis, advisory: { applied: false, state: assessment } });
+  // A weak facet settled by the reading (one of Tier 1's own competing candidates).
+  if (gaps?.has("facet_weak") && act.facet && (e.act?.predicate_candidates ?? []).some((x) => x.id === act.facet) && e.predicate !== act.facet) { e.overrides.push({ field: "predicate", from: e.predicate, to: act.facet, reason: "advisory_settled_weak_facet" }); e.predicate = act.facet; e.facet_source = "tier2_advisory"; }
+  // A statement made while a coworker's question is pending: the reading says whether it answers it.
+  if (gaps?.has("context_uncertain") && act.speech_act === "answer" && dis?.pending_inbound_request?.from && presentIds.includes(dis.pending_inbound_request.from)) { e.speech_act = "answer"; e.relation = "answer"; e.predicate = null; e.addressee = { kind: "inherited", ids: [dis.pending_inbound_request.from], quantifier: null, source: "open_question_answer" }; }
   const plausible = act.facet ? advisoryFacetPlausible(act.facet, e, entities) : { ok: false };
   if (act.facet && !plausible.ok) e.overrides.push({ field: "predicate", to: act.facet, reason: `advisory_rejected_${plausible.reason}` });
   if (!e.predicate && ASKING.has(e.speech_act) && act.facet && registry.get(act.facet) && plausible.ok && may("facet_unresolved", "facet_unresolved_referent", "force_uncertain")) {
@@ -991,11 +1132,78 @@ function applyAdvisory(analysis, advice, { present = [], entities = [] } = {}) {
  * labels, registry facets with their glosses -- never ids or facts). The production service and the
  * end-to-end evaluator both call this, so the measured path is the shipped path.
  */
-function advisoryGate({ message, analysis, frame, completeness, present = [], entities = [], recent = [] }) {
-  const needed = Boolean(frame?.tier1_generic) || !completeness?.complete;
-  if (!needed) return { needed: false, v2: null };
+/**
+ * The Tier-1 completeness / confidence contract (ED-30H). "Tier 1 produced a frame" is not "Tier 1 is
+ * semantically complete": every field a substantive turn needs is checked and the verdict says WHY.
+ *   speech act   certain / likely / uncertain force
+ *   facet        resolved (and by what), weak (competing facets), or unresolved
+ *   addressee    resolved, untargeted (legitimately), or unresolved
+ *   relation     resolved, or an ellipsis / repair with no antecedent
+ *   referent     every named thing resolved
+ *   fragment     a short line that resolved to nothing in the conversation
+ * Tier 2 is required only for gaps it can fill (force, facet, a name); an unresolved referent or antecedent is
+ * clarified by code, never guessed.
+ */
+function tier1Contract(analysis, frame, completeness = null, { dis = null } = {}) {
+  const e = analysis?.primary ?? null;
+  const c = completeness ?? completenessWithFrame(analysis, frame, e);
+  const reasons = [];
+  const push = (field, status, why) => reasons.push({ field, status, why });
+  const force = e?.act?.force ?? null;
+  push("speech_act", force?.confidence === "uncertain" && e?.speech_act !== "answer" ? "uncertain" : "resolved", `${e?.speech_act ?? "none"}:${force?.cue ?? "n/a"}`);
+  const asking = ["question", "request", "elliptical_continuation", "repair", "attention_call"].includes(e?.speech_act);
+  const cands = e?.act?.predicate_candidates ?? [];
+  const competing = cands.length >= 2 && new Set(cands.slice(0, 2).map((x) => String(x.id).split(".")[0])).size === 2 && registry.get(cands[0].id)?.priority === registry.get(cands[1].id)?.priority && !e?.facet_source?.match(/item_role|discourse_followup|surface_anchor|inbound_counter/);
+  if (!asking) push("facet", "not_needed", e?.speech_act ?? "none");
+  else if (e?.predicate) push("facet", competing ? "weak" : "resolved", competing ? `competing:${cands.slice(0, 2).map((x) => x.id).join("|")}` : `${e.predicate}:${e.facet_source ?? "legacy"}`);
+  else if ((c.missing ?? []).includes("facet_unresolved_referent")) push("facet", "unresolved", "facet_unresolved_referent");
+  else if ((c.missing ?? []).includes("facet_unresolved")) push("facet", "unresolved", "facet_unresolved");
+  else push("facet", "resolved", `legacy:${frame?.discourse_function ?? "none"}`);
+  const ids = e?.addressee?.ids ?? [];
+  if ((c.missing ?? []).some((m) => ["name_unresolved", "second_person_no_target", "ellipsis_target_unresolved", "repair_target_unresolved"].includes(m))) push("addressee", "unresolved", c.missing.find((m) => /name|target/.test(m)));
+  else push("addressee", "resolved", ids.length ? `${e?.addressee?.kind}:${e?.addressee?.source}` : "untargeted");
+  if ((c.missing ?? []).some((m) => /no_antecedent|repair_no_target|meta_not_transferable/.test(m))) push("relation", "unresolved", c.missing.find((m) => /antecedent|no_target|transferable/.test(m)));
+  else push("relation", "resolved", e?.relation ?? "new");
+  if ((frame?.referents ?? []).some((r) => r.resolved === false) || e?.clarify?.reason?.startsWith("referent")) push("referent", "unresolved", e?.clarify?.reason ?? "referent_unresolved");
+  if (force?.cue === "fragment" && !e?.predicate && e?.relation === "new" && e?.speech_act !== "answer") push("fragment", "unresolved", "fragment_without_antecedent");
+  if (dis?.pending_inbound_request && dis.pending_inbound_request.kind !== "attention" && e?.speech_act === "statement") push("context", "uncertain", "statement_while_question_pending");
+  const tier2For = reasons.filter((r) => ["uncertain", "weak"].includes(r.status) || (r.status === "unresolved" && ["facet", "addressee", "fragment"].includes(r.field)));
+  const blocking = reasons.filter((r) => r.status !== "resolved" && r.status !== "not_needed");
+  return Object.freeze({
+    tier1_frame: { speech_act: e?.speech_act ?? null, predicate: e?.predicate ?? null, fn: frame?.discourse_function ?? null, addressee: ids, relation: e?.relation ?? null },
+    tier1_complete: blocking.length === 0,
+    tier1_confidence_reasons: reasons,
+    tier2_required: tier2For.length > 0,
+    tier2_reason: tier2For.length ? tier2For.map((r) => `${r.field}:${r.status}:${r.why}`).join("; ") : null,
+    missing: [...new Set([...(c.missing ?? []), ...tier2For.filter((r) => ["facet:weak", "context:uncertain", "fragment:unresolved"].includes(`${r.field}:${r.status}`)).map((r) => `${r.field}_${r.status}`)])]
+  });
+}
+
+function advisoryGate({ message, analysis, frame, completeness, present = [], entities = [], recent = [], dis = null }) {
+  const contract = tier1Contract(analysis, frame, completeness, { dis });
+  const needed = contract.tier2_required;
+  if (!needed) return { needed: false, v2: null, contract };
   const candidates = advisoryCandidates(present, entities);
-  return { needed: true, v2: { utterance: message, repaired: analysis?.normalized?.repaired ?? null, recent, people: candidates.people, referents: candidates.referents, facets: candidates.facets, facet_guide: registry.advisoryFacetGuide() } };
+  return { needed: true, contract, v2: { utterance: message, repaired: analysis?.normalized?.repaired ?? null, recent, people: candidates.people, referents: candidates.referents, facets: candidates.facets, facet_guide: registry.advisoryFacetGuide(), context: advisoryContext(analysis, dis, candidates) } };
+}
+
+/**
+ * The compact, structured conversation state a fragment needs to be read (ED-30H): facets and opaque person
+ * labels only -- never transcript prose, never facts. "since when" means something only against the
+ * question just answered.
+ */
+function advisoryContext(analysis, dis, candidates) {
+  const label = (id) => candidates.people.find((p) => p.id === id)?.label ?? null;
+  const last = dis?.last_substantive_request ?? dis?.last_request ?? null;
+  const pending = dis?.pending_requests?.at(-1) ?? null;
+  const inbound = dis?.pending_inbound_request ?? null;
+  const ctx = {
+    last_question: last?.predicate ? { facet: last.predicate, answered_by: (last.answered_by ?? []).map(label).filter(Boolean) } : null,
+    pending_player_question: pending?.predicate ? { facet: pending.predicate } : null,
+    coworker_asked_player: inbound && inbound.kind !== "attention" ? { by: label(inbound.from), facet: inbound.predicate ?? null } : null,
+    activity: dis?.activity?.kind ?? null
+  };
+  return Object.values(ctx).some(Boolean) ? ctx : null;
 }
 
 /** Scene candidates for the advisory (opaque labels -> ids; code owns the mapping). */
@@ -1008,7 +1216,7 @@ function advisoryCandidates(present = [], entities = []) {
 }
 
 /** A bounded, serializable record of the analysis for the interaction and the dev trace. */
-function turnRecord(analysis, { frame = null, request_ids = [], completeness = null } = {}) {
+function turnRecord(analysis, { frame = null, request_ids = [], completeness = null, contract = null } = {}) {
   if (!analysis) return null;
   const e = analysis.primary;
   return {
@@ -1021,9 +1229,11 @@ function turnRecord(analysis, { frame = null, request_ids = [], completeness = n
     closes_activity: analysis.closes_activity,
     completeness: completeness ?? analysis.completeness,
     advisory_state: analysis.advisory?.state ? { ...analysis.advisory.state } : null,
+    // The Tier-1 completeness contract (developer trace): why Tier 1 was, or was not, sufficient.
+    ...(contract ? { tier1_frame: { ...contract.tier1_frame, addressee: [...contract.tier1_frame.addressee] }, tier1_complete: contract.tier1_complete, tier1_confidence_reasons: contract.tier1_confidence_reasons.map((r) => ({ ...r })), tier2_required: contract.tier2_required, tier2_reason: contract.tier2_reason } : {}),
     request_ids: [...request_ids],
     dropped: [...analysis.dropped]
   };
 }
 
-module.exports = { assessAdvisory, advisoryGate, advisoryFacetPlausible, TURN_VERSION, analyzeTurn, completenessWithFrame, reconcile, resolveAddressee, peopleIndex, placeOf, cardinalityFor, STRUCTURAL_KEEP, withSalience, addressFromTurn, argsFor, finalizeFrame, subjectCheckIn, ownersByCardinality, turnRecord, applyAdvisory, advisoryCandidates };
+module.exports = { advisoryContext, fragmentAntecedents, tier1Contract, itemRole, assessAdvisory, advisoryGate, advisoryFacetPlausible, TURN_VERSION, analyzeTurn, completenessWithFrame, reconcile, resolveAddressee, peopleIndex, placeOf, cardinalityFor, STRUCTURAL_KEEP, withSalience, addressFromTurn, argsFor, finalizeFrame, subjectCheckIn, ownersByCardinality, turnRecord, applyAdvisory, advisoryCandidates };

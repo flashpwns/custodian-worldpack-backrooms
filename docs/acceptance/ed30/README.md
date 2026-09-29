@@ -120,3 +120,45 @@ The full developer-trace transcripts (JSONL, about 150 KB per session) are not c
 2. **The legacy "what is X" reading takes item questions.** In 35 questions the older frame builder's entity-definition route answered an item-purpose, contents or holder question, so the gate saw a complete turn.
 3. **Discourse follow-ups with commentary, and answers to a coworker's question.** 23 addressee misses ("X, really", "the first hallway, seriously", answering "kinda?" to a coworker's question).
 4. **Tier-2 low-confidence declines on short fragments.** 19 readings; they fail closed, so these lines were clarified or kept their Tier-1 reading.
+
+## Fifth held-out corpus: ED-30H (2026-09-29)
+
+- **Corpus:** `heldout5-corpus-2026-09-28.spent.jsonl`, 330 items, SHA-256 `914ffc1e527eb2166de2fa8d14013b00b49df2046ddff34b79c0c4c32fd0e982`.
+  - Written by a fresh subagent after the ED-30H implementation and verification were frozen. Its only readable input was `heldout5-authoring-brief.txt`.
+  - Hashed at 2026-09-29T00:00:48Z. **Measured exactly once**, Tier 1 and full pipeline in the same run (`heldout5-run.json`). **Spent.**
+
+| Measure | Gate | Tier 1 only | Full production pipeline |
+| --- | --- | --- | --- |
+| Speech act | ≥ 95 | 79.7 | 80.6 |
+| Addressee | ≥ 98 | 82.7 | 82.7 |
+| Predicate / facet | ≥ 95 | 60.6 | 66.7 |
+| Relation | ≥ 95 | 85.8 | 85.8 |
+| Cardinality | — | 74.2 | 76.4 |
+| Temporal scope | — | 87.9 | 87.6 |
+| Question form | — | 77.3 | 77.3 |
+| **Whole turn correct** | — | 42.1 | 46.1 |
+| Clarification rate | ≤ 8 | 19.4 | 13.0 |
+| Confident-wrong | ≤ 1 | 31.2 | 32.4 |
+| Tier-2 invocation | — | — | 25.8% (85) |
+| Decoded / schema-valid / semantically complete / accepted | — | — | 85 / 83 / 52 / 52 (61.2% accepted) |
+| Tier-2 rejections | — | — | missing facet 24, contradictory speech act 3, no compatible antecedent 3, low confidence 2, wh-incompatible 1 |
+| Timeout rate | — | — | 0% |
+| Advisory latency p50 / p90 | — | — | 4,274 / 4,422 ms |
+
+**Failure-class breakdown** (199 full-pipeline failures; criteria fixed before the measurement, `heldout5-failure-classes.json`):
+
+| Class | Failures | Share |
+| --- | --- | --- |
+| Never reached Tier 2 | 128 | 64.3% |
+| Definition / purpose confusion | 2 | 1.0% |
+| Discourse-link failure | 46 | 23.1% |
+| Short-fragment low confidence | 1 | 0.5% |
+
+**Every gate fails.** Remaining general classes:
+
+1. **Tier-1 over-confidence** is still the dominant class. Examples:
+   - trailing chat particles and typos defeat the clause-role and force analysis ("… for tho", "actualy");
+   - 19 unpunctuated questions are still read with confidence as statements;
+   - 31 failures differ only in secondary fields (question form, temporal scope, clarify flag).
+2. **Tier-2 readings that name no facet.** 24 readings; they fail closed to clarifications, which raises the clarification rate.
+3. **Discourse links.** Reason / temporal / "who else" follow-ups whose reading has no facet, and fragment answers to a coworker's choice question.
