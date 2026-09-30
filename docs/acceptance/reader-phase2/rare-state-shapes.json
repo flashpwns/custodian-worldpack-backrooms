@@ -1,0 +1,42 @@
+{
+ "scripted_rare_state": {
+  "pending_coworker_question_turns": 72,
+  "authored_replies": 70,
+  "just_answered_turns": 9,
+  "shapes": {
+   "yes_no": 16,
+   "choice": 12,
+   "person": 7,
+   "time": 5,
+   "item": 5,
+   "free_short": 5,
+   "uncertainty": 4,
+   "refusal": 4,
+   "counter_question": 3,
+   "answer_follow_up": 9,
+   "own_answer_correction": 8,
+   "not_an_answer": 2
+  }
+ },
+ "all_strata": {
+  "pending_coworker_question_turns": 94,
+  "authored_replies": 70,
+  "just_answered_turns": 22,
+  "shapes": {
+   "yes_no": 16,
+   "choice": 12,
+   "person": 7,
+   "time": 5,
+   "item": 5,
+   "free_short": 5,
+   "uncertainty": 4,
+   "refusal": 4,
+   "counter_question": 3,
+   "answer_follow_up": 9,
+   "own_answer_correction": 8,
+   "not_an_answer": 2,
+   "untagged_other_stratum": 22
+  }
+ },
+ "note": "Aggregate >= 60 does not give per-shape statistical power: every shape below 60 is report-only."
+}

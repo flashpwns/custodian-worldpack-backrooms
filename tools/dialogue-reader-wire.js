@@ -164,10 +164,18 @@ function encodeWire(frame, input) {
 
 // ─── decode ───────────────────────────────────────────────────────────────────────────────────────────
 const LABEL_ANY = /^(?:n|e|q|i|r|a|o|p|v|c)\d+$|^s[0-2]$/;
+/**
+ * Code fences are treated IDENTICALLY by both output representations (Step 0.1 wire-vs-JSON control): a fenced answer
+ * is invalid output (V0 `output_fenced`), never stripped or repaired, for the wire and for minimal JSON alike.
+ */
+const FENCE = /```|~~~/;
+const fencedError = (text) => (typeof text === "string" && FENCE.test(text) ? { ok: false, frame: null, errors: [{ layer: "V0", code: "output_fenced" }] } : null);
 function decodeWire(text, input) {
   const errors = [];
   const fail = (code, detail = {}) => { errors.push(Object.freeze({ layer: "V0", code: `wire_${code}`, ...detail })); };
   if (typeof text !== "string") return { ok: false, frame: null, errors: [{ layer: "V0", code: "wire_not_text" }] };
+  const fenced = fencedError(text);
+  if (fenced) return fenced;
   const body = text.replace(/\r?\n$/, "").trim();
   if (!body) return { ok: false, frame: null, errors: [{ layer: "V0", code: "wire_empty" }] };
   if (/[\n\r\t]/.test(body) || /[^ -~]/.test(body)) return { ok: false, frame: null, errors: [{ layer: "V0", code: "wire_illegal_character" }] };
@@ -310,6 +318,8 @@ function wireGrammar(input = {}) {
  */
 function decodeJsonFrame(text, input) {
   let parsed;
+  const fenced = fencedError(text);
+  if (fenced) return fenced;
   try { parsed = JSON.parse(String(text ?? "").trim()); } catch { return { ok: false, frame: null, errors: [{ layer: "V0", code: "json_malformed" }] }; }
   if (!parsed || typeof parsed !== "object" || !Array.isArray(parsed.acts) || !parsed.acts.length) return { ok: false, frame: null, errors: [{ layer: "V0", code: "json_no_acts" }] };
   const last = (input?.line?.tokens?.length ?? 1) - 1;
@@ -321,4 +331,4 @@ function decodeJsonFrame(text, input) {
   return { ok: true, frame, errors: [] };
 }
 
-module.exports = { decodeJsonFrame, WIRE_VERSION, WIRE_DIGEST, WIRE_TABLES, FACET_CODES, FACET_SPECIAL_CODES, SPEECH, RELATION, ADDRESS, TAGS, encodeWire, decodeWire, canonicalFrame, canonicalAct, defaultNameRoles, wireGrammar, facetCodeTableComplete };
+module.exports = { fencedError, decodeJsonFrame, WIRE_VERSION, WIRE_DIGEST, WIRE_TABLES, FACET_CODES, FACET_SPECIAL_CODES, SPEECH, RELATION, ADDRESS, TAGS, encodeWire, decodeWire, canonicalFrame, canonicalAct, defaultNameRoles, wireGrammar, facetCodeTableComplete };

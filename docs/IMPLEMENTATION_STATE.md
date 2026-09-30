@@ -1,5 +1,48 @@
 # Yellow Beast Implementation State
 
+## Reader Phase 2, Step 0.1: experiment / scoring contract (shadow-only, before any label) — 2026-09-30
+
+- **Scope:** owner instruction of 2026-09-30 after the Sonnet 5.5 audit of Step 0 (**NOT READY FOR TEACHER CEILING**:
+  architecture, codec, observer boundary, async inertness and governance sound; blockers in the experiment / scoring
+  contract). No teacher, dev labelling, E4B accuracy, calibration or sealed data. Production unchanged. Details:
+  `docs/reader/READER_PHASE2.md` §12.
+- **Owner rulings applied:** B7 indirect request-arg salience (reader-facing projection only: a request argument is
+  canonical salience only when observer-grounded); hidden option labels are opaque.
+- **Contract:** ReaderInput `@v3`, lexicon `@v2`, render `@v2` (system `8c727a29…`); wire `@v1` / frame `@v2` /
+  resolver `@v3` unchanged. One representation-neutral semantic contract (conventions A–D) generates the wire system
+  text, the JSON control and the label guide's field definitions.
+- **Built / changed:** contract-valid gold (`ACCEPT` / `EXPECTED_CLARIFY`), label states (only `ADJUDICATED_GOLD` is
+  headline), duplicate-id rejection, independence rules and the labelling registry (families unrecorded: owner);
+  scoring classes (`transport_unavailable`, `invalid_output`, `read`; invalid never equal; false-confident incl.
+  accept-on-expected-clarify) and the preregistered retry policy; distinct-render groups with occurrence mapping;
+  deterministic stratified `--limit`; context-dependent probe tags; the frozen teacher sample (474 renders);
+  provider-capable hosted transport, `--confirm-egress` / `--include-human-trace`, mandatory receipts; the B7 indirect
+  filter; opaque hidden options; the fuzzy guard; identical fence handling; exact binomial power and the sealed
+  sample-size rule; rare-state coverage tags and 8 own-answer corrections; the doctrine-review sample.
+- **Measured:**
+
+  | Measure | Value |
+  | --- | --- |
+  | Dev capture | 944 source rows (927 + 17 own-answer-correction turns); 575 distinct player turns (fixture, text, chip); 470 distinct texts; **552 distinct renders**; **474 headline-eligible** (78 context-missing probe renders from 81 context-dependent probes excluded) |
+  | Render changes vs Step 0 | B7 indirect filter: 2 distinct renders (4 rows, `j15/3-chaotic` t15–16, "Outpost A" via `salient_topic`); fuzzy guard 0; hidden options 0 |
+  | Teacher sample (frozen) | census of 474 distinct renders: j15 132, rare 108, scripted 102, ED-30 dev 99, human trace 19, ED-30 novel 14 |
+  | Tokens (G1 by class) | context-free p50 57 / p90 83; discourse-bearing p50 194 / **p90 263** / p99 293 / max 333; real scenario 200 / 266 / 312 / 333; human trace 208 / **292** / 293 / 293; pass. Static prefix 1,760 (JSON 2,140) |
+  | Rare-state shapes | 72 pending-question turns (Step 0: 64 = 62 replies + 2 non-answers); 8 own-answer corrections (Step 0: 0); no shape ≥ 60 |
+  | Legacy self-consistency | 549 / 552 legacy frames are contract-valid gold (3 fail V2); scored 100% |
+  | Exact FC power, 880 accepted | 1.0% 99.6%, 1.5% 88.1%, 2.0% 50.6%, 2.5% 16.6%; 1,800 turns → 80.9% at 2.0% |
+  | Phase-1 artifacts | round trip, shadow diff and characterization unchanged (`ed31b`, `ed32b` pass against their pins); shadow inertness deep-equal |
+- **Governance:**
+  - pins updated with the regenerated artifacts: `ed33a` (contract identities, token artifact), `ed33b` (dev manifest,
+    teacher sample; shape counts reproduced from the capture); `ed33c` (aggregate) registered in
+    `verification-authority.json` and `test-manifest.json`, with hashes;
+  - `ed31a` / `ed32a` / `ed33a` / `ed33c` pass (82 tests); `ed31b` / `ed32b` / `ed33b` pass (characterization, round
+    trip and shadow diff unchanged; shadow inertness deep-equal);
+  - inventory: only the 57 pre-existing errors; verification core integrity OK;
+  - full suite (`node --test tests/*.test.js`): 1,561 tests, 1,482 pass, 79 fail; `compare-failing-tests`: unchanged
+    79, **new 0**, fixed 0; `git diff --check` clean.
+- **Doctrine conflicts:** none recorded.
+- **Status: PHASE 2 STEP 0.1 COMPLETE — READY FOR SONNET RE-AUDIT.** (Teacher not run; no label exists.)
+
 ## Reader Phase 2, Step 0: contract freeze (shadow-only) — 2026-09-30
 
 - **Scope:** owner instruction of 2026-09-30, applying the Sonnet 5.5 Phase-2 architecture review.
@@ -28,7 +71,8 @@
   - `dialogue-reader-replay.js`: the offline replay harness, arms, resolved-outcome signature, token distribution,
     dev manifest, `--run`.
   - `dialogue-reader-runtime.js`, `dialogue-reader-labels.js` (κ / PABAK), `dialogue-reader-power.js`.
-  - The rare-state dev stratum: 62 inbound answers.
+  - The rare-state dev stratum: 64 pending-coworker-question turns (62 authored replies, 2 not answers); corrected at
+    Step 0.1.
   - The opt-in developer `modelShadow` seam in `desktop/service.js`: after commit and wording, never awaited, one
     in flight, 5 s timeout, in-memory only.
 - **Measured:**
@@ -59,7 +103,8 @@
   - A five-item engineering smoke check confirmed the GBNF compiles in the pinned llama.cpp and that raw logprobs
     are pre-grammar. It is not a measurement.
 - **Doctrine conflicts:** none recorded.
-- **Status: PHASE 2 STEP 0 COMPLETE — READY FOR TEACHER CEILING.**
+- **Status:** Step 0 was reported "READY FOR TEACHER CEILING"; the Sonnet 5.5 Step-0 audit returned **NOT READY FOR
+  TEACHER CEILING** (scoring-contract blockers). Corrected: NOT READY pending Step 0.1 (see above).
 
 ## Reader Phase 1: shadow-only resolver (no player-facing change) — 2026-09-29
 

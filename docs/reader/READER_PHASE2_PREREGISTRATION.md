@@ -1,6 +1,8 @@
 # Dialogue reader: Phase 2 preregistration
 
-**Status:** written 2026-09-30 at Step 0, **before** any teacher, local-model or calibration score counts.
+**Status:** written 2026-09-30 at Step 0; **amended at Step 0.1** (2026-09-30, owner instruction after the Sonnet 5.5
+Step-0 audit) **before** any gold label, teacher, local-model or calibration score exists, so no measurement is
+invalidated. Step 0.1 changes are marked "(0.1)".
 
 **Scope and supersession.**
 
@@ -26,12 +28,12 @@ identity:
 
 | Item | Identity |
 | --- | --- |
-| ReaderInput | `yellow-beast-reader-input@v2` (B7 salience; observer lexicon) |
+| ReaderInput | `yellow-beast-reader-input@v3` (B7 salience incl. the indirect request-arg filter; hidden option labels; observer lexicon) (0.1) |
 | ReaderFrame | `yellow-beast-reader-frame@v2` (+ `conclude`, `withdraw:v1`, `referent.nominated`) |
 | Resolver | `yellow-beast-resolve-turn@v3` |
-| Lexicon | `yellow-beast-reader-lexicon@v1` |
-| Render | `yellow-beast-reader-render@v1`; system digest pinned in `ed33a` |
-| Wire | `yellow-beast-reader-wire@v1`; table digest pinned in `ed33a` |
+| Lexicon | `yellow-beast-reader-lexicon@v2` (fuzzy guard) (0.1) |
+| Render | `yellow-beast-reader-render@v2`; system digest `8c727a29…` pinned in `ed33a`; one semantic contract shared by the wire, the JSON control and the label guide (0.1) |
+| Wire | `yellow-beast-reader-wire@v1`; table digest `b18ac02f…` pinned in `ed33a` |
 
 A change to any of them is a new contract version. Scores from different contract versions are never pooled.
 
@@ -40,7 +42,7 @@ A change to any of them is a new contract version. Scores from different contrac
 | Arm | What | Runs now |
 | --- | --- | --- |
 | **A. L0** | legacy reader v0 frames, through the same decode → V0–V3 → `resolveTurn` pipeline | yes |
-| **D. Teacher** | a strong hosted model, **development only**, temperature 0 (or the provider's closest deterministic setting). It receives **only** `renderReaderPrompt(input)` (system + user) and returns the same closed wire contract. No transcript, world state, private state, repository or canon. Never in production. | after Step 0 |
+| **D. Teacher** | a strong hosted reasoning-class model of a **non-Claude family recorded in the labelling registry before labelling** (recommendation; chosen by the owner, not in code), **development only**, with the provider's deterministic or closest-supported decoding: temperature only where the model accepts it, an explicit output budget and reasoning effort / budget, all recorded per request (0.1). It receives **only** `renderReaderPrompt(input)` (system + user) and returns the same closed wire contract. No transcript, world state, private state, repository or canon. Never in production. | after Step 0 |
 | **C. E4B** | the pinned local runtime (llama.cpp b11146) and model (Gemma 4 E4B Q4_K_M, `yellow-beast-local-v1.gguf`, SHA-256 `85a896a0…ab87`). Compact render, compact wire, per-input GBNF grammar, temperature 0, raw top-10 logprobs | **only after the teacher clears §3** |
 | skipped | verbose-JSON E4B; a discriminative classifier; LoRA / distillation | explored only if the teacher clears the task **and** C misses the non-inferiority requirement |
 
@@ -53,10 +55,25 @@ Every teacher and E4B artifact records:
 
 ## 3. Teacher ceiling experiment (runs BEFORE any E4B prompt work)
 
-- **Data:** n ≥ 300 development turns (distinct renders). Score against adjudicated gold where available,
-  otherwise against provisional gold. Report which.
+- **Data (0.1):** the frozen development teacher sample `docs/acceptance/reader-phase2/teacher-dev-sample.json`
+  (pinned in `ed33b`), fixed before any teacher is chosen or run:
+  - unit: a **distinct frozen render**; selection: a **census** of every headline-eligible distinct render (inclusion
+    probability 1 in every stratum), 474 renders: j15 132, rare state 108, scripted state 102, ED-30 dev 99, human
+    trace 19, ED-30 novel 14;
+  - excluded (diagnostic only): the 78 renders of context-dependent ED-30 probes replayed without their context;
+  - gold: **ADJUDICATED_GOLD only** (label guide §5); at least **300** valid adjudicated renders or the run does not
+    start; a render the adjudicator declares unlabelable is excluded with its written reason;
+  - estimator: the **unweighted** proportion over headline renders (each render once; no stratum is up-weighted, so a
+    stratum weighs its share of distinct renders; the Step-0 weights are withdrawn from the headline);
+  - interval: Wilson 95% reported; the **cluster bootstrap** 95% (2,000 reps, seed 7, resampling fixtures) is the one
+    interpreted; unweighted per-stratum proportions with Wilson intervals are always reported, strata < 60 renders
+    never interpreted alone;
+  - transport: failures retried under the preregistered policy (3 retries at 2 / 4 / 8 s, transient failures only);
+    more than 2% `transport_unavailable` after retries voids the run (not scored; repeated in full);
+  - one run over the whole sample, no interim looks.
 - **Stop rule:**
-  - if the resolved-outcome accuracy is **< 80%** or speech-act accuracy is **< 85%**: STOP;
+  - if the resolved-outcome accuracy (point estimate over the headline sample, §3 estimator) is **< 80%** or primary
+    speech-act accuracy is **< 85%**: STOP;
   - do not tune E4B;
   - diagnose the taxonomy, the input or the labels. Misses clustered in low-agreement fields mean fixing the label
     definitions first. A systematic miss on a high-agreement class calls for a diagnostic-only ReaderInput / context
@@ -68,7 +85,10 @@ Every teacher and E4B artifact records:
 - About 100 development items go through the **same** teacher twice:
   - (A) the compact wire;
   - (B) minimal JSON (`renderReaderPrompt(input, { output: "json" })`, `decodeJsonFrame`).
-- Both use the same semantic contract and the same user render.
+- Both use the same semantic contract and the byte-identical user render (0.1): both system texts are generated from
+  one template (`semanticLines`), so speech-act glosses, address and relation semantics, facet glosses and every
+  field's meaning are word-for-word identical; only value spellings and the output lines differ. Fences are invalid
+  output for both (`output_fenced`), never stripped.
 - If the resolved-outcome gap is **≤ 2 points**, keep the wire. If it is larger, diagnose the codec or the prompt's
   readability before continuing.
 - The verbose pretty-JSON runtime is not revived by default.
@@ -95,53 +115,90 @@ Production legacy behaviour is **not** gold. It is a secondary diagnostic only.
 
 | Gate | Requirement |
 | --- | --- |
-| **G1 codec** | 100% semantic encode / decode round trip; model-facing dynamic tokens p90 ≤ 300 (pinned tokenizer) |
-| **G2 teacher** | speech act ≥ 93%, address op ≥ 92%, relation ≥ 90%, facet ≥ 88%, subject ≥ 90%, referent ≥ 92%, inbound answer ≥ 92% (where applicable and n ≥ 60); resolved-outcome ≥ 90%; κ ≥ 0.80 where prevalence makes κ interpretable |
-| **G3 local** | for each routing field with n_applicable ≥ 100: one-sided 95% upper bound of (teacher − E4B) ≤ 6 points (paired); at matched coverage, E4B false-confident beats L0 on fresh calibration data |
+| **G1 codec** | 100% semantic encode / decode round trip; model-facing dynamic tokens (pinned tokenizer) **discourse-bearing p90 ≤ 300 and human-trace p90 ≤ 300**, p99 and max reported as guardrails; context-free probes reported separately and never used to dilute the gate; context is never cut to pass (0.1) |
+| **G2 teacher** (development) | speech act ≥ 93%, address op ≥ 92%, relation ≥ 90%, facet ≥ 88%, subject ≥ 90%, referent ≥ 92%, inbound answer ≥ 92% (where applicable and n ≥ 60); resolved-outcome ≥ 90%; κ ≥ 0.80 where prevalence makes κ interpretable |
+| **G3 local** (development) | for each routing field with n_applicable ≥ 100: one-sided 95% upper bound of (teacher − E4B) ≤ 6 points (paired); at matched coverage, E4B false-confident beats L0 on fresh calibration data |
 | **G4 calibration** | false-confident ≤ 3% at ≥ 88% accepted coverage |
 | **G5 latency** | reader p50 ≤ 2.0 s and p90 ≤ 3.0 s over ≥ 200 representative turns **under wording contention**; the bootstrap upper bound of p90 meets the SLO; live model shadow: production p90 delta ≤ 0.15 s |
 | **G6 inertness** | 100% canonical deep equality, including async fault injection |
 | **G7 invariants** | expanded gold resolver spec 100%; characterization unchanged; the full repository suite adds no failures |
 
+**Per-field gates vs diagnostic fields (0.1 reconciliation).** Per-field thresholds are **development** gates (G2 on the
+teacher run, G3 on the development E4B run) and apply only to the routing fields with n_applicable ≥ 60 (G2) / ≥ 100
+(G3). On the **sealed** set every per-field number is diagnostic (§6). The label guide's diagnostic-only fields
+(question form, temporal, polarity, name roles, requested action, self-introduction, echo) are never gated anywhere.
+
 **False-confident** means a turn ACCEPTED (not INVALID, not CLARIFY) whose resolved-outcome signature differs from
-gold.
+gold, or that is ACCEPTED where gold is EXPECTED_CLARIFY (0.1). INVALID output is never outcome-equal; transport
+failures are reported separately, never as semantic errors (0.1).
 
 **Coverage** is the fraction of turns ACCEPTED.
 
 ## 6. Statistical policy (family error), with power
 
 The power table is `node tools/dialogue-reader-power.js` (committed output: `docs/acceptance/reader-phase2/power.json`).
-All tests are one-sided, normal approximation, α = 0.05.
+All tests are one-sided, α = 0.05.
+
+**(0.1) Withdrawn:** the Step-0 conclusion "sealed n = 1,000 is enough". It rested on a normal approximation at a
+true false-confident rate of 1.5%. The exact bound check (Sonnet 5.5 audit; reproduced by `power.json`):
+
+| True FC | Exact power, 1,000 turns (~880 accepted) | Exact power, 1,800 turns (~1,584 accepted) |
+| --- | --- | --- |
+| 1.0% | 99.6% | 100% |
+| 1.5% | 88.1% | 99.3% |
+| 2.0% | **50.6%** | **80.9%** |
+| 2.5% | 16.6% | 31.6% |
+
+(Rejection when the exact Clopper-Pearson one-sided 95% upper bound ≤ 3%, i.e. P(X ≤ k | n, 0.03) ≤ 0.05; the audit's
+figures 99.7 / 89 / 53 / 18 agree within rounding of the method.)
+
+### 6.1 The formal sealed gate FAMILY (fixed now)
+
+A conjunctive family: every gate must pass, so it is an intersection–union test with a false-pass probability ≤ α
+without a multiplicity correction.
+
+1. **false-confident** (resolved outcome, whole turn, EXPECTED_CLARIFY counted as in §5): the **exact**
+   (Clopper-Pearson) one-sided 95% upper bound ≤ 3% at the frozen calibration threshold, computed on the
+   **cluster-adjusted effective sample**: n_eff = n / d̂, k_eff = k / d̂ with the Kish design effect
+   d̂ = 1 + (m̄ − 1) ρ̂, clusters = **author / prefix** (the author of a sealed item and its shared scripted prefix),
+   m̄ the mean cluster size and ρ̂ the one-way ANOVA intraclass correlation of the FC indicator, floored at 0;
+2. **coverage:** the exact one-sided 95% lower bound ≥ 88% on the same cluster-adjusted basis;
+3. **resolved-outcome non-inferiority** to the teacher, paired, margin 6 points (the development teacher number is the
+   reference), cluster bootstrap by author / prefix;
+4. **latency:** bootstrap upper bound of reader p90 ≤ 3.0 s under contention.
+
+**Rare-state strata** are explicit sealed strata with their own quota (the data protocol); each is reported with its
+exact interval and never gated unless its applicable count reaches 60. **Per-field** numbers are diagnostic on the
+sealed set (Wilson intervals, κ / PABAK).
+
+### 6.2 The sealed sample-size RULE (fixed now; N chosen before the sealed set is generated or opened)
+
+- Planning inputs, recorded with the chosen N **before** the sealed set is written: planning true FC **2.0%**
+  (not 1.5%), accepted coverage 88%, α = 0.05, **target exact power ≥ 80%** for gate 1, and a planning design effect
+  from the authoring plan (planned items per author / prefix m, planning ICC ρ = 0.02 unless development data justify
+  another value in writing).
+- N = the smallest total for which the exact power of gate 1 at n_eff = N × 0.88 / d reaches 80%
+  (`dialogue-reader-power.js sealedSizeFC`): **1,800** at d = 1; 1,910 at m = 10, ρ = 0.01; 2,070 at m = 10, ρ = 0.02;
+  2,420 at m = 20, ρ = 0.02.
+- The rare-state quota comes **on top** of N.
+- N is not changed after the sealed set is generated; if the realised design effect exceeds the planning one, the
+  gate still uses the realised d̂ (never the planning value).
+- No sealed set is created in Phase 2 Step 0.1.
+
+### 6.3 Normal-approximation planning table (Step 0; context only)
 
 | Gate (scenario) | n needed |
 | --- | --- |
-| G4 false-confident ≤ 3%, true FC 1.5%, 90% power | 847 accepted ≈ **963 turns** at 88% coverage |
+| G4 false-confident ≤ 3%, true FC 1.5%, 90% power | 847 accepted ≈ 963 turns at 88% coverage |
 | G4 false-confident ≤ 3%, true FC 1.0%, 90% power | 417 accepted ≈ 474 turns |
-| G4 false-confident, **Bonferroni over 10 gates** (α 0.005), true FC 1.5% | 1,575 accepted ≈ **1,790 turns** |
+| G4 false-confident, Bonferroni over 10 gates (α 0.005), true FC 1.5% | 1,575 accepted ≈ 1,790 turns |
 | G4 coverage ≥ 88%, true coverage 92%, 90% power | 487 |
 | resolved-outcome non-inferiority (teacher − E4B < 6 points), true diff 2 points, discordance 12% | 641 |
-| G3 per-field non-inferiority, no correction, 80% power | 308 **applicable** per field |
-| G3 per-field, Bonferroni over 7 routing fields, 80% power | 540 **applicable** per field; a rare field at 8–10% prevalence needs ≈ 5,000–7,000 turns |
+| G3 per-field non-inferiority, no correction, 80% power | 308 applicable per field |
+| G3 per-field, Bonferroni over 7 routing fields, 80% power | 540 applicable per field; a rare field at 8–10% prevalence needs ≈ 5,000–7,000 turns |
 
-**Why not option A.** A large family of simultaneous per-field gates under Bonferroni makes the sealed set
-underpowered by construction. The rare routing fields would need thousands of turns to be gated at all.
-
-**Recommendation: option B.** The formal sealed gate family is a small **conjunctive** set. Every gate must pass, so
-it is an intersection–union test: the probability of a false pass is ≤ α **without** a multiplicity correction.
-Per-gate power is set high so the joint power stays useful.
-
-1. **false-confident** (resolved outcome, whole turn): upper 95% bound ≤ 3% at the frozen calibration threshold;
-2. **coverage**: lower 95% bound ≥ 88% at that threshold;
-3. **resolved-outcome non-inferiority** to the teacher, paired, margin 6 points (dev-measured teacher; the sealed set
-   measures E4B, with the teacher's development number as the reference);
-4. **latency**: bootstrap upper bound of reader p90 ≤ 3.0 s under contention.
-
-Individual routing fields are **diagnostic**. They are reported with Wilson intervals and κ / PABAK, never gated on the
-sealed set. A rare field may be reported only when it has ≥ 60 applicable items.
-
-**Sealed size:** **n = 1,000 turns**. This is driven by the false-confident gate at a realistic true FC ≈ 1.5%, not by
-multiplicity. The rare-state quota comes on top, so that reported fields reach 60 applicable items. If the owner
-prefers option A, the sealed n must be ≥ 1,800, and the rare fields still cannot be gated.
+A large family of simultaneous per-field Bonferroni gates (option A) stays rejected: rare routing fields would need
+thousands of turns to be gated at all.
 
 ## 7. Accept / clarify rule (Stage 1: no probability thresholds)
 
@@ -181,7 +238,8 @@ point. Self-reported confidence is never used.
 
 ## 9. Latency ladder
 
-1. token distribution only, no model: **done**; `token-distribution.json`, p90 247 dynamic tokens;
+1. token distribution only, no model: **done**; `token-distribution.json`. Step 0 (render v1): all-turn p90 245 (the
+   Step-0 text's "247" was stale). Step 0.1 (render v2): discourse-bearing p90 263, human-trace p90 292 (G1 by class);
 2. ≥ 200 offline replay turns, idle: after E4B is allowed (post-teacher);
 3. ≥ 200 turns under wording contention;
 4. a dedicated slot / parallel configuration (spike config B: `--parallel 2`), recorded as a measurement-only flag set;
@@ -213,4 +271,5 @@ It has **not** been run against a live model in this pass.
 - no sealed set;
 - no use of spent ED-30 held-outs;
 - the teacher never runs in production;
-- the teacher is not a labeler for itself.
+- the teacher is not a labeler for itself;
+- (0.1) no gold label, teacher run, E4B accuracy run, calibration or sealed item was created at Step 0.1.

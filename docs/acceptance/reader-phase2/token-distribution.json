@@ -1,5 +1,5 @@
 {
- "version": "yellow-beast-reader-token-distribution@v1",
+ "version": "yellow-beast-reader-token-distribution@v2",
  "tokenizer": {
   "runtime": "b11146",
   "model": "Gemma 4 E4B (instruction-tuned)",
@@ -10,68 +10,168 @@
   "present": true
  },
  "contract": {
-  "replay": "yellow-beast-reader-replay@v1",
-  "reader_input": "yellow-beast-reader-input@v2",
-  "render": "yellow-beast-reader-render@v1",
-  "render_system_digest": "c96d6d54a8c1fe8eeedb0b08cffa189404c1b2ca6b85963e9e7c0798e2a5516e",
+  "replay": "yellow-beast-reader-replay@v2",
+  "reader_input": "yellow-beast-reader-input@v3",
+  "lexicon": "yellow-beast-reader-lexicon@v2",
+  "render": "yellow-beast-reader-render@v2",
+  "render_system_digest": "8c727a29383c0c4f32cb34323c82f29c05a15be9e2e9614962f39e6fd550d2f1",
   "wire": "yellow-beast-reader-wire@v1",
   "wire_digest": "b18ac02f80bacbe221710c21ab0eb2616c1ba95c62378992f20706bae5d74cc8",
   "frame": "yellow-beast-reader-frame@v2"
  },
- "turns": 927,
- "distinct_renders": 535,
- "dynamic_tokens": {
+ "turns": 944,
+ "distinct_renders": 552,
+ "g1": {
+  "rule": {
+   "codec_round_trip": "100%",
+   "discourse_bearing_p90_max": 300,
+   "human_trace_p90_max": 300,
+   "guardrails_reported": [
+    "p99",
+    "max"
+   ],
+   "note": "context is never cut or padded to pass"
+  },
+  "discourse_bearing_p90": 263,
+  "human_trace_p90": 292,
+  "pass": true
+ },
+ "classes": {
+  "context_free": {
+   "rule": "ED-30 development probes (single turn, no conversation state)",
+   "n": 398,
+   "min": 26,
+   "p50": 57,
+   "mean": 60,
+   "p90": 83,
+   "p95": 95,
+   "p99": 127,
+   "max": 146,
+   "over_300": 0
+  },
+  "discourse_bearing": {
+   "rule": "turns whose render carries prior conversation (previous player line, requests, a coworker question, an activity round or heard anchors)",
+   "n": 509,
+   "min": 72,
+   "p50": 194,
+   "mean": 193,
+   "p90": 263,
+   "p95": 285,
+   "p99": 293,
+   "max": 333,
+   "over_300": 5
+  },
+  "real_scenario": {
+   "rule": "j15 scripts, the human trace and the scripted-state scenarios",
+   "n": 437,
+   "min": 31,
+   "p50": 200,
+   "mean": 196,
+   "p90": 266,
+   "p95": 287,
+   "p99": 312,
+   "max": 333,
+   "over_300": 5
+  },
+  "human_trace": {
+   "rule": "the human trace",
+   "n": 64,
+   "min": 36,
+   "p50": 208,
+   "mean": 212,
+   "p90": 292,
+   "p95": 293,
+   "p99": 293,
+   "max": 293,
+   "over_300": 0
+  }
+ },
+ "all_turns": {
+  "n": 944,
   "min": 26,
-  "p50": 112,
+  "p50": 114,
   "mean": 132,
-  "p90": 245,
-  "p95": 266,
+  "p90": 238,
+  "p95": 265,
+  "p99": 293,
   "max": 333,
+  "over_300": 5,
   "within_150_250": 34.6,
-  "over_300": 5
+  "note": "all replayed turns together; diluted by context-free probes -- G1 is read on the classes above"
  },
  "by_stratum": {
   "j15": {
    "n": 266,
+   "min": 31,
    "p50": 204,
+   "mean": 205,
    "p90": 265,
-   "max": 333
+   "p95": 279,
+   "p99": 315,
+   "max": 333,
+   "over_300": 4
   },
   "human_trace": {
    "n": 64,
+   "min": 36,
    "p50": 208,
+   "mean": 212,
    "p90": 292,
-   "max": 293
+   "p95": 293,
+   "p99": 293,
+   "max": 293,
+   "over_300": 0
   },
   "scripted_state": {
    "n": 107,
+   "min": 31,
    "p50": 163,
+   "mean": 162,
    "p90": 232,
-   "max": 312
+   "p95": 247,
+   "p99": 287,
+   "max": 312,
+   "over_300": 1
   },
   "ed30_dev": {
    "n": 354,
+   "min": 26,
    "p50": 57,
+   "mean": 61,
    "p90": 83,
-   "max": 146
+   "p95": 97,
+   "p99": 127,
+   "max": 146,
+   "over_300": 0
   },
   "ed30_dev_novel": {
    "n": 44,
+   "min": 31,
    "p50": 61,
+   "mean": 60,
    "p90": 79,
-   "max": 93
+   "p95": 80,
+   "p99": 93,
+   "max": 93,
+   "over_300": 0
   },
   "scripted_rare_state": {
-   "n": 92,
-   "p50": 117,
-   "p90": 213,
-   "max": 291
+   "n": 109,
+   "min": 30,
+   "p50": 123,
+   "mean": 133,
+   "p90": 212,
+   "p95": 225,
+   "p99": 285,
+   "max": 291,
+   "over_300": 0
   }
  },
- "static_system_tokens": 1168,
+ "static_system_tokens": 1760,
+ "static_system_tokens_json": 2140,
  "wire_tokens_legacy_frames": {
-  "n": 927,
-  "p50": 14,
+  "n": 944,
+  "p50": 13,
   "p90": 21,
   "max": 39
  },
@@ -98,16 +198,16 @@
   }
  },
  "histogram": {
-  "25-49": 142,
-  "50-74": 197,
-  "75-99": 98,
-  "100-124": 54,
-  "125-149": 34,
-  "150-174": 69,
+  "25-49": 143,
+  "50-74": 198,
+  "75-99": 99,
+  "100-124": 57,
+  "125-149": 43,
+  "150-174": 71,
   "175-199": 99,
   "200-224": 101,
-  "225-249": 51,
-  "250-274": 47,
+  "225-249": 55,
+  "250-274": 43,
   "275-299": 30,
   "300-324": 3,
   "325-349": 2

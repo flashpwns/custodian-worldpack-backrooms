@@ -1,6 +1,7 @@
 # Dialogue reader: Phase 2 data protocol
 
-**Status:** 2026-09-30. It prepares the development, calibration and sealed sets. **No sealed set is generated,
+**Status:** 2026-09-30; amended at Step 0.1 (same day, before any label). It prepares the development, calibration and
+sealed sets. **No sealed set is generated,
 hashed or opened in Phase 2.** The calibration set is not opened in this pass.
 
 **Authority.** The held-out protocol governs these sets:
@@ -26,7 +27,7 @@ development fixture through the real service, and the frozen manifest pins each 
 | Scripted state | the Phase-0.5 characterization scenarios | `scripted_state` | ED-30 test scenarios: chips, coworker questions, Tier-2, cold reloads |
 | ED-30 DEV corpora | `dev-corpus.jsonl`, `dev-h.jsonl` (context-free single-turn probes) | `ed30_dev` | development probes only, **never** the spent blind held-outs |
 | ED-30 novel DEV | `dev-novel.jsonl` | `ed30_dev_novel` | novel-phrasing development probes |
-| Rare state | `tests/fixtures/reader-phase2/rare-state-scenarios.json` | `scripted_rare_state` | inbound answers (≥ 60), chip targets, conclude / withdraw, repairs, activity rounds |
+| Rare state | `tests/fixtures/reader-phase2/rare-state-scenarios.json` | `scripted_rare_state` | coworker-question turns (72 pending; exact shapes in §4), own-answer corrections, chip targets, conclude / withdraw, repairs, activity rounds |
 
 **Still to add** (tagged on arrival; none exist in the repository yet):
 
@@ -36,25 +37,37 @@ development fixture through the real service, and the frozen manifest pins each 
   `metamorphic.js`, rendered through the same capture);
 - `adversarial`: adversarial items.
 
-**Reporting.** The headline development number is **weighted toward estimated real-play frequency**:
+**Unit (0.1).** The measurement and labelling unit is the **distinct frozen render** (render digest):
+`dialogue-reader-replay.js renderGroups` de-duplicates source rows (two wording providers, a repeated scenario line,
+the two copies of the human trace) and keeps the mapping render → every occurrence (source row, stratum, fixture) in
+`dev-manifest.json`. A render in several strata takes the first of human trace, j15, scripted state, rare state, ED-30
+novel, ED-30 dev as its primary stratum.
 
-| Stratum | Default weight | Why |
+**Context-dependent probes (0.1).** 81 ED-30 development probes are authored with prior conversational context
+(`last_npc_line`, `last_player_line`, `active_speaker`, `active_activity`, `pending_unanswered_request`) that the replay
+does not rebuild. Every capture row carries `context_dependent` and `context_available`; such probes (162 rows, 78
+renders) are **diagnostic only**, never headline.
+
+**Reporting (0.1).** The headline development number is the **unweighted** proportion over the preregistered teacher
+sample (a census of the headline-eligible distinct renders; preregistration §3), each render counted once. Unweighted
+per-stratum numbers with Wilson intervals are always reported next to it. The Step-0 frequency weights (human trace 3,
+j15 2, the rest 1) are withdrawn from the headline: with 19 distinct human-trace renders a weight of 3 let a tiny
+stratum dominate. They may be reported as a labelled secondary view (`--weights`), never as the headline.
+
+**Size at Step 0.1** (`docs/acceptance/reader-phase2/dev-manifest.json`; definitions recorded in it):
+
+| | Step 0 capture | Step 0.1 capture |
 | --- | --- | --- |
-| `owner_playtest`, `human_trace` | 3 | closest to real play |
-| `j15` | 2 | scripted but conversational |
-| `scripted_state` | 1 | real state, scripted |
-| `ed30_dev`, `ed30_dev_novel` | 1 | context-free probes |
-| `scripted_rare_state` | **reported separately** | coverage, not frequency |
-| `minimal_pairs`, `adversarial` | **reported separately** | diagnostic |
+| source rows | 927 | 944 |
+| distinct player turns (fixture, typed text, chip) | 558 | 575 |
+| distinct player-turn positions | 563 | 580 |
+| distinct texts (trimmed, lower case) | 456 | 470 |
+| distinct renders | 535 | 552 |
+| headline-eligible renders | | 474 |
 
-The weights are fixed before any teacher score (they are passed to `--run --weights`). Unweighted per-stratum numbers
-are always reported next to the weighted headline.
-
-**Size at freeze.**
-
-- 835 replayed turns from the characterized fixtures (444 distinct renders), plus the rare-state stratum.
-- Labelling de-duplicates by render digest: two providers that produce the same render are one item.
-- The teacher experiment needs **n ≥ 300** development turns. The current distinct renders exceed that.
+By primary stratum (rows / distinct renders / headline-eligible): j15 266 / 132 / 132; human trace 64 / 19 / 19;
+scripted state 107 / 102 / 102; ED-30 dev 354 / 169 / 99; ED-30 novel 44 / 22 / 14; rare state 109 / 108 / 108. (The
+Step-0 text's "835 replayed turns (444 distinct renders)" was stale: the Step-0 capture had 927 rows.)
 
 ## 2. Calibration set (fresh, independent, frozen)
 
@@ -77,24 +90,67 @@ are always reported next to the weighted headline.
   - with a rare-state quota so that each routing field reported has ≥ 60 applicable items.
 - **Hash:** the SHA-256 of the item file is committed before any reader, render or resolver change it will measure.
 - **Measured once**, then spent.
-- **Size:** set by the statistical policy (`READER_PHASE2_PREREGISTRATION.md` §6). The recommendation is **n = 1,000**
-  turns under a small conjunctive gate family.
+- **Size:** set by the pinned sample-size rule (`READER_PHASE2_PREREGISTRATION.md` §6.2) **before** the set is
+  generated: exact power ≥ 80% for the false-confident gate at a planning true FC of 2%, with the author / prefix design
+  effect (≈ 1,800 turns with no clustering; more with it). The Step-0 "n = 1,000" recommendation is withdrawn.
 
 ## 4. Rare-state scripted stratum
 
-Target: **≥ 60 applicable cases** for each important rare field.
+Target: **≥ 60 applicable cases** for each important rare field. Every authored reply to a coworker question carries a
+developer coverage tag (`reply`: answer / uncertainty / refusal / counter_question / answer_follow_up /
+own_answer_correction), used only for machine counts, never as gold. Counts are machine counts over the capture
+(`node tools/dialogue-reader-replay.js --shapes`; `docs/acceptance/reader-phase2/rare-state-shapes.json`, pinned by
+`ed33b`):
 
-| Field | Current dev coverage (distinct renders) | Rare-state stratum |
-| --- | --- | --- |
-| inbound answer (pending `i1`) | 18 | **62** (yes / no, choice, person, item, time, free; uncertainty, refusal, counter-question, answer + follow-up) |
-| just-answered own-answer repair (`i0`) | 9 | (grows with the inbound turns that follow an answer) |
-| chip target | 4 | 2 more; **short of 60**, reported only |
-| conclude / withdraw | 5 (legacy "that's that") | 6 more; **short of 60**, reported only |
+| Shape (pending coworker question `i1` unless noted) | Rare-state turns |
+| --- | --- |
+| yes / no answer | 16 |
+| choice answer | 12 |
+| person answer | 7 |
+| time answer | 5 |
+| item answer | 5 |
+| free short answer | 5 |
+| uncertainty | 4 |
+| refusal | 4 |
+| counter-question | 3 |
+| answer + follow-up | 9 |
+| not an answer (a line said while a question was pending) | 2 |
+| **all pending-question turns** | **72** (Step 0: 64, of which 62 authored replies) |
+| own-answer correction (just-answered `i0`) | 8 (Step 0: 0) |
 
-Fields short of 60 are reported, never gated, until more rare-state items are added.
+Other strata add 22 pending-question turns (j15 8, scripted state 14; untagged).
+
+**No shape has 60 cases.** The aggregate count of pending-question turns does not give per-shape statistical power:
+every shape is reported, never gated.
+
+| Other rare field | Development coverage |
+| --- | --- |
+| chip target | short of 60, reported only |
+| conclude / withdraw | short of 60, reported only |
 
 ## 5. Provenance and privacy
 
 - No telemetry. Owner transcripts are local exports, and they are added only by the owner.
 - Every item keeps its source file and fixture id (`id = <fixture>#<provider>#<request id>`).
 - A development item never moves into calibration or sealed use.
+
+## 6. Resolved-outcome doctrine review sample (0.1)
+
+The independent ~100-item human review of `resolveTurn(gold)` outcomes (label guide §5) is drawn **after** adjudication
+and **before** any teacher headline score is interpreted:
+
+- the capture's knowledge flags were generated for production's (legacy) facet; where the gold facet differs, knower
+  selection may be under-specified;
+- the review therefore **oversamples items whose gold primary facet differs from the legacy (L0) primary facet**: all
+  of them up to 60, the rest of the ~100 a stratified sample of the others (`dialogue-reader-replay.js
+  doctrineReviewSample`, deterministic);
+- the two groups are reported separately;
+- a defect found there (resolver or measurement) is fixed and added to the gold resolver spec before the teacher
+  headline is scored.
+
+## 7. Hosted egress (0.1)
+
+Hosted teacher runs send actual player text. They require `--confirm-egress`; human-trace renders are excluded unless
+`--include-human-trace` is also given; the CLI prints the provider, endpoint host, model, render count, strata,
+human-trace inclusion, estimated bytes / tokens and the retention / training setting before sending anything; receipts
+are mandatory. Consent is never inferred from the presence of an API key.

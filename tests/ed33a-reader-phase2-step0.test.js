@@ -33,17 +33,17 @@ const ROOT = path.join(__dirname, "..");
 // ── PINNED CONTRACT (Step 0 freeze): changing any of these without updating the pin fails this suite; updating a pin
 // changes this file's hash, which verification/verification-authority.json governs. ──
 const CONTRACT = Object.freeze({
-  reader_input: "yellow-beast-reader-input@v2",
+  reader_input: "yellow-beast-reader-input@v3",
   frame: "yellow-beast-reader-frame@v2",
   resolve_turn: "yellow-beast-resolve-turn@v3",
-  lexicon: "yellow-beast-reader-lexicon@v1",
-  render: "yellow-beast-reader-render@v1",
-  render_system_digest: "c96d6d54a8c1fe8eeedb0b08cffa189404c1b2ca6b85963e9e7c0798e2a5516e",
+  lexicon: "yellow-beast-reader-lexicon@v2",
+  render: "yellow-beast-reader-render@v2",
+  render_system_digest: "8c727a29383c0c4f32cb34323c82f29c05a15be9e2e9614962f39e6fd550d2f1",
   wire: "yellow-beast-reader-wire@v1",
   wire_digest: "b18ac02f80bacbe221710c21ab0eb2616c1ba95c62378992f20706bae5d74cc8"
 });
 const TOKEN_ARTIFACT = path.join(ROOT, "docs", "acceptance", "reader-phase2", "token-distribution.json");
-const TOKEN_ARTIFACT_SHA256 = "c87b9d24e182e0ae8b1c35a13f3e98733bc3ab035eaeee19c6e4e1d5f8145730";
+const TOKEN_ARTIFACT_SHA256 = "0c9684b7dfc5f828f3b990e3ec5d351b024c9d8bba8287792a1c16a4bfb385b8";
 
 const sc = E.scene();
 const [GISELLE, MALCOLM, TONYA] = sc.present.map((p) => p.id);
@@ -312,7 +312,7 @@ test("Wire: round trip over the legacy frames of every scenario session; malform
   bad("ask contents @n1 new ; ack - - new", "wire_missing_act_start");
   bad("ask contents @Tonya new", "wire_bad_name_label");
   bad("ask contents @n1 new r=q4-startup-materials-duffle-01", "wire_bad_referent");
-  bad("```ask contents @n1 new```", "wire_unknown_speech_act");
+  { const d = W.decodeWire("```ask contents @n1 new```", input); assert.deepEqual(d.errors.map((e) => e.code), ["output_fenced"], "fences: invalid output, identically for wire and JSON (Step 0.1)"); }
   bad("ask contents @n1 new\nmore", "wire_illegal_character");
   // A well-formed but ILLEGAL candidate decodes, then fails downstream validation.
   const illegal = W.decodeWire("ask contents @n9 new r=r99", input);
@@ -360,14 +360,14 @@ test("Async transports: the hosted teacher sends ONLY the render; the local tran
   const r = await A.readTurnAsync({ input, bindings, rendered }, { id: "teacher", provider: "test", transport: A.hostedChatTransport({ baseURL: "https://example.invalid/v1", apiKey: "test-key", model: "teacher-x", fetchImpl }) });
   assert.equal(r.status, "read");
   assert.deepEqual(sent.body.messages, [{ role: "system", content: rendered.system }, { role: "user", content: rendered.user }], "exactly the frozen render");
-  assert.equal(sent.body.temperature, 0);
-  assert.deepEqual(Object.keys(sent.body).sort(), ["logprobs", "max_tokens", "messages", "model", "temperature", "top_logprobs"]);
+  assert.equal("temperature" in sent.body, false, "Step 0.1: temperature is sent only when configured");
+  assert.deepEqual(Object.keys(sent.body).sort(), ["max_tokens", "messages", "model"]);
   const all = JSON.stringify(sent.body);
   for (const id of [GISELLE, MALCOLM, TONYA, "q4-startup", "req-2", ...Object.values(bindings.referents)]) assert.ok(!all.includes(id), `transmitted a canonical id: ${id}`);
   assert.equal(r.transport.transmitted.user_sha256, crypto.createHash("sha256").update(rendered.user).digest("hex"), "what was transmitted is recorded");
   let anth = null;
   await A.readTurnAsync({ input, bindings, rendered }, { transport: A.hostedChatTransport({ api: "anthropic-messages", apiKey: "k", model: "m", fetchImpl: async (url, opts) => { anth = { url, body: JSON.parse(opts.body) }; return { ok: true, json: async () => ({ content: [{ type: "text", text: "ask contents @n1 new" }] }) }; } }) });
-  assert.deepEqual([anth.body.system, anth.body.messages, anth.body.temperature], [rendered.system, [{ role: "user", content: rendered.user }], 0]);
+  assert.deepEqual([anth.body.system, anth.body.messages, "temperature" in anth.body], [rendered.system, [{ role: "user", content: rendered.user }], false]);
   let local = null;
   const lr = await A.readTurnAsync({ input, bindings }, { grammar: true, logprobs: true, top_logprobs: 8, transport: A.llamaTransport({ endpoint: "http://local", fetchImpl: async (url, opts) => { local = JSON.parse(opts.body); return { ok: true, json: async () => ({ choices: [{ message: { content: "ask contents @n1 new f=wh r=e1>r1" }, logprobs: { content: [{ token: "ask", logprob: -0.01, top_logprobs: [] }] } }] }) }; } }) });
   assert.deepEqual([local.temperature, local.top_k, Boolean(local.grammar), local.logprobs, local.top_logprobs], [0, 1, true, true, 8]);
@@ -475,13 +475,16 @@ test("Expanded gold resolver spec (conclude / withdraw added) stays 100%", { tim
   assert.equal(summary.shadow_spec.pct, 100, JSON.stringify(summary.shadow_spec.failures, null, 1));
   for (const id of ["r28a-conclude-active-activity", "r28b-conclude-no-activity", "r28c-conclude-target-not-activity", "r28d-withdraw-activity", "r28e-conclude-then-question", "r28f-conclude-while-starting-activity"]) assert.ok(items.some((i) => i.id === id), id);
 });
-test("Token-distribution artifact (pinned tokenizer, every replayed ReaderInput) is pinned and meets G1 (p90 <= 300 dynamic tokens)", () => {
+test("Token-distribution artifact (pinned tokenizer, every replayed ReaderInput) is pinned and meets G1 by class (discourse-bearing and human-trace p90 <= 300)", () => {
   assert.equal(sha256(TOKEN_ARTIFACT), TOKEN_ARTIFACT_SHA256, "the token artifact changed without a governance pin update");
   const doc = JSON.parse(fs.readFileSync(TOKEN_ARTIFACT, "utf8"));
   assert.equal(doc.contract.render, CONTRACT.render);
   assert.equal(doc.contract.render_system_digest, CONTRACT.render_system_digest);
   assert.equal(doc.contract.wire_digest, CONTRACT.wire_digest);
-  assert.ok(doc.turns >= 800, `${doc.turns} replayed turns`);
-  assert.ok(doc.dynamic_tokens.p90 <= 300, `p90 ${doc.dynamic_tokens.p90}`);
+  assert.equal(doc.contract.reader_input, CONTRACT.reader_input);
+  assert.ok(doc.turns >= 900, `${doc.turns} replayed turns`);
+  assert.equal(doc.g1.pass, true, JSON.stringify(doc.g1));
+  assert.ok(doc.classes.discourse_bearing.p90 <= 300 && doc.classes.human_trace.p90 <= 300, JSON.stringify(doc.classes));
+  for (const k of ["context_free", "discourse_bearing", "real_scenario", "human_trace"]) assert.ok(doc.classes[k].p99 != null && doc.classes[k].max != null, `${k}: p99 / max guardrails reported`);
   assert.equal(doc.tokenizer.model_sha256, require("../tools/local-runtime-pin.json").model.sha256);
 });

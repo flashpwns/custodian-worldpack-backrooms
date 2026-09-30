@@ -14,8 +14,10 @@ of 2026-09-30. The review text itself is not in the repository; this pass follow
 - a sealed set, or use of the spent ED-30 held-outs;
 - a force push, a merge of main, or a reset / stash.
 
-**Status: STEP 0 COMPLETE.** The teacher ceiling (§11) has not run. It is blocked on a hosted-teacher credential and
-gold labels.
+**Status: STEP 0.1 COMPLETE, awaiting the Sonnet re-audit.** The Step-0 claim "ready for the teacher ceiling" was
+withdrawn: the independent Sonnet 5.5 audit of Step 0 returned **NOT READY FOR TEACHER CEILING** (blockers in the
+experiment / scoring contract). Step 0.1 (§12) fixes them before any gold label exists. The teacher ceiling (§11) has
+not run; no gold label, teacher score, E4B accuracy, calibration or sealed item exists.
 
 ## 1. Owner decisions applied
 
@@ -26,6 +28,8 @@ gold labels.
 | **B2 offline contract** | deferred to Phase 3 |
 | **B8 clarification UX** | no renderer work. Every clarification is classified and recorded as `LINGUISTIC_AMBIGUITY` or `READER_UNCERTAINTY` (`dialogue-reader-async.js clarificationKind`) |
 | **Hosted teacher** | development-only transport (`hostedChatTransport`). It sends exactly the frozen render and the closed contract, records provider / model / what was transmitted, and is never used in production |
+| **B7 indirect request-arg salience** (Step 0.1 ruling) | ReaderInput v3. A canonical request argument is shown as the active place or an anaphora candidate only when **observer-grounded**: the player's own words in the recent exchange (their lines, the canonical request texts) name it, or it is an observer-visible option of the pending coworker question. Something only heard stays a heard candidate. Arguments production inferred through `place_basis = salient_topic`, an anaphoric item, an advisory candidate or the "inside" default, with no such grounding, are omitted from the reader view (recorded code-side in `bindings.salience_filter`). Production and canonical state are unchanged |
+| **Hidden option labels** (Step 0.1 ruling) | a pending coworker-question option naming an entity the observer cannot see is shown opaquely (its label `oN` with no text), exactly like an id-only option; the canonical binding stays code-side; spoken option wording reaches the reader only through the heard channel |
 
 ## 2. Step 0: what changed
 
@@ -41,8 +45,8 @@ gold labels.
 | 8. Replay harness | `dialogue-reader-replay.js` | capture, arms (L0 / local / hosted), the resolved-outcome signature, field agreement, strata weights, bootstrap latency, the token distribution, the dev manifest |
 | 9. Receipts | `readTurnAsync` | input / render / wire / grammar digests and versions; reader identity (model hash, quantization); raw wire; decode status; verdict; frame; abstentions; clarification kind; raw logprobs; derived field margins; resolution; latency; timeout / error reason. No chain-of-thought is requested or stored. `consumed: false` |
 | 10. Fault inertness | `desktop/service.js modelShadow` (opt-in, developer-only) | runs after commit and wording, never awaited, one in flight, busy drop, 5 s hard timeout, in-memory receipts only |
-| 11 / 12. Data and labels | `READER_PHASE2_DATA_PROTOCOL.md`, `READER_PHASE2_LABEL_GUIDE.md`, `dialogue-reader-labels.js`, `tests/fixtures/reader-phase2/rare-state-scenarios.json` | strata, weights, calibration and sealed protocol; labelling rules; κ / PABAK agreement; a rare-state stratum (62 inbound answers) |
-| 22. Statistics | `READER_PHASE2_PREREGISTRATION.md` §6, `dialogue-reader-power.js` | option B recommended: a conjunctive IUT family of 4 gates, sealed n = 1,000 |
+| 11 / 12. Data and labels | `READER_PHASE2_DATA_PROTOCOL.md`, `READER_PHASE2_LABEL_GUIDE.md`, `dialogue-reader-labels.js`, `tests/fixtures/reader-phase2/rare-state-scenarios.json` | strata, calibration and sealed protocol; labelling rules; κ / PABAK agreement; a rare-state stratum (Step 0: 64 pending-coworker-question turns, 62 of them authored replies; Step 0.1 counts in §12) |
+| 22. Statistics | `READER_PHASE2_PREREGISTRATION.md` §6, `dialogue-reader-power.js` | Step 0 recommended a conjunctive gate family with sealed n = 1,000; **Step 0.1 replaced the fixed n by a sample-size rule** (§12) |
 
 ## 3. Salience (B7) evidence (`ed33a`)
 
@@ -97,8 +101,8 @@ Kept:
 - the previous player line;
 - heard anchors.
 
-**Token distribution** (`docs/acceptance/reader-phase2/token-distribution.json`; pinned tokenizer: Gemma 4 E4B
-Q4_K_M, `85a896a0…`, llama.cpp b11146; 927 replayed turns, 535 distinct renders):
+**Token distribution at Step 0** (render v1; pinned tokenizer: Gemma 4 E4B Q4_K_M, `85a896a0…`, llama.cpp b11146; 927
+replayed turns, 535 distinct renders). Superseded by the Step 0.1 artifact (render v2, per-class G1; §12):
 
 | | min | p50 | mean | p90 | p95 | max | > 300 |
 | --- | --- | --- | --- | --- | --- | --- | --- |
@@ -224,19 +228,211 @@ legacy's reply-fact binding.
 - the round trip is 82.4% behaviour-equivalent and 27.4% exact (was 82.2 / 26.5);
 - legacy-adapter exact coverage is 89.6%.
 
-## 11. Teacher ceiling, wire-vs-JSON, E4B: NOT RUN (blocked)
+## 11. Teacher ceiling, wire-vs-JSON, E4B: NOT RUN
 
-1. **Hosted-teacher credential.**
-   - No hosted API key is available in this environment (`OPENAI_API_KEY`, `GEMINI_API_KEY`, `GROQ_API_KEY`,
-     `OPENROUTER_API_KEY` and `ANTHROPIC_API_KEY` are unset). No teacher provider or model is chosen.
-   - The run is turnkey:
-     `node tools/dialogue-reader-replay.js --run <capture> --labels <gold.jsonl> --arm hosted --api openai-chat|anthropic-messages --base-url … --model … --key-env <VAR> --out <score.json>`.
-     Add `--output json` for the wire-vs-JSON check.
-2. **Gold labels.**
-   - No development item has a gold frame yet. The ≥ 300-item teacher run needs labels written from the frozen
-     render (label guide).
-   - It also needs the ≥ 200 human double-labelled and adjudicated items.
-   - The LLM labeler must not share the teacher's model family. The teacher's family therefore has to be chosen
-     before LLM labelling starts.
-3. **Order.** E4B (arm C) runs **only after** the teacher clears §3 of the preregistration. The latency ladder
-   beyond the token distribution, the calibration and the live developer shadow wait for it.
+Not run, by instruction (Step 0.1 forbids the teacher, dev labelling, E4B accuracy and calibration / sealed data).
+What each still needs:
+
+1. **Families recorded** in `docs/reader/READER_PHASE2_LABELING_REGISTRY.json` (owner decision; recommendation: a
+   non-Claude top-tier reasoning teacher, Claude permitted as automated reviewer). Until then hosted runs and
+   `MODEL_ASSISTED_REVIEW` labels are refused.
+2. **ADJUDICATED_GOLD** for the frozen teacher sample (`docs/acceptance/reader-phase2/teacher-dev-sample.json`, 474
+   distinct renders; ≥ 300 valid required), written from the worksheet (label guide).
+3. **A credential** in an environment variable, and the run, with explicit egress consent:
+
+   ```
+   node tools/dialogue-reader-replay.js --run <capture> --labels <gold.jsonl> --sample docs/acceptance/reader-phase2/teacher-dev-sample.json \
+     --arm hosted --api openai-chat|anthropic-messages --base-url … --model … --family <recorded teacher family> --key-env <VAR> \
+     --max-output-tokens … [--reasoning-effort … | --reasoning-budget …] [--temperature …] \
+     --receipts <receipts.jsonl> --confirm-egress [--include-human-trace] [--retention "<provider setting>"] --out <score.json>
+   ```
+
+   Add `--output json` for the wire-vs-JSON control.
+4. **Order.** E4B (arm C) runs only after the teacher clears §3 of the preregistration. The latency ladder beyond the
+   token distribution, the calibration and the live developer shadow wait for it.
+
+## 12. Step 0.1: experiment / scoring contract fixes (before any label)
+
+**Governing review:** the Sonnet 5.5 independent audit of Step 0 (**NOT READY FOR TEACHER CEILING**: architecture, codec,
+observer boundary, async inertness and governance sound; blockers in the experiment / scoring contract), as
+operationalised by the owner's Step 0.1 instruction (2026-09-30, 22 items). No teacher, dev labelling, E4B accuracy,
+calibration or sealed data was run or created.
+
+### 12.1 Contract changes
+
+| Item | Step 0 | Step 0.1 | Why |
+| --- | --- | --- | --- |
+| ReaderInput | `@v2` | **`@v3`** | B7 indirect request-arg filter; hidden option labels (the projection's content changed) |
+| Lexicon | `@v1` | **`@v2`** | fuzzy guard (ordinary English words never fuzzy-bind) |
+| Render | `@v1`, system `c96d6d54…` | **`@v2`, system `8c727a29…`** | one representation-neutral semantic contract with conventions A–D, shared verbatim by the wire system text, the JSON control and the label guide |
+| Wire | `@v1`, tables `b18ac02f…` | unchanged | tables unchanged; fenced output is now `output_fenced` (still invalid) for both wire and JSON |
+| ReaderFrame / resolver | `@v2` / `@v3` | unchanged | no semantic change needed |
+| Replay / labels | `@v1` | `@v2` | distinct-render unit, scoring classes, label states |
+
+Static system prefix: 1,760 tokens (JSON control 2,140), was 1,168.
+
+### 12.2 System prompt and label guide reconciled
+
+`dialogue-reader-render.js semanticLines(spelling)` is the single source. It states the task, the labels, every field
+with its meaning, and conventions:
+
+- **A** follow-up / ellipsis: an act that only continues, re-asks, presses or points back at an earlier question and
+  whose words express no facet writes the "asks, but names no facet" value with the relation; code inherits the facet;
+  a facet is written only when the words express one;
+- **B** the chip is where the message is delivered (canonical, code-side), not address language;
+- **C** "we all …" is an inclusive-group subject, never `address = all` without address language;
+- **D** relation targets are supplied labels the words relate to; a marker alone is never a continuation; no
+  antecedent from similarity alone.
+
+The wire system text and the JSON control are both built from it (only value spellings and the output lines differ;
+`ed33c` proves both match one template). The label guide §3 embeds the lines verbatim (`ed33c` fails on drift). The
+worksheet exports the frozen system text (header row) and each user render.
+
+### 12.3 Gold validation and label states
+
+- `validateLabels`: every row declares `ACCEPT` (decode + V0–V3 accept, resolver resolves) or `EXPECTED_CLARIFY`
+  (legal frame, no V1 / V2 error, declared `expected_clarify.field` expressed, resolver clarifies on the declared
+  slot). V0 failures, stale / nonexistent targets, illegal candidates, surface contradictions and mismatched outcomes
+  are rejected with a reason; duplicate ids are rejected on every row; a missing or changed render digest is refused.
+- States `UNLABELED`, `HUMAN_PRIMARY`, `MODEL_ASSISTED_REVIEW`, `ADJUDICATED_GOLD`; only `ADJUDICATED_GOLD` is headline
+  gold. "Provisional" gold is retired.
+- Independence (registry + code): teacher family ≠ reviewer family; teacher output never gold; an arm never scores on
+  gold its own family touched; reviews must post-date the committed human primary; human adjudicates. The families are
+  not chosen in code (registry fields are null until the owner records them).
+
+### 12.4 Scoring
+
+- An INVALID resolution has no outcome signature: two invalid readings are never "equal".
+- Per row: `transport_unavailable` (no semantic credit, excluded from the semantic denominator, reported, and counted
+  wrong in a conservative figure), `invalid_output` (wrong on every field), `read`. With ACCEPT gold a reading is
+  correct only if it resolves with an identical signature (accepted-but-different = false-confident); with
+  EXPECTED_CLARIFY gold only if it clarifies on the expected slot (an accepting reading is false-confident).
+- Gold is re-validated inside `scoreArm`; a gold row no longer valid is `gold_invalid`, excluded, never compared.
+- Preregistered retry policy: transient failures (timeout, network, HTTP 408 / 409 / 425 / 429 / 5xx) are retried 3
+  times after 2 s / 4 s / 8 s; non-transient ones never; an undecodable reply is never retried.
+- Adversarial tests (`ed33c`): two invalid frames, invalid arm vs valid gold, valid arm vs EXPECTED_CLARIFY gold,
+  malformed wire, stale antecedent, illegal candidate, transport failure, retries.
+
+### 12.5 De-duplication, sampling and the preregistered teacher sample
+
+The unit is the **distinct frozen render** (`renderGroups`): identical renders are one item, with the render →
+occurrences (source rows, strata, fixtures) mapping kept in the manifest. The representative occurrence (first by id)
+supplies the code-side context. In 19 of 348 multi-occurrence groups the same frame routes differently across
+occurrences; every case is canonical routing only (the two human-trace fixtures use different seeded personnel ids, and
+"Who has the camera?" in scenarios where a different person holds it). The language, and therefore the label, is
+identical.
+
+| | Step 0 capture (927 rows) | Step 0.1 capture (944 rows) |
+| --- | --- | --- |
+| source rows | 927 | 944 (+17: the own-answer-correction scenario) |
+| distinct player turns (fixture, text, chip) | 558 | 575 |
+| distinct player-turn positions | 563 | 580 |
+| distinct texts (normalized) | 456 | 470 |
+| distinct renders | 535 | 552 |
+| headline-eligible renders | — | **474** (78 context-missing probe renders excluded) |
+
+- `--limit` is now a deterministic proportional stratified sample of distinct renders (never the first N rows) and
+  is never headline.
+- **Context-dependent probes:** 81 ED-30 development probes are authored to need prior conversation and are replayed
+  without it (`context_dependent: true`, `context_available: false`; 162 rows, 78 renders). Diagnostic only.
+- **Teacher sample (frozen now):** a census of all 474 headline-eligible distinct renders, each counted once:
+  j15 132 (27.8%), rare state 108 (22.8%), scripted state 102 (21.5%), ED-30 dev 99 (20.9%), human trace 19 (4.0%),
+  ED-30 novel 14 (3.0%). Estimator, cluster-bootstrap interval, label-loss rule, transport-void rule and stop rule are
+  preregistered with it (`teacher-dev-sample.json`, preregistration §3). The Step-0 weight 3 on 19 human-trace renders
+  is gone from the headline.
+
+### 12.6 Hosted transport, egress consent and receipts
+
+- `hostedChatTransport`: output token budget, optional temperature (never forced), `reasoning_effort` (OpenAI-chat),
+  extended-thinking budget (Anthropic; temperature then not sent), `max_tokens` / `max_completion_tokens`, logprobs off by
+  default. Only the final text is kept; provider reasoning is never read into a receipt.
+- Egress: `--confirm-egress` is required (an API key is never consent); human-trace renders are excluded unless
+  `--include-human-trace`; before any request the CLI prints provider, endpoint host, model, family, render count,
+  strata, human-trace inclusion, estimated bytes / tokens and the retention / training setting (or "unknown: not
+  configured").
+- Receipts are mandatory for hosted runs (`--receipts`): per request the render and system digests, provider, endpoint
+  host, model, parameters, request bytes, system / user SHA-256, response status, retry count and tries, latency,
+  output digest and any transport failure. No chain-of-thought.
+- A hosted run is refused unless `--family` equals the teacher family recorded in the registry and differs from the
+  reviewer family.
+
+### 12.7 B7 indirect leak and hidden options
+
+- Regression (`ed33c`): an unspoken required fact "report to Equipment Staging" that production turned into
+  `place_id = equipment-staging, place_basis = salient_topic` no longer yields `place in talk: Equipment Staging`; the
+  same argument is shown when the player said it; when only heard it is a heard candidate, not the active place. An
+  anaphoric item resolved only through an unspoken optional fact is omitted.
+- On the development capture exactly **2 distinct renders (4 rows) changed**: `j15/3-chaotic` turns 15–16 ("The camera
+  is broken, by the way." / "Malcolm, is the camera broken?"), where "Outpost A" had become the active place through
+  `salient_topic` after "Can you even go in there?" without the player ever naming it.
+- Hidden options: synthetic hidden person, item and place options render with no label text; nothing hidden leaks into
+  the input or render; `bindings.options` keeps the canonical ids. No development render changed.
+
+### 12.8 Fuzzy false positives
+
+A frozen guard (`tools/data/reader-fuzzy-guard.json`, 220 words, generated by `tools/dialogue-reader-fuzzy-guard.js`
+from the public-domain web2 list, restricted to words that would otherwise fuzzy-bind to this worldpack's 41
+single-token names) stops stage 3 for a correctly spelled dictionary word or its -s / -es inflection.
+
+| Word | Step 0 | Step 0.1 |
+| --- | --- | --- |
+| complete | Complex (fuzzy 2) | unbound |
+| touch | lamp via "torch" (fuzzy 1) | unbound |
+| portable | Threshold via "portal" (fuzzy 2) | unbound |
+| lamb | lamp (fuzzy 1) | unbound |
+| note | verbal-recall task via "notes" (fuzzy 1) | unbound |
+| deliver | material-delivery task (fuzzy 1) | unbound |
+| record | layout record via the **authored alias** "record" / "the record" | **unchanged**: an authored exact alias (canonical-knowledge `names`), which this pass may not alter; flagged for an owner decision |
+| camra / flashlght / spctrmeter | camera / lamp / spectrometer | unchanged |
+
+No development render changed (0 of 944 rows).
+
+### 12.9 Rare-state shapes (machine counts)
+
+Step 0 wording "62 inbound answers" was wrong: the rare-state stratum had **64 pending-coworker-question turns**, 62
+authored replies and 2 turns that are not answers ("what about the rest of you?", "Okay, that's that." while a question
+production raised was pending). Every authored reply now carries a developer coverage tag (never gold), and a new
+scenario adds 8 own-answer corrections (just-answered `i0`). Counts (`docs/acceptance/reader-phase2/rare-state-shapes.json`):
+
+| Shape | Step 0 | Step 0.1 |
+| --- | --- | --- |
+| yes / no | 14 | 16 |
+| choice | 10 | 12 |
+| person | 6 | 7 |
+| time | 4 | 5 |
+| item | 4 | 5 |
+| free short | 4 | 5 |
+| uncertainty | 4 | 4 |
+| refusal | 4 | 4 |
+| counter-question | 3 | 3 |
+| answer + follow-up | 9 | 9 |
+| not an answer | 2 | 2 |
+| **pending-question turns** | **64** | **72** |
+| own-answer correction (`i0`) | 0 | 8 |
+
+No shape reaches 60: each is report-only. The aggregate does not confer per-shape power.
+
+### 12.10 Tokens (G1 by class)
+
+`token-distribution.json` (render v2; pinned tokenizer; 944 turns). The Step-0 audit figures reproduce exactly on the
+Step-0 capture with the Step-0 render (context-free 57 / 83; discourse-bearing 198 / 265 / max 333; real scenario
+200 / 266 / 333; human trace 208 / 292).
+
+| Class (rule) | n | p50 | p90 | p99 | max | > 300 |
+| --- | --- | --- | --- | --- | --- | --- |
+| context-free (ED-30 probes) | 398 | 57 | 83 | 127 | 146 | 0 |
+| **discourse-bearing** (render carries prior conversation) | 509 | 194 | **263** | 293 | 333 | 5 |
+| real scenario (j15, human trace, scripted state) | 437 | 200 | 266 | 312 | 333 | 5 |
+| **human trace** | 64 | 208 | **292** | 293 | 293 | 0 |
+| all turns (diluted; not the gate) | 944 | 114 | 238 | 293 | 333 | 5 |
+
+**G1 (formal):** discourse-bearing p90 ≤ 300 **and** human-trace p90 ≤ 300, p99 / max reported as guardrails: **pass**
+(263, 292). No context was cut or padded.
+
+### 12.11 Statistics
+
+The preregistration no longer states "sealed n = 1,000 is enough". Exact (Clopper-Pearson) power of the
+false-confident gate at ~880 accepted: true FC 1.0% → 99.6%, 1.5% → 88.1%, 2.0% → 50.6%, 2.5% → 16.6%. At 1,800 turns
+(~1,584 accepted) the power at a true 2.0% is 80.9%. The sealed **gate family** is fixed now, with exact bounds,
+clustering by author / prefix through a design effect and explicit rare-state strata; the sealed **N** is chosen by a
+pinned rule before the sealed set is generated (preregistration §6).

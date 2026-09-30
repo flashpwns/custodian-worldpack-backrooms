@@ -916,6 +916,11 @@
       "file": "tests/ed33b-reader-phase2-replay-full.test.js",
       "status": "included",
       "tier": "long-world"
+    },
+    {
+      "file": "tests/ed33c-reader-phase2-step01.test.js",
+      "status": "included",
+      "tier": "aggregate"
     }
   ],
   "report_tools": [

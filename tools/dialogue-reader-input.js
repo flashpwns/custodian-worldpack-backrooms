@@ -24,12 +24,23 @@
 //   heard      entities actually named in DELIVERED coworker wording, resolved against the observer-visible
 //              lexicon. Provider-dependent; it may license a conversational reference; it never creates a fact.
 //   A plan fact -- required or optional -- is never salient merely because the wording plan authorized it.
+//
+// B7 INDIRECT REQUEST-ARG SALIENCE (owner ruling, Reader Phase 2 Step 0.1; ReaderInput v3): a canonical request
+// argument (the last / last substantive request's item or place) is NOT automatically conversational. Production may
+// have filled it from its own salience (dialogue-turn withSalience: place_basis "salient_topic", an anaphoric item,
+// an advisory candidate, the "inside" domain default) -- which reads the replies' REQUIRED and OPTIONAL plan facts,
+// spoken or not. The reader-facing projection therefore shows such an argument as the active place or an anaphora
+// candidate only when OBSERVER-GROUNDED: the player's own words in the recent exchange (their lines, the canonical
+// request texts) name it, or it is an observer-visible option of the pending coworker question. A thing only HEARD in
+// delivered wording stays in the heard channel (a heard candidate), never the canonical one. Anything provenance cannot
+// ground is omitted from the reader view (recorded code-side in bindings.salience_filter); canonical production state
+// is untouched.
 
 const { normalizeUtterance } = require("./dialogue-normalize");
 const canonicalKnowledge = require("./canonical-knowledge");
 const lexiconTools = require("./dialogue-reader-lexicon");
 
-const READER_INPUT_VERSION = "yellow-beast-reader-input@v2";
+const READER_INPUT_VERSION = "yellow-beast-reader-input@v3";
 const SALIENCE_SOURCE = "player_words+canonical_state";
 const REQUEST_WINDOW = 4;
 const MAX_REFERENTS = 24;
@@ -93,15 +104,25 @@ function referentCandidates(entities, { salientIds = [], anaphoraIds = [], lineI
   }
   return ordered.slice(0, MAX_REFERENTS).map(({ e, basis }, i) => ({ label: `r${i + 1}`, id: e.id, kind: e.kind === "equipment" ? "item" : "place", name: names[e.id] ?? e.label, basis }));
 }
-/** Text a coworker-question option may show a reader: an entity's name, an object's label -- never an id. */
+/**
+ * Text a coworker-question option may show a reader: an OBSERVER-VISIBLE entity's name, an object's label -- never an
+ * id, and never the canonical label of an entity the observer cannot see (Step 0.1 option visibility). A hidden
+ * option keeps its canonical binding code-side (bindings.options) and is shown as an opaque, unnamed option exactly
+ * like an id-only one; the words a coworker actually spoke, if any, reach the reader through the heard channel.
+ */
 const ID_LIKE = /^[a-z0-9]+(?:[-:][a-z0-9]+)+$/i;
-function optionText(option, entities) {
+function optionText(option, entities, visible = () => true) {
   if (typeof option === "string") {
     const entity = entities.find((e) => e.id === option);
-    if (entity) return entity.label ?? null;
+    if (entity) return visible(entity) ? entity.label ?? null : null;
     return ID_LIKE.test(option) ? null : option;
   }
-  if (option && typeof option === "object") return typeof option.label === "string" ? option.label : null;
+  if (option && typeof option === "object") {
+    const ref = option.id ?? option.entity_id ?? null;
+    const entity = ref ? entities.find((e) => e.id === ref) : null;
+    if (entity && !visible(entity)) return null;
+    return typeof option.label === "string" ? option.label : null;
+  }
   return null;
 }
 /** Reader Phase 0 / 0.5 helper, retained for the Phase-0 tests: string values of REQUIRED facts. Reader Phase 2
@@ -137,7 +158,7 @@ function buildReaderInput({ raw, chip_target_id = null, present = [], player = n
   const normalized = normalizeUtterance(line, { names: [...vocab.keys()] });
   const tokens = normalized.tokens.map((t, i) => ({ i, text: t.text, start: t.raw_start, end: t.raw_end, n_start: t.start, n_end: t.end }));
   const words = tokens.filter(isWord);
-  const bindings = { people: {}, names: {}, entities: {}, requests: {}, inbound: {}, options: {}, referents: {}, anchors: {}, activity: {}, claims: {}, lexicon };
+  const bindings = { people: {}, names: {}, entities: {}, requests: {}, inbound: {}, options: {}, referents: {}, anchors: {}, activity: {}, claims: {}, salience_filter: { omitted: [] }, lexicon };
 
   // People: present coworkers only, opaque labels in canonical (team) order.
   const people = present.map((p, i) => { bindings.people[`p${i + 1}`] = p.id; return { label: `p${i + 1}`, name: p.name, present: true, eligible: true }; });
@@ -210,7 +231,7 @@ function buildReaderInput({ raw, chip_target_id = null, present = [], player = n
   const pendingInbound = snapshot?.pending_inbound_request ?? null;
   const inbound = pendingInbound ? (() => {
     bindings.inbound.i1 = pendingInbound.event_id ?? null;
-    const options = (pendingInbound.options ?? []).map((o, i) => { bindings.options[`o${i + 1}`] = o; return { label: `o${i + 1}`, text: optionText(o, entities) }; });
+    const options = (pendingInbound.options ?? []).map((o, i) => { bindings.options[`o${i + 1}`] = o; return { label: `o${i + 1}`, text: optionText(o, entities, visible) }; });
     return { label: "i1", from: labelOf(pendingInbound.from ?? pendingInbound.speaker_id), kind: pendingInbound.kind ?? null, facet: pendingInbound.predicate ?? null, answer_shape: pendingInbound.answer_shape ?? null, options, options_source: options.length ? "ledger" : "none" };
   })() : null;
   const justAnswered = snapshot?.just_answered_inbound ?? null;
@@ -229,9 +250,25 @@ function buildReaderInput({ raw, chip_target_id = null, present = [], player = n
   const playerWords = [snapshot?.last_request?.request_text ?? "", discourse?.last_turn?.player_text ?? ""].join(" \n ");
   const inboundIds = (pendingInbound?.options ?? []).filter((o) => typeof o === "string" && entities.some((e) => e.id === o && visible(e)));
   const salientIds = [...new Set([...mentionedIds(playerWords, lexicon), ...taskItemsOf(mentionedIds(playerWords, lexicon).filter((id) => String(id).startsWith("task:")), entities)])];
+  // Observer grounding of request arguments (B7 indirect, Step 0.1): the player's own words across the recent
+  // exchange window and the canonical request texts, plus the pending question's visible options.
+  const groundingWords = [...(discourse?.turns ?? []).map((t) => t?.player_text ?? ""), discourse?.last_turn?.player_text ?? "", snapshot?.last_request?.request_text ?? "", snapshot?.last_substantive_request?.request_text ?? ""].join(" \n ");
+  const groundedMentions = mentionedIds(groundingWords, lexicon);
+  const grounded = new Set([...groundedMentions, ...taskItemsOf(groundedMentions.filter((id) => String(id).startsWith("task:")), entities), ...inboundIds]);
+  const omittedArgs = [];
+  const groundedArg = (request, key) => {
+    const id = request?.args?.[key] ?? null;
+    if (!id) return null;
+    if (grounded.has(id)) return id;
+    omittedArgs.push({ request_id: request.request_id ?? null, arg: key, id, basis: key === "place_id" ? request.args.place_basis ?? null : request.args.item_anaphoric ? "anaphoric" : null });
+    return null;
+  };
+  const lastPlace = groundedArg(snapshot?.last_request, "place_id");
   // The explicit anaphoric / deictic set: what the most recent requests were about (canonical args), and the
-  // active place. "it", "that", "there" may choose only among these (or salient / named things).
-  const anaphoraIds = [...new Set([snapshot?.last_request?.args?.item_id, snapshot?.last_request?.args?.place_id, snapshot?.last_substantive_request?.args?.item_id, snapshot?.last_substantive_request?.args?.place_id].filter(Boolean))];
+  // active place -- observer-grounded arguments only. "it", "that", "there" may choose only among these (or salient
+  // / named things).
+  const anaphoraIds = [...new Set([groundedArg(snapshot?.last_request, "item_id"), lastPlace, groundedArg(snapshot?.last_substantive_request, "item_id"), groundedArg(snapshot?.last_substantive_request, "place_id")].filter(Boolean))];
+  bindings.salience_filter = { omitted: omittedArgs.filter((o, i, all) => all.findIndex((x) => x.arg === o.arg && x.id === o.id && x.request_id === o.request_id) === i) };
   // HEARD: things delivered coworker wording named (reply lines and the surface anchors cut from them), resolved
   // against the observer-visible lexicon only. Provider-dependent; kept apart from the canonical salience.
   const replies = discourse?.last_turn?.responses ?? [];
@@ -249,7 +286,7 @@ function buildReaderInput({ raw, chip_target_id = null, present = [], player = n
   const refLabel = (id) => referents.find((r) => r.id === id)?.label ?? null;
   for (const span of entitySpans) span.canonical_candidate = refLabel(bindings.entities[span.label]);
   const canonicalSalient = [...salientIds, ...inboundIds];
-  const activePlaceId = snapshot?.last_request?.args?.place_id ?? canonicalSalient.find((id) => referents.find((r) => r.id === id)?.kind === "place") ?? null;
+  const activePlaceId = lastPlace ?? canonicalSalient.find((id) => referents.find((r) => r.id === id)?.kind === "place") ?? null;
 
   // Surface anchors: sentences a coworker actually SPOKE, mapped to the request that licensed them. Their
   // number, split and words depend on the wording provider, so they live only in the heard channel.

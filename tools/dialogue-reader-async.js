@@ -115,17 +115,17 @@ async function readTurnAsync({ input, bindings, rendered = null, request_id = nu
     input_version: input?.version ?? READER_INPUT_VERSION, input_digest: sha(input ?? null),
     render_version: render.version, render_digest: render.render_digest, system_digest: render.system_digest, user_digest: render.user_digest,
     wire_version: W.WIRE_VERSION, wire_digest: W.WIRE_DIGEST, grammar_digest: grammar ? sha(grammar) : null, frame_version: RF.READER_FRAME_VERSION,
-    reader: { id: cfg.id ?? null, provider: cfg.provider ?? null, model: cfg.model ?? null, model_hash: cfg.model_hash ?? null, quantization: cfg.quantization ?? null, temperature: cfg.temperature ?? 0, output: cfg.output === "json" ? "json" : "wire" },
+    reader: { id: cfg.id ?? null, provider: cfg.provider ?? null, model: cfg.model ?? null, model_hash: cfg.model_hash ?? null, quantization: cfg.quantization ?? null, temperature: cfg.temperature ?? (cfg.provider === "local" ? 0 : null), output: cfg.output === "json" ? "json" : "wire" },
     consumed: false
   };
   const finish = (fields) => deepFreeze({ ...base, ...fields, latency_ms: Math.round((nowMs() - started) * 10) / 10 });
   if (typeof cfg.transport !== "function") return finish({ status: "reader_unavailable", reason: "no_transport", raw_wire: null, decode: null, verdict: null, frame: null });
   const out = await withTimeout((signal) => cfg.transport({ system: render.system, user: render.user, grammar, logprobs: cfg.logprobs, top_logprobs: cfg.top_logprobs, max_tokens: cfg.max_tokens, signal, request_id }), cfg.timeout_ms);
   if (out.__timeout) return finish({ status: "reader_unavailable", reason: "timeout", raw_wire: null, decode: null, verdict: null, frame: null });
-  if (out.error) return finish({ status: "reader_unavailable", reason: "error", error: String(out.error?.code ?? out.error?.message ?? out.error).slice(0, 200), raw_wire: null, decode: null, verdict: null, frame: null });
+  if (out.error) return finish({ status: "reader_unavailable", reason: "error", error: String(out.error?.code ?? out.error?.message ?? out.error).slice(0, 200), raw_wire: null, decode: null, verdict: null, frame: null, transport: out.error?.transmitted ? { model: null, usage: null, transmitted: out.error.transmitted, response_status: out.error.response_status ?? null } : null });
   const reply = out.value ?? {};
   const raw = typeof reply === "string" ? reply : reply.text;
-  const transport = typeof reply === "object" && reply ? { model: reply.model ?? null, usage: reply.usage ?? null, transmitted: reply.transmitted ?? null } : null;
+  const transport = typeof reply === "object" && reply ? { model: reply.model ?? null, usage: reply.usage ?? null, transmitted: reply.transmitted ?? null, response_status: reply.response_status ?? null } : null;
   const logprobs = typeof reply === "object" && reply ? reply.logprobs ?? null : null;
   const decoded = cfg.output === "json" ? W.decodeJsonFrame(raw, input) : W.decodeWire(raw, input);
   if (!decoded.ok) return finish({ status: "invalid", reason: "wire_decode", raw_wire: typeof raw === "string" ? raw.slice(0, 2000) : null, decode: { ok: false, errors: decoded.errors }, verdict: null, frame: null, disposition: RF.DISPOSITIONS.INVALID, logprobs, transport });
@@ -182,30 +182,43 @@ function llamaTransport({ endpoint, model = null, slot = null, fetchImpl = fetch
 }
 
 /**
- * DEVELOPMENT-ONLY hosted teacher (never production). Sends EXACTLY the render (system + user) and the decoding
- * parameters; `transmitted` records what left the machine (byte counts and digests, plus the parameters).
- *   api: "openai-chat" (OpenAI-compatible /chat/completions) | "anthropic-messages"
+ * DEVELOPMENT-ONLY hosted teacher (never production). Sends EXACTLY the frozen render (system + user) and the decoding
+ * parameters; `transmitted` records what left the machine (URL, byte count, system / user digests, parameters).
+ * Provider-capable without changing the semantic contract (Step 0.1):
+ *   api            "openai-chat" (OpenAI-compatible /chat/completions) | "anthropic-messages"
+ *   maxOutputTokens  output budget (a reasoning model needs room for its hidden reasoning); default 256
+ *   temperature    sent ONLY when configured (some reasoning models reject it); null = the provider default
+ *   reasoningEffort  openai-chat `reasoning_effort` (e.g. "high"), when configured
+ *   reasoningBudgetTokens  anthropic-messages extended thinking budget, when configured (temperature is then not sent)
+ *   maxTokensParam "max_tokens" | "max_completion_tokens" (openai-chat; newer reasoning models need the latter)
+ *   logprobs       openai-chat only, off by default for the teacher
+ * Only the final text is kept: provider reasoning / thinking content is never read into the receipt or stored.
  */
-function hostedChatTransport({ api = "openai-chat", baseURL, apiKey, model, fetchImpl = fetch, logprobs: wantLogprobs = true } = {}) {
+function hostedChatTransport({ api = "openai-chat", baseURL, apiKey, model, fetchImpl = fetch, maxOutputTokens = null, temperature = null, reasoningEffort = null, reasoningBudgetTokens = null, maxTokensParam = "max_tokens", logprobs: wantLogprobs = false } = {}) {
   if (!apiKey) throw Object.assign(new Error("hosted teacher: no API key"), { code: "AUTH_MISSING" });
+  if (!["openai-chat", "anthropic-messages"].includes(api)) throw Object.assign(new Error(`hosted teacher: unknown api ${api}`), { code: "API_UNKNOWN" });
   return async ({ system, user, max_tokens, signal }) => {
+    const budget = Math.max(64, Number(maxOutputTokens ?? Math.max(256, max_tokens ?? 0)));
     let url; let headers; let body;
     if (api === "anthropic-messages") {
       url = `${baseURL ?? "https://api.anthropic.com"}/v1/messages`;
       headers = { "content-type": "application/json", "x-api-key": apiKey, "anthropic-version": "2023-06-01" };
-      body = { model, system, messages: [{ role: "user", content: user }], max_tokens: Math.max(64, max_tokens), temperature: 0 };
+      const thinking = reasoningBudgetTokens ? { thinking: { type: "enabled", budget_tokens: Number(reasoningBudgetTokens) } } : {};
+      body = { model, system, messages: [{ role: "user", content: user }], max_tokens: reasoningBudgetTokens ? budget + Number(reasoningBudgetTokens) : budget, ...(temperature != null && !reasoningBudgetTokens ? { temperature } : {}), ...thinking };
     } else {
       url = `${baseURL}/chat/completions`;
       headers = { "content-type": "application/json", authorization: `Bearer ${apiKey}` };
-      body = { model, messages: [{ role: "system", content: system }, { role: "user", content: user }], temperature: 0, max_tokens: Math.max(64, max_tokens), ...(wantLogprobs ? { logprobs: true, top_logprobs: 5 } : {}) };
+      body = { model, messages: [{ role: "system", content: system }, { role: "user", content: user }], [maxTokensParam === "max_completion_tokens" ? "max_completion_tokens" : "max_tokens"]: budget, ...(temperature != null ? { temperature } : {}), ...(reasoningEffort ? { reasoning_effort: reasoningEffort } : {}), ...(wantLogprobs ? { logprobs: true, top_logprobs: 5 } : {}) };
     }
     const payload = JSON.stringify(body);
     const transmitted = { api, url, model, bytes: Buffer.byteLength(payload), system_sha256: sha(system), user_sha256: sha(user), params: Object.fromEntries(Object.entries(body).filter(([k]) => !["messages", "system"].includes(k))) };
-    const r = await fetchImpl(url, { method: "POST", headers, body: payload, signal });
-    if (!r.ok) throw Object.assign(new Error(`hosted http ${r.status}`), { code: `HTTP_${r.status}` });
+    let r;
+    try { r = await fetchImpl(url, { method: "POST", headers, body: payload, signal }); } catch (error) { throw Object.assign(error instanceof Error ? error : new Error(String(error)), { transmitted }); }
+    if (!r.ok) throw Object.assign(new Error(`hosted http ${r.status}`), { code: `HTTP_${r.status}`, transmitted, response_status: r.status });
     const json = await r.json();
+    // Final text only: thinking / reasoning blocks are dropped here and never stored.
     const text = api === "anthropic-messages" ? (json.content ?? []).filter((c) => c.type === "text").map((c) => c.text).join("") : json.choices?.[0]?.message?.content ?? "";
-    return { text: String(text).trim(), logprobs: api === "anthropic-messages" ? null : json.choices?.[0]?.logprobs?.content ?? null, model: json.model ?? model, usage: json.usage ?? null, transmitted };
+    return { text: String(text).trim(), logprobs: api === "anthropic-messages" ? null : json.choices?.[0]?.logprobs?.content ?? null, model: json.model ?? model, usage: json.usage ?? null, transmitted, response_status: r.status ?? 200 };
   };
 }
 

@@ -15,13 +15,19 @@
 // Never: the world index dumped to a reader, a model-created entity, phonetic matching, a non-unique fuzzy
 // candidate. Ordering is stable: basis rank -> score (edit distance) -> canonical id.
 //
+// FUZZY GUARD (Reader Phase 2 Step 0.1): a correctly spelled ordinary English word is not a typo. Stage 3 never
+// fuzzy-binds a token that is, or inflects (-s / -es), a dictionary word listed in the frozen guard list
+// (tools/data/reader-fuzzy-guard.json: the public-domain web2 word list restricted to words that would otherwise
+// fuzzy-bind to this worldpack's single-token names; regenerate with tools/dialogue-reader-fuzzy-guard.js). Authored
+// exact labels and aliases are untouched, and genuine misspellings ("camra", "flashlght", "spctrmeter") still bind.
+//
 // NOT observer-visible (excluded before any matching, so a hidden entity typed by the player is indistinguishable
 // from a word that names nothing): `world_only` people (canonical characters the player has not been introduced
 // to) unless code lists them in `observer_known_ids`, and any entry marked `observer_hidden` / `hidden`.
 
 const { editDistance, PROTECTED_WORDS } = require("./dialogue-normalize");
 
-const LEXICON_VERSION = "yellow-beast-reader-lexicon@v1";
+const LEXICON_VERSION = "yellow-beast-reader-lexicon@v2";
 const BASIS_RANK = Object.freeze({ exact: 0, alias: 1, fuzzy: 2, nominated: 3 });
 // Authored reader aliases (interpretation only, by equipment type): everyday words a player uses for a canonical
 // item. Reviewed like the canonical-knowledge alias tables; never spoken by coworkers.
@@ -35,6 +41,26 @@ const REFERENT_PLACE_IDS = new Set(["complex", "threshold", "outpost-a"]);
 // Words that are never fuzzy-matched (function words, very common verbs / nouns near canonical vocabulary).
 const FUZZY_STOP = new Set([...PROTECTED_WORDS, "came", "case", "cart", "last", "lame", "camp", "damp", "lump", "limp", "late", "rope", "tape", "take", "make", "cope", "code", "core", "more", "store", "stage", "stages", "record", "records"]);
 const STEM = (w) => w.replace(/(?:ies)$/, "y").replace(/(?:es|s)$/, "");
+const FUZZY_GUARD_FILE = require("node:path").join(__dirname, "data", "reader-fuzzy-guard.json");
+const FUZZY_GUARD = (() => { try { return new Set(JSON.parse(require("node:fs").readFileSync(FUZZY_GUARD_FILE, "utf8")).words); } catch { return new Set(); } })();
+/** Is `w` (lower case) a dictionary word, or a regular -s / -es inflection of one, that the guard protects? */
+function fuzzyGuarded(w, guard = FUZZY_GUARD) { return guard.has(w) || (/s$/.test(w) && guard.has(w.slice(0, -1))) || (/es$/.test(w) && guard.has(w.slice(0, -2))); }
+/** May this token be fuzzy-matched at all (before the guard)? */
+const fuzzyEligible = (w) => Boolean(w) && w.length >= 4 && /^[a-z]+$/.test(w) && !FUZZY_STOP.has(w) && !/(?:ing|ed|ly)$/.test(w);
+/** Single-token lexicon forms stage 3 may fuzzy-match. */
+const singleForms = (lexicon) => nameForms(lexicon).filter((f) => f.tokens.length === 1 && f.tokens[0].length >= 4 && /^[a-z]/.test(f.tokens[0]));
+/** Fuzzy hits of one word against single-token forms (no guard): Damerau <= 1 at length 4-6, <= 2 at >= 7. */
+function fuzzyHits(w, single) {
+  const limit = w.length >= 7 ? 2 : 1;
+  const hits = [];
+  for (const f of single) {
+    const name = f.tokens[0];
+    if (Math.abs(name.length - w.length) > limit || name[0] !== w[0]) continue;
+    const d = editDistance(w, name, limit);
+    if (d <= limit) hits.push({ id: f.entry.id, kind: f.entry.kind, referent: f.entry.referent, basis: "fuzzy", score: d });
+  }
+  return hits;
+}
 
 const low = (s) => String(s ?? "").toLowerCase().replace(/[‘’]/g, "'");
 const words = (s) => low(s).split(/[^a-z0-9'-]+/).filter(Boolean);
@@ -134,19 +160,12 @@ function bindLine(tokens, lexicon, { raw = null } = {}) {
     push(i, longest, list.filter((x) => x.end === longest).map((x) => x.hit));
   }
   // Stage 3: token-level fuzzy match over single-token names (unique nearest entity only).
-  const single = forms.filter((f) => f.tokens.length === 1 && f.tokens[0].length >= 4 && /^[a-z]/.test(f.tokens[0]));
+  const single = singleForms(lexicon);
   for (let i = 0; i < tokens.length; i += 1) {
     const w = wordsAt[i];
-    if (!w || used[i] || w.length < 4 || !/^[a-z]+$/.test(w) || FUZZY_STOP.has(w) || /(?:ing|ed|ly)$/.test(w)) continue;
+    if (used[i] || !fuzzyEligible(w) || fuzzyGuarded(w)) continue;
     if (single.some((f) => f.tokens[0] === w)) continue;
-    const limit = w.length >= 7 ? 2 : 1;
-    const hits = [];
-    for (const f of single) {
-      const name = f.tokens[0];
-      if (Math.abs(name.length - w.length) > limit || name[0] !== w[0]) continue;
-      const d = editDistance(w, name, limit);
-      if (d <= limit) hits.push({ id: f.entry.id, kind: f.entry.kind, referent: f.entry.referent, basis: "fuzzy", score: d });
-    }
+    const hits = fuzzyHits(w, single);
     if (!hits.length) continue;
     const bestScore = Math.min(...hits.map((h) => h.score));
     const nearest = hits.filter((h) => h.score === bestScore);
@@ -236,4 +255,4 @@ function applyNominatedLookup(frame, input, bindings) {
   return { frame: outFrame, input: outInput, bindings: outBindings, lookups };
 }
 
-module.exports = { applyNominatedLookup, LEXICON_VERSION, BASIS_RANK, READER_ALIASES, observerVisible, observerLexicon, bindLine, lookupNominated, heardMentions, orderCandidates, isReferentKind };
+module.exports = { applyNominatedLookup, LEXICON_VERSION, FUZZY_STOP, FUZZY_GUARD, FUZZY_GUARD_FILE, fuzzyGuarded, fuzzyEligible, fuzzyHits, singleForms, nameForms, BASIS_RANK, READER_ALIASES, observerVisible, observerLexicon, bindLine, lookupNominated, heardMentions, orderCandidates, isReferentKind };

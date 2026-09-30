@@ -1,5 +1,5 @@
 {
- "note": "READER PHASE 2 -- scripted RARE-STATE development stratum (dev only; never calibration or sealed). Coworker questions go through the canonical ledger API (dialogue-state.recordInboundRequest), chip targets through the service, activity rounds through ordinary turns. Player lines written for coverage of inbound answers (yes/no, choice, person, item, time, free; uncertainty, refusal, counter-question, answer + follow-up), chip targets, conclude / withdraw and repairs. Authored 2026-09-30 by the Phase-2 implementer: development coverage, not an independent or blind corpus.",
+ "note": "READER PHASE 2 -- scripted RARE-STATE development stratum (dev only; never calibration or sealed). Coworker questions go through the canonical ledger API (dialogue-state.recordInboundRequest), chip targets through the service, activity rounds through ordinary turns. Player lines written for coverage of inbound answers (yes/no, choice, person, item, time, free; uncertainty, refusal, counter-question, answer + follow-up), chip targets, conclude / withdraw and repairs. Authored 2026-09-30 by the Phase-2 implementer: development coverage, not an independent or blind corpus. Step 0.1 (2026-09-30): every authored reply to a coworker question carries a developer coverage tag `reply` (answer / uncertainty / refusal / counter_question / answer_follow_up / own_answer_correction) used only for machine shape counts -- never a gold label; the scenario p2-own-answer-correction adds own-answer corrections (just-answered question i0).",
  "option_ids": {
   "CAMERA": "item-b2b47214d72b45d159",
   "LAMP": "q4-field-light-01"
@@ -21,7 +21,8 @@
      }
     },
     {
-     "say": "yep"
+     "say": "yep",
+     "reply": "answer"
     },
     {
      "coworker_asks": {
@@ -31,7 +32,8 @@
      }
     },
     {
-     "say": "nah, not yet"
+     "say": "nah, not yet",
+     "reply": "answer"
     },
     {
      "coworker_asks": {
@@ -41,7 +43,8 @@
      }
     },
     {
-     "say": "I think so"
+     "say": "I think so",
+     "reply": "answer"
     },
     {
      "coworker_asks": {
@@ -52,7 +55,8 @@
      }
     },
     {
-     "say": "It is, yeah."
+     "say": "It is, yeah.",
+     "reply": "answer"
     },
     {
      "coworker_asks": {
@@ -63,7 +67,8 @@
      }
     },
     {
-     "say": "not really"
+     "say": "not really",
+     "reply": "answer"
     },
     {
      "coworker_asks": {
@@ -73,7 +78,8 @@
      }
     },
     {
-     "say": "sure, thanks"
+     "say": "sure, thanks",
+     "reply": "answer"
     },
     {
      "coworker_asks": {
@@ -84,7 +90,8 @@
      }
     },
     {
-     "say": "Absolutely not."
+     "say": "Absolutely not.",
+     "reply": "answer"
     },
     {
      "coworker_asks": {
@@ -95,7 +102,8 @@
      }
     },
     {
-     "say": "barely"
+     "say": "barely",
+     "reply": "answer"
     },
     {
      "coworker_asks": {
@@ -105,7 +113,8 @@
      }
     },
     {
-     "say": "Yes. Are you?"
+     "say": "Yes. Are you?",
+     "reply": "answer_follow_up"
     },
     {
      "coworker_asks": {
@@ -116,7 +125,8 @@
      }
     },
     {
-     "say": "no, we just met"
+     "say": "no, we just met",
+     "reply": "answer"
     },
     {
      "coworker_asks": {
@@ -126,7 +136,8 @@
      }
     },
     {
-     "say": "kinda"
+     "say": "kinda",
+     "reply": "answer"
     },
     {
      "coworker_asks": {
@@ -136,7 +147,8 @@
      }
     },
     {
-     "say": "No, let's go."
+     "say": "No, let's go.",
+     "reply": "answer"
     },
     {
      "coworker_asks": {
@@ -146,7 +158,8 @@
      }
     },
     {
-     "say": "Oh no. No I didn't."
+     "say": "Oh no. No I didn't.",
+     "reply": "answer"
     },
     {
      "coworker_asks": {
@@ -156,7 +169,8 @@
      }
     },
     {
-     "say": "not me, Tonya should"
+     "say": "not me, Tonya should",
+     "reply": "answer"
     }
    ]
   },
@@ -175,7 +189,8 @@
      }
     },
     {
-     "say": "hmm, no idea honestly"
+     "say": "hmm, no idea honestly",
+     "reply": "uncertainty"
     },
     {
      "coworker_asks": {
@@ -186,7 +201,8 @@
      }
     },
     {
-     "say": "I'd rather not get into it"
+     "say": "I'd rather not get into it",
+     "reply": "refusal"
     },
     {
      "coworker_asks": {
@@ -200,7 +216,8 @@
      }
     },
     {
-     "say": "why do you ask?"
+     "say": "why do you ask?",
+     "reply": "counter_question"
     },
     {
      "coworker_asks": {
@@ -211,7 +228,8 @@
      }
     },
     {
-     "say": "maybe?"
+     "say": "maybe?",
+     "reply": "uncertainty"
     },
     {
      "coworker_asks": {
@@ -221,7 +239,8 @@
      }
     },
     {
-     "say": "pass"
+     "say": "pass",
+     "reply": "refusal"
     },
     {
      "coworker_asks": {
@@ -232,7 +251,8 @@
      }
     },
     {
-     "say": "what about you?"
+     "say": "what about you?",
+     "reply": "counter_question"
     },
     {
      "coworker_asks": {
@@ -242,7 +262,8 @@
      }
     },
     {
-     "say": "not sure, Maxwell maybe?"
+     "say": "not sure, Maxwell maybe?",
+     "reply": "uncertainty"
     },
     {
      "coworker_asks": {
@@ -253,7 +274,8 @@
      }
     },
     {
-     "say": "Why, do I look nervous?"
+     "say": "Why, do I look nervous?",
+     "reply": "counter_question"
     },
     {
      "coworker_asks": {
@@ -264,7 +286,8 @@
      }
     },
     {
-     "say": "that's personal"
+     "say": "that's personal",
+     "reply": "refusal"
     },
     {
      "coworker_asks": {
@@ -278,7 +301,8 @@
      }
     },
     {
-     "say": "I can't decide"
+     "say": "I can't decide",
+     "reply": "uncertainty"
     }
    ]
   },
@@ -301,7 +325,8 @@
      }
     },
     {
-     "say": "camera"
+     "say": "camera",
+     "reply": "answer"
     },
     {
      "coworker_asks": {
@@ -315,7 +340,8 @@
      }
     },
     {
-     "say": "the flashlight, I guess"
+     "say": "the flashlight, I guess",
+     "reply": "answer"
     },
     {
      "coworker_asks": {
@@ -329,7 +355,8 @@
      }
     },
     {
-     "say": "neither"
+     "say": "neither",
+     "reply": "answer"
     },
     {
      "coworker_asks": {
@@ -343,7 +370,8 @@
      }
     },
     {
-     "say": "both, if I can"
+     "say": "both, if I can",
+     "reply": "answer"
     },
     {
      "coworker_asks": {
@@ -357,7 +385,8 @@
      }
     },
     {
-     "say": "the first one"
+     "say": "the first one",
+     "reply": "answer"
     },
     {
      "coworker_asks": {
@@ -371,7 +400,8 @@
      }
     },
     {
-     "say": "lamp. definitely the lamp"
+     "say": "lamp. definitely the lamp",
+     "reply": "answer"
     },
     {
      "coworker_asks": {
@@ -385,7 +415,8 @@
      }
     },
     {
-     "say": "the 35mm"
+     "say": "the 35mm",
+     "reply": "answer"
     },
     {
      "coworker_asks": {
@@ -399,7 +430,8 @@
      }
     },
     {
-     "say": "either is fine"
+     "say": "either is fine",
+     "reply": "answer"
     },
     {
      "coworker_asks": {
@@ -413,7 +445,8 @@
      }
     },
     {
-     "say": "the camra"
+     "say": "the camra",
+     "reply": "answer"
     },
     {
      "coworker_asks": {
@@ -427,7 +460,8 @@
      }
     },
     {
-     "say": "whichever you don't want"
+     "say": "whichever you don't want",
+     "reply": "answer"
     }
    ]
   },
@@ -446,7 +480,8 @@
      }
     },
     {
-     "say": "Tonya"
+     "say": "Tonya",
+     "reply": "answer"
     },
     {
      "coworker_asks": {
@@ -456,7 +491,8 @@
      }
     },
     {
-     "say": "probably Malcolm"
+     "say": "probably Malcolm",
+     "reply": "answer"
     },
     {
      "coworker_asks": {
@@ -466,7 +502,8 @@
      }
     },
     {
-     "say": "Giselle, no offense"
+     "say": "Giselle, no offense",
+     "reply": "answer"
     },
     {
      "coworker_asks": {
@@ -476,7 +513,8 @@
      }
     },
     {
-     "say": "you do, Malcolm"
+     "say": "you do, Malcolm",
+     "reply": "answer"
     },
     {
      "coworker_asks": {
@@ -486,7 +524,8 @@
      }
     },
     {
-     "say": "Dr. Maxwell"
+     "say": "Dr. Maxwell",
+     "reply": "answer"
     },
     {
      "coworker_asks": {
@@ -496,7 +535,8 @@
      }
     },
     {
-     "say": "the lamp"
+     "say": "the lamp",
+     "reply": "answer"
     },
     {
      "coworker_asks": {
@@ -506,7 +546,8 @@
      }
     },
     {
-     "say": "the duffle bag"
+     "say": "the duffle bag",
+     "reply": "answer"
     },
     {
      "coworker_asks": {
@@ -516,7 +557,8 @@
      }
     },
     {
-     "say": "just the camera"
+     "say": "just the camera",
+     "reply": "answer"
     },
     {
      "coworker_asks": {
@@ -526,7 +568,8 @@
      }
     },
     {
-     "say": "the spectrometer, it's heavy"
+     "say": "the spectrometer, it's heavy",
+     "reply": "answer"
     },
     {
      "coworker_asks": {
@@ -536,7 +579,8 @@
      }
     },
     {
-     "say": "me, I guess"
+     "say": "me, I guess",
+     "reply": "answer"
     }
    ]
   },
@@ -556,7 +600,8 @@
      }
     },
     {
-     "say": "about two years"
+     "say": "about two years",
+     "reply": "answer"
     },
     {
      "coworker_asks": {
@@ -567,7 +612,8 @@
      }
     },
     {
-     "say": "since this morning, it's my first day"
+     "say": "since this morning, it's my first day",
+     "reply": "answer"
     },
     {
      "coworker_asks": {
@@ -577,7 +623,8 @@
      }
     },
     {
-     "say": "an hour ago"
+     "say": "an hour ago",
+     "reply": "answer"
     },
     {
      "coworker_asks": {
@@ -588,7 +635,8 @@
      }
     },
     {
-     "say": "fine, thanks for asking"
+     "say": "fine, thanks for asking",
+     "reply": "answer"
     },
     {
      "coworker_asks": {
@@ -599,7 +647,8 @@
      }
     },
     {
-     "say": "field research, mostly"
+     "say": "field research, mostly",
+     "reply": "answer"
     },
     {
      "coworker_asks": {
@@ -610,7 +659,8 @@
      }
     },
     {
-     "say": "he seems intense"
+     "say": "he seems intense",
+     "reply": "answer"
     },
     {
      "coworker_asks": {
@@ -620,7 +670,8 @@
      }
     },
     {
-     "say": "honestly? nothing scary"
+     "say": "honestly? nothing scary",
+     "reply": "answer"
     },
     {
      "coworker_asks": {
@@ -630,7 +681,8 @@
      }
     },
     {
-     "say": "a few hours, maybe"
+     "say": "a few hours, maybe",
+     "reply": "answer"
     },
     {
      "coworker_asks": {
@@ -640,7 +692,8 @@
      }
     },
     {
-     "say": "I'd rather keep that to myself"
+     "say": "I'd rather keep that to myself",
+     "reply": "refusal"
     },
     {
      "coworker_asks": {
@@ -651,7 +704,8 @@
      }
     },
     {
-     "say": "Nervous. You?"
+     "say": "Nervous. You?",
+     "reply": "answer_follow_up"
     }
    ]
   },
@@ -671,7 +725,8 @@
      }
     },
     {
-     "say": "No. Have you, Tonya?"
+     "say": "No. Have you, Tonya?",
+     "reply": "answer_follow_up"
     },
     {
      "coworker_asks": {
@@ -685,7 +740,8 @@
      }
     },
     {
-     "say": "Camera. Where are we going first?"
+     "say": "Camera. Where are we going first?",
+     "reply": "answer_follow_up"
     },
     {
      "coworker_asks": {
@@ -695,7 +751,8 @@
      }
     },
     {
-     "say": "Giselle. And who has the duffle?"
+     "say": "Giselle. And who has the duffle?",
+     "reply": "answer_follow_up"
     },
     {
      "coworker_asks": {
@@ -706,7 +763,8 @@
      }
     },
     {
-     "say": "A little, yeah. Thanks for asking."
+     "say": "A little, yeah. Thanks for asking.",
+     "reply": "answer"
     },
     {
      "coworker_asks": {
@@ -717,7 +775,8 @@
      }
     },
     {
-     "say": "Two years. What about you, Giselle?"
+     "say": "Two years. What about you, Giselle?",
+     "reply": "answer_follow_up"
     },
     {
      "coworker_asks": {
@@ -727,7 +786,8 @@
      }
     },
     {
-     "say": "yes. okay, what's next?"
+     "say": "yes. okay, what's next?",
+     "reply": "answer_follow_up"
     },
     {
      "coworker_asks": {
@@ -741,7 +801,8 @@
      }
     },
     {
-     "say": "the lamp please. Malcolm, can you take the camera?"
+     "say": "the lamp please. Malcolm, can you take the camera?",
+     "reply": "answer_follow_up"
     },
     {
      "coworker_asks": {
@@ -751,7 +812,8 @@
      }
     },
     {
-     "say": "Ready. Let's go."
+     "say": "Ready. Let's go.",
+     "reply": "answer_follow_up"
     }
    ]
   },
@@ -839,6 +901,147 @@
     },
     {
      "say": "Right, that's all of us then. What's next?"
+    }
+   ]
+  },
+  {
+   "id": "p2-own-answer-correction",
+   "provider": "garbage",
+   "steps": [
+    {
+     "say": "Morning, all."
+    },
+    {
+     "coworker_asks": {
+      "name": "Tonya",
+      "text": "Have you been inside before?",
+      "answer_shape": "yes_no",
+      "predicate": "person.complex_experience"
+     }
+    },
+    {
+     "say": "yes",
+     "reply": "answer"
+    },
+    {
+     "say": "wait, no, sorry. I haven't.",
+     "reply": "own_answer_correction"
+    },
+    {
+     "coworker_asks": {
+      "name": "Giselle",
+      "text": "Camera or flashlight?",
+      "answer_shape": "choice",
+      "options": [
+       "@CAMERA",
+       "@LAMP"
+      ]
+     }
+    },
+    {
+     "say": "camera",
+     "reply": "answer"
+    },
+    {
+     "say": "actually, I meant the lamp",
+     "reply": "own_answer_correction"
+    },
+    {
+     "coworker_asks": {
+      "name": "Malcolm",
+      "text": "Who should carry the duffle?",
+      "answer_shape": "person"
+     }
+    },
+    {
+     "say": "Malcolm",
+     "reply": "answer"
+    },
+    {
+     "say": "sorry, I mean Tonya",
+     "reply": "own_answer_correction"
+    },
+    {
+     "coworker_asks": {
+      "name": "Tonya",
+      "text": "How long have you been with ASYNC?",
+      "answer_shape": "time",
+      "predicate": "person.async_tenure"
+     }
+    },
+    {
+     "say": "two years",
+     "reply": "answer"
+    },
+    {
+     "say": "no wait, three years",
+     "reply": "own_answer_correction"
+    },
+    {
+     "coworker_asks": {
+      "name": "Giselle",
+      "text": "What are you carrying?",
+      "answer_shape": "item"
+     }
+    },
+    {
+     "say": "the lamp",
+     "reply": "answer"
+    },
+    {
+     "say": "scratch that, the camera",
+     "reply": "own_answer_correction"
+    },
+    {
+     "coworker_asks": {
+      "name": "Malcolm",
+      "text": "You nervous?",
+      "answer_shape": "yes_no",
+      "predicate": "person.nervousness"
+     }
+    },
+    {
+     "say": "nope",
+     "reply": "answer"
+    },
+    {
+     "say": "okay, honestly, a little",
+     "reply": "own_answer_correction"
+    },
+    {
+     "coworker_asks": {
+      "name": "Tonya",
+      "text": "Which one do you want?",
+      "answer_shape": "choice",
+      "options": [
+       "@CAMERA",
+       "@LAMP"
+      ]
+     }
+    },
+    {
+     "say": "the flashlight",
+     "reply": "answer"
+    },
+    {
+     "say": "hmm, no, the camera after all",
+     "reply": "own_answer_correction"
+    },
+    {
+     "coworker_asks": {
+      "name": "Giselle",
+      "text": "What do you do here?",
+      "answer_shape": "free_short_answer",
+      "predicate": "person.role"
+     }
+    },
+    {
+     "say": "logistics",
+     "reply": "answer"
+    },
+    {
+     "say": "I mean field research, sorry",
+     "reply": "own_answer_correction"
     }
    ]
   }

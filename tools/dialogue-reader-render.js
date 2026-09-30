@@ -19,8 +19,9 @@
 const crypto = require("node:crypto");
 const registry = require("./dialogue-registry");
 const W = require("./dialogue-reader-wire");
+const RF = require("./dialogue-reader-frame");
 
-const RENDER_VERSION = "yellow-beast-reader-render@v1";
+const RENDER_VERSION = "yellow-beast-reader-render@v2";
 const sha = (s) => crypto.createHash("sha256").update(s).digest("hex");
 
 const EXTRA_GUIDE = Object.freeze({
@@ -32,33 +33,86 @@ const EXTRA_GUIDE = Object.freeze({
   "conversation.response_event": "whether / how someone answered",
   "conversation.repetition": "say that again"
 });
-const facetGuide = () => { const g = registry.advisoryFacetGuide(); return registry.ids().map((id) => `${W.FACET_CODES[id]} = ${g[id] ?? EXTRA_GUIDE[id] ?? id}`); };
 
-// The static system text. Changing a word changes RENDER_VERSION's system digest (recorded in every receipt).
-const CONTRACT_LINES = [
-  "You read ONE line a player typed to coworkers at a table and write how it is meant. Language only: never decide who answers, never state facts, never invent people, things or events. Use only the labels given in the input.",
-  "Labels: p person present, n name the player typed, e thing the player typed, r thing that may be referred to, q earlier request, i1 coworker question waiting for the player's answer, i0 coworker question just answered, v1 activity round, c1 the player's own previous claim, a sentence a coworker was heard to say, o answer option, s0/s1 an earlier act of this same line.",
-  "Answer in a compact code: one act per clause-level act (at most 3), joined by \" ; \". Each act is: SPEECH FACET ADDRESS RELATION, then optional key=value tags.",
-  "SPEECH: greet bye intro(introduces self) ack(acknowledges/okay) thanks call(gets attention) state(statement/claim) sarcasm ask(question) request more(elliptical follow-up: \"and you?\", \"who else?\") repair(fixes something the player said) answer(answers i1) aside.",
-  "FACET: what the act asks or claims, a code below; ? = asks something but no code fits; - = asks nothing.",
-  "ADDRESS: - (nobody named) | @n1 (said to that named person; @n1+n2 several) | all | others (the rest) | except@n1 | you (an unnamed you).",
-  "RELATION: new | cont:T (continues T) | fix:T (repairs T) | back:T (returns to T) | nudge:T (presses unanswered T) | reply:i1 (answers the coworker question) | drop:T (withdraws T) | end:v1 (concludes the activity round; plain end if nothing is open). T is a q, i, s, v1, a or c1 label.",
-  "Tags (only when true): f=wh|yn|choice|decl|indirect|tag|count question form; pol=neg|inv; t=now|today|earlier|ever|past time the line sets; m=each|any|all who should answer, if said; r=r2 or r=e1>r2 the thing meant (r=there / r=inside for a place pointed at, r=unsure if unclear, r=none); nom=3-4 tokens naming a thing no label fits; s=you|me|us|group|named:n2|none whom the facet is about; ia=ans|unsure|refuse|counter[:o1|yes|no|both|either|neither|noneof] answer to i1; rk=who|what|topic|when|unanswered|mine what a repair fixes; nr=n1:voc+n2:men roles of typed names (voc said to, men mentioned, ans answer, greet, fix new addressee), default @names are voc; rel=q1 and n=2 for others; echo=a1 repeats a heard sentence; si=3-4 the player's own name; do=move|stay|follow|wait|return|report|assist|investigate|transfer|query|other[:r1] an action asked for; ab=force|address|facet|relation|referent|subject|time|answer fields you cannot tell; at=5 first token of every act after the first; sp=3-7 explicit span.",
-  "Write only the code line."
-];
-const SYSTEM_TEXT = [...CONTRACT_LINES, "Facet codes:", ...facetGuide()].join("\n");
+// ─── the frozen SYSTEM text (render v2, Reader Phase 2 Step 0.1) ─────────────────────────────────────
+// ONE representation-neutral SEMANTIC CONTRACT (semanticLines) is spelled twice: in the compact wire (the reader's
+// output) and in minimal JSON (the development wire-vs-JSON control). The two system texts are built from the same
+// template, so every gloss, convention and field meaning is word-for-word identical; only the spelling of values and
+// the output-format lines differ. The same semantic lines are the gold labeller's field definitions
+// (docs/reader/READER_PHASE2_LABEL_GUIDE.md §3 embeds them verbatim; ed33c enforces it). Changing a word changes the
+// system digest (recorded in every receipt and pinned in ed33a).
+const T = W.WIRE_TABLES;
+const WIRE_TAG = Object.freeze({ question_form: "f", polarity: "pol", temporal: "t", respondent_mode: "m", referent: "r", nominated: "nom", subject: "s", inbound_answer: "ia", repair_kind: "rk", name_roles: "nr", echo: "echo", self_intro: "si", requested_action: "do", abstain: "ab", span: "sp", at: "at", relative_to: "rel", count: "n" });
+const WIRE_TAG_TABLE = Object.freeze({ question_form: T.QFORM, polarity: T.POLARITY, temporal: T.TEMPORAL, respondent_mode: T.MODE, subject: T.SUBJECT, inbound_answer: T.INBOUND_KIND, repair_kind: T.REPAIR, name_roles: T.ROLE, requested_action: T.ACTION, abstain: T.ABSTAIN });
+const JSON_PATH = Object.freeze({ inbound_answer: "inbound_answer.kind", subject: "subject.kind", requested_action: "requested_action.family", self_intro: "self_intro.span", echo: "echo.anchor", relative_to: "address.relative_to", count: "address.count", nominated: "referent.nominated", name_roles: "name_roles[].role" });
+const SPELL = Object.freeze({
+  wire: Object.freeze({
+    speech: (v) => T.SPEECH[v],
+    facet_none: "?", facet_na: "-",
+    address: { NONE: "-", NAMED: "@n1 (several: @n1+n2)", ALL: "all", OTHERS: "others", EXCEPT: "except@n1", SECOND_PERSON: "you" },
+    relation: (kind, target) => `${T.RELATION[kind]}${target ? `:${target}` : ""}`,
+    tag: (field, value) => `${WIRE_TAG[field]}=${WIRE_TAG_TABLE[field]?.[value] ?? value}`,
+    value: (field, v) => WIRE_TAG_TABLE[field]?.[v] ?? v,
+    tags: (field, values) => `${WIRE_TAG[field]}=${values.map((v) => WIRE_TAG_TABLE[field]?.[v] ?? v).join("|")}`,
+    referent: (v) => `${WIRE_TAG.referent}=${T.REF_SPECIAL[v] ?? v}`,
+    option: (v) => T.OPTION_SPECIAL[v] ?? v
+  }),
+  json: Object.freeze({
+    speech: (v) => v,
+    facet_none: "NONE_ASKING", facet_na: "NOT_APPLICABLE",
+    address: { NONE: "address.op=NONE", NAMED: "address.op=NAMED address.names=[n1] (several: [n1,n2])", ALL: "address.op=ALL", OTHERS: "address.op=OTHERS", EXCEPT: "address.op=EXCEPT address.names=[n1]", SECOND_PERSON: "address.op=SECOND_PERSON" },
+    relation: (kind, target) => `relation.kind=${kind}${target ? ` relation.target=${target}` : ""}`,
+    value: (field, v) => v,
+    tags: (field, values) => `${JSON_PATH[field] ?? field}=${values.join("|")}`,
+    tag: (field, value) => `${JSON_PATH[field] ?? field}=${value}`,
+    referent: (v) => `referent.candidate=${v}`,
+    option: (v) => v
+  })
+});
+
+/** The representation-neutral semantic contract, spelled with `sp` (SPELL.wire | SPELL.json). */
+function semanticLines(sp) {
+  const S = sp.speech;
+  const R = sp.relation;
+  const tg = sp.tag;
+  return [
+    "TASK. You read ONE line a player typed to coworkers at a table and write how it is meant. Language only: never decide who answers, never state facts, never invent people, things or events. Use only the labels given in the input.",
+    "LABELS. p person present, n name the player typed, e thing the player typed, r thing that may be referred to, q earlier request, i1 coworker question waiting for the player's answer, i0 coworker question just answered, v1 activity round, c1 the player's own previous claim, a sentence a coworker was heard to say, o answer option, s0/s1 an earlier act of this same line.",
+    "ACTS. One act per clause-level act the line performs (at most 3), in line order.",
+    `SPEECH ACT (what the clause does): ${S("greeting")} greets; ${S("farewell")} says goodbye; ${S("self_introduction")} introduces self; ${S("social_acknowledgment")} acknowledges / okay; ${S("thanks")} thanks; ${S("attention_call")} gets attention; ${S("statement")} states or claims; ${S("sarcasm")} a sarcastic remark; ${S("question")} asks; ${S("request")} asks someone to do something; ${S("repair")} fixes something the player said; ${S("elliptical_continuation")} an elliptical follow-up ("and you?", "who else?"); ${S("answer")} answers the waiting coworker question i1 (only then); ${S("aside")} not said to the table. A wh-led line is a remark (${S("statement")} / ${S("sarcasm")}) only when no asking reading is available; when in doubt write the asking reading and abstain on force.`,
+    `FACET: what the act asks (or, on a statement, claims), one facet code below. ${sp.facet_none} = it asks, but its words name no facet in the table. ${sp.facet_na} = it asks nothing.`,
+    `ADDRESS (address language in the words only: whom the words are said to): ${sp.address.NONE} nobody named | ${sp.address.NAMED} said to that named person | ${sp.address.ALL} everyone | ${sp.address.OTHERS} the rest (${tg("relative_to", "q1")} and ${tg("count", "2")} when said) | ${sp.address.EXCEPT} everyone but | ${sp.address.SECOND_PERSON} an unnamed you. A name talked ABOUT is not an address: give it the mention role.`,
+    `RELATION (the antecedent the words relate to, by its label T, a q, i, s, v1, a or c1 label): ${R("new")} | ${R("continuation", "T")} continues T | ${R("repair", "T")} repairs T | ${R("topic_return", "T")} returns to T | ${R("attention", "T")} presses unanswered T | ${R("answer", "i1")} answers the coworker question | ${R("withdraw", "T")} withdraws T | ${R("conclude", "v1")} concludes the open activity round (${R("conclude")} when nothing is open). Code, never you, decides any closure or who answers.`,
+    `OPTIONAL FIELDS (only when true; defaults are omitted): ${sp.tags("question_form", RF.QUESTION_FORMS.filter((f) => f !== "none"))} question form; ${sp.tags("polarity", ["negative", "inverted"])}; ${sp.tags("temporal", RF.TEMPORALS.filter((t) => t !== "unspecified"))} the time the line sets; ${sp.tags("respondent_mode", ["each", "any", "all"])} who should answer, only when the words say it ("each of you", "anyone"); ${sp.referent("r2")} the thing meant (${sp.referent("DEIXIS_THERE")} / ${sp.referent("DEIXIS_INSIDE")} a place pointed at without naming it, ${sp.referent("AMBIGUOUS")} the words are genuinely unclear, ${sp.referent("NONE")}); ${tg("nominated", "3-4")} tokens naming a thing no label fits; ${sp.tags("subject", RF.SUBJECT_KINDS)} whom a person facet is about, only when it is not simply the addressee (named: with the n labels); ${sp.tags("inbound_answer", RF.INBOUND_KINDS.filter((k) => k !== "none"))} with an option o1|${RF.INBOUND_OPTION_SPECIAL.map(sp.option).join("|")}, the answer to i1, only while i1 waits; ${sp.tags("repair_kind", RF.REPAIR_KINDS)} what a repair fixes; ${sp.tags("name_roles", RF.NAME_ROLES)} roles of typed names (a name in the address defaults to ${sp.value("name_roles", "vocative")}, on a greeting or farewell to ${sp.value("name_roles", "greeting_target")}); ${tg("echo", "a1")} repeats a heard sentence; ${tg("self_intro", "3-4")} the player's own name; ${sp.tags("requested_action", RF.ACTION_FAMILIES)} an action asked for (with its r label); ${sp.tags("abstain", RF.ABSTAIN_FIELDS)} fields the line itself cannot settle; ${tg("span", "3-7")} an explicit token span.`,
+    `CONVENTION A (follow-up / ellipsis facet). When an act only continues, re-asks, presses or points back at an earlier question (an elliptical follow-up, a bare "when?", "who else?", "and you?") and its words do not themselves express a facet, write ${sp.facet_none} with the relation to what it continues: the facet is inherited from that target by code. Do not repeat or invent the target's facet. Write a facet code only when the words express one, a new facet or the same one restated in full.`,
+    `CONVENTION B (chip). "player chose to speak to" is where the player's message is delivered, set by the interface. It is not address language. Address records only what the words themselves say: with no vocative, name or address phrase in the line, write ${sp.address.NONE} even when a person was chosen.`,
+    `CONVENTION C (inclusive group). "We all ...", "are we all ...", "all of us" put the speaker's group in the SUBJECT (${tg("subject", "group_inclusive")}); they are not address language. Write ${sp.address.ALL} only when the words are said to everyone ("everyone", "you all", "guys", "all of you").`,
+    `CONVENTION D (relation antecedent). A relation target is a supplied label that the words themselves continue, repair, return to, press or answer. A discourse marker ("so", "anyway", "okay") alone never makes a continuation. Never choose an antecedent only because it is about something similar: with no antecedent the words point back to, the relation is ${R("new")}.`,
+    `ABSTAIN when the line and the input together cannot settle a field (not when you are merely unsure of these rules).`
+  ];
+}
+const OUTPUT_LINES = Object.freeze({
+  wire: [
+    "OUTPUT: one line of compact code. Acts joined by \" ; \". Each act: SPEECH FACET ADDRESS RELATION, then optional key=value fields separated by spaces; every act after the first adds at=<its first token index>. Several names or fields are joined by +. A referent the player typed as a thing carries its span: r=e1>r2. A value with its label: ia=ans:o1, s=named:n2, do=move:r1, nr=n1:voc+n2:men.",
+    "Write only the code line: no quotes, no code fence, no explanation."
+  ],
+  json: [
+    "OUTPUT: one JSON object {\"acts\":[...]}, acts in line order. Each act has span [first,last] token indices and speech_act, facet, address {op,names}, relation {kind,target}; add any optional field only when not the default. A dotted name a.b=v above means the key path {\"a\":{\"b\":v}}; token spans are [first,last]; lists are JSON arrays. A referent the player typed as a thing carries its span: referent {span:\"e1\",candidate:\"r2\"}. A value with its label: inbound_answer {kind,option}, subject {kind,names}, requested_action {family,object}, name_roles [{name,role}].",
+    "Write only the JSON object: no code fence, no explanation."
+  ]
+});
+const glossOf = (id) => registry.advisoryFacetGuide()[id] ?? EXTRA_GUIDE[id] ?? id;
+/** The system text for one output representation. */
+function systemText(output = "wire") {
+  const sp = output === "json" ? SPELL.json : SPELL.wire;
+  const key = output === "json" ? (id) => id : (id) => W.FACET_CODES[id];
+  return [...semanticLines(sp), ...OUTPUT_LINES[output === "json" ? "json" : "wire"], "FACET CODES:", ...registry.ids().map((id) => `${key(id)} = ${glossOf(id)}`)].join("\n");
+}
+const SYSTEM_TEXT = systemText("wire");
 const SYSTEM_DIGEST = sha(SYSTEM_TEXT);
-// Step 14 (teacher wire-vs-JSON check, development only): the SAME semantic contract and the SAME user render, with
-// the answer written as minimal JSON instead of the compact wire. Only the output-format lines differ.
-const SYSTEM_TEXT_JSON = [
-  ...CONTRACT_LINES.slice(0, 2),
-  "Answer with one JSON object {\"acts\":[...]} (at most 3 acts, in line order). Each act has span [first,last] token indices, speech_act, facet, address {op,names}, relation {kind,target}; include any of question_form, polarity, name_roles [{name,role}], repair_kind, referent {span,candidate,nominated}, temporal, respondent_mode, inbound_answer {kind,option}, subject {kind,names}, self_intro {span}, echo {anchor}, requested_action {family,object}, abstain [...] only when not the default.",
-  "speech_act: greeting farewell self_introduction social_acknowledgment thanks attention_call statement sarcasm question request repair elliptical_continuation answer aside.",
-  "facet: a code below, or NONE_ASKING (asks, nothing fits) / NOT_APPLICABLE (asks nothing). address.op: NAMED ALL OTHERS EXCEPT SECOND_PERSON NONE. relation.kind: new continuation repair topic_return attention answer withdraw conclude (target: a q, i, s, v1, a or c1 label, or null).",
-  "Defaults: question_form none, polarity positive, temporal unspecified, respondent_mode unspecified, name_roles = vocative for NAMED names. Other values: question_form wh yes_no choice declarative indirect tag count; polarity negative inverted; temporal now today earlier ever historical; respondent_mode each any all; referent.candidate an r label or NONE AMBIGUOUS DEIXIS_THERE DEIXIS_INSIDE; subject.kind addressee speaker named group group_inclusive none; inbound_answer.kind answer uncertainty refusal counter_question none, option an o label or YES NO BOTH NEITHER EITHER NONE_OF_OFFERED; repair_kind addressee referent facet temporal unanswered own_answer; name role vocative mention answer_to_inbound greeting_target repair_target; abstain force address facet relation referent subject temporal inbound_answer.",
-  "Write only the JSON object, no prose."
-];
-const SYSTEM_TEXT_JSON_FULL = [...SYSTEM_TEXT_JSON, "Facet codes (write the full facet id on the left):", ...registry.ids().map((id) => `${id} = ${registry.advisoryFacetGuide()[id] ?? EXTRA_GUIDE[id] ?? id}`)].join("\n");
+// Development wire-vs-JSON control (Step 0.1): the SAME semantic contract and the SAME user render; only the output
+// representation (value spellings and the output lines) differs.
+const SYSTEM_TEXT_JSON_FULL = systemText("json");
 const SYSTEM_DIGEST_JSON = sha(SYSTEM_TEXT_JSON_FULL);
 
 const STATE = Object.freeze({ OPEN: "open", PARTIALLY_SATISFIED: "partly answered", SATISFIED: "answered", ANSWERED_UNKNOWN: "answered: doesn't know", ANSWERED_NOT_ESTABLISHED: "answered: not established", CLARIFYING: "clarifying", ABANDONED: "dropped", SUPERSEDED: "replaced", CLOSED: "closed" });
@@ -113,4 +167,4 @@ function renderReaderPrompt(input, { output = "wire" } = {}) {
   return Object.freeze({ version: RENDER_VERSION, output: json ? "json" : "wire", wire_version: W.WIRE_VERSION, wire_digest: W.WIRE_DIGEST, system, system_digest: systemDigest, user, user_digest: sha(user), render_digest: sha(`${systemDigest}\n${user}`) });
 }
 
-module.exports = { RENDER_VERSION, SYSTEM_TEXT, SYSTEM_DIGEST, SYSTEM_TEXT_JSON: SYSTEM_TEXT_JSON_FULL, SYSTEM_DIGEST_JSON, renderReaderPrompt, renderUser };
+module.exports = { RENDER_VERSION, SYSTEM_TEXT, SYSTEM_DIGEST, SYSTEM_TEXT_JSON: SYSTEM_TEXT_JSON_FULL, SYSTEM_DIGEST_JSON, SPELL, semanticLines, systemText, OUTPUT_LINES, renderReaderPrompt, renderUser };

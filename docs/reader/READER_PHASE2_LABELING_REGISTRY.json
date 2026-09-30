@@ -1,0 +1,19 @@
+{
+ "version": "yellow-beast-reader-labeling-registry@v1",
+ "status": "families NOT yet recorded: record them (owner decision) BEFORE any labelling begins; hosted teacher runs and MODEL_ASSISTED_REVIEW labels are refused by tools/dialogue-reader-labels.js and tools/dialogue-reader-replay.js until then",
+ "teacher": { "family": null, "provider": null, "model": null, "recorded_by": null, "recorded_at": null },
+ "automated_reviewer": { "family": null, "provider": null, "model": null, "recorded_by": null, "recorded_at": null },
+ "human": { "primary_labelers": [], "adjudicator": null },
+ "recommendation": {
+  "teacher": "a non-Claude top-tier reasoning model (Claude authored much of the current prompt, fixtures and review material)",
+  "automated_reviewer": "Claude family permitted",
+  "human": "primary labelling and adjudication authority"
+ },
+ "rules": [
+  "The teacher's model family differs from the automated review-labeler's family.",
+  "Teacher output never produces gold, in any label state.",
+  "An evaluated reader arm is never the label source of its own evaluation (gold whose labeller shares the arm's family is excluded from that arm's score).",
+  "Automated label suggestions (MODEL_ASSISTED_REVIEW) are hidden from the human primary labeller until the primary label is committed; a review created before the primary's committed_at invalidates the adjudicated row.",
+  "Only ADJUDICATED_GOLD, adjudicated by a human, counts for headline teacher scoring."
+ ]
+}

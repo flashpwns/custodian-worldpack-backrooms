@@ -166,6 +166,178 @@
     "power": 0.9
    },
    "n": 398
+  },
+  {
+   "gate": "G4 false-confident <= 3% EXACT (Clopper-Pearson), n = 1,000 turns",
+   "scenario": {
+    "total": 1000,
+    "accepted": 880,
+    "true_fc": 0.01,
+    "alpha": 0.05
+   },
+   "n": {
+    "n": 880,
+    "critical_k": 17,
+    "power": 0.996
+   }
+  },
+  {
+   "gate": "G4 false-confident <= 3% EXACT (Clopper-Pearson), n = 1,000 turns",
+   "scenario": {
+    "total": 1000,
+    "accepted": 880,
+    "true_fc": 0.015,
+    "alpha": 0.05
+   },
+   "n": {
+    "n": 880,
+    "critical_k": 17,
+    "power": 0.881
+   }
+  },
+  {
+   "gate": "G4 false-confident <= 3% EXACT (Clopper-Pearson), n = 1,000 turns",
+   "scenario": {
+    "total": 1000,
+    "accepted": 880,
+    "true_fc": 0.02,
+    "alpha": 0.05
+   },
+   "n": {
+    "n": 880,
+    "critical_k": 17,
+    "power": 0.506
+   }
+  },
+  {
+   "gate": "G4 false-confident <= 3% EXACT (Clopper-Pearson), n = 1,000 turns",
+   "scenario": {
+    "total": 1000,
+    "accepted": 880,
+    "true_fc": 0.025,
+    "alpha": 0.05
+   },
+   "n": {
+    "n": 880,
+    "critical_k": 17,
+    "power": 0.166
+   }
+  },
+  {
+   "gate": "G4 false-confident <= 3% EXACT, n = 1,800 turns",
+   "scenario": {
+    "total": 1800,
+    "accepted": 1584,
+    "true_fc": 0.01,
+    "alpha": 0.05
+   },
+   "n": {
+    "n": 1584,
+    "critical_k": 36,
+    "power": 1
+   }
+  },
+  {
+   "gate": "G4 false-confident <= 3% EXACT, n = 1,800 turns",
+   "scenario": {
+    "total": 1800,
+    "accepted": 1584,
+    "true_fc": 0.015,
+    "alpha": 0.05
+   },
+   "n": {
+    "n": 1584,
+    "critical_k": 36,
+    "power": 0.993
+   }
+  },
+  {
+   "gate": "G4 false-confident <= 3% EXACT, n = 1,800 turns",
+   "scenario": {
+    "total": 1800,
+    "accepted": 1584,
+    "true_fc": 0.02,
+    "alpha": 0.05
+   },
+   "n": {
+    "n": 1584,
+    "critical_k": 36,
+    "power": 0.809
+   }
+  },
+  {
+   "gate": "G4 false-confident <= 3% EXACT, n = 1,800 turns",
+   "scenario": {
+    "total": 1800,
+    "accepted": 1584,
+    "true_fc": 0.025,
+    "alpha": 0.05
+   },
+   "n": {
+    "n": 1584,
+    "critical_k": 36,
+    "power": 0.316
+   }
+  },
+  {
+   "gate": "sealed size rule: FC gate 80% exact power at true FC 2%",
+   "scenario": {
+    "cluster_size": 1,
+    "icc": 0,
+    "design_effect": 1,
+    "coverage": 0.88,
+    "alpha": 0.05
+   },
+   "n": {
+    "total": 1800,
+    "accepted": 1584,
+    "n_effective": 1584
+   }
+  },
+  {
+   "gate": "sealed size rule: FC gate 80% exact power at true FC 2%",
+   "scenario": {
+    "cluster_size": 10,
+    "icc": 0.01,
+    "design_effect": 1.09,
+    "coverage": 0.88,
+    "alpha": 0.05
+   },
+   "n": {
+    "total": 1910,
+    "accepted": 1680,
+    "n_effective": 1542
+   }
+  },
+  {
+   "gate": "sealed size rule: FC gate 80% exact power at true FC 2%",
+   "scenario": {
+    "cluster_size": 10,
+    "icc": 0.02,
+    "design_effect": 1.18,
+    "coverage": 0.88,
+    "alpha": 0.05
+   },
+   "n": {
+    "total": 2070,
+    "accepted": 1821,
+    "n_effective": 1543
+   }
+  },
+  {
+   "gate": "sealed size rule: FC gate 80% exact power at true FC 2%",
+   "scenario": {
+    "cluster_size": 20,
+    "icc": 0.02,
+    "design_effect": 1.38,
+    "coverage": 0.88,
+    "alpha": 0.05
+   },
+   "n": {
+    "total": 2420,
+    "accepted": 2129,
+    "n_effective": 1543
+   }
   }
  ]
 }
