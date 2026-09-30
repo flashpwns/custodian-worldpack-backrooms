@@ -43,15 +43,27 @@ const reader = require("./dialogue-reader");
 const { resolveTurn } = require("./dialogue-resolve-turn");
 const { openScenario, providerFor, ledgerView } = require("./dialogue-characterize");
 
-const GOLD_EVAL_VERSION = "yellow-beast-reader-gold-eval@v3";
+const GOLD_EVAL_VERSION = "yellow-beast-reader-gold-eval@v4";
 const ROUTING_FIELDS = ["speech_act", "address", "facet", "relation"];
 const FIELDS = ["speech_act", "question_form", "address", "name_roles", "facet", "relation", "repair_kind", "subject", "referent", "temporal", "respondent_mode", "inbound_answer", "abstain"];
 
 const readJsonl = (file) => fs.readFileSync(file, "utf8").split("\n").map((l) => l.trim()).filter((l) => l && !l.startsWith("//")).map((l) => JSON.parse(l));
 const same = (a, b) => JSON.stringify(a ?? null) === JSON.stringify(b ?? null);
 
-/** Resolve symbolic references in a gold frame against one ReaderInput (labels are per-turn). */
-function resolveGoldFrame(gold, input) {
+/**
+ * Resolve symbolic references in a gold frame against one ReaderInput (labels are per-turn). `ctx` (harness-side,
+ * never a reader's) gives the code-side bindings and entity index, so "ref:<canonical label>" resolves even when the
+ * reader is shown the player's literal words for a line-named thing (Reader Phase 2).
+ */
+function referentLabelFor(ref, input, ctx = {}) {
+  const want = ref.slice(4).toLowerCase();
+  const byName = input.referent_candidates.find((r) => String(r.name).toLowerCase() === want);
+  if (byName) return byName.label;
+  const entity = (ctx.entities ?? []).find((e) => String(e.label ?? "").toLowerCase() === want);
+  const label = entity ? Object.entries(ctx.bindings?.referents ?? {}).find(([, id]) => id === entity.id)?.[0] : null;
+  return label ?? `UNRESOLVED:${ref}`;
+}
+function resolveGoldFrame(gold, input, ctx = {}) {
   const name = (ref) => (typeof ref === "string" && ref.startsWith("@") ? input.features.name_spans.find((n) => n.text.toLowerCase() === ref.slice(1).toLowerCase())?.label ?? `UNRESOLVED:${ref}` : ref);
   const target = (ref) => {
     if (typeof ref !== "string") return ref ?? null;
@@ -64,7 +76,7 @@ function resolveGoldFrame(gold, input) {
     const pool = want === "latest" ? input.conversation.requests.filter((r) => r.distance === 0) : input.conversation.requests.filter((r) => r.facet === want);
     return pool.sort((a, b) => a.distance - b.distance)[0]?.label ?? `UNRESOLVED:${ref}`;
   };
-  const referent = (ref) => (typeof ref === "string" && ref.startsWith("ref:") ? input.referent_candidates.find((r) => r.name.toLowerCase() === ref.slice(4).toLowerCase())?.label ?? `UNRESOLVED:${ref}` : ref);
+  const referent = (ref) => (typeof ref === "string" && ref.startsWith("ref:") ? referentLabelFor(ref, input, ctx) : ref);
   const acts = (gold.acts ?? []).map((a) => {
     const out = structuredClone(a);
     if (out.span === "all" || !out.span) out.span = [0, input.line.tokens.length - 1];
@@ -116,7 +128,8 @@ function checkpointProblem(checkpoint, s) {
     if (!hit) return { check: "requests", expected: want, ledger: view.requests.slice(-4).map((r) => ({ predicate: r.predicate, targets: n(r.targets), state: r.state, answered_by: n(r.answered_by) })) };
   }
   const snap = require("./dialogue-state").snapshot(run, { player_id: s.playerId, location_id: run.spatial?.player_location ?? null, present_ids: s.coworkers().map((m) => m.personnel_id ?? m.id) });
-  if (checkpoint.activity) {
+  if (checkpoint.activity === false) { if (snap.activity) return { check: "activity", expected: false, got: { kind: snap.activity.kind } }; }
+  else if (checkpoint.activity) {
     const a = snap.activity;
     if (!a || a.kind !== checkpoint.activity.kind || (checkpoint.activity.done && !same(n(a.completed), [...checkpoint.activity.done].sort()))) return { check: "activity", expected: checkpoint.activity, got: a ? { kind: a.kind, done: n(a.completed) } : null };
   }
@@ -146,6 +159,8 @@ function requiredVerification(goldFrame) {
   if (kind === "answer" || (act.inbound_answer && act.inbound_answer.kind !== "none") || target === "inbound") need.push(["inbound"]);
   if (["continuation", "repair", "topic_return", "attention"].includes(kind) && target && target !== "inbound") need.push(target === "activity" ? ["activity"] : target === "claim" ? ["claim"] : target.startsWith("anchor:") ? ["anchors"] : ["requests", "activity", "anchors"]);
   if (["OTHERS", "SECOND_PERSON"].includes(act.address?.op)) need.push(["requests", "active_speaker", "activity"]);
+  // Reader Phase 2: a conclude / withdraw rests on the activity state (active, or verifiably none).
+  if (["conclude", "withdraw"].includes(kind) && (target === "activity" || kind === "conclude")) need.push(["activity"]);
   return need;
 }
 
@@ -214,7 +229,7 @@ function shadowView(shadow, names) {
     subject_kind: p.subject?.kind ?? null, third_party: p.args?.third_party_subject ? n(p.args.third_party_subject) : null, quoted_speaker: p.quoted_speaker ? n(p.quoted_speaker) : null, other: p.args?.other_id ? n(p.args.other_id) : null, mentions: ns(p.mentions),
     temporal: shadow?.frame?.turn?.temporal_scope ?? p.temporal_scope ?? null, place: p.args?.place_id ?? null, place_basis: p.args?.place_basis ?? null, item: p.args?.item_id ?? null,
     reply_kind: p.args?.reply_kind ?? null, answer_option: p.args?.answer_option != null ? (names[p.args.answer_option] ?? p.args.answer_option) : null,
-    request: lc.request?.intent ?? null, duplicate: Boolean(lc.duplicate_of), abandons: (lc.abandons ?? []).length, activity: lc.activity && lc.activity.intent !== "none" ? `${lc.activity.intent}:${lc.activity.kind}` : null, inbound: lc.inbound && lc.inbound.intent !== "none" ? lc.inbound.intent : null,
+    request: lc.request?.intent ?? null, duplicate: Boolean(lc.duplicate_of), abandons: (lc.abandons ?? []).length, activity: lc.activity && lc.activity.intent !== "none" ? `${lc.activity.intent}:${lc.activity.kind}` : null, activity_conflict: Boolean(lc.activity_conflict), inbound: lc.inbound && lc.inbound.intent !== "none" ? lc.inbound.intent : null,
     conflicts: [...(res.conflicts ?? [])].sort(), discourse_function: shadow?.frame?.discourse_function ?? null, request_text: p.request_text ?? null
   };
 }
@@ -230,7 +245,12 @@ function compareShadow(shadow, spec, names) {
 async function evaluateItem(item, { onInput = null } = {}) {
   const script = new Map();
   const oracle = reader.createOracleReader(script);
-  const s = openScenario({ seed: item.seed ?? `gold-${item.id}`, names: item.names, provider: providerFor(item, item.provider ?? "fallback"), offline: (item.provider ?? "fallback") === "fallback", serviceOptions: { dialogueReader: oracle, readerShadow: true } });
+  // Harness-side capture of the code-side bindings / entity index of the latest reading (for symbolic references
+  // only; the oracle reader itself still sees the ReaderInput alone).
+  const built = { last: null };
+  const { buildReaderInput } = require("./dialogue-reader-input");
+  const readerInputBuilder = (args) => { const b = buildReaderInput(args); built.last = { bindings: b.bindings, entities: args.entities ?? [] }; return b; };
+  const s = openScenario({ seed: item.seed ?? `gold-${item.id}`, names: item.names, provider: providerFor(item, item.provider ?? "fallback"), offline: (item.provider ?? "fallback") === "fallback", serviceOptions: { dialogueReader: oracle, readerShadow: true, readerInputBuilder } });
   try {
     const verified = new Set();
     let n = 0;
@@ -241,7 +261,7 @@ async function evaluateItem(item, { onInput = null } = {}) {
       else if (step.say) {
         const id = `p-${++n}`;
         // A prefix line may carry its own gold frame (reader state the target turn depends on, e.g. a claim).
-        if (step.frame) script.set(id, (input) => completeFrame(resolveGoldFrame(step.frame, input)));
+        if (step.frame) script.set(id, (input) => completeFrame(resolveGoldFrame(step.frame, input, built.last ?? {})));
         await s.say(step.say, { target: step.target ?? null, request_id: id });
       }
       const problem = checkpointProblem(step.checkpoint, s);
@@ -255,15 +275,17 @@ async function evaluateItem(item, { onInput = null } = {}) {
     const missing = need.filter((alternatives) => !alternatives.some((k) => verified.has(k)));
     if (missing.length) return { id: item.id, status: "incomplete_state_verification", missing: missing.map((m) => m.join("|")) };
     const targetId = "target";
-    script.set(targetId, (input) => { onInput?.(input); return item.gold?.frame ? completeFrame(resolveGoldFrame(item.gold.frame, input)) : null; });
+    script.set(targetId, (input) => { onInput?.(input, built.last); return item.gold?.frame ? completeFrame(resolveGoldFrame(item.gold.frame, input, built.last ?? {})) : null; });
     const before = ledgerView(s.run);
     await s.say(item.utterance, { target: item.target ?? null, request_id: targetId });
     const record = s.service.readerReceipts.get(targetId);
     if (!record) return { id: item.id, status: "no_seam_record" };
     // Target-time checks against what the reader was given (observer-safe state).
     const checkFailures = [];
-    if (item.checks?.salient) for (const nm of item.checks.salient) { const label = record.input.referent_candidates.find((r) => r.name === nm)?.label; if (!label || !record.input.conversation.salient_entities.includes(label)) checkFailures.push(`salient:${nm}`); }
-    if (item.checks?.active_place) { const label = record.input.referent_candidates.find((r) => r.name === item.checks.active_place)?.label; if (record.input.conversation.active_place !== label) checkFailures.push(`active_place:${item.checks.active_place}`); }
+    const refCtx = { bindings: record.context.bindings, entities: record.context.entities ?? [] };
+    if (item.checks?.salient) for (const nm of item.checks.salient) { const label = referentLabelFor(`ref:${nm}`, record.input, refCtx); if (!record.input.conversation.salient_entities.includes(label)) checkFailures.push(`salient:${nm}`); }
+    if (item.checks?.heard_salient) for (const nm of item.checks.heard_salient) { const label = referentLabelFor(`ref:${nm}`, record.input, refCtx); if (!record.input.heard.salient_entities.includes(label)) checkFailures.push(`heard_salient:${nm}`); }
+    if (item.checks?.active_place) { const label = referentLabelFor(`ref:${item.checks.active_place}`, record.input, refCtx); if (record.input.conversation.active_place !== label) checkFailures.push(`active_place:${item.checks.active_place}`); }
     if (item.checks?.inbound_options != null && (record.input.conversation.inbound?.options ?? []).length !== item.checks.inbound_options) checkFailures.push("inbound_options");
     if (checkFailures.length) return { id: item.id, status: "prefix_invalid", problem: { check: "target_state", failed: checkFailures } };
     const goldFrame = record.receipt.frame;
@@ -287,6 +309,8 @@ async function evaluateItem(item, { onInput = null } = {}) {
     return {
       id: item.id, status: "scored", utterance: item.utterance,
       gold_frame_verdict: record.receipt.verdict,
+      // Reader Phase 2: the validated gold frame and the ReaderInput it was written against (wire round trip).
+      target: { frame: record.receipt.frame, input: record.input },
       reader: { id: record.legacy_v0.reader.id, fields: readerCompare, routing_match: ROUTING_FIELDS.filter((f) => f in readerCompare).every((f) => readerCompare[f]) },
       resolver,
       shadow,
@@ -342,4 +366,4 @@ async function main() {
 
 if (require.main === module) main().catch((error) => { console.error(error.stack ?? error.message); process.exit(1); });
 
-module.exports = { shadowView, compareShadow, GOLD_EVAL_VERSION, evaluateGold, evaluateItem, resolveGoldFrame, completeFrame, compareFrames, requiredVerification, checkpointProblem, summarize, readJsonl, showInput };
+module.exports = { referentLabelFor, shadowView, compareShadow, GOLD_EVAL_VERSION, evaluateGold, evaluateItem, resolveGoldFrame, completeFrame, compareFrames, requiredVerification, checkpointProblem, summarize, readJsonl, showInput };

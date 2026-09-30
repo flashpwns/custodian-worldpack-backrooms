@@ -3,9 +3,9 @@
  "turns": 471,
  "seam_recorded": 471,
  "frames": 471,
- "acts": 506,
- "exact_turns": 423,
- "exact_pct": 89.8,
+ "acts": 510,
+ "exact_turns": 422,
+ "exact_pct": 89.6,
  "by_fixture_kind": {
   "script": {
    "turns": 149,
@@ -14,18 +14,18 @@
   },
   "transcript": {
    "turns": 16,
-   "exact": 14,
-   "exact_pct": 87.5
+   "exact": 13,
+   "exact_pct": 81.3
   },
   "scenario": {
    "turns": 107,
-   "exact": 89,
-   "exact_pct": 83.2
+   "exact": 88,
+   "exact_pct": 82.2
   },
   "probe": {
    "turns": 199,
-   "exact": 188,
-   "exact_pct": 94.5
+   "exact": 189,
+   "exact_pct": 95
   }
  },
  "validation_disposition_of_legacy_frames": {
@@ -67,8 +67,8 @@
  },
  "mismatch_classes": {
   "reader-schema gap": {
-   "turns": 7,
-   "notes": 7,
+   "turns": 5,
+   "notes": 5,
    "codes": {
     "legacy_route_without_registry_facet": {
      "count": 2,
@@ -90,10 +90,8 @@
      ]
     },
     "referent_not_in_candidates": {
-     "count": 3,
+     "count": 1,
      "examples": [
-      "whats inside that bag",
-      "whos in charg of the camra",
       "Who has the case?"
      ]
     }
@@ -150,8 +148,8 @@
    }
   },
   "legacy-only artifact": {
-   "turns": 11,
-   "notes": 12,
+   "turns": 15,
+   "notes": 16,
    "codes": {
     "relation_without_antecedent": {
      "count": 3,
@@ -167,6 +165,12 @@
       "Maxwell said the Complex is basically an aquarium.",
       "I heard Tonya has never been in the Complex.",
       "The camera is broken, by the way."
+     ]
+    },
+    "closing_marker_split": {
+     "count": 4,
+     "examples": [
+      "Okay, well that's that, where do we head to next?"
      ]
     },
     "overlapping_clause_spans": {
@@ -196,8 +200,8 @@
    }
   },
   "needs-owner-decision": {
-   "turns": 11,
-   "notes": 11,
+   "turns": 10,
+   "notes": 10,
    "codes": {
     "collective_subject_routed_as_group_address": {
      "count": 10,
@@ -206,18 +210,12 @@
       "Will all of us be going to Equipment Staging together, or are we splitting up?",
       "Are we all going?"
      ]
-    },
-    "salient_place_from_legacy_salience": {
-     "count": 1,
-     "examples": [
-      "Can you even go in there?"
-     ]
     }
    }
   }
  },
- "non_exact_turns": 48,
- "class_turn_sum": 51,
+ "non_exact_turns": 49,
+ "class_turn_sum": 52,
  "multi_class_turns": [
   {
    "fixture": "scenario/ed30i-inbound",

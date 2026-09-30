@@ -906,6 +906,16 @@
       "file": "tests/ed32b-reader-phase1-shadow-full.test.js",
       "status": "included",
       "tier": "long-world"
+    },
+    {
+      "file": "tests/ed33a-reader-phase2-step0.test.js",
+      "status": "included",
+      "tier": "aggregate"
+    },
+    {
+      "file": "tests/ed33b-reader-phase2-replay-full.test.js",
+      "status": "included",
+      "tier": "long-world"
     }
   ],
   "report_tools": [

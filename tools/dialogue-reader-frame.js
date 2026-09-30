@@ -16,11 +16,18 @@
 //   V2 surface     chip target wins; NAMED needs a supplied name span; no invented or absent names; a standalone
 //                  name is read against the DIS                                                   -> clarify / reject
 //   V3 discourse   answer needs a pending inbound request; continuation / repair / topic_return need an eligible
-//                  antecedent; OTHERS / EXCEPT resolve to non-empty sets; withdraw targets open state -> clarify
+//                  antecedent; OTHERS / EXCEPT resolve to non-empty sets; withdraw targets open state; conclude
+//                  targets only the active activity                                              -> clarify
+//
+// v2 (Reader Phase 2): relation `conclude` ("Okay, that's that") -- the reader expresses the LINGUISTIC relation
+// only; it may target the active activity label v1 (or nothing), and code (the resolver, then canonical
+// closeActivity) remains the authority for any closure. `withdraw` may target v1. `referent.nominated` lets a
+// reader point at a token span it could not bind; code gives it ONE bounded observer-safe lookup before
+// validation (dialogue-reader-lexicon.lookupNominated via applyNominatedLookup).
 
 const registry = require("./dialogue-registry");
 
-const READER_FRAME_VERSION = "yellow-beast-reader-frame@v1";
+const READER_FRAME_VERSION = "yellow-beast-reader-frame@v2";
 const MAX_ACTS = 3;
 
 const SPEECH_ACTS = Object.freeze(["greeting", "farewell", "self_introduction", "social_acknowledgment", "thanks", "attention_call", "statement", "sarcasm", "question", "request", "repair", "elliptical_continuation", "answer", "aside"]);
@@ -33,7 +40,7 @@ const NAME_ROLES = Object.freeze(["vocative", "mention", "answer_to_inbound", "g
 // Language-level address operations ONLY. Responder policy values (KEEP_RESPONDER, SHARED, ASKER_OF_INBOUND,
 // ANSWERER_OF) are resolver outcomes and are deliberately absent.
 const ADDRESS_OPS = Object.freeze(["NAMED", "ALL", "OTHERS", "EXCEPT", "SECOND_PERSON", "NONE"]);
-const RELATIONS = Object.freeze(["new", "continuation", "repair", "topic_return", "attention", "answer", "withdraw"]);
+const RELATIONS = Object.freeze(["new", "continuation", "repair", "topic_return", "attention", "answer", "withdraw", "conclude"]);
 const REPAIR_KINDS = Object.freeze(["addressee", "referent", "facet", "temporal", "unanswered", "own_answer"]);
 // Deixis (Reader Phase 1): the act refers to a place deictically without naming it. DEIXIS_THERE ("there", "that
 // place") needs an active place; DEIXIS_INSIDE ("going in", "inside") takes the canonical default (owner decision
@@ -70,7 +77,7 @@ const REQUIRED_ACT_KEYS = ["span", "speech_act", "question_form", "facet", "pola
 const NESTED_KEYS = {
   address: ["op", "names", "relative_to", "count"],
   relation: ["kind", "target"],
-  referent: ["span", "candidate"],
+  referent: ["span", "candidate", "nominated"],
   inbound_answer: ["kind", "option"],
   subject: ["kind", "names"],
   self_intro: ["span"],
@@ -119,7 +126,7 @@ function readerFrameSchema(input = {}) {
     // activity round ("your turn"), or a heard line (a surface anchor: "what do you mean?").
     relation: strict({ kind: { type: "string", enum: [...RELATIONS] }, target: enumOrNull([...requestLabels, ...inboundLabels, "s0", "s1", ...(input.conversation?.activity?.label ? [input.conversation.activity.label] : []), ...anchorLabels, ...(input.conversation?.player_claim?.label ? [input.conversation.player_claim.label] : [])]) }),
     repair_kind: nullable({ type: "string", enum: [...REPAIR_KINDS] }),
-    referent: nullable(strict({ span: enumOrNull(entityLabels), candidate: { type: "string", enum: [...referentLabels, ...REFERENT_CHOICE_SPECIAL] } })),
+    referent: nullable(strict({ span: enumOrNull(entityLabels), candidate: { type: "string", enum: [...referentLabels, ...REFERENT_CHOICE_SPECIAL] }, nominated: nullable(span) }, ["span", "candidate"])),
     temporal: { type: "string", enum: [...TEMPORALS] },
     respondent_mode: { type: "string", enum: [...RESPONDENT_MODES] },
     inbound_answer: nullable(strict({ kind: { type: "string", enum: [...INBOUND_KINDS] }, option: enumOrNull([...optionLabels, ...INBOUND_OPTION_SPECIAL]) })),
@@ -200,6 +207,7 @@ function validateSchema(frame, input = {}) {
     if (checkNested(errors, act.referent, "referent", at("referent"))) {
       checkNullableLabel(errors, act.referent.span, [LABEL.entity], at("referent.span"));
       checkNullableLabel(errors, act.referent.candidate, [LABEL.referent], at("referent.candidate"), REFERENT_CHOICE_SPECIAL);
+      if (act.referent.nominated != null) checkTokenSpan(errors, act.referent.nominated, tokenCount, at("referent.nominated"));
     }
     if (checkNested(errors, act.inbound_answer, "inbound_answer", at("inbound_answer"))) {
       checkEnum(errors, act.inbound_answer.kind, INBOUND_KINDS, at("inbound_answer.kind"));
@@ -320,15 +328,20 @@ function validateCandidates(frame, input = {}) {
   return { ok: errors.length === 0, errors, exemptions };
 }
 
-/** Referent labels an act may choose: entity spans inside the act, salient entities, the active place, anaphora. */
+/**
+ * Referent labels an act may choose: entity spans inside the act, things the line named, canonical salience (the
+ * player's words and canonical interaction state), the active place, anaphora -- and (Reader Phase 2, owner
+ * decision B7) HEARD salience: a thing delivered coworker wording named may be referred to conversationally.
+ */
 function licensedReferents(act, input) {
   const [a, b] = Array.isArray(act.span) ? act.span : [0, -1];
   const conv = input.conversation ?? {};
   return new Set([
-    ...(input.features?.entity_spans ?? []).filter((e) => e.tokens[0] >= a && e.tokens[1] <= b).map((e) => e.candidate),
+    ...(input.features?.entity_spans ?? []).filter((e) => e.tokens[0] >= a && e.tokens[1] <= b).map((e) => e.canonical_candidate ?? e.candidate),
     // Things the player's own line named, incl. the items a named task canonically carries (basis "line").
-    ...(input.referent_candidates ?? []).filter((r) => r.basis === "line").map((r) => r.label),
-    ...(conv.salient_entities ?? []), conv.active_place, ...(conv.anaphora_candidates ?? [])
+    ...(input.referent_candidates ?? []).filter((r) => r.basis === "line" || r.basis === "nominated").map((r) => r.label),
+    ...(conv.salient_entities ?? []), conv.active_place, ...(conv.anaphora_candidates ?? []),
+    ...(input.heard?.salient_entities ?? [])
   ].filter(Boolean));
 }
 /** Lower-cased words of an act's span (code features: the tokens the input already carries). */
@@ -453,9 +466,18 @@ function validateDiscourse(frame, input = {}) {
       if (kind === "repair" && act.repair_kind === "unanswered" && request && !OPEN_STATES.has(request.state) && request.state !== "SATISFIED") flag("relation", "unanswered_repair_of_closed_request", "topic", { target });
       if (kind === "topic_return" && request && request.distance === 0) flag("relation", "topic_return_to_current_request", "topic", { target });
     }
+    // withdraw: an open request, or (v2) the active activity round.
     if (kind === "withdraw") {
-      if (!request) flag("relation", "withdraw_without_target", "topic");
+      const activityTarget = target && LABEL.activity.test(target);
+      if (activityTarget) { if (conv.activity?.label !== target) flag("relation", "withdraw_of_unknown_activity", "topic", { target }); }
+      else if (!request) flag("relation", "withdraw_without_target", "topic");
       else if (!OPEN_STATES.has(request.state)) flag("relation", "withdraw_of_closed_request", "topic", { target, state: request.state });
+    }
+    // conclude (v2): the reader says the line concludes something; it may point only at the ACTIVE activity (v1)
+    // or at nothing (a closing remark with nothing open -- the resolver makes it a social no-op, never a closure).
+    if (kind === "conclude" && target) {
+      if (!LABEL.activity.test(target)) flag("relation", "conclude_target_not_activity", "topic", { target });
+      else if (conv.activity?.label !== target) flag("relation", "conclude_of_unknown_activity", "topic", { target });
     }
     if (kind === "attention" && target && request && !OPEN_STATES.has(request.state)) flag("relation", "attention_to_closed_request", "topic", { target });
     // Set-valued address operations must name somebody.

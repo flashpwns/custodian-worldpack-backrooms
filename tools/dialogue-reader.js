@@ -127,7 +127,8 @@ function traceView(record) {
   if (!record) return null;
   // Never shown: the code-side context (bindings carry canonical ids), production's routing record and the
   // Phase-1 shadow resolution (developer memory for the harnesses only; no renderer / UI exposure).
-  const { context, shadow, production_routing, ...visible } = record;
+  // (Reader Phase 2: nor the policy context kept for the offline replay harness.)
+  const { context, shadow, production_routing, canonical, ...visible } = record;
   return visible;
 }
 

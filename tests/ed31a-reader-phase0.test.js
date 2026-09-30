@@ -28,7 +28,7 @@ const ARTIFACTS = path.join(ROOT, "docs", "acceptance", "reader-phase0");
 // ── PINNED AUTHORITIES (governance): changing an artifact without updating these pins fails this suite; updating
 // a pin changes this file's hash, which verification/verification-authority.json governs. ──
 const CHARACTERIZATION_SHA256 = "cae21415ebc5a1a1af9d9dfe8c93e3b01276ad2ac8006f9e5f11df6dc0d06c88";
-const ROUNDTRIP_SHA256 = "633edce6edb5c139b9a4ef2d1497e547b3eeb6f4b61e7bbb73564304fb0e0636";
+const ROUNDTRIP_SHA256 = "92bac0506c6c223e27e29f5bb2243953908d0f3733263841219eaf9488e0554b";
 const BASELINE_FAILING_SHA256 = "cf4d4d86207e7b856fa3a8c08977e98ba49c863af39d8b70d556f54a4d9c40c0";
 
 const sc = E.scene();
@@ -63,7 +63,8 @@ const op = (o, names = [], extra = {}) => ({ op: o, names, relative_to: null, co
 test("ReaderFrame v1 expresses linguistic interpretation only: no ids, responders, cardinality or policy ops", () => {
   for (const policy of ["KEEP_RESPONDER", "SHARED", "ASKER_OF_INBOUND", "ANSWERER_OF"]) assert.ok(!RF.ADDRESS_OPS.includes(policy), policy);
   assert.deepEqual([...RF.ADDRESS_OPS], ["NAMED", "ALL", "OTHERS", "EXCEPT", "SECOND_PERSON", "NONE"]);
-  assert.deepEqual([...RF.RELATIONS], ["new", "continuation", "repair", "topic_return", "attention", "answer", "withdraw"]);
+  // Reader Phase 2 (ReaderFrame v2): `conclude` is a linguistic relation; code alone decides any activity closure.
+  assert.deepEqual([...RF.RELATIONS], ["new", "continuation", "repair", "topic_return", "attention", "answer", "withdraw", "conclude"]);
   assert.deepEqual([...RF.NAME_ROLES], ["vocative", "mention", "answer_to_inbound", "greeting_target", "repair_target"]);
   for (const forbidden of ["responder_ids", "responders", "cardinality", "addressee_ids", "actor_id", "facts", "state_change", "knowledge", "outcome"]) assert.ok(!RF.ACT_KEYS.includes(forbidden), forbidden);
   const { input } = inputFor("Tonya, what's in the duffle?");
@@ -205,7 +206,7 @@ test("Relation targets may name the active activity round (v1) or a heard senten
 });
 
 // ─── ReaderInput observer safety: synthetic ──────────────────────────────────────────────────────────
-test("ReaderInput (synthetic): no ids, no optional-fact values, required facts scanned as strings only, options never expose ids", () => {
+test("ReaderInput (synthetic): no ids, no optional-fact values, no plan fact makes anything salient, options never expose ids", () => {
   const discourse = { last_turn: { kind: "player_exchange", player_text: "Malcolm, how are you?", responses: [{ speaker_id: MALCOLM, text: "Doing fine, thanks.", facts: { required: [{ key: "self_state", value: "fine" }, { key: "roster", value: { people: [{ name: "Outpost A liaison", place: "Outpost A" }] } }], optional: [{ key: "held_equipment", value: ["Portable mass spectrometer"] }, { key: "agenda_mention", value: "OPTIONAL-ONLY-MARKER Outpost A" }] } }] } };
   const { input, bindings } = inputFor("what's that?", { discourse });
   const json = JSON.stringify(input);
@@ -214,7 +215,8 @@ test("ReaderInput (synthetic): no ids, no optional-fact values, required facts s
   assert.ok(!json.includes("OPTIONAL-ONLY-MARKER"), "an optional fact's value never reaches the reader");
   const outpost = input.referent_candidates.find((r) => /Outpost A/.test(r.name))?.label ?? null;
   assert.ok(!input.conversation.salient_entities.includes(outpost), "neither an optional fact nor a nested structured required value makes an entity salient");
-  assert.equal(input.conversation.salience_source, "player_words+required_facts");
+  // Reader Phase 2 (owner decision B7): canonical salience is the player's words and canonical interaction state only.
+  assert.equal(input.conversation.salience_source, "player_words+canonical_state");
   for (const key of ["personhood", "async_tenure", "complex_experience", "self_state", "knowledge", "profile", "private", "system", "prompt", "schema", "instructions", "facts"]) assert.ok(!new RegExp(`"${key}"`).test(json), `unexpected key ${key}`);
   assert.deepEqual(Object.keys(input).sort(), ["chip_target", "conversation", "features", "heard", "line", "people", "referent_candidates", "version"]);
   assert.equal(input.heard.presentation_dependent, true);

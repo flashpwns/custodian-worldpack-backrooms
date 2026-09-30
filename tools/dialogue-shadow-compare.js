@@ -50,7 +50,9 @@ function productionLifecycle(record, before, after) {
   const abandons = (after.requests ?? []).filter((r) => r.state === "ABANDONED" && beforeById.has(r.request_id) && beforeById.get(r.request_id).state !== "ABANDONED").map((r) => r.request_id).sort();
   const activeBefore = [...(before?.activities ?? [])].reverse().find((a) => a.state === "active") ?? null;
   const newActivity = (after.activities ?? []).find((a) => !(before?.activities ?? []).some((b) => b.activity_id === a.activity_id)) ?? null;
-  const activity = legacy?.closes_activity ? { intent: "close", kind: activeBefore?.kind ?? null }
+  // closeActivity is a canonical no-op when nothing is active (dialogue-state.closeActivity): only a real closure
+  // counts as production's "close" (Reader Phase 2).
+  const activity = legacy?.closes_activity && activeBefore ? { intent: "close", kind: activeBefore.kind }
     : newActivity ? { intent: activeBefore && activeBefore.kind !== newActivity.kind ? "supersede" : "start", kind: newActivity.kind }
       : activeBefore && (after.activities ?? []).some((a) => a.activity_id === activeBefore.activity_id) && ACTIVITY_OF[request.predicate] === activeBefore.kind && request.intent !== "none" ? { intent: "continue", kind: activeBefore.kind }
         : { intent: "none", kind: null };

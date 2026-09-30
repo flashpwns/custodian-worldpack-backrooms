@@ -1,0 +1,157 @@
+{
+ "version": "yellow-beast-reader-token-distribution@v1",
+ "tokenizer": {
+  "runtime": "b11146",
+  "model": "Gemma 4 E4B (instruction-tuned)",
+  "model_file": "yellow-beast-local-v1.gguf",
+  "model_sha256": "85a896a047553e842f25297ee5b031d64ff30147d9c4af17b1e4b394cd1fab87",
+  "quantization": "Q4_K_M",
+  "bytes_ok": true,
+  "present": true
+ },
+ "contract": {
+  "replay": "yellow-beast-reader-replay@v1",
+  "reader_input": "yellow-beast-reader-input@v2",
+  "render": "yellow-beast-reader-render@v1",
+  "render_system_digest": "c96d6d54a8c1fe8eeedb0b08cffa189404c1b2ca6b85963e9e7c0798e2a5516e",
+  "wire": "yellow-beast-reader-wire@v1",
+  "wire_digest": "b18ac02f80bacbe221710c21ab0eb2616c1ba95c62378992f20706bae5d74cc8",
+  "frame": "yellow-beast-reader-frame@v2"
+ },
+ "turns": 927,
+ "distinct_renders": 535,
+ "dynamic_tokens": {
+  "min": 26,
+  "p50": 112,
+  "mean": 132,
+  "p90": 245,
+  "p95": 266,
+  "max": 333,
+  "within_150_250": 34.6,
+  "over_300": 5
+ },
+ "by_stratum": {
+  "j15": {
+   "n": 266,
+   "p50": 204,
+   "p90": 265,
+   "max": 333
+  },
+  "human_trace": {
+   "n": 64,
+   "p50": 208,
+   "p90": 292,
+   "max": 293
+  },
+  "scripted_state": {
+   "n": 107,
+   "p50": 163,
+   "p90": 232,
+   "max": 312
+  },
+  "ed30_dev": {
+   "n": 354,
+   "p50": 57,
+   "p90": 83,
+   "max": 146
+  },
+  "ed30_dev_novel": {
+   "n": 44,
+   "p50": 61,
+   "p90": 79,
+   "max": 93
+  },
+  "scripted_rare_state": {
+   "n": 92,
+   "p50": 117,
+   "p90": 213,
+   "max": 291
+  }
+ },
+ "static_system_tokens": 1168,
+ "wire_tokens_legacy_frames": {
+  "n": 927,
+  "p50": 14,
+  "p90": 21,
+  "max": 39
+ },
+ "early_branch": {
+  "speech_act": {
+   "codes": 14,
+   "distinct_first_tokens": 14,
+   "shared_prefix": []
+  },
+  "relation": {
+   "codes": 8,
+   "distinct_first_tokens": 8,
+   "shared_prefix": []
+  },
+  "address": {
+   "codes": 4,
+   "distinct_first_tokens": 4,
+   "shared_prefix": []
+  },
+  "facet": {
+   "codes": 47,
+   "distinct_first_tokens": 47,
+   "shared_prefix": []
+  }
+ },
+ "histogram": {
+  "25-49": 142,
+  "50-74": 197,
+  "75-99": 98,
+  "100-124": 54,
+  "125-149": 34,
+  "150-174": 69,
+  "175-199": 99,
+  "200-224": 101,
+  "225-249": 51,
+  "250-274": 47,
+  "275-299": 30,
+  "300-324": 3,
+  "325-349": 2
+ },
+ "top10": [
+  {
+   "id": "j15/2-verbose.txt#fallback#char-t24",
+   "dynamic_tokens": 333
+  },
+  {
+   "id": "j15/2-verbose.txt#garbage#char-t24",
+   "dynamic_tokens": 333
+  },
+  {
+   "id": "j15/2-verbose.txt#fallback#char-t19",
+   "dynamic_tokens": 315
+  },
+  {
+   "id": "j15/2-verbose.txt#garbage#char-t19",
+   "dynamic_tokens": 315
+  },
+  {
+   "id": "scenario/ed30d-j16#garbage#char-t10",
+   "dynamic_tokens": 312
+  },
+  {
+   "id": "j15/2-verbose.txt#fallback#char-t14",
+   "dynamic_tokens": 293
+  },
+  {
+   "id": "j15/2-verbose.txt#fallback#char-t27",
+   "dynamic_tokens": 293
+  },
+  {
+   "id": "j15/2-verbose.txt#garbage#char-t14",
+   "dynamic_tokens": 293
+  },
+  {
+   "id": "j15/2-verbose.txt#garbage#char-t27",
+   "dynamic_tokens": 293
+  },
+  {
+   "id": "j15/4-human-trace.txt#fallback#char-t6",
+   "dynamic_tokens": 293
+  }
+ ]
+}

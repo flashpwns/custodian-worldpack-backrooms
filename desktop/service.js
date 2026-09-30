@@ -40,6 +40,9 @@ const dialogueResolveTurn = require("../tools/dialogue-resolve-turn");
 // Reader Phase 1 (SHADOW only): the frame-driven resolver + response policy + frame assembly, run developer-gated
 // on cloned, frozen inputs after production decided the turn. Its record never feeds production.
 const dialogueReaderShadow = require("../tools/dialogue-reader-shadow");
+// Reader Phase 2 (developer-only, opt-in): an asynchronous MODEL-reader shadow, run after the canonical commit and
+// wording, never awaited by a turn, never consumed, never persisted.
+const dialogueReaderAsync = require("../tools/dialogue-reader-async");
 const dialogueFrameAssembly = require("../tools/dialogue-frame-assembly");
 const dialogueResolvers = require("../tools/dialogue-resolvers");
 const dialoguePersonhood = require("../tools/dialogue-personhood");
@@ -189,7 +192,7 @@ function sessionRuntimeCandidate(entry) {
 function redactDiagnostic(value) { if (Array.isArray(value)) return value.map(redactDiagnostic); if (value && typeof value === "object") return Object.fromEntries(Object.entries(value).map(([key, item]) => [key, /key|token|password|secret|credential/i.test(key) ? "[redacted]" : redactDiagnostic(item)])); return typeof value === "string" ? value.replace(/\b(?:sk|rk|pk)-[A-Za-z0-9_-]+\b/g, "[redacted]") : value; }
 
 class DesktopService {
-  constructor({ appDataPath = null, paths = null, logger = null, credentials = null, evidenceMediaProviders = {}, livingTurnProvider = null, localDialogueProvider = null, dialogueReader: injectedDialogueReader = null, readerInputBuilder = null, readerReceiptLimit = null, readerShadow = null, defaultQ4Scenario = "procedural-survey", developerMode = process.env.YELLOW_BEAST_DEVELOPER_MODE === "1", nowFn = null, notifyProjectionChanged = null, dialogueWordingConcurrency = DIALOGUE_WORDING_CONCURRENCY } = {}) {
+  constructor({ appDataPath = null, paths = null, logger = null, credentials = null, evidenceMediaProviders = {}, livingTurnProvider = null, localDialogueProvider = null, dialogueReader: injectedDialogueReader = null, readerInputBuilder = null, readerReceiptLimit = null, readerShadow = null, modelShadow = null, defaultQ4Scenario = "procedural-survey", developerMode = process.env.YELLOW_BEAST_DEVELOPER_MODE === "1", nowFn = null, notifyProjectionChanged = null, dialogueWordingConcurrency = DIALOGUE_WORDING_CONCURRENCY } = {}) {
     this.dialogueWordingConcurrency = Number.isInteger(dialogueWordingConcurrency) && dialogueWordingConcurrency > 0 ? dialogueWordingConcurrency : 1;
     // Pass 9C-2: the only main->renderer push in the app. Electron's IPC here
     // is otherwise invoke/response only (see preload.js), so an autonomous
@@ -233,6 +236,13 @@ class DesktopService {
     // nil otherwise. Reader-state claims (owner ruling 3) are seam memory: never persisted, never consumed.
     this.readerShadow = typeof readerShadow === "boolean" ? readerShadow : Boolean(developerMode);
     this.readerClaims = new Map();
+    // Reader Phase 2: the optional live MODEL shadow. Off unless explicitly configured AND developer mode is on. One
+    // reading in flight at most (a busy shadow drops the turn), hard timeout (default 5 s), results only in this
+    // in-memory store: never fed to production, the dialogue history, the wording packet, the trace view or a save.
+    this.modelShadow = developerMode && modelShadow && typeof modelShadow.reader?.transport === "function" ? { reader: { timeout_ms: dialogueReaderAsync.DEFAULT_TIMEOUT_MS, ...modelShadow.reader } } : null;
+    this.modelShadowReceipts = dialogueReader.createReceiptStore();
+    this.modelShadowInflight = null;
+    this.modelShadowStats = { scheduled: 0, dropped_busy: 0, completed: 0, unavailable: 0, late_or_duplicate: 0 };
     this.dialogueRestartFailures = 0;
     this.dialogueRestartBackoffMs = 2000;
     this.defaultQ4Scenario = cq4Day1Opener.isOpener(defaultQ4Scenario)
@@ -1704,8 +1714,33 @@ class DesktopService {
       record.production_routing = structuredClone({ owner_ids, responder_ids, recipient_ids, listener_ids, recipient_type, address_scope: address?.scope ?? null, address_source: address?.source ?? null, address_form: address?.form ?? null, frame_predicate: frame?.predicate ?? null, frame_function: frame?.discourse_function ?? null, candidate_flags: flags });
       if (!this.readerShadow) return;
       const canonical = { ...dialogueFrameAssembly.canonicalContext({ entities: record.context.entities ?? [], equipment }), candidates: flags, candidates_facet: frame?.predicate ?? null };
+      record.canonical = canonical; // Reader Phase 2: the policy context, for the offline replay harness (developer memory)
       record.shadow = dialogueReaderShadow.runShadow({ receipt: record.receipt, input: record.input, bindings: record.context.bindings, snapshot: record.context.snapshot, ledger: record.context.ledger, present: record.context.present, canonical });
     } catch (error) { this.log(`reader shadow non-fatal: ${error.message}`); }
+  }
+  /**
+   * Reader Phase 2 (developer-only, opt-in): schedules ONE asynchronous model reading of a committed, worded LOCAL
+   * turn. Never awaited and never throws; the turn's result, timing and canonical state do not depend on it. Inputs
+   * are frozen clones taken now; a busy shadow drops the turn; a late or duplicate reply is ignored.
+   */
+  scheduleModelShadow(requestId) {
+    try {
+      if (!this.modelShadow || !requestId) return;
+      const record = this.readerReceipts.get(requestId);
+      if (!record?.input || !record?.context) return;
+      this.modelShadowStats.scheduled += 1;
+      if (this.modelShadowInflight) { this.modelShadowStats.dropped_busy += 1; return; }
+      const job = { request_id: requestId };
+      this.modelShadowInflight = job;
+      const frozen = dialogueReaderShadow.frozenClone({ input: record.input, bindings: record.context.bindings, context: { snapshot: record.context.snapshot, ledger: record.context.ledger ?? { requests: [] }, present: (record.context.present ?? []).map((p) => ({ id: p.id })), canonical: record.canonical ?? {} } });
+      setImmediate(() => {
+        Promise.resolve().then(() => dialogueReaderAsync.readTurnAsync({ input: frozen.input, bindings: frozen.bindings, request_id: requestId, context: frozen.context }, this.modelShadow.reader)).then((receipt) => {
+          if (this.modelShadowInflight !== job || this.modelShadowReceipts.get(requestId)) { this.modelShadowStats.late_or_duplicate += 1; return; }
+          this.modelShadowReceipts.put(requestId, receipt);
+          if (receipt.status === "reader_unavailable") this.modelShadowStats.unavailable += 1; else this.modelShadowStats.completed += 1;
+        }).catch(() => { this.modelShadowStats.unavailable += 1; }).finally(() => { if (this.modelShadowInflight === job) this.modelShadowInflight = null; });
+      });
+    } catch (error) { this.modelShadowInflight = null; this.log(`model shadow non-fatal: ${error.message}`); }
   }
   /** ED-30 ledger: open / re-open the requests a committed player turn makes (see dialogue-state). */
   openDialogueRequests(run, options) {
@@ -1735,7 +1770,10 @@ class DesktopService {
     const providerSetting = this.settings().provider;
     const configured = ["openai", "auto", "local", "groq", "gemini", "openrouter"].includes(providerSetting);
     const dialogueContexts = canonical?._local_dialogue_contexts ?? (canonical?._local_dialogue_context ? [canonical._local_dialogue_context] : []);
-    if (input.channel !== "local" || !canonical?.ok || dialogueContexts.length === 0 || (!configured && !this.localDialogueProvider && !dialogueContexts.some((context) => context.resuming))) return canonical;
+    if (input.channel !== "local" || !canonical?.ok || dialogueContexts.length === 0 || (!configured && !this.localDialogueProvider && !dialogueContexts.some((context) => context.resuming))) {
+      if (input.channel === "local" && canonical?.ok) this.scheduleModelShadow(requestId); // Reader Phase 2 (opt-in dev shadow; after commit)
+      return canonical;
+    }
 
     const promise = Promise.resolve().then(async () => {
       try {
@@ -1745,6 +1783,7 @@ class DesktopService {
       } finally {
         this.communicationTurnInflight.delete(world_id);
         this.giveAutonomousSpeechAnotherChance(world_id);
+        this.scheduleModelShadow(requestId); // Reader Phase 2 (opt-in dev shadow; after commit and wording)
       }
     });
     this.communicationTurnInflight.set(world_id, { id: requestId, fingerprint, promise });

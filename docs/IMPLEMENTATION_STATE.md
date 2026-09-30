@@ -1,5 +1,66 @@
 # Yellow Beast Implementation State
 
+## Reader Phase 2, Step 0: contract freeze (shadow-only) — 2026-09-30
+
+- **Scope:** owner instruction of 2026-09-30, applying the Sonnet 5.5 Phase-2 architecture review.
+  - SHADOW-ONLY.
+  - None of: a production reader cutover, canonical mutation from a model reader, a planner / UI change, legacy
+    parser tuning, a sealed set, use of the spent held-outs.
+  - Design and results: `docs/reader/READER_PHASE2.md`. Artifacts: `docs/acceptance/reader-phase2/`.
+- **Owner decisions applied:**
+  - **B7:** ReaderInput v2. Canonical salience comes from the player's words and canonical interaction state;
+    heard salience comes from delivered wording only, in a separate channel; no plan fact is salient. Production
+    `withSalience` is unchanged.
+  - C1 persistence, B2 and B8 UI are deferred to Phase 3. Clarifications are classified as
+    `LINGUISTIC_AMBIGUITY` / `READER_UNCERTAINTY`.
+  - Hosted teacher: development-only transport; it sends exactly the frozen render.
+- **Built:**
+  - `dialogue-reader-lexicon.js`: the observer-visible lexicon. Hidden and world-only entities are excluded. The
+    candidate pipeline is exact → alias → bounded fuzzy → one nominated-span lookup.
+  - ReaderInput v2.
+  - ReaderFrame v2: `conclude`, `withdraw` of `v1`, `referent.nominated`.
+  - Resolver v3: the activity close intent is derived only for an active activity.
+  - Legacy adapter v2: "that's that" becomes `conclude`.
+  - `dialogue-reader-render.js`: `renderReaderPrompt`, versioned.
+  - `dialogue-reader-wire.js`: the compact wire, facet-code table, GBNF grammar and minimal-JSON decoder.
+  - `dialogue-reader-async.js`: `readTurnAsync`, receipts, the llama / hosted / scripted transports, offline field
+    margins.
+  - `dialogue-reader-replay.js`: the offline replay harness, arms, resolved-outcome signature, token distribution,
+    dev manifest, `--run`.
+  - `dialogue-reader-runtime.js`, `dialogue-reader-labels.js` (κ / PABAK), `dialogue-reader-power.js`.
+  - The rare-state dev stratum: 62 inbound answers.
+  - The opt-in developer `modelShadow` seam in `desktop/service.js`: after commit and wording, never awaited, one
+    in flight, 5 s timeout, in-memory only.
+- **Measured:**
+
+  | Measure | Value |
+  | --- | --- |
+  | Wire round trip | **100%** of gold frames (49) and of every legacy frame in the 927-turn dev capture; V0 fails on malformed / unknown / duplicate; illegal labels fail V1 |
+  | Dynamic render tokens (pinned tokenizer, 927 turns) | p50 112, **p90 245**, max 333 (5 turns > 300); static prefix 1,168 |
+  | Early-branch uniqueness | speech act 14 / 14, relation 8 / 8, address 4 / 4, facet 47 / 47 |
+  | Gold resolver spec | **42 / 42** (6 conclude / withdraw items added) |
+  | Shadow diff (legacy frames, 471 turns) | all four levels 335 (was 327); lifecycle 461 (was 455); unclassified 0 |
+  | Fault-injection inertness | throw / malformed / hang / timeout / server-down / well-formed: canonical state, save and history deep-equal, live and after reload; a 5 s sleeping reader does not delay turns |
+  | Characterization authority | unchanged (the file was not regenerated; `ed31a` scenario replay and `ed31b` full replay pass) |
+
+- **Governance:**
+  - pins updated: `ed31a` round trip, `ed32a` shadow diff;
+  - `ed33a` registered (aggregate) and `ed33b` registered (long-world) in `verification-authority.json` and
+    `test-manifest.json`, with hashes;
+  - inventory: only the 57 pre-existing errors.
+- **Full suite** (`node --test tests/*.test.js`): 1,539 tests, 1,460 pass, 79 fail.
+  - `compare-failing-tests`: unchanged 79, **new 0**, fixed 0.
+  - `git diff --check`: clean.
+- **Not run (blocked):**
+  - the teacher ceiling and the wire-vs-JSON check: there is no hosted-teacher credential in the environment and no
+    gold labels yet;
+  - E4B scoring, calibration, the latency ladder beyond token counts and the live developer shadow wait on the
+    teacher.
+  - A five-item engineering smoke check confirmed the GBNF compiles in the pinned llama.cpp and that raw logprobs
+    are pre-grammar. It is not a measurement.
+- **Doctrine conflicts:** none recorded.
+- **Status: PHASE 2 STEP 0 COMPLETE — READY FOR TEACHER CEILING.**
+
 ## Reader Phase 1: shadow-only resolver (no player-facing change) — 2026-09-29
 
 - **Scope (owner instruction):**

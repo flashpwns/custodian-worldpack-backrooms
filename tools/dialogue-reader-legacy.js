@@ -16,7 +16,7 @@
 const registry = require("./dialogue-registry");
 const RF = require("./dialogue-reader-frame");
 
-const LEGACY_ADAPTER_VERSION = "yellow-beast-reader-legacy-adapter@v1";
+const LEGACY_ADAPTER_VERSION = "yellow-beast-reader-legacy-adapter@v2";
 const CLASSES = Object.freeze(["reader-schema gap", "resolver-policy concern", "legacy-only artifact", "needs-owner-decision"]);
 const ASKING = new Set(["question", "request", "elliptical_continuation", "repair", "attention_call"]);
 
@@ -67,6 +67,24 @@ function tokenSpan(charSpan, tokens) {
 }
 
 /**
+ * Reader Phase 2: where a legacy clause's closing marker ("Okay, well that's that, where next?") ends, as a token
+ * index inside the clause span -- the marker becomes its own `conclude` act. Reads the ReaderInput tokens only.
+ */
+function closingMarkerEnd(span, tokens) {
+  const [a, b] = span;
+  const t = (i) => String(tokens[i]?.text ?? "").toLowerCase().replace(/’/g, "'");
+  for (let i = a + 1; i < b; i += 1) {
+    const lead = t(i - 1) === "that's" || (t(i - 1) === "is" && t(i - 2) === "that");
+    if (lead && ["that", "everyone", "everybody", "it"].includes(t(i))) {
+      let k = i;
+      while (k + 1 < b && [",", ".", ";", "!", "-"].includes(t(k + 1))) k += 1;
+      return k;
+    }
+  }
+  return null;
+}
+
+/**
  * @param analysis  dialogueTurn.analyzeTurn output (after any accepted advisory was applied)
  * @param readerInput  { input, bindings } from dialogue-reader-input.buildReaderInput
  * @param options.frame  the finalized legacy semantic frame (dialogueTurn.finalizeFrame output), if available
@@ -95,17 +113,29 @@ function frameFromLegacy(analysisIn, readerInput, { frame: legacyFrame = null, p
   const socialActs = (analysis?.acts ?? []).filter((a) => ["social_acknowledgment", "thanks"].includes(a.speech_act) && !effective.some((e) => e.act === a));
   const ordered = [...effective.map((e) => ({ e, act: e.act })), ...socialActs.map((a) => ({ e: null, act: a }))].sort((x, y) => (x.act?.span?.[0] ?? 0) - (y.act?.span?.[0] ?? 0));
   if (ordered.length > RF.MAX_ACTS) note(null, "acts", "reader-schema gap", "more_than_max_acts", { count: ordered.length });
-  const kept = ordered.slice(-RF.MAX_ACTS);
+  let kept = ordered.slice(-RF.MAX_ACTS);
+  // Reader Phase 2: legacy's activity close ("that's that") is expressed as the relation `conclude` on the clause
+  // that carries the marker; a marker on an ASKING clause is split off as its own social act when there is room.
+  kept = kept.flatMap((item) => {
+    const clause = item.act ?? {};
+    const speech = item.e?.speech_act ?? clause.speech_act;
+    if (!clause.closes_activity || !ASKING.has(speech)) return [item];
+    const span = tokenSpan(clause.span, tokens);
+    const end = span ? closingMarkerEnd(span, tokens) : null;
+    if (end == null || kept.length >= RF.MAX_ACTS) { note(null, "relation", "reader-schema gap", "closing_marker_on_asking_act_not_split"); return [item]; }
+    return [{ e: null, act: { speech_act: "social_acknowledgment", closes_activity: true }, token_span: [span[0], end], split_marker: true }, { ...item, token_span: [end + 1, span[1]] }];
+  });
   if (!kept.length) return { frame: null, conversion: { version: LEGACY_ADAPTER_VERSION, exact: false, notes: [{ act: null, field: "acts", class: "legacy-only artifact", code: "no_legacy_act" }], raw_text_dependencies: [] } };
 
   const acts = [];
   let previousEnd = -1;
-  kept.forEach(({ e, act: clause }, i) => {
+  kept.forEach(({ e, act: clause, token_span: tokenSpanOverride = null, split_marker: splitMarker = false }, i) => {
     const rawBase = e ?? { speech_act: clause.speech_act, question_form: clause.question_form, relation: "new", addressee: null, args: {}, predicate: null };
     // The primary act's arguments are completed by finalizeFrame (third-party subject, others): read them there.
     const base = e && e === analysis?.primary && legacyFrame?.turn?.args ? { ...rawBase, args: { ...(rawBase.args ?? {}), ...legacyFrame.turn.args } } : rawBase;
     const clauseAct = clause ?? {};
-    let span = tokenSpan(clauseAct.span, tokens);
+    let span = tokenSpanOverride ? [...tokenSpanOverride] : tokenSpan(clauseAct.span, tokens);
+    if (splitMarker) note(i, "span", "legacy-only artifact", "closing_marker_split", "legacy closes the activity from a marker inside an asking clause; expressed as its own conclude act");
     if (!span) { note(i, "span", "legacy-only artifact", "span_not_on_tokens"); span = [Math.max(previousEnd + 1, 0), Math.max(previousEnd + 1, 0)]; }
     if (span[0] <= previousEnd) { note(i, "span", "legacy-only artifact", "overlapping_clause_spans"); span = [previousEnd + 1, Math.max(previousEnd + 1, span[1])]; }
     // No token left for this act (legacy produced more clauses than the line has room for): drop it, noted.
@@ -203,6 +233,13 @@ function frameFromLegacy(analysisIn, readerInput, { frame: legacyFrame = null, p
       const inherited = a?.source === "active_speaker" || a?.source === "answer_owner" || a?.source === "antecedent_owner" || a?.source === "surface_anchor";
       note(i, "relation", inherited ? "resolver-policy concern" : "legacy-only artifact", "relation_without_antecedent", inherited ? "the continuation is established by addressee inheritance, not by a request antecedent; read as new (owner ruling 2)" : "marker-led relation without an antecedent; read as new (owner ruling 2)");
       if (relation.kind !== "repair") relation.kind = "new";
+    }
+    // Reader Phase 2: a clause that closes the round concludes the ACTIVE activity (v1), or nothing when none is
+    // active (the resolver then makes it a social no-op).
+    if (clauseAct.closes_activity && !ASKING.has(speech)) {
+      if (relation.kind !== "new") note(i, "relation", "reader-schema gap", "conclude_overrides_relation", { was: relation.kind });
+      relation.kind = "conclude";
+      relation.target = input.conversation.activity?.label ?? null;
     }
     out.relation = relation;
     const repairKind = base.repair?.kind ? REPAIR_KIND[base.repair.kind] ?? null : base.args?.reply_kind === "answer_repair" ? "own_answer" : base.addressee?.source === "legacy_correction" ? "addressee" : null;
@@ -311,4 +348,4 @@ function frameFromLegacy(analysisIn, readerInput, { frame: legacyFrame = null, p
   };
 }
 
-module.exports = { LEGACY_ADAPTER_VERSION, CLASSES, frameFromLegacy, tokenSpan };
+module.exports = { LEGACY_ADAPTER_VERSION, CLASSES, frameFromLegacy, tokenSpan, closingMarkerEnd };

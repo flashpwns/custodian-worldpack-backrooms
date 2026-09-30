@@ -129,7 +129,8 @@
       "tests/ed30h-confidence-items-adjacency.test.js",
       "tests/ed30i-evidence-facets-discourse.test.js",
       "tests/ed31a-reader-phase0.test.js",
-      "tests/ed32a-reader-phase1-shadow.test.js"
+      "tests/ed32a-reader-phase1-shadow.test.js",
+      "tests/ed33a-reader-phase2-step0.test.js"
     ],
     "long-world": [
       "tests/profile-model.test.js",
@@ -166,7 +167,8 @@
       "tests/y72-live-scene-projection.test.js",
       "tests/y73-ai-living-turn.test.js",
       "tests/ed31b-reader-characterization-full.test.js",
-      "tests/ed32b-reader-phase1-shadow-full.test.js"
+      "tests/ed32b-reader-phase1-shadow-full.test.js",
+      "tests/ed33b-reader-phase2-replay-full.test.js"
     ],
     "native": [
       "tests/y54-settings-regression.test.js",
@@ -372,10 +374,12 @@
     "tests/ed30g-utterance-force-followups.test.js": "2ce979e21e8d93ac902d6b9cd8ef7c43062d1cf9d6afad093047057e62cdd3d1",
     "tests/ed30h-confidence-items-adjacency.test.js": "bf91b356d5b1551111eeadb01e83b1afaa97009738579b3689ec508a26179810",
     "tests/ed30i-evidence-facets-discourse.test.js": "f67482a7f216b7edacaee8aca9fade3edd6a18ec85f6edc0ac87a7abe3e1cf68",
-    "tests/ed31a-reader-phase0.test.js": "4b2b3623ed76bd21fd56b417068324705ba9c6b92a5e4717d1f00ece6368de8f",
+    "tests/ed31a-reader-phase0.test.js": "f18c50d46e17b4c7e663b630e30fedffb9acce87079167a4032fb25158187f20",
     "tests/ed31b-reader-characterization-full.test.js": "44b39517ce8dea5f7fbcd0419ae1af8113739752ceab0900eec7767d6bcee882",
-    "tests/ed32a-reader-phase1-shadow.test.js": "7add5ce42eb26280a5691962c51d17163b8ac67c5c8a82d3df7947adc440dd61",
-    "tests/ed32b-reader-phase1-shadow-full.test.js": "dc9eeec3caae6380022945c15403e5f0e84251ec7dc84a0328788b400dc94db4"
+    "tests/ed32a-reader-phase1-shadow.test.js": "95e80bf98b1e2a5183b6594ea02c5b6f5f0620026fa0b513460c61c08617bd02",
+    "tests/ed32b-reader-phase1-shadow-full.test.js": "dc9eeec3caae6380022945c15403e5f0e84251ec7dc84a0328788b400dc94db4",
+    "tests/ed33a-reader-phase2-step0.test.js": "8a0e48c55652c0a2e29582b98ff966e9bf6d9539cdb8c73251e951654ac3c3e9",
+    "tests/ed33b-reader-phase2-replay-full.test.js": "44e42f8fcc34c87985f00e6afd4f08276f1938519509e6e13ce47306b95bafb9"
   },
   "verification_core_hashes": {
     "tools/verification-inventory.js": "0f27da4645f1d85e48b52133475371bbbce55072807b6900108c3a1afd344f3b",

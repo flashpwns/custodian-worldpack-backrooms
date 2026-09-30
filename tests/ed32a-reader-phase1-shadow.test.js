@@ -33,7 +33,7 @@ const ROOT = path.join(__dirname, "..");
 const ARTIFACTS = path.join(ROOT, "docs", "acceptance", "reader-phase1");
 // ── PINNED AUTHORITY (governance): the shadow-diff artifact; changing it without updating this pin fails this suite,
 // and updating the pin changes this file's hash, which verification/verification-authority.json governs. ──
-const SHADOW_DIFF_SHA256 = "6fe94efd6cadca754a85764fccda4e5cc834fd77ed06ba88dbee29ea15d3c54d";
+const SHADOW_DIFF_SHA256 = "a6e149ac404cc0f0974248decac464d489e2fb6838b26ac94fe92f9f123f8efa";
 
 const sc = E.scene();
 const [GISELLE, MALCOLM, TONYA] = sc.present.map((p) => p.id);
@@ -284,7 +284,8 @@ test("request_text is an opaque string cut from the validated act span; request 
   const reask = shadowOf("You still haven't said.", (i) => [act(i, { speech_act: "repair", question_form: "none", facet: "NONE_ASKING", relation: { kind: "repair", target: "q2" }, repair_kind: "unanswered" })]).out;
   assert.deepEqual([reask.lifecycle.request.intent, reask.lifecycle.request.target, reask.primary.predicate, reask.primary.request_text], ["reopen", "req-3", "person.wellbeing", "You still haven't said."]);
   // The same canonical question already answered by the chosen responder is a duplicate (not a new topic).
-  const again = shadowOf("Tonya what is inside the duffle", (i) => [act(i, { name_roles: [{ name: "n1", role: "vocative" }], address: op("NAMED", ["n1"]), referent: { span: "e1", candidate: i.features.entity_spans[0].candidate } })]).out;
+  // (Reader Phase 2: an entity span's bound referent is `canonical_candidate`.)
+  const again = shadowOf("Tonya what is inside the duffle", (i) => [act(i, { name_roles: [{ name: "n1", role: "vocative" }], address: op("NAMED", ["n1"]), referent: { span: "e1", candidate: i.features.entity_spans[0].canonical_candidate } })]).out;
   assert.deepEqual([again.lifecycle.request.intent, again.lifecycle.duplicate_of], ["open", "req-2"]);
   // Deterministic staleness is computed without touching the ledger.
   assert.deepEqual(again.lifecycle.abandons, ["req-3"]);
@@ -320,10 +321,10 @@ test("Service wiring: the shadow runs developer-gated after production decided, 
 test("GOLD RESOLVER SPEC SUITE: doctrine / owner-ruling gold on the real pre-turn DIS -- 100%", { timeout: 600000 }, async () => {
   const items = G.readJsonl(path.join(__dirname, "fixtures/reader-phase1/gold-resolver-spec.jsonl"));
   const { summary } = await G.evaluateGold(items);
-  assert.equal(summary.items, 36);
+  assert.equal(summary.items, 42, "36 Phase-1 items + 6 Reader Phase 2 conclude / withdraw items");
   assert.deepEqual(summary.prefix_invalid, [], "every prefix builds its stated canonical state");
   assert.deepEqual(summary.incomplete_state_verification, [], "every gold frame rests on verified state");
-  assert.equal(summary.shadow_spec.n, 36);
+  assert.equal(summary.shadow_spec.n, 42);
   assert.equal(summary.shadow_spec.pct, 100, JSON.stringify(summary.shadow_spec.failures, null, 1));
   const covered = new Set(items.map((i) => i.id.replace(/^r\d+[a-z]?-/, "")));
   for (const need of ["explicit-named-question", "untargeted-shared-question", "group-subject-no-address", "and-you", "who-else", "the-rest-of-you", "repair-target", "prior-player-claim", "activity-round-named", "inbound-yes-no", "inbound-choice", "inbound-person", "inbound-item", "inbound-uncertainty", "inbound-refusal", "counter-question", "echo-surface-anchor", "deixis-with-antecedent", "deixis-without-antecedent", "temporal-follow-up", "clarification-frame", "rejected-routing-field", "invalid-frame", "silence-valid-remark"]) assert.ok(covered.has(need), `gold suite covers ${need}`);

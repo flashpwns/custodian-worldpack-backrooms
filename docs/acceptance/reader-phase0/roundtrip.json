@@ -3,33 +3,33 @@
  "turns": 471,
  "evaluated": 471,
  "not_evaluated": [],
- "exact": 125,
- "exact_pct": 26.5,
- "behaviour_equivalent": 387,
- "behaviour_equivalent_pct": 82.2,
+ "exact": 129,
+ "exact_pct": 27.4,
+ "behaviour_equivalent": 388,
+ "behaviour_equivalent_pct": 82.4,
  "classes_turns": {
-  "schema-loss": 277,
-  "resolver-policy": 157,
-  "owner-decision": 11,
+  "schema-loss": 273,
+  "resolver-policy": 155,
+  "owner-decision": 10,
   "frame-assembly-text": 16,
-  "legacy-quirk": 11,
+  "legacy-quirk": 15,
   "legacy-overlay": 1,
   "validator-only": 20
  },
  "effective_diff_fields": {
-  "request_text": 258,
+  "request_text": 254,
   "addressee.source": 75,
   "cardinality": 68,
   "predicate": 52,
   "addressee.kind": 33,
-  "args.place_basis": 31,
+  "args.place_basis": 32,
   "addressee.quantifier": 21,
   "addressee.ids": 15,
   "temporal_scope": 12,
   "args.third_party_subject": 12,
-  "args.place_id": 8,
+  "args.place_id": 9,
   "clarify.slot": 8,
-  "args.item_id": 8,
+  "args.item_id": 6,
   "overrides": 5,
   "args.followup": 5,
   "args.mutual": 3,
@@ -48,7 +48,7 @@
  "behaviour_diff_fields": {
   "discourse_function": 34,
   "cardinality": 24,
-  "routing_args": 19,
+  "routing_args": 18,
   "clarify": 17,
   "addressee": 15,
   "temporal": 2,
@@ -414,7 +414,6 @@
    "fixture": "j15/3-chaotic.txt",
    "text": "Can you even go in there?",
    "classes": [
-    "owner-decision",
     "resolver-policy",
     "schema-loss"
    ],
@@ -2797,8 +2796,8 @@
    ]
   },
   {
-   "fixture": "dev-novel.jsonl#n008",
-   "text": "whats inside that bag",
+   "fixture": "dev-novel.jsonl#n014",
+   "text": "waht is the threshhold",
    "classes": [
     "resolver-policy",
     "schema-loss"
@@ -2806,51 +2805,27 @@
    "behaviour_diffs": [
     {
      "field": "routing_args",
-     "legacy": {
-      "item_id": "q4-startup-materials-duffle-01"
-     },
-     "resolved": {}
+     "legacy": {},
+     "resolved": {
+      "place_id": "threshold"
+     }
     }
    ],
    "effective_diffs": [
     {
-     "field": "args.item_id",
-     "legacy": "q4-startup-materials-duffle-01",
-     "resolved": null
+     "field": "predicate",
+     "legacy": null,
+     "resolved": "place.definition"
+    },
+    {
+     "field": "args.place_id",
+     "legacy": null,
+     "resolved": "threshold"
     },
     {
      "field": "request_text",
-     "legacy": "what's inside that bag",
-     "resolved": "whats inside that bag"
-    }
-   ]
-  },
-  {
-   "fixture": "dev-novel.jsonl#n013",
-   "text": "whos in charg of the camra",
-   "classes": [
-    "resolver-policy",
-    "schema-loss"
-   ],
-   "behaviour_diffs": [
-    {
-     "field": "routing_args",
-     "legacy": {
-      "item_id": "item-b2b47214d72b45d159"
-     },
-     "resolved": {}
-    }
-   ],
-   "effective_diffs": [
-    {
-     "field": "args.item_id",
-     "legacy": "item-b2b47214d72b45d159",
-     "resolved": null
-    },
-    {
-     "field": "request_text",
-     "legacy": "who's in charg of the camera",
-     "resolved": "whos in charg of the camra"
+     "legacy": "what is the threshold",
+     "resolved": "waht is the"
     }
    ]
   },
@@ -5703,7 +5678,6 @@
    "exact": false,
    "behaviour_equivalent": false,
    "classes": [
-    "owner-decision",
     "resolver-policy",
     "schema-loss"
    ],
@@ -5758,9 +5732,7 @@
     "disposition": "accept",
     "errors": []
    },
-   "adapter_notes": [
-    "needs-owner-decision:salient_place_from_legacy_salience"
-   ],
+   "adapter_notes": [],
    "assembly_error": null
   },
   {
@@ -7005,25 +6977,21 @@
    "kind": "script",
    "text": "Okay, well that's that, where do we head to next?",
    "status": "ok",
-   "exact": false,
+   "exact": true,
    "behaviour_equivalent": true,
    "classes": [
-    "schema-loss"
+    "legacy-quirk"
    ],
-   "effective_diffs": [
-    {
-     "field": "request_text",
-     "legacy": "where do we head to next?",
-     "resolved": "Okay, well that's that, where do we head to next?"
-    }
-   ],
+   "effective_diffs": [],
    "behaviour_diffs": [],
    "verdict": {
     "ok": true,
     "disposition": "accept",
     "errors": []
    },
-   "adapter_notes": [],
+   "adapter_notes": [
+    "legacy-only artifact:closing_marker_split"
+   ],
    "assembly_error": null
   },
   {
@@ -7640,25 +7608,21 @@
    "kind": "transcript",
    "text": "Okay, well that's that, where do we head to next?",
    "status": "ok",
-   "exact": false,
+   "exact": true,
    "behaviour_equivalent": true,
    "classes": [
-    "schema-loss"
+    "legacy-quirk"
    ],
-   "effective_diffs": [
-    {
-     "field": "request_text",
-     "legacy": "where do we head to next?",
-     "resolved": "Okay, well that's that, where do we head to next?"
-    }
-   ],
+   "effective_diffs": [],
    "behaviour_diffs": [],
    "verdict": {
     "ok": true,
     "disposition": "accept",
     "errors": []
    },
-   "adapter_notes": [],
+   "adapter_notes": [
+    "legacy-only artifact:closing_marker_split"
+   ],
    "assembly_error": null
   },
   {
@@ -9212,25 +9176,21 @@
    "kind": "scenario",
    "text": "Okay, well that's that, where do we head to next?",
    "status": "ok",
-   "exact": false,
+   "exact": true,
    "behaviour_equivalent": true,
    "classes": [
-    "schema-loss"
+    "legacy-quirk"
    ],
-   "effective_diffs": [
-    {
-     "field": "request_text",
-     "legacy": "where do we head to next?",
-     "resolved": "Okay, well that's that, where do we head to next?"
-    }
-   ],
+   "effective_diffs": [],
    "behaviour_diffs": [],
    "verdict": {
     "ok": true,
     "disposition": "accept",
     "errors": []
    },
-   "adapter_notes": [],
+   "adapter_notes": [
+    "legacy-only artifact:closing_marker_split"
+   ],
    "assembly_error": null
   },
   {
@@ -13178,25 +13138,21 @@
    "kind": "probe",
    "text": "Okay, well that's that, where do we head to next?",
    "status": "ok",
-   "exact": false,
+   "exact": true,
    "behaviour_equivalent": true,
    "classes": [
-    "schema-loss"
+    "legacy-quirk"
    ],
-   "effective_diffs": [
-    {
-     "field": "request_text",
-     "legacy": "where do we head to next?",
-     "resolved": "Okay, well that's that, where do we head to next?"
-    }
-   ],
+   "effective_diffs": [],
    "behaviour_diffs": [],
    "verdict": {
     "ok": true,
     "disposition": "accept",
     "errors": []
    },
-   "adapter_notes": [],
+   "adapter_notes": [
+    "legacy-only artifact:closing_marker_split"
+   ],
    "assembly_error": null
   },
   {
@@ -16354,40 +16310,24 @@
    "text": "whats inside that bag",
    "status": "ok",
    "exact": false,
-   "behaviour_equivalent": false,
+   "behaviour_equivalent": true,
    "classes": [
-    "resolver-policy",
     "schema-loss"
    ],
    "effective_diffs": [
-    {
-     "field": "args.item_id",
-     "legacy": "q4-startup-materials-duffle-01",
-     "resolved": null
-    },
     {
      "field": "request_text",
      "legacy": "what's inside that bag",
      "resolved": "whats inside that bag"
     }
    ],
-   "behaviour_diffs": [
-    {
-     "field": "routing_args",
-     "legacy": {
-      "item_id": "q4-startup-materials-duffle-01"
-     },
-     "resolved": {}
-    }
-   ],
+   "behaviour_diffs": [],
    "verdict": {
     "ok": true,
     "disposition": "accept",
     "errors": []
    },
-   "adapter_notes": [
-    "reader-schema gap:referent_not_in_candidates"
-   ],
+   "adapter_notes": [],
    "assembly_error": null
   },
   {
@@ -16484,40 +16424,24 @@
    "text": "whos in charg of the camra",
    "status": "ok",
    "exact": false,
-   "behaviour_equivalent": false,
+   "behaviour_equivalent": true,
    "classes": [
-    "resolver-policy",
     "schema-loss"
    ],
    "effective_diffs": [
-    {
-     "field": "args.item_id",
-     "legacy": "item-b2b47214d72b45d159",
-     "resolved": null
-    },
     {
      "field": "request_text",
      "legacy": "who's in charg of the camera",
      "resolved": "whos in charg of the camra"
     }
    ],
-   "behaviour_diffs": [
-    {
-     "field": "routing_args",
-     "legacy": {
-      "item_id": "item-b2b47214d72b45d159"
-     },
-     "resolved": {}
-    }
-   ],
+   "behaviour_diffs": [],
    "verdict": {
     "ok": true,
     "disposition": "accept",
     "errors": []
    },
-   "adapter_notes": [
-    "reader-schema gap:referent_not_in_candidates"
-   ],
+   "adapter_notes": [],
    "assembly_error": null
   },
   {
@@ -16526,7 +16450,7 @@
    "text": "waht is the threshhold",
    "status": "ok",
    "exact": false,
-   "behaviour_equivalent": true,
+   "behaviour_equivalent": false,
    "classes": [
     "resolver-policy",
     "schema-loss"
@@ -16538,12 +16462,30 @@
      "resolved": "place.definition"
     },
     {
+     "field": "args.place_id",
+     "legacy": null,
+     "resolved": "threshold"
+    },
+    {
+     "field": "args.place_basis",
+     "legacy": null,
+     "resolved": "salient_topic"
+    },
+    {
      "field": "request_text",
      "legacy": "what is the threshold",
      "resolved": "waht is the"
     }
    ],
-   "behaviour_diffs": [],
+   "behaviour_diffs": [
+    {
+     "field": "routing_args",
+     "legacy": {},
+     "resolved": {
+      "place_id": "threshold"
+     }
+    }
+   ],
    "verdict": {
     "ok": true,
     "disposition": "accept",

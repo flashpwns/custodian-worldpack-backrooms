@@ -42,12 +42,16 @@ const CAUSES = Object.freeze({
   raw_D2_player_claim: { class: "FENCED_RAW_TEXT", site: "D2/C1", title: "legacy acknowledges a 'player claim' found by LP.claim_predicate + entity mention over the raw line", fields: [/^routing\.(responders|silence)$/, /^lifecycle\.request\.targets$/, /^frame\.(referents|entity\.bound)$/] },
   raw_C14_tier1_completeness: { class: "FENCED_RAW_TEXT", site: "C14/C15", title: "Tier-1 completeness / finalizeFrame clarify-over-guess read the clause's words", fields: [ANY] },
   raw_request_identity: { class: "FENCED_RAW_TEXT", site: "E3 (request_text identity)", title: "openTurnRequests re-opens a request only when its request_text matches; the shadow's identity is canonical", fields: [/^lifecycle\.request\.(intent|target)$/] },
-  raw_closes_activity: { class: "FENCED_RAW_TEXT", site: "E6 (closes_activity)", title: "the round is closed by a parseActs closes_activity regex ('that's that'); the ReaderFrame carries no close", fields: [/^lifecycle\.activity$/] },
+  raw_closes_activity: { class: "FENCED_RAW_TEXT", site: "E6 (closes_activity)", title: "the round is closed by a parseActs closes_activity regex ('that's that'); ReaderFrame v2 expresses it as relation conclude, the difference remains where the adapter could not", fields: [/^lifecycle\.activity$/] },
   raw_C11_C12_facet: { class: "FENCED_RAW_TEXT", site: "C11/C12", title: "the facet / temporal came from fragment or item-role regex tables", fields: [/^act\.(facet|temporal)$/, /^frame\./, /^lifecycle\.request\.predicate$/] },
   raw_C16_anaphora: { class: "FENCED_RAW_TEXT", site: "C16", title: "intra-turn pronoun anaphora (service regex) supplied the subject; a pronoun has no name span", fields: [/^act\.subject/, /^frame\.(discourse_function|knowledge_query|args\.third_party_subject|expected_response_shape|requested_content)$/] },
   raw_half_b_entity: { class: "FENCED_RAW_TEXT", site: "D2 (half B over text)", title: "the entity came from resolveEntityMentions over the request text and is not a ReaderInput referent candidate", fields: [/^frame\.(entity\.bound|knowledge_query|referents|unresolved_reference|discourse_function|expected_response_shape|requested_content|expected_slot)$/, /^routing\.(responders|cardinality)$/, /^lifecycle\.request\.targets$/] },
   raw_B3_reaction_eligibility: { class: "FENCED_RAW_TEXT", site: "B3", title: "production's response eligibility came from the keyword reaction system", fields: [/^routing\.(responders|silence)$/, /^lifecycle\.request\.targets$/] },
-  B7_optional_salience: { class: "FENCED_RAW_TEXT", site: "B7 (salience from optional facts)", title: "legacy salience read optional (possibly unspoken) facts; the ReaderInput uses required facts only", fields: [/^frame\./, /^act\.(facet|temporal)$/, ROUTING] },
+  B7_optional_salience: { class: "FENCED_RAW_TEXT", site: "B7 (salience from optional facts)", title: "legacy salience read optional (possibly unspoken) facts; the ReaderInput uses canonical salience only (owner decision B7)", fields: [/^frame\./, /^act\.(facet|temporal)$/, ROUTING] },
+  // Owner decision B7 (approved for Reader Phase 2): a place a coworker only NAMED in delivered wording is heard
+  // salience -- it may be referred to by label, but it never becomes the canonical active place a bare "there"
+  // resolves to. Legacy's reply-fact salience made it the topic; the shadow clarifies which place is meant.
+  owner_B7_heard_not_active_place: { class: "OWNER_APPROVED", title: "B7: a place only heard in coworker wording is not the canonical active place; deictic 'there' clarifies", fields: [/^frame\./, /^routing\.(cardinality|responders|silence)$/, /^lifecycle\.request\.(intent|predicate)$/] },
   // ── fenced: legacy artifacts ──
   legacy_ellipsis_form_label: { class: "FENCED_LEGACY", title: "legacy labels an elliptical continuation 'wh' by default ('Tonya, have you?'); V1 rejects that form for the facet and the shadow fails closed", fields: [ANY] },
   legacy_answer_frame_drops_args: { class: "FENCED_LEGACY", title: "finalizeFrame's answer frame drops the act's arguments (answer option, reply kind) and keeps the pre-finalize shape", fields: [/^frame\.(args\.(answer_option|reply_kind)|expected_response_shape)$/] },
@@ -128,6 +132,9 @@ function turnCauses(record, out, pl) {
   const flags = pr.candidate_flags ?? {};
   if ((res.routing?.responders ?? []).some((id) => flags[id] && !flags[id].response_eligible) || ((pr.owner_ids ?? []).length === 0 && Object.values(flags).every((f) => !f.response_eligible) && Object.keys(flags).length)) add("raw_B3_reaction_eligibility");
   if (notes.includes("salient_place_from_legacy_salience")) add("B7_optional_salience");
+  const heardIds = (record.input?.heard?.salient_entities ?? []).map((l) => record.context?.bindings?.referents?.[l]).filter(Boolean);
+  const prodPlace = fin?.turn?.args?.place_id ?? fin?.knowledge_query?.entity?.id ?? null;
+  if (res.clarification?.reason === "deixis_without_antecedent" && !record.input?.conversation?.active_place && prodPlace && heardIds.includes(prodPlace)) add("owner_B7_heard_not_active_place");
   if (prod.args?.reply_kind === "answer_repair" && (pr.owner_ids ?? []).length) add("legacy_answer_repair_response");
   if (prodClarify && !(pr.owner_ids ?? []).length && shadowClarify) add("legacy_clarify_without_owner");
   return [...found];

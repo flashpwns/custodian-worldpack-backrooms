@@ -36,7 +36,7 @@ const dialogueTurn = require("./dialogue-turn");
 const RF = require("./dialogue-reader-frame");
 const policy = require("./dialogue-response-policy");
 
-const RESOLVE_TURN_VERSION = "yellow-beast-resolve-turn@v2";
+const RESOLVE_TURN_VERSION = "yellow-beast-resolve-turn@v3";
 
 /** The fields the resolver owns, each with the current legacy owner(s) it replaces. */
 const RESOLVER_OWNERSHIP = Object.freeze({
@@ -50,6 +50,9 @@ const RESOLVER_OWNERSHIP = Object.freeze({
   continuation_ownership: ["dialogue-turn.antecedentOf", "dialogue-turn.isFollowUp", "dialogue-state.lastPlayerClaim (legacy clause predicates)"],
   activity_round_ownership: ["dialogue-turn.analyzeTurn (activity_remaining)"],
   request_lifecycle: ["dialogue-state.openTurnRequests (unchanged in production; the shadow records its INTENT)"],
+  // Reader Phase 2: the reader's `conclude` / `withdraw` relation on the active activity (v1) -> close INTENT;
+  // canonical closeActivity stays production's.
+  activity_closure: ["dialogue-acts closes_activity ('that's that' marker regex) -> dialogue-state.closeActivity"],
   inbound_answer_routing: ["dialogue-turn.analyzeTurn (inboundAnswer / REPLY_* / open_question_answer)"],
   remark_silence: ["dialogue-turn.cardinalityFor", "dialogue-interpretation.resolveResponseOwners (REMARK_ACTS, SOCIAL_UNTARGETED_PATTERNS)"],
   clarification_disposition: ["dialogue-turn.finalizeFrame (clarify-over-guess)", "dialogue-turn.completenessWithFrame"]
@@ -174,6 +177,13 @@ function resolveAct(actIn, i, ctx, effective) {
   }
   if (kind === "attention" && ante?.request && PENDING.has(ante.request.state) && !failClosed) { e.reissue_of = ante.request.request_id; e.reopen = true; e.predicate = ante.request.predicate; e.question_form = null; e.args = { ...(ante.request.args ?? {}) }; }
   if (kind === "withdraw" && ante?.request) e.withdraw_of = ante.request.request_id;
+  // conclude / withdraw of the ACTIVE activity (Reader Phase 2): the reader expressed the relation; whether anything
+  // closes is decided here from canonical state -- only an activity that exists and is active can close. With
+  // nothing active the line is a social no-op (never a fabricated closure).
+  if ((kind === "conclude" || kind === "withdraw") && !failClosed) {
+    if (ante?.kind === "activity" && ante.activity && (ante.activity.state ?? "active") === "active") { e.closes_activity = ante.activity.activity_id ?? true; reasons.push(`${kind}:active_activity`); }
+    else if (kind === "conclude") reasons.push(target ? "conclude:target_not_active" : "conclude:no_active_activity");
+  }
 
   // ── inbound answers (routing to the asker is the resolver's) ──
   const inbound = snap?.pending_inbound_request ?? null;
@@ -325,7 +335,9 @@ function resolveAddress(act, e, ante, { input, bindings, snap, presentIds, reque
   if (e.relation === "answer" && asker && presentIds.includes(asker)) return { kind: "inherited", ids: [asker], quantifier: null, source: "open_question_answer" };
   if (e.args.reply_kind === "counter_question" && asker && presentIds.includes(asker)) return { kind: "inherited", ids: [asker], quantifier: null, source: "inbound_asker" };
   if (ante?.kind === "anchor" && ante.speaker_id && presentIds.includes(ante.speaker_id)) return { kind: "inherited", ids: [ante.speaker_id], quantifier: null, source: "surface_anchor" };
-  if (ante?.kind === "activity" && ante.activity) {
+  // An activity ROUND passes to its remaining member only for a continuation ("your turn"); concluding or withdrawing
+  // the round addresses nobody by it (Reader Phase 2).
+  if (ante?.kind === "activity" && ante.activity && e.relation === "continuation") {
     const done = new Set(ante.activity.completed ?? []);
     const remaining = presentIds.filter((id) => !done.has(id));
     return remaining.length === 1 ? { kind: "inherited", ids: remaining, quantifier: null, source: "activity_remaining" } : { kind: "inherited", ids: [], quantifier: null, source: "ellipsis_unresolved", ambiguous: remaining };
@@ -395,6 +407,13 @@ function lifecycleOf(primary, routing, ctx) {
   const activityKind = currentPredicate ? ACTIVITY_OF[currentPredicate] ?? null : null;
   const active = ctx.snap?.activity ?? null;
   if (activityKind) out.activity = { intent: !active ? "start" : active.kind === activityKind ? "continue" : "supersede", kind: activityKind };
+  // Reader Phase 2: an act of this turn that concludes / withdraws the active activity closes it (INTENT only),
+  // unless the primary act itself starts, continues or supersedes an activity (recorded as a conflict).
+  const closing = (ctx.effective ?? []).find((x) => x.closes_activity);
+  if (closing && active) {
+    if (out.activity.intent === "none") out.activity = { intent: "close", kind: active.kind };
+    else out.activity_conflict = { close_requested_by_act: closing.index, kept: out.activity.intent };
+  }
   if (primary.speech_act === "answer") out.inbound = { intent: primary.args?.reply_kind === "answer_repair" ? "answer_repair" : primary.args?.reply_kind ?? "answer", asker: primary.addressee?.ids?.[0] ?? null };
   else if (primary.args?.reply_kind === "counter_question") out.inbound = { intent: "counter_question", asker: primary.addressee?.ids?.[0] ?? null };
   if (primary.withdraw_of) out.withdraw = primary.withdraw_of;
@@ -413,6 +432,7 @@ function resolveShadow(frame, state, present, { verdict, input, bindings, opaque
   const ctx = { input, bindings, snap, requests, presentIds, opaque, findings: findingsOf(verdict), deicticInsideDefault: canonical.deictic_inside_default ?? DEICTIC_INSIDE_DEFAULT };
   const effective = [];
   frame.acts.forEach((act, i) => effective.push(resolveAct(act, i, ctx, effective)));
+  ctx.effective = effective;
   const primary = primaryOf(effective);
   const primaryIndex = effective.indexOf(primary);
   const routing = policy.decideResponse({
