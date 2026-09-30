@@ -62,15 +62,25 @@ Every teacher and E4B artifact records:
     trace 19, ED-30 novel 14;
   - excluded (diagnostic only): the 78 renders of context-dependent ED-30 probes replayed without their context;
   - gold: **ADJUDICATED_GOLD only** (label guide §5); at least **300** valid adjudicated renders or the run does not
-    start; a render the adjudicator declares unlabelable is excluded with its written reason;
+    start; a render the adjudicator declares unlabelable is excluded with its written reason (recorded as an
+    `ADJUDICATED_GOLD` row with `gold_outcome: "UNLABELABLE"` and `unlabelable_reason`; never gold) (0.1B);
   - estimator: the **unweighted** proportion over headline renders (each render once; no stratum is up-weighted, so a
     stratum weighs its share of distinct renders; the Step-0 weights are withdrawn from the headline);
   - interval: Wilson 95% reported; the **cluster bootstrap** 95% (2,000 reps, seed 7, resampling fixtures) is the one
     interpreted; unweighted per-stratum proportions with Wilson intervals are always reported, strata < 60 renders
     never interpreted alone;
   - transport: failures retried under the preregistered policy (3 retries at 2 / 4 / 8 s, transient failures only);
-    more than 2% `transport_unavailable` after retries voids the run (not scored; repeated in full);
+    more than 2% voids after retries -- `transport_unavailable`, provider voids (truncation / max tokens, refusal /
+    content filter; never retried) and missing readings -- voids the run (not scored; repeated in full) (0.1B);
+  - hosted runs need an explicit output-token budget and durable per-request receipts established before the first
+    request (0.1B);
   - one run over the whole sample, no interim looks.
+- **Headline binding (0.1B, enforced in code by `dialogue-reader-replay.js headlineVerdict`):** a score artifact is
+  `headline: true` only when the sample file is byte-identical to the pinned frozen file (SHA-256 `26f0ba7b…`, also
+  pinned in `ed33b`), carries the current contract identity, holds the 474-render census and regenerates exactly from
+  the scored capture; the run scored exactly that population (no `--limit`, stratum filter, human-trace exclusion,
+  diagnostic label states or JSON control); every render has valid `ADJUDICATED_GOLD` or a recorded `UNLABELABLE`,
+  with at least 300 valid; and voids are ≤ 2%. Otherwise the artifact records `headline: false` with the reasons.
 - **Stop rule:**
   - if the resolved-outcome accuracy (point estimate over the headline sample, §3 estimator) is **< 80%** or primary
     speech-act accuracy is **< 85%**: STOP;

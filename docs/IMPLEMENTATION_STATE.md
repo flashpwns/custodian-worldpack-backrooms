@@ -1,5 +1,28 @@
 # Yellow Beast Implementation State
 
+## Reader Phase 2, Step 0.1B: audit blocker remediation B1–B4 (shadow-only) — 2026-09-30
+
+- **Scope:** the four blocking findings of the independent Step 0.1 re-audit only. No teacher, labels, E4B,
+  calibration or sealed data; no change to user renders, the frozen 474-render population, ReaderInput / lexicon /
+  frame / resolver semantics, the label contract or the dialogue runtime. Details: `docs/reader/READER_PHASE2.md` §13.
+- **B1:** hosted output budget mandatory (refused before egress); `finish_reason` / `stop_reason` / usage in every
+  receipt; truncation and refusal are `provider_void` (void accounting, never scored, never retried); normally
+  completed empty / malformed output stays semantic `invalid_output`.
+- **B2:** `headlineVerdict` binds `headline: true` to the pinned frozen sample (SHA-256 `26f0ba7b…`, contract identity,
+  474 ids, regeneration from the capture), exact population, a label for every render (`ADJUDICATED_GOLD` or a
+  recorded `UNLABELABLE`), ≥ 300 valid and ≤ 2% voids.
+- **B3:** receipt file created exclusively before the first request; each request's receipt appended and fsync'd as
+  it completes (a real mid-run process exit keeps receipts 1..N).
+- **B4:** the JSON control requires span / speech act / facet / address op (+ names) / relation kind, only `acts` at
+  top level, a known facet at V0; `SYSTEM_DIGEST_JSON` (`c2542a45…`) pinned; JSON-only drift fails governance.
+- **Measured:** wire system digest unchanged (`8c727a29…`), so renders and G1 are unchanged (discourse-bearing p90
+  263, human trace p90 292); teacher sample and dev manifest regenerate byte-identically (944 / 575 / 470 / 552 / 474 /
+  78; j15 132, rare 108, scripted 102, ED-30 dev 99, human trace 19, ED-30 novel 14).
+- **Governance:** `ed33a` / `ed33c` hashes updated; `ed31a` / `ed32a` / `ed33a` / `ed33c` 91 pass; `ed31b` / `ed32b` /
+  `ed33b` pass; inventory 57 pre-existing errors only; full suite 1,570 tests, 1,491 pass, 79 fail;
+  `compare-failing-tests` unchanged 79, **new 0**, fixed 0.
+- **Status: PHASE 2 STEP 0.1B COMPLETE — READY FOR INDEPENDENT RE-AUDIT.**
+
 ## Reader Phase 2, Step 0.1: experiment / scoring contract (shadow-only, before any label) — 2026-09-30
 
 - **Scope:** owner instruction of 2026-09-30 after the Sonnet 5.5 audit of Step 0 (**NOT READY FOR TEACHER CEILING**:

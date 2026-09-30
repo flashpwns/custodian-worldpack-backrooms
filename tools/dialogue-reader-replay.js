@@ -346,19 +346,21 @@ function legacyArm(units) {
  * 409 / 425 / 429 / 5xx -- is retried up to 3 more times after 2 s, 4 s and 8 s. A non-transient failure (HTTP 400 /
  * 401 / 403 / 404 / 422, missing credential) is not retried. After the last attempt the unit is
  * `transport_unavailable`: a transport outcome, never a semantic error. A decoded-but-wrong or undecodable reply is
- * never retried (that would select among samples).
+ * never retried (that would select among samples). A PROVIDER TERMINATION (Step 0.1B: truncation / max-token
+ * exhaustion, refusal / content filter) is not retried either: it is a `provider_void`, accounted with transport voids.
  */
 const RETRY_POLICY = Object.freeze({ max_retries: 3, backoff_ms: [2000, 4000, 8000], transient: ["timeout", "network", "HTTP_408", "HTTP_409", "HTTP_425", "HTTP_429", "HTTP_5xx"] });
 function transientFailure(receipt) {
   if (receipt?.status !== "reader_unavailable") return false;
   if (receipt.reason === "timeout") return true;
+  if (receipt.reason === "provider_termination") return false;
   const code = String(receipt.error ?? "");
   if (/^HTTP_(408|409|425|429|5\d\d)$/.test(code)) return true;
-  if (/^HTTP_\d+$/.test(code) || code === "AUTH_MISSING" || receipt.reason === "no_transport") return false;
+  if (/^HTTP_\d+$/.test(code) || /^PROVIDER_/.test(code) || code === "AUTH_MISSING" || code === "BUDGET_MISSING" || receipt.reason === "no_transport") return false;
   return true; // network-level failures (ECONNRESET, fetch failed, ...)
 }
 /** A model arm: readTurnAsync per unit (bounded concurrency) under the retry policy; receipts kept. */
-async function modelArm(units, readerConfig, { concurrency = 1, onItem = null, retry = RETRY_POLICY, sleep = (ms) => new Promise((r) => setTimeout(r, ms)) } = {}) {
+async function modelArm(units, readerConfig, { concurrency = 1, onItem = null, onAttempt = null, retry = RETRY_POLICY, sleep = (ms) => new Promise((r) => setTimeout(r, ms)) } = {}) {
   const out = new Array(units.length);
   let next = 0;
   const worker = async () => {
@@ -374,6 +376,8 @@ async function modelArm(units, readerConfig, { concurrency = 1, onItem = null, r
         attempts += 1;
         receipt = await readTurnAsync({ input: item.input, bindings: item.bindings, request_id: u.id, context: item.context }, readerConfig);
         tries.push({ status: receipt.status, reason: receipt.reason ?? null, error: receipt.error ?? null, latency_ms: receipt.latency_ms });
+        // Per-request hook (hosted receipts are made durable here, before the next request is sent).
+        if (onAttempt) await onAttempt({ unit: u, item, receipt, attempt: attempts });
         if (!transientFailure(receipt) || attempts > (retry?.max_retries ?? 0)) break;
         await sleep(retry.backoff_ms[Math.min(attempts - 1, retry.backoff_ms.length - 1)]);
       }
@@ -388,7 +392,7 @@ async function modelArm(units, readerConfig, { concurrency = 1, onItem = null, r
 /** How an arm reading is classified before any semantic comparison. */
 function armStatus(got) {
   if (!got) return "missing";
-  if (got.status === "reader_unavailable") return "transport_unavailable";
+  if (got.status === "reader_unavailable") return got.reason === "provider_termination" || got.receipt?.reason === "provider_termination" ? "provider_void" : "transport_unavailable";
   if (got.status === "invalid" || !got.frame || !got.resolution || got.resolution.error || got.resolution.outcome === "invalid" || RF.dispositionOf(got.verdict) === RF.DISPOSITIONS.INVALID) return "invalid_output";
   return "read";
 }
@@ -399,6 +403,8 @@ function armStatus(got) {
  * contract is excluded (gold_invalid), never compared. Per row:
  *   transport_unavailable  no semantic credit and not a semantic error: excluded from the semantic denominator,
  *                          counted and reported separately (and as wrong in the conservative figure)
+ *   provider_void          the provider did not complete the reply (truncation / max tokens, refusal / content filter;
+ *                          Step 0.1B): accounted exactly like transport_unavailable, in the void rate
  *   invalid_output         decode / V0 failure: WRONG, never outcome credit, every field wrong
  *   read, gold ACCEPT      correct iff the arm resolved (no clarification) with an identical outcome signature;
  *                          an accepted-but-different reading is FALSE-CONFIDENT
@@ -420,7 +426,7 @@ function scoreArm(units, arm, gold, { weights = null, clusterOf = (u) => u.clust
     const got = byId.get(u.id);
     const status = armStatus(got);
     const emptyFields = Object.fromEntries(Object.keys(fieldAgreement(gv.frame, gv.frame, item.input)).map((k) => [k, false]));
-    if (status === "transport_unavailable" || status === "missing") { rows.push({ ...base, status, correct: false, scored: false, accepted: false, false_confident: false, fields: emptyFields, retry_count: got?.retry_count ?? 0 }); continue; }
+    if (status === "transport_unavailable" || status === "provider_void" || status === "missing") { rows.push({ ...base, status, correct: false, scored: false, accepted: false, false_confident: false, fields: emptyFields, retry_count: got?.retry_count ?? 0, ...(status === "provider_void" ? { provider_termination: got?.receipt?.transport?.termination ?? null } : {}) }); continue; }
     if (status === "invalid_output") { rows.push({ ...base, status, correct: false, scored: true, accepted: false, false_confident: false, outcome_equal: false, fields: emptyFields, disposition: "INVALID", latency_ms: got?.latency_ms ?? null, retry_count: got?.retry_count ?? 0 }); continue; }
     const res = got.resolution;
     const accepted = res.outcome === "resolved";
@@ -490,7 +496,7 @@ function summarizeRows(rows, weights = null) {
   for (const r of scored) { byGold[r.gold_outcome] ??= { n: 0, correct: 0 }; byGold[r.gold_outcome].n += 1; if (r.correct) byGold[r.gold_outcome].correct += 1; }
   return {
     n_rows: rows.length, n_gold_valid: goldValid.length, n_scored: scored.length, status,
-    transport: { unavailable: status.transport_unavailable ?? 0, missing: status.missing ?? 0, rate_pct: pct((status.transport_unavailable ?? 0) + (status.missing ?? 0), goldValid.length), retried: count(rows, (r) => (r.retry_count ?? 0) > 0) },
+    transport: { unavailable: status.transport_unavailable ?? 0, provider_void: status.provider_void ?? 0, missing: status.missing ?? 0, voids: (status.transport_unavailable ?? 0) + (status.provider_void ?? 0) + (status.missing ?? 0), rate_pct: pct((status.transport_unavailable ?? 0) + (status.provider_void ?? 0) + (status.missing ?? 0), goldValid.length), retried: count(rows, (r) => (r.retry_count ?? 0) > 0) },
     invalid_output: status.invalid_output ?? 0,
     resolved_outcome: { correct, pct: pct(correct, scored.length), wilson: wilson(correct, scored.length), cluster_bootstrap: clusterBootstrap(scored, (r) => r.correct), conservative_pct_transport_as_wrong: pct(correct, goldValid.length), weighted_pct: weighted },
     by_gold_outcome: byGold,
@@ -599,7 +605,7 @@ async function tokenDistribution(items, { log = () => {} } = {}) {
  * is required, and human-trace renders are excluded unless `--include-human-trace` is also given. Returns
  * { ok, units, summary, refusal? }; the summary is printed before any request is sent.
  */
-function egressPlan(units, { confirm = false, includeHumanTrace = false, provider, baseURL, model, family, retention = null, receipts = null, params = {} } = {}) {
+function egressPlan(units, { confirm = false, includeHumanTrace = false, provider, baseURL, model, family, retention = null, receipts = null, params = {}, maxOutputTokens = params?.max_output_tokens ?? null } = {}) {
   const human = (u) => (u.strata ?? [unitItem(u).stratum]).includes("human_trace");
   const kept = includeHumanTrace ? units : units.filter((u) => !human(u));
   const strata = {};
@@ -616,24 +622,117 @@ function egressPlan(units, { confirm = false, includeHumanTrace = false, provide
     retention_training: retention ?? "unknown: not configured (pass --retention to record the provider's retention / training setting)",
     receipts: receipts ?? null
   };
+  if (!(Number.isInteger(Number(maxOutputTokens)) && Number(maxOutputTokens) > 0)) return { ok: false, units: kept, summary, refusal: "hosted run refused: an explicit output-token budget (--max-output-tokens) is required; there is no hosted default" };
   if (!confirm) return { ok: false, units: kept, summary, refusal: "hosted egress refused: pass --confirm-egress to send player text to the provider (consent is never inferred from an API key)" };
   if (!receipts) return { ok: false, units: kept, summary, refusal: "hosted run refused: --receipts <file.jsonl> is mandatory for hosted runs" };
   return { ok: true, units: kept, summary };
 }
-/** One receipt per hosted request (never any provider chain-of-thought). */
-function hostedReceipt(row, item) {
-  const r = row.receipt ?? {};
-  const t = r.transport?.transmitted ?? r.transmitted ?? null;
+/** Provider termination metadata of one reading (finish / stop reason, kind, usage); never any reasoning text. */
+function terminationOf(r) {
+  const t = r?.transport?.termination ?? null;
+  return { finish_reason: t?.finish_reason ?? null, stop_reason: t?.stop_reason ?? null, termination: t?.kind ?? (r?.status === "read" || r?.status === "invalid" ? "completed" : null), refusal: Boolean(t?.refusal), usage: t?.usage ?? r?.transport?.usage ?? null };
+}
+/** One receipt per hosted REQUEST (never any provider chain-of-thought). */
+function hostedRequestReceipt({ unit, item, receipt, attempt }) {
+  const r = receipt ?? {};
+  const t = r.transport?.transmitted ?? null;
   let host = null;
   try { host = t?.url ? new URL(t.url).host : null; } catch { host = null; }
   return {
-    id: row.id, render_digest: r.render_digest ?? renderReaderPrompt(item.input).render_digest, system_digest: r.system_digest ?? null,
+    id: unit.id, attempt, retry_count: attempt - 1, render_digest: r.render_digest ?? renderReaderPrompt(item.input).render_digest, system_digest: r.system_digest ?? null,
     provider: r.reader?.provider ?? null, endpoint_host: host, model: r.reader?.model ?? t?.model ?? null, response_model: r.transport?.model ?? null,
     params: t?.params ?? null, request_bytes: t?.bytes ?? null, system_sha256: t?.system_sha256 ?? null, user_sha256: t?.user_sha256 ?? null,
-    response_status: r.transport?.response_status ?? (r.status === "reader_unavailable" ? r.error ?? r.reason : null), retry_count: row.retry_count ?? 0, tries: row.tries ?? [],
+    response_status: r.transport?.response_status ?? (r.status === "reader_unavailable" ? r.error ?? r.reason : null),
     latency_ms: r.latency_ms ?? null, output_digest: typeof r.raw_wire === "string" ? sha(r.raw_wire) : null, status: r.status ?? null,
-    transport_failure: r.status === "reader_unavailable" ? { reason: r.reason ?? null, error: r.error ?? null } : null, usage: r.transport?.usage ?? null
+    ...terminationOf(r),
+    transport_failure: r.status === "reader_unavailable" ? { reason: r.reason ?? null, error: r.error ?? null } : null
   };
+}
+/** Per-unit summary receipt (all attempts). */
+function hostedReceipt(row, item) {
+  const last = hostedRequestReceipt({ unit: { id: row.id }, item, receipt: row.receipt, attempt: row.attempts ?? 1 });
+  return { ...last, retry_count: row.retry_count ?? 0, tries: row.tries ?? [] };
+}
+
+/**
+ * DURABLE RECEIPT LOG (Step 0.1B). Opened BEFORE any hosted request: the destination is created exclusively (an existing
+ * file is never overwritten or mixed into) and a failure to prepare it throws RECEIPTS_UNWRITABLE, so no request is
+ * sent. Each completed request is appended and fsync'd before the arm proceeds, so a crash after request N leaves the
+ * receipts of requests 1..N on disk.
+ */
+function openReceiptLog(file) {
+  let fd;
+  try { fd = fs.openSync(file, "wx"); } catch (error) { throw Object.assign(new Error(`receipts destination cannot be prepared (${error.code ?? error.message}): ${file}`), { code: "RECEIPTS_UNWRITABLE" }); }
+  return {
+    file,
+    append(record) { fs.writeSync(fd, `${JSON.stringify(record)}\n`); fs.fsyncSync(fd); },
+    close() { try { fs.closeSync(fd); } catch {} }
+  };
+}
+/**
+ * The hosted teacher arm. Order is fail-closed: explicit budget -> receipt log prepared -> transport -> requests, each
+ * request's receipt durably appended as it completes. Throws BUDGET_MISSING / RECEIPTS_UNWRITABLE before any egress.
+ */
+async function hostedArm(units, { api = "openai-chat", baseURL, apiKey, model, provider = api, family = null, maxOutputTokens = null, temperature = null, reasoningEffort = null, reasoningBudgetTokens = null, maxTokensParam, output = "wire", timeoutMs = 120000, concurrency = 2, receipts, fetchImpl, sleep, onItem = null } = {}) {
+  if (!(Number.isInteger(Number(maxOutputTokens)) && Number(maxOutputTokens) > 0)) throw Object.assign(new Error("hosted run refused: an explicit output-token budget is required"), { code: "BUDGET_MISSING" });
+  if (!receipts) throw Object.assign(new Error("hosted run refused: a receipts destination is mandatory"), { code: "RECEIPTS_UNWRITABLE" });
+  const log = openReceiptLog(receipts);
+  try {
+    const transport = require("./dialogue-reader-async").hostedChatTransport({ api, baseURL, apiKey, model, maxOutputTokens: Number(maxOutputTokens), temperature, reasoningEffort, reasoningBudgetTokens, maxTokensParam, ...(fetchImpl ? { fetchImpl } : {}) });
+    return await modelArm(units, { id: "teacher", provider, model, family, output, max_tokens: Number(maxOutputTokens), temperature, timeout_ms: timeoutMs, transport }, { concurrency, onItem, ...(sleep ? { sleep } : {}), onAttempt: (a) => log.append(hostedRequestReceipt(a)) });
+  } finally { log.close(); }
+}
+
+// ─── the headline contract (Step 0.1B) ───────────────────────────────────────────────────────────────
+// A run is HEADLINE only when it measures exactly the preregistered teacher population under the preregistered rules.
+// The canonical population is bound by the pinned SHA-256 of the frozen sample file (also pinned in ed33b), its
+// contract identity, and deterministic regeneration from the capture being scored.
+const TEACHER_SAMPLE_FILE = path.join(__dirname, "..", "docs", "acceptance", "reader-phase2", "teacher-dev-sample.json");
+const TEACHER_SAMPLE_SHA256 = "26f0ba7b69a3be175359ddad5fa0a798a094d1151dc1b1659c243b70aeb201c8";
+const TEACHER_POPULATION = 474;
+const TRANSPORT_VOID_MAX = 0.02;
+/**
+ * Returns { headline, reasons }. Every condition must hold:
+ *   the sample file is byte-identical to the pinned canonical file, carries the current contract identity, has the
+ *   474-render population, and regenerates exactly from the scored capture; the run scored exactly that population
+ *   (no --limit, stratum filter, human-trace exclusion or diagnostic label states; wire output); every id has valid
+ *   ADJUDICATED_GOLD or a recorded UNLABELABLE adjudication, with at least 300 valid adjudicated (label-loss rule); the
+ *   voids (transport_unavailable + provider_void + missing) are at most 2% (transport-void rule).
+ */
+function headlineVerdict({ sampleText = null, capturedGroups = [], runIds = [], validated = null, gold = null, rows = [], limit = false, stratum = false, diagnosticStates = false, humanTraceExcluded = 0, output = "wire" } = {}) {
+  const reasons = [];
+  let doc = null;
+  if (sampleText == null) reasons.push("no_preregistered_sample");
+  else {
+    if (sha(sampleText) !== TEACHER_SAMPLE_SHA256) reasons.push("sample_identity_mismatch");
+    try { doc = JSON.parse(sampleText); } catch { reasons.push("sample_unreadable"); }
+  }
+  const ids = doc?.headline?.map((h) => h.id) ?? [];
+  if (doc) {
+    if (JSON.stringify(doc.contract) !== JSON.stringify(contractIdentity())) reasons.push("sample_contract_mismatch");
+    if (doc.version !== TEACHER_SAMPLE_PLAN.version || ids.length !== TEACHER_POPULATION || doc.headline_renders !== TEACHER_POPULATION || new Set(ids).size !== ids.length) reasons.push("sample_population_not_canonical");
+    const regenerated = teacherDevSample(capturedGroups).headline.map((h) => h.id);
+    if (JSON.stringify(regenerated) !== JSON.stringify(ids)) reasons.push("sample_not_regenerated_from_capture");
+  }
+  if (limit) reasons.push("limit_run");
+  if (stratum) reasons.push("stratum_filtered_run");
+  if (diagnosticStates) reasons.push("diagnostic_label_states");
+  if (output !== "wire") reasons.push("json_control_run");
+  if (humanTraceExcluded > 0) reasons.push("human_trace_excluded");
+  const run = new Set(runIds);
+  if (run.size !== ids.length || ids.some((id) => !run.has(id))) reasons.push("run_population_differs_from_sample");
+  const goldIds = new Set(Object.keys(gold ?? {}));
+  const unlabelable = new Set((validated?.unlabelable ?? []).map((u) => u.id));
+  const invalid = new Set((validated?.problems ?? []).map((p) => p.id));
+  const missing = ids.filter((id) => !goldIds.has(id) && !unlabelable.has(id));
+  if (ids.some((id) => invalid.has(id))) reasons.push("invalid_labels_in_population");
+  if (missing.length) reasons.push("labels_missing");
+  const validAdjudicated = ids.filter((id) => goldIds.has(id)).length;
+  if (validAdjudicated < (TEACHER_SAMPLE_PLAN.minimum_valid_adjudicated ?? 300)) reasons.push("label_loss_rule_fewer_than_300_valid_adjudicated");
+  const voids = rows.filter((r) => ["transport_unavailable", "provider_void", "missing"].includes(r.status)).length;
+  const population = rows.filter((r) => r.status !== "gold_invalid").length;
+  if (!population || voids / population > TRANSPORT_VOID_MAX) reasons.push(population ? "transport_void_rule_exceeded" : "nothing_scored");
+  return { headline: reasons.length === 0, reasons: [...new Set(reasons)], valid_adjudicated: validAdjudicated, unlabelable: unlabelable.size, missing: missing.length, voids, void_rate_pct: pct(voids, population) };
 }
 
 // ─── CLI ─────────────────────────────────────────────────────────────────────────────────────────────
@@ -682,19 +781,19 @@ async function main() {
   }
   if (arg("--run")) {
     const L = require("./dialogue-reader-labels");
-    let groups = renderGroups(load(arg("--run")));
+    const allGroups = renderGroups(load(arg("--run")));
+    let groups = allGroups;
     const labels = fs.readFileSync(arg("--labels"), "utf8").split("\n").map((l) => l.trim()).filter((l) => l && !l.startsWith("//")).map((l) => JSON.parse(l));
     // Headline scoring uses ADJUDICATED_GOLD only; other states only with --diagnostic-states (never headline).
     const states = arg("--diagnostic-states") ? arg("--diagnostic-states").split(",") : [L.LABEL_STATES.ADJUDICATED_GOLD];
     const registry = L.loadRegistry();
-    let headline = !arg("--diagnostic-states");
     let sampleNote = "all labelled renders";
-    if (arg("--sample")) { const ids = new Set(JSON.parse(fs.readFileSync(arg("--sample"), "utf8")).headline.map((h) => h.id)); groups = groups.filter((g) => ids.has(g.id)); sampleNote = `preregistered sample ${path.basename(arg("--sample"))}`; }
-    else headline = false;
-    if (arg("--stratum")) { groups = groups.filter((g) => g.primary_stratum === arg("--stratum")); headline = false; sampleNote += `; stratum ${arg("--stratum")}`; }
+    let sampleText = null;
+    if (arg("--sample")) { sampleText = fs.readFileSync(arg("--sample"), "utf8"); const ids = new Set(JSON.parse(sampleText).headline.map((h) => h.id)); groups = groups.filter((g) => ids.has(g.id)); sampleNote = `sample ${path.basename(arg("--sample"))}`; }
+    if (arg("--stratum")) { groups = groups.filter((g) => g.primary_stratum === arg("--stratum")); sampleNote += `; stratum ${arg("--stratum")}`; }
     const validated = L.validateLabels(groups, labels, { states, registry });
     groups = groups.filter((g) => validated.gold[g.id]);
-    if (arg("--limit")) { groups = stratifiedSample(groups, Number(arg("--limit"))); headline = false; sampleNote += `; stratified --limit ${arg("--limit")} (non-headline)`; }
+    if (arg("--limit")) { groups = stratifiedSample(groups, Number(arg("--limit"))); sampleNote += `; stratified --limit ${arg("--limit")} (non-headline)`; }
     const armName = arg("--arm");
     const output = arg("--output") === "json" ? "json" : "wire";
     let arm; let identity; let server = null; let egress = null; let armFamily = null;
@@ -720,26 +819,28 @@ async function main() {
         if (!egress.ok) { log(egress.refusal); process.exitCode = 2; return; }
         groups = egress.units;
         const key = process.env[arg("--key-env") ?? ""] ?? null;
-        identity = { arm: "T", provider: egress.summary.provider, api, endpoint_host: egress.summary.endpoint_host, model: arg("--model"), family: armFamily, params, retry_policy: RETRY_POLICY, egress: egress.summary, transmitted: "renderReaderPrompt(input) system + user only; no transcript, world state, private state, repository or canon" };
-        arm = await modelArm(groups, { id: "teacher", provider: identity.provider, model: identity.model, output, max_tokens: params.max_output_tokens ?? 96, temperature: params.temperature, timeout_ms: Number(arg("--timeout-ms") ?? 120000), transport: require("./dialogue-reader-async").hostedChatTransport({ api, baseURL: arg("--base-url") ?? undefined, apiKey: key, model: identity.model, maxOutputTokens: params.max_output_tokens, temperature: params.temperature, reasoningEffort: params.reasoning_effort, reasoningBudgetTokens: params.reasoning_budget_tokens, maxTokensParam: params.max_tokens_param ?? undefined }) }, { concurrency: Number(arg("--concurrency") ?? 2), onItem: (r, i) => log(`${i + 1}/${groups.length} ${r.status}${r.retry_count ? ` (retries ${r.retry_count})` : ""}`) });
-        fs.writeFileSync(arg("--receipts"), `${arm.map((r) => JSON.stringify(hostedReceipt(r, groups.find((g) => g.id === r.id).item))).join("\n")}\n`);
+        identity = { arm: "T", provider: egress.summary.provider, api, endpoint_host: egress.summary.endpoint_host, model: arg("--model"), family: armFamily, params, retry_policy: RETRY_POLICY, egress: egress.summary, transmitted: "renderReaderPrompt(input) system + user only; no transcript, world state, private state, repository or canon", ...(output === "json" ? { json_system_digest: require("./dialogue-reader-render").SYSTEM_DIGEST_JSON } : {}) };
+        // Budget and receipt log are established before the first request; each request's receipt is durable on completion.
+        arm = await hostedArm(groups, { api, baseURL: arg("--base-url") ?? undefined, apiKey: key, model: identity.model, provider: identity.provider, family: armFamily, maxOutputTokens: params.max_output_tokens, temperature: params.temperature, reasoningEffort: params.reasoning_effort, reasoningBudgetTokens: params.reasoning_budget_tokens, maxTokensParam: params.max_tokens_param ?? undefined, output, timeoutMs: Number(arg("--timeout-ms") ?? 120000), concurrency: Number(arg("--concurrency") ?? 2), receipts: arg("--receipts"), onItem: (r, i) => log(`${i + 1}/${groups.length} ${r.status}${r.retry_count ? ` (retries ${r.retry_count})` : ""}`) });
       } else throw new Error("--arm legacy|local|hosted");
     } finally { if (server) await server.stop(); }
     // An evaluated arm is never the label source of its own evaluation.
     const own = L.excludeSelfLabelled(validated.gold, armFamily);
     const scored = scoreArm(groups, arm, own.gold, { weights: JSON.parse(arg("--weights") ?? "null") });
+    // headline:true only when the whole preregistered contract holds (Step 0.1B).
+    const verdict = headlineVerdict({ sampleText, capturedGroups: allGroups, runIds: groups.map((g) => g.id), validated, gold: own.gold, rows: scored.rows, limit: Boolean(arg("--limit")), stratum: Boolean(arg("--stratum")), diagnosticStates: Boolean(arg("--diagnostic-states")), humanTraceExcluded: egress?.summary?.human_trace_excluded ?? 0, output });
     const byId = new Map(arm.map((r) => [r.id, r]));
-    const doc = { version: REPLAY_VERSION, measured_at: new Date().toISOString(), authoritative: false, headline, sample: sampleNote, contract: contractIdentity(), output, identity, labels: { file: path.basename(arg("--labels")), states, counts: validated.counts, problems: validated.problems, excluded_self_labelled: own.excluded }, summary: scored.summary, rows: scored.rows.map((r) => ({ ...r, raw_wire: byId.get(r.id)?.raw_wire ?? null })) };
+    const doc = { version: REPLAY_VERSION, measured_at: new Date().toISOString(), authoritative: false, headline: verdict.headline, headline_verdict: verdict, sample: sampleNote, contract: contractIdentity(), output, identity, labels: { file: path.basename(arg("--labels")), states, counts: validated.counts, problems: validated.problems, unlabelable: validated.unlabelable, excluded_self_labelled: own.excluded }, summary: scored.summary, rows: scored.rows.map((r) => ({ ...r, raw_wire: byId.get(r.id)?.raw_wire ?? null })) };
     fs.writeFileSync(arg("--out"), `${JSON.stringify(doc, null, 1)}\n`);
     if (armName !== "hosted" && arg("--receipts")) fs.writeFileSync(arg("--receipts"), arm.map((r) => JSON.stringify({ id: r.id, receipt: r.receipt ?? null })).join("\n"));
-    console.log(JSON.stringify(scored.summary, null, 1));
+    console.log(JSON.stringify({ headline: verdict.headline, headline_reasons: verdict.reasons, ...scored.summary }, null, 1));
     return;
   }
   console.error("usage: --capture <out.json> [--quick] | --tokens <capture.json> --out <file> | --manifest <capture.json> --out <file> | --teacher-sample <capture.json> --out <file> | --shapes <capture.json> | --counts <capture.json> | --run <capture.json> --labels <labels.jsonl> --arm legacy|local|hosted --out <score.json>");
   process.exit(2);
 }
 
-module.exports = { doctrineReviewSample, REPLAY_VERSION, RETRY_POLICY, TOKEN_CLASSES, G1_RULE, TEACHER_SAMPLE_PLAN, STRATUM_PRIORITY, SHAPE_KEYS, loadRareState, developmentFixtures, stratumOf, captureCorpus, freezeItem, renderGroups, corpusCounts, stratifiedSample, stratumOrder, headlineEligible, teacherDevSample, resolveFrame, outcomeSignature, compareOutcomes, fieldAgreement, primaryAct, legacyArm, modelArm, transientFailure, armStatus, scoreArm, summarizeRows, bootstrapQuantile, clusterBootstrap, wilson, quantile, contractIdentity, shapeCounts, tokenStats, tokenDistribution, egressPlan, hostedReceipt, ROUTING_FIELDS, DIAGNOSTIC_FIELDS };
+module.exports = { headlineVerdict, hostedArm, hostedRequestReceipt, openReceiptLog, terminationOf, TEACHER_SAMPLE_FILE, TEACHER_SAMPLE_SHA256, TEACHER_POPULATION, TRANSPORT_VOID_MAX, doctrineReviewSample, REPLAY_VERSION, RETRY_POLICY, TOKEN_CLASSES, G1_RULE, TEACHER_SAMPLE_PLAN, STRATUM_PRIORITY, SHAPE_KEYS, loadRareState, developmentFixtures, stratumOf, captureCorpus, freezeItem, renderGroups, corpusCounts, stratifiedSample, stratumOrder, headlineEligible, teacherDevSample, resolveFrame, outcomeSignature, compareOutcomes, fieldAgreement, primaryAct, legacyArm, modelArm, transientFailure, armStatus, scoreArm, summarizeRows, bootstrapQuantile, clusterBootstrap, wilson, quantile, contractIdentity, shapeCounts, tokenStats, tokenDistribution, egressPlan, hostedReceipt, ROUTING_FIELDS, DIAGNOSTIC_FIELDS };
 
 // Entry point last: dialogue-reader-labels.js requires this module, so its exports must exist before main() runs.
 if (require.main === module) main().catch((error) => { console.error(error.stack ?? error.message); process.exit(1); });

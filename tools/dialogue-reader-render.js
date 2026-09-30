@@ -103,8 +103,9 @@ const OUTPUT_LINES = Object.freeze({
 });
 const glossOf = (id) => registry.advisoryFacetGuide()[id] ?? EXTRA_GUIDE[id] ?? id;
 /** The system text for one output representation. */
-function systemText(output = "wire") {
-  const sp = output === "json" ? SPELL.json : SPELL.wire;
+function systemText(output = "wire", spell = null) {
+  // `spell` exists only for governance drift tests (a mutated spelling must change the pinned digest).
+  const sp = spell ?? (output === "json" ? SPELL.json : SPELL.wire);
   const key = output === "json" ? (id) => id : (id) => W.FACET_CODES[id];
   return [...semanticLines(sp), ...OUTPUT_LINES[output === "json" ? "json" : "wire"], "FACET CODES:", ...registry.ids().map((id) => `${key(id)} = ${glossOf(id)}`)].join("\n");
 }

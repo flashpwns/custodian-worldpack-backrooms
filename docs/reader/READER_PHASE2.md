@@ -159,8 +159,9 @@ ack - - end:v1 ; ask next_step - new at=6 f=wh        "Okay, well that's that, w
   - throw, hang, slow (> timeout), malformed, server down and no transport each give an inert receipt with no
     resolution;
   - an `ab=address` abstention clarifies as `READER_UNCERTAINTY`.
-- **Hosted teacher transport:** the request body is exactly `[system, user]` of the frozen render, at temperature
-  0, with no canonical id. `transmitted` records the URL, model, byte count, the SHA-256 of system and user, and the
+- **Hosted teacher transport:** the request body is exactly `[system, user]` of the frozen render, with no canonical
+  id. Temperature is sent only when configured (never forced; Step 0.1 §12.6), and the output-token budget must be
+  explicit (Step 0.1B). `transmitted` records the URL, model, byte count, the SHA-256 of system and user, and the
   parameters.
 - **Local transport:** temperature 0, `top_k` 1, the per-input grammar, top-k logprobs.
 - **Local smoke check (engineering only, not a measurement).** Five items through the pinned E4B confirmed:
@@ -436,3 +437,16 @@ false-confident gate at ~880 accepted: true FC 1.0% → 99.6%, 1.5% → 88.1%, 2
 (~1,584 accepted) the power at a true 2.0% is 80.9%. The sealed **gate family** is fixed now, with exact bounds,
 clustering by author / prefix through a design effect and explicit rare-state strata; the sealed **N** is chosen by a
 pinned rule before the sealed set is generated (preregistration §6).
+
+## 13. Step 0.1B: audit blocker remediation (B1–B4)
+
+The independent Step 0.1 re-audit found four blockers. They are fixed without changing any user render, the frozen
+474-render population, ReaderInput / lexicon / frame / resolver semantics, the label contract or the dialogue runtime.
+The wire system digest is unchanged (`8c727a29…`); the JSON-control system digest (`c2542a45…`) is now pinned.
+
+| | Finding | Fix |
+| --- | --- | --- |
+| **B1** | an empty / truncated / refused hosted reply scored as a semantic `invalid_output`; finish / stop reasons not kept; a silent 256-token hosted budget | the output budget is mandatory (refused before egress without it); every reply keeps `finish_reason` / `stop_reason` / usage (never reasoning text); a truncated (`length`, `max_tokens`) or refused (`content_filter`, `refusal`) reply is a `provider_void`, never decoded, never retried, counted with transport voids; a normally completed reply is always decoded, so empty or malformed completed output stays semantic `invalid_output` |
+| **B2** | `headline: true` possible for empty, custom, human-trace-excluded or rule-violating runs | `headlineVerdict` binds the headline to the pinned frozen sample (digest, contract identity, 474 ids, regeneration from the capture) and enforces exact population, labels for every render (`ADJUDICATED_GOLD` or a recorded `UNLABELABLE` adjudication), the label-loss rule (≥ 300 valid) and the 2% void rule; `--limit`, stratum filters, diagnostic states, the JSON control and human-trace exclusion are never headline |
+| **B3** | receipts written only after the whole hosted run | the receipt file is created exclusively before the first request (fail closed if it cannot be, or already exists); each request's receipt is appended and fsync'd as it completes; a real mid-run process exit leaves receipts 1..N |
+| **B4** | the JSON control decoder defaulted required fields, ignored extra top-level keys, passed unknown facets at V0; its system text was unpinned | the JSON must state span, speech act, facet, address op (with names for NAMED / EXCEPT) and relation kind; only `acts` at top level; unknown facets fail V0 (`json_unknown_facet`); fences fail both; `SYSTEM_DIGEST_JSON` is pinned in `ed33a`, and a JSON-only drift (e.g. `ALL` respelled) fails both the digest pin and a decoder-consistency check |

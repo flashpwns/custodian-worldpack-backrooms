@@ -122,10 +122,10 @@ async function readTurnAsync({ input, bindings, rendered = null, request_id = nu
   if (typeof cfg.transport !== "function") return finish({ status: "reader_unavailable", reason: "no_transport", raw_wire: null, decode: null, verdict: null, frame: null });
   const out = await withTimeout((signal) => cfg.transport({ system: render.system, user: render.user, grammar, logprobs: cfg.logprobs, top_logprobs: cfg.top_logprobs, max_tokens: cfg.max_tokens, signal, request_id }), cfg.timeout_ms);
   if (out.__timeout) return finish({ status: "reader_unavailable", reason: "timeout", raw_wire: null, decode: null, verdict: null, frame: null });
-  if (out.error) return finish({ status: "reader_unavailable", reason: "error", error: String(out.error?.code ?? out.error?.message ?? out.error).slice(0, 200), raw_wire: null, decode: null, verdict: null, frame: null, transport: out.error?.transmitted ? { model: null, usage: null, transmitted: out.error.transmitted, response_status: out.error.response_status ?? null } : null });
+  if (out.error) return finish({ status: "reader_unavailable", reason: out.error?.provider_termination ? "provider_termination" : "error", error: String(out.error?.code ?? out.error?.message ?? out.error).slice(0, 200), raw_wire: null, decode: null, verdict: null, frame: null, transport: out.error?.transmitted ? { model: out.error.response_model ?? null, usage: out.error.provider_termination?.usage ?? null, transmitted: out.error.transmitted, response_status: out.error.response_status ?? null, termination: out.error.provider_termination ?? null } : null });
   const reply = out.value ?? {};
   const raw = typeof reply === "string" ? reply : reply.text;
-  const transport = typeof reply === "object" && reply ? { model: reply.model ?? null, usage: reply.usage ?? null, transmitted: reply.transmitted ?? null, response_status: reply.response_status ?? null } : null;
+  const transport = typeof reply === "object" && reply ? { model: reply.model ?? null, usage: reply.usage ?? null, transmitted: reply.transmitted ?? null, response_status: reply.response_status ?? null, termination: reply.termination ?? null } : null;
   const logprobs = typeof reply === "object" && reply ? reply.logprobs ?? null : null;
   const decoded = cfg.output === "json" ? W.decodeJsonFrame(raw, input) : W.decodeWire(raw, input);
   if (!decoded.ok) return finish({ status: "invalid", reason: "wire_decode", raw_wire: typeof raw === "string" ? raw.slice(0, 2000) : null, decode: { ok: false, errors: decoded.errors }, verdict: null, frame: null, disposition: RF.DISPOSITIONS.INVALID, logprobs, transport });
@@ -160,7 +160,7 @@ function scriptedTransport(script) {
 
 /**
  * The pinned local llama.cpp runtime (OpenAI-compatible chat endpoint). Temperature 0, the per-input GBNF grammar,
- * raw token logprobs (PRE-grammar top alternatives as llama.cpp reports them; see READER_PHASE2.md §17).
+ * raw token logprobs (PRE-grammar top alternatives as llama.cpp reports them; see READER_PHASE2.md §7 and READER_PHASE2_PREREGISTRATION.md §8).
  */
 function llamaTransport({ endpoint, model = null, slot = null, fetchImpl = fetch } = {}) {
   return async ({ system, user, grammar, logprobs, top_logprobs, max_tokens, signal }) => {
@@ -186,19 +186,41 @@ function llamaTransport({ endpoint, model = null, slot = null, fetchImpl = fetch
  * parameters; `transmitted` records what left the machine (URL, byte count, system / user digests, parameters).
  * Provider-capable without changing the semantic contract (Step 0.1):
  *   api            "openai-chat" (OpenAI-compatible /chat/completions) | "anthropic-messages"
- *   maxOutputTokens  output budget (a reasoning model needs room for its hidden reasoning); default 256
+ *   maxOutputTokens  REQUIRED explicit output budget (Step 0.1B: no silent default; a reasoning model needs room for its
+ *                  hidden reasoning). Omitting it throws BUDGET_MISSING at construction, before any request.
  *   temperature    sent ONLY when configured (some reasoning models reject it); null = the provider default
  *   reasoningEffort  openai-chat `reasoning_effort` (e.g. "high"), when configured
  *   reasoningBudgetTokens  anthropic-messages extended thinking budget, when configured (temperature is then not sent)
  *   maxTokensParam "max_tokens" | "max_completion_tokens" (openai-chat; newer reasoning models need the latter)
  *   logprobs       openai-chat only, off by default for the teacher
  * Only the final text is kept: provider reasoning / thinking content is never read into the receipt or stored.
+ *
+ * PROVIDER TERMINATION (Step 0.1B). The provider's finish_reason / stop_reason and usage are returned with every reply
+ * (`termination`). A reply the provider did not complete normally is NOT a reading and never reaches the decoder: it
+ * throws a PROVIDER_TERMINATION error (readTurnAsync -> status `reader_unavailable`, reason `provider_termination`), so
+ * it is counted with transport voids, never as a semantic wrong answer:
+ *   truncated  openai finish_reason "length"; anthropic stop_reason "max_tokens" (even with partial text)
+ *   refused    openai finish_reason "content_filter" or a message.refusal; anthropic stop_reason "refusal"
+ * A NORMALLY completed reply (openai "stop", anthropic "end_turn" / "stop_sequence") is always decoded, even when its
+ * text is empty or malformed: that is the model's completed answer and scores as semantic invalid_output.
  */
+const PROVIDER_TRUNCATED = Object.freeze({ "openai-chat": ["length"], "anthropic-messages": ["max_tokens", "model_context_window_exceeded"] });
+const PROVIDER_REFUSED = Object.freeze({ "openai-chat": ["content_filter"], "anthropic-messages": ["refusal"] });
+function providerTermination(api, json) {
+  const choice = json?.choices?.[0] ?? {};
+  const finish = api === "anthropic-messages" ? null : choice.finish_reason ?? null;
+  const stop = api === "anthropic-messages" ? json?.stop_reason ?? null : null;
+  const reason = finish ?? stop;
+  const refusalText = api === "anthropic-messages" ? null : choice.message?.refusal ?? null;
+  const kind = PROVIDER_TRUNCATED[api]?.includes(reason) ? "truncated" : PROVIDER_REFUSED[api]?.includes(reason) || (refusalText != null && String(refusalText).length > 0) ? "refused" : null;
+  return { kind, finish_reason: finish, stop_reason: stop, refusal: refusalText != null && String(refusalText).length > 0 };
+}
 function hostedChatTransport({ api = "openai-chat", baseURL, apiKey, model, fetchImpl = fetch, maxOutputTokens = null, temperature = null, reasoningEffort = null, reasoningBudgetTokens = null, maxTokensParam = "max_tokens", logprobs: wantLogprobs = false } = {}) {
   if (!apiKey) throw Object.assign(new Error("hosted teacher: no API key"), { code: "AUTH_MISSING" });
+  if (!(Number.isInteger(Number(maxOutputTokens)) && Number(maxOutputTokens) > 0)) throw Object.assign(new Error("hosted teacher: an explicit output-token budget (maxOutputTokens) is required"), { code: "BUDGET_MISSING" });
   if (!["openai-chat", "anthropic-messages"].includes(api)) throw Object.assign(new Error(`hosted teacher: unknown api ${api}`), { code: "API_UNKNOWN" });
   return async ({ system, user, max_tokens, signal }) => {
-    const budget = Math.max(64, Number(maxOutputTokens ?? Math.max(256, max_tokens ?? 0)));
+    const budget = Number(maxOutputTokens);
     let url; let headers; let body;
     if (api === "anthropic-messages") {
       url = `${baseURL ?? "https://api.anthropic.com"}/v1/messages`;
@@ -216,10 +238,13 @@ function hostedChatTransport({ api = "openai-chat", baseURL, apiKey, model, fetc
     try { r = await fetchImpl(url, { method: "POST", headers, body: payload, signal }); } catch (error) { throw Object.assign(error instanceof Error ? error : new Error(String(error)), { transmitted }); }
     if (!r.ok) throw Object.assign(new Error(`hosted http ${r.status}`), { code: `HTTP_${r.status}`, transmitted, response_status: r.status });
     const json = await r.json();
+    // Termination metadata and usage (never any reasoning text).
+    const termination = { ...providerTermination(api, json), usage: json.usage ?? null };
+    if (termination.kind) throw Object.assign(new Error(`hosted provider termination: ${termination.kind}`), { code: `PROVIDER_${termination.kind.toUpperCase()}`, provider_termination: termination, transmitted, response_status: r.status ?? 200, response_model: json.model ?? model });
     // Final text only: thinking / reasoning blocks are dropped here and never stored.
     const text = api === "anthropic-messages" ? (json.content ?? []).filter((c) => c.type === "text").map((c) => c.text).join("") : json.choices?.[0]?.message?.content ?? "";
-    return { text: String(text).trim(), logprobs: api === "anthropic-messages" ? null : json.choices?.[0]?.logprobs?.content ?? null, model: json.model ?? model, usage: json.usage ?? null, transmitted, response_status: r.status ?? 200 };
+    return { text: String(text ?? "").trim(), logprobs: api === "anthropic-messages" ? null : json.choices?.[0]?.logprobs?.content ?? null, model: json.model ?? model, usage: json.usage ?? null, transmitted, response_status: r.status ?? 200, termination };
   };
 }
 
-module.exports = { wireFieldMargins, ASYNC_READER_VERSION, ASYNC_RECEIPT_VERSION, DEFAULT_TIMEOUT_MS, LINGUISTIC_CODES, readTurnAsync, scriptedTransport, llamaTransport, hostedChatTransport, clarificationKind, abstentionsOf };
+module.exports = { providerTermination, PROVIDER_TRUNCATED, PROVIDER_REFUSED, wireFieldMargins, ASYNC_READER_VERSION, ASYNC_RECEIPT_VERSION, DEFAULT_TIMEOUT_MS, LINGUISTIC_CODES, readTurnAsync, scriptedTransport, llamaTransport, hostedChatTransport, clarificationKind, abstentionsOf };

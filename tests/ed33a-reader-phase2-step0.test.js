@@ -39,6 +39,8 @@ const CONTRACT = Object.freeze({
   lexicon: "yellow-beast-reader-lexicon@v2",
   render: "yellow-beast-reader-render@v2",
   render_system_digest: "8c727a29383c0c4f32cb34323c82f29c05a15be9e2e9614962f39e6fd550d2f1",
+  // Step 0.1B: the wire-vs-JSON control's system text is pinned too (a JSON-only drift fails here).
+  render_system_digest_json: "c2542a45c6afe41eba1e8bf084abb1af5d60f4364e04e45e4ecac57c346f8aa3",
   wire: "yellow-beast-reader-wire@v1",
   wire_digest: "b18ac02f80bacbe221710c21ab0eb2616c1ba95c62378992f20706bae5d74cc8"
 });
@@ -72,7 +74,7 @@ const refName = (input, re) => input.referent_candidates.find((r) => re.test(r.n
 test("Step 0 contract identities are frozen (input / frame / resolver / lexicon / render / wire versions and digests)", () => {
   assert.deepEqual({
     reader_input: RI.READER_INPUT_VERSION, frame: RF.READER_FRAME_VERSION, resolve_turn: RESOLVE_TURN_VERSION, lexicon: LX.LEXICON_VERSION,
-    render: R.RENDER_VERSION, render_system_digest: R.SYSTEM_DIGEST, wire: W.WIRE_VERSION, wire_digest: W.WIRE_DIGEST
+    render: R.RENDER_VERSION, render_system_digest: R.SYSTEM_DIGEST, render_system_digest_json: R.SYSTEM_DIGEST_JSON, wire: W.WIRE_VERSION, wire_digest: W.WIRE_DIGEST
   }, CONTRACT);
   assert.deepEqual(W.facetCodeTableComplete(), { missing: [], extra: [], duplicate_codes: [] }, "every registry facet has exactly one wire code");
   const identity = RP.contractIdentity();
@@ -357,7 +359,7 @@ test("Async transports: the hosted teacher sends ONLY the render; the local tran
   assert.throws(() => A.hostedChatTransport({ api: "openai-chat", baseURL: "https://example.invalid", model: "m" }), (e) => e.code === "AUTH_MISSING");
   let sent = null;
   const fetchImpl = async (url, opts) => { sent = { url, body: JSON.parse(opts.body), headers: opts.headers }; return { ok: true, json: async () => ({ model: "teacher-x", choices: [{ message: { content: "ask contents @n1 new f=wh r=e1>r1" } }] }) }; };
-  const r = await A.readTurnAsync({ input, bindings, rendered }, { id: "teacher", provider: "test", transport: A.hostedChatTransport({ baseURL: "https://example.invalid/v1", apiKey: "test-key", model: "teacher-x", fetchImpl }) });
+  const r = await A.readTurnAsync({ input, bindings, rendered }, { id: "teacher", provider: "test", transport: A.hostedChatTransport({ baseURL: "https://example.invalid/v1", apiKey: "test-key", model: "teacher-x", fetchImpl, maxOutputTokens: 256 }) });
   assert.equal(r.status, "read");
   assert.deepEqual(sent.body.messages, [{ role: "system", content: rendered.system }, { role: "user", content: rendered.user }], "exactly the frozen render");
   assert.equal("temperature" in sent.body, false, "Step 0.1: temperature is sent only when configured");
@@ -366,7 +368,7 @@ test("Async transports: the hosted teacher sends ONLY the render; the local tran
   for (const id of [GISELLE, MALCOLM, TONYA, "q4-startup", "req-2", ...Object.values(bindings.referents)]) assert.ok(!all.includes(id), `transmitted a canonical id: ${id}`);
   assert.equal(r.transport.transmitted.user_sha256, crypto.createHash("sha256").update(rendered.user).digest("hex"), "what was transmitted is recorded");
   let anth = null;
-  await A.readTurnAsync({ input, bindings, rendered }, { transport: A.hostedChatTransport({ api: "anthropic-messages", apiKey: "k", model: "m", fetchImpl: async (url, opts) => { anth = { url, body: JSON.parse(opts.body) }; return { ok: true, json: async () => ({ content: [{ type: "text", text: "ask contents @n1 new" }] }) }; } }) });
+  await A.readTurnAsync({ input, bindings, rendered }, { transport: A.hostedChatTransport({ api: "anthropic-messages", apiKey: "k", model: "m", maxOutputTokens: 256, fetchImpl: async (url, opts) => { anth = { url, body: JSON.parse(opts.body) }; return { ok: true, json: async () => ({ content: [{ type: "text", text: "ask contents @n1 new" }] }) }; } }) });
   assert.deepEqual([anth.body.system, anth.body.messages, "temperature" in anth.body], [rendered.system, [{ role: "user", content: rendered.user }], false]);
   let local = null;
   const lr = await A.readTurnAsync({ input, bindings }, { grammar: true, logprobs: true, top_logprobs: 8, transport: A.llamaTransport({ endpoint: "http://local", fetchImpl: async (url, opts) => { local = JSON.parse(opts.body); return { ok: true, json: async () => ({ choices: [{ message: { content: "ask contents @n1 new f=wh r=e1>r1" }, logprobs: { content: [{ token: "ask", logprob: -0.01, top_logprobs: [] }] } }] }) }; } }) });

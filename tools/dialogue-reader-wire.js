@@ -313,17 +313,44 @@ function wireGrammar(input = {}) {
 }
 
 /**
- * Step 14 only (development wire-vs-JSON check): a minimal-JSON answer -> ReaderFrame (defaults filled). Malformed
- * JSON, a non-object, unknown keys or a missing core field fail V0 exactly as a malformed wire does.
+ * Development wire-vs-JSON control only: a minimal-JSON answer -> ReaderFrame. STRUCTURALLY AS STRICT AS THE WIRE
+ * (Step 0.1B): the JSON may differ from the wire only in spelling, never in the information it must carry.
+ *   - a fenced answer is invalid output (`output_fenced`), exactly as on the wire;
+ *   - the only top-level key is "acts" (an extra key such as "reasoning" is `json_unknown_key`, never ignored);
+ *   - every act states span, speech_act, facet, address {op} and relation {kind} explicitly (`json_missing_field`):
+ *     nothing the wire must spell is defaulted (the wire's positional core has no elision; the JSON output lines
+ *     require every span);
+ *   - a NAMED / EXCEPT address carries its names and no other op does (the wire can only spell it that way);
+ *   - the facet is a registry facet or one of the two special values at V0 (`json_unknown_facet`), as the wire's
+ *     facet-code table rejects an unknown code at V0.
+ * Only genuinely optional fields (the wire's tagged extras) take their defaults. Anything else fails V0 exactly as a
+ * malformed wire does.
  */
+const JSON_REQUIRED = Object.freeze(["span", "speech_act", "facet", "address", "relation"]);
 function decodeJsonFrame(text, input) {
   let parsed;
   const fenced = fencedError(text);
   if (fenced) return fenced;
-  try { parsed = JSON.parse(String(text ?? "").trim()); } catch { return { ok: false, frame: null, errors: [{ layer: "V0", code: "json_malformed" }] }; }
-  if (!parsed || typeof parsed !== "object" || !Array.isArray(parsed.acts) || !parsed.acts.length) return { ok: false, frame: null, errors: [{ layer: "V0", code: "json_no_acts" }] };
-  const last = (input?.line?.tokens?.length ?? 1) - 1;
-  const acts = parsed.acts.map((a, i, all) => ({ span: Array.isArray(a?.span) ? a.span : all.length === 1 ? [0, last] : a?.span, ...a, address: { op: a?.address?.op ?? "NONE", names: a?.address?.names ?? [], relative_to: a?.address?.relative_to ?? null, count: a?.address?.count ?? null }, relation: { kind: a?.relation?.kind ?? "new", target: a?.relation?.target ?? null } }));
+  const fail = (code, detail = {}) => ({ ok: false, frame: null, errors: [{ layer: "V0", code, ...detail }] });
+  try { parsed = JSON.parse(String(text ?? "").trim()); } catch { return fail("json_malformed"); }
+  if (!parsed || typeof parsed !== "object" || Array.isArray(parsed) || !Array.isArray(parsed.acts) || !parsed.acts.length) return fail("json_no_acts");
+  const topExtra = Object.keys(parsed).filter((k) => k !== "acts");
+  if (topExtra.length) return fail("json_unknown_key", { where: "top", keys: topExtra });
+  const facets = new Set([...Object.keys(FACET_CODES), ...Object.keys(FACET_SPECIAL_CODES)]);
+  const errors = [];
+  parsed.acts.forEach((a, i) => {
+    if (!a || typeof a !== "object" || Array.isArray(a)) { errors.push({ layer: "V0", code: "json_act_not_object", act: i }); return; }
+    for (const key of JSON_REQUIRED) if (!(key in a) || a[key] == null) errors.push({ layer: "V0", code: "json_missing_field", act: i, field: key });
+    if (a.address && typeof a.address === "object" && !("op" in a.address)) errors.push({ layer: "V0", code: "json_missing_field", act: i, field: "address.op" });
+    if (a.relation && typeof a.relation === "object" && !("kind" in a.relation)) errors.push({ layer: "V0", code: "json_missing_field", act: i, field: "relation.kind" });
+    const op = a.address?.op;
+    const names = a.address?.names ?? [];
+    if ((op === "NAMED" || op === "EXCEPT") && !(Array.isArray(names) && names.length)) errors.push({ layer: "V0", code: "json_missing_field", act: i, field: "address.names" });
+    if (op && op !== "NAMED" && op !== "EXCEPT" && Array.isArray(names) && names.length) errors.push({ layer: "V0", code: "json_names_on_non_naming_op", act: i });
+    if ("facet" in a && a.facet != null && !facets.has(a.facet)) errors.push({ layer: "V0", code: "json_unknown_facet", act: i, value: a.facet });
+  });
+  if (errors.length) return { ok: false, frame: null, errors };
+  const acts = parsed.acts.map((a) => ({ ...a, address: { op: a.address.op, names: a.address.names ?? [], relative_to: a.address.relative_to ?? null, count: a.address.count ?? null }, relation: { kind: a.relation.kind, target: a.relation.target ?? null } }));
   const frame = { version: RF.READER_FRAME_VERSION, acts: acts.map((a) => ({ ...canonicalAct(a), name_roles: a.name_roles ?? defaultNameRoles(a) })) };
   const v0 = RF.validateSchema(frame, input);
   const extra = parsed.acts.flatMap((a) => Object.keys(a ?? {}).filter((k) => !RF.ACT_KEYS.includes(k)));

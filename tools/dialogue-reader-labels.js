@@ -35,6 +35,10 @@ const LABELS_VERSION = "yellow-beast-reader-labels@v2";
 const MIN_APPLICABLE_FOR_GATE = 60;
 const LABEL_STATES = Object.freeze({ UNLABELED: "UNLABELED", HUMAN_PRIMARY: "HUMAN_PRIMARY", MODEL_ASSISTED_REVIEW: "MODEL_ASSISTED_REVIEW", ADJUDICATED_GOLD: "ADJUDICATED_GOLD" });
 const GOLD_OUTCOMES = Object.freeze({ ACCEPT: "ACCEPT", EXPECTED_CLARIFY: "EXPECTED_CLARIFY" });
+// The preregistered LABEL-LOSS record (teacher sample label_loss_rule): an adjudicator may declare a render unlabelable,
+// with a written reason. It is never gold and never a third gold outcome; it only lets the headline contract account
+// for the render (dialogue-reader-replay.js headlineVerdict).
+const UNLABELABLE = "UNLABELABLE";
 // The resolver's clarification slots (dialogue-resolve-turn.js) and the fields an intended ambiguity may sit in.
 const CLARIFY_SLOTS = Object.freeze(["person", "referent", "location", "topic", "answer"]);
 const CLARIFY_FIELDS = Object.freeze([...RF.ABSTAIN_FIELDS, "discourse_state"]);
@@ -115,6 +119,7 @@ function validateLabels(groups, labels, { states = [LABEL_STATES.ADJUDICATED_GOL
   const byId = new Map(groups.map((g) => [g.id, g]));
   const gold = {};
   const problems = [];
+  const unlabelable = [];
   const idCount = new Map();
   for (const l of labels) idCount.set(l?.id, (idCount.get(l?.id) ?? 0) + 1);
   for (const l of labels) {
@@ -128,14 +133,19 @@ function validateLabels(groups, labels, { states = [LABEL_STATES.ADJUDICATED_GOL
     if (!Object.values(LABEL_STATES).includes(l.label_state) || l.label_state === LABEL_STATES.UNLABELED) { reject("label_state_missing_or_unlabeled"); continue; }
     const independence = independenceProblems(l, registry);
     if (independence.length) { reject("independence_violation", { detail: independence }); continue; }
+    if (l.gold_outcome === UNLABELABLE) {
+      if (l.label_state !== LABEL_STATES.ADJUDICATED_GOLD || typeof l.unlabelable_reason !== "string" || !l.unlabelable_reason.trim() || l.gold_wire != null) { reject("unlabelable_record_invalid"); continue; }
+      unlabelable.push({ id: l.id, reason: l.unlabelable_reason, adjudicator: l.adjudicator?.id ?? null });
+      continue;
+    }
     const v = validateGoldFrame(group.item, l.gold_wire, l.gold_outcome, l.expected_clarify ?? null);
     if (!v.ok) { reject(v.problem, { detail: v.detail ?? null }); continue; }
     if (!states.includes(l.label_state)) continue;
     gold[l.id] = { frame: v.frame, wire: l.gold_wire, outcome: l.gold_outcome, expected_clarify: l.expected_clarify ?? null, resolution: v.resolution, state: l.label_state, label: l };
   }
-  const counts = { rows: labels.length, accepted: Object.keys(gold).length, rejected: problems.length, by_state: {} };
+  const counts = { rows: labels.length, accepted: Object.keys(gold).length, unlabelable: unlabelable.length, rejected: problems.length, by_state: {} };
   for (const l of labels) counts.by_state[l?.label_state ?? "none"] = (counts.by_state[l?.label_state ?? "none"] ?? 0) + 1;
-  return { gold, problems, counts };
+  return { gold, problems, unlabelable, counts };
 }
 
 /** Rejects gold whose labeller shares the evaluated arm's model family (an arm never labels its own evaluation). */
@@ -233,4 +243,4 @@ async function main() {
 }
 if (require.main === module) main().catch((error) => { console.error(error.stack ?? error.message); process.exit(1); });
 
-module.exports = { LABELS_VERSION, MIN_APPLICABLE_FOR_GATE, LABEL_STATES, GOLD_OUTCOMES, CLARIFY_SLOTS, CLARIFY_FIELDS, REGISTRY_FILE, worksheet, validateGoldFrame, validateLabels, independenceProblems, excludeSelfLabelled, loadRegistry, kappa, agreement, applicable, FIELD_VALUE };
+module.exports = { UNLABELABLE, LABELS_VERSION, MIN_APPLICABLE_FOR_GATE, LABEL_STATES, GOLD_OUTCOMES, CLARIFY_SLOTS, CLARIFY_FIELDS, REGISTRY_FILE, worksheet, validateGoldFrame, validateLabels, independenceProblems, excludeSelfLabelled, loadRegistry, kappa, agreement, applicable, FIELD_VALUE };
