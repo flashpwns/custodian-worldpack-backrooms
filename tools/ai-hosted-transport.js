@@ -1,6 +1,7 @@
 "use strict";
 
 const crypto = require("node:crypto");
+const { LOCAL_DIALOGUE_WORDING_TEXT, LOCAL_DIALOGUE_SYSTEM_TEXT, renderContributionTask } = require("./dialogue-prompt-contract");
 const { INTENT_VERSION } = require("./ai-adapter");
 const { PROPOSAL_VERSION } = require("./ai-interpreter-boundary");
 const { PRESENTATION_VERSION } = require("./ai-living-turn");
@@ -314,15 +315,45 @@ const LIVING_PRESENTATION_SCHEMA = {
   required: ["version", "scene_description", "npc_presentations", "presentation_claims"]
 };
 
+// Output contract for a PLAN-CARRYING LOCAL dialogue packet (every production packet): the model
+// produces wording only. Code owns version, observer_id, speaker, recipient, order and every semantic
+// claim (validateLocalDialogue inserts the identifiers; plan-carrying packets never read model claims).
+// Measured on the pinned runtime, the legacy envelope below made small models fill semantic_claims with
+// junk until they hit the token ceiling -- latency and malformed output with zero semantic value.
+const LOCAL_DIALOGUE_SPEECH_SCHEMA = {
+  type: "object",
+  additionalProperties: false,
+  properties: { speech: { type: "string" } },
+  required: ["speech"]
+};
+
 const LOCAL_DIALOGUE_SCHEMA = {
   type: "object",
   additionalProperties: false,
   properties: {
     version: { type: "string", const: LOCAL_DIALOGUE_CANDIDATE_VERSION },
     observer_id: { type: "string" },
-    speech: { type: "string" }
+    speech: { type: "string" },
+    semantic_claims: {
+      type: "array",
+      maxItems: 8,
+      items: {
+        type: "object",
+        additionalProperties: false,
+        properties: {
+          type: { type: "string", enum: ["equipment-possession", "location", "direct-observation", "reported-claim", "measurement"] },
+          text: { type: "string" },
+          subject: { type: ["string", "null"] },
+          object: { type: ["string", "null"] },
+          location_id: { type: ["string", "null"] },
+          target: { type: ["string", "null"] },
+          proposition: { type: ["string", "null"] }
+        },
+        required: ["type", "text", "subject", "object", "location_id", "target", "proposition"]
+      }
+    }
   },
-  required: ["version", "observer_id", "speech"]
+  required: ["version", "observer_id", "speech", "semantic_claims"]
 };
 
 function createHostedProvider({
@@ -367,7 +398,7 @@ function createHostedProvider({
     try { onInvocation(event); } catch {}
   }
 
-  async function request(kind, instructions, payload, format) {
+  async function request(kind, instructions, payload, format, { userContent = null } = {}) {
     const invocationId = `${providerId}-invocation-${++invocationSequence}`;
     const startedAt = Date.now();
     const transportType = hostedRequest ? `${providerId}-sdk` : "injected-client";
@@ -396,14 +427,14 @@ function createHostedProvider({
           model: resolvedModel,
           store: false,
           instructions,
-          input: JSON.stringify(payload),
+          input: userContent ?? JSON.stringify(payload),
           text: { format }
         });
         rawText = response?.output_text;
       } else if (typeof sdk.chat?.completions?.create === "function") {
         const messages = [
           { role: "system", content: instructions },
-          { role: "user", content: JSON.stringify(payload) }
+          { role: "user", content: userContent ?? JSON.stringify(payload) }
         ];
         const body = {
           model: resolvedModel,
@@ -489,11 +520,15 @@ function createHostedProvider({
       );
     },
     async presentLocal(packet) {
+      // Same hard model-input boundary as the local provider: a plan-carrying packet is sent only as
+      // its rendered capsule + authorized contribution, never as the raw packet.
+      const planned = Boolean(packet?.authorized_contribution && packet?.context_capsule);
       return request(
         "local-dialogue",
-        "Return only an untrusted LOCAL dialogue candidate spoken by the single authorized coworker in the packet. Give that coworker a concise voice grounded in their supplied identity, role, condition, current task, equipment, qualifications, and shared history. Fulfil only the authorized response purpose. Do not invent facts, observations, knowledge, actions, other speakers, quoted player speech, or any player action or dialogue.",
+        planned ? LOCAL_DIALOGUE_SYSTEM_TEXT : `Return only an untrusted LOCAL dialogue candidate spoken by the single authorized coworker in the packet. ${LOCAL_DIALOGUE_WORDING_TEXT}`,
         packet,
-        { type: "json_schema", name: "yellow_beast_local_dialogue", strict: true, schema: LOCAL_DIALOGUE_SCHEMA }
+        { type: "json_schema", name: "yellow_beast_local_dialogue", strict: true, schema: planned ? LOCAL_DIALOGUE_SPEECH_SCHEMA : LOCAL_DIALOGUE_SCHEMA },
+        { userContent: planned ? renderContributionTask(packet) : null }
       );
     }
   };
@@ -507,5 +542,6 @@ module.exports = {
   INTENT_SCHEMA,
   LIVING_INTERPRETATION_SCHEMA,
   LIVING_PRESENTATION_SCHEMA,
-  LOCAL_DIALOGUE_SCHEMA
+  LOCAL_DIALOGUE_SCHEMA,
+  LOCAL_DIALOGUE_SPEECH_SCHEMA
 };

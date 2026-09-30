@@ -1,0 +1,19 @@
+{
+ "failures": 199,
+ "never_reached_tier2": {
+  "n": 128,
+  "pct": 64.3
+ },
+ "definition_purpose_confusion": {
+  "n": 2,
+  "pct": 1
+ },
+ "discourse_link_failure": {
+  "n": 46,
+  "pct": 23.1
+ },
+ "short_fragment_low_confidence": {
+  "n": 1,
+  "pct": 0.5
+ }
+}

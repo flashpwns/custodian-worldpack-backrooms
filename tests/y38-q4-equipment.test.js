@@ -13,7 +13,7 @@ function fixture(seed = "q4-equipment") {
   const appDataPath = fs.mkdtempSync(path.join(os.tmpdir(), "yb-q4-equipment-"));
   const service = new DesktopService({ appDataPath });
   const world = service.createWorld({ name: "Equipment continuity", seed }).world;
-  assert.equal(service.startSession({ world_id: world.id, mode: "field-researcher", seed }).ok, true);
+  assert.equal(service.startSession({ world_id: world.id, mode: "field-researcher", seed, scenario: "procedural-survey" }).ok, true);
   return { service, world, appDataPath };
 }
 function reach(service, world) {

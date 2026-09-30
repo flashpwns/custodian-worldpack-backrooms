@@ -1,0 +1,483 @@
+{
+ "version": "yellow-beast-baseline-failing-tests@v1",
+ "baseline_commit": "9e51842",
+ "command": "node --test tests/*.test.js",
+ "note": "Full-repository failing set at 9e51842 (identical at e90bff8: 79 failing of 1,474 / 1,487). Pre-existing; not caused by the reader passes.",
+ "count": 79,
+ "failing": [
+  {
+   "name": "1 simple natural-language turn runs end-to-end through the production service seam",
+   "files": [
+    "tests/y73-ai-living-turn.test.js"
+   ]
+  },
+  {
+   "name": "10 One direct question to Beverly does not automatically produce responses from all four coworkers",
+   "files": [
+    "tests/y80-canonical-ledger-observer-shell.test.js"
+   ]
+  },
+  {
+   "name": "12 malformed presentation falls back deterministically",
+   "files": [
+    "tests/y73-ai-living-turn.test.js"
+   ]
+  },
+  {
+   "name": "13 provider failure falls back",
+   "files": [
+    "tests/y73-ai-living-turn.test.js"
+   ]
+  },
+  {
+   "name": "13. Offline resilience remains available but hosted desktop interpretation fails visibly",
+   "files": [
+    "tests/y76-provider-autoselect-fallback.test.js"
+   ]
+  },
+  {
+   "name": "14 canonical action remains committed after generation failure",
+   "files": [
+    "tests/y73-ai-living-turn.test.js"
+   ]
+  },
+  {
+   "name": "15 generation and validation do not add canonical mutation",
+   "files": [
+    "tests/y73-ai-living-turn.test.js"
+   ]
+  },
+  {
+   "name": "16 coordinated attempts share one authoritative interval",
+   "files": [
+    "tests/y73-ai-living-turn.test.js"
+   ]
+  },
+  {
+   "name": "17 evidence provenance records the actual player operator",
+   "files": [
+    "tests/y73-ai-living-turn.test.js"
+   ]
+  },
+  {
+   "name": "18 Malformed hosted structured output fails closed",
+   "files": [
+    "tests/y79-clause-completeness-coordinated.test.js"
+   ]
+  },
+  {
+   "name": "19 Hosted output with missing clause fails complete-coverage validation",
+   "files": [
+    "tests/y79-clause-completeness-coordinated.test.js"
+   ]
+  },
+  {
+   "name": "19 interpreter resolution projection presentation validation ordering is enforced",
+   "files": [
+    "tests/y73-ai-living-turn.test.js"
+   ]
+  },
+  {
+   "name": "2 coordinated Reference Expedition turn resolves end-to-end",
+   "files": [
+    "tests/y73-ai-living-turn.test.js"
+   ]
+  },
+  {
+   "name": "20 Existing YB-C02 presentation-failure atomicity remains intact",
+   "files": [
+    "tests/y80-canonical-ledger-observer-shell.test.js"
+   ]
+  },
+  {
+   "name": "20 Hosted output with invented extra clause fails validation",
+   "files": [
+    "tests/y79-clause-completeness-coordinated.test.js"
+   ]
+  },
+  {
+   "name": "20 player input is preserved while the player sees one coherent resulting moment",
+   "files": [
+    "tests/y73-ai-living-turn.test.js"
+   ]
+  },
+  {
+   "name": "21 Provider failure is distinct from ambiguity and retains zero mutation before dispatch",
+   "files": [
+    "tests/y79-clause-completeness-coordinated.test.js"
+   ]
+  },
+  {
+   "name": "21 optional OpenAI seam uses strict interpretation and presentation requests without network",
+   "files": [
+    "tests/y73-ai-living-turn.test.js"
+   ]
+  },
+  {
+   "name": "22 Presentation failure after successful coordinated dispatch retains exactly one canonical interval",
+   "files": [
+    "tests/y79-clause-completeness-coordinated.test.js"
+   ]
+  },
+  {
+   "name": "23 ordinary staging can assign the player the instrument needed for the compound playable turn",
+   "files": [
+    "tests/y73-ai-living-turn.test.js"
+   ]
+  },
+  {
+   "name": "25 hosted LOCAL presentation is reachable only after canonical personnel authorization",
+   "files": [
+    "tests/y73-ai-living-turn.test.js"
+   ]
+  },
+  {
+   "name": "26 invalid hosted LOCAL prose falls back without retracting canonical delivery",
+   "files": [
+    "tests/y73-ai-living-turn.test.js"
+   ]
+  },
+  {
+   "name": "29 attributable attitude changes modulate behavior, salience, and response tone",
+   "files": [
+    "tests/y73-ai-living-turn.test.js"
+   ]
+  },
+  {
+   "name": "31 dialogue communication and attitude mutation are idempotent against retries",
+   "files": [
+    "tests/y73-ai-living-turn.test.js"
+   ]
+  },
+  {
+   "name": "32 reused request_id with different payload is rejected without mutation",
+   "files": [
+    "tests/y73-ai-living-turn.test.js"
+   ]
+  },
+  {
+   "name": "33 new request_id with identical text succeeds as a legitimate new utterance",
+   "files": [
+    "tests/y73-ai-living-turn.test.js"
+   ]
+  },
+  {
+   "name": "36 persisted completed receipts replay fresh projection containing generated reply after restart",
+   "files": [
+    "tests/y73-ai-living-turn.test.js"
+   ]
+  },
+  {
+   "name": "39 renderer retries failed reply persistence with the original ID and no repeat delivery",
+   "files": [
+    "tests/y73-ai-living-turn.test.js"
+   ]
+  },
+  {
+   "name": "4 ambiguity returns clarification without canonical mutation",
+   "files": [
+    "tests/y73-ai-living-turn.test.js"
+   ]
+  },
+  {
+   "name": "41 pending reply recovers with legacy-authorization without replaying its reaction",
+   "files": [
+    "(unresolved: parameterized or generated name)"
+   ]
+  },
+  {
+   "name": "5 both providers receive bounded safe input instead of a raw run",
+   "files": [
+    "tests/y73-ai-living-turn.test.js"
+   ]
+  },
+  {
+   "name": "8 derived contradiction language is rejected before observer conclusion",
+   "files": [
+    "tests/y73-ai-living-turn.test.js"
+   ]
+  },
+  {
+   "name": "9 Error resilience against provider failure",
+   "files": [
+    "tests/y83-ai-runtime-stability.test.js"
+   ]
+  },
+  {
+   "name": "9 coworker-only observation cannot become player presentation or knowledge",
+   "files": [
+    "tests/y73-ai-living-turn.test.js"
+   ]
+  },
+  {
+   "name": "Beat 1 Contract - Menu Music Gain and Distant Room Acoustics",
+   "files": [
+    "tests/y103-beat1-implementation.test.js"
+   ]
+  },
+  {
+   "name": "Blocker 3: Explicit negation and refusal outranks positive keywords in onboarding",
+   "files": [
+    "tests/y85-negation-aware-onboarding.test.js"
+   ]
+  },
+  {
+   "name": "Clear-Q4 first scene is an operational briefing and legacy opaque labels stay suppressed",
+   "files": [
+    "tests/y34-beta-hotfix.test.js"
+   ]
+  },
+  {
+   "name": "Clear-Q4 is first and playable while the roadmap modes remain visible and locked",
+   "files": [
+    "tests/y35-product-focus.test.js"
+   ]
+  },
+  {
+   "name": "Failpoint 9: Natural language action mutation rolls back on persistence failure and does not misreport PROVIDER_UNAVAILABLE",
+   "files": [
+    "tests/y85-transactional-persistence-failpoints.test.js"
+   ]
+  },
+  {
+   "name": "LOCAL broadcasts to nearby personnel without a recipient selector and does not resolve an interval",
+   "files": [
+    "tests/y62-pass17-human-gate.test.js"
+   ]
+  },
+  {
+   "name": "LOCAL follows same-location personnel and does not grant Standard knowledge",
+   "files": [
+    "tests/y36-q4-channels.test.js"
+   ]
+  },
+  {
+   "name": "LOCAL is delivered to a generated coworker before field entry while Standard remains procedurally gated",
+   "files": [
+    "tests/y47-q4-player-identity.test.js"
+   ]
+  },
+  {
+   "name": "LOCAL reaches only people in speaking range and failed delivery is persistent",
+   "files": [
+    "tests/y52-operational-dynamics.test.js"
+   ]
+  },
+  {
+   "name": "LOCAL recall after restart exposes delivered history, not its own pending fallback",
+   "files": [
+    "tests/y73-ai-living-turn.test.js"
+   ]
+  },
+  {
+   "name": "LOCAL request does not transfer gear; physical handoff changes holder and costs modest time",
+   "files": [
+    "tests/y38-q4-equipment.test.js"
+   ]
+  },
+  {
+   "name": "LOCAL retrospective answers remain bounded to the addressed coworker's own record",
+   "files": [
+    "tests/y82-reference-expedition-vertical-blockers.test.js"
+   ]
+  },
+  {
+   "name": "LOCAL uses the named person and follows coarse contact eligibility",
+   "files": [
+    "tests/y37-q4-personnel.test.js"
+   ]
+  },
+  {
+   "name": "LOCAL uses the submitted statement and does not consume an interval",
+   "files": [
+    "tests/y63-pass17-state-machine.test.js"
+   ]
+  },
+  {
+   "name": "Living World System 9: Local Communication Responds with Single Coworker (No Parrot Chorus)",
+   "files": [
+    "tests/y78-reference-expedition-living-world.test.js"
+   ]
+  },
+  {
+   "name": "Living World: Complete Unscripted 18-Step Reference Expedition Trace",
+   "files": [
+    "tests/y78-reference-expedition-living-world.test.js"
+   ]
+  },
+  {
+   "name": "Q4 channels write distinguishable records and preserve physical continuity",
+   "files": [
+    "tests/y36-q4-channels.test.js"
+   ]
+  },
+  {
+   "name": "Q4 session schema is versioned, backward-compatible, and report export is observer-safe",
+   "files": [
+    "tests/y45-q4-beta-gate.test.js"
+   ]
+  },
+  {
+   "name": "a failed canonical save rolls the attempted movement back and permits a deliberate retry",
+   "files": [
+    "tests/y83-natural-command-transactions.test.js"
+   ]
+  },
+  {
+   "name": "authentication failure does not execute or save; cooldown retry remains truthful",
+   "files": [
+    "(unresolved: parameterized or generated name)"
+   ]
+  },
+  {
+   "name": "billing failure does not execute or save; cooldown retry remains truthful",
+   "files": [
+    "(unresolved: parameterized or generated name)"
+   ]
+  },
+  {
+   "name": "complete FIELD_OPERATION identity, assignment, equipment, dialogue, radio, location, and map survive restart",
+   "files": [
+    "tests/y49-playable-spine-map.test.js"
+   ]
+  },
+  {
+   "name": "connection test invokes transport, classifies quota, and leaves expedition saves unchanged",
+   "files": [
+    "tests/y84-live-provider-failure.test.js"
+   ]
+  },
+  {
+   "name": "deleting a manually selected key does not authorize another provider or offline execution",
+   "files": [
+    "tests/y84-live-provider-failure.test.js"
+   ]
+  },
+  {
+   "name": "developer provenance proves live doctrine source and bounded provider context",
+   "files": [
+    "tests/y62-pass17-human-gate.test.js"
+   ]
+  },
+  {
+   "name": "empty and malformed input never invokes a provider or changes reality",
+   "files": [
+    "tests/y84-live-provider-failure.test.js"
+   ]
+  },
+  {
+   "name": "equipment nouns and unsupported directions cannot authorize unrelated actions",
+   "files": [
+    "tests/y83-natural-command-transactions.test.js"
+   ]
+  },
+  {
+   "name": "negated, conditional, questioned, and compound readiness cannot advance onboarding",
+   "files": [
+    "tests/y84-hybrid-canon-hardening.test.js"
+   ]
+  },
+  {
+   "name": "ordinary player navigation disables roadmap modes without removing their implementations",
+   "files": [
+    "tests/y35-product-focus.test.js"
+   ]
+  },
+  {
+   "name": "past observable movement does not authorize new movement narration after LOOK",
+   "files": [
+    "tests/y84-live-provider-failure.test.js"
+   ]
+  },
+  {
+   "name": "provider pool and desktop settings select local generation without an API key",
+   "files": [
+    "tests/y97-local-model-provider.test.js"
+   ]
+  },
+  {
+   "name": "rate limit failure does not execute or save; cooldown retry remains truthful",
+   "files": [
+    "(unresolved: parameterized or generated name)"
+   ]
+  },
+  {
+   "name": "real repository inventory and CLI are consistent",
+   "files": [
+    "tests/y68-verification-gate.test.js"
+   ]
+  },
+  {
+   "name": "timeout failure does not execute or save; cooldown retry remains truthful",
+   "files": [
+    "(unresolved: parameterized or generated name)"
+   ]
+  },
+  {
+   "name": "unconfigured AUTO cannot silently become a successful hosted turn",
+   "files": [
+    "tests/y84-live-provider-failure.test.js"
+   ]
+  },
+  {
+   "name": "unified communications records LOCAL exchange without resolving a physical turn",
+   "files": [
+    "tests/y48-q4-prefield-flow.test.js"
+   ]
+  },
+  {
+   "name": "y108 — Failure A & B: Menu music lifecycle continuity & institutional PA / Tannoy DSP",
+   "files": [
+    "tests/y108-beat-2-4-convergence-repair.test.js"
+   ]
+  },
+  {
+   "name": "y88 — Multi-turn coworker behavioral sequence (10-step canonical proof)",
+   "files": [
+    "tests/y88-actor-multi-turn-behavioral.test.js"
+   ]
+  },
+  {
+   "name": "y90 — 30-Turn Continuous Human-Style Expedition Script (Alpha Integration Baseline)",
+   "files": [
+    "tests/y90-expedition-script-30turn.test.js"
+   ]
+  },
+  {
+   "name": "y92 — CQ4 Day 1 Opener: Delivery Mechanics (Room Entry Alone Does Not Complete; Duffle Deposit Required)",
+   "files": [
+    "tests/y92-cq4-day1-geography-delivery.test.js"
+   ]
+  },
+  {
+   "name": "y94 — Scenario 2: Delivery Feasibility != Automatic Delivery",
+   "files": [
+    "tests/y94-cq4-day1-adversarial-corrective.test.js"
+   ]
+  },
+  {
+   "name": "y96: absent coworker in subsequent operation retains history without answering",
+   "files": [
+    "tests/y96-comms-targeting-and-absent-recipients.test.js"
+   ]
+  },
+  {
+   "name": "y96: addressed text resolves recipient when target is null",
+   "files": [
+    "tests/y96-comms-targeting-and-absent-recipients.test.js"
+   ]
+  },
+  {
+   "name": "y96: explicit targets resolve correctly to active roster members",
+   "files": [
+    "tests/y96-comms-targeting-and-absent-recipients.test.js"
+   ]
+  },
+  {
+   "name": "y96: intentional broadcasts deliver to all local peers",
+   "files": [
+    "tests/y96-comms-targeting-and-absent-recipients.test.js"
+   ]
+  }
+ ]
+}

@@ -1,0 +1,648 @@
+{
+ "version": "yellow-beast-reader-runtime-spike@v1",
+ "measured_at": "2026-09-29T05:48:55.358Z",
+ "hardware": {
+  "cpu": "Apple M3",
+  "mem_gb": 16
+ },
+ "runtime_pin": "b11146",
+ "model": "yellow-beast-local-v1.gguf",
+ "captured": {
+  "advisory_bodies_production_shaped": 60,
+  "natural_gate_invocations_on_capture_lines": 0,
+  "wording_bodies": 67,
+  "reader_inputs": 60
+ },
+ "n": 12,
+ "configs": [
+  {
+   "config": "A",
+   "label": "production flags (--ctx-size 4096 --cache-ram 0)",
+   "args": [
+    "--ctx-size",
+    "4096",
+    "--cache-ram",
+    "0",
+    "--no-webui"
+   ],
+   "load_ms": 4051,
+   "tokens": {
+    "advisory_prompt": {
+     "n": 12,
+     "p50": 866,
+     "p90": 893,
+     "max": 895
+    },
+    "reader_prompt": {
+     "n": 12,
+     "p50": 1617,
+     "p90": 1684,
+     "max": 1698
+    },
+    "reader_input_only": {
+     "n": 12,
+     "p50": 913,
+     "p90": 980,
+     "max": 994
+    },
+    "reader_system_prefix": 689,
+    "reader_schema_json_chars": {
+     "n": 12,
+     "p50": 5240,
+     "p90": 5279,
+     "max": 5299
+    },
+    "wording_prompt": {
+     "n": 12,
+     "p50": 615,
+     "p90": 700,
+     "max": 723
+    }
+   },
+   "advisory_replay": {
+    "latency_ms": {
+     "n": 12,
+     "p50": 4631,
+     "p90": 4752,
+     "max": 6968
+    },
+    "prompt_n": {
+     "n": 12,
+     "p50": 28,
+     "p90": 57,
+     "max": 841
+    },
+    "predicted_n": {
+     "n": 12,
+     "p50": 99,
+     "p90": 104,
+     "max": 107
+    },
+    "errors": 0
+   },
+   "reader_back_to_back": {
+    "latency_ms": {
+     "n": 12,
+     "p50": 16134,
+     "p90": 16387,
+     "max": 16491
+    },
+    "prompt_n": {
+     "n": 12,
+     "p50": 899,
+     "p90": 966,
+     "max": 980
+    },
+    "cache_n": {
+     "n": 12,
+     "p50": 717,
+     "p90": 717,
+     "max": 1286
+    },
+    "predicted_n": {
+     "n": 12,
+     "p50": 320,
+     "p90": 320,
+     "max": 320
+    },
+    "json_valid": 2,
+    "v0_valid": 2,
+    "n": 12,
+    "errors": []
+   },
+   "reader_interleaved": {
+    "latency_ms": {
+     "n": 12,
+     "p50": 15664,
+     "p90": 16007,
+     "max": 16113
+    },
+    "prompt_n": {
+     "n": 12,
+     "p50": 922,
+     "p90": 989,
+     "max": 1003
+    },
+    "cache_n": {
+     "n": 12,
+     "p50": 694,
+     "p90": 694,
+     "max": 694
+    }
+   },
+   "reader_compact_3_fields": {
+    "latency_ms": {
+     "n": 12,
+     "p50": 5084,
+     "p90": 5359,
+     "max": 5426
+    },
+    "predicted_n": {
+     "n": 12,
+     "p50": 48,
+     "p90": 48,
+     "max": 48
+    },
+    "json_valid": 2,
+    "n": 12
+   },
+   "logprobs": {
+    "default": {
+     "available": true,
+     "tokens": 227,
+     "entry_keys": [
+      "id",
+      "token",
+      "bytes",
+      "logprob",
+      "top_logprobs"
+     ],
+     "speech_act_position": 58,
+     "chosen": "statement",
+     "top": [
+      {
+       "token": "topic",
+       "logprob": -0.369,
+       "legal": false
+      },
+      {
+       "token": "statement",
+       "logprob": -2.021,
+       "legal": true
+      },
+      {
+       "token": "utter",
+       "logprob": -3.618,
+       "legal": false
+      },
+      {
+       "token": "attention",
+       "logprob": -3.855,
+       "legal": true
+      },
+      {
+       "token": "address",
+       "logprob": -4.249,
+       "legal": false
+      },
+      {
+       "token": "assertion",
+       "logprob": -4.432,
+       "legal": false
+      },
+      {
+       "token": "greeting",
+       "logprob": -4.592,
+       "legal": true
+      },
+      {
+       "token": "none",
+       "logprob": -4.68,
+       "legal": false
+      }
+     ],
+     "illegal_in_top": 5,
+     "renormalized_margin": 0.68
+    },
+    "post_sampling_probs": {
+     "available": true,
+     "tokens": 227,
+     "entry_keys": [
+      "id",
+      "token",
+      "bytes",
+      "prob",
+      "top_probs"
+     ],
+     "speech_act_position": 58,
+     "chosen": "statement",
+     "top": [],
+     "illegal_in_top": 0,
+     "renormalized_margin": null
+    },
+    "latency_ms_with_logprobs": 12256
+   },
+   "server_rss_mb": 5210
+  },
+  {
+   "config": "B",
+   "label": "spike: 2 slots, reader pinned to slot 1 (--parallel 2 --ctx-size 8192 --cache-ram 0)",
+   "args": [
+    "--ctx-size",
+    "8192",
+    "--parallel",
+    "2",
+    "--cache-ram",
+    "0",
+    "--no-webui"
+   ],
+   "load_ms": 1209,
+   "tokens": {
+    "advisory_prompt": {
+     "n": 12,
+     "p50": 866,
+     "p90": 893,
+     "max": 895
+    },
+    "reader_prompt": {
+     "n": 12,
+     "p50": 1617,
+     "p90": 1684,
+     "max": 1698
+    },
+    "reader_input_only": {
+     "n": 12,
+     "p50": 913,
+     "p90": 980,
+     "max": 994
+    },
+    "reader_system_prefix": 689,
+    "reader_schema_json_chars": {
+     "n": 12,
+     "p50": 5240,
+     "p90": 5279,
+     "max": 5299
+    },
+    "wording_prompt": {
+     "n": 12,
+     "p50": 615,
+     "p90": 700,
+     "max": 723
+    }
+   },
+   "advisory_replay": {
+    "latency_ms": {
+     "n": 12,
+     "p50": 4275,
+     "p90": 4580,
+     "max": 6881
+    },
+    "prompt_n": {
+     "n": 12,
+     "p50": 28,
+     "p90": 57,
+     "max": 841
+    },
+    "predicted_n": {
+     "n": 12,
+     "p50": 99,
+     "p90": 104,
+     "max": 107
+    },
+    "errors": 0
+   },
+   "reader_back_to_back": {
+    "latency_ms": {
+     "n": 12,
+     "p50": 15580,
+     "p90": 15890,
+     "max": 16957
+    },
+    "prompt_n": {
+     "n": 12,
+     "p50": 924,
+     "p90": 1003,
+     "max": 1287
+    },
+    "cache_n": {
+     "n": 12,
+     "p50": 694,
+     "p90": 694,
+     "max": 694
+    },
+    "predicted_n": {
+     "n": 12,
+     "p50": 320,
+     "p90": 320,
+     "max": 320
+    },
+    "json_valid": 2,
+    "v0_valid": 2,
+    "n": 12,
+    "errors": []
+   },
+   "reader_interleaved": {
+    "latency_ms": {
+     "n": 12,
+     "p50": 15440,
+     "p90": 15797,
+     "max": 15820
+    },
+    "prompt_n": {
+     "n": 12,
+     "p50": 922,
+     "p90": 989,
+     "max": 1003
+    },
+    "cache_n": {
+     "n": 12,
+     "p50": 694,
+     "p90": 694,
+     "max": 694
+    }
+   },
+   "reader_compact_3_fields": {
+    "latency_ms": {
+     "n": 12,
+     "p50": 5066,
+     "p90": 5266,
+     "max": 5419
+    },
+    "predicted_n": {
+     "n": 12,
+     "p50": 48,
+     "p90": 48,
+     "max": 48
+    },
+    "json_valid": 2,
+    "n": 12
+   },
+   "logprobs": {
+    "default": {
+     "available": true,
+     "tokens": 227,
+     "entry_keys": [
+      "id",
+      "token",
+      "bytes",
+      "logprob",
+      "top_logprobs"
+     ],
+     "speech_act_position": 58,
+     "chosen": "statement",
+     "top": [
+      {
+       "token": "topic",
+       "logprob": -0.368,
+       "legal": false
+      },
+      {
+       "token": "statement",
+       "logprob": -2.022,
+       "legal": true
+      },
+      {
+       "token": "utter",
+       "logprob": -3.626,
+       "legal": false
+      },
+      {
+       "token": "attention",
+       "logprob": -3.86,
+       "legal": true
+      },
+      {
+       "token": "address",
+       "logprob": -4.259,
+       "legal": false
+      },
+      {
+       "token": "assertion",
+       "logprob": -4.434,
+       "legal": false
+      },
+      {
+       "token": "greeting",
+       "logprob": -4.607,
+       "legal": true
+      },
+      {
+       "token": "none",
+       "logprob": -4.683,
+       "legal": false
+      }
+     ],
+     "illegal_in_top": 5,
+     "renormalized_margin": 0.681
+    },
+    "post_sampling_probs": {
+     "available": true,
+     "tokens": 227,
+     "entry_keys": [
+      "id",
+      "token",
+      "bytes",
+      "prob",
+      "top_probs"
+     ],
+     "speech_act_position": 58,
+     "chosen": "statement",
+     "top": [],
+     "illegal_in_top": 0,
+     "renormalized_margin": null
+    },
+    "latency_ms_with_logprobs": 12222
+   },
+   "server_rss_mb": 5348
+  },
+  {
+   "config": "C",
+   "label": "spike: host prompt cache on (--ctx-size 4096 --cache-ram 1024)",
+   "args": [
+    "--ctx-size",
+    "4096",
+    "--cache-ram",
+    "1024",
+    "--no-webui"
+   ],
+   "load_ms": 1209,
+   "tokens": {
+    "advisory_prompt": {
+     "n": 12,
+     "p50": 866,
+     "p90": 893,
+     "max": 895
+    },
+    "reader_prompt": {
+     "n": 12,
+     "p50": 1617,
+     "p90": 1684,
+     "max": 1698
+    },
+    "reader_input_only": {
+     "n": 12,
+     "p50": 913,
+     "p90": 980,
+     "max": 994
+    },
+    "reader_system_prefix": 689,
+    "reader_schema_json_chars": {
+     "n": 12,
+     "p50": 5240,
+     "p90": 5279,
+     "max": 5299
+    },
+    "wording_prompt": {
+     "n": 12,
+     "p50": 615,
+     "p90": 700,
+     "max": 723
+    }
+   },
+   "advisory_replay": {
+    "latency_ms": {
+     "n": 12,
+     "p50": 4256,
+     "p90": 4590,
+     "max": 6820
+    },
+    "prompt_n": {
+     "n": 12,
+     "p50": 28,
+     "p90": 57,
+     "max": 841
+    },
+    "predicted_n": {
+     "n": 12,
+     "p50": 99,
+     "p90": 104,
+     "max": 107
+    },
+    "errors": 0
+   },
+   "reader_back_to_back": {
+    "latency_ms": {
+     "n": 12,
+     "p50": 15494,
+     "p90": 15697,
+     "max": 15716
+    },
+    "prompt_n": {
+     "n": 12,
+     "p50": 901,
+     "p90": 966,
+     "max": 980
+    },
+    "cache_n": {
+     "n": 12,
+     "p50": 717,
+     "p90": 717,
+     "max": 1282
+    },
+    "predicted_n": {
+     "n": 12,
+     "p50": 320,
+     "p90": 320,
+     "max": 320
+    },
+    "json_valid": 2,
+    "v0_valid": 2,
+    "n": 12,
+    "errors": []
+   },
+   "reader_interleaved": {
+    "latency_ms": {
+     "n": 12,
+     "p50": 15503,
+     "p90": 15879,
+     "max": 16359
+    },
+    "prompt_n": {
+     "n": 12,
+     "p50": 922,
+     "p90": 989,
+     "max": 1003
+    },
+    "cache_n": {
+     "n": 12,
+     "p50": 694,
+     "p90": 694,
+     "max": 694
+    }
+   },
+   "reader_compact_3_fields": {
+    "latency_ms": {
+     "n": 12,
+     "p50": 4996,
+     "p90": 5199,
+     "max": 5308
+    },
+    "predicted_n": {
+     "n": 12,
+     "p50": 48,
+     "p90": 48,
+     "max": 48
+    },
+    "json_valid": 2,
+    "n": 12
+   },
+   "logprobs": {
+    "default": {
+     "available": true,
+     "tokens": 227,
+     "entry_keys": [
+      "id",
+      "token",
+      "bytes",
+      "logprob",
+      "top_logprobs"
+     ],
+     "speech_act_position": 58,
+     "chosen": "statement",
+     "top": [
+      {
+       "token": "topic",
+       "logprob": -0.368,
+       "legal": false
+      },
+      {
+       "token": "statement",
+       "logprob": -2.021,
+       "legal": true
+      },
+      {
+       "token": "utter",
+       "logprob": -3.624,
+       "legal": false
+      },
+      {
+       "token": "attention",
+       "logprob": -3.859,
+       "legal": true
+      },
+      {
+       "token": "address",
+       "logprob": -4.257,
+       "legal": false
+      },
+      {
+       "token": "assertion",
+       "logprob": -4.433,
+       "legal": false
+      },
+      {
+       "token": "greeting",
+       "logprob": -4.607,
+       "legal": true
+      },
+      {
+       "token": "none",
+       "logprob": -4.683,
+       "legal": false
+      }
+     ],
+     "illegal_in_top": 5,
+     "renormalized_margin": 0.681
+    },
+    "post_sampling_probs": {
+     "available": true,
+     "tokens": 227,
+     "entry_keys": [
+      "id",
+      "token",
+      "bytes",
+      "prob",
+      "top_probs"
+     ],
+     "speech_act_position": 58,
+     "chosen": "statement",
+     "top": [],
+     "illegal_in_top": 0,
+     "renormalized_margin": null
+    },
+    "latency_ms_with_logprobs": 12151
+   },
+   "server_rss_mb": 6206
+  }
+ ]
+}

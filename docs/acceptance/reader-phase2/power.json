@@ -1,0 +1,343 @@
+{
+ "version": "yellow-beast-reader-power@v1",
+ "method": "normal approximation, one-sided",
+ "rows": [
+  {
+   "gate": "G4 false-confident <= 3%",
+   "scenario": {
+    "true_fc": 0.015,
+    "alpha": 0.05,
+    "power": 0.9
+   },
+   "n": {
+    "accepted": 847,
+    "total_at_88pct_coverage": 963
+   }
+  },
+  {
+   "gate": "G4 false-confident <= 3%",
+   "scenario": {
+    "true_fc": 0.015,
+    "alpha": 0.05,
+    "power": 0.95
+   },
+   "n": {
+    "accepted": 1027,
+    "total_at_88pct_coverage": 1168
+   }
+  },
+  {
+   "gate": "G4 false-confident <= 3%",
+   "scenario": {
+    "true_fc": 0.012,
+    "alpha": 0.05,
+    "power": 0.9
+   },
+   "n": {
+    "accepted": 545,
+    "total_at_88pct_coverage": 620
+   }
+  },
+  {
+   "gate": "G4 false-confident <= 3%",
+   "scenario": {
+    "true_fc": 0.01,
+    "alpha": 0.05,
+    "power": 0.9
+   },
+   "n": {
+    "accepted": 417,
+    "total_at_88pct_coverage": 474
+   }
+  },
+  {
+   "gate": "G4 false-confident <= 3%",
+   "scenario": {
+    "true_fc": 0.01,
+    "alpha": 0.05,
+    "power": 0.95
+   },
+   "n": {
+    "accepted": 494,
+    "total_at_88pct_coverage": 562
+   }
+  },
+  {
+   "gate": "G4 false-confident <= 3% (Bonferroni over 10 gates)",
+   "scenario": {
+    "true_fc": 0.015,
+    "alpha": 0.005,
+    "power": 0.9
+   },
+   "n": {
+    "accepted": 1575,
+    "total_at_88pct_coverage": 1790
+   },
+   "note": "what option A (many simultaneous Bonferroni gates) would demand"
+  },
+  {
+   "gate": "G4 coverage >= 88%",
+   "scenario": {
+    "true_coverage": 0.92,
+    "alpha": 0.05,
+    "power": 0.9
+   },
+   "n": 487
+  },
+  {
+   "gate": "G4 coverage >= 88%",
+   "scenario": {
+    "true_coverage": 0.93,
+    "alpha": 0.05,
+    "power": 0.9
+   },
+   "n": 297
+  },
+  {
+   "gate": "G4 coverage >= 88%",
+   "scenario": {
+    "true_coverage": 0.91,
+    "alpha": 0.05,
+    "power": 0.9
+   },
+   "n": 903
+  },
+  {
+   "gate": "G3 resolved outcome: teacher - E4B < 6 points",
+   "scenario": {
+    "true_diff": 0.02,
+    "discordance": 0.12,
+    "alpha": 0.05,
+    "power": 0.9
+   },
+   "n": 641
+  },
+  {
+   "gate": "G3 resolved outcome: teacher - E4B < 6 points",
+   "scenario": {
+    "true_diff": 0.02,
+    "discordance": 0.08,
+    "alpha": 0.05,
+    "power": 0.9
+   },
+   "n": 427
+  },
+  {
+   "gate": "G3 resolved outcome: teacher - E4B < 6 points",
+   "scenario": {
+    "true_diff": 0.03,
+    "discordance": 0.12,
+    "alpha": 0.05,
+    "power": 0.9
+   },
+   "n": 1134
+  },
+  {
+   "gate": "G3 per-field non-inferiority (per field, no correction)",
+   "scenario": {
+    "true_diff": 0.02,
+    "discordance": 0.08,
+    "alpha": 0.05,
+    "power": 0.8
+   },
+   "n": {
+    "applicable_per_field": 308
+   },
+   "note": "a rare field (e.g. inbound answer, ~8-10% prevalence) needs ~10x as many turns"
+  },
+  {
+   "gate": "G3 per-field non-inferiority (per field, Bonferroni over 7 routing fields)",
+   "scenario": {
+    "true_diff": 0.02,
+    "discordance": 0.08,
+    "alpha": 0.00714,
+    "power": 0.8
+   },
+   "n": {
+    "applicable_per_field": 540
+   },
+   "note": "a rare field (e.g. inbound answer, ~8-10% prevalence) needs ~10x as many turns"
+  },
+  {
+   "gate": "G2 teacher resolved outcome >= 90%",
+   "scenario": {
+    "true_acc": 0.94,
+    "alpha": 0.05,
+    "power": 0.9
+   },
+   "n": 398
+  },
+  {
+   "gate": "G4 false-confident <= 3% EXACT (Clopper-Pearson), n = 1,000 turns",
+   "scenario": {
+    "total": 1000,
+    "accepted": 880,
+    "true_fc": 0.01,
+    "alpha": 0.05
+   },
+   "n": {
+    "n": 880,
+    "critical_k": 17,
+    "power": 0.996
+   }
+  },
+  {
+   "gate": "G4 false-confident <= 3% EXACT (Clopper-Pearson), n = 1,000 turns",
+   "scenario": {
+    "total": 1000,
+    "accepted": 880,
+    "true_fc": 0.015,
+    "alpha": 0.05
+   },
+   "n": {
+    "n": 880,
+    "critical_k": 17,
+    "power": 0.881
+   }
+  },
+  {
+   "gate": "G4 false-confident <= 3% EXACT (Clopper-Pearson), n = 1,000 turns",
+   "scenario": {
+    "total": 1000,
+    "accepted": 880,
+    "true_fc": 0.02,
+    "alpha": 0.05
+   },
+   "n": {
+    "n": 880,
+    "critical_k": 17,
+    "power": 0.506
+   }
+  },
+  {
+   "gate": "G4 false-confident <= 3% EXACT (Clopper-Pearson), n = 1,000 turns",
+   "scenario": {
+    "total": 1000,
+    "accepted": 880,
+    "true_fc": 0.025,
+    "alpha": 0.05
+   },
+   "n": {
+    "n": 880,
+    "critical_k": 17,
+    "power": 0.166
+   }
+  },
+  {
+   "gate": "G4 false-confident <= 3% EXACT, n = 1,800 turns",
+   "scenario": {
+    "total": 1800,
+    "accepted": 1584,
+    "true_fc": 0.01,
+    "alpha": 0.05
+   },
+   "n": {
+    "n": 1584,
+    "critical_k": 36,
+    "power": 1
+   }
+  },
+  {
+   "gate": "G4 false-confident <= 3% EXACT, n = 1,800 turns",
+   "scenario": {
+    "total": 1800,
+    "accepted": 1584,
+    "true_fc": 0.015,
+    "alpha": 0.05
+   },
+   "n": {
+    "n": 1584,
+    "critical_k": 36,
+    "power": 0.993
+   }
+  },
+  {
+   "gate": "G4 false-confident <= 3% EXACT, n = 1,800 turns",
+   "scenario": {
+    "total": 1800,
+    "accepted": 1584,
+    "true_fc": 0.02,
+    "alpha": 0.05
+   },
+   "n": {
+    "n": 1584,
+    "critical_k": 36,
+    "power": 0.809
+   }
+  },
+  {
+   "gate": "G4 false-confident <= 3% EXACT, n = 1,800 turns",
+   "scenario": {
+    "total": 1800,
+    "accepted": 1584,
+    "true_fc": 0.025,
+    "alpha": 0.05
+   },
+   "n": {
+    "n": 1584,
+    "critical_k": 36,
+    "power": 0.316
+   }
+  },
+  {
+   "gate": "sealed size rule: FC gate 80% exact power at true FC 2%",
+   "scenario": {
+    "cluster_size": 1,
+    "icc": 0,
+    "design_effect": 1,
+    "coverage": 0.88,
+    "alpha": 0.05
+   },
+   "n": {
+    "total": 1800,
+    "accepted": 1584,
+    "n_effective": 1584
+   }
+  },
+  {
+   "gate": "sealed size rule: FC gate 80% exact power at true FC 2%",
+   "scenario": {
+    "cluster_size": 10,
+    "icc": 0.01,
+    "design_effect": 1.09,
+    "coverage": 0.88,
+    "alpha": 0.05
+   },
+   "n": {
+    "total": 1910,
+    "accepted": 1680,
+    "n_effective": 1542
+   }
+  },
+  {
+   "gate": "sealed size rule: FC gate 80% exact power at true FC 2%",
+   "scenario": {
+    "cluster_size": 10,
+    "icc": 0.02,
+    "design_effect": 1.18,
+    "coverage": 0.88,
+    "alpha": 0.05
+   },
+   "n": {
+    "total": 2070,
+    "accepted": 1821,
+    "n_effective": 1543
+   }
+  },
+  {
+   "gate": "sealed size rule: FC gate 80% exact power at true FC 2%",
+   "scenario": {
+    "cluster_size": 20,
+    "icc": 0.02,
+    "design_effect": 1.38,
+    "coverage": 0.88,
+    "alpha": 0.05
+   },
+   "n": {
+    "total": 2420,
+    "accepted": 2129,
+    "n_effective": 1543
+   }
+  }
+ ]
+}

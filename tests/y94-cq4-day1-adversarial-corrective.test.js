@@ -26,6 +26,7 @@ function createTestOpenerService(seed = "adversarial-corrective-test", nowFn = n
 async function advanceToFieldOperation(service, worldId) {
   service.createQ4Personnel({ world_id: worldId, first_name: "Thorne, Marcus" });
   service.startSession({ world_id: worldId, mode: "field-researcher", scenario: "day1-opener" });
+  service.submitAction({ world_id: worldId, mode: "field-researcher", action: "COMPLETE_BROADCAST" });
   service.submitAction({ world_id: worldId, mode: "field-researcher", action: "READY" }); // STAGING
   service.submitAction({ world_id: worldId, mode: "field-researcher", action: "PROCEED" }); // FACILITY_TRANSIT
   service.submitAction({ world_id: worldId, mode: "field-researcher", action: "APPROACH" }); // THRESHOLD
@@ -44,6 +45,7 @@ test("y94 — Scenario 1: Service-Owned Radio Check-In Hold Timing", async () =>
   try {
     service.createQ4Personnel({ world_id: world.id, first_name: "Thorne, Marcus" });
     service.startSession({ world_id: world.id, mode: "field-researcher", scenario: "day1-opener" });
+    service.submitAction({ world_id: world.id, mode: "field-researcher", action: "COMPLETE_BROADCAST" });
     service.submitAction({ world_id: world.id, mode: "field-researcher", action: "READY" }); // STAGING
     service.submitAction({ world_id: world.id, mode: "field-researcher", action: "PROCEED" }); // FACILITY_TRANSIT
     service.submitAction({ world_id: world.id, mode: "field-researcher", action: "APPROACH" }); // THRESHOLD
@@ -316,16 +318,18 @@ test("INCOMPLETE MISSION DOES NOT BLOCK EGRESS", async () => {
 
     // Case C: Late return beyond scheduled window (late-return)
     entry.run.expedition.clock = { interval: 30 };
+    entry.run.expedition.day1_opener.returned_elapsed_seconds = 7500;
     const recordC = cq4Day1Opener.assessInstitutionalRecord({
       report: entry.run.expedition.written_report,
       run: entry.run
     });
     assert.equal(recordC.status, "late-return");
-    assert.match(recordC.summary, /past scheduled operational window/i);
+    assert.match(recordC.summary, /after the noon expectation/i);
 
     // Case D: Successful delivery (delivery-confirmed)
     entry.run.expedition.day1_opener.delivery_completed = true;
     entry.run.expedition.clock = { interval: 10 };
+    entry.run.expedition.day1_opener.returned_elapsed_seconds = 7100;
     const recordD = cq4Day1Opener.assessInstitutionalRecord({
       report: entry.run.expedition.written_report,
       run: entry.run
@@ -377,6 +381,8 @@ test("y94 — Scenario 5: 18 One-Shot Presentations Survive Cold Boot", () => {
     }
 
     // 2. Mark initial ones consumed
+    cq4Day1Opener.markOneShotConsumed(entry.run, "briefing_date_card");
+    cq4Day1Opener.markOneShotConsumed(entry.run, "maxwell_opening_briefing");
     assert.equal(cq4Day1Opener.isOneShotConsumed(entry.run, "briefing_date_card"), true);
     assert.equal(cq4Day1Opener.isOneShotConsumed(entry.run, "maxwell_opening_briefing"), true);
 
@@ -442,6 +448,7 @@ test("y94 — Scenario 6: Continuous Adversarial Regression Scenario", async () 
     assert.equal(entry.phase.phase_id, "BRIEFING");
 
     // 2. Capacity Limit Enforcement
+    service.submitAction({ world_id: world.id, mode: "field-researcher", action: "COMPLETE_BROADCAST" });
     service.submitAction({ world_id: world.id, mode: "field-researcher", action: "READY" }); // STAGING
     assert.equal(entry.phase.phase_id, "STAGING");
 
@@ -521,10 +528,14 @@ test("y94 — Scenario 6: Continuous Adversarial Regression Scenario", async () 
     assert.equal(repRes.ok, true);
     assert.equal(entry.phase.phase_id, "DEBRIEF");
 
-    // 10. Institutional Adjudication & Demo Termination
+    // 10. Institutional Adjudication & AEOT Inspection
     const projection = service.projectionFor(world.id, "field-researcher");
-    assert.ok(projection.demo_termination);
-    assert.equal(projection.demo_termination.status_text, "NO FURTHER ASSIGNMENTS AVAILABLE");
+    assert.equal(projection.demo_termination, undefined, "Normal debrief must not set obsolete demo_termination");
+    assert.ok(projection.aeot_inspection);
+    assert.equal(projection.aeot_inspection.active, true);
+    assert.equal(projection.aeot_inspection.shift_status, "END OF SHIFT");
+    assert.ok(projection.end_of_shift_notice);
+    assert.equal(projection.end_of_shift_notice.title, "END OF SHIFT");
 
     const record = cq4Day1Opener.assessInstitutionalRecord({
       report: entry.run.expedition.written_report,

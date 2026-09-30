@@ -1,0 +1,1049 @@
+{
+ "note": "READER PHASE 2 -- scripted RARE-STATE development stratum (dev only; never calibration or sealed). Coworker questions go through the canonical ledger API (dialogue-state.recordInboundRequest), chip targets through the service, activity rounds through ordinary turns. Player lines written for coverage of inbound answers (yes/no, choice, person, item, time, free; uncertainty, refusal, counter-question, answer + follow-up), chip targets, conclude / withdraw and repairs. Authored 2026-09-30 by the Phase-2 implementer: development coverage, not an independent or blind corpus. Step 0.1 (2026-09-30): every authored reply to a coworker question carries a developer coverage tag `reply` (answer / uncertainty / refusal / counter_question / answer_follow_up / own_answer_correction) used only for machine shape counts -- never a gold label; the scenario p2-own-answer-correction adds own-answer corrections (just-answered question i0).",
+ "option_ids": {
+  "CAMERA": "item-b2b47214d72b45d159",
+  "LAMP": "q4-field-light-01"
+ },
+ "scenarios": [
+  {
+   "id": "p2-inbound-yes-no",
+   "provider": "garbage",
+   "steps": [
+    {
+     "say": "Tonya, how are you?"
+    },
+    {
+     "coworker_asks": {
+      "name": "Tonya",
+      "text": "Have you been on one of these before?",
+      "answer_shape": "yes_no",
+      "predicate": "person.expedition_experience"
+     }
+    },
+    {
+     "say": "yep",
+     "reply": "answer"
+    },
+    {
+     "coworker_asks": {
+      "name": "Giselle",
+      "text": "Ready to head out soon?",
+      "answer_shape": "yes_no"
+     }
+    },
+    {
+     "say": "nah, not yet",
+     "reply": "answer"
+    },
+    {
+     "coworker_asks": {
+      "name": "Malcolm",
+      "text": "Did Maxwell brief you too?",
+      "answer_shape": "yes_no"
+     }
+    },
+    {
+     "say": "I think so",
+     "reply": "answer"
+    },
+    {
+     "coworker_asks": {
+      "name": "Tonya",
+      "text": "Is this your first day?",
+      "answer_shape": "yes_no",
+      "predicate": "person.first_day_at_async"
+     }
+    },
+    {
+     "say": "It is, yeah.",
+     "reply": "answer"
+    },
+    {
+     "coworker_asks": {
+      "name": "Giselle",
+      "text": "You nervous?",
+      "answer_shape": "yes_no",
+      "predicate": "person.nervousness"
+     }
+    },
+    {
+     "say": "not really",
+     "reply": "answer"
+    },
+    {
+     "coworker_asks": {
+      "name": "Malcolm",
+      "text": "Want me to carry the lamp?",
+      "answer_shape": "yes_no"
+     }
+    },
+    {
+     "say": "sure, thanks",
+     "reply": "answer"
+    },
+    {
+     "coworker_asks": {
+      "name": "Tonya",
+      "text": "Have you seen the Complex before?",
+      "answer_shape": "yes_no",
+      "predicate": "person.complex_experience"
+     }
+    },
+    {
+     "say": "Absolutely not.",
+     "reply": "answer"
+    },
+    {
+     "coworker_asks": {
+      "name": "Giselle",
+      "text": "Did you sleep at all?",
+      "answer_shape": "yes_no",
+      "predicate": "person.fatigue"
+     }
+    },
+    {
+     "say": "barely",
+     "reply": "answer"
+    },
+    {
+     "coworker_asks": {
+      "name": "Malcolm",
+      "text": "Are you coming with us to Staging?",
+      "answer_shape": "yes_no"
+     }
+    },
+    {
+     "say": "Yes. Are you?",
+     "reply": "answer_follow_up"
+    },
+    {
+     "coworker_asks": {
+      "name": "Tonya",
+      "text": "Do you know Giselle already?",
+      "answer_shape": "yes_no",
+      "predicate": "person.familiarity"
+     }
+    },
+    {
+     "say": "no, we just met",
+     "reply": "answer"
+    },
+    {
+     "coworker_asks": {
+      "name": "Giselle",
+      "text": "Is the duffle heavy?",
+      "answer_shape": "yes_no"
+     }
+    },
+    {
+     "say": "kinda",
+     "reply": "answer"
+    },
+    {
+     "coworker_asks": {
+      "name": "Malcolm",
+      "text": "Should we wait for Maxwell?",
+      "answer_shape": "yes_no"
+     }
+    },
+    {
+     "say": "No, let's go.",
+     "reply": "answer"
+    },
+    {
+     "coworker_asks": {
+      "name": "Tonya",
+      "text": "Did you bring the camera?",
+      "answer_shape": "yes_no"
+     }
+    },
+    {
+     "say": "Oh no. No I didn't.",
+     "reply": "answer"
+    },
+    {
+     "coworker_asks": {
+      "name": "Giselle",
+      "text": "Do you want to lead?",
+      "answer_shape": "yes_no"
+     }
+    },
+    {
+     "say": "not me, Tonya should",
+     "reply": "answer"
+    }
+   ]
+  },
+  {
+   "id": "p2-inbound-uncertain-refuse-counter",
+   "provider": "garbage",
+   "steps": [
+    {
+     "say": "Hi everyone."
+    },
+    {
+     "coworker_asks": {
+      "name": "Giselle",
+      "text": "Have you done one of these before?",
+      "answer_shape": "yes_no"
+     }
+    },
+    {
+     "say": "hmm, no idea honestly",
+     "reply": "uncertainty"
+    },
+    {
+     "coworker_asks": {
+      "name": "Malcolm",
+      "text": "How long have you been with ASYNC?",
+      "answer_shape": "time",
+      "predicate": "person.async_tenure"
+     }
+    },
+    {
+     "say": "I'd rather not get into it",
+     "reply": "refusal"
+    },
+    {
+     "coworker_asks": {
+      "name": "Tonya",
+      "text": "Which one would you take in first?",
+      "answer_shape": "choice",
+      "options": [
+       "@CAMERA",
+       "@LAMP"
+      ]
+     }
+    },
+    {
+     "say": "why do you ask?",
+     "reply": "counter_question"
+    },
+    {
+     "coworker_asks": {
+      "name": "Giselle",
+      "text": "Are you excited?",
+      "answer_shape": "yes_no",
+      "predicate": "person.anticipation"
+     }
+    },
+    {
+     "say": "maybe?",
+     "reply": "uncertainty"
+    },
+    {
+     "coworker_asks": {
+      "name": "Malcolm",
+      "text": "What do you think is down there?",
+      "answer_shape": "free_short_answer"
+     }
+    },
+    {
+     "say": "pass",
+     "reply": "refusal"
+    },
+    {
+     "coworker_asks": {
+      "name": "Tonya",
+      "text": "Have you been inside before?",
+      "answer_shape": "yes_no",
+      "predicate": "person.complex_experience"
+     }
+    },
+    {
+     "say": "what about you?",
+     "reply": "counter_question"
+    },
+    {
+     "coworker_asks": {
+      "name": "Giselle",
+      "text": "Who do you think is in charge today?",
+      "answer_shape": "person"
+     }
+    },
+    {
+     "say": "not sure, Maxwell maybe?",
+     "reply": "uncertainty"
+    },
+    {
+     "coworker_asks": {
+      "name": "Malcolm",
+      "text": "You okay?",
+      "answer_shape": "yes_no",
+      "predicate": "person.wellbeing"
+     }
+    },
+    {
+     "say": "Why, do I look nervous?",
+     "reply": "counter_question"
+    },
+    {
+     "coworker_asks": {
+      "name": "Tonya",
+      "text": "How long have you worked here?",
+      "answer_shape": "time",
+      "predicate": "person.async_tenure"
+     }
+    },
+    {
+     "say": "that's personal",
+     "reply": "refusal"
+    },
+    {
+     "coworker_asks": {
+      "name": "Giselle",
+      "text": "Camera or flashlight?",
+      "answer_shape": "choice",
+      "options": [
+       "@CAMERA",
+       "@LAMP"
+      ]
+     }
+    },
+    {
+     "say": "I can't decide",
+     "reply": "uncertainty"
+    }
+   ]
+  },
+  {
+   "id": "p2-inbound-choice",
+   "provider": "garbage",
+   "steps": [
+    {
+     "say": "Morning."
+    },
+    {
+     "coworker_asks": {
+      "name": "Giselle",
+      "text": "Camera or flashlight?",
+      "answer_shape": "choice",
+      "options": [
+       "@CAMERA",
+       "@LAMP"
+      ]
+     }
+    },
+    {
+     "say": "camera",
+     "reply": "answer"
+    },
+    {
+     "coworker_asks": {
+      "name": "Malcolm",
+      "text": "Camera or flashlight?",
+      "answer_shape": "choice",
+      "options": [
+       "@CAMERA",
+       "@LAMP"
+      ]
+     }
+    },
+    {
+     "say": "the flashlight, I guess",
+     "reply": "answer"
+    },
+    {
+     "coworker_asks": {
+      "name": "Tonya",
+      "text": "Which do you want, the camera or the lamp?",
+      "answer_shape": "choice",
+      "options": [
+       "@CAMERA",
+       "@LAMP"
+      ]
+     }
+    },
+    {
+     "say": "neither",
+     "reply": "answer"
+    },
+    {
+     "coworker_asks": {
+      "name": "Giselle",
+      "text": "Camera or flashlight?",
+      "answer_shape": "choice",
+      "options": [
+       "@CAMERA",
+       "@LAMP"
+      ]
+     }
+    },
+    {
+     "say": "both, if I can",
+     "reply": "answer"
+    },
+    {
+     "coworker_asks": {
+      "name": "Malcolm",
+      "text": "Which should we bring first?",
+      "answer_shape": "choice",
+      "options": [
+       "@CAMERA",
+       "@LAMP"
+      ]
+     }
+    },
+    {
+     "say": "the first one",
+     "reply": "answer"
+    },
+    {
+     "coworker_asks": {
+      "name": "Tonya",
+      "text": "Camera or the lamp?",
+      "answer_shape": "choice",
+      "options": [
+       "@CAMERA",
+       "@LAMP"
+      ]
+     }
+    },
+    {
+     "say": "lamp. definitely the lamp",
+     "reply": "answer"
+    },
+    {
+     "coworker_asks": {
+      "name": "Giselle",
+      "text": "Which one's yours?",
+      "answer_shape": "choice",
+      "options": [
+       "@CAMERA",
+       "@LAMP"
+      ]
+     }
+    },
+    {
+     "say": "the 35mm",
+     "reply": "answer"
+    },
+    {
+     "coworker_asks": {
+      "name": "Malcolm",
+      "text": "Camera or flashlight?",
+      "answer_shape": "choice",
+      "options": [
+       "@CAMERA",
+       "@LAMP"
+      ]
+     }
+    },
+    {
+     "say": "either is fine",
+     "reply": "answer"
+    },
+    {
+     "coworker_asks": {
+      "name": "Tonya",
+      "text": "Camera or flashlight?",
+      "answer_shape": "choice",
+      "options": [
+       "@CAMERA",
+       "@LAMP"
+      ]
+     }
+    },
+    {
+     "say": "the camra",
+     "reply": "answer"
+    },
+    {
+     "coworker_asks": {
+      "name": "Giselle",
+      "text": "Camera or flashlight?",
+      "answer_shape": "choice",
+      "options": [
+       "@CAMERA",
+       "@LAMP"
+      ]
+     }
+    },
+    {
+     "say": "whichever you don't want",
+     "reply": "answer"
+    }
+   ]
+  },
+  {
+   "id": "p2-inbound-person-item",
+   "provider": "garbage",
+   "steps": [
+    {
+     "say": "Hey all."
+    },
+    {
+     "coworker_asks": {
+      "name": "Malcolm",
+      "text": "Who should carry the camera?",
+      "answer_shape": "person"
+     }
+    },
+    {
+     "say": "Tonya",
+     "reply": "answer"
+    },
+    {
+     "coworker_asks": {
+      "name": "Giselle",
+      "text": "Who's leading us in?",
+      "answer_shape": "person"
+     }
+    },
+    {
+     "say": "probably Malcolm",
+     "reply": "answer"
+    },
+    {
+     "coworker_asks": {
+      "name": "Tonya",
+      "text": "Who do you trust most here?",
+      "answer_shape": "person"
+     }
+    },
+    {
+     "say": "Giselle, no offense",
+     "reply": "answer"
+    },
+    {
+     "coworker_asks": {
+      "name": "Malcolm",
+      "text": "Who has the duffle?",
+      "answer_shape": "person"
+     }
+    },
+    {
+     "say": "you do, Malcolm",
+     "reply": "answer"
+    },
+    {
+     "coworker_asks": {
+      "name": "Giselle",
+      "text": "Who briefed you?",
+      "answer_shape": "person"
+     }
+    },
+    {
+     "say": "Dr. Maxwell",
+     "reply": "answer"
+    },
+    {
+     "coworker_asks": {
+      "name": "Tonya",
+      "text": "Which one should I pack first?",
+      "answer_shape": "item"
+     }
+    },
+    {
+     "say": "the lamp",
+     "reply": "answer"
+    },
+    {
+     "coworker_asks": {
+      "name": "Giselle",
+      "text": "What did you grab?",
+      "answer_shape": "item"
+     }
+    },
+    {
+     "say": "the duffle bag",
+     "reply": "answer"
+    },
+    {
+     "coworker_asks": {
+      "name": "Malcolm",
+      "text": "What are you carrying?",
+      "answer_shape": "item"
+     }
+    },
+    {
+     "say": "just the camera",
+     "reply": "answer"
+    },
+    {
+     "coworker_asks": {
+      "name": "Tonya",
+      "text": "Which piece of gear worries you?",
+      "answer_shape": "item"
+     }
+    },
+    {
+     "say": "the spectrometer, it's heavy",
+     "reply": "answer"
+    },
+    {
+     "coworker_asks": {
+      "name": "Giselle",
+      "text": "Who goes first through the Threshold?",
+      "answer_shape": "person"
+     }
+    },
+    {
+     "say": "me, I guess",
+     "reply": "answer"
+    }
+   ]
+  },
+  {
+   "id": "p2-inbound-time-free",
+   "provider": "garbage",
+   "steps": [
+    {
+     "say": "Hello."
+    },
+    {
+     "coworker_asks": {
+      "name": "Malcolm",
+      "text": "How long have you been with ASYNC?",
+      "answer_shape": "time",
+      "predicate": "person.async_tenure"
+     }
+    },
+    {
+     "say": "about two years",
+     "reply": "answer"
+    },
+    {
+     "coworker_asks": {
+      "name": "Tonya",
+      "text": "How long have you been here?",
+      "answer_shape": "time",
+      "predicate": "person.async_tenure"
+     }
+    },
+    {
+     "say": "since this morning, it's my first day",
+     "reply": "answer"
+    },
+    {
+     "coworker_asks": {
+      "name": "Giselle",
+      "text": "When did you get in?",
+      "answer_shape": "time"
+     }
+    },
+    {
+     "say": "an hour ago",
+     "reply": "answer"
+    },
+    {
+     "coworker_asks": {
+      "name": "Malcolm",
+      "text": "How are you holding up?",
+      "answer_shape": "free_short_answer",
+      "predicate": "person.wellbeing"
+     }
+    },
+    {
+     "say": "fine, thanks for asking",
+     "reply": "answer"
+    },
+    {
+     "coworker_asks": {
+      "name": "Tonya",
+      "text": "What do you do, anyway?",
+      "answer_shape": "free_short_answer",
+      "predicate": "person.role"
+     }
+    },
+    {
+     "say": "field research, mostly",
+     "reply": "answer"
+    },
+    {
+     "coworker_asks": {
+      "name": "Giselle",
+      "text": "What's your take on Maxwell?",
+      "answer_shape": "free_short_answer",
+      "predicate": "person.opinion"
+     }
+    },
+    {
+     "say": "he seems intense",
+     "reply": "answer"
+    },
+    {
+     "coworker_asks": {
+      "name": "Malcolm",
+      "text": "What are you hoping to find?",
+      "answer_shape": "free_short_answer"
+     }
+    },
+    {
+     "say": "honestly? nothing scary",
+     "reply": "answer"
+    },
+    {
+     "coworker_asks": {
+      "name": "Tonya",
+      "text": "How long do you think we'll be in there?",
+      "answer_shape": "time"
+     }
+    },
+    {
+     "say": "a few hours, maybe",
+     "reply": "answer"
+    },
+    {
+     "coworker_asks": {
+      "name": "Giselle",
+      "text": "Where'd you work before this?",
+      "answer_shape": "free_short_answer"
+     }
+    },
+    {
+     "say": "I'd rather keep that to myself",
+     "reply": "refusal"
+    },
+    {
+     "coworker_asks": {
+      "name": "Malcolm",
+      "text": "How do you feel about going in?",
+      "answer_shape": "free_short_answer",
+      "predicate": "person.anticipation"
+     }
+    },
+    {
+     "say": "Nervous. You?",
+     "reply": "answer_follow_up"
+    }
+   ]
+  },
+  {
+   "id": "p2-inbound-answer-then-more",
+   "provider": "garbage",
+   "steps": [
+    {
+     "say": "Hi team."
+    },
+    {
+     "coworker_asks": {
+      "name": "Tonya",
+      "text": "Have you been on an expedition before?",
+      "answer_shape": "yes_no",
+      "predicate": "person.expedition_experience"
+     }
+    },
+    {
+     "say": "No. Have you, Tonya?",
+     "reply": "answer_follow_up"
+    },
+    {
+     "coworker_asks": {
+      "name": "Giselle",
+      "text": "Camera or flashlight?",
+      "answer_shape": "choice",
+      "options": [
+       "@CAMERA",
+       "@LAMP"
+      ]
+     }
+    },
+    {
+     "say": "Camera. Where are we going first?",
+     "reply": "answer_follow_up"
+    },
+    {
+     "coworker_asks": {
+      "name": "Malcolm",
+      "text": "Who should hold the lamp?",
+      "answer_shape": "person"
+     }
+    },
+    {
+     "say": "Giselle. And who has the duffle?",
+     "reply": "answer_follow_up"
+    },
+    {
+     "coworker_asks": {
+      "name": "Tonya",
+      "text": "Are you nervous?",
+      "answer_shape": "yes_no",
+      "predicate": "person.nervousness"
+     }
+    },
+    {
+     "say": "A little, yeah. Thanks for asking.",
+     "reply": "answer"
+    },
+    {
+     "coworker_asks": {
+      "name": "Giselle",
+      "text": "How long have you been with ASYNC?",
+      "answer_shape": "time",
+      "predicate": "person.async_tenure"
+     }
+    },
+    {
+     "say": "Two years. What about you, Giselle?",
+     "reply": "answer_follow_up"
+    },
+    {
+     "coworker_asks": {
+      "name": "Malcolm",
+      "text": "Did you get briefed?",
+      "answer_shape": "yes_no"
+     }
+    },
+    {
+     "say": "yes. okay, what's next?",
+     "reply": "answer_follow_up"
+    },
+    {
+     "coworker_asks": {
+      "name": "Tonya",
+      "text": "Which one do you want?",
+      "answer_shape": "choice",
+      "options": [
+       "@CAMERA",
+       "@LAMP"
+      ]
+     }
+    },
+    {
+     "say": "the lamp please. Malcolm, can you take the camera?",
+     "reply": "answer_follow_up"
+    },
+    {
+     "coworker_asks": {
+      "name": "Giselle",
+      "text": "Ready?",
+      "answer_shape": "yes_no"
+     }
+    },
+    {
+     "say": "Ready. Let's go.",
+     "reply": "answer_follow_up"
+    }
+   ]
+  },
+  {
+   "id": "p2-chip-conclude-repair",
+   "provider": "garbage",
+   "steps": [
+    {
+     "say": "how are you doing?",
+     "target": "Malcolm"
+    },
+    {
+     "say": "and you?",
+     "target": "Tonya"
+    },
+    {
+     "say": "Giselle, tell me about yourself."
+    },
+    {
+     "say": "Malcolm, your turn."
+    },
+    {
+     "say": "your turn",
+     "target": "Tonya"
+    },
+    {
+     "say": "Alright, that's everyone introduced."
+    },
+    {
+     "say": "Tonya, what's in the duffle?"
+    },
+    {
+     "say": "No, I was asking Malcolm."
+    },
+    {
+     "say": "I meant the camera, not the duffle."
+    },
+    {
+     "say": "Where are we headed?"
+    },
+    {
+     "say": "You still haven't said."
+    },
+    {
+     "say": "never mind, forget it"
+    },
+    {
+     "say": "Okay, that's that. Who has the lamp?"
+    }
+   ]
+  },
+  {
+   "id": "p2-activity-rounds",
+   "provider": "garbage",
+   "steps": [
+    {
+     "say": "How is everyone feeling?"
+    },
+    {
+     "say": "Giselle?"
+    },
+    {
+     "say": "what about the rest of you?"
+    },
+    {
+     "say": "Okay, that's that."
+    },
+    {
+     "say": "What does everyone do here?"
+    },
+    {
+     "say": "Tonya, you first."
+    },
+    {
+     "say": "and Malcolm?"
+    },
+    {
+     "say": "Let's drop the roles thing."
+    },
+    {
+     "say": "How long has everyone been with ASYNC?"
+    },
+    {
+     "say": "who else?"
+    },
+    {
+     "say": "Right, that's all of us then. What's next?"
+    }
+   ]
+  },
+  {
+   "id": "p2-own-answer-correction",
+   "provider": "garbage",
+   "steps": [
+    {
+     "say": "Morning, all."
+    },
+    {
+     "coworker_asks": {
+      "name": "Tonya",
+      "text": "Have you been inside before?",
+      "answer_shape": "yes_no",
+      "predicate": "person.complex_experience"
+     }
+    },
+    {
+     "say": "yes",
+     "reply": "answer"
+    },
+    {
+     "say": "wait, no, sorry. I haven't.",
+     "reply": "own_answer_correction"
+    },
+    {
+     "coworker_asks": {
+      "name": "Giselle",
+      "text": "Camera or flashlight?",
+      "answer_shape": "choice",
+      "options": [
+       "@CAMERA",
+       "@LAMP"
+      ]
+     }
+    },
+    {
+     "say": "camera",
+     "reply": "answer"
+    },
+    {
+     "say": "actually, I meant the lamp",
+     "reply": "own_answer_correction"
+    },
+    {
+     "coworker_asks": {
+      "name": "Malcolm",
+      "text": "Who should carry the duffle?",
+      "answer_shape": "person"
+     }
+    },
+    {
+     "say": "Malcolm",
+     "reply": "answer"
+    },
+    {
+     "say": "sorry, I mean Tonya",
+     "reply": "own_answer_correction"
+    },
+    {
+     "coworker_asks": {
+      "name": "Tonya",
+      "text": "How long have you been with ASYNC?",
+      "answer_shape": "time",
+      "predicate": "person.async_tenure"
+     }
+    },
+    {
+     "say": "two years",
+     "reply": "answer"
+    },
+    {
+     "say": "no wait, three years",
+     "reply": "own_answer_correction"
+    },
+    {
+     "coworker_asks": {
+      "name": "Giselle",
+      "text": "What are you carrying?",
+      "answer_shape": "item"
+     }
+    },
+    {
+     "say": "the lamp",
+     "reply": "answer"
+    },
+    {
+     "say": "scratch that, the camera",
+     "reply": "own_answer_correction"
+    },
+    {
+     "coworker_asks": {
+      "name": "Malcolm",
+      "text": "You nervous?",
+      "answer_shape": "yes_no",
+      "predicate": "person.nervousness"
+     }
+    },
+    {
+     "say": "nope",
+     "reply": "answer"
+    },
+    {
+     "say": "okay, honestly, a little",
+     "reply": "own_answer_correction"
+    },
+    {
+     "coworker_asks": {
+      "name": "Tonya",
+      "text": "Which one do you want?",
+      "answer_shape": "choice",
+      "options": [
+       "@CAMERA",
+       "@LAMP"
+      ]
+     }
+    },
+    {
+     "say": "the flashlight",
+     "reply": "answer"
+    },
+    {
+     "say": "hmm, no, the camera after all",
+     "reply": "own_answer_correction"
+    },
+    {
+     "coworker_asks": {
+      "name": "Giselle",
+      "text": "What do you do here?",
+      "answer_shape": "free_short_answer",
+      "predicate": "person.role"
+     }
+    },
+    {
+     "say": "logistics",
+     "reply": "answer"
+    },
+    {
+     "say": "I mean field research, sorry",
+     "reply": "own_answer_correction"
+    }
+   ]
+  }
+ ]
+}
