@@ -34,6 +34,12 @@ A labeler does **not** see:
 
 A label whose `render_digest` no longer matches the frozen item is refused (`render_changed_since_labelling`).
 
+The human primary labeler writes `HUMAN_PRIMARY` rows with the local workstation
+(`tools/dialogue-reader-labeling-workstation.js`, `docs/reader/READER_PHASE2_LABELING_WORKSTATION.md`): one frozen render at a
+time, no suggestion, no prefill, no hidden state, validated against this guide's schema. Hand-editing JSONL is not required.
+A human primary labels only `ACCEPT` or `EXPECTED_CLARIFY`; the workstation offers no other outcome. Only an adjudicator may
+declare a render `UNLABELABLE` (an `ADJUDICATED_GOLD` row, as the preregistration and validator already require).
+
 ## 2. What a labeler writes
 
 One JSONL row per distinct render:

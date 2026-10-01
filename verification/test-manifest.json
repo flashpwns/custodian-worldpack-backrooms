@@ -921,6 +921,11 @@
       "file": "tests/ed33c-reader-phase2-step01.test.js",
       "status": "included",
       "tier": "aggregate"
+    },
+    {
+      "file": "tests/ed33d-reader-phase2-labeling-workstation.test.js",
+      "status": "included",
+      "tier": "aggregate"
     }
   ],
   "report_tools": [

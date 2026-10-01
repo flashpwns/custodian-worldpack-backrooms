@@ -1,5 +1,57 @@
 # Yellow Beast Implementation State
 
+## Reader Phase 2, human primary labeling workstation (shadow-only, local, no egress) — 2026-10-01
+
+- **Scope:** a LOCAL, loopback-only, dependency-free browser instrument so the human primary labeler can write
+  `HUMAN_PRIMARY` rows for the frozen 474-render census without hand-editing JSONL
+  (`tools/dialogue-reader-labeling-workstation.js`; usage and boundary: `docs/reader/READER_PHASE2_LABELING_WORKSTATION.md`).
+  Built on the frozen governance commit `083b54d`. No label was written, no teacher / model / reviewer run, no network
+  request, no adjudication, no gold, no E4B / calibration / sealed data. The reviewer model, teacher output budget and
+  timeout are **not** chosen.
+- **Boundary:** the serving process loads only the blank worksheet, the observer-safe `ReaderInput` input pack (bound to
+  the worksheet by render digest) and the human's own labels. The answer-bearing capture (legacy frame, routing, context,
+  bindings, canonical state) is touched only by `--prepare` and `--validate-full`, in memory, never written. No outcome,
+  wire, field or slot is ever suggested or prefilled; the grammar reference is static.
+- **Schema:** existing `HUMAN_PRIMARY` row (`labeler {kind:human,id:jack}`, render + system digest, `committed_at` minted at
+  the explicit commit); outcomes, slots and fields imported from `dialogue-reader-labels.js`; `independenceProblems` reused.
+  Active labels live in the gitignored `.agent-notes/reader-phase2-labeling/`.
+- **Validation:** commit-time = V0 + V1 + V2 of the human's own wire against observer-safe input (resolver-level V3 /
+  resolves / slot information is withheld until after commit); `--validate-full` runs the unchanged existing validator.
+- **Primary outcomes:** a human primary labels only `ACCEPT` or `EXPECTED_CLARIFY` (see the RED repair below).
+- **Verification:** new `tests/ed33d-reader-phase2-labeling-workstation.test.js` (23 tests, aggregate tier, registered);
+  fast Reader suites 118 pass; long-world Reader suites (`ed31b` / `ed32b` / `ed33b`) 5 pass; full suite 1,597 tests,
+  1,518 pass, 79 fail; `compare-failing-tests`: unchanged 79, **new 0**, fixed 0; inventory 57 pre-existing errors only.
+  Frozen population 944 / 575 / 470 / 552 / 474 / 78, `teacher-dev-sample.json`, `dev-manifest.json` and
+  `json-control-selection.json` are byte-identical. The blank worksheet (SHA-256 `e6f2da5a…8532ce3e5d`) regenerated
+  byte-identically twice, once under the egress guard.
+- **Status (superseded by the RED repair below): HUMAN LABELING WORKSTATION READY — INDEPENDENT AUDIT REQUIRED.**
+- **RED repair (2026-10-01, owner ruling: audit option B):** the independent audit returned RED on one blocking protocol
+  defect: the workstation offered a primary-level `UNLABELABLE` outcome that the label guide, preregistration and validator
+  reserve for an adjudicator (`ADJUDICATED_GOLD` only), and `--validate-full` reclassified the validator's
+  `unlabelable_record_invalid` as "pending adjudication". Repaired at every layer, with no change to the validator, the
+  preregistration or the label guide's protocol: no `UNLABELABLE` control or reason box in the page; `OUTCOMES` is
+  `[ACCEPT, EXPECTED_CLARIFY]`; `checkDraft` refuses `UNLABELABLE` (`unlabelable_not_primary`, HTTP 422, nothing written);
+  `loadLabels` refuses a `HUMAN_PRIMARY` `UNLABELABLE` row, naming the existing validator's own code; `--validate` prints that
+  code and exits 1; `classifyValidation` no longer reclassifies anything (it only strips resolver detail); no
+  `unlabelable_reason` survives in any payload or row. An explicit outcome change now clears only the fields the new outcome
+  does not own (switching to ACCEPT clears the ambiguous field, slot and clarification note; the human's wire and notes stay;
+  nothing is moved, copied or chosen), and the page sends only fields the chosen outcome owns, so the visible form and the
+  validated payload agree. The wire input has an explicit accessible label. Documentation no longer instructs a primary to
+  choose `UNLABELABLE`. No third outcome, abstention state or adjudication behaviour was added.
+- **Repair verification:** `ed33d` now 29 tests (all pass; new tests prove UNLABELABLE is impossible at the page, `checkDraft`,
+  direct HTTP, `loadLabels` and `--validate` (in-process and as a real CLI process, exit 1), that nothing is reclassified, that
+  no ADJUDICATED_GOLD behaviour exists, and the outcome-change field clearing); fast Reader suites 124 pass; long-world Reader
+  suites (`ed31b` / `ed32b` / `ed33b`) 5 pass; full suite 1,603 tests, 1,524 pass, 79 fail; `compare-failing-tests`:
+  unchanged 79, **new 0**, fixed 0; inventory 57 pre-existing errors only (the `ed33d` governed hash was refreshed). Frozen
+  population 944 / 575 / 470 / 552 / 474 / 78 and the three frozen acceptance artifacts are byte-identical. No label, journal,
+  teacher output, review, gold, receipt, E4B, calibration, sealed data or network egress exists; the UI was exercised only against
+  a synthetic scratch directory (deleted).
+- **Residual findings recorded, deliberately not repaired here:** journal transaction (labels / journal are two separate
+  durable writes); whole-file label storage rewrite on every commit; egress-guard design; production-module import surface;
+  input-pack digest design; grammar-example design; note-length limits; reviewer governance; post-commit validation policy;
+  other viewport / accessibility observations (only the wire label was fixed).
+- **Status: HUMAN LABELING WORKSTATION REPAIR READY — RE-AUDIT REQUIRED.**
+
 ## Reader Phase 2, teacher-ceiling pre-labelling unblock (shadow-only, no egress) — 2026-10-01
 
 - **Scope:** owner decisions before human labelling: record the teacher / reviewer-family / human provenance in the
