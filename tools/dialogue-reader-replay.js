@@ -40,6 +40,8 @@
 //                --receipts <file.jsonl> --confirm-egress [--include-human-trace] [--retention "<text>"]
 //                [--max-output-tokens n] [--temperature t] [--reasoning-effort e] [--reasoning-budget n]
 //                [--max-tokens-param max_tokens|max_completion_tokens]
+//        JSON control: --output json --sample <teacher-dev-sample.json> --control-subset docs/acceptance/reader-phase2/json-control-selection.json
+//   node tools/dialogue-reader-replay.js --json-control-selection <capture.json> --out <json-control-selection.json>
 
 const fs = require("node:fs");
 const path = require("node:path");
@@ -605,7 +607,7 @@ async function tokenDistribution(items, { log = () => {} } = {}) {
  * is required, and human-trace renders are excluded unless `--include-human-trace` is also given. Returns
  * { ok, units, summary, refusal? }; the summary is printed before any request is sent.
  */
-function egressPlan(units, { confirm = false, includeHumanTrace = false, provider, baseURL, model, family, retention = null, receipts = null, params = {}, maxOutputTokens = params?.max_output_tokens ?? null } = {}) {
+function egressPlan(units, { confirm = false, includeHumanTrace = false, api = null, provider, baseURL, model, family, retention = null, receipts = null, params = {}, maxOutputTokens = params?.max_output_tokens ?? null } = {}) {
   const human = (u) => (u.strata ?? [unitItem(u).stratum]).includes("human_trace");
   const kept = includeHumanTrace ? units : units.filter((u) => !human(u));
   const strata = {};
@@ -619,6 +621,7 @@ function egressPlan(units, { confirm = false, includeHumanTrace = false, provide
     human_trace_included: includeHumanTrace && units.some(human), human_trace_excluded: includeHumanTrace ? 0 : units.filter(human).length,
     bytes_estimated: bytes, tokens_estimated: Math.round(chars / 4), tokens_note: "~4 characters per token; the system prefix is sent with every request",
     retries: `up to ${RETRY_POLICY.max_retries} per render (transient failures only)`, params,
+    provider_storage: api === "openai-chat" ? "store:false is sent on every request (enforced by the adapter; recorded per receipt)" : "no store parameter is sent (provider default)",
     retention_training: retention ?? "unknown: not configured (pass --retention to record the provider's retention / training setting)",
     receipts: receipts ?? null
   };
@@ -632,6 +635,11 @@ function terminationOf(r) {
   const t = r?.transport?.termination ?? null;
   return { finish_reason: t?.finish_reason ?? null, stop_reason: t?.stop_reason ?? null, termination: t?.kind ?? (r?.status === "read" || r?.status === "invalid" ? "completed" : null), refusal: Boolean(t?.refusal), usage: t?.usage ?? r?.transport?.usage ?? null };
 }
+/** What the request itself said about provider-side storage (from the transmitted body, not from configuration). */
+function providerStorageOf(transmitted) {
+  if (!transmitted) return null;
+  return { api: transmitted.api ?? null, store_param_sent: transmitted.params ? "store" in transmitted.params : false, store: transmitted.params?.store ?? null };
+}
 /** One receipt per hosted REQUEST (never any provider chain-of-thought). */
 function hostedRequestReceipt({ unit, item, receipt, attempt }) {
   const r = receipt ?? {};
@@ -641,7 +649,7 @@ function hostedRequestReceipt({ unit, item, receipt, attempt }) {
   return {
     id: unit.id, attempt, retry_count: attempt - 1, render_digest: r.render_digest ?? renderReaderPrompt(item.input).render_digest, system_digest: r.system_digest ?? null,
     provider: r.reader?.provider ?? null, endpoint_host: host, model: r.reader?.model ?? t?.model ?? null, response_model: r.transport?.model ?? null,
-    params: t?.params ?? null, request_bytes: t?.bytes ?? null, system_sha256: t?.system_sha256 ?? null, user_sha256: t?.user_sha256 ?? null,
+    params: t?.params ?? null, provider_storage: providerStorageOf(t), request_bytes: t?.bytes ?? null, system_sha256: t?.system_sha256 ?? null, user_sha256: t?.user_sha256 ?? null,
     response_status: r.transport?.response_status ?? (r.status === "reader_unavailable" ? r.error ?? r.reason : null),
     latency_ms: r.latency_ms ?? null, output_digest: typeof r.raw_wire === "string" ? sha(r.raw_wire) : null, status: r.status ?? null,
     ...terminationOf(r),
@@ -735,6 +743,56 @@ function headlineVerdict({ sampleText = null, capturedGroups = [], runIds = [], 
   return { headline: reasons.length === 0, reasons: [...new Set(reasons)], valid_adjudicated: validAdjudicated, unlabelable: unlabelable.size, missing: missing.length, voids, void_rate_pct: pct(voids, population) };
 }
 
+// ─── the JSON-control selection (pinned before any teacher run) ──────────────────────────────────────────
+// The wire-vs-JSON control (preregistration §4) runs "about 100" development items through the same teacher. The owner
+// accepted the deterministic stratified sample of 100 DISTINCT RENDERS drawn from the frozen 474-render census. It is
+// derived from the CENSUS (never from whichever renders happen to carry gold), so an UNLABELABLE record cannot shift it.
+// `--limit 100` over labelled groups is NOT that selection and is not used for the control.
+const JSON_CONTROL_SELECTION_FILE = path.join(__dirname, "..", "docs", "acceptance", "reader-phase2", "json-control-selection.json");
+const JSON_CONTROL_SELECTION_SHA256 = "fb27ff65335d764c13675631d07c7a6159e6dffa19b01dd202362ca1d4d3784b"; // pinned (also in ed33b / ed33c)
+const JSON_CONTROL_PLAN = Object.freeze({
+  version: "yellow-beast-reader-json-control-selection@v1",
+  rule: "stratifiedSample(the 474 headline-eligible distinct renders of the frozen teacher sample, n = 100, seed = SAMPLE_SEED): deterministic proportional allocation by primary stratum, largest remainder, at least one per non-empty stratum, within a stratum ordered by SHA-256(seed, render digest); independent of capture order and of any label",
+  n: 100,
+  seed: SAMPLE_SEED
+});
+/** The census groups of the teacher sample (the population the control is drawn from). */
+function censusGroups(groups) { const ids = new Set(teacherDevSample(groups).headline.map((h) => h.id)); return groups.filter((g) => ids.has(g.id)); }
+function jsonControlSelection(groups, sampleText = fs.readFileSync(TEACHER_SAMPLE_FILE, "utf8")) {
+  const chosen = stratifiedSample(censusGroups(groups), JSON_CONTROL_PLAN.n);
+  const byStratum = {};
+  for (const g of chosen) byStratum[g.primary_stratum] = (byStratum[g.primary_stratum] ?? 0) + 1;
+  return {
+    ...JSON_CONTROL_PLAN, contract: contractIdentity(),
+    population: { teacher_sample_sha256: sha(sampleText), headline_renders: TEACHER_POPULATION },
+    by_stratum: byStratum,
+    selection_digest: sha(chosen.map((g) => g.id).join("\n")),
+    selected: chosen.map((g) => ({ id: g.id, render_digest: g.render_digest, primary_stratum: g.primary_stratum }))
+  };
+}
+/** Problems (empty = the file is exactly the pinned selection and regenerates from the scored capture). */
+function jsonControlSelectionProblems(text, capturedGroups) {
+  const out = [];
+  if (JSON_CONTROL_SELECTION_SHA256 == null || sha(text) !== JSON_CONTROL_SELECTION_SHA256) out.push("selection_identity_mismatch");
+  let doc = null;
+  try { doc = JSON.parse(text); } catch { out.push("selection_unreadable"); }
+  if (doc) {
+    if (JSON.stringify(doc.contract) !== JSON.stringify(contractIdentity())) out.push("selection_contract_mismatch");
+    const regenerated = jsonControlSelection(capturedGroups);
+    if (JSON.stringify(regenerated.selected) !== JSON.stringify(doc.selected) || regenerated.selection_digest !== doc.selection_digest) out.push("selection_not_regenerated_from_capture");
+  }
+  return out;
+}
+/** The registry pins the owner-selected teacher: a hosted run must name exactly the recorded family, provider and model. */
+function teacherIdentityProblems(registry, { family, provider, model }) {
+  const t = registry?.teacher ?? {};
+  const out = [];
+  if (!family || !t.family || family !== t.family) out.push(`--family must name the recorded teacher family (recorded: ${t.family ?? "none"})`);
+  if (t.provider && provider !== t.provider) out.push(`--provider must name the recorded teacher provider (recorded: ${t.provider}; given: ${provider ?? "none"})`);
+  if (t.model && model !== t.model) out.push(`--model must name the recorded teacher model (recorded: ${t.model}; given: ${model ?? "none"})`);
+  return out;
+}
+
 // ─── CLI ─────────────────────────────────────────────────────────────────────────────────────────────
 async function main() {
   const arg = (name) => { const i = process.argv.indexOf(name); return i >= 0 ? process.argv[i + 1] : null; };
@@ -770,6 +828,12 @@ async function main() {
     log(`teacher dev sample: ${doc.headline_renders} headline renders ${JSON.stringify(doc.by_stratum)}`);
     return;
   }
+  if (arg("--json-control-selection")) {
+    const doc = jsonControlSelection(renderGroups(load(arg("--json-control-selection"))));
+    fs.writeFileSync(arg("--out"), `${JSON.stringify(doc, null, 1)}\n`);
+    log(`wrote ${arg("--out")}: ${doc.n} renders ${JSON.stringify(doc.by_stratum)}, selection_digest ${doc.selection_digest}`);
+    return;
+  }
   if (arg("--shapes")) { console.log(JSON.stringify(shapeCounts(load(arg("--shapes"))), null, 1)); return; }
   if (arg("--counts")) { console.log(JSON.stringify(corpusCounts(load(arg("--counts"))), null, 1)); return; }
   if (arg("--tokens")) {
@@ -790,9 +854,25 @@ async function main() {
     let sampleNote = "all labelled renders";
     let sampleText = null;
     if (arg("--sample")) { sampleText = fs.readFileSync(arg("--sample"), "utf8"); const ids = new Set(JSON.parse(sampleText).headline.map((h) => h.id)); groups = groups.filter((g) => ids.has(g.id)); sampleNote = `sample ${path.basename(arg("--sample"))}`; }
+    // The pinned JSON-control selection: ids come from the pinned file (verified against its SHA-256 and regenerated from the
+    // capture), never from --limit over labelled groups. Items without valid gold are reported, never replaced.
+    let controlSubset = null;
+    if (arg("--control-subset")) {
+      if (!arg("--sample")) throw new Error("--control-subset requires --sample (the frozen teacher sample)");
+      if (arg("--limit") || arg("--stratum")) throw new Error("--control-subset cannot be combined with --limit or --stratum");
+      const text = fs.readFileSync(arg("--control-subset"), "utf8");
+      const problems = jsonControlSelectionProblems(text, allGroups);
+      if (problems.length) throw new Error(`--control-subset refused: ${problems.join(", ")}`);
+      const doc = JSON.parse(text);
+      const ids = new Set(doc.selected.map((x) => x.id));
+      groups = groups.filter((g) => ids.has(g.id));
+      controlSubset = { file: path.basename(arg("--control-subset")), sha256: sha(text), selection_digest: doc.selection_digest, selected: doc.selected.length, in_run_before_gold_filter: groups.length };
+      sampleNote += `; pinned JSON-control selection ${doc.selection_digest.slice(0, 12)}`;
+    }
     if (arg("--stratum")) { groups = groups.filter((g) => g.primary_stratum === arg("--stratum")); sampleNote += `; stratum ${arg("--stratum")}`; }
     const validated = L.validateLabels(groups, labels, { states, registry });
     groups = groups.filter((g) => validated.gold[g.id]);
+    if (controlSubset) { controlSubset.with_valid_gold = groups.length; controlSubset.missing_gold = controlSubset.selected - groups.length; log(`JSON control: ${groups.length} of ${controlSubset.selected} pinned renders have valid gold (${controlSubset.missing_gold} missing, not replaced)`); }
     if (arg("--limit")) { groups = stratifiedSample(groups, Number(arg("--limit"))); sampleNote += `; stratified --limit ${arg("--limit")} (non-headline)`; }
     const armName = arg("--arm");
     const output = arg("--output") === "json" ? "json" : "wire";
@@ -810,11 +890,11 @@ async function main() {
         // DEVELOPMENT-ONLY teacher. The key is read from the named environment variable and never written anywhere.
         const api = arg("--api") ?? "openai-chat";
         armFamily = arg("--family");
-        const teacher = registry.teacher ?? {};
-        if (!armFamily || !teacher.family || armFamily !== teacher.family) throw new Error(`hosted run refused: --family must name the teacher family recorded in ${path.relative(process.cwd(), L.REGISTRY_FILE)} before labelling (recorded: ${teacher.family ?? "none"})`);
+        const identityProblems = teacherIdentityProblems(registry, { family: armFamily, provider: arg("--provider") ?? api, model: arg("--model") });
+        if (identityProblems.length) throw new Error(`hosted run refused (teacher identity recorded in ${path.relative(process.cwd(), L.REGISTRY_FILE)} before labelling): ${identityProblems.join("; ")}`);
         if (registry.automated_reviewer?.family && registry.automated_reviewer.family === armFamily) throw new Error("hosted run refused: the teacher family equals the automated review-labeler family");
         const params = { max_output_tokens: arg("--max-output-tokens") ? Number(arg("--max-output-tokens")) : null, temperature: arg("--temperature") != null ? Number(arg("--temperature")) : null, reasoning_effort: arg("--reasoning-effort"), reasoning_budget_tokens: arg("--reasoning-budget") ? Number(arg("--reasoning-budget")) : null, max_tokens_param: arg("--max-tokens-param") };
-        egress = egressPlan(groups, { confirm: flag("--confirm-egress"), includeHumanTrace: flag("--include-human-trace"), provider: arg("--provider") ?? api, baseURL: arg("--base-url") ?? (api === "anthropic-messages" ? "https://api.anthropic.com" : null), model: arg("--model"), family: armFamily, retention: arg("--retention"), receipts: arg("--receipts"), params });
+        egress = egressPlan(groups, { api, confirm: flag("--confirm-egress"), includeHumanTrace: flag("--include-human-trace"), provider: arg("--provider") ?? api, baseURL: arg("--base-url") ?? (api === "anthropic-messages" ? "https://api.anthropic.com" : null), model: arg("--model"), family: armFamily, retention: arg("--retention"), receipts: arg("--receipts"), params });
         log(`HOSTED EGRESS PLAN\n${JSON.stringify(egress.summary, null, 1)}`);
         if (!egress.ok) { log(egress.refusal); process.exitCode = 2; return; }
         groups = egress.units;
@@ -830,7 +910,7 @@ async function main() {
     // headline:true only when the whole preregistered contract holds (Step 0.1B).
     const verdict = headlineVerdict({ sampleText, capturedGroups: allGroups, runIds: groups.map((g) => g.id), validated, gold: own.gold, rows: scored.rows, limit: Boolean(arg("--limit")), stratum: Boolean(arg("--stratum")), diagnosticStates: Boolean(arg("--diagnostic-states")), humanTraceExcluded: egress?.summary?.human_trace_excluded ?? 0, output });
     const byId = new Map(arm.map((r) => [r.id, r]));
-    const doc = { version: REPLAY_VERSION, measured_at: new Date().toISOString(), authoritative: false, headline: verdict.headline, headline_verdict: verdict, sample: sampleNote, contract: contractIdentity(), output, identity, labels: { file: path.basename(arg("--labels")), states, counts: validated.counts, problems: validated.problems, unlabelable: validated.unlabelable, excluded_self_labelled: own.excluded }, summary: scored.summary, rows: scored.rows.map((r) => ({ ...r, raw_wire: byId.get(r.id)?.raw_wire ?? null })) };
+    const doc = { version: REPLAY_VERSION, measured_at: new Date().toISOString(), authoritative: false, headline: verdict.headline, headline_verdict: verdict, sample: sampleNote, ...(controlSubset ? { control_subset: controlSubset } : {}), contract: contractIdentity(), output, identity, labels: { file: path.basename(arg("--labels")), states, counts: validated.counts, problems: validated.problems, unlabelable: validated.unlabelable, excluded_self_labelled: own.excluded }, summary: scored.summary, rows: scored.rows.map((r) => ({ ...r, raw_wire: byId.get(r.id)?.raw_wire ?? null })) };
     fs.writeFileSync(arg("--out"), `${JSON.stringify(doc, null, 1)}\n`);
     if (armName !== "hosted" && arg("--receipts")) fs.writeFileSync(arg("--receipts"), arm.map((r) => JSON.stringify({ id: r.id, receipt: r.receipt ?? null })).join("\n"));
     console.log(JSON.stringify({ headline: verdict.headline, headline_reasons: verdict.reasons, ...scored.summary }, null, 1));
@@ -840,7 +920,7 @@ async function main() {
   process.exit(2);
 }
 
-module.exports = { headlineVerdict, hostedArm, hostedRequestReceipt, openReceiptLog, terminationOf, TEACHER_SAMPLE_FILE, TEACHER_SAMPLE_SHA256, TEACHER_POPULATION, TRANSPORT_VOID_MAX, doctrineReviewSample, REPLAY_VERSION, RETRY_POLICY, TOKEN_CLASSES, G1_RULE, TEACHER_SAMPLE_PLAN, STRATUM_PRIORITY, SHAPE_KEYS, loadRareState, developmentFixtures, stratumOf, captureCorpus, freezeItem, renderGroups, corpusCounts, stratifiedSample, stratumOrder, headlineEligible, teacherDevSample, resolveFrame, outcomeSignature, compareOutcomes, fieldAgreement, primaryAct, legacyArm, modelArm, transientFailure, armStatus, scoreArm, summarizeRows, bootstrapQuantile, clusterBootstrap, wilson, quantile, contractIdentity, shapeCounts, tokenStats, tokenDistribution, egressPlan, hostedReceipt, ROUTING_FIELDS, DIAGNOSTIC_FIELDS };
+module.exports = { JSON_CONTROL_SELECTION_FILE, JSON_CONTROL_SELECTION_SHA256, JSON_CONTROL_PLAN, jsonControlSelection, jsonControlSelectionProblems, censusGroups, teacherIdentityProblems, providerStorageOf, headlineVerdict, hostedArm, hostedRequestReceipt, openReceiptLog, terminationOf, TEACHER_SAMPLE_FILE, TEACHER_SAMPLE_SHA256, TEACHER_POPULATION, TRANSPORT_VOID_MAX, doctrineReviewSample, REPLAY_VERSION, RETRY_POLICY, TOKEN_CLASSES, G1_RULE, TEACHER_SAMPLE_PLAN, STRATUM_PRIORITY, SHAPE_KEYS, loadRareState, developmentFixtures, stratumOf, captureCorpus, freezeItem, renderGroups, corpusCounts, stratifiedSample, stratumOrder, headlineEligible, teacherDevSample, resolveFrame, outcomeSignature, compareOutcomes, fieldAgreement, primaryAct, legacyArm, modelArm, transientFailure, armStatus, scoreArm, summarizeRows, bootstrapQuantile, clusterBootstrap, wilson, quantile, contractIdentity, shapeCounts, tokenStats, tokenDistribution, egressPlan, hostedReceipt, ROUTING_FIELDS, DIAGNOSTIC_FIELDS };
 
 // Entry point last: dialogue-reader-labels.js requires this module, so its exports must exist before main() runs.
 if (require.main === module) main().catch((error) => { console.error(error.stack ?? error.message); process.exit(1); });

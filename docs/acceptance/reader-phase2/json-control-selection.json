@@ -1,0 +1,531 @@
+{
+ "version": "yellow-beast-reader-json-control-selection@v1",
+ "rule": "stratifiedSample(the 474 headline-eligible distinct renders of the frozen teacher sample, n = 100, seed = SAMPLE_SEED): deterministic proportional allocation by primary stratum, largest remainder, at least one per non-empty stratum, within a stratum ordered by SHA-256(seed, render digest); independent of capture order and of any label",
+ "n": 100,
+ "seed": "yellow-beast-reader-phase2-step0.1",
+ "contract": {
+  "replay": "yellow-beast-reader-replay@v2",
+  "reader_input": "yellow-beast-reader-input@v3",
+  "lexicon": "yellow-beast-reader-lexicon@v2",
+  "render": "yellow-beast-reader-render@v2",
+  "render_system_digest": "8c727a29383c0c4f32cb34323c82f29c05a15be9e2e9614962f39e6fd550d2f1",
+  "wire": "yellow-beast-reader-wire@v1",
+  "wire_digest": "b18ac02f80bacbe221710c21ab0eb2616c1ba95c62378992f20706bae5d74cc8",
+  "frame": "yellow-beast-reader-frame@v2"
+ },
+ "population": {
+  "teacher_sample_sha256": "26f0ba7b69a3be175359ddad5fa0a798a094d1151dc1b1659c243b70aeb201c8",
+  "headline_renders": 474
+ },
+ "by_stratum": {
+  "human_trace": 4,
+  "j15": 28,
+  "scripted_state": 21,
+  "scripted_rare_state": 23,
+  "ed30_dev_novel": 3,
+  "ed30_dev": 21
+ },
+ "selection_digest": "94e323130fbdd5d7291c773e5f7eb0bcbb1da214d0c9d9f1602046b52de10cd7",
+ "selected": [
+  {
+   "id": "rg-21786c854434e816",
+   "render_digest": "21786c854434e816e6ba1a4ff82b1313c7908c162bf810817202f97fee9dc00e",
+   "primary_stratum": "human_trace"
+  },
+  {
+   "id": "rg-d6ec6bbffe36930d",
+   "render_digest": "d6ec6bbffe36930d4f1e04088f786431b41cb6a0e37ea9e355b1d247b9a47c24",
+   "primary_stratum": "human_trace"
+  },
+  {
+   "id": "rg-ea1414213817966f",
+   "render_digest": "ea1414213817966fb21fa6f27fc307cb4201e7ab390c50dbdf70beb693b17cca",
+   "primary_stratum": "human_trace"
+  },
+  {
+   "id": "rg-7d867503b34fc190",
+   "render_digest": "7d867503b34fc1902819935d2061537d4e5055ffa65abfe5e897ee4012eef5ab",
+   "primary_stratum": "human_trace"
+  },
+  {
+   "id": "rg-fdfdf3687395ed3a",
+   "render_digest": "fdfdf3687395ed3ab85c55da4f91b82c0004253b03cb20f09c3c300d23ecd6ff",
+   "primary_stratum": "j15"
+  },
+  {
+   "id": "rg-9a8a151702b8f82c",
+   "render_digest": "9a8a151702b8f82c1b29b7536ec03789cdbb416454096e5b392a43e5eef60adf",
+   "primary_stratum": "j15"
+  },
+  {
+   "id": "rg-9a3822f807b12f01",
+   "render_digest": "9a3822f807b12f0188c36a88c9e1fc56f546f723f19c2c0b5220da381db56bff",
+   "primary_stratum": "j15"
+  },
+  {
+   "id": "rg-d5dd512a2a76b972",
+   "render_digest": "d5dd512a2a76b972d961d1c1b6de2d413069b25abbdaba3c50f29ed28fe04ad6",
+   "primary_stratum": "j15"
+  },
+  {
+   "id": "rg-c407068d489e290c",
+   "render_digest": "c407068d489e290cafa8e742149e6f32089dd0aff2ec92d1dc3c7147c3874592",
+   "primary_stratum": "j15"
+  },
+  {
+   "id": "rg-edb0c06f0685f1c4",
+   "render_digest": "edb0c06f0685f1c4a8b4a52181fc57a5fd4c44bca7cb9e3c85a424a655ea448c",
+   "primary_stratum": "j15"
+  },
+  {
+   "id": "rg-2e92567372e63406",
+   "render_digest": "2e92567372e63406958e1e14752a862596b224f90aa5d4a860cfe1dcc93fd054",
+   "primary_stratum": "j15"
+  },
+  {
+   "id": "rg-ddc491077aa5b3e8",
+   "render_digest": "ddc491077aa5b3e8ca94f5932d551da0b6bb16e12b0ebddb02ab9e1126998e74",
+   "primary_stratum": "j15"
+  },
+  {
+   "id": "rg-d3b96cc38daf9d16",
+   "render_digest": "d3b96cc38daf9d16fed0211fb65c9a09a6c4de9f577044be39e3892fcae4bbc2",
+   "primary_stratum": "j15"
+  },
+  {
+   "id": "rg-acd3f00c8820519f",
+   "render_digest": "acd3f00c8820519f03f327a73eda79646920748f69899ebe68c71d18b1d14157",
+   "primary_stratum": "j15"
+  },
+  {
+   "id": "rg-32b886e89a5335ac",
+   "render_digest": "32b886e89a5335ac9cf063d59583e6170f5e30f0b7198fab452a8d87400c998e",
+   "primary_stratum": "j15"
+  },
+  {
+   "id": "rg-0bdecf6e50c20cc2",
+   "render_digest": "0bdecf6e50c20cc246f07f06908498081f27de9377d1db52478f9644ef2e4866",
+   "primary_stratum": "j15"
+  },
+  {
+   "id": "rg-e56f6fbcded3a48f",
+   "render_digest": "e56f6fbcded3a48f084f13bf9ca18fbcce7f97daa034739adcf5d669f52a8c21",
+   "primary_stratum": "j15"
+  },
+  {
+   "id": "rg-9351b6955edba6c0",
+   "render_digest": "9351b6955edba6c00ef7c80a986aba9bd7c33ba4743f1c4abdfaa64ce7092b13",
+   "primary_stratum": "j15"
+  },
+  {
+   "id": "rg-69e73ec62a3642ea",
+   "render_digest": "69e73ec62a3642ea2a53a27ab15287e7bf21c66514df22a51faeacf493629357",
+   "primary_stratum": "j15"
+  },
+  {
+   "id": "rg-eb554ffd09d11293",
+   "render_digest": "eb554ffd09d11293f85af3fce0f55dadacbb9c06017ddd69cfb82cbeed54607c",
+   "primary_stratum": "j15"
+  },
+  {
+   "id": "rg-14a17c391e5bd990",
+   "render_digest": "14a17c391e5bd990060d1c22ad5cce2b046f4c185a4adaa2c0225a5aa97bf924",
+   "primary_stratum": "j15"
+  },
+  {
+   "id": "rg-231e2d6707eb60ae",
+   "render_digest": "231e2d6707eb60ae893a79473b395684bd77824201959b299d83cbaadaf6d047",
+   "primary_stratum": "j15"
+  },
+  {
+   "id": "rg-764a2b189ba40f81",
+   "render_digest": "764a2b189ba40f81db8bf4c063a6d42f48a721e460c7d54de3729dad121cbd9c",
+   "primary_stratum": "j15"
+  },
+  {
+   "id": "rg-6d4d2d0e78ac3f76",
+   "render_digest": "6d4d2d0e78ac3f7640b40e1745e24a7d213304173acfcf0c96d76700bd32d931",
+   "primary_stratum": "j15"
+  },
+  {
+   "id": "rg-b704b0fa2d28adb6",
+   "render_digest": "b704b0fa2d28adb6ad00ea7af5601635e047b0710c636093ae2a5f1a62de3060",
+   "primary_stratum": "j15"
+  },
+  {
+   "id": "rg-3cd863bec56e3b2f",
+   "render_digest": "3cd863bec56e3b2f405a832a00ca3d9347d5682d35ba1973e78c32a3e8df1e7b",
+   "primary_stratum": "j15"
+  },
+  {
+   "id": "rg-ee44b41262232ff1",
+   "render_digest": "ee44b41262232ff1b228e9ee6429d191d10da941be2da732841879e9941d9618",
+   "primary_stratum": "j15"
+  },
+  {
+   "id": "rg-01749f3f66803682",
+   "render_digest": "01749f3f668036825998808ad0b51382e2bd7c6e95c643d9d2b05472d55da312",
+   "primary_stratum": "j15"
+  },
+  {
+   "id": "rg-72ef57def9e7073f",
+   "render_digest": "72ef57def9e7073fb1c60d5d8c9f237fac93fc53f9256ea6877db1a3b2f1428c",
+   "primary_stratum": "j15"
+  },
+  {
+   "id": "rg-99f848c88b6b1380",
+   "render_digest": "99f848c88b6b1380e37b6afe017800bfe64b8fe6314bc9d58f1f499ed0d50e32",
+   "primary_stratum": "j15"
+  },
+  {
+   "id": "rg-f09adae1617fe00e",
+   "render_digest": "f09adae1617fe00e17b24531e46aaead76a6182650ae94e1f588199babb1376c",
+   "primary_stratum": "j15"
+  },
+  {
+   "id": "rg-27aaf10a72907856",
+   "render_digest": "27aaf10a72907856cedacf0b9d14d5c3139299f75575e845ea53feff4a009d7f",
+   "primary_stratum": "j15"
+  },
+  {
+   "id": "rg-c47da7d218dc0c8e",
+   "render_digest": "c47da7d218dc0c8e00ef9aa7100b5311a1a92696bc67bb998e26b053f94a439c",
+   "primary_stratum": "scripted_state"
+  },
+  {
+   "id": "rg-b0ffa07c5a74fdd1",
+   "render_digest": "b0ffa07c5a74fdd1533669688a3a628a15d3abe7652680d5a6745168cde54463",
+   "primary_stratum": "scripted_state"
+  },
+  {
+   "id": "rg-372fbc247dcdab32",
+   "render_digest": "372fbc247dcdab324ececc0dfbe2e2992de7f03e6eb58a5f54f805a2329c4e18",
+   "primary_stratum": "scripted_state"
+  },
+  {
+   "id": "rg-50c851e606178907",
+   "render_digest": "50c851e606178907a686f49c963053f7382430447d91fa14372dd4970511e9a7",
+   "primary_stratum": "scripted_state"
+  },
+  {
+   "id": "rg-26c5a57d36cfddea",
+   "render_digest": "26c5a57d36cfddeaac11123a7ad5223c88484e5ad4c24dc22eef06209cdf6e59",
+   "primary_stratum": "scripted_state"
+  },
+  {
+   "id": "rg-15b86e43f1e7c2eb",
+   "render_digest": "15b86e43f1e7c2eb6c9439cd3ffe4e3d8c67dc04e62585aa19b87e8ed6c76c6a",
+   "primary_stratum": "scripted_state"
+  },
+  {
+   "id": "rg-f72836819c9d8538",
+   "render_digest": "f72836819c9d8538c05000cf8aaca56fa180430d49edabe637926e799943f52c",
+   "primary_stratum": "scripted_state"
+  },
+  {
+   "id": "rg-b524092edeb462c2",
+   "render_digest": "b524092edeb462c26e113e2689d8adc58712f87fffc0f5691dc0e824e24a35e0",
+   "primary_stratum": "scripted_state"
+  },
+  {
+   "id": "rg-0a854fd7ecc3f004",
+   "render_digest": "0a854fd7ecc3f0041021f74270077fcfc64b449dc46c0a0e4aebd61f1141e24b",
+   "primary_stratum": "scripted_state"
+  },
+  {
+   "id": "rg-c7fe1ef19d342279",
+   "render_digest": "c7fe1ef19d3422791fdf83a382246dc7f9be1dab6c6ed0bf8b3795d2d333153b",
+   "primary_stratum": "scripted_state"
+  },
+  {
+   "id": "rg-9a94cf01ae86d744",
+   "render_digest": "9a94cf01ae86d744c1e4cdf68b1b509b93ca3e2d2de70192fc167eeaa500ad32",
+   "primary_stratum": "scripted_state"
+  },
+  {
+   "id": "rg-bc132213c82afc38",
+   "render_digest": "bc132213c82afc389f497c367b98e9a74507c5858e8004c880aba6cc126a33ff",
+   "primary_stratum": "scripted_state"
+  },
+  {
+   "id": "rg-8716736f03a57224",
+   "render_digest": "8716736f03a572242b04f4bd60ddb4978df10c837fce789867efb68abd3e39a3",
+   "primary_stratum": "scripted_state"
+  },
+  {
+   "id": "rg-1931a40ff9c9d933",
+   "render_digest": "1931a40ff9c9d933b61613d921c790ea291ac02714620e94bbfe2261a21a317e",
+   "primary_stratum": "scripted_state"
+  },
+  {
+   "id": "rg-d98a57a91c36a840",
+   "render_digest": "d98a57a91c36a840f51b7a1af5435791ceb10c5b3cf9ac5277afe5311086e50b",
+   "primary_stratum": "scripted_state"
+  },
+  {
+   "id": "rg-62fe5cd4a3a38a3f",
+   "render_digest": "62fe5cd4a3a38a3f92f65d1b4d6741b960eabad952eacf90281a977b172f7897",
+   "primary_stratum": "scripted_state"
+  },
+  {
+   "id": "rg-cb46d3adbd312a64",
+   "render_digest": "cb46d3adbd312a6416d9f7a97f2376fd6aa3b552a30f5b9b7fa51b256d6e2689",
+   "primary_stratum": "scripted_state"
+  },
+  {
+   "id": "rg-a72ad2e6b38ce6a3",
+   "render_digest": "a72ad2e6b38ce6a31d59d7ad5b3813403139d92880d0dbc159735816a6ca0395",
+   "primary_stratum": "scripted_state"
+  },
+  {
+   "id": "rg-80f8e9e2af5d97b6",
+   "render_digest": "80f8e9e2af5d97b6e49374a38d33759ba6ccf241643cdfcb21b901d5371e14d8",
+   "primary_stratum": "scripted_state"
+  },
+  {
+   "id": "rg-cf7cd4faad9d7df2",
+   "render_digest": "cf7cd4faad9d7df2544879f1c998034fe4a010b0d879817a4ae3e1e9ae38f2fa",
+   "primary_stratum": "scripted_state"
+  },
+  {
+   "id": "rg-6378325a91f4654a",
+   "render_digest": "6378325a91f4654a58b0ff58559dda75a2397174572a94a85b9ead56993ca660",
+   "primary_stratum": "scripted_state"
+  },
+  {
+   "id": "rg-cd074aaaca2fea22",
+   "render_digest": "cd074aaaca2fea22a6ce996e3ff8c1b21d6e49e35cdee07388162c43c8bd9aa4",
+   "primary_stratum": "scripted_rare_state"
+  },
+  {
+   "id": "rg-0b06ef77fb2cad47",
+   "render_digest": "0b06ef77fb2cad47ad980e4100acff59f10622bb380e4d2b621b34051da6e307",
+   "primary_stratum": "scripted_rare_state"
+  },
+  {
+   "id": "rg-672efa543730e3d3",
+   "render_digest": "672efa543730e3d370cbcc076a4931f606234760a1606c75a430b0f744ff4b15",
+   "primary_stratum": "scripted_rare_state"
+  },
+  {
+   "id": "rg-5fdba1809ef2f24b",
+   "render_digest": "5fdba1809ef2f24b5f7406a6c7d81c5accfab29a6fcdb42f1b618fcc0588dfb3",
+   "primary_stratum": "scripted_rare_state"
+  },
+  {
+   "id": "rg-3652258dcf87ce04",
+   "render_digest": "3652258dcf87ce0490fd0ace35791d9d526116f344c2ec250b8938d36adf39d6",
+   "primary_stratum": "scripted_rare_state"
+  },
+  {
+   "id": "rg-45f204546fee5977",
+   "render_digest": "45f204546fee5977f6f3a110295995d1fc167a191d7d5075bd3a658bbb57f224",
+   "primary_stratum": "scripted_rare_state"
+  },
+  {
+   "id": "rg-b18bc4c6d07f4bb5",
+   "render_digest": "b18bc4c6d07f4bb5e460f46596551c009edc9bdf5e84ccf307eb2b2aebb23141",
+   "primary_stratum": "scripted_rare_state"
+  },
+  {
+   "id": "rg-a96a87f289a2f5c6",
+   "render_digest": "a96a87f289a2f5c641bd229d7912829361011d782dc4f1c0acea630173d54024",
+   "primary_stratum": "scripted_rare_state"
+  },
+  {
+   "id": "rg-60bb31bfe24ca3a2",
+   "render_digest": "60bb31bfe24ca3a2d74a6ea6c98cddbaca961bef985337651158a39e8887f219",
+   "primary_stratum": "scripted_rare_state"
+  },
+  {
+   "id": "rg-769e922684601ddb",
+   "render_digest": "769e922684601ddb6d36692abd5818891b126a118d98e15ae8a75a75a22bfc5a",
+   "primary_stratum": "scripted_rare_state"
+  },
+  {
+   "id": "rg-249864a31a237c63",
+   "render_digest": "249864a31a237c6378468700da637213e93bf471c3114404162ca89421eeffa0",
+   "primary_stratum": "scripted_rare_state"
+  },
+  {
+   "id": "rg-67ee57d76f5d3f1e",
+   "render_digest": "67ee57d76f5d3f1e611e8201ff16719181af20aaa22e2154664bb172e8483f45",
+   "primary_stratum": "scripted_rare_state"
+  },
+  {
+   "id": "rg-2dc3aa4f214eae88",
+   "render_digest": "2dc3aa4f214eae888ff8a65cb75d9bf557add4dc6cdf4e098070541ce433c1d0",
+   "primary_stratum": "scripted_rare_state"
+  },
+  {
+   "id": "rg-00abc9eb6cbf2cd6",
+   "render_digest": "00abc9eb6cbf2cd661471f761677530566c41b2b1556c68a0154ec89c12c0f19",
+   "primary_stratum": "scripted_rare_state"
+  },
+  {
+   "id": "rg-6cc5d92e598d4a57",
+   "render_digest": "6cc5d92e598d4a5717f6d2c84054ea89597e9b11703d277fe313ffc2552d7fbd",
+   "primary_stratum": "scripted_rare_state"
+  },
+  {
+   "id": "rg-c57a8eaaf931597a",
+   "render_digest": "c57a8eaaf931597a05c9eba2ed0d9c6c7da39554d406a967da36b29ac7dfc8a2",
+   "primary_stratum": "scripted_rare_state"
+  },
+  {
+   "id": "rg-6f7df5b504680e0d",
+   "render_digest": "6f7df5b504680e0dc6ee5470ecbd7fed3d4aebc594885905191e74e5e01f0404",
+   "primary_stratum": "scripted_rare_state"
+  },
+  {
+   "id": "rg-e3291908893cebb8",
+   "render_digest": "e3291908893cebb8ef9cfeb29a2047cdc46ead16af417024fd8daa2161d47e1d",
+   "primary_stratum": "scripted_rare_state"
+  },
+  {
+   "id": "rg-0baa2bd817be9f80",
+   "render_digest": "0baa2bd817be9f800b4c94236019ad7046c62e1497d21f7c3e926a5130319f70",
+   "primary_stratum": "scripted_rare_state"
+  },
+  {
+   "id": "rg-d930b28d401c2cdf",
+   "render_digest": "d930b28d401c2cdf552d4cf8cbaf50f2db6cd9964be18a4e403b1721bc5807e8",
+   "primary_stratum": "scripted_rare_state"
+  },
+  {
+   "id": "rg-2a676c84c1fd0e69",
+   "render_digest": "2a676c84c1fd0e699b5e70f4ebd58ef3d2217cbbe0d0f5b8d8ff2b8f43517e5c",
+   "primary_stratum": "scripted_rare_state"
+  },
+  {
+   "id": "rg-1f53eb0cd7178eaa",
+   "render_digest": "1f53eb0cd7178eaa2bff94528efb9b333190773b61c0162c87d3df77100a9e1c",
+   "primary_stratum": "scripted_rare_state"
+  },
+  {
+   "id": "rg-a69c8a2e70181334",
+   "render_digest": "a69c8a2e7018133442de2881361ff59757c6aa53d24ee0c267b12121232af279",
+   "primary_stratum": "scripted_rare_state"
+  },
+  {
+   "id": "rg-4a84a946ec456df9",
+   "render_digest": "4a84a946ec456df9120cf142d5dc0557669c6cb8eae07d392ccbd6ab1284e09c",
+   "primary_stratum": "ed30_dev_novel"
+  },
+  {
+   "id": "rg-0f25c090df3383c7",
+   "render_digest": "0f25c090df3383c71ae69d7f70e05b7ce597273fa1f0336ca411d3e264e84c03",
+   "primary_stratum": "ed30_dev_novel"
+  },
+  {
+   "id": "rg-28fc758ac38e011b",
+   "render_digest": "28fc758ac38e011b10b9c8f3def7e863d4eedb6193d6e3bec5692538928a47d4",
+   "primary_stratum": "ed30_dev_novel"
+  },
+  {
+   "id": "rg-f596a7162ca1b8d4",
+   "render_digest": "f596a7162ca1b8d46ee5519707f7e8446b6839a598a95e3c81aef67891d55a6f",
+   "primary_stratum": "ed30_dev"
+  },
+  {
+   "id": "rg-b8ebbd869fb87a0b",
+   "render_digest": "b8ebbd869fb87a0b12831092be20eddde872ee66f6a6ac60aec2f5b5d7703546",
+   "primary_stratum": "ed30_dev"
+  },
+  {
+   "id": "rg-b0497f649abe1879",
+   "render_digest": "b0497f649abe187971fe2b4f05ce6648e07ddd36136a725134ef13fe1982a42b",
+   "primary_stratum": "ed30_dev"
+  },
+  {
+   "id": "rg-f81cbe945661deda",
+   "render_digest": "f81cbe945661deda3c6e20cacc243193141547af70ea0d440ae076aad9e9a7be",
+   "primary_stratum": "ed30_dev"
+  },
+  {
+   "id": "rg-627633460f2771b5",
+   "render_digest": "627633460f2771b5c7ce022700a311361558d7fc0db6ba68572fdab672eb3007",
+   "primary_stratum": "ed30_dev"
+  },
+  {
+   "id": "rg-421aa4f71130717d",
+   "render_digest": "421aa4f71130717d01f92483449a2dc8b73a4447e0bc60486b128b5c62759c32",
+   "primary_stratum": "ed30_dev"
+  },
+  {
+   "id": "rg-27bebdc10ad4031a",
+   "render_digest": "27bebdc10ad4031a11efaaa65fb3dab305dae3c728e3874f3ba057cd88d02fb4",
+   "primary_stratum": "ed30_dev"
+  },
+  {
+   "id": "rg-4d6b74ff7f8a05ae",
+   "render_digest": "4d6b74ff7f8a05aec8f1f8209f53512968b598587a76b182fb0b30b5b3db66dc",
+   "primary_stratum": "ed30_dev"
+  },
+  {
+   "id": "rg-57f6a55e4008f839",
+   "render_digest": "57f6a55e4008f839c2717e21c43640460755fc9bb0c207b7e4d03c399b6cbe56",
+   "primary_stratum": "ed30_dev"
+  },
+  {
+   "id": "rg-7698323b38373143",
+   "render_digest": "7698323b3837314301c9dd5bb3459e1f78fbd9855d23be5df2c3ff5e78893f17",
+   "primary_stratum": "ed30_dev"
+  },
+  {
+   "id": "rg-fc0887347e8ef5e6",
+   "render_digest": "fc0887347e8ef5e628294949007c266f8a2248fc82866f87d2105368cbef3102",
+   "primary_stratum": "ed30_dev"
+  },
+  {
+   "id": "rg-558c9ed04ecf08bf",
+   "render_digest": "558c9ed04ecf08bf39d82fc8bdeded788ea3183e6790cc4097a3d02aa799bb66",
+   "primary_stratum": "ed30_dev"
+  },
+  {
+   "id": "rg-7374673f24e8e52c",
+   "render_digest": "7374673f24e8e52c869ec3942305008389a54734e5d35d19b457840c7f62b51e",
+   "primary_stratum": "ed30_dev"
+  },
+  {
+   "id": "rg-a406a1dfdea6b00b",
+   "render_digest": "a406a1dfdea6b00b8b0547c6b551a96fca8bfc0c407c9da80875d8b576b9214e",
+   "primary_stratum": "ed30_dev"
+  },
+  {
+   "id": "rg-8098495db2f9f249",
+   "render_digest": "8098495db2f9f2490f94f180a36c29189141ade3b8e67c038bb81763681766c9",
+   "primary_stratum": "ed30_dev"
+  },
+  {
+   "id": "rg-1c61f6068c537188",
+   "render_digest": "1c61f6068c537188d35cac66395e0ea2b2fcf0c7e690239a91646698a28c56a7",
+   "primary_stratum": "ed30_dev"
+  },
+  {
+   "id": "rg-b0bb013ad05fb3b8",
+   "render_digest": "b0bb013ad05fb3b8bbeacfd5733a071f3a6679a86efc27cd5454d97d5cfd6502",
+   "primary_stratum": "ed30_dev"
+  },
+  {
+   "id": "rg-2f8150c04dcd474e",
+   "render_digest": "2f8150c04dcd474ea21bb4c703718d3e6dea68a80a9b2736a32779f582ddffad",
+   "primary_stratum": "ed30_dev"
+  },
+  {
+   "id": "rg-e5d0108b7d30749b",
+   "render_digest": "e5d0108b7d30749b227bd383e4c9c2e2d8cb3d17bd20e695a83c04d0cd7084df",
+   "primary_stratum": "ed30_dev"
+  },
+  {
+   "id": "rg-324f0e0d42ff612c",
+   "render_digest": "324f0e0d42ff612c2c24a3d6c934e4868f983958d4ad9c145b134f48b4ce6814",
+   "primary_stratum": "ed30_dev"
+  },
+  {
+   "id": "rg-99de2ff17289feaa",
+   "render_digest": "99de2ff17289feaac9e8f667a9c625578721e18decc9b399c9b4e5eee819c15d",
+   "primary_stratum": "ed30_dev"
+  }
+ ]
+}

@@ -62,6 +62,11 @@ test("Full dev-corpus replay: wire round trip, render safety, pinned manifest (d
   const sample = JSON.parse(fs.readFileSync(SAMPLE, "utf8"));
   assert.deepEqual(RP.teacherDevSample(groups).headline.map((h) => h.id), sample.headline.map((h) => h.id), "the frozen teacher sample is reproducible from the capture");
   assert.deepEqual(RP.shapeCounts(items), JSON.parse(fs.readFileSync(SHAPES, "utf8")), "rare-state machine shape counts");
+  // The pinned JSON-control selection (100 of the frozen 474) regenerates exactly from this capture, byte for byte.
+  const controlText = fs.readFileSync(RP.JSON_CONTROL_SELECTION_FILE, "utf8");
+  assert.equal(crypto.createHash("sha256").update(controlText).digest("hex"), "fb27ff65335d764c13675631d07c7a6159e6dffa19b01dd202362ca1d4d3784b", "the JSON-control selection changed without a governance pin update");
+  assert.deepEqual(RP.jsonControlSelectionProblems(controlText, groups), [], "the pinned JSON-control selection regenerates from the capture");
+  assert.equal(`${JSON.stringify(RP.jsonControlSelection(groups), null, 1)}\n`, controlText, "byte-identical regeneration");
   // Harness self-consistency: the legacy arm scored against its own CONTRACT-VALID frames is exact; a legacy frame that
   // is not contract-valid gold is excluded (gold_invalid), never compared.
   const arm = RP.legacyArm(groups);

@@ -193,6 +193,9 @@ function llamaTransport({ endpoint, model = null, slot = null, fetchImpl = fetch
  *   reasoningBudgetTokens  anthropic-messages extended thinking budget, when configured (temperature is then not sent)
  *   maxTokensParam "max_tokens" | "max_completion_tokens" (openai-chat; newer reasoning models need the latter)
  *   logprobs       openai-chat only, off by default for the teacher
+ *   store          openai-chat ALWAYS sends `store: false` (provider-side storage of the request / completion disabled).
+ *                  It is not configurable and cannot be omitted; the anthropic-messages body is unchanged. It is part of the
+ *                  transmitted `params`, so every receipt proves it. A provider that rejects it fails closed (a non-transient HTTP 4xx).
  * Only the final text is kept: provider reasoning / thinking content is never read into the receipt or stored.
  *
  * PROVIDER TERMINATION (Step 0.1B). The provider's finish_reason / stop_reason and usage are returned with every reply
@@ -230,7 +233,7 @@ function hostedChatTransport({ api = "openai-chat", baseURL, apiKey, model, fetc
     } else {
       url = `${baseURL}/chat/completions`;
       headers = { "content-type": "application/json", authorization: `Bearer ${apiKey}` };
-      body = { model, messages: [{ role: "system", content: system }, { role: "user", content: user }], [maxTokensParam === "max_completion_tokens" ? "max_completion_tokens" : "max_tokens"]: budget, ...(temperature != null ? { temperature } : {}), ...(reasoningEffort ? { reasoning_effort: reasoningEffort } : {}), ...(wantLogprobs ? { logprobs: true, top_logprobs: 5 } : {}) };
+      body = { model, messages: [{ role: "system", content: system }, { role: "user", content: user }], [maxTokensParam === "max_completion_tokens" ? "max_completion_tokens" : "max_tokens"]: budget, store: false, ...(temperature != null ? { temperature } : {}), ...(reasoningEffort ? { reasoning_effort: reasoningEffort } : {}), ...(wantLogprobs ? { logprobs: true, top_logprobs: 5 } : {}) };
     }
     const payload = JSON.stringify(body);
     const transmitted = { api, url, model, bytes: Buffer.byteLength(payload), system_sha256: sha(system), user_sha256: sha(user), params: Object.fromEntries(Object.entries(body).filter(([k]) => !["messages", "system"].includes(k))) };

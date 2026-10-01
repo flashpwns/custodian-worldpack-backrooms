@@ -92,7 +92,7 @@ Every teacher and E4B artifact records:
 
 ## 4. Teacher wire-vs-JSON check
 
-- About 100 development items go through the **same** teacher twice:
+- About 100 development items go through the **same** teacher twice. The exact 100 renders are pinned in `docs/acceptance/reader-phase2/json-control-selection.json` (deterministic stratified draw from the 474 census, owner-accepted 2026-10-01; READER_PHASE2.md §14):
   - (A) the compact wire;
   - (B) minimal JSON (`renderReaderPrompt(input, { output: "json" })`, `decodeJsonFrame`).
 - Both use the same semantic contract and the byte-identical user render (0.1): both system texts are generated from

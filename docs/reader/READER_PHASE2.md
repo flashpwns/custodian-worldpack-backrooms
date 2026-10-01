@@ -14,7 +14,7 @@ of 2026-09-30. The review text itself is not in the repository; this pass follow
 - a sealed set, or use of the spent ED-30 held-outs;
 - a force push, a merge of main, or a reset / stash.
 
-**Status: STEP 0.1 COMPLETE, awaiting the Sonnet re-audit.** The Step-0 claim "ready for the teacher ceiling" was
+**Status: STEP 0.1B GREEN (independent audit); teacher-ceiling pre-labelling unblock applied (§14), awaiting independent check.** *(Earlier status: STEP 0.1 COMPLETE, awaiting the Sonnet re-audit.)* The Step-0 claim "ready for the teacher ceiling" was
 withdrawn: the independent Sonnet 5.5 audit of Step 0 returned **NOT READY FOR TEACHER CEILING** (blockers in the
 experiment / scoring contract). Step 0.1 (§12) fixes them before any gold label exists. The teacher ceiling (§11) has
 not run; no gold label, teacher score, E4B accuracy, calibration or sealed item exists.
@@ -450,3 +450,27 @@ The wire system digest is unchanged (`8c727a29…`); the JSON-control system dig
 | **B2** | `headline: true` possible for empty, custom, human-trace-excluded or rule-violating runs | `headlineVerdict` binds the headline to the pinned frozen sample (digest, contract identity, 474 ids, regeneration from the capture) and enforces exact population, labels for every render (`ADJUDICATED_GOLD` or a recorded `UNLABELABLE` adjudication), the label-loss rule (≥ 300 valid) and the 2% void rule; `--limit`, stratum filters, diagnostic states, the JSON control and human-trace exclusion are never headline |
 | **B3** | receipts written only after the whole hosted run | the receipt file is created exclusively before the first request (fail closed if it cannot be, or already exists); each request's receipt is appended and fsync'd as it completes; a real mid-run process exit leaves receipts 1..N |
 | **B4** | the JSON control decoder defaulted required fields, ignored extra top-level keys, passed unknown facets at V0; its system text was unpinned | the JSON must state span, speech act, facet, address op (with names for NAMED / EXCEPT) and relation kind; only `acts` at top level; unknown facets fail V0 (`json_unknown_facet`); fences fail both; `SYSTEM_DIGEST_JSON` is pinned in `ed33a`, and a JSON-only drift (e.g. `ALL` respelled) fails both the digest pin and a decoder-consistency check |
+
+## 14. Teacher-ceiling pre-labelling unblock (2026-10-01; no egress, no label, no teacher output)
+
+Owner decisions applied before human labelling begins. Nothing was transmitted; no label, teacher output, E4B,
+calibration or sealed artifact exists. The teacher output budget, timeout and any diagnostic pilot remain **undecided**.
+
+| Item | State |
+| --- | --- |
+| **Registry** (`READER_PHASE2_LABELING_REGISTRY.json`) | teacher `openai` / `openai` / `gpt-5.6-sol`, recorded by `jack`; automated reviewer family `claude`, provider `anthropic`, **model `null` (intentionally not selected)**, recorded by `jack`; human primary labeler `jack`, adjudicator `jack`. Existing schema only; no field added. `recorded_at` uses the repository's ISO format (`toISOString`) |
+| **Governance** | `ed33c` no longer asserts the pre-selection `teacher.family === null`; it pins the recorded identities (exact fields, ISO timestamps, teacher family != reviewer family, no invented keys). A hosted run now also refuses a `--provider` or `--model` that differs from the recorded teacher (`teacherIdentityProblems`), not only `--family` |
+| **OpenAI storage** | `hostedChatTransport` always sends `store: false` for `openai-chat` (not configurable, not omittable; a caller-supplied `store` is ignored). Anthropic body unchanged. Every receipt records `provider_storage {api, store_param_sent, store}` read from the **transmitted body**, plus `params.store`; the egress plan prints the policy. A provider that rejects `store:false` returns a non-transient HTTP 4xx: the request fails closed, is never retried, and its receipt still records the evidence. `--retention` stays a record-only label |
+| **Request construction (mock only)** | proven for `--api openai-chat --base-url https://api.openai.com/v1 --model gpt-5.6-sol --reasoning-effort high --max-tokens-param max_completion_tokens`: body keys are exactly `max_completion_tokens`, `messages`, `model`, `reasoning_effort`, `store`; `messages` is exactly the frozen system and user render; no `temperature` unless requested; receipts hold digests, provider, model, storage and reasoning **token counts** but never reasoning text or the credential. A tripwire fails any real `fetch` |
+| **JSON-control selection** | pinned in `docs/acceptance/reader-phase2/json-control-selection.json` (SHA-256 `fb27ff65…`, `selection_digest` `94e32313…`): 100 distinct renders drawn from the 474 census by `stratifiedSample` (human trace 4, j15 28, scripted 21, rare 23, ED-30 novel 3, ED-30 dev 21). The drawing takes no labels. `--run … --control-subset <file>` verifies the file against the pinned hash and regenerates it from the scored capture before use; **`--limit 100` over labelled groups is not this selection** (an UNLABELABLE record would shift it) and must not be used for the control. Renders in the selection without valid gold are reported (`control_subset.missing_gold`), never replaced |
+| **Worksheet** | `.agent-notes/reader-phase2-prep/worksheet-474.jsonl` unchanged and blank (local, untracked) |
+
+Execution (not authorized by this section):
+
+```
+node tools/dialogue-reader-replay.js --run <capture> --labels <gold.jsonl> --sample docs/acceptance/reader-phase2/teacher-dev-sample.json \
+  --output json --control-subset docs/acceptance/reader-phase2/json-control-selection.json \
+  --arm hosted --api openai-chat --provider openai --base-url https://api.openai.com/v1 --model gpt-5.6-sol --family openai \
+  --reasoning-effort high --max-tokens-param max_completion_tokens --max-output-tokens <OWNER DECISION> --timeout-ms <OWNER DECISION> \
+  --key-env <VAR> --receipts <new file> --confirm-egress --include-human-trace --out <score.json>
+```

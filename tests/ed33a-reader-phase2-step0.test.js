@@ -363,7 +363,8 @@ test("Async transports: the hosted teacher sends ONLY the render; the local tran
   assert.equal(r.status, "read");
   assert.deepEqual(sent.body.messages, [{ role: "system", content: rendered.system }, { role: "user", content: rendered.user }], "exactly the frozen render");
   assert.equal("temperature" in sent.body, false, "Step 0.1: temperature is sent only when configured");
-  assert.deepEqual(Object.keys(sent.body).sort(), ["max_tokens", "messages", "model"]);
+  assert.deepEqual(Object.keys(sent.body).sort(), ["max_tokens", "messages", "model", "store"], "openai-chat always carries store:false (pre-labelling unblock)");
+  assert.equal(sent.body.store, false);
   const all = JSON.stringify(sent.body);
   for (const id of [GISELLE, MALCOLM, TONYA, "q4-startup", "req-2", ...Object.values(bindings.referents)]) assert.ok(!all.includes(id), `transmitted a canonical id: ${id}`);
   assert.equal(r.transport.transmitted.user_sha256, crypto.createHash("sha256").update(rendered.user).digest("hex"), "what was transmitted is recorded");

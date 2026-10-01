@@ -1,5 +1,26 @@
 # Yellow Beast Implementation State
 
+## Reader Phase 2, teacher-ceiling pre-labelling unblock (shadow-only, no egress) — 2026-10-01
+
+- **Scope:** owner decisions before human labelling: record the teacher / reviewer-family / human provenance in the
+  labelling registry; replace the obsolete `registry.teacher.family === null` assertion in `ed33c` with a positive pinned
+  assertion; add an explicit `store: false` to every OpenAI hosted request; prove `gpt-5.6-sol` request construction
+  with mocks only; pin the JSON-control selection. Details: `docs/reader/READER_PHASE2.md` §14. No teacher, label,
+  hosted egress, diagnostic pilot, E4B, calibration or sealed data. The teacher output budget and timeout are **not**
+  chosen.
+- **Registry:** teacher `openai` / `openai` / `gpt-5.6-sol` (jack); reviewer family `claude` / `anthropic`, model
+  intentionally `null`; human primary and adjudicator `jack`. A hosted run must now match the recorded family, provider
+  and model.
+- **Adapter:** `store:false` always sent for `openai-chat`; receipts carry `provider_storage` from the transmitted body.
+- **JSON control:** `json-control-selection.json` (100 of the 474; SHA-256 `fb27ff65…`), `--control-subset` flag; the
+  frozen 474-render census, `teacher-dev-sample.json` and `dev-manifest.json` are byte-identical.
+- **Intentional test change:** the obsolete null-state assertion (and the exact-keys assertion of the OpenAI body, which
+  now includes `store`) were replaced in `ed33c`; neither is a "fixed runtime failure" in the regression comparison.
+- **Validation:** `ed31a` / `ed32a` / `ed33a` / `ed33c` 95 pass; `ed31b` / `ed32b` / `ed33b` pass (the JSON-control selection
+  regenerates byte-identically from the capture); inventory 57 pre-existing errors only; full suite 1,574 tests, 1,495
+  pass, 79 fail; `compare-failing-tests`: unchanged 79, **new 0**, fixed 0 (+4 new tests, all passing).
+- **Status: TEACHER CEILING PRE-LABELLING READY — INDEPENDENT AUDIT REQUIRED.**
+
 ## Reader Phase 2, Step 0.1B: audit blocker remediation B1–B4 (shadow-only) — 2026-09-30
 
 - **Scope:** the four blocking findings of the independent Step 0.1 re-audit only. No teacher, labels, E4B,

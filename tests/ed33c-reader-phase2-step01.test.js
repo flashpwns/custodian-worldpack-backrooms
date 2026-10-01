@@ -125,8 +125,29 @@ test("Labeller independence: human primary and adjudication; reviews only after 
   assert.ok(check({ ...a, source: "teacher" }).includes("teacher_output_is_never_gold"));
   const validated = L.validateLabels([g], [{ ...a, reviews: [{ labeler: { kind: "model", family: "claude", id: "c" }, created_at: "2026-10-01T11:00:00Z" }] }], { registry: reg });
   assert.deepEqual(L.excludeSelfLabelled(validated.gold, "claude").excluded, [g.id], "an arm never scores against gold its own family touched");
+});
+test("Labelling registry: the owner-selected identities are PINNED and governed before any labelling (replaces the pre-selection null-state assertion)", () => {
   const registry = L.loadRegistry();
-  assert.equal(registry.teacher.family, null, "no teacher family is chosen in code");
+  const iso = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?Z$/;
+  assert.deepEqual(Object.keys(registry).sort(), ["automated_reviewer", "human", "recommendation", "rules", "status", "teacher", "version"], "no invented registry fields");
+  const { recorded_at: teacherAt, ...teacher } = registry.teacher;
+  assert.deepEqual(teacher, { family: "openai", provider: "openai", model: "gpt-5.6-sol", recorded_by: "jack" }, "the owner-selected teacher is pinned");
+  assert.match(teacherAt, iso, "recorded with the repository's ISO timestamp format");
+  const { recorded_at: reviewerAt, ...reviewer } = registry.automated_reviewer;
+  assert.deepEqual(reviewer, { family: "claude", provider: "anthropic", model: null, recorded_by: "jack" }, "reviewer family recorded; its exact model is intentionally NOT selected (an owner decision recorded here when made)");
+  assert.match(reviewerAt, iso);
+  assert.deepEqual(registry.human, { primary_labelers: ["jack"], adjudicator: "jack" }, "human provenance");
+  assert.notEqual(registry.teacher.family, registry.automated_reviewer.family, "independence: the teacher family differs from the reviewer family");
+  assert.ok(Date.parse(teacherAt) > Date.parse("2026-09-30T00:00:00Z"), "recorded after the Phase-2 instruction");
+  // A hosted run must name exactly the recorded teacher; any drift in family, provider or model is refused.
+  const ok = { family: "openai", provider: "openai", model: "gpt-5.6-sol" };
+  assert.deepEqual(RP.teacherIdentityProblems(registry, ok), []);
+  for (const [field, value] of [["family", "claude"], ["family", null], ["provider", "azure"], ["provider", null], ["model", "gpt-5.5"], ["model", null]]) assert.ok(RP.teacherIdentityProblems(registry, { ...ok, [field]: value }).length >= 1, `${field}=${value} is refused`);
+  // Claude is a legal automated reviewer for an OpenAI teacher, and never the teacher (labels carry the family string).
+  const ok2 = L.independenceProblems({ label_state: "ADJUDICATED_GOLD", adjudicator: { kind: "human", id: "jack" }, primary: { labeler: { kind: "human", id: "jack" }, committed_at: "2026-10-01T10:00:00Z" }, reviews: [{ labeler: { kind: "model", family: "claude", id: "r" }, created_at: "2026-10-01T11:00:00Z" }] }, registry);
+  assert.deepEqual(ok2, []);
+  assert.ok(L.independenceProblems({ label_state: "ADJUDICATED_GOLD", adjudicator: { kind: "human", id: "jack" }, primary: { labeler: { kind: "human", id: "jack" }, committed_at: "2026-10-01T10:00:00Z" }, reviews: [{ labeler: { kind: "model", family: "openai", id: "r" }, created_at: "2026-10-01T11:00:00Z" }] }, registry).includes("review_family_equals_teacher_family"));
+  assert.ok(L.independenceProblems({ label_state: "ADJUDICATED_GOLD", source: "teacher", adjudicator: { kind: "human", id: "jack" }, primary: { labeler: { kind: "human", id: "jack" }, committed_at: "2026-10-01T10:00:00Z" } }, registry).includes("teacher_output_is_never_gold"));
 });
 
 // ─── 3. scoring correctness (adversarial) ─────────────────────────────────────────────────────────────
@@ -246,13 +267,15 @@ test("Hosted transport: configurable budget / temperature / reasoning; temperatu
   const ok = (body) => async (url, opts) => { sent = { url, body: JSON.parse(opts.body) }; return { ok: true, status: 200, json: async () => body }; };
   const oa = A.hostedChatTransport({ baseURL: "https://example.invalid/v1", apiKey: "k", model: "m", fetchImpl: ok({ choices: [{ message: { content: "ask contents @n1 new" } }] }), maxOutputTokens: 2000, reasoningEffort: "high", maxTokensParam: "max_completion_tokens" });
   await oa({ system: rendered.system, user: rendered.user, max_tokens: 96 });
-  assert.deepEqual(Object.keys(sent.body).sort(), ["max_completion_tokens", "messages", "model", "reasoning_effort"], "no temperature unless configured");
+  assert.deepEqual(Object.keys(sent.body).sort(), ["max_completion_tokens", "messages", "model", "reasoning_effort", "store"], "no temperature unless configured; store is always present for openai-chat (Pre-labelling unblock)");
+  assert.equal(sent.body.store, false);
   assert.equal(sent.body.max_completion_tokens, 2000);
   await A.hostedChatTransport({ baseURL: "https://example.invalid/v1", apiKey: "k", model: "m", fetchImpl: ok({ choices: [{ message: { content: "x" } }] }), temperature: 0, maxOutputTokens: 256 })({ system: "s", user: "u", max_tokens: 96 });
   assert.equal(sent.body.temperature, 0, "temperature when configured");
   const an = A.hostedChatTransport({ api: "anthropic-messages", apiKey: "k", model: "m", fetchImpl: ok({ content: [{ type: "thinking", thinking: "SECRET REASONING" }, { type: "text", text: "ask contents @n1 new" }] }), reasoningBudgetTokens: 4000, temperature: 0, maxOutputTokens: 512 });
   const out = await an({ system: rendered.system, user: rendered.user, max_tokens: 96 });
   assert.deepEqual([sent.body.thinking, "temperature" in sent.body], [{ type: "enabled", budget_tokens: 4000 }, false], "extended thinking: temperature is not sent");
+  assert.ok(!("store" in sent.body), "anthropic-messages behaviour is unchanged: no store parameter");
   assert.equal(out.text, "ask contents @n1 new");
   assert.ok(!JSON.stringify(out).includes("SECRET REASONING"), "provider chain-of-thought is never kept");
   assert.equal(out.response_status, 200);
@@ -558,4 +581,118 @@ test("B4: the JSON control system text is pinned and a JSON-only spelling drift 
   const input = item("everyone, what's in the duffle?").input;
   const act = { span: [0, input.line.tokens.length - 1], speech_act: "question", facet: "item.contents", address: { op: "EVERYONE" }, relation: { kind: "new" } };
   assert.equal(W.decodeJsonFrame(JSON.stringify({ acts: [act] }), input).ok, false, "a drifted spelling can never decode");
+});
+
+// ─── Pre-labelling unblock: OpenAI storage control, gpt-5.6-sol request construction, JSON-control selection pin ───────
+// No test here (or anywhere in this pass) makes a network request: every transport takes an injected fetch, and the real
+// global fetch is replaced by a tripwire while the tests run.
+const sha256Hex = (v) => crypto.createHash("sha256").update(v).digest("hex");
+async function withNoNetwork(fn) {
+  const real = globalThis.fetch;
+  globalThis.fetch = () => { throw new Error("NETWORK TRIPWIRE: a real fetch was attempted"); };
+  try { return await fn(); } finally { globalThis.fetch = real; }
+}
+test("OpenAI storage control: every openai-chat request carries store:false and it cannot be omitted; anthropic is unchanged", async () => {
+  await withNoNetwork(async () => {
+    const seen = [];
+    const ok = (body) => async (url, opts) => { seen.push({ url, body: JSON.parse(opts.body) }); return { ok: true, status: 200, json: async () => body }; };
+    const oaBody = { choices: [{ finish_reason: "stop", message: { content: "ask contents @n1 new" } }] };
+    const base = { baseURL: "https://api.openai.com/v1", apiKey: "k", model: "gpt-5.6-sol", maxOutputTokens: 1000, fetchImpl: ok(oaBody) };
+    const combos = [{}, { temperature: 0 }, { reasoningEffort: "high" }, { maxTokensParam: "max_completion_tokens" }, { maxTokensParam: "max_tokens" }, { logprobs: true }, { reasoningEffort: "high", maxTokensParam: "max_completion_tokens", temperature: 1 },
+      { store: true }, { store: undefined }, { store: null }, { store: "true" }];
+    for (const extra of combos) {
+      await A.hostedChatTransport({ ...base, ...extra })({ system: "s", user: "u", max_tokens: 96 });
+      const sent = seen.at(-1).body;
+      assert.equal(sent.store, false, `store:false for ${JSON.stringify(extra)} (a caller cannot override it)`);
+    }
+    // Anthropic: unchanged body (no store parameter at all).
+    await A.hostedChatTransport({ api: "anthropic-messages", apiKey: "k", model: "m", maxOutputTokens: 512, fetchImpl: ok({ stop_reason: "end_turn", content: [{ type: "text", text: "x" }] }) })({ system: "s", user: "u", max_tokens: 96 });
+    assert.deepEqual(Object.keys(seen.at(-1).body).sort(), ["max_tokens", "messages", "model", "system"]);
+    // The egress plan discloses it before any request.
+    const units = [group(item("Tonya, what's in the duffle?"))];
+    const plan = RP.egressPlan(units, { api: "openai-chat", provider: "openai", baseURL: "https://api.openai.com/v1", model: "gpt-5.6-sol", family: "openai", confirm: true, receipts: "r.jsonl", params: { max_output_tokens: 1000 } });
+    assert.match(plan.summary.provider_storage, /store:false is sent on every request/);
+    assert.match(RP.egressPlan(units, { api: "anthropic-messages", provider: "anthropic", baseURL: "https://api.anthropic.com", model: "m", confirm: true, receipts: "r.jsonl", params: { max_output_tokens: 1000 } }).summary.provider_storage, /no store parameter/);
+  });
+});
+test("gpt-5.6-sol request construction (mock only): exactly the frozen system/user, explicit budget, reasoning high, store:false, no temperature; receipts prove it and hold no reasoning or key", async () => {
+  await withNoNetwork(async () => {
+    const it = item("Tonya, what's in the duffle?");
+    const g = group(it);
+    const rendered = R.renderReaderPrompt(g.item.input);
+    const BUDGET = 4321; // an arbitrary TEST value: the real teacher output budget is an owner decision made separately
+    const sent = [];
+    const fetchImpl = async (url, opts) => {
+      sent.push({ url, headers: opts.headers, body: JSON.parse(opts.body) });
+      return { ok: true, status: 200, json: async () => ({ model: "gpt-5.6-sol-2026-10-01", choices: [{ finish_reason: "stop", message: { role: "assistant", content: "ask contents @n1 new f=wh r=e1>r1", reasoning_content: "SECRET REASONING TRACE", reasoning: "SECRET REASONING TRACE 2" } }], usage: { prompt_tokens: 1900, completion_tokens: 700, completion_tokens_details: { reasoning_tokens: 640 } } }) };
+    };
+    const dir = tmp();
+    const receipts = path.join(dir, "r.jsonl");
+    const SECRET_KEY = "sk-test-SECRET-KEY-VALUE";
+    const rows = await RP.hostedArm([g], { api: "openai-chat", baseURL: "https://api.openai.com/v1", apiKey: SECRET_KEY, model: "gpt-5.6-sol", provider: "openai", family: "openai", maxOutputTokens: BUDGET, reasoningEffort: "high", maxTokensParam: "max_completion_tokens", receipts, fetchImpl, concurrency: 1 });
+    assert.equal(sent.length, 1);
+    const { url, headers, body } = sent[0];
+    assert.equal(url, "https://api.openai.com/v1/chat/completions");
+    assert.equal(headers.authorization, `Bearer ${SECRET_KEY}`);
+    assert.deepEqual(Object.keys(body).sort(), ["max_completion_tokens", "messages", "model", "reasoning_effort", "store"], "no speculative provider parameters; no temperature unless requested");
+    assert.equal(body.model, "gpt-5.6-sol");
+    assert.equal(body.reasoning_effort, "high");
+    assert.equal(body.max_completion_tokens, BUDGET);
+    assert.equal(body.store, false);
+    assert.ok(!("temperature" in body) && !("max_tokens" in body) && !("logprobs" in body));
+    assert.deepEqual(body.messages, [{ role: "system", content: rendered.system }, { role: "user", content: rendered.user }], "only the frozen system / user messages are transmitted");
+    // The receipt proves the request and the storage policy, and holds neither reasoning nor the key.
+    const text = fs.readFileSync(receipts, "utf8");
+    assert.ok(!text.includes("SECRET REASONING TRACE") && !text.includes(SECRET_KEY) && !/Bearer/.test(text), "no reasoning text, no credential in the receipt");
+    assert.ok(!JSON.stringify(rows).includes("SECRET REASONING TRACE"), "no reasoning text in the arm rows either");
+    const [r] = text.trim().split("\n").map((l) => JSON.parse(l));
+    assert.equal(r.provider, "openai");
+    assert.equal(r.model, "gpt-5.6-sol");
+    assert.equal(r.response_model, "gpt-5.6-sol-2026-10-01");
+    assert.equal(r.endpoint_host, "api.openai.com");
+    assert.deepEqual(r.provider_storage, { api: "openai-chat", store_param_sent: true, store: false });
+    assert.equal(r.params.store, false);
+    assert.equal(r.params.reasoning_effort, "high");
+    assert.equal(r.params.max_completion_tokens, BUDGET);
+    assert.equal(r.system_sha256, sha256Hex(rendered.system));
+    assert.equal(r.user_sha256, sha256Hex(rendered.user));
+    assert.equal(r.render_digest, rendered.render_digest);
+    assert.equal(r.usage.completion_tokens_details.reasoning_tokens, 640, "reasoning TOKEN COUNTS (billing) are kept; reasoning text never is");
+    // Failures after transmission still record what was sent, including storage.
+    const dir2 = tmp();
+    const failing = await RP.hostedArm([g], { api: "openai-chat", baseURL: "https://api.openai.com/v1", apiKey: "k", model: "gpt-5.6-sol", provider: "openai", family: "openai", maxOutputTokens: BUDGET, reasoningEffort: "high", maxTokensParam: "max_completion_tokens", receipts: path.join(dir2, "r.jsonl"), fetchImpl: async () => ({ ok: false, status: 400 }), concurrency: 1 });
+    const [fr] = fs.readFileSync(path.join(dir2, "r.jsonl"), "utf8").trim().split("\n").map((l) => JSON.parse(l));
+    assert.deepEqual(fr.provider_storage, { api: "openai-chat", store_param_sent: true, store: false }, "a provider that rejects store:false fails closed (HTTP 400, never retried) with the evidence recorded");
+    assert.equal(failing.length, 1);
+    assert.equal(fr.retry_count, 0, "a 400 is not transient: never retried");
+  });
+});
+const CONTROL_FILE = path.join(ROOT, "docs", "acceptance", "reader-phase2", "json-control-selection.json");
+const CONTROL_SHA256 = "fb27ff65335d764c13675631d07c7a6159e6dffa19b01dd202362ca1d4d3784b";
+test("JSON-control selection is pinned: exactly 100 of the frozen 474, the owner's stratum distribution, deterministic, independent of labels", () => {
+  const text = fs.readFileSync(CONTROL_FILE, "utf8");
+  assert.equal(sha256Hex(text), CONTROL_SHA256, "the selection changed without a governance pin update");
+  assert.equal(RP.JSON_CONTROL_SELECTION_SHA256, CONTROL_SHA256, "the pin in the tool and in this test agree");
+  const doc = JSON.parse(text);
+  const sample = JSON.parse(fs.readFileSync(RP.TEACHER_SAMPLE_FILE, "utf8"));
+  assert.equal(doc.version, RP.JSON_CONTROL_PLAN.version);
+  assert.deepEqual(doc.contract, RP.contractIdentity());
+  assert.equal(doc.population.teacher_sample_sha256, RP.TEACHER_SAMPLE_SHA256, "drawn from the frozen census");
+  assert.equal(doc.population.headline_renders, 474);
+  assert.equal(doc.selected.length, 100);
+  assert.equal(new Set(doc.selected.map((x) => x.id)).size, 100);
+  assert.deepEqual(doc.by_stratum, { human_trace: 4, j15: 28, scripted_state: 21, scripted_rare_state: 23, ed30_dev_novel: 3, ed30_dev: 21 }, "the owner-reported distribution");
+  const census = new Map(sample.headline.map((h) => [h.id, h]));
+  for (const x of doc.selected) { const c = census.get(x.id); assert.ok(c, `${x.id} is in the 474 census`); assert.deepEqual([x.render_digest, x.primary_stratum], [c.render_digest, c.primary_stratum]); }
+  assert.equal(doc.selection_digest, sha256Hex(doc.selected.map((x) => x.id).join("\n")), "the selection digest covers the ordered ids");
+  // Deterministic regeneration from the frozen census alone (ed33b regenerates it from the real capture), in any order.
+  const groups = sample.headline.map((h) => ({ id: h.id, render_digest: h.render_digest, primary_stratum: h.primary_stratum }));
+  const again = RP.stratifiedSample(groups, 100).map((g) => g.id);
+  assert.deepEqual(again, doc.selected.map((x) => x.id));
+  assert.deepEqual(RP.stratifiedSample([...groups].reverse(), 100).map((g) => g.id), again, "independent of capture order");
+  // Pre-flight identity checks refuse a tampered or unpinned file.
+  assert.ok(RP.jsonControlSelectionProblems(text.replace('"n": 100', '"n": 101'), []).includes("selection_identity_mismatch"));
+  assert.ok(RP.jsonControlSelectionProblems("{", []).includes("selection_identity_mismatch"));
+  // Not derived from labels: the drawing function takes no labels, and the CLI never feeds it --limit over gold-filtered groups.
+  assert.equal(RP.jsonControlSelection.length, 1, "census groups (+ optional sample text) only; no label argument");
 });
