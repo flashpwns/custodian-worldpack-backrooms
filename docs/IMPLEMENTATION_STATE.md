@@ -1,5 +1,31 @@
 # Yellow Beast Implementation State
 
+## Reader Phase 2, Easy human labeling UI (presentation only, shadow-only, no egress) — 2026-10-01
+
+- **Scope:** ergonomics only, on the audited workstation frozen at `22f6653` (real progress 0 / 474; no `labels.jsonl`, no
+  journal). Design law (owner): if Jack has to remember what a Reader term means, the UI has failed. The default page is
+  progressive: PLAYER SAID (large), a visual context picture (people, earlier conversation as bubbles, things in play), YOUR
+  JUDGMENT (two large choices, none preselected: "I understand what the player means" = ACCEPT, "Something important is
+  unclear" = EXPECTED_CLARIFY), then ONE plain-English question at a time (speech act grouped with generic examples; topic as
+  family then item; address; a yes/no before any relation detail), a "Check your answers" preview in plain words with optional
+  details collapsed, COMMIT & NEXT, a "What am I doing?" help panel, and collapsed Technical details, Advanced / Raw labeling
+  (the original audited editor) and Tools. The Reader term is only a secondary annotation. The form **only serializes the
+  human's explicit selections** into the existing wire. Backend, schema, validators, worksheet, input pack, digests, persistence
+  and blindness boundary are unchanged; one static display endpoint (`/api/easy`, identical for every item) was added.
+- **Anti-inference boundary:** the page never reads the player's line to choose, suggest, rank or default a value. Names typed in the
+  line are listed as surface information; picking one is the human's act. Easy -> Raw copies the deterministic serialization; Raw ->
+  Easy never reverse-engineers a hand-written wire (explicit discard required). Documentation / help may be used for UI, grammar,
+  syntax and field meaning, never to decide ACCEPT vs EXPECTED_CLARIFY or the interpretation (recorded in the workstation doc and
+  the label guide). Slot descriptions are derived from the resolver's clarification slots (`dialogue-resolve-turn.js`), because the
+  label guide names the five slots without defining them.
+- **Verification:** new `tests/ed33e-reader-phase2-easy-labeling-ui.test.js` (32 tests, aggregate tier, registered) plus the updated
+  `ed33d` (29 tests): 61 pass; fast Reader suites 156 pass; long-world Reader suites (`ed31b` / `ed32b` / `ed33b`) 5 pass; full suite
+  1,635 tests, 1,556 pass, 79 fail; `compare-failing-tests`: unchanged 79, **new 0**, fixed 0; inventory 57 pre-existing errors
+  only (the `ed33d` hash refreshed, `ed33e` registered and its hash refreshed). Frozen population 944 / 575 / 470 / 552 / 474 / 78 and the three frozen
+  acceptance artifacts byte-identical; blank worksheet SHA-256 `e6f2da5a…` unchanged; no `labels.jsonl` / journal; UI smoke only
+  against a synthetic scratch directory (deleted) at 1024 / 1440 / 1920 px.
+- **Status: EASY LABELING UI READY — INDEPENDENT AUDIT REQUIRED.**
+
 ## Reader Phase 2, human primary labeling workstation (shadow-only, local, no egress) — 2026-10-01
 
 - **Scope:** a LOCAL, loopback-only, dependency-free browser instrument so the human primary labeler can write

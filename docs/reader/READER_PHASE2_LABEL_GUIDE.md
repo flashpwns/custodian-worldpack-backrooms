@@ -39,6 +39,10 @@ The human primary labeler writes `HUMAN_PRIMARY` rows with the local workstation
 time, no suggestion, no prefill, no hidden state, validated against this guide's schema. Hand-editing JSONL is not required.
 A human primary labels only `ACCEPT` or `EXPECTED_CLARIFY`; the workstation offers no other outcome. Only an adjudicator may
 declare a render `UNLABELABLE` (an `ADJUDICATED_GOLD` row, as the preregistration and validator already require).
+The workstation's default Easy form only serializes the human's explicit selections into this guide's wire; it never chooses a value.
+While labeling, the human may use documentation for UI operation, wire grammar and syntax, and the meaning of schema fields, but must
+not ask an AI, a model or another person to decide ACCEPT versus EXPECTED_CLARIFY, the intended interpretation, or the correct
+addressee, referent, topic or similar (that would break the independence of the human primary).
 
 ## 2. What a labeler writes
 

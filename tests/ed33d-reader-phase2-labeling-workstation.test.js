@@ -336,32 +336,35 @@ test("I6. The page's pure outcome logic: an explicit outcome change drops only f
   const pure = html.slice(html.indexOf("/*PURE-BEGIN*/"), html.indexOf("/*PURE-END*/"));
   assert.ok(pure.length > 100);
   const api = new Function(`${pure}; return { blank, retainLegal, chooseOutcome, collectDraft };`)();
-  const typedClarify = () => ({ outcome: "EXPECTED_CLARIFY", wire: "ask contents - new ab=address", field: "address", slot: "person", note: "who is unsettled", notes: "keep me" });
+  // the raw-editor fields of a draft (the Easy form's own state is covered by ed33e)
+  const raw = (d) => ({ outcome: d.outcome, wire: d.wire, field: d.field, slot: d.slot, note: d.note, notes: d.notes, ecPart: d.ecPart });
+  const typedClarify = () => ({ ...api.blank(), mode: "raw", outcome: "EXPECTED_CLARIFY", wire: "ask contents - new ab=address", field: "address", slot: "person", note: "who is unsettled", notes: "keep me" });
   // EXPECTED_CLARIFY -> ACCEPT: the clarification-only fields are cleared; the wire and the notes (legal for both) are the human's own and stay
   const toAccept = api.chooseOutcome(typedClarify(), "ACCEPT");
-  assert.deepEqual(toAccept, { outcome: "ACCEPT", wire: "ask contents - new ab=address", field: "", slot: "", note: "", notes: "keep me" });
+  assert.deepEqual(raw(toAccept), { outcome: "ACCEPT", wire: "ask contents - new ab=address", field: "", slot: "", note: "", notes: "keep me", ecPart: "" });
   assert.deepEqual(api.collectDraft(toAccept), { outcome: "ACCEPT", wire: "ask contents - new ab=address", notes: "keep me" }, "an ACCEPT payload carries no expected_clarify");
   // ACCEPT -> EXPECTED_CLARIFY: there is no ACCEPT-only field; nothing is invented, copied or chosen for the human
-  const toClarify = api.chooseOutcome({ outcome: "ACCEPT", wire: "ack - - new", field: "", slot: "", note: "", notes: "n" }, "EXPECTED_CLARIFY");
-  assert.deepEqual(toClarify, { outcome: "EXPECTED_CLARIFY", wire: "ack - - new", field: "", slot: "", note: "", notes: "n" });
+  const toClarify = api.chooseOutcome({ ...api.blank(), mode: "raw", outcome: "ACCEPT", wire: "ack - - new", notes: "n" }, "EXPECTED_CLARIFY");
+  assert.deepEqual(raw(toClarify), { outcome: "EXPECTED_CLARIFY", wire: "ack - - new", field: "", slot: "", note: "", notes: "n", ecPart: "" });
   assert.deepEqual(api.collectDraft(toClarify), { outcome: "EXPECTED_CLARIFY", wire: "ack - - new", notes: "n", expected_clarify: { field: "", slot: "", note: "" } }, "the field and slot stay empty until the human chooses");
   // round trip: clarification fields typed, switched away and back, are gone (not remembered, not restored)
   const back = api.chooseOutcome(api.chooseOutcome(typedClarify(), "ACCEPT"), "EXPECTED_CLARIFY");
   assert.deepEqual([back.field, back.slot, back.note], ["", "", ""]);
   // a stray clarification field on an ACCEPT draft can never reach the validator from the page
-  const stray = api.collectDraft({ outcome: "ACCEPT", wire: "w", field: "address", slot: "person", note: "x", notes: "" });
+  const stray = api.collectDraft({ ...api.blank(), mode: "raw", outcome: "ACCEPT", wire: "w", field: "address", slot: "person", note: "x", notes: "" });
   assert.ok(!("expected_clarify" in stray));
-  assert.deepEqual(api.chooseOutcome(api.blank(), "ACCEPT"), { ...api.blank(), outcome: "ACCEPT" }, "choosing from blank adds nothing");
-  assert.deepEqual(Object.keys(api.blank()).sort(), ["field", "note", "notes", "outcome", "slot", "wire"], "the draft has no unlabelable reason");
+  const fresh = api.chooseOutcome(api.blank(), "ACCEPT");
+  assert.deepEqual(raw(fresh), { ...raw(api.blank()), outcome: "ACCEPT" }, "choosing from blank adds nothing");
+  assert.deepEqual(Object.keys(api.blank()).sort(), ["easy", "ecPart", "field", "mode", "note", "notes", "outcome", "slot", "wire"], "the draft has no unlabelable reason");
   // the handler uses it, and the visible form agrees with the validated payload
   assert.match(html, /r\.addEventListener\('change',\(\)=>\{chooseOutcome\(draftOf\(\),r\.value\);renderJudgment\(\);schedule\(\);\}\)/);
   assert.match(html, /function collect\(\)\{return collectDraft\(draftOf\(\)\);\}/);
-  assert.match(html, /\$\('ecBox'\)\.className=d\.outcome==='EXPECTED_CLARIFY'\?'':'hide'/, "the clarification fields are visible exactly when EXPECTED_CLARIFY owns them");
+  assert.match(html, /\$\('ecBox'\)\.className=\(!easy&&d\.outcome==='EXPECTED_CLARIFY'\)\?'':'hide'/, "the raw clarification fields are visible exactly when the raw editor is in use and EXPECTED_CLARIFY owns them");
   // server side: every payload the page can now produce agrees with the checks
   const dir = prepared();
   const { ws } = open(dir);
   const id = idOf(DUFFLE_GROUP());
-  assert.equal(WS.check(ws, id, api.collectDraft({ outcome: "ACCEPT", wire: ACCEPT_WIRE, field: "address", slot: "person", note: "x", notes: "" })).ok, true, "hidden clarification state cannot block an ACCEPT commit");
+  assert.equal(WS.check(ws, id, api.collectDraft({ ...api.blank(), mode: "raw", outcome: "ACCEPT", wire: ACCEPT_WIRE, field: "address", slot: "person", note: "x", notes: "" })).ok, true, "hidden clarification state cannot block an ACCEPT commit");
 });
 test("I7. The page has no UNLABELABLE control, reason box or copy, and the wire input has an explicit accessible label", () => {
   const html = WS.CLIENT_HTML;

@@ -132,7 +132,8 @@
       "tests/ed32a-reader-phase1-shadow.test.js",
       "tests/ed33a-reader-phase2-step0.test.js",
       "tests/ed33c-reader-phase2-step01.test.js",
-      "tests/ed33d-reader-phase2-labeling-workstation.test.js"
+      "tests/ed33d-reader-phase2-labeling-workstation.test.js",
+      "tests/ed33e-reader-phase2-easy-labeling-ui.test.js"
     ],
     "long-world": [
       "tests/profile-model.test.js",
@@ -383,7 +384,8 @@
     "tests/ed33a-reader-phase2-step0.test.js": "fb5352e69a9d1e1510881943850b9b68820b1f650869dbef0c3703ebe609fb01",
     "tests/ed33b-reader-phase2-replay-full.test.js": "2cf65769d12e411b9492677ca6c5dd0707e9da9d3e562374aa13c204afb9a7c1",
     "tests/ed33c-reader-phase2-step01.test.js": "e47e80afcff33de3854ed1998c0e4bbc77eaf4180fd792847233e44ebc3232a7",
-    "tests/ed33d-reader-phase2-labeling-workstation.test.js": "f3b0fe80e4cd0d01e80a794bf648d95495bf5e64de3faeed9f4deecaa359faad"
+    "tests/ed33d-reader-phase2-labeling-workstation.test.js": "a431b458c2fbb19e3ec68953922148f57dd7aa6c163fb5ede69e18e33fc256b1",
+    "tests/ed33e-reader-phase2-easy-labeling-ui.test.js": "8ae82060de120e9e8273936f77c9b443f3664f325fd0421358a3d8b53a75199d"
   },
   "verification_core_hashes": {
     "tools/verification-inventory.js": "0f27da4645f1d85e48b52133475371bbbce55072807b6900108c3a1afd344f3b",
