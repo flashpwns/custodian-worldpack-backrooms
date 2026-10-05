@@ -55,6 +55,33 @@ function scriptedLocal(responder) {
   return { packets, provider: { name: "local", model: real.model, async presentLocal(packet) { packets.push(packet); return real.presentLocal(packet); } } };
 }
 const garbage = () => scriptedLocal(() => ({ raw: "{bad" }));
+test("hedged stored preferences remain grounded; different preferences and appended claims do not", () => {
+  const claims = require('../tools/dialogue-claims');
+  const plan = { discourse_function: 'invite_self_description', required_facts: [], optional_facts: [{ key: 'personal_preference', value: 'paper maps' }] };
+  for (const text of ['I guess besides that, I like paper maps.', 'I suppose I enjoy paper maps.']) assert.equal(claims.validatePersonalClaims(text, plan).ok, true, text);
+  for (const text of ['I guess besides that, I like skydiving.', 'I guess besides that, I like paper maps and hate my coworkers.', 'I like paper maps. I hate my coworkers.']) assert.equal(claims.validatePersonalClaims(text, plan).ok, false, text);
+});
+test("doing one's stored trade is a background statement, without licensing wellbeing or invented work", () => {
+  const claims = require('../tools/dialogue-claims');
+  const plan = { required_facts: [], optional_facts: [{ key: 'identity_fact', value: { education_or_trade: 'industrial electrical work' } }] };
+  assert.equal(claims.validatePersonalClaims("I've been doing industrial electrical work.", plan).ok, true);
+  for (const text of ["I've been doing bomb disposal.", "I've been doing industrial electrical work and feeling great.", "I'm doing great.", "Tonya's been doing industrial electrical work."]) assert.equal(claims.validatePersonalClaims(text, plan, { people: [{id:'tonya',name:'Tonya'}],speaker_id:'kathy' }).ok, false, text);
+});
+test("a grounded conversational introduction survives the complete service validator and is committed", async () => {
+  let candidate;
+  const provider = { name: 'local', model: 'scripted', async presentLocal(packet) {
+    const facts = [...packet.authorized_contribution.required_facts, ...packet.authorized_contribution.optional_facts];
+    const value = key => facts.find(f => f.key === key)?.value;
+    candidate = `I'm ${value('name')}, a ${value('role')}. I've been doing ${value('identity_fact').education_or_trade}. I guess besides that, I like ${value('personal_preference')}.`;
+    return { version: VERSION, speech: candidate };
+  } };
+  const state = setup('ed25-grounded-conversational-intro', provider);
+  try {
+    await say(state, 'Tell me a little about yourself.', { target: state.ids[0], request_id: 'grounded-intro' });
+    assert.equal(spokenFor(state.run, 'grounded-intro', state.playerId)[0].text, candidate);
+    assert.ok(state.logs.some(line => line.includes('validator_accepted=true') && line.includes('fallback_used=false')));
+  } finally { state.service.shutdown(); cleanup(state); }
+});
 test("a rejected introduction gets one rewording with the same facts and commits only accepted speech", async () => {
   for (const repair of [true, false]) {
     const packets = [];
@@ -421,7 +448,7 @@ test("reciprocal check-ins are planned for one speaker and remain answerable aft
   const { frame, plan, contribution } = planFor('How are you feeling?', { self });
   assert.equal(plan.asks_player, true);
   assert.equal(plan.may_ask_clarifying_question, false, 'personal interest is not failure to understand');
-  for (const good of ["I'm all right. How about you?", "Doing okay. How are you feeling?", "I’m doing all right. How are you feeling now?", "I'm doing all right. And how are things for you?"]) assert.equal(verdict(contribution, good).ok, true, good);
+  for (const good of ["I'm all right. How about you?", "Doing okay. How are you feeling?", "I’m doing all right. How are you feeling now?", "I’m doing all right. How are you doing now?", "I’m doing all right. How are you holding up today?", "I'm doing all right. And how are things for you?"]) assert.equal(verdict(contribution, good).ok, true, good);
   for (const bad of ["I'm all right.", "I'm all right. Is Maxwell nervous?", "I'm all right. Can I help you?", "I'm all right. Where are we going?"]) assert.equal(verdict(contribution, bad).ok, false, bad);
   const line = F.presentFallback({ frame, plan });
   assert.equal(verdict(contribution, line).ok, true, line);

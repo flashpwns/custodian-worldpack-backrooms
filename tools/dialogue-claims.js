@@ -240,7 +240,13 @@ function validatePersonalClaims(speech, contribution, { people = [], speaker_id 
     if (!personal.length) continue;
     // A clause is "the licensed statement" only when it matches it both ways (a report that drops "said"
     // and turns into a present-tense fact is not the report).
-    const licensedStatement = license.statements.some((s) => sameClaim(p.body ?? p.clause, s, 0.8, 0.7) && (!REPORT_VERB.test(s) || p.reported));
+    // A conversational hedge does not add an opinion when the entire remaining assertion
+    // is exactly a supplied preference. Anchor the whole clause so extra claims stay unlicensed.
+    const licensedPreference = license.facts.some(f => f.key === "personal_preference" && typeof f.value === "string"
+      && new RegExp(`^(?:(?:i guess|i suppose)\\s+)?(?:besides that[, ]+)?i (?:like|enjoy|prefer)\\s+${escapeRe(f.value)}[.!]*$`, "i").test(p.body ?? p.clause));
+    const licensedBackground = license.facts.some(f => f.key === "identity_fact" && typeof f.value?.education_or_trade === "string"
+      && new RegExp(`^(?:i(?:'ve| have) been doing|i (?:did|worked in)|my background is(?: in)?)\\s+${escapeRe(f.value.education_or_trade)}[.!]*$`, "i").test(p.body ?? p.clause));
+    const licensedStatement = licensedPreference || licensedBackground || license.statements.some((s) => sameClaim(p.body ?? p.clause, s, 0.8, 0.7) && (!REPORT_VERB.test(s) || p.reported));
     // "We met today" answering "do you two know each other?": acquaintance is joint -- it includes the speaker.
     if (p.subject === "group" && /^(?:we|we've|we have|us)\b/i.test(expandContractions((p.body ?? p.clause).toLowerCase())) && personal.every((f) => f === "person.familiarity") && license.predicateAnswers.some((a) => a.predicate === "person.familiarity")) p.subject = "self";
     if (["third_party", "third_unresolved", "group", "addressee"].includes(p.subject)) {

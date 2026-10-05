@@ -260,7 +260,7 @@ function validateContribution(contribution, rawSpeech, options = {}) {
     const questions = sentences(speech).filter(asksQuestion);
     // Meaning is licensed narrowly. Wording can vary; this is not permission
     // to ask about tasks, hidden facts, someone else's state or future actions.
-    if (reciprocal.topic !== "current_wellbeing" || questions.length !== 1 || !/^(?:(?:and|so|well)[, ]+)?(?:how about (?:you|yourself)|what about (?:you|yourself)|you|how (?:are you|do you feel|are you feeling)(?: (?:doing|feeling|holding up|today|now|right now))?|how are things (?:for|with) you|how(?:\'s| is) it going (?:for|with) you|(?:are )?you (?:doing|feeling) (?:okay|all right|alright|fine))\s*\?$/i.test(questions[0].trim())) return reject(CODES.SHAPE, "does not ask the licensed reciprocal check-in");
+    if (reciprocal.topic !== "current_wellbeing" || questions.length !== 1 || !/^(?:(?:and|so|well)[, ]+)?(?:how about (?:you|yourself)|what about (?:you|yourself)|you|how (?:are you(?: (?:doing|feeling|holding up))?|do you feel|are you feeling)(?: (?:today|now|right now))?|how are things (?:for|with) you|how(?:\'s| is) it going (?:for|with) you|(?:are )?you (?:doing|feeling) (?:okay|all right|alright|fine))\s*\?$/i.test(questions[0].trim())) return reject(CODES.SHAPE, "does not ask the licensed reciprocal check-in");
   }
   // ED-30 H1-H5: personal claims about anyone but the speaker (unless an attributed licensed report),
   // unlicensed self claims, manufactured precision, the entity ceiling, and answer responsiveness.
