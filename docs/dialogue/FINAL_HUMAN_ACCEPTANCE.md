@@ -1,6 +1,6 @@
 # Jack’s official final Electron dialogue acceptance
 
-**Human test failed on 2026-10-05:** the Assembly Table names/repair exchange failed; engineering repairs now include richer personal replies, ordinary name/role questions, reciprocal conversation and persisted follow-ups. Engineering and packaged verification passed at ca7801d, including durable coworker experience across reassignment. Jack’s retest is still required. Do not treat the earlier automated green run as a human PASS.
+**Human test failed on 2026-10-05:** the Assembly Table names/repair exchange failed; engineering repairs now include richer personal replies, ordinary name/role questions, reciprocal conversation and persisted follow-ups. Engineering and packaged verification passed at 2ab8fff, including durable coworker experience across reassignment. Jack’s retest is still required. Do not treat the earlier automated green run as a human PASS.
 
 Launch from this checkout:
 
