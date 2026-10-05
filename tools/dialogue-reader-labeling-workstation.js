@@ -555,7 +555,7 @@ function pageHtml({ nonce, token }) {
   return CLIENT_HTML.replace(/__NONCE__/g, nonce).replace("__TOKEN__", token);
 }
 
-function createWorkstationServer(ws, { host = "127.0.0.1", port = DEFAULT_PORT } = {}) {
+function createWorkstationServer(ws, { host = "127.0.0.1", port = DEFAULT_PORT, interfaceMode = null } = {}) {
   const bindHost = assertLoopbackHost(host);
   const token = crypto.randomBytes(24).toString("hex");
   let boundPort = port;
@@ -575,14 +575,14 @@ function createWorkstationServer(ws, { host = "127.0.0.1", port = DEFAULT_PORT }
       const url = new URL(req.url, `http://127.0.0.1:${boundPort}`);
       if (req.method === "GET" && url.pathname === "/") {
         const nonce = crypto.randomBytes(16).toString("base64");
-        return send(res, 200, pageHtml({ nonce, token }), "text/html; charset=utf-8", { "content-security-policy": `default-src 'none'; script-src 'nonce-${nonce}'; style-src 'nonce-${nonce}'; connect-src 'self'; img-src 'none'; font-src 'none'; form-action 'none'; base-uri 'none'; frame-ancestors 'none'` });
+        return send(res, 200, interfaceMode?.page ? interfaceMode.page({ nonce, token }) : pageHtml({ nonce, token }), "text/html; charset=utf-8", { "content-security-policy": `default-src 'none'; script-src 'nonce-${nonce}'; style-src 'nonce-${nonce}'; connect-src 'self'; img-src 'none'; font-src 'none'; form-action 'none'; base-uri 'none'; frame-ancestors 'none'` });
       }
       if (!url.pathname.startsWith("/api/")) return send(res, 404, { error: "not_found" });
       if (req.headers["x-ws-token"] !== token) return send(res, 403, { error: "bad_token" });
       const respond = (fn) => { try { send(res, 200, fn()); } catch (e) { fail(res, e); } };
       if (req.method === "GET") {
-        if (url.pathname === "/api/state") return respond(() => summary(ws));
-        if (url.pathname === "/api/item") return respond(() => itemPayload(ws, url.searchParams.get("n") ? Number(url.searchParams.get("n")) : url.searchParams.get("id") ?? ""));
+        if (url.pathname === "/api/state") return respond(() => interfaceMode?.state ? interfaceMode.state() : summary(ws));
+        if (url.pathname === "/api/item") return respond(() => { const item = itemPayload(ws, url.searchParams.get("n") ? Number(url.searchParams.get("n")) : url.searchParams.get("id") ?? ""); return interfaceMode?.item ? interfaceMode.item(item) : item; });
         if (url.pathname === "/api/grammar") return send(res, 200, staticGrammar);
         if (url.pathname === "/api/definitions") return send(res, 200, definitions);
         if (url.pathname === "/api/easy") return send(res, 200, staticEasy);
@@ -597,6 +597,7 @@ function createWorkstationServer(ws, { host = "127.0.0.1", port = DEFAULT_PORT }
         let body;
         try { body = JSON.parse(Buffer.concat(chunks).toString("utf8") || "{}"); } catch { return send(res, 400, { error: "bad_json" }); }
         try {
+          if (interfaceMode?.post && interfaceMode.handles.includes(url.pathname)) return send(res, 200, interfaceMode.post(url.pathname, body));
           if (url.pathname === "/api/check") return send(res, 200, check(ws, String(body.id ?? ""), body.draft ?? {}));
           if (url.pathname === "/api/commit") return send(res, 200, commit(ws, String(body.id ?? ""), body.draft ?? {}, { explicit: body.explicit === true, replace: body.replace === true, previous_committed_at: body.previous_committed_at ?? null }));
           return send(res, 404, { error: "not_found" });
@@ -1257,6 +1258,7 @@ init().catch((e)=>{document.body.append(el('pre',{},'workstation failed to start
 
 // ─── CLI ─────────────────────────────────────────────────────────────────────────────────────────────
 async function main() {
+  if (process.argv.includes("--exceptions")) return require("./dialogue-reader-exception-workstation").main(process.argv.slice(2));
   installEgressGuard();
   const argv = process.argv.slice(2);
   const flag = (n) => argv.includes(n);
@@ -1291,6 +1293,7 @@ async function main() {
   const stop = () => { release(); server.close(() => process.exit(0)); setTimeout(() => process.exit(0), 500).unref(); };
   process.on("SIGINT", stop); process.on("SIGTERM", stop); process.on("exit", release);
 }
-if (require.main === module) main().catch((e) => { console.error(e.message ?? e); process.exit(1); });
 
 module.exports = { WORKSTATION_VERSION, DEFAULT_DIR, FILES, OUTCOMES, DEFAULT_LABELER, LOOPBACK_HOSTS, installEgressGuard, assertLoopbackHost, isIgnoredOrOutsideRepo, viewOfRender, grammarReference, easyReference, checkDraft, WorkstationError, loadWorkstation, itemStatus, summary, itemPayload, check, commit, validateWorkstation, buildInputPack, writePrepared, prepare, validateFull, classifyValidation, runValidate, LabelFileError, frozenCensus, createWorkstationServer, acquireLock, atomicWrite, CLIENT_HTML };
+
+if (require.main === module) main().catch((e) => { console.error(e.message ?? e); process.exit(1); });

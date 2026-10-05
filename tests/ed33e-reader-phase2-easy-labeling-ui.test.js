@@ -24,6 +24,9 @@ const E = require("../tools/dialogue-eval");
 const WS = require("../tools/dialogue-reader-labeling-workstation");
 
 const ROOT = path.join(__dirname, "..");
+// Preserve pre-existing human work; test-only writes must stay in temporary directories.
+const activeBefore = Object.fromEntries([WS.FILES.labels, WS.FILES.journal].map(n => [n, fs.existsSync(path.join(WS.DEFAULT_DIR,n)) ? fs.readFileSync(path.join(WS.DEFAULT_DIR,n)) : null]));
+const assertActiveUnchanged = () => { for (const [n, bytes] of Object.entries(activeBefore)) assert.deepEqual(fs.existsSync(path.join(WS.DEFAULT_DIR,n)) ? fs.readFileSync(path.join(WS.DEFAULT_DIR,n)) : null, bytes, "existing active human file remains byte-unchanged: " + n); };
 const SRC = path.join(ROOT, "tools", "dialogue-reader-labeling-workstation.js");
 const sc = E.scene();
 const [GISELLE, MALCOLM, TONYA] = sc.present.map((p) => p.id);
@@ -969,8 +972,7 @@ test("The Easy UI exposes no more observer-safe information than the audited Raw
     assert.ok(!/MODEL_ASSISTED_REVIEW|ADJUDICATED_GOLD|UNLABELABLE/.test(wire));
     assert.ok(!/<(input|select|button)[^>]*(suggest|recommend|autocomplete="on"|list=)/i.test(HTML) && !/datalist/i.test(HTML));
   } finally { await new Promise((r) => srv.server.close(r)); }
-  assert.equal(fs.existsSync(path.join(WS.DEFAULT_DIR, WS.FILES.labels)), false, "no real label file");
-  assert.equal(fs.existsSync(path.join(WS.DEFAULT_DIR, WS.FILES.journal)), false, "no real journal");
+  assertActiveUnchanged();
 });
 test("Help, documentation boundary and responsive layout are present in the page", () => {
   assert.match(HTML, /id="bHelp"[^>]*>What am I doing\?<\/button>/);

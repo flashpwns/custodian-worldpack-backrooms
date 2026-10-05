@@ -22,6 +22,9 @@ const E = require("../tools/dialogue-eval");
 const WS = require("../tools/dialogue-reader-labeling-workstation");
 
 const ROOT = path.join(__dirname, "..");
+// Preserve pre-existing human work; test-only writes must stay in temporary directories.
+const activeBefore = Object.fromEntries([WS.FILES.labels, WS.FILES.journal].map(n => [n, fs.existsSync(path.join(WS.DEFAULT_DIR,n)) ? fs.readFileSync(path.join(WS.DEFAULT_DIR,n)) : null]));
+const assertActiveUnchanged = () => { for (const [n, bytes] of Object.entries(activeBefore)) assert.deepEqual(fs.existsSync(path.join(WS.DEFAULT_DIR,n)) ? fs.readFileSync(path.join(WS.DEFAULT_DIR,n)) : null, bytes, "existing active human file remains byte-unchanged: " + n); };
 const SRC = path.join(ROOT, "tools", "dialogue-reader-labeling-workstation.js");
 const sha = (v) => crypto.createHash("sha256").update(v).digest("hex");
 const sc = E.scene();
@@ -596,7 +599,7 @@ test("P. No code path reaches a hosted transport, a model, or the network", () =
   const src = whole.slice(0, whole.indexOf("const CLIENT_HTML")) + whole.slice(whole.indexOf("// ─── CLI")); // the page's own same-origin helper is checked separately below
   const code = src.split("\n").filter((l) => !/^\s*\/\//.test(l)).join("\n");
   const required = [...code.matchAll(/require\("([^"]+)"\)/g)].map((m) => m[1]);
-  assert.deepEqual([...new Set(required)].sort(), ["./dialogue-reader-frame", "./dialogue-reader-labels", "./dialogue-reader-render", "./dialogue-reader-replay", "./dialogue-reader-wire", "node:child_process", "node:crypto", "node:dns", "node:dgram", "node:fs", "node:http", "node:https", "node:net", "node:path", "node:tls"].sort(), "the workstation's own imports are an explicit allowlist");
+  assert.deepEqual([...new Set(required)].sort(), ["./dialogue-reader-exception-workstation", "./dialogue-reader-frame", "./dialogue-reader-labels", "./dialogue-reader-render", "./dialogue-reader-replay", "./dialogue-reader-wire", "node:child_process", "node:crypto", "node:dns", "node:dgram", "node:fs", "node:http", "node:https", "node:net", "node:path", "node:tls"].sort(), "the workstation's own imports are an explicit allowlist");
   for (const re of [/ai-hosted-transport|ai-openai|ai-local|ai-living|ai-provider|ai-adapter|hostedArm|hostedRequest|modelArm|localModel|runtime-pin/i, /\bfetch\s*\(/, /XMLHttpRequest|WebSocket|EventSource|sendBeacon/, /https?\.(request|get)\(/, /net\.connect|createConnection|tls\.connect/, /api\.openai|anthropic\.com|googleapis|cdn\./i, /process\.env/]) {
     const own = code.replace(/installEgressGuard[\s\S]*?\n}\n/, ""); // the guard legitimately names the calls it disables
     assert.ok(!re.test(own), `forbidden reference ${re}`);
@@ -698,9 +701,7 @@ test("Frozen artifacts are untouched and no label, receipt, teacher, review or g
   const tracked = execFileSync("git", ["ls-files"], { cwd: ROOT, encoding: "utf8" }).split("\n");
   assert.deepEqual(tracked.filter((f) => /(^|\/)(labels?|journal|receipts?)[^/]*\.jsonl$|teacher-(output|run)|model-review|adjudicated-gold/i.test(f)), [], "no label / journal / receipt / teacher / review artifact is tracked");
   // tests never write the real active label path
-  assert.equal(fs.existsSync(path.join(WS.DEFAULT_DIR, WS.FILES.journal)), false, "no real journal exists");
-  const real = path.join(WS.DEFAULT_DIR, WS.FILES.labels);
-  assert.equal(!fs.existsSync(real) || fs.readFileSync(real, "utf8").trim() === "" || process.env.READER_LABELING_REAL_LABELS_PRESENT === "1", true, "the test suite created no real HUMAN_PRIMARY label");
+  assertActiveUnchanged();
 });
 test("The page is a static shell: item data arrives only through the same-origin API, and DOM insertion is by text, never HTML", () => {
   const html = WS.CLIENT_HTML;
