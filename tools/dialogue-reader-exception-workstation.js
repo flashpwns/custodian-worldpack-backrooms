@@ -4,6 +4,7 @@
 const fs=require('node:fs'),path=require('node:path'),os=require('node:os'),crypto=require('node:crypto');
 const WS=require('./dialogue-reader-labeling-workstation');
 const RECOVERY='machine-run-recovery-2026-10-03T11-02-35-398Z';
+const BLIND_RUN='reader-phase2-blind-model-run-2026-10-05T02-27-43-090Z';
 const POLICY='rg-f28a6267643a2772';
 const BATCHES={address:'Address',force:'Speech force / clause split',relation:'Relation',facet:'Facet / referent',full:'Full Easy',policy:'Contract policy'};
 const ORDER=Object.keys(BATCHES);
@@ -28,8 +29,27 @@ function buildQueue(ws,{history=WS.DEFAULT_DIR}={}){
  if(rows.length!==474||new Set(rows.map(x=>x.id)).size!==474||rows.filter(x=>x.candidate.valid).length!==412)throw Error('Expected frozen 474 population with 412 valid machine rows');
  const byId=new Map(ws.items.map(x=>[x.id,x]));
  for(const r of rows){const i=byId.get(r.id);if(!i||i.render_digest!==r.render_digest||i.integrity.length)throw Error('Frozen queue binding failed: '+r.id);}
- const selected=rows.filter(r=>!r.candidate.valid).map(r=>{const i=byId.get(r.id);return {...i,batch:batch(i.input,r.candidate.observer_errors??[],r.id)};});
- if(selected.length!==62)throw Error('Expected exactly 62 unresolved items');
+ // Read provenance server-side only. Never attach answers, errors or semantic batch hints to items.
+ const run=path.join(path.dirname(history),BLIND_RUN);
+ const summary=JSON.parse(fs.readFileSync(path.join(run,'summary.json'),'utf8'));
+ const annotations=read(path.join(run,'final-annotations.jsonl'));
+ const first=JSON.parse(fs.readFileSync(path.join(run,'validation-attempt1.json'),'utf8')).results;
+ const retry=JSON.parse(fs.readFileSync(path.join(run,'validation-retry-attempt2.json'),'utf8')).results;
+ const validated=new Map([...first,...retry].map(x=>[x.id,x]));
+ const unresolved=new Set(rows.filter(r=>!r.candidate.valid).map(r=>r.id));
+ if(summary.final.mechanically_valid!==52||summary.final.by_status.MODEL_INVALID!==9||
+    !summary.scope.policy_case_excluded.startsWith(POLICY+' ')||annotations.length!==61||
+    new Set(annotations.map(x=>x.id)).size!==61||validated.size!==61)throw Error('Blind run scope differs');
+ for(const r of annotations){
+  const i=byId.get(r.id),v=validated.get(r.id);
+  if(!unresolved.has(r.id)||r.id===POLICY||!i||r.render_digest!==i.render_digest||r.human_gold!==false||
+     typeof r.mechanically_valid!=='boolean'||!v||r.mechanically_valid!==(v.status==='MECHANICALLY_VALID')||
+     (r.annotation_status==='MODEL_INVALID')===r.mechanically_valid)throw Error('Blind run validation binding failed: '+r.id);
+ }
+ if(annotations.filter(r=>r.mechanically_valid).length!==52)throw Error('Expected 52 parked Opus candidates');
+ const selected=annotations.filter(r=>!r.mechanically_valid).map(r=>({...byId.get(r.id),batch:'full'}));
+ selected.push({...byId.get(POLICY),batch:'policy'});
+ if(selected.length!==10||!unresolved.has(POLICY))throw Error('Expected nine ordinary items and one policy case');
  const policy=selected.find(x=>x.id===POLICY);if(!policy||policy.input.chip_target!=='p2'||!policy.input.features.name_spans.some(x=>x.person==='p3'))throw Error('Policy case observer binding differs');
  selected.sort((a,b)=>ORDER.indexOf(a.batch)-ORDER.indexOf(b.batch)||a.id.localeCompare(b.id));
  const counts=Object.fromEntries(ORDER.map(k=>[k,selected.filter(x=>x.batch===k).length]));
@@ -46,16 +66,16 @@ function cleanDraft(d){
  return JSON.parse(JSON.stringify(d));
 }
 class Choices{
- constructor(dir,{labeler,queue}){this.file=path.join(dir,'human-exception-choices.jsonl');this.labeler=labeler;this.queue=new Set(queue.items.map(x=>x.id));this.events=read(this.file);this.current=new Map();for(const e of this.events){if(!this.queue.has(e.id)||e.labeler!==labeler||!e.revision||!['choice','undo','commit_intent','primary_committed','policy','defer'].includes(e.kind))throw Error('Exception choice history drift');const previous=this.current.get(e.id);if(e.revision!==(previous?.revision??0)+1)throw Error('Nonsequential choice history');this.current.set(e.id,e);}}
- get(id){return this.current.get(id)??null;}
- write(id,kind,payload,revision){if(!this.queue.has(id))throw new WS.WorkstationError(404,'not_in_exception_queue','This item is parked outside the exception queue');const previous=this.get(id);if(revision!==(previous?.revision??0))throw new WS.WorkstationError(409,'stale_choice','The saved human choices changed; reload before deciding');const e={kind,id,labeler:this.labeler,revision:revision+1,created_at:new Date().toISOString(),provenance:'EXPLICIT_HUMAN_WORK_IN_PROGRESS_NOT_GOLD',...payload};WS.atomicWrite(this.file,[...this.events,e].map(x=>JSON.stringify(x)).join('\n')+'\n');this.events.push(e);this.current.set(id,e);return e;}
+ constructor(dir,{labeler,queue}){this.file=path.join(dir,'human-exception-choices.jsonl');this.labeler=labeler;this.queue=new Set(queue.items.map(x=>x.id));this.bytes=fs.existsSync(this.file)?fs.readFileSync(this.file,'utf8'):'';this.events=read(this.file);this.current=new Map();for(const e of this.events){if(e.labeler!==labeler||!e.revision||!['choice','undo','commit_intent','primary_committed','policy','defer'].includes(e.kind))throw Error('Exception choice history drift');const previous=this.current.get(e.id);if(e.revision!==(previous?.revision??0)+1)throw Error('Nonsequential choice history');this.current.set(e.id,e);}}
+ get(id){return this.queue.has(id)?this.current.get(id)??null:null;}
+ write(id,kind,payload,revision){if(!this.queue.has(id))throw new WS.WorkstationError(404,'not_in_exception_queue','This item is parked outside the exception queue');const previous=this.get(id);if(revision!==(previous?.revision??0))throw new WS.WorkstationError(409,'stale_choice','The saved human choices changed; reload before deciding');const e={kind,id,labeler:this.labeler,revision:revision+1,created_at:new Date().toISOString(),provenance:'EXPLICIT_HUMAN_WORK_IN_PROGRESS_NOT_GOLD',...payload};const bytes=this.bytes+(this.bytes&&!this.bytes.endsWith('\n')?'\n':'')+JSON.stringify(e)+'\n';WS.atomicWrite(this.file,bytes);this.bytes=bytes;this.events.push(e);this.current.set(id,e);return e;}
 }
 function makeMode(full,queue,{choicesDir=path.join(full.dir,'exception-work'),scratch=false}={}){
  const ws={...full,items:queue.items,byId:new Map(queue.items.map(x=>[x.id,x]))};
  const choices=new Choices(choicesDir,{labeler:ws.labeler,queue});
  const state=()=>{const s=WS.summary(ws);s.batches=queue.counts;s.parked_machine_valid=412;s.mode='exceptions';s.synthetic=scratch;s.primary_committed=s.committed;s.deferred=0;s.policy_recorded=!!choices.get(POLICY)?.policy;
  s.order=s.order.map(x=>{const saved=choices.get(x.id);return {...x,batch:ws.byId.get(x.id).batch,...(x.id===POLICY&&saved?.policy?{state:saved.policy.decision==='defer'?'deferred':'committed'}:saved?.kind==='defer'?{state:'deferred'}:{})};});
- s.committed=s.order.filter(x=>x.state==='committed').length;s.remaining=62-s.committed;s.deferred=s.order.filter(x=>x.state==='deferred').length;return s;};
+ s.committed=s.order.filter(x=>x.state==='committed').length;s.remaining=queue.items.length-s.committed;s.deferred=s.order.filter(x=>x.state==='deferred').length;return s;};
  const item=p=>{const i=ws.byId.get(p.id),own=choices.get(p.id);return {...p,batch:{key:i.batch,title:BATCHES[i.batch],index:i.batch_index,total:i.batch_total},policy:p.id===POLICY,human_choices:own?{revision:own.revision,draft:own.draft??null,policy:own.policy??null,deferred:own.kind==='defer'}:{revision:0,draft:null,policy:null,deferred:false},synthetic:scratch};};
  const failPolicy=id=>{if(id===POLICY)throw new WS.WorkstationError(409,'policy_not_a_label','This is a policy decision, not an ordinary label');};
  const post=(route,b)=>{
@@ -111,7 +131,7 @@ function exceptionInit(){
  questionOf=function(d,id){if(id==='parts')return {q:'How many distinct things does the player do in this line?',hint:'A statement followed by a question can be two parts. You decide the split; nothing is preselected.'};if(id.startsWith('ref:'))return{q:'Which thing or place does this part mean, if any?',hint:'Use only what is shown in the observer-safe context.'};return oldQuestion(d,id);};
  stepControls=function(d,id){if(id==='parts'){const box=el('div',{});box.append(chipGroup('parts',[1,2,3].map(n=>({v:String(n),t:n===1?'One part':n+' separate parts'})),d.exception_parts||'',v=>{const n=Number(v);d.exception_parts=v;while(d.easy.acts.length<n)d.easy.acts.push(blankAct());d.easy.acts=d.easy.acts.slice(0,n);changed();advance();}));return box;}if(id.startsWith('ref:')){const i=Number(id.split(':')[1]),a=d.easy.acts[i],box=el('div',{});box.append(chipGroup('ref'+i,[...S.P.things.map(t=>({v:t.label,t:t.name+' ('+t.kind+')'})),...Object.entries(S.easy.optional.refc.special).map(([v,t])=>({v,t}))],a.refc,v=>{a.refc=v;d.exception_ref_done=d.exception_ref_done||{};d.exception_ref_done[i]=true;changed();}));if(a.refc&&/^r/.test(a.refc))box.append(selectBox([{v:'none',t:'Not a typed phrase'},...S.P.typed.map(t=>({v:t.label,t:quote(t.text)}))],a.refspan||'',v=>{a.refspan=v==='none'?'':v;changed();},'— link a typed phrase if appropriate —','Typed phrase'));return box;}return oldControls(d,id);};
  renderEasy=function(){oldRender();decorate();};
- renderHeader=function(){oldHeader();batchNav.textContent='';for(const [key,count]of Object.entries(S.sum.batches||{})){const first=S.sum.order.find(x=>x.batch===key);const button=el('button',{},({address:'Address',force:'Speech force',relation:'Relation',facet:'Facet',full:'Full Easy',policy:'Policy'}[key])+' ('+count+')');button.onclick=()=>load(first.n);batchNav.append(button);}if(S.item?.batch)banner.textContent=(S.sum.synthetic?'SYNTHETIC SCRATCH · ':'')+S.item.batch.title+' '+S.item.batch.index+' / '+S.item.batch.total+' · '+S.sum.remaining+' / 62 unresolved human tasks remain · '+S.sum.primary_committed+' primary judgments · '+S.sum.deferred+' parked';};
+ renderHeader=function(){oldHeader();batchNav.textContent='';for(const [key,count]of Object.entries(S.sum.batches||{})){const first=S.sum.order.find(x=>x.batch===key);if(!first)continue;const button=el('button',{},({address:'Address',force:'Speech force',relation:'Relation',facet:'Facet',full:'Full Easy',policy:'Policy'}[key])+' ('+count+')');button.onclick=()=>load(first.n);batchNav.append(button);}if(S.item?.batch)banner.textContent=(S.sum.synthetic?'SYNTHETIC SCRATCH · ':'')+S.item.batch.title+' '+S.item.batch.index+' / '+S.item.batch.total+' · '+S.sum.remaining+' / '+S.sum.total+' unresolved human tasks remain · '+S.sum.primary_committed+' primary judgments · '+S.sum.deferred+' parked';};
  function renderPolicy(){panel.textContent='';panel.append(el('h2',{},'Spoken address versus interface delivery'),el('p',{},'The player says “Tonya, how are you?” while the interface delivers the line to Malcolm.'),el('p',{},'Convention B records spoken address separately from delivery. The current validator rejects a spoken addressee that differs from the delivery choice. Decide the policy explicitly; this screen does not create a label or change either rule.'));
  const own=S.item.human_choices.policy;if(own&&!policyEditing){panel.append(el('p',{},'Your recorded decision: '+({spoken_address_separate:'Keep spoken address separate from delivery',delivery_controls_address:'Let delivery control address',defer:'Defer this policy decision'}[own.decision])),el('p',{},'Recorded only. No validator or frozen contract was changed.'));const edit=el('button',{},'Edit policy decision');edit.onclick=()=>{policyEditing=true;policyChoice='';renderPolicy();};panel.append(edit);return;}
  panel.append(chipGroup('policy',[{v:'spoken_address_separate',t:'Keep spoken address separate; align validation in a future authorized change'},{v:'delivery_controls_address',t:'Let delivery control address; amend the contract in a future authorized change'},{v:'defer',t:'Defer this policy decision'}],policyChoice,v=>{policyChoice=v;renderPolicy();}));const note=el('input',{type:'text',placeholder:'Optional policy reason'});note.id='policyNote';panel.append(note);const button=el('button',{id:'policyCommit',class:'primary'},'Record policy decision');button.disabled=!policyChoice;button.onclick=async()=>{const r=await api('/api/policy',{id:S.item.id,explicit:true,revision,decision:policyChoice,note:note.value});revision=r.revision;S.sum=r.summary;policyEditing=false;await load(S.item.n);};panel.append(button);decorate();}
@@ -139,9 +159,9 @@ async function main(argv=process.argv.slice(2)){
  const source=path.resolve(arg('--dir',WS.DEFAULT_DIR));let dir=source,labeler='jack',registry;
  if(argv.includes('--scratch')){dir=fs.mkdtempSync(path.join(os.tmpdir(),'reader-exception-usability-'));for(const name of [WS.FILES.worksheet,WS.FILES.pack])fs.copyFileSync(path.join(source,name),path.join(dir,name));labeler='synthetic-usability';const L=require('./dialogue-reader-labels');registry=JSON.parse(JSON.stringify(L.loadRegistry()));registry.human.primary_labelers.push(labeler);}
  const full=WS.loadWorkstation({dir,labeler,...(registry?{registry}:{})});const queue=buildQueue(full,{history:source});
- if(argv.includes('--inspect')){console.log(JSON.stringify({unresolved:queue.items.length,parked_valid:412,counts:queue.counts,human_primary_existing:full.labels.length,minimum_semantic_choices:61*6+1,source_sha256:queue.source_sha256},null,2));return;}
+ if(argv.includes('--inspect')){console.log(JSON.stringify({unresolved:queue.items.length,parked_valid:412,counts:queue.counts,human_primary_existing:full.labels.length,minimum_semantic_choices:9*6+1,source_sha256:queue.source_sha256},null,2));return;}
  const mode=makeMode(full,queue,{scratch:argv.includes('--scratch')});const release=WS.acquireLock(dir);WS.installEgressGuard();
- const {server,listen}=WS.createWorkstationServer(mode.ws,{port:Number(arg('--port','47475')),interfaceMode:mode});const started=await listen();console.log(JSON.stringify({url:started.url,source:dir,choices_file:mode.choices.file,labeler,synthetic:argv.includes('--scratch'),counts:queue.counts,unresolved:62,parked_machine_valid:412}));
+ const {server,listen}=WS.createWorkstationServer(mode.ws,{port:Number(arg('--port','47475')),interfaceMode:mode});const started=await listen();console.log(JSON.stringify({url:started.url,source:dir,choices_file:mode.choices.file,labeler,synthetic:argv.includes('--scratch'),counts:queue.counts,unresolved:queue.items.length,parked_machine_valid:412}));
  const stop=()=>{release();server.close(()=>process.exit(0));setTimeout(()=>process.exit(0),500).unref();};process.on('SIGINT',stop);process.on('SIGTERM',stop);process.on('exit',release);
  if(argv.includes('--open'))require('node:child_process').execFile('/usr/bin/open',[started.url]);
 }

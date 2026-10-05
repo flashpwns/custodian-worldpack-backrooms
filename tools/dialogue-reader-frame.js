@@ -404,7 +404,10 @@ function validateSurface(frame, input = {}) {
     // Set-valued and second-person address operations need surface evidence in the act itself.
     const words = wordsIn(act, input);
     const [a0, b0] = Array.isArray(act.span) ? act.span : [0, -1];
-    const secondPerson = (input.features?.second_person ?? []).some((t) => t >= a0 && t <= b0);
+    // Older frozen packs omitted contraction features. Recognize only explicit you-contractions
+    // inside this act; never infer address from the interface delivery target or another clause.
+    const secondPerson = (input.features?.second_person ?? []).some((t) => t >= a0 && t <= b0)
+      || (input.line?.tokens ?? []).some((t) => t.i >= a0 && t.i <= b0 && /^you['’](?:re|ve|ll|d)$/i.test(t.text));
     const has = (set) => words.some((w) => set.has(w));
     if (op === "ALL" && !has(ALL_WORDS) && !(secondPerson && words.includes("all"))) flag("address", "all_without_evidence", "clarify", { slot: "person" });
     if (op === "OTHERS" && !has(OTHERS_WORDS) && !((words.includes("two") || words.includes("three")) && secondPerson)) flag("address", "others_without_evidence", "clarify", { slot: "person" });

@@ -47,7 +47,7 @@ const MAX_REFERENTS = 24;
 const PLACE_ENTITY_IDS = new Set(["complex", "threshold", "outpost-a"]);
 
 const WH = new Set(["who", "whom", "whose", "what", "where", "when", "why", "how", "which"]);
-const SECOND_PERSON = new Set(["you", "your", "yours", "yourself", "yourselves", "u", "ya", "yall", "y'all", "ur"]);
+const SECOND_PERSON = new Set(["you", "your", "yours", "yourself", "yourselves", "u", "ya", "yall", "y'all", "ur", "you're", "you've", "you'll", "you'd"]);
 const QUANTIFIERS = new Set(["all", "everyone", "everybody", "both", "rest", "others", "other", "anyone", "anybody", "each", "except", "two", "three", "just", "only", "whole", "else", "guys", "team"]);
 const DEICTICS = new Set(["it", "its", "that", "this", "those", "these", "there", "them"]);
 // Place deixis (Reader Phase 1): closed-vocabulary tokens a deictic place reference is made with -- "there" /
