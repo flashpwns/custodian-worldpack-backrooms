@@ -13,6 +13,13 @@ async function captureFrozenCorpus() {
     execFileSync("git", ["archive", "--format=tar", `--output=${archive}`, FROZEN_SOURCE_COMMIT], {cwd:path.join(__dirname,"../..")});
     execFileSync("tar", ["-xf", archive, "-C", root]);
     fs.unlinkSync(archive);
+    // Git archives exclude installed dependencies. Reuse the verified installation only
+    // when its dependency declarations and lock match the frozen source exactly.
+    const checkout = path.join(__dirname, "../..");
+    for (const file of ["package.json", "package-lock.json"]) {
+      if (!fs.readFileSync(path.join(root, file)).equals(fs.readFileSync(path.join(checkout, file)))) throw new Error(`Frozen replay dependency pin differs: ${file}`);
+    }
+    fs.symlinkSync(path.join(checkout, "node_modules"), path.join(root, "node_modules"), "dir");
     return await require(path.join(root,"tools/dialogue-reader-replay")).captureCorpus();
   } finally { fs.rmSync(root, {recursive:true,force:true}); }
 }
