@@ -330,7 +330,7 @@
     "tests/y57-desktop-prerequisite-repair.test.js": "1b2a1da11ef426374fb0165b8a5971d1d16c07067e9006a30751b34c24c48d66",
     "tests/y58-assignment-engine.test.js": "39fcd9c5bb3e5bb6cc5827389646bc856e53ba32f931d6144a9b1363dddc3939",
     "tests/y59-career-loop.test.js": "3813182c93e1b980f0419829ed186ab424d8b281cd1d289096a83b2a5259c090",
-    "tests/y60-personnel-continuity.test.js": "10dcff0ac1613b5ba7dd50523e81e6e0a78942957d414f7308c02d0e897857f4",
+    "tests/y60-personnel-continuity.test.js": "cced063e5cac72ce25cf0e47bcea3a6c16578671c88a92f4ea77d670a6a9543c",
     "tests/y61-local-standard.test.js": "192d2b6c763328d41ebad3db8e787ac92d1b24caea1a95da3c859fb0bb9d8378",
     "tests/y62-evidence-archive.test.js": "eae7af799d752f7f607d46d7ae86cd6d1a2fa27b942235eaf7c7dce80e059d79",
     "tests/y62-pass17-human-gate.test.js": "e0acc3a02be5fd33f879c161faedac3551059db5a7fed508a21d1985dbb80ab4",

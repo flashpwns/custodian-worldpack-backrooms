@@ -7,13 +7,15 @@
 // simulation-owned record, never from a model and never from wording. The profile is deliberately small:
 // employment/expedition/Complex experience as BANDS (the precision canon stores), familiarity with the
 // people at the table, and self-state baselines. It never holds hometowns, families, childhoods, trauma,
-// secret histories or prior anomaly encounters -- those belong to a future authored personnel system.
+// secret histories or invented anomaly encounters. Verified field experience is archived
+// on the personnel record when an assignment concludes, for subsequent assignments.
 //
 // Generation is deterministic from the run seed + actor identity, constrained by the authored archetype
 // (data/worldpacks/clear-q4/personhood-constraints.json): a single allowed value is authored canon, several
 // allowed values are chosen by hash. It is persisted on the team member (member.personhood), so it is stable
 // across reload; a save without it is back-filled with exactly what a fresh world with the same seeds would
-// generate (migration is translation, not retcon).
+// generate (migration is translation, not retcon). A returning coworker instead
+// inherits their archived profile and personally earned experience.
 
 const crypto = require("node:crypto");
 const defaultConstraints = require("../data/worldpacks/clear-q4/personhood-constraints.json");
@@ -90,9 +92,56 @@ function ensurePersonhood(run, { constraints = defaultConstraints } = {}) {
     const id = idOf(member);
     if (!id || id === playerId) continue;
     if (member.personhood?.version === PERSONHOOD_VERSION) continue;
-    const profile = generateProfile({ seed, actor_id: id, archetype: member.archetype ?? null, constraints, familiar_ids: familiarityFor(run, id, constraints) });
+    // A returning person keeps their established profile. Run seeds select new
+    // personnel, but must never reroll the biography of an existing coworker.
+    const durable = run._world?.characters?.[id]?.dialogue_personhood;
+    const profile = durable?.version === PERSONHOOD_VERSION && durable.actor_id === id
+      ? { ...structuredClone(durable), familiarity: { ...familiarityFor(run, id, constraints), ...structuredClone(durable.familiarity ?? {}) } }
+      : generateProfile({ seed, actor_id: id, archetype: member.archetype ?? null, constraints, familiar_ids: familiarityFor(run, id, constraints) });
     member.personhood = { ...structuredClone(profile), self_state_history: [] };
     recordSelfStateSnapshot(run, id, { at: run.expedition.clock?.interval ?? 0, source: "profile_initialised" });
+    written.push(id);
+  }
+  return written;
+}
+
+/** Archive at a canonical assignment boundary, never from generated speech.
+ * Only the observer's own direct field observations establish new experience.
+ * Institutional operation time is not a calendar: tenure/first-day and baseline
+ * temperament remain unchanged unless another canonical authority changes them.
+ */
+function persistAssignmentProfiles(world, run) {
+  if (!world || !run?.expedition?.team?.members) return [];
+  ensurePersonhood(run);
+  const definition = run.spatial_pack_id ? require("./run-bootstrap").topologyFor(run) : null;
+  const fieldIds = new Set((definition?.locations ?? []).filter(location =>
+    location.tags?.includes("field") || location.type === "complex-entry").map(location => location.id));
+  const written = [];
+  for (const member of run.expedition.team.members) {
+    const id = idOf(member);
+    const person = world.characters?.[id];
+    if (!person || !member.personhood) continue;
+    const profile = structuredClone(member.personhood);
+    delete profile.self_state_history;
+    const ownLocations = run.survey_frontier?.personnel?.[id]?.locations ?? {};
+    const entered = Object.entries(ownLocations).some(([location, record]) =>
+      fieldIds.has(location) && record.provenance?.some(proof => proof.direct === true));
+    if (entered) {
+      if (profile.expedition_experience === "none") profile.expedition_experience = "some";
+      if (profile.complex_experience === "none") profile.complex_experience = "some";
+      profile.lived_experience = { source_run: run.run_id, authority: "observer-direct-field-history" };
+    }
+    // Mere roster assignment does not establish familiarity: only a completed
+    // shared operation already committed by the personnel authority does.
+    for (const fact of person.continuity?.shared_history ?? []) {
+      if (fact.kind !== "operation-returned" || fact.run_id !== run.run_id) continue;
+      for (const other of fact.participants ?? []) if (other !== id) {
+        profile.familiarity[other] = "worked_together";
+        profile.shared_work_provenance ??= {};
+        profile.shared_work_provenance[other] = fact.id;
+      }
+    }
+    person.dialogue_personhood = profile;
     written.push(id);
   }
   return written;
@@ -154,15 +203,15 @@ function profileViolations(run) {
     if (!p) continue;
     const id = idOf(member);
     if (p.first_day_at_async !== (p.async_tenure === "first_day")) out.push(`${id}: first_day vs tenure`);
-    if (p.first_day_at_async && (p.expedition_experience !== "none" || p.complex_experience !== "none")) out.push(`${id}: first day with prior experience`);
+    if (p.lived_experience?.authority !== "observer-direct-field-history" && p.first_day_at_async && (p.expedition_experience !== "none" || p.complex_experience !== "none")) out.push(`${id}: first day with prior experience`);
     if (p.complex_experience !== "none" && p.expedition_experience === "none") out.push(`${id}: Complex entry without an expedition`);
     if (member.archetype === "intern-courier" && ["years"].includes(p.async_tenure)) out.push(`${id}: intern with years of tenure`);
     for (const [other, band] of Object.entries(p.familiarity ?? {})) {
       const theirs = memberOf(run, other)?.personhood;
-      if (band !== "just_met" && (p.first_day_at_async || theirs?.first_day_at_async)) out.push(`${id}: familiarity ${band} with ${other} on a first day`);
+      if (!p.shared_work_provenance?.[other] && band !== "just_met" && (p.first_day_at_async || theirs?.first_day_at_async)) out.push(`${id}: familiarity ${band} with ${other} on a first day`);
     }
   }
   return out;
 }
 
-module.exports = { PERSONHOOD_VERSION, generateProfile, ensurePersonhood, familiarityFor, profileOf, selfStateDimensions, recordSelfStateSnapshot, selfStateAt, profileViolations, defaultConstraints };
+module.exports = { persistAssignmentProfiles, PERSONHOOD_VERSION, generateProfile, ensurePersonhood, familiarityFor, profileOf, selfStateDimensions, recordSelfStateSnapshot, selfStateAt, profileViolations, defaultConstraints };
