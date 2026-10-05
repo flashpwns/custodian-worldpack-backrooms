@@ -18,7 +18,7 @@ const {
 const { createLivingProvider } = require("../tools/ai-living-provider");
 const { executeLivingTurn } = require("../tools/ai-living-turn");
 
-function createUtilityFixture(seed = "ledger-observer-shell") {
+async function createUtilityFixture(seed = "ledger-observer-shell") {
   const appDataPath = fs.mkdtempSync(path.join(os.tmpdir(), "yb-ledger-test-"));
   const livingProvider = createLivingProvider();
   const service = new DesktopService({
@@ -32,7 +32,7 @@ function createUtilityFixture(seed = "ledger-observer-shell") {
   for (const action of ["READY", "PROCEED", "APPROACH", "READY"]) {
     assert.equal(service.submitAction({ world_id: world.id, mode: "field-researcher", action }).ok, true);
   }
-  assert.equal(service.submitQ4Communication({ world_id: world.id, channel: "standard", text: "Standard, field team assembled at Threshold Room. Requesting link check." }).ok, true);
+  assert.equal((await service.submitQ4Communication({ world_id: world.id, channel: "standard", text: "Standard, field team assembled at Threshold Room. Requesting link check." })).ok, true);
   assert.equal(service.submitAction({ world_id: world.id, mode: "field-researcher", action: "CROSS" }).ok, true);
   const entry = service.session(world.id, "field-researcher");
   return { appDataPath, service, world, entry, run: entry.run, provider: livingProvider };
@@ -52,7 +52,7 @@ function canonicalSnapshot(run) {
 }
 
 test("1 YB-C02 complete-clause parsing still passes", async () => {
-  const { service, world, run } = createUtilityFixture("test-case-1");
+  const { service, world, run } = await createUtilityFixture("test-case-1");
   const beforeInterval = run.expedition.clock.interval;
   const beforeEvidence = run.expedition.evidence.length;
 
@@ -74,7 +74,7 @@ test("1 YB-C02 complete-clause parsing still passes", async () => {
 });
 
 test("2 Coordinated actions still execute atomically", async () => {
-  const { service, world, run } = createUtilityFixture("test-case-2");
+  const { service, world, run } = await createUtilityFixture("test-case-2");
   const beforeSnapshot = canonicalSnapshot(run);
 
   // Impossible target in second clause
@@ -90,8 +90,8 @@ test("2 Coordinated actions still execute atomically", async () => {
   assert.deepEqual(canonicalSnapshot(run), beforeSnapshot);
 });
 
-test("3 Player interpreter receives observer-safe shell rather than full canonical world", () => {
-  const { run } = createUtilityFixture("test-case-3");
+test("3 Player interpreter receives observer-safe shell rather than full canonical world", async () => {
+  const { run } = await createUtilityFixture("test-case-3");
   const playerId = run.session.startup.player.observer_id;
 
   const shell = projectObserverState(run, playerId, "player-interpreter");
@@ -108,8 +108,8 @@ test("3 Player interpreter receives observer-safe shell rather than full canonic
   assert.ok(Array.isArray(shell.packet.held_equipment));
 });
 
-test("4 Hidden geometry does not enter player shell", () => {
-  const { run } = createUtilityFixture("test-case-4");
+test("4 Hidden geometry does not enter player shell", async () => {
+  const { run } = await createUtilityFixture("test-case-4");
   const playerId = run.session.startup.player.observer_id;
 
   const shell = projectObserverState(run, playerId, "player-interpreter");
@@ -122,8 +122,8 @@ test("4 Hidden geometry does not enter player shell", () => {
   assert.ok(!allLocationsInShell.includes("kv31-deep-node"));
 });
 
-test("5 Hidden state does not enter coworker shell", () => {
-  const { run } = createUtilityFixture("test-case-5");
+test("5 Hidden state does not enter coworker shell", async () => {
+  const { run } = await createUtilityFixture("test-case-5");
 
   const coworkerShell = projectObserverState(run, "personnel-beverly-bell", "coworker-mini-shell");
   assert.equal(coworkerShell.ok, true);
@@ -138,8 +138,8 @@ test("5 Hidden state does not enter coworker shell", () => {
   assert.equal(coworkerShell.packet.knowledge.secret_object_properties, undefined);
 });
 
-test("6 Matthew cannot reference an event he did not observe/hear", () => {
-  const { run } = createUtilityFixture("test-case-6");
+test("6 Matthew cannot reference an event he did not observe/hear", async () => {
+  const { run } = await createUtilityFixture("test-case-6");
   const matthewId = "matthew-murphy";
 
   // Matthew has never inspected or observed a distant scuff mark
@@ -158,8 +158,8 @@ test("6 Matthew cannot reference an event he did not observe/hear", () => {
   assert.equal(validation.code, "LOCAL_PRESENTATION_CLAIM_CONTRADICTION");
 });
 
-test("7 Matthew can reference it after valid reported knowledge reaches him", () => {
-  const { run } = createUtilityFixture("test-case-7");
+test("7 Matthew can reference it after valid reported knowledge reaches him", async () => {
+  const { run } = await createUtilityFixture("test-case-7");
   const matthewId = run.session.startup.player.observer_id;
   const matthewMember = canonicalLedger.getObserverMember(run, matthewId);
 
@@ -187,8 +187,8 @@ test("7 Matthew can reference it after valid reported knowledge reaches him", ()
   assert.equal(validation.ok, true);
 });
 
-test("8 Direct observation remains distinct from reported knowledge", () => {
-  const { run } = createUtilityFixture("test-case-8");
+test("8 Direct observation remains distinct from reported knowledge", async () => {
+  const { run } = await createUtilityFixture("test-case-8");
   const member = canonicalLedger.getObserverMember(run, "personnel-santiago-stokes");
 
   member.known_information = [
@@ -221,10 +221,10 @@ test("8 Direct observation remains distinct from reported knowledge", () => {
   assert.equal(reported[0].source, "local-communication");
 });
 
-test("9 Local speech can update multiple hearers without forcing multiple replies", () => {
-  const { service, world, run } = createUtilityFixture("test-case-9");
+test("9 Local speech can update multiple hearers without forcing multiple replies", async () => {
+  const { service, world, run } = await createUtilityFixture("test-case-9");
   const playerId = run.session.startup.player.observer_id;
-  const res = service.submitQ4Communication({
+  const res = await service.submitQ4Communication({
     world_id: world.id,
     channel: "local",
     text: "Team, maintain spacing near the conduit."
@@ -250,9 +250,9 @@ test("9 Local speech can update multiple hearers without forcing multiple replie
   assert.ok(!speakerColonMatches || speakerColonMatches.length <= 1);
 });
 
-test("10 One direct question to Beverly does not automatically produce responses from all four coworkers", () => {
-  const { service, world } = createUtilityFixture("test-case-10");
-  const res = service.submitQ4Communication({
+test("10 One direct question to Beverly does not automatically produce responses from all four coworkers", async () => {
+  const { service, world } = await createUtilityFixture("test-case-10");
+  const res = await service.submitQ4Communication({
     world_id: world.id,
     channel: "local",
     text: "Beverly, what is our status on camera film?"
@@ -265,8 +265,8 @@ test("10 One direct question to Beverly does not automatically produce responses
   assert.ok(!res.result.public_reason.includes("Santiago:") && !res.result.public_reason.includes("Autumn:"));
 });
 
-test("11 Equipment ownership exists in one canonical location", () => {
-  const { run } = createUtilityFixture("test-case-11");
+test("11 Equipment ownership exists in one canonical location", async () => {
+  const { run } = await createUtilityFixture("test-case-11");
 
   const cameraHolder = canonicalLedger.getEquipmentHolder(run, "recording-device");
   assert.equal(cameraHolder, "personnel-beverly-bell");
@@ -277,8 +277,8 @@ test("11 Equipment ownership exists in one canonical location", () => {
   assert.equal(invariants.violations.length, 0);
 });
 
-test("12 A coworker dialogue claim contradicting camera ownership is rejected", () => {
-  const { run } = createUtilityFixture("test-case-12");
+test("12 A coworker dialogue claim contradicting camera ownership is rejected", async () => {
+  const { run } = await createUtilityFixture("test-case-12");
 
   // Beverly holds camera; Matthew falsely claims he has it
   const packet = {
@@ -296,8 +296,8 @@ test("12 A coworker dialogue claim contradicting camera ownership is rejected", 
   assert.equal(validation.code, "LOCAL_PRESENTATION_CLAIM_CONTRADICTION");
 });
 
-test("13 A valid camera-ownership claim is permitted", () => {
-  const { run } = createUtilityFixture("test-case-13");
+test("13 A valid camera-ownership claim is permitted", async () => {
+  const { run } = await createUtilityFixture("test-case-13");
 
   // Beverly holds camera; Beverly truthfully claims custody
   const packet = {
@@ -314,8 +314,8 @@ test("13 A valid camera-ownership claim is permitted", () => {
   assert.equal(validation.ok, true);
 });
 
-test("14 Standard does not know an observation before transmission", () => {
-  const { run } = createUtilityFixture("test-case-14");
+test("14 Standard does not know an observation before transmission", async () => {
+  const { run } = await createUtilityFixture("test-case-14");
 
   // Prior to radio transmission, Standard has no record of local observations
   const standardKnowledge = canonicalLedger.getStandardKnowledge(run);
@@ -323,11 +323,11 @@ test("14 Standard does not know an observation before transmission", () => {
   assert.equal(mentionsFixture, false);
 });
 
-test("15 Standard knows it after successful canonical transmission", () => {
-  const { service, world, run } = createUtilityFixture("test-case-15");
+test("15 Standard knows it after successful canonical transmission", async () => {
+  const { service, world, run } = await createUtilityFixture("test-case-15");
   const playerId = run.session.startup.player.observer_id;
 
-  const res = service.submitQ4Communication({
+  const res = await service.submitQ4Communication({
     world_id: world.id,
     channel: "standard",
     text: "Standard, field team observed utility fluorescent fixture at T+5."
@@ -340,8 +340,8 @@ test("15 Standard knows it after successful canonical transmission", () => {
   assert.equal(received.sender, playerId);
 });
 
-test("16 Save/reload reconstructs semantically equivalent player shell", () => {
-  const { appDataPath, service, world, run } = createUtilityFixture("test-case-16");
+test("16 Save/reload reconstructs semantically equivalent player shell", async () => {
+  const { appDataPath, service, world, run } = await createUtilityFixture("test-case-16");
   const playerId = run.session.startup.player.observer_id;
 
   const shellBefore = projectObserverState(run, playerId, "player-interpreter");
@@ -362,8 +362,8 @@ test("16 Save/reload reconstructs semantically equivalent player shell", () => {
   assert.deepEqual(shellBefore.packet, shellAfter.packet);
 });
 
-test("17 Save/reload reconstructs semantically equivalent coworker shell", () => {
-  const { appDataPath, service, world, run } = createUtilityFixture("test-case-17");
+test("17 Save/reload reconstructs semantically equivalent coworker shell", async () => {
+  const { appDataPath, service, world, run } = await createUtilityFixture("test-case-17");
 
   const shellBefore = projectObserverState(run, "personnel-beverly-bell", "coworker-mini-shell");
   assert.equal(shellBefore.ok, true);
@@ -383,8 +383,8 @@ test("17 Save/reload reconstructs semantically equivalent coworker shell", () =>
   assert.deepEqual(shellBefore.packet, shellAfter.packet);
 });
 
-test("18 Transcript wording changes do not alter canonical reconstruction", () => {
-  const { appDataPath, service, world, run } = createUtilityFixture("test-case-18");
+test("18 Transcript wording changes do not alter canonical reconstruction", async () => {
+  const { appDataPath, service, world, run } = await createUtilityFixture("test-case-18");
 
   // Mutate presentation transcript prose only
   if (run.expedition.messages?.[0]) {
@@ -409,8 +409,8 @@ test("18 Transcript wording changes do not alter canonical reconstruction", () =
   assert.deepEqual(snapshotBefore.equipment, snapshotAfter.equipment);
 });
 
-test("19 Generated dialogue cannot mutate world state", () => {
-  const { run } = createUtilityFixture("test-case-19");
+test("19 Generated dialogue cannot mutate world state", async () => {
+  const { run } = await createUtilityFixture("test-case-19");
   const before = canonicalSnapshot(run);
 
   const packet = buildLocalDialoguePacket({
@@ -436,7 +436,7 @@ test("19 Generated dialogue cannot mutate world state", () => {
 });
 
 test("20 Existing YB-C02 presentation-failure atomicity remains intact", async () => {
-  const { run, provider } = createUtilityFixture("test-case-20");
+  const { run, provider } = await createUtilityFixture("test-case-20");
   const beforeInterval = run.expedition.clock.interval;
 
   const failingPresenter = {

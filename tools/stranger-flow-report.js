@@ -8,6 +8,7 @@ const surfaces = require("../desktop/renderer/surfaces");
 const qol = require("../desktop/renderer/qol");
 
 const RENDERER = fs.readFileSync(path.join(__dirname, "..", "desktop", "renderer", "renderer.js"), "utf8");
+const SURFACES_SOURCE = fs.readFileSync(path.join(__dirname, "..", "desktop", "renderer", "surfaces.js"), "utf8");
 const FORBIDDEN_PLAYER_DATA = /(?:world|region|run|history|actor|object|phenomenon|thread)-[a-f0-9]{8,}/i;
 const PHRASES = {
   "field-researcher": "I listen for changes in the passage.",
@@ -34,7 +35,7 @@ async function report() {
   const started = service.startSession({ world_id: worldId, mode: "field-researcher", require_personnel: true });
   const briefingPhase = started.projection.phase.phase_id;
   const guidedEnabled = started.projection.phase.tutorial_context.enabled === true;
-  const guidedMarkup = RENDERER.includes('data-testid="guided-introduction"');
+  const guidedMarkup = SURFACES_SOURCE.includes("Conversation guidance") && SURFACES_SOURCE.includes("<details>");
   const guidedModeSpecific = ["Current instruction", "Channel guidance", "Desk instruction", "Investigation instruction", "Field instruction"].every((text) => RENDERER.includes(text));
 
   for (const action of ["READY", "PROCEED", "APPROACH", "READY"]) service.submitAction({ world_id: worldId, mode: "field-researcher", action });
@@ -81,7 +82,7 @@ async function report() {
     launch: { first_run_complete: launch.first_run_complete === true, worlds: launchWorlds },
     world_creation: { ok: worldCreated, world_name: world.world.name },
     mode_choices: { count: modeChoices.length, choices: modeChoices, all_described: modeChoices.every((mode) => mode.description && mode.description.length > 0) },
-    guided_introduction: { phase_enabled: guidedEnabled, player_surface: guidedEnabled && guidedMarkup, mode_specific: guidedModeSpecific },
+    guided_introduction: { phase_enabled: guidedEnabled, player_surface: guidedMarkup, nonblocking: guidedMarkup && !guidedEnabled, mode_specific: guidedModeSpecific },
     natural_language: { offline: providerStatus.offline === true, accepted: naturalResult.ok === true, result_understandable: Boolean(naturalResult.result?.scene?.narration) },
     contextual_information: { recap_title: recap.title, sections: recap.sections.length, what_do_i_know: RENDERER.includes("What do I know?") },
     save_resume: { saved: saved.ok === true, resumed: resumed.ok === true, same_world: resumed.ok && resumed.projection.world.id === worldId, no_advance: resumed.ok && resumed.projection.phase.phase_id === fieldPhase },
@@ -91,7 +92,7 @@ async function report() {
     player_boundary: { no_debug_console_by_default: launch.developer_mode !== true && RENDERER.includes("current.developer"), no_opaque_ids_in_surfaces: modeFlows.every((flow) => flow.safe_surface) },
     briefing_phase: briefingPhase,
     field_phase: fieldPhase,
-    passed: worldCreated && modeChoices.length === 4 && modeChoices.every((mode) => mode.description && mode.description.length > 0) && guidedEnabled && guidedMarkup && naturalResult.ok === true && recap.sections.length > 0 && saved.ok === true && resumed.ok === true && resumed.projection.world.id === worldId && resumed.projection.phase.phase_id === fieldPhase && providerFailure.ok === false && service.getProviderStatus().provider.offline === true && offlineResult.ok === true && settingsResult.ok === true && settingsResult.settings?.text_scale === "extra-large" && modeFlows.every((flow) => flow.safe_surface && flow.has_natural_input) && launch.first_run_complete !== true,
+    passed: worldCreated && modeChoices.length === 4 && modeChoices.every((mode) => mode.description && mode.description.length > 0) && !guidedEnabled && guidedMarkup && naturalResult.ok === true && recap.sections.length > 0 && saved.ok === true && resumed.ok === true && resumed.projection.world.id === worldId && resumed.projection.phase.phase_id === fieldPhase && providerFailure.ok === false && service.getProviderStatus().provider.offline === true && offlineResult.ok === true && settingsResult.ok === true && settingsResult.settings?.text_scale === "extra-large" && modeFlows.every((flow) => flow.safe_surface && flow.has_natural_input) && launch.first_run_complete !== true,
   };
   fs.rmSync(root, { recursive: true, force: true });
   return reportData;

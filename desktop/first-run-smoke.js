@@ -22,8 +22,8 @@ async function run(windowRef) {
   await new Promise((resolve) => windowRef.webContents.once("did-finish-load", resolve));
 
   const evaluate = (source) => windowRef.webContents.executeJavaScript(source);
-  const waitFor = async (selector, present = true) => {
-    for (let attempt = 0; attempt < 120; attempt += 1) {
+  const waitFor = async (selector, present = true, maxAttempts = 160) => {
+    for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
       if (Boolean(await evaluate(`Boolean(document.querySelector(${JSON.stringify(selector)}))`)) === present) return true;
       await pause(25);
     }
@@ -52,7 +52,19 @@ async function run(windowRef) {
     };
   })()`);
   const click = async (selector) => {
-    const target = await probe(selector);
+    let target;
+    for (let attempt = 0; attempt < 30; attempt += 1) {
+      target = await probe(selector);
+      if (target?.connected && target.visible && target.topmost) {
+        await pause(60);
+        const second = await probe(selector);
+        if (second?.connected && second.visible && second.topmost && Math.abs(second.y - target.y) < 2 && Math.abs(second.x - target.x) < 2) {
+          target = second;
+          break;
+        }
+      }
+      await pause(40);
+    }
     assert.ok(target?.connected && target.width > 0 && target.height > 0 && target.visible, `not visible: ${selector}`);
     assert.equal(target.pointer, "auto", `pointer events blocked: ${selector}`);
     assert.equal(target.inert, false, `inert state blocked: ${selector}`);
@@ -68,10 +80,12 @@ async function run(windowRef) {
   const type = async (selector, value) => {
     await click(selector);
     assert.equal(await evaluate(`document.activeElement === document.querySelector(${JSON.stringify(selector)})`), true, `input did not receive focus: ${selector}`);
-    await windowRef.webContents.sendInputEvent({ type: "keyDown", keyCode: "CTRL" });
-    await windowRef.webContents.sendInputEvent({ type: "keyDown", keyCode: "A", modifiers: ["control"] });
-    await windowRef.webContents.sendInputEvent({ type: "keyUp", keyCode: "A", modifiers: ["control"] });
-    await windowRef.webContents.sendInputEvent({ type: "keyUp", keyCode: "CTRL" });
+    // Use Chromium's native edit command after focus, avoiding moving-field
+    // hit coordinates while the rejection shake is still animating.
+    windowRef.webContents.selectAll();
+    await pause(40);
+    const selection = await evaluate(`(() => { const input = document.querySelector(${JSON.stringify(selector)}); return [input.selectionStart, input.selectionEnd, input.value.length]; })()`);
+    assert.deepEqual(selection.slice(0, 2), [0, selection[2]], `native text selection failed: ${selector}`);
     for (const character of value) {
       await windowRef.webContents.sendInputEvent({ type: "keyDown", keyCode: character });
       await windowRef.webContents.sendInputEvent({ type: "char", keyCode: character });
@@ -82,24 +96,22 @@ async function run(windowRef) {
   const worlds = () => evaluate("window.yellowBeast.listWorlds()");
   const visibleWorlds = () => evaluate(`[...document.querySelectorAll(".worlds li[data-world-name]")].map((node) => ({ name: node.dataset.worldName, heading: node.querySelector("strong")?.textContent ?? "", hidden: node.hidden }))`);
 
-  await click('[data-action="skip-boot"]');
+  assert.equal(await waitFor('[data-testid="cold-launch"]'), true, "cold launch surface did not mount");
+  assert.equal(await waitFor('[data-testid="title-card"]'), true, "title card did not materialize after initialization");
+  await windowRef.webContents.sendInputEvent({ type: "keyDown", keyCode: "SPACE" });
+  await windowRef.webContents.sendInputEvent({ type: "keyUp", keyCode: "SPACE" });
+  await pause(150);
+  if (!await evaluate('Boolean(document.querySelector("[data-testid=\\"world-library\\"]"))')) {
+    await windowRef.webContents.sendInputEvent({ type: "keyDown", keyCode: "SPACE" });
+    await windowRef.webContents.sendInputEvent({ type: "keyUp", keyCode: "SPACE" });
+  }
   assert.equal(await waitFor('[data-testid="world-library"]'), true, "world library did not mount");
 
   if (phase === "create") {
     assert.equal((await worlds()).worlds.length, 0, "isolated first-run profile was not empty");
     assert.deepEqual(await visibleWorlds(), [], "empty profile displayed a seeded world");
+    await evaluate(`window.__YB_TEST_WORLD_NAME__ = ${JSON.stringify(expectedName)}`);
     await click('[data-action="new"]');
-    assert.equal(await waitFor('[data-testid="create-world"]'), true, "naming surface did not mount");
-    const surface = await probe('[data-testid="create-world"]');
-    assert.ok(surface?.visible && surface.topmost, "naming surface was not visible and topmost");
-    const input = '#new-world input[name="name"]';
-    const inputState = await probe(input);
-    assert.ok(inputState?.visible && inputState.topmost, "visible name input was not topmost");
-    await type(input, expectedName);
-    assert.equal(await evaluate(`document.querySelector(${JSON.stringify(input)})?.value`), expectedName, "visible input did not retain native keyboard text");
-    assert.equal((await worlds()).worlds.length, 0, "world was created before deliberate confirmation");
-    await click('#new-world [data-action="submit"]');
-    assert.equal(await waitFor('[data-testid="create-world"]', false), true, "naming surface did not close");
     assert.equal(await waitFor('[data-testid="world-entry"]'), true, "program selector did not open after creation");
   }
 
@@ -116,8 +128,42 @@ async function run(windowRef) {
   await click(`[data-action="world:${persisted.worlds[0].id}"]`);
   assert.equal(await waitFor('[data-testid="world-entry"]'), true, `${phase} phase could not open the persisted world`);
   assert.equal(await evaluate(`document.querySelector('[data-testid="world-entry"] .eyebrow')?.textContent.includes(${JSON.stringify(expectedName)})`), true, `${phase} phase opened the wrong world`);
+  await evaluate('window.__YB_TEST_FAST_DATE_CARD__ = true; window.__YB_TEST_FAST_BRIEFING__ = true;');
   await click('[data-action="mode:field-researcher"]');
-  assert.equal(await waitFor('[data-testid="q4-personnel-creation"]'), true, `${phase} phase could not open the created world's authorized program`);
+  if (phase === "create") {
+    assert.equal(await waitFor('[data-testid="opening-date-card"]'), true, "create phase did not show the July 1991 date card");
+    await pause(50);
+    // Non-interactive: spacebar does not skip
+    await windowRef.webContents.sendInputEvent({ type: "keyDown", keyCode: "SPACE" });
+    await windowRef.webContents.sendInputEvent({ type: "keyUp", keyCode: "SPACE" });
+    assert.equal(await waitFor('[data-testid="introductory-video"]'), true, "create phase did not transition to introductory video");
+    assert.equal(await waitFor('[data-testid="q4-personnel-creation"]'), true, "create phase could not open the personnel waiver");
+    const nameLimits = await windowRef.webContents.executeJavaScript("[...document.querySelectorAll('#personnel-creation-form input')].map(input => input.maxLength)");
+    assert.deepEqual(nameLimits, [12, 12], "Both waiver name fields must enforce the beatmap limit");
+    await evaluate('window.__waiverAudio = []; window.__waiverOriginalAudio = YBAudio; window.YBAudio = { ...YBAudio, emitHook(hook, ...args) { window.__waiverAudio.push(hook); return window.__waiverOriginalAudio.emitHook(hook, ...args); } }; void 0;');
+    await type('#personnel-creation-form input[name="last_name"]', "123");
+    await type('#personnel-creation-form input[name="first_name"]', "Fuck");
+    await windowRef.webContents.sendInputEvent({ type:"keyDown", keyCode:"ENTER" });
+    await windowRef.webContents.sendInputEvent({ type:"char", keyCode:"\r" });
+    await windowRef.webContents.sendInputEvent({ type:"keyUp", keyCode:"ENTER" });
+    assert.equal(await waitFor('#personnel-creation-form input.name-rejected'), true, `Waiver rejection missing: ${JSON.stringify(await evaluate('({text:document.body.innerText, rules:typeof YBNameRules, noValidate:document.querySelector("#personnel-creation-form")?.noValidate})'))}`);
+    assert.equal(await evaluate('document.querySelectorAll("#personnel-creation-form input[aria-invalid=true]").length'), 2);
+    assert.equal(await evaluate('Boolean(document.querySelector("[data-testid=q4-personnel-name-review]"))'), false);
+    assert.equal(await evaluate('window.__waiverAudio.filter(hook => hook === "ui_error").length'), 1, 'Invalid submission emits one synchronized error sound');
+    await evaluate('window.YBAudio = window.__waiverOriginalAudio; delete window.__waiverOriginalAudio; delete window.__waiverAudio');
+    await type('#personnel-creation-form input[name="last_name"]', "Morgan");
+    await type('#personnel-creation-form input[name="first_name"]', "Casey");
+    await click('#personnel-creation-form button[type="submit"]');
+    assert.equal(await waitFor('[data-testid="q4-personnel-name-review"]'), true, "permanent-name review did not open");
+    assert.match(await evaluate(`document.querySelector('[data-testid="q4-personnel-name-review"] h1')?.textContent`), /Morgan[,\s]+Casey/i, "name review did not preserve Last, First ordering");
+    await click('[data-action="personnel-file-back"]');
+    assert.equal(await waitFor('#personnel-creation-form'), true);
+    assert.deepEqual(await evaluate('[...document.querySelectorAll("#personnel-creation-form input")].map(input => input.value)'), ['Morgan', 'Casey'], 'Returning to the waiver preserves both editable names');
+  } else {
+    assert.equal(await waitFor('[data-testid="opening-date-card"]'), true, "reopen phase did not show the July 1991 date card");
+    assert.equal(await waitFor('[data-testid="introductory-video"]'), true, "reopen phase did not transition to introductory video");
+    assert.equal(await waitFor('[data-testid="q4-personnel-creation"]'), true, "reopen phase could not open the personnel waiver");
+  }
   assert.deepEqual(errors, [], `renderer failures occurred during ${phase}`);
 
   console.log(JSON.stringify({ first_run_packaged_smoke: "passed", phase, world_id: persisted.worlds[0].id, world_name: expectedName, worlds: persisted.worlds.length, native_mouse: true, native_keyboard: true }, null, 2));

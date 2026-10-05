@@ -82,6 +82,7 @@ function emit(run, {
   chunk_id = null,
   metadata = null,
   timestamp = null,
+  id: explicitId = null,
   ...extra
 } = {}) {
   const bus = ensure(run);
@@ -89,7 +90,7 @@ function emit(run, {
 
   const cleanedText = canonLinter.enforceCanonText(text);
   const interval = run.expedition.clock?.interval ?? 0;
-  const id = `pevt-${bus.events.length + 1}-${crypto.randomBytes(4).toString("hex")}`;
+  const id = explicitId ?? (type === EVENT_TYPES.DIALOGUE ? `dlg-${bus.events.length + 1}-${crypto.randomBytes(4).toString("hex")}` : `pevt-${bus.events.length + 1}-${crypto.randomBytes(4).toString("hex")}`);
 
   const event = {
     id,
@@ -116,6 +117,31 @@ function emit(run, {
   run.expedition.presentation_events.push(clone(event));
   if (type === EVENT_TYPES.DIALOGUE || type === EVENT_TYPES.INTERPRETATION) {
     run.expedition.dialogue_bus.push(clone(event));
+    if (type === EVENT_TYPES.DIALOGUE) {
+      run.expedition.dialogue_history ??= [];
+      const alreadyPresent = run.expedition.dialogue_history.some((e) => e.id === event.id);
+      if (!alreadyPresent) {
+        const canonicalDlg = createDialogueEvent({
+          id: event.id,
+          submission_id: event.submission_id,
+          speaker_id: event.speaker_id,
+          speaker_name: event.speaker ?? event.speaker_name,
+          speaker_title: event.speaker_title,
+          recipient_type: event.recipient_type,
+          recipient_id: event.recipient_id,
+          recipient_name: event.recipient_name ?? event.recipient,
+          listeners: event.listeners,
+          channel: event.channel ?? channel,
+          text: cleanedText,
+          kind: event.kind ?? "speech",
+          source: event.source ?? source,
+          timestamp: event.timestamp ?? timestamp,
+          interval: event.interval ?? interval,
+          delivery: event.delivery ?? "delivered"
+        });
+        run.expedition.dialogue_history.push(canonicalDlg);
+      }
+    }
   }
 
   const worldId = run?.world_id ?? run?._world?.world_id;
@@ -189,14 +215,76 @@ function consumePending(run) {
   return pending.map((evt) => ({ ...evt }));
 }
 
+const RECIPIENT_TYPES = ["direct", "group", "broadcast", "none"];
+
+/**
+ * Canonical presentation-safe dialogue event contract.
+ * Separates immutable canonical event data from presentation/DOM state.
+ * Eliminates recipient ambiguity through explicit recipient_type.
+ */
+function createDialogueEvent({
+  id = null,
+  submission_id = null,
+  speaker_id = null,
+  speaker_name = "YOU",
+  speaker_title = null,
+  recipient_type = null,
+  recipient_id = null,
+  recipient_name = null,
+  listeners = [],
+  channel = "LOCAL",
+  text = "",
+  kind = "speech", // "speech" | "radio" | "institutional_record" | "system"
+  source = SOURCES.DETERMINISTIC,
+  timestamp = null,
+  interval = 0,
+  delivery = "delivered"
+} = {}) {
+  const normChannel = String(channel ?? "LOCAL").toUpperCase();
+
+  let resolvedType = recipient_type;
+  if (!resolvedType || !RECIPIENT_TYPES.includes(resolvedType)) {
+    if (recipient_id === "@table" || ["table", "team", "all", "everyone", "group"].includes(String(recipient_name ?? "").toLowerCase())) {
+      resolvedType = "group";
+    } else if (recipient_id || recipient_name) {
+      resolvedType = "direct";
+    } else if (normChannel === "FACILITY BROADCAST" || normChannel === "STANDARD") {
+      resolvedType = "broadcast";
+    } else {
+      resolvedType = "none";
+    }
+  }
+
+  return {
+    id: id || `dlg-${Date.now()}-${crypto.randomBytes(3).toString("hex")}`,
+    submission_id: submission_id ?? null,
+    speaker_id: speaker_id ?? null,
+    speaker_name: String(speaker_name ?? "Record"),
+    speaker_title: speaker_title ?? null,
+    recipient_type: resolvedType,
+    recipient_id: recipient_id ?? (resolvedType === "group" ? "@table" : null),
+    recipient_name: recipient_name ?? (resolvedType === "group" ? "Assembly Table" : null),
+    listeners: Array.isArray(listeners) ? [...listeners] : [],
+    channel: normChannel,
+    text: canonLinter.enforceCanonText(String(text ?? "")),
+    kind: ["speech", "radio", "institutional_record", "system"].includes(kind) ? kind : "speech",
+    source: SOURCES[source] ? source : SOURCES.DETERMINISTIC,
+    timestamp: timestamp ?? Date.now(),
+    interval: Number(interval) || 0,
+    delivery: ["delivered", "heard", "not-delivered", "transferred", "not-applicable"].includes(delivery) ? delivery : "delivered"
+  };
+}
+
 module.exports = {
   VERSION,
   SOURCES,
   EVENT_TYPES,
+  RECIPIENT_TYPES,
   ensure,
   hasPresented,
   trackPresented,
   emit,
+  createDialogueEvent,
   drain,
   flush,
   getEvents,

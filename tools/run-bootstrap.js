@@ -35,6 +35,12 @@ const personnelContinuity = require("./q4-personnel-continuity");
 const referenceExpedition = require("./reference-expedition");
 const cq4Day1Opener = require("./cq4-day1-opener");
 const canonicalLedger = require("./canonical-world-ledger");
+const observationAuthority = require("./observation-authority");
+// speech-scheduler is required lazily (inside recordCoworkerObservations)
+// rather than at module load time: it pulls in communication-routing ->
+// perception-service -> run-bootstrap, and a top-level require here would
+// close that cycle while this module is still mid-initialization, leaving
+// perception-service holding a stale, pre-export copy of these exports.
 
 const root = path.resolve(__dirname, "..");
 const read = (relative) => JSON.parse(fs.readFileSync(path.join(root, relative), "utf8"));
@@ -97,6 +103,63 @@ function spatialContext(run) {
 }
 function topologyFor(run) { return spatialRuntime.canonicalDefinition(run.spatial, spatialDefinitionFor(run.spatial_pack_id)); }
 
+// Wraps observationAuthority.observe() at the exact same call sites the
+// canonical survey-frontier is already observed/traversed from. On any
+// feature crossing NOTICED -> RECOGNIZED this call, appends one
+// direct-observation knowledge record (canonical-world-ledger's existing
+// write path) to that observer's own known_information -- never another
+// observer's. This never scans beyond the single observe() call's own
+// location-scoped feature set.
+function recordObservation(run, observerId, locationId, { interval = run.expedition?.clock?.interval ?? 0 } = {}) {
+  if (!run.spatial_pack_id || !observerId || !locationId) return [];
+  const world = run._world ?? null;
+  const priorStates = {};
+  for (const [featureId, entry] of Object.entries(run.observation_state?.observers?.[observerId]?.features ?? {})) priorStates[featureId] = entry.state;
+  observationAuthority.observe(run, world, observerId, locationId, { interval });
+  const bucket = run.observation_state?.observers?.[observerId]?.features ?? {};
+  const delta = [];
+  for (const [featureId, entry] of Object.entries(bucket)) {
+    const priorState = priorStates[featureId];
+    if (entry.state === priorState) continue;
+    delta.push({ feature_id: featureId, prior_state: priorState ?? null, new_state: entry.state, change_token: entry.seen_change_token, salience_at_notice: entry.salience_at_notice, recognition: entry.recognition });
+  }
+  const member = (run.expedition?.team?.members ?? []).find((item) => (item.personnel_id ?? item.id) === observerId);
+  if (member) {
+    member.known_information ??= [];
+    for (const [featureId, entry] of Object.entries(bucket)) {
+      if (entry.state !== "RECOGNIZED" || priorStates[featureId] === "RECOGNIZED") continue;
+      const alreadyRecorded = member.known_information.some((item) => item.source === "direct-observation" && item.target === featureId);
+      if (alreadyRecorded) continue;
+      member.known_information.push(canonicalLedger.createDirectObservation({ target: featureId, location: locationId, interval }));
+    }
+  }
+  return delta;
+}
+
+// Runs the same observation ingress the player already goes through (above)
+// for every co-located, active NPC team member. Never a new scan or timer --
+// called from the exact call sites that already record the player's own
+// observation. Deltas are handed to speech-scheduler for classification;
+// nothing here decides whether anything is spoken.
+function recordCoworkerObservations(run, locationId, { interval = run.expedition?.clock?.interval ?? 0 } = {}) {
+  if (!run.spatial_pack_id || !locationId) return;
+  const player = run.session?.startup?.player?.observer_id ?? null;
+  const deltasByObserver = {};
+  for (const member of run.expedition?.team?.members ?? []) {
+    const id = member.personnel_id ?? member.id;
+    if (!id || id === player) continue;
+    if (["dead", "missing", "incapacitated"].includes(String(member.status ?? "").toLowerCase())) continue;
+    if ((run.spatial?.personnel_locations?.[id] ?? null) !== locationId) continue;
+    const delta = recordObservation(run, id, locationId, { interval });
+    if (delta.length) deltasByObserver[id] = delta;
+  }
+  if (Object.keys(deltasByObserver).length === 0) return;
+  try {
+    const speechScheduler = require("./speech-scheduler");
+    speechScheduler.processObservationDeltas(run, run._world ?? null, locationId, deltasByObserver, { interval });
+  } catch { /* non-fatal: perception/knowledge already committed above */ }
+}
+
 function profileFor(profileId) { return read("profiles/profiles.json").profiles.find((profile) => profile.id === profileId); }
 function startupFor(profileId, playerOverride = null) {
   const profile = profileFor(profileId);
@@ -128,11 +191,11 @@ function configuredPack(profileId, playerId) {
   }
   return pack;
 }
-function newRun({ profile, seed, session, expedition, staffing = null, loadout = null, mission = null, procedural_state, procedural_scenario = false, scenario = null, spatial_state = null, object_state = null, survey_frontier = null, interpretation_state = null, spatial_pack_id = null, world_id = null, run_id = null, world = null, phase = "BRIEFING" }) {
+function newRun({ profile, seed, session, expedition, staffing = null, loadout = null, mission = null, procedural_state, procedural_scenario = false, scenario = null, spatial_state = null, object_state = null, survey_frontier = null, observation_state = null, interpretation_state = null, spatial_pack_id = null, world_id = null, run_id = null, world = null, phase = "BRIEFING" }) {
   const profileRecord = profileFor(profile);
   const player = session.startup.player.observer_id;
   const staffingRules = spatial_pack_id ? dynamicsDefinitionFor(spatial_pack_id).staffing : {};
-  const run = { version: "yellow-beast-run@v9", profile_id: profile, profile_title: profileRecord.title, scenario: scenario ?? (procedural_scenario ? "async-clear-q4-procedural-survey" : session.scenario.id), seed, session, lifecycle: "active", checklist: { moved: false, inspected: false, used: false }, aliases: {}, expedition: expedition ?? (profile === FIELD_PROFILE ? fieldExpedition(player, staffing, loadout, mission, seed, staffingRules) : null), procedural: procedural_scenario ? (procedural_state ?? procedural.initialize({ seed, observer: player })) : null, spatial_pack_id: profile === FIELD_PROFILE ? spatial_pack_id : null, spatial: spatial_state, object_state, survey_frontier, interpretation_state, world_id, run_id, _world: world };
+  const run = { version: "yellow-beast-run@v10", profile_id: profile, profile_title: profileRecord.title, scenario: scenario ?? (procedural_scenario ? "async-clear-q4-procedural-survey" : session.scenario.id), seed, session, lifecycle: "active", checklist: { moved: false, inspected: false, used: false }, aliases: {}, expedition: expedition ?? (profile === FIELD_PROFILE ? fieldExpedition(player, staffing, loadout, mission, seed, staffingRules) : null), procedural: procedural_scenario ? (procedural_state ?? procedural.initialize({ seed, observer: player })) : null, spatial_pack_id: profile === FIELD_PROFILE ? spatial_pack_id : null, spatial: spatial_state, object_state, survey_frontier, observation_state, interpretation_state, world_id, run_id, _world: world };
   if (run.spatial_pack_id) {
     ensureFacilityOperations(run.expedition);
     const logisticsDefinition = logisticsDefinitionFor(run.spatial_pack_id, run.scenario);
@@ -146,6 +209,9 @@ function newRun({ profile, seed, session, expedition, staffing = null, loadout =
     environment.ensure(run.spatial, topology, run.seed);
     run.survey_frontier = surveyFrontier.migrate(run.survey_frontier, topology, { ...context, spatial: run.spatial, at: run.expedition.clock?.interval ?? 0 });
     surveyFrontier.observe(run.survey_frontier, topology, player, run.spatial.player_location, { at: run.expedition.clock?.interval ?? 0, co_present: Object.entries(run.spatial.personnel_locations).filter(([id, location]) => id !== player && location === run.spatial.player_location).map(([id]) => id) });
+    run.observation_state = observationAuthority.migrate(run.observation_state);
+    recordObservation(run, player, run.spatial.player_location, { interval: run.expedition.clock?.interval ?? 0 });
+    recordCoworkerObservations(run, run.spatial.player_location, { interval: run.expedition.clock?.interval ?? 0 });
     spatialRuntime.syncEquipment(run.spatial, run.expedition); logisticsRuntime.syncSpatial(run.expedition, run.spatial);
     const interactions = interactionDefinitionFor(run.spatial_pack_id);
     run.object_state = objectRuntime.migrate(run.object_state, interactions);
@@ -192,19 +258,21 @@ function startRun({ profile, seed = "yellow-beast-bootstrap", scenario = null, w
   return { ok: restored.ok, session: result.session, run, restored_equivalent: restored.ok && stableSerialize(restored.session) === stableSerialize(result.session), summary: { session_id: result.session.id, profile, profile_title: profileRecord.title, scenario: result.session.scenario.id, seed, player: startup.player, knowledge: startup.knowledge, permissions: startup.permissions, resources: startup.resources } };
 }
 function normalizeRun(value) {
-  if (value?.version === "yellow-beast-run@v9") {
+  if (value?.version === "yellow-beast-run@v10") {
     if (!["active", "completed"].includes(value.lifecycle)) throw Object.assign(new Error("invalid current run lifecycle"), { code:"RUN_STATE_INVALID" });
     const activeClearQ4 = (value.lifecycle ?? "active") === "active" && value.spatial_pack_id === "clear-q4";
-    if (!value.session || !value.checklist || !value.aliases || (value.spatial_pack_id && (!value.expedition || !value.spatial || !value.object_state || !value.survey_frontier)) || (activeClearQ4 && value.spatial?.environment?.version !== environment.VERSION)) throw Object.assign(new Error("invalid current run state"), { code:"RUN_STATE_INVALID" });
+    if (!value.session || !value.checklist || !value.aliases || (value.spatial_pack_id && (!value.expedition || !value.spatial || !value.object_state || !value.survey_frontier || !value.observation_state)) || (activeClearQ4 && value.spatial?.environment?.version !== environment.VERSION)) throw Object.assign(new Error("invalid current run state"), { code:"RUN_STATE_INVALID" });
     if (activeClearQ4) {
       const topology = topologyFor(value); const player = value.session?.startup?.player?.observer_id; const personnel = (value.expedition?.team?.members ?? []).map((member) => member.personnel_id ?? member.id).filter(Boolean);
       environment.validateCurrent(value.spatial.environment, spatialDefinitionFor(value.spatial_pack_id));
       surveyFrontier.validateCurrent(value.survey_frontier, topology, { player, personnel });
+      const observationValidation = observationAuthority.validateCurrent(value.observation_state);
+      if (!observationValidation.ok) throw Object.assign(new Error(`invalid current observation_state: ${observationValidation.errors.join("; ")}`), { code:"RUN_STATE_INVALID" });
     }
     if (value.expedition) reconcileFacilityOperations(value.expedition, value.spatial);
     return value;
   }
-  if (["yellow-beast-run@v8", "yellow-beast-run@v7", "yellow-beast-run@v6", "yellow-beast-run@v5", "yellow-beast-run@v4", "yellow-beast-run@v3", "yellow-beast-run@v2", "yellow-beast-run@v1"].includes(value?.version)) return newRun({ profile: value.profile_id, seed: value.seed, session: value.session, expedition: value.expedition, procedural_state: value.procedural, procedural_scenario: Boolean(value.procedural), spatial_state: value.spatial, object_state: value.object_state, survey_frontier: value.survey_frontier, spatial_pack_id: value.spatial_pack_id ?? null, world_id: value.world_id, run_id: value.run_id });
+  if (["yellow-beast-run@v9", "yellow-beast-run@v8", "yellow-beast-run@v7", "yellow-beast-run@v6", "yellow-beast-run@v5", "yellow-beast-run@v4", "yellow-beast-run@v3", "yellow-beast-run@v2", "yellow-beast-run@v1"].includes(value?.version)) return newRun({ profile: value.profile_id, seed: value.seed, session: value.session, expedition: value.expedition, procedural_state: value.procedural, procedural_scenario: Boolean(value.procedural), spatial_state: value.spatial, object_state: value.object_state, survey_frontier: value.survey_frontier, observation_state: value.observation_state ?? null, spatial_pack_id: value.spatial_pack_id ?? null, world_id: value.world_id, run_id: value.run_id });
   if (value?.session) return newRun({ profile: value.session.startup.profile.id, seed: value.session.seed_material?.seed ?? "restored", session: value.session });
   return newRun({ profile: value.startup.profile.id, seed: value.seed_material?.seed ?? "restored", session: value });
 }
@@ -299,6 +367,8 @@ function setSpatialPhase(runValue, phase) {
   if (!run.spatial_pack_id) return run;
   spatialRuntime.setPhase(run.spatial, spatialDefinitionFor(run.spatial_pack_id), phase, spatialContext(run));
   surveyFrontier.observe(run.survey_frontier, topologyFor(run), run.session.startup.player.observer_id, run.spatial.player_location, { at: run.expedition.clock?.interval ?? 0, co_present: Object.entries(run.spatial.personnel_locations).filter(([id, location]) => id !== run.session.startup.player.observer_id && location === run.spatial.player_location).map(([id]) => id) });
+  recordObservation(run, run.session.startup.player.observer_id, run.spatial.player_location, { interval: run.expedition.clock?.interval ?? 0 });
+  recordCoworkerObservations(run, run.spatial.player_location, { interval: run.expedition.clock?.interval ?? 0 });
   spatialRuntime.syncEquipment(run.spatial, run.expedition); logisticsRuntime.syncSpatial(run.expedition, run.spatial);
   if (["FIELD_OPERATION", "RETURN", "DEBRIEF"].includes(phase)) observeCurrentObjects(run);
   evaluateMissionState(run, phase);
@@ -309,6 +379,8 @@ function enterSpatialField(runValue) {
   if (!run.spatial_pack_id) return run;
   spatialRuntime.enterField(run.spatial, spatialDefinitionFor(run.spatial_pack_id), spatialContext(run));
   surveyFrontier.observe(run.survey_frontier, topologyFor(run), run.session.startup.player.observer_id, run.spatial.player_location, { at: run.expedition.clock?.interval ?? 0, co_present: Object.entries(run.spatial.personnel_locations).filter(([id, location]) => id !== run.session.startup.player.observer_id && location === run.spatial.player_location).map(([id]) => id) });
+  recordObservation(run, run.session.startup.player.observer_id, run.spatial.player_location, { interval: run.expedition.clock?.interval ?? 0 });
+  recordCoworkerObservations(run, run.spatial.player_location, { interval: run.expedition.clock?.interval ?? 0 });
   spatialRuntime.syncEquipment(run.spatial, run.expedition); logisticsRuntime.syncSpatial(run.expedition, run.spatial);
   observeCurrentObjects(run);
   evaluateMissionState(run, "FIELD_OPERATION");
@@ -321,6 +393,8 @@ function look(runValue, { record = true } = {}) {
   if (run.spatial) {
     if (record) {
       surveyFrontier.observe(run.survey_frontier, topologyFor(run), observer, run.spatial.player_location, { at: run.expedition.clock?.interval ?? 0, co_present: Object.entries(run.spatial.personnel_locations).filter(([id, location]) => id !== observer && location === run.spatial.player_location).map(([id]) => id) });
+      recordObservation(run, observer, run.spatial.player_location, { interval: run.expedition.clock?.interval ?? 0 });
+      recordCoworkerObservations(run, run.spatial.player_location, { interval: run.expedition.clock?.interval ?? 0 });
       observeCurrentObjects(run);
       evaluateMissionState(run);
     }
@@ -422,12 +496,18 @@ function expeditionAction(run, verb, target) {
   if (verb === "COMPLETE_RETURN") {
     const definition = missionDefinitionFor(run.spatial_pack_id); const state = expedition.mission_state;
     if (!state?.return?.requested) return { ok: false, error: { code: "RETURN_NOT_REQUESTED" }, result: { public_reason: "Begin the return procedure before mission closure." }, run };
-    if (cq4Day1Opener.isOpener(run?.scenario) && !cq4Day1Opener.verifyReturn(run)) {
-      return { ok: false, error: { code: "RETURN_SURVEILLANCE_UNVERIFIED" }, result: { public_reason: "Standard surveillance has not verified the team at KV31. Contact the Control Room upstairs over the radio before re-crossing." }, run };
+    if (cq4Day1Opener.isOpener(run?.scenario)) {
+      if (cq4Day1Opener.isCutoffExceeded(run)) {
+        return cq4Day1Opener.triggerCatastrophicEnding(run._world, { run });
+      }
+      if (!cq4Day1Opener.verifyReturn(run)) {
+        return { ok: false, error: { code: "RETURN_SURVEILLANCE_UNVERIFIED" }, result: { public_reason: "Standard surveillance has not verified the team at KV31. Contact the Control Room upstairs over the radio before re-crossing." }, run };
+      }
     }
     expedition.mission_state.phase = "RETURN"; evaluateMissionState(run, "RETURN");
     const closure = missionRuntime.requestClosure(state, definition, { run, player }, { at: expedition.clock?.interval ?? 0 });
     if (!closure.ok) return { ok: false, error: { code: closure.code }, result: { public_reason: closure.reason }, run };
+    if (cq4Day1Opener.isOpener(run?.scenario)) expedition.day1_opener.returned_elapsed_seconds ??= expedition.day1_opener.elapsed_seconds;
     const closureRadio = expedition.equipment?.["survey-radio"];
     if (q4Radio.available(expedition) && q4Equipment.stateUsable(closureRadio) && closureRadio.charges > 0 && !(expedition.messages ?? []).some((message) => message.purpose === "mission-closure" && message.delivery_status === "delivered")) {
       useEquipment(expedition, "survey-radio", player);
@@ -729,6 +809,8 @@ function act(runValue, verb, target) {
     }
 
     spatialRuntime.syncEquipment(run.spatial, run.expedition);
+    // Everyone positioned to see the handoff (both parties and anyone in the same place) observes it.
+    canonicalLedger.recordCustodyObserved(run, { equipment_id: itemKey, holder_id: transacted.item.current_holder, from: transacted.item.current_holder === targetHolder ? player : targetHolder });
     event(run.expedition, "equipment.transferred", { item: itemKey, from: transacted.item.current_holder === targetHolder ? player : targetHolder, to: transacted.item.current_holder });
     const cycle = resolveOperationalCycle(run, "TRANSFER", 1, "equipment-transfer");
     return {
@@ -756,6 +838,8 @@ function act(runValue, verb, target) {
     if (!moved.ok) return { ok: false, error: { code: moved.code }, result: { public_reason: moved.reason }, run };
     const player = run.session.startup.player.observer_id; const present = Object.entries(run.spatial.personnel_locations).filter(([id, location]) => id !== player && location === moved.to).map(([id]) => id);
     surveyFrontier.traverse(run.survey_frontier, topologyFor(run), player, moved.connection_id, moved.from, moved.to, { at: run.expedition.clock?.interval ?? 0, co_present: present });
+    recordObservation(run, player, moved.to, { interval: run.expedition.clock?.interval ?? 0 });
+    recordCoworkerObservations(run, moved.to, { interval: run.expedition.clock?.interval ?? 0 });
     event(run.expedition, "spatial.frontier.expanded", { request_id: expanded.request_id, from: moved.from, to: moved.to, connection: moved.connection_id });
     const cycle = resolveOperationalCycle(run, "MOVE", moved.time_cost, "frontier-expansion");
     return { ok: true, outcome: "succeeded", result: { public_reason: `${moved.narration} The surveyed continuation is now part of this world's permanent geography.`, time_advanced: cycle.clock.cost, spatial: { from: moved.from, to: moved.to, connection: moved.connection_id, generation_request: expanded.request_id }, canonical_event_ids: [`spatial.frontier.expanded:${expanded.request_id}`], mission_updates: cycle.mission_updates, operational_updates: cycle.public_updates }, run };
@@ -765,7 +849,7 @@ function act(runValue, verb, target) {
   if (verb === "RECORD" && run.spatial && !target) return { ok: false, error: { code: "INTERACTION_TARGET_REQUIRED" }, result: { public_reason: "Name the visible object or route you intend to record." }, public_reason: "Name the visible object or route you intend to record.", run };
   if (["COMMUNICATE", "RECORD", "WAIT", "RETURN", "ABORT", "COMPLETE_RETURN"].includes(verb)) return expeditionAction(run, verb, target);
   if (verb === "MOVE" && run.spatial && run._world && phenomenonEcology.isCaptured(run._world, run.session.startup.player.observer_id)) return { ok:false, error:{ code:"PERSONNEL_CAPTURED" }, result:{ public_reason:"Physical restraint prevents free movement." }, public_reason:"Physical restraint prevents free movement.", run };
-  if (verb === "MOVE" && run.spatial) { const context = { ...spatialContext(run), observe_objects: () => objectProjection(run).map((object) => object.observation) }; const moved = spatialRuntime.move(run.spatial, spatialDefinitionFor(run.spatial_pack_id), target, context); if (!moved.ok) return { ok: false, error: { code: moved.code }, result: { public_reason: moved.reason }, public_reason: moved.reason, run }; const player = run.session.startup.player.observer_id; const present = Object.entries(run.spatial.personnel_locations).filter(([id, location]) => id !== player && location === moved.to).map(([id]) => id); surveyFrontier.traverse(run.survey_frontier, topologyFor(run), player, moved.connection_id, moved.from, moved.to, { at: run.expedition.clock?.interval ?? 0, co_present: present }); run.checklist.moved = true; observeCurrentObjects(run); event(run.expedition, "spatial.location.entered", { location: moved.to, connection: moved.connection_id, time_cost: moved.time_cost }); const cycle = resolveOperationalCycle(run, verb, moved.time_cost, "spatial-traversal"); const currentView = look(run, { record:false }); run.aliases = Object.fromEntries((currentView.aliases ?? []).map(({ alias, ref }) => [alias, ref])); return { ok: true, outcome: "succeeded", result: { public_reason: moved.narration, time_advanced: cycle.clock.cost, spatial: { from: moved.from, to: moved.to, connection: moved.connection_id }, mission_updates: cycle.mission_updates, operational_updates: cycle.public_updates }, run }; }
+  if (verb === "MOVE" && run.spatial) { const context = { ...spatialContext(run), observe_objects: () => objectProjection(run).map((object) => object.observation) }; const moved = spatialRuntime.move(run.spatial, spatialDefinitionFor(run.spatial_pack_id), target, context); if (!moved.ok) return { ok: false, error: { code: moved.code }, result: { public_reason: moved.reason }, public_reason: moved.reason, run }; const player = run.session.startup.player.observer_id; const present = Object.entries(run.spatial.personnel_locations).filter(([id, location]) => id !== player && location === moved.to).map(([id]) => id); surveyFrontier.traverse(run.survey_frontier, topologyFor(run), player, moved.connection_id, moved.from, moved.to, { at: run.expedition.clock?.interval ?? 0, co_present: present }); recordObservation(run, player, moved.to, { interval: run.expedition.clock?.interval ?? 0 }); recordCoworkerObservations(run, moved.to, { interval: run.expedition.clock?.interval ?? 0 }); run.checklist.moved = true; observeCurrentObjects(run); event(run.expedition, "spatial.location.entered", { location: moved.to, connection: moved.connection_id, time_cost: moved.time_cost }); const cycle = resolveOperationalCycle(run, verb, moved.time_cost, "spatial-traversal"); const currentView = look(run, { record:false }); run.aliases = Object.fromEntries((currentView.aliases ?? []).map(({ alias, ref }) => [alias, ref])); return { ok: true, outcome: "succeeded", result: { public_reason: moved.narration, time_advanced: cycle.clock.cost, spatial: { from: moved.from, to: moved.to, connection: moved.connection_id }, mission_updates: cycle.mission_updates, operational_updates: cycle.public_updates }, run }; }
   if (verb === "MOVE" && run.procedural) { const moved = generatorFor(run.procedural).move(run.procedural, run.session.startup.player.observer_id, target); if (!moved.ok) return { ok: false, error: { code: "TARGET_UNAVAILABLE" }, result: { public_reason: moved.public_reason }, run }; run.checklist.moved = true; event(run.expedition, "procedural.space.discovered", { location: moved.view.location.alias }); return { ok: true, outcome: "succeeded", result: { public_reason: null, view: moved.view }, run }; }
   if (verb === "USE" && target && target !== "field-light") {
     if (target !== "survey-instrument") return { ok: false, error: { code: "EQUIPMENT_UNAVAILABLE" }, run };
@@ -819,18 +903,19 @@ function crossThreshold(runValue, { require_radio_check = true } = {}) {
   recordFacilityEvent(run.expedition, "THRESHOLD_CROSSING", { at:{ interval:run.expedition.clock?.interval ?? 0, spatial_time:route?.at ?? run.spatial.time ?? 0 }, source:"canonical-spatial-traversal", source_ref:`threshold-crossing:${route?.sequence ?? 1}` });
   return { ...result, result: { ...(result.result ?? {}), public_reason: moved.narration }, spatial: { from: moved.from, to: moved.to, connection: moved.connection_id }, run };
 }
-function saveRun(runValue) { const run = normalizeRun(runValue); return { version: "yellow-beast-save@v9", profile_id: run.profile_id, profile_title: run.profile_title, scenario: run.scenario, seed: run.seed, lifecycle: run.lifecycle, checklist: clone(run.checklist), aliases: clone(run.aliases), expedition: clone(run.expedition), procedural: clone(run.procedural), spatial_pack_id: run.spatial_pack_id, spatial: clone(run.spatial), object_state: clone(run.object_state), survey_frontier: clone(run.survey_frontier), interpretation_state: clone(run.interpretation_state), world_id: run.world_id, run_id: run.run_id, envelope: exportSession(run.session).envelope }; }
+function saveRun(runValue) { const run = normalizeRun(runValue); return { version: "yellow-beast-save@v10", profile_id: run.profile_id, profile_title: run.profile_title, scenario: run.scenario, seed: run.seed, lifecycle: run.lifecycle, checklist: clone(run.checklist), aliases: clone(run.aliases), expedition: clone(run.expedition), procedural: clone(run.procedural), spatial_pack_id: run.spatial_pack_id, spatial: clone(run.spatial), object_state: clone(run.object_state), survey_frontier: clone(run.survey_frontier), observation_state: clone(run.observation_state), interpretation_state: clone(run.interpretation_state), world_id: run.world_id, run_id: run.run_id, envelope: exportSession(run.session).envelope }; }
 function resumeRun(save, { world = null, spatial_worldpack = null, phase = "BRIEFING" } = {}) {
-  const supported = new Set(Array.from({ length: 9 }, (_, index) => `yellow-beast-save@v${index + 1}`));
+  const supported = new Set(Array.from({ length: 10 }, (_, index) => `yellow-beast-save@v${index + 1}`));
   if (!supported.has(save?.version)) return { ok: false, error: { code: "SAVE_VERSION_UNSUPPORTED" } };
   const restored = restoreSession(save.envelope); if (!restored.ok) return restored;
   const packId = save.spatial_pack_id ?? spatial_worldpack;
   try { if (save.procedural) generatorFor(save.procedural); if (packId) { spatialDefinitionFor(packId); interactionDefinitionFor(packId); missionDefinitionFor(packId); } } catch (error) { return { ok: false, error: { code: error.code ?? "GENERATOR_VERSION_UNSUPPORTED" } }; }
   if (world && save.world_id && world.world_id !== save.world_id) return { ok: false, error: { code: "WORLD_ID_MISMATCH" } };
-  if (save.version === "yellow-beast-save@v9") {
-    const run = { version:"yellow-beast-run@v9", profile_id:save.profile_id, profile_title:save.profile_title, scenario:save.scenario, seed:save.seed, session:restored.session, lifecycle:save.lifecycle ?? "active", checklist:clone(save.checklist), aliases:clone(save.aliases), expedition:clone(save.expedition), procedural:clone(save.procedural), spatial_pack_id:packId, spatial:clone(save.spatial), object_state:clone(save.object_state), survey_frontier:clone(save.survey_frontier), interpretation_state:clone(save.interpretation_state), world_id:save.world_id, run_id:save.run_id, _world:world };
+  if (save.version === "yellow-beast-save@v10") {
+    const run = { version:"yellow-beast-run@v10", profile_id:save.profile_id, profile_title:save.profile_title, scenario:save.scenario, seed:save.seed, session:restored.session, lifecycle:save.lifecycle ?? "active", checklist:clone(save.checklist), aliases:clone(save.aliases), expedition:clone(save.expedition), procedural:clone(save.procedural), spatial_pack_id:packId, spatial:clone(save.spatial), object_state:clone(save.object_state), survey_frontier:clone(save.survey_frontier), observation_state:clone(save.observation_state), interpretation_state:clone(save.interpretation_state), world_id:save.world_id, run_id:save.run_id, _world:world };
     try { normalizeRun(run); } catch (error) { return { ok:false, error:{ code:error.code ?? "RUN_STATE_INVALID" } }; }
     missionRuntime.attachCompatibilityView(run.expedition);
+    try { require("./speech-scheduler").pruneOnResume(run); } catch { /* non-fatal: queue is re-derived on next observation regardless */ }
     run.identity = runIdentity.describe(run);
     return { ok:true, run };
   }

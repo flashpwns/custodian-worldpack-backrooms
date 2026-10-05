@@ -107,3 +107,53 @@ test("continuity survives world and run save/reload without rerolling tendencies
   const repeat = continuity.reactionContext({ world: loaded, run: restored, phase: "FIELD_OPERATION", worker_id: worker, player_id: player, event: knownEvent(restored, worker, { id: "reload-event-2", novelty_key: "reload-event" }) });
   assert.equal(continuity.react(loaded, repeat).reaction, null);
 });
+
+test("completed field experience and a stable personal profile reach dialogue after cold world reload and reassignment", () => {
+  const personhood = require("../tools/dialogue-personhood");
+  const { world, run, player, worker } = operation("lived-dialogue-profile");
+  personhood.ensurePersonhood(run);
+  const member = run.expedition.team.members.find(m => m.personnel_id === worker);
+  member.personhood.expedition_experience = "none";
+  member.personhood.complex_experience = "none";
+  const baseline = structuredClone(member.personhood.baseline);
+  const tenure = member.personhood.async_tenure;
+  const seedRecord = structuredClone(member.personhood.generated_from);
+  assert.ok(Object.values(run.survey_frontier.personnel[worker].locations).some(record => record.provenance.some(p => p.direct)));
+  run.checklist.moved = true;
+  require("../tools/q4-continuity").commitOutcome(world, run, "RETURN");
+  const archived = world.characters[worker].dialogue_personhood;
+  assert.equal(archived.complex_experience, "some");
+  assert.equal(archived.expedition_experience, "some");
+  assert.equal(archived.familiarity[player], "worked_together");
+  // Cold serialization, followed by a different assignment seed, must not reroll
+  // an established coworker or forget personally observed field experience.
+  const coldWorld = JSON.parse(JSON.stringify(world));
+  bootstrap.startRun({ profile: "field-researcher", seed: "lived-dialogue-profile-absence", scenario: "procedural-survey", world: coldWorld, spatial_worldpack: "clear-q4" });
+  const next = bootstrap.startRun({ profile: "field-researcher", seed: "lived-dialogue-profile-next", scenario: "procedural-survey", world: coldWorld, spatial_worldpack: "clear-q4" }).run;
+  personhood.ensurePersonhood(next);
+  const profile = personhood.profileOf(next, worker);
+  assert.deepEqual(profile.baseline, baseline);
+  assert.equal(profile.async_tenure, tenure);
+  assert.deepEqual(personhood.profileViolations(next), []);
+  assert.deepEqual(profile.generated_from, seedRecord);
+  assert.equal(profile.complex_experience, "some");
+  assert.equal(profile.familiarity[player], "worked_together");
+  const resolvers = require("../tools/dialogue-resolvers");
+  assert.equal(resolvers.resolvePredicate(next, { predicate: "person.complex_experience", actor_id: worker, args: { place_id: "complex" } }).value, "yes");
+});
+
+test("heard field reports and somebody else's observations never manufacture personal experience", () => {
+  const personhood = require("../tools/dialogue-personhood");
+  const { world, run, worker } = operation("unearned-dialogue-experience");
+  personhood.ensurePersonhood(run);
+  const member = run.expedition.team.members.find(m => m.personnel_id === worker);
+  member.personhood.expedition_experience = "none";
+  member.personhood.complex_experience = "none";
+  for (const record of Object.values(run.survey_frontier.personnel[worker].locations)) {
+    record.provenance = [{ source: "heard-report", direct: false }];
+  }
+  personhood.persistAssignmentProfiles(world, run);
+  assert.equal(world.characters[worker].dialogue_personhood.complex_experience, "none");
+  assert.equal(world.characters[worker].dialogue_personhood.expedition_experience, "none");
+  assert.equal(world.characters[worker].dialogue_personhood.lived_experience, undefined);
+});

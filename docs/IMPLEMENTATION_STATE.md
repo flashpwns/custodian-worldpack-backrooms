@@ -1,4 +1,1285 @@
 # Yellow Beast Implementation State
+## Current dialogue closure authority — 2026-10-05
+
+See [Dialogue closure status](dialogue/DIALOGUE_CLOSURE_STATUS.md) for the sole current readiness statement and [Jack’s final Electron acceptance](dialogue/FINAL_HUMAN_ACCEPTANCE.md) for the launch command and seven-step run. The earlier entries below preserve historical evidence; their label counts, open policy statements and verification failures describe their recorded dates, not the current checkout. Reader remains shadow-only. Jack’s human Electron acceptance FAILED the Assembly Table conversation on 2026-10-05. Natural conversation, correction, persistence and durable coworker experience repairs are committed and automated/package verification passes at 2ab8fff, including the native-discovered self-label repair. The implementation is ready for Jack’s official retest; final human acceptance remains FAILED pending that retest. Independent gold and Reader cutover remain future authority gates, not permission to promote the shadow reader.
+
+
+## Reader Phase 2, Easy human labeling UI (presentation only, shadow-only, no egress) — 2026-10-01
+
+- **Scope:** ergonomics only, on the audited workstation frozen at `22f6653` (real progress 0 / 474; no `labels.jsonl`, no
+  journal). Design law (owner): if Jack has to remember what a Reader term means, the UI has failed. The default page is
+  progressive: PLAYER SAID (large), a visual context picture (people, earlier conversation as bubbles, things in play), YOUR
+  JUDGMENT (two large choices, none preselected: "I understand what the player means" = ACCEPT, "Something important is
+  unclear" = EXPECTED_CLARIFY), then ONE plain-English question at a time (speech act grouped with generic examples; topic as
+  family then item; address; a yes/no before any relation detail), a "Check your answers" preview in plain words with optional
+  details collapsed, COMMIT & NEXT, a "What am I doing?" help panel, and collapsed Technical details, Advanced / Raw labeling
+  (the original audited editor) and Tools. The Reader term is only a secondary annotation. The form **only serializes the
+  human's explicit selections** into the existing wire. Backend, schema, validators, worksheet, input pack, digests, persistence
+  and blindness boundary are unchanged; one static display endpoint (`/api/easy`, identical for every item) was added.
+- **Anti-inference boundary:** the page never reads the player's line to choose, suggest, rank or default a value. Names typed in the
+  line are listed as surface information; picking one is the human's act. Easy -> Raw copies the deterministic serialization; Raw ->
+  Easy never reverse-engineers a hand-written wire (explicit discard required). Documentation / help may be used for UI, grammar,
+  syntax and field meaning, never to decide ACCEPT vs EXPECTED_CLARIFY or the interpretation (recorded in the workstation doc and
+  the label guide). Slot descriptions are derived from the resolver's clarification slots (`dialogue-resolve-turn.js`), because the
+  label guide names the five slots without defining them.
+- **Verification:** new `tests/ed33e-reader-phase2-easy-labeling-ui.test.js` (32 tests, aggregate tier, registered) plus the updated
+  `ed33d` (29 tests): 61 pass; fast Reader suites 156 pass; long-world Reader suites (`ed31b` / `ed32b` / `ed33b`) 5 pass; full suite
+  1,635 tests, 1,556 pass, 79 fail; `compare-failing-tests`: unchanged 79, **new 0**, fixed 0; inventory 57 pre-existing errors
+  only (the `ed33d` hash refreshed, `ed33e` registered and its hash refreshed). Frozen population 944 / 575 / 470 / 552 / 474 / 78 and the three frozen
+  acceptance artifacts byte-identical; blank worksheet SHA-256 `e6f2da5a…` unchanged; no `labels.jsonl` / journal; UI smoke only
+  against a synthetic scratch directory (deleted) at 1024 / 1440 / 1920 px.
+- **Status: EASY LABELING UI READY — INDEPENDENT AUDIT REQUIRED.**
+
+## Reader Phase 2, human primary labeling workstation (shadow-only, local, no egress) — 2026-10-01
+
+- **Scope:** a LOCAL, loopback-only, dependency-free browser instrument so the human primary labeler can write
+  `HUMAN_PRIMARY` rows for the frozen 474-render census without hand-editing JSONL
+  (`tools/dialogue-reader-labeling-workstation.js`; usage and boundary: `docs/reader/READER_PHASE2_LABELING_WORKSTATION.md`).
+  Built on the frozen governance commit `083b54d`. No label was written, no teacher / model / reviewer run, no network
+  request, no adjudication, no gold, no E4B / calibration / sealed data. The reviewer model, teacher output budget and
+  timeout are **not** chosen.
+- **Boundary:** the serving process loads only the blank worksheet, the observer-safe `ReaderInput` input pack (bound to
+  the worksheet by render digest) and the human's own labels. The answer-bearing capture (legacy frame, routing, context,
+  bindings, canonical state) is touched only by `--prepare` and `--validate-full`, in memory, never written. No outcome,
+  wire, field or slot is ever suggested or prefilled; the grammar reference is static.
+- **Schema:** existing `HUMAN_PRIMARY` row (`labeler {kind:human,id:jack}`, render + system digest, `committed_at` minted at
+  the explicit commit); outcomes, slots and fields imported from `dialogue-reader-labels.js`; `independenceProblems` reused.
+  Active labels live in the gitignored `.agent-notes/reader-phase2-labeling/`.
+- **Validation:** commit-time = V0 + V1 + V2 of the human's own wire against observer-safe input (resolver-level V3 /
+  resolves / slot information is withheld until after commit); `--validate-full` runs the unchanged existing validator.
+- **Primary outcomes:** a human primary labels only `ACCEPT` or `EXPECTED_CLARIFY` (see the RED repair below).
+- **Verification:** new `tests/ed33d-reader-phase2-labeling-workstation.test.js` (23 tests, aggregate tier, registered);
+  fast Reader suites 118 pass; long-world Reader suites (`ed31b` / `ed32b` / `ed33b`) 5 pass; full suite 1,597 tests,
+  1,518 pass, 79 fail; `compare-failing-tests`: unchanged 79, **new 0**, fixed 0; inventory 57 pre-existing errors only.
+  Frozen population 944 / 575 / 470 / 552 / 474 / 78, `teacher-dev-sample.json`, `dev-manifest.json` and
+  `json-control-selection.json` are byte-identical. The blank worksheet (SHA-256 `e6f2da5a…8532ce3e5d`) regenerated
+  byte-identically twice, once under the egress guard.
+- **Status (superseded by the RED repair below): HUMAN LABELING WORKSTATION READY — INDEPENDENT AUDIT REQUIRED.**
+- **RED repair (2026-10-01, owner ruling: audit option B):** the independent audit returned RED on one blocking protocol
+  defect: the workstation offered a primary-level `UNLABELABLE` outcome that the label guide, preregistration and validator
+  reserve for an adjudicator (`ADJUDICATED_GOLD` only), and `--validate-full` reclassified the validator's
+  `unlabelable_record_invalid` as "pending adjudication". Repaired at every layer, with no change to the validator, the
+  preregistration or the label guide's protocol: no `UNLABELABLE` control or reason box in the page; `OUTCOMES` is
+  `[ACCEPT, EXPECTED_CLARIFY]`; `checkDraft` refuses `UNLABELABLE` (`unlabelable_not_primary`, HTTP 422, nothing written);
+  `loadLabels` refuses a `HUMAN_PRIMARY` `UNLABELABLE` row, naming the existing validator's own code; `--validate` prints that
+  code and exits 1; `classifyValidation` no longer reclassifies anything (it only strips resolver detail); no
+  `unlabelable_reason` survives in any payload or row. An explicit outcome change now clears only the fields the new outcome
+  does not own (switching to ACCEPT clears the ambiguous field, slot and clarification note; the human's wire and notes stay;
+  nothing is moved, copied or chosen), and the page sends only fields the chosen outcome owns, so the visible form and the
+  validated payload agree. The wire input has an explicit accessible label. Documentation no longer instructs a primary to
+  choose `UNLABELABLE`. No third outcome, abstention state or adjudication behaviour was added.
+- **Repair verification:** `ed33d` now 29 tests (all pass; new tests prove UNLABELABLE is impossible at the page, `checkDraft`,
+  direct HTTP, `loadLabels` and `--validate` (in-process and as a real CLI process, exit 1), that nothing is reclassified, that
+  no ADJUDICATED_GOLD behaviour exists, and the outcome-change field clearing); fast Reader suites 124 pass; long-world Reader
+  suites (`ed31b` / `ed32b` / `ed33b`) 5 pass; full suite 1,603 tests, 1,524 pass, 79 fail; `compare-failing-tests`:
+  unchanged 79, **new 0**, fixed 0; inventory 57 pre-existing errors only (the `ed33d` governed hash was refreshed). Frozen
+  population 944 / 575 / 470 / 552 / 474 / 78 and the three frozen acceptance artifacts are byte-identical. No label, journal,
+  teacher output, review, gold, receipt, E4B, calibration, sealed data or network egress exists; the UI was exercised only against
+  a synthetic scratch directory (deleted).
+- **Residual findings recorded, deliberately not repaired here:** journal transaction (labels / journal are two separate
+  durable writes); whole-file label storage rewrite on every commit; egress-guard design; production-module import surface;
+  input-pack digest design; grammar-example design; note-length limits; reviewer governance; post-commit validation policy;
+  other viewport / accessibility observations (only the wire label was fixed).
+- **Status: HUMAN LABELING WORKSTATION REPAIR READY — RE-AUDIT REQUIRED.**
+
+## Reader Phase 2, teacher-ceiling pre-labelling unblock (shadow-only, no egress) — 2026-10-01
+
+- **Scope:** owner decisions before human labelling: record the teacher / reviewer-family / human provenance in the
+  labelling registry; replace the obsolete `registry.teacher.family === null` assertion in `ed33c` with a positive pinned
+  assertion; add an explicit `store: false` to every OpenAI hosted request; prove `gpt-5.6-sol` request construction
+  with mocks only; pin the JSON-control selection. Details: `docs/reader/READER_PHASE2.md` §14. No teacher, label,
+  hosted egress, diagnostic pilot, E4B, calibration or sealed data. The teacher output budget and timeout are **not**
+  chosen.
+- **Registry:** teacher `openai` / `openai` / `gpt-5.6-sol` (jack); reviewer family `claude` / `anthropic`, model
+  intentionally `null`; human primary and adjudicator `jack`. A hosted run must now match the recorded family, provider
+  and model.
+- **Adapter:** `store:false` always sent for `openai-chat`; receipts carry `provider_storage` from the transmitted body.
+- **JSON control:** `json-control-selection.json` (100 of the 474; SHA-256 `fb27ff65…`), `--control-subset` flag; the
+  frozen 474-render census, `teacher-dev-sample.json` and `dev-manifest.json` are byte-identical.
+- **Intentional test change:** the obsolete null-state assertion (and the exact-keys assertion of the OpenAI body, which
+  now includes `store`) were replaced in `ed33c`; neither is a "fixed runtime failure" in the regression comparison.
+- **Validation:** `ed31a` / `ed32a` / `ed33a` / `ed33c` 95 pass; `ed31b` / `ed32b` / `ed33b` pass (the JSON-control selection
+  regenerates byte-identically from the capture); inventory 57 pre-existing errors only; full suite 1,574 tests, 1,495
+  pass, 79 fail; `compare-failing-tests`: unchanged 79, **new 0**, fixed 0 (+4 new tests, all passing).
+- **Status: TEACHER CEILING PRE-LABELLING READY — INDEPENDENT AUDIT REQUIRED.**
+
+## Reader Phase 2, Step 0.1B: audit blocker remediation B1–B4 (shadow-only) — 2026-09-30
+
+- **Scope:** the four blocking findings of the independent Step 0.1 re-audit only. No teacher, labels, E4B,
+  calibration or sealed data; no change to user renders, the frozen 474-render population, ReaderInput / lexicon /
+  frame / resolver semantics, the label contract or the dialogue runtime. Details: `docs/reader/READER_PHASE2.md` §13.
+- **B1:** hosted output budget mandatory (refused before egress); `finish_reason` / `stop_reason` / usage in every
+  receipt; truncation and refusal are `provider_void` (void accounting, never scored, never retried); normally
+  completed empty / malformed output stays semantic `invalid_output`.
+- **B2:** `headlineVerdict` binds `headline: true` to the pinned frozen sample (SHA-256 `26f0ba7b…`, contract identity,
+  474 ids, regeneration from the capture), exact population, a label for every render (`ADJUDICATED_GOLD` or a
+  recorded `UNLABELABLE`), ≥ 300 valid and ≤ 2% voids.
+- **B3:** receipt file created exclusively before the first request; each request's receipt appended and fsync'd as
+  it completes (a real mid-run process exit keeps receipts 1..N).
+- **B4:** the JSON control requires span / speech act / facet / address op (+ names) / relation kind, only `acts` at
+  top level, a known facet at V0; `SYSTEM_DIGEST_JSON` (`c2542a45…`) pinned; JSON-only drift fails governance.
+- **Measured:** wire system digest unchanged (`8c727a29…`), so renders and G1 are unchanged (discourse-bearing p90
+  263, human trace p90 292); teacher sample and dev manifest regenerate byte-identically (944 / 575 / 470 / 552 / 474 /
+  78; j15 132, rare 108, scripted 102, ED-30 dev 99, human trace 19, ED-30 novel 14).
+- **Governance:** `ed33a` / `ed33c` hashes updated; `ed31a` / `ed32a` / `ed33a` / `ed33c` 91 pass; `ed31b` / `ed32b` /
+  `ed33b` pass; inventory 57 pre-existing errors only; full suite 1,570 tests, 1,491 pass, 79 fail;
+  `compare-failing-tests` unchanged 79, **new 0**, fixed 0.
+- **Status: PHASE 2 STEP 0.1B COMPLETE — READY FOR INDEPENDENT RE-AUDIT.**
+
+## Reader Phase 2, Step 0.1: experiment / scoring contract (shadow-only, before any label) — 2026-09-30
+
+- **Scope:** owner instruction of 2026-09-30 after the Sonnet 5.5 audit of Step 0 (**NOT READY FOR TEACHER CEILING**:
+  architecture, codec, observer boundary, async inertness and governance sound; blockers in the experiment / scoring
+  contract). No teacher, dev labelling, E4B accuracy, calibration or sealed data. Production unchanged. Details:
+  `docs/reader/READER_PHASE2.md` §12.
+- **Owner rulings applied:** B7 indirect request-arg salience (reader-facing projection only: a request argument is
+  canonical salience only when observer-grounded); hidden option labels are opaque.
+- **Contract:** ReaderInput `@v3`, lexicon `@v2`, render `@v2` (system `8c727a29…`); wire `@v1` / frame `@v2` /
+  resolver `@v3` unchanged. One representation-neutral semantic contract (conventions A–D) generates the wire system
+  text, the JSON control and the label guide's field definitions.
+- **Built / changed:** contract-valid gold (`ACCEPT` / `EXPECTED_CLARIFY`), label states (only `ADJUDICATED_GOLD` is
+  headline), duplicate-id rejection, independence rules and the labelling registry (families unrecorded: owner);
+  scoring classes (`transport_unavailable`, `invalid_output`, `read`; invalid never equal; false-confident incl.
+  accept-on-expected-clarify) and the preregistered retry policy; distinct-render groups with occurrence mapping;
+  deterministic stratified `--limit`; context-dependent probe tags; the frozen teacher sample (474 renders);
+  provider-capable hosted transport, `--confirm-egress` / `--include-human-trace`, mandatory receipts; the B7 indirect
+  filter; opaque hidden options; the fuzzy guard; identical fence handling; exact binomial power and the sealed
+  sample-size rule; rare-state coverage tags and 8 own-answer corrections; the doctrine-review sample.
+- **Measured:**
+
+  | Measure | Value |
+  | --- | --- |
+  | Dev capture | 944 source rows (927 + 17 own-answer-correction turns); 575 distinct player turns (fixture, text, chip); 470 distinct texts; **552 distinct renders**; **474 headline-eligible** (78 context-missing probe renders from 81 context-dependent probes excluded) |
+  | Render changes vs Step 0 | B7 indirect filter: 2 distinct renders (4 rows, `j15/3-chaotic` t15–16, "Outpost A" via `salient_topic`); fuzzy guard 0; hidden options 0 |
+  | Teacher sample (frozen) | census of 474 distinct renders: j15 132, rare 108, scripted 102, ED-30 dev 99, human trace 19, ED-30 novel 14 |
+  | Tokens (G1 by class) | context-free p50 57 / p90 83; discourse-bearing p50 194 / **p90 263** / p99 293 / max 333; real scenario 200 / 266 / 312 / 333; human trace 208 / **292** / 293 / 293; pass. Static prefix 1,760 (JSON 2,140) |
+  | Rare-state shapes | 72 pending-question turns (Step 0: 64 = 62 replies + 2 non-answers); 8 own-answer corrections (Step 0: 0); no shape ≥ 60 |
+  | Legacy self-consistency | 549 / 552 legacy frames are contract-valid gold (3 fail V2); scored 100% |
+  | Exact FC power, 880 accepted | 1.0% 99.6%, 1.5% 88.1%, 2.0% 50.6%, 2.5% 16.6%; 1,800 turns → 80.9% at 2.0% |
+  | Phase-1 artifacts | round trip, shadow diff and characterization unchanged (`ed31b`, `ed32b` pass against their pins); shadow inertness deep-equal |
+- **Governance:**
+  - pins updated with the regenerated artifacts: `ed33a` (contract identities, token artifact), `ed33b` (dev manifest,
+    teacher sample; shape counts reproduced from the capture); `ed33c` (aggregate) registered in
+    `verification-authority.json` and `test-manifest.json`, with hashes;
+  - `ed31a` / `ed32a` / `ed33a` / `ed33c` pass (82 tests); `ed31b` / `ed32b` / `ed33b` pass (characterization, round
+    trip and shadow diff unchanged; shadow inertness deep-equal);
+  - inventory: only the 57 pre-existing errors; verification core integrity OK;
+  - full suite (`node --test tests/*.test.js`): 1,561 tests, 1,482 pass, 79 fail; `compare-failing-tests`: unchanged
+    79, **new 0**, fixed 0; `git diff --check` clean.
+- **Doctrine conflicts:** none recorded.
+- **Status: PHASE 2 STEP 0.1 COMPLETE — READY FOR SONNET RE-AUDIT.** (Teacher not run; no label exists.)
+
+## Reader Phase 2, Step 0: contract freeze (shadow-only) — 2026-09-30
+
+- **Scope:** owner instruction of 2026-09-30, applying the Sonnet 5.5 Phase-2 architecture review.
+  - SHADOW-ONLY.
+  - None of: a production reader cutover, canonical mutation from a model reader, a planner / UI change, legacy
+    parser tuning, a sealed set, use of the spent held-outs.
+  - Design and results: `docs/reader/READER_PHASE2.md`. Artifacts: `docs/acceptance/reader-phase2/`.
+- **Owner decisions applied:**
+  - **B7:** ReaderInput v2. Canonical salience comes from the player's words and canonical interaction state;
+    heard salience comes from delivered wording only, in a separate channel; no plan fact is salient. Production
+    `withSalience` is unchanged.
+  - C1 persistence, B2 and B8 UI are deferred to Phase 3. Clarifications are classified as
+    `LINGUISTIC_AMBIGUITY` / `READER_UNCERTAINTY`.
+  - Hosted teacher: development-only transport; it sends exactly the frozen render.
+- **Built:**
+  - `dialogue-reader-lexicon.js`: the observer-visible lexicon. Hidden and world-only entities are excluded. The
+    candidate pipeline is exact → alias → bounded fuzzy → one nominated-span lookup.
+  - ReaderInput v2.
+  - ReaderFrame v2: `conclude`, `withdraw` of `v1`, `referent.nominated`.
+  - Resolver v3: the activity close intent is derived only for an active activity.
+  - Legacy adapter v2: "that's that" becomes `conclude`.
+  - `dialogue-reader-render.js`: `renderReaderPrompt`, versioned.
+  - `dialogue-reader-wire.js`: the compact wire, facet-code table, GBNF grammar and minimal-JSON decoder.
+  - `dialogue-reader-async.js`: `readTurnAsync`, receipts, the llama / hosted / scripted transports, offline field
+    margins.
+  - `dialogue-reader-replay.js`: the offline replay harness, arms, resolved-outcome signature, token distribution,
+    dev manifest, `--run`.
+  - `dialogue-reader-runtime.js`, `dialogue-reader-labels.js` (κ / PABAK), `dialogue-reader-power.js`.
+  - The rare-state dev stratum: 64 pending-coworker-question turns (62 authored replies, 2 not answers); corrected at
+    Step 0.1.
+  - The opt-in developer `modelShadow` seam in `desktop/service.js`: after commit and wording, never awaited, one
+    in flight, 5 s timeout, in-memory only.
+- **Measured:**
+
+  | Measure | Value |
+  | --- | --- |
+  | Wire round trip | **100%** of gold frames (49) and of every legacy frame in the 927-turn dev capture; V0 fails on malformed / unknown / duplicate; illegal labels fail V1 |
+  | Dynamic render tokens (pinned tokenizer, 927 turns) | p50 112, **p90 245**, max 333 (5 turns > 300); static prefix 1,168 |
+  | Early-branch uniqueness | speech act 14 / 14, relation 8 / 8, address 4 / 4, facet 47 / 47 |
+  | Gold resolver spec | **42 / 42** (6 conclude / withdraw items added) |
+  | Shadow diff (legacy frames, 471 turns) | all four levels 335 (was 327); lifecycle 461 (was 455); unclassified 0 |
+  | Fault-injection inertness | throw / malformed / hang / timeout / server-down / well-formed: canonical state, save and history deep-equal, live and after reload; a 5 s sleeping reader does not delay turns |
+  | Characterization authority | unchanged (the file was not regenerated; `ed31a` scenario replay and `ed31b` full replay pass) |
+
+- **Governance:**
+  - pins updated: `ed31a` round trip, `ed32a` shadow diff;
+  - `ed33a` registered (aggregate) and `ed33b` registered (long-world) in `verification-authority.json` and
+    `test-manifest.json`, with hashes;
+  - inventory: only the 57 pre-existing errors.
+- **Full suite** (`node --test tests/*.test.js`): 1,539 tests, 1,460 pass, 79 fail.
+  - `compare-failing-tests`: unchanged 79, **new 0**, fixed 0.
+  - `git diff --check`: clean.
+- **Not run (blocked):**
+  - the teacher ceiling and the wire-vs-JSON check: there is no hosted-teacher credential in the environment and no
+    gold labels yet;
+  - E4B scoring, calibration, the latency ladder beyond token counts and the live developer shadow wait on the
+    teacher.
+  - A five-item engineering smoke check confirmed the GBNF compiles in the pinned llama.cpp and that raw logprobs
+    are pre-grammar. It is not a measurement.
+- **Doctrine conflicts:** none recorded.
+- **Status:** Step 0 was reported "READY FOR TEACHER CEILING"; the Sonnet 5.5 Step-0 audit returned **NOT READY FOR
+  TEACHER CEILING** (scoring-contract blockers). Corrected: NOT READY pending Step 0.1 (see above).
+
+## Reader Phase 1: shadow-only resolver (no player-facing change) — 2026-09-29
+
+- **Scope (owner instruction):**
+  - SHADOW-ONLY.
+  - No model reader, no cutover, no planner / UI / renderer / fallback / provider-flag / order-channel /
+    personnel-continuity / dialogue-state change.
+  - No B2 / B6 / B7 / B8.
+  - No blind corpus; spent corpora untouched.
+  - Design and results: `docs/reader/READER_PHASE1.md`. Artifacts: `docs/acceptance/reader-phase1/`.
+- **Owner rulings applied (shadow / seam / seam-validator metadata only):**
+  1. group_inclusive subject with no address;
+  2. marker-led lines are `new` without a compatible antecedent;
+  3. reader-state `c1` for the player's previous claim;
+  4. chip-wins kept in production, the conflict recorded;
+  5. wh-led sarcasm fails closed;
+  - **C1:** the question-form gate is for NEW questions; follow-ups and echoes that keep their antecedent's facet
+    inherit it; `choice` on `transition.participants`, `yes_no` on `mission.schedule` and `mission.route`; no
+    distance facet. Only the seam validator reads `question_forms`.
+- **Built:**
+  - `resolveTurn` v2: pure, consumes the V0–V3 verdict; dispositions ACCEPT / CLARIFY / REJECT_FIELDS / INVALID;
+  - `dialogue-response-policy.js`: table-driven, owner priority unchanged;
+  - `dialogue-frame-assembly.js`: pure, no text;
+  - `dialogue-reader-shadow.js`: opaque `request_text`, frozen clones, reader-state claims;
+  - developer-gated `recordReaderShadow` in `desktop/service.js`, additive, never consumed, never persisted, not in
+    the trace view;
+  - the four-level comparator with evidence-based causes;
+  - the inertness harness;
+  - gold evaluator v3.
+- **Measured:**
+
+  | Measure | Value |
+  | --- | --- |
+  | Gold resolver spec | **36 / 36 = 100%** |
+  | Dispositions | accept 433, clarify 37, reject_fields 1 (the chip conflict), invalid 0 |
+  | ACT | 465 / 471 = 98.7% |
+  | ROUTING | 382 / 471 = 81.1% |
+  | LIFECYCLE | 455 / 471 = 96.6% |
+  | FRAME | 343 / 471 = 72.8% |
+  | All four levels | **327 / 471 = 69.4%** |
+  | Pending / unclassified | **0 / 0** |
+  | Characterization authority | **identical** with the shadow on |
+  | Shadow inertness | 426 / 426 sessions deep-equal (live and cold reload; three providers) |
+
+- **Governance:**
+  - `ed31a` hash updated (round-trip pin regenerated);
+  - `ed32a` registered (aggregate) and `ed32b` registered (long-world) in `verification-authority.json` and
+    `test-manifest.json`.
+- **Full suite** (`node --test tests/*.test.js`, after C1): 1,515 tests, 1,436 pass, 79 fail.
+  - `tools/compare-failing-tests.js` against `baseline-failing-tests.json`: unchanged 79, **new 0**, fixed 0.
+  - Passed within that run: `ed31b` (full characterization and round trip), `ed32b` (full shadow replay and
+    426 / 426 inertness), J16, every provider-independence and transcript-replay test, and the retry-idempotence
+    replay.
+  - `git diff --check`: clean.
+  - Inventory: only the 57 pre-existing errors; none for `ed31` / `ed32`.
+- **Doctrine conflicts:** none recorded.
+- **Phase-2 prerequisite (owner ruling C1.4):** persistent, observer-safe previous-player-claim semantic state, with
+  no dependence on legacy persisted clause `predicate_candidates`. Until then `c1` is unavailable after a cold
+  reload and the reading fails closed.
+
+## Reader Phase 0.5: making Phase 0 trustworthy (no behaviour change) — 2026-09-29
+
+- **Scope:**
+  - No Phase 1, no cutover, no player-facing / routing / Tier-1 / advisory / renderer / runtime-flag /
+    planner / dialogue-state API change.
+  - No new corpus; no legacy tuning; spent corpora untouched.
+  - Design: `docs/reader/READER_PHASE0_5.md`. Results: `docs/acceptance/reader-phase0/README.md`.
+- **Behaviour.** Unchanged:
+  - the v1 characterizer against the v1 authority, with the Phase-0.5 seam in place: identical;
+  - seam-inertness tests (throwing / malformed reader, throwing input builder, receipt overflow, developer
+    mode off, cold reload, provider variation): no canonical or dialogue change.
+- **Characterization authority v2** (value-level; 221 sessions, 471 turns; 16 ED-30 scenarios added).
+  Addressee sources go from 12 to 23, facet sources from none recorded to 10. Coworker questions, chip targets,
+  cold reloads, accepted Tier-2 readings, reopen and abandonment are now exercised. Pinned (SHA-256) in
+  `ed31a`; the full replay is in `ed31b` (long-world).
+- **Round trip** (legacy → ReaderFrame → frame-driven resolver → frame assembly): **87.0% behaviour-equivalent,
+  7.9% exact** (471 turns). Exact expressibility (89.6%) is not migration readiness.
+- **Gold-DIS evaluator v2:** the real DIS, present actors and bindings on the resolver leg; strengthened
+  checkpoints; `incomplete_state_verification`. Resolver spec 7/7 on the harness self-test.
+- **ReaderInput safety fixes (seam only):**
+  - anchors in the heard channel;
+  - observer-safe referent candidates;
+  - string-only required-fact salience;
+  - option ids mapped to labels;
+  - proper-name vocabulary; possessive names.
+- **Validator gaps closed (seam only):** address-op evidence, respondent-mode compatibility, referent
+  licensing, and no silent remark on asking lines.
+- **Raw-text inventory:** 35 sites (`docs/reader/READER_RAW_TEXT_INVENTORY.md`). This includes raw-keyword
+  **canonical writes**: `desktop/service.js` `isDisclosure` / `isWarning` → `recordAttitudeChange`;
+  `geography_shared`; the radio `purpose`. Recorded, not migrated.
+- **Governance (per `docs/VERIFICATION_GOVERNANCE.md` §6):**
+  - `ed31a` hash updated;
+  - `tests/ed31b-reader-characterization-full.test.js` registered in the long-world tier;
+  - the baseline failing set committed (`docs/acceptance/reader-phase0/baseline-failing-tests.json`, 79
+    tests) with `tools/compare-failing-tests.js`;
+  - inventory 57 errors (the pre-existing baseline), none for `ed31a` / `ed31b`.
+- **Pre-registration revised** to the reviewed thresholds (κ ≥ 0.80; ≥ 200 double-labeled; teacher ceilings;
+  E4B within 6 points of the teacher; calibration ≤ 3% at ≥ 88% coverage; sealed gates; reader p50 ≤ 2.0 s /
+  p90 ≤ 3.0 s; whole-turn delta ≤ 2.5 s; a family-error policy required).
+- **Documentation corrections:**
+  - "verification untouched" was false after the `ed31a` registration;
+  - the Phase-0 class counts (28) exceeded the 27 non-exact turns because "Giselle?" carried two classes.
+- **Owner rulings prepared, not decided** (`docs/reader/READER_PHASE0_5_OWNER_RULINGS.md`):
+  - "we all going?";
+  - the relation-without-antecedent cases (4 remain: 2 legacy quirks, 1 hedge continuation, 1 real schema gap
+    — the player's own prior claim);
+  - V1 question-form / temporal strictness;
+  - the chip-versus-vocative conflict.
+
+  B2 / B6 / B7 / B8 remain unresolved in code; the recommendations are refined in `READER_PHASE0_5.md` §6.
+- **Verification:**
+  - `ed31a` 21/21;
+  - full repository `node --test tests/*.test.js`: 1,497 tests, 1,418 pass, 79 fail;
+    `tools/compare-failing-tests.js` against the committed baseline: unchanged 79, **new 0**, fixed 0;
+  - `ed31b` (the full characterization replay of 221 sessions and the full round trip of 471 turns) passes
+    within that run;
+  - `git diff --check` clean;
+  - the protected modules, the ED-30 tests and fixtures, the spent corpora and the renderer are untouched.
+
+## Reader Phase 0: seam construction (no behaviour change) — 2026-09-29
+
+- **Scope:** Phase 0 of the adjudicated reader architecture (review of 2026-09-28). This is seams only.
+  - There is no cutover and no player-facing, routing, Tier-1, advisory, renderer or runtime-flag change.
+  - The spent corpora and the doctrine and canon documents are untouched.
+  - `verification/*` changed only by the owner-approved `ed31a` registration at the Phase-0 finish. (This
+    bullet originally said `verification/*` was untouched; corrected in Phase 0.5.)
+  - No blind corpus was created. The legacy parser was not tuned.
+- **Added:**
+  - ReaderFrame v1 contract and validators V0–V3 (`tools/dialogue-reader-frame.js`).
+  - Observer-safe ReaderInput builder (`tools/dialogue-reader-input.js`).
+  - Legacy adapter `frameFromLegacy` (`tools/dialogue-reader-legacy.js`).
+  - Reader interface: legacy reader v0, scripted oracle and receipts (`tools/dialogue-reader.js`).
+  - `resolveTurn` contract with a Phase-0 identity passthrough (`tools/dialogue-resolve-turn.js`).
+  - Additive reader seam in `desktop/service.js`: the `dialogueReader` option, in-memory receipts and the
+    developer trace only.
+  - Characterization authority (`tools/dialogue-characterize.js` → `docs/acceptance/reader-phase0/characterization.json`).
+  - Coverage tool, gold-DIS evaluator and runtime spike.
+  - Pre-registration: `docs/reader/READER_BAKEOFF_PREREGISTRATION.md`.
+- **Design and results:** `docs/reader/READER_PHASE0.md` and `docs/acceptance/reader-phase0/README.md`.
+- **Behaviour:** identical. The characterization snapshot (205 sessions, 364 turns, fallback + garbage
+  providers) was captured at unmodified `9e51842` and replays identically with the seam in place.
+
+### Owner decisions recorded, NOT resolved (Phase 0 does not decide these)
+
+- **B2: offline completeness contract (Doctrine 17.26).**
+  - If a model reader becomes primary, what is the offline / reader-unavailable dialogue contract?
+  - Options:
+    1. the legacy reader v0 stays permanently as the offline reader, behind the same validators;
+    2. structured affordances (address chips, clarification choices) carry offline communication;
+    3. both.
+  - Until decided, no legacy reading code may be deleted (Phase 5 depends on this).
+- **B6: canonical structured option ids for coworker questions.**
+  - `dialogue-state.recordInboundRequest` can take `plan.answer_shape` / `plan.options`, but **no planner
+    sets them**. In production, every coworker question therefore carries `options: []`.
+  - Only the offline evaluator reads options from words (`inboundShape(text, null)`).
+  - ReaderFrame `inbound_answer.option` has nothing canonical to choose from until the planner emits
+    options for choice questions.
+- **B7: salience source.**
+  - Production `dialogueTurn.withSalience` (and `anchorCandidates`, `anchorTerms` → `resolveRecipientScope`
+    anchored follow-ups, `isFollowUp` via `salient_names`) reads replies' `facts.required` **and
+    `facts.optional`**.
+  - Optional facts (`held_equipment`, `current_activity`, `identity_fact`, `agenda_mention`) may never
+    have been spoken. A later follow-up can then be routed as picking up something the coworker never
+    said.
+  - Owner decision #1 (2026-09-27) chose authorized facts over wording for provider independence, so
+    "use what was actually spoken" conflicts with it.
+  - Options:
+    1. required facts only (provider-independent);
+    2. required facts plus optional facts the validator records as expressed (provider-dependent, like
+       surface anchors);
+    3. surface anchors only.
+  - The Phase-0 ReaderInput uses the player's own words plus **required** facts
+    (`salience_source: player_words+required_facts`). Production is unchanged.
+  - Adjacent item to verify: `commitTurnLines` records listener learning from `propositionsOfPlan(plan)`,
+    i.e. from plan content, not from the facts actually expressed.
+- **B8: reader uncertainty presentation (Doctrine 7.26).**
+  - In-character clarification (the current `CLARIFY_BY_SLOT`, "Sorry, who do you mean?"), versus an
+    interface-level affordance (for example an address chip) when the uncertainty is the reader's rather
+    than genuine linguistic ambiguity.
+  - This is player-facing; the renderer is untouched until decided.
+- **Verification authority.**
+  - Retiring phrase-pin tests (`ed30a`/`f`/`g`/`h`/`i` parse pins, the dev-corpus 100% gate) in Phase 5
+    changes `verification/verification-authority.json`, which requires owner approval.
+  - `tests/ed31a-reader-phase0.test.js` is registered, with owner approval (2026-09-29), per
+    `docs/VERIFICATION_GOVERNANCE.md` §6:
+    - `required_tests.aggregate`;
+    - a manifest `test_files` entry (`included`, `aggregate`);
+    - `test_hashes`.
+  - No other verification entry changed. Inventory: 57 errors, the pre-existing baseline, with none for
+    `ed31a`. The verification core integrity check passes.
+- **Renderer:** `desktop/renderer/*` is untouched in Phase 0 and stays so until B8.
+- **Needs owner decision (from coverage):**
+  - The legacy parser routes the collective subject quantifier ("we all going?", "are we all…") as a group
+    **address**. ReaderFrame reads it as subject `group_inclusive` with address `NONE`, and the resolver
+    must decide who answers.
+  - This is the contested group-vs-untargeted convention.
+
+## ED-30I evidence-based completeness, required facets, discourse frames, inbound answer shapes — 2026-09-29
+
+- **Architecture: unchanged.** DIS, request ledger, registry, personhood, private-state gates, surface anchors, provider-independent truth and canonical-before-presentation are unchanged. Changes at the language-entry / discourse boundary:
+  - **Positive evidence for Tier-1 completeness** (`dialogueTurn.tier1Contract`, `completenessWithFrame`).
+    - A facet reached only through the generic `ask_factual` / `ambiguous_reference` route is unresolved.
+    - New evidence gaps: `force_uncertain` (short declarative with no statement evidence), `facet_weak`, `addressee_no_evidence`, `addressee_ambiguous`, `fragment_unresolved`.
+    - Gaps a Tier-2 reading did not fill fail closed to a clarification (`finalizeFrame`).
+    - A located echo of the coworker's own words is positive force evidence.
+    - An imperative ("Wait here.") is a request.
+  - **Chat-surface normalization.**
+    - `dialogue-acts.chatSemantic` strips leading fillers and trailing chat particles only. It never touches names, negation, question words, time words, references, or correction and contrast markers.
+    - Additions: a closed g-drop set and a small typo lexicon.
+    - The turn record now keeps `raw` plus a per-clause `chat_normalization` record, so the reading is reproducible from the raw line, the record and the DIS.
+  - **Required facet, one recovery pass** (`dialogue-advisory-interpreter`).
+    - Schema: `facet` is a required enum of the offered ids plus `NONE`; NONE decodes to no facet and fails closed.
+    - `requestAdvisoryWithFacetRecovery` makes at most ONE facet-only second pass. It runs only when a facet is required, the first reading said NONE, and the line asks, follows up or repairs.
+    - The second pass sees the normalized line, facet ids and glosses, the read speech act, and the compact state (facet ids and opaque labels).
+    - NONE again means clarify. There is never a third pass.
+    - The service and the evaluator use the same function. `advisory_state` records `facet_first_pass` and `second_pass`.
+    - A reading whose facet contradicts the canonical item Tier 1 found is rejected (`facet_contradicts_item`).
+  - **Discourse frames** (`dialogue-state.discourseFrames`, snapshot `discourse_frames`). Covers player requests and coworker questions to the player: request id, speaker, addressee, speech act, predicate, subject, referent, temporal, answer type, cardinality, status (pending / answered / repaired / abandoned).
+    - "when was that" → `temporal_elaboration` (`time_asked`); an undated history answers "I couldn't say exactly when", never a date.
+    - "before?" → an earlier time, within the predicate's `temporal_support`.
+    - "who else" → the same predicate for the people who have not answered.
+    - A referent repair also repairs the structured `item_id`.
+    - A lone "which one" with nothing offered clarifies.
+  - **Inbound answer shapes.**
+    - A coworker's question records `answer_shape` (yes_no / person / item / place / time / choice / free_short_answer; uncertainty and refusal always allowed) and the offered options as semantic ids.
+    - The shape comes from the plan only; wording is read only in offline evaluation.
+    - A short reply resolves to `args.answer_option` (option id / yes / no / none / both / either) only when compatible with the pending question. An incompatible reply clarifies.
+    - The player's answer is never world truth.
+  - **Fuzz findings fixed (seed 30031):**
+    - a legacy meta request ("what do you mean?") no longer carries to a new person;
+    - a carried "do you know each other" keeps its `asked_among` set;
+    - a plan-licensed attributed report ("Tonya said …") is not rejected as an echo.
+- **Verification:**
+  - `tests/ed30i-evidence-facets-discourse.test.js` (10 tests, service-level for the critical cases); hash `f67482a7`.
+  - All 25 ED suites pass. Dev corpus 100% (confident-wrong 0).
+  - Fuzz: 3,000 turns, seed 30031, three providers, 0 violations.
+  - Gemma J15: 149 turns, all zeros.
+  - Full suite: 180 files, 1,464 tests, 1,388 pass, 76 fail. No new failures; y80 #9 still passes.
+  - Inventory: 57 existing errors.
+- **Sixth blind corpus** (402 items, SHA-256 `6216979b…9a5e`, measured once). See `docs/acceptance/ed30/README.md`.
+
+  | Measure | Full pipeline | Gate |
+  | --- | --- | --- |
+  | Whole turn correct | 48.3 | — |
+  | Speech act | 79.6 | ≥95 |
+  | Addressee | 80.8 | ≥98 |
+  | Predicate | 74.9 | ≥95 |
+  | Relation | 84.6 | ≥95 |
+  | Clarification rate | 14.2 | ≤8 |
+  | Confident-wrong | 29.4 | ≤1 |
+
+  Tier 1 alone: 42.8% whole-turn correct, confident-wrong 20.6%.
+- **Remaining general blockers:**
+  1. Confident addressee resolution (61 of 118 confident-wrong).
+  2. Lexical / legacy positive evidence that is wrong (79 confident-wrong never reached Tier 2).
+  3. Accepted Tier-2 readings that are wrong (39; 37 of them were Tier-1 clarifications).
+  4. Low facet recovery (first-pass NONE 30.2%, second-pass recovery 30.8%).
+- **Jack retest: no.** ED-30J is not started automatically.
+
+## ED-30H Tier-1 completeness contract, item question roles, bidirectional adjacency, fragment context — 2026-09-29
+
+- **Architecture: unchanged.** DIS, ledger, registry, personhood, private-state gates, surface anchors and provider-independent truth are unchanged. Changes at the language-entry / discourse boundary:
+  - **Tier-1 completeness contract** (`dialogueTurn.tier1Contract`).
+    - Evaluates, per field, speech-act force, facet (and its source; weak when competing facets tie), addressee, relation, referent, fragment status and DIS compatibility.
+    - Explains why Tier 1 is or is not sufficient. Tier 2 is required only for gaps it can fill.
+    - The single gate for the service and the evaluator.
+    - Developer trace: `tier1_frame`, `tier1_complete`, `tier1_confidence_reasons`, `tier2_required`, `tier2_reason`, `advisory_state`.
+  - **Colloquial force.**
+    - Unpunctuated lines about "you", with a late wh-word, or ending in a checking word, and bare fragments, are *uncertain*.
+    - Stretched social words and chat farewells are recognised.
+    - Commentary and a follow-up joined by a comma are split into two clauses.
+  - **Item question roles** (`dialogueTurn.itemRole`, new facets `item.definition` / `item.location` / `item.provenance`).
+    - The clause's relation decides the facet: definition, purpose/use/function, holder, location, provenance, contents, destination.
+    - An unknown purpose is bounded uncertainty, never the definition. Provenance is not established unless authored.
+  - **Bidirectional adjacency** (`dialogue-state` `inbound_requests`).
+    - A coworker's plan-licensed question to the player opens a canonical conversational expectation. The KIND comes from the plan, never the wording; it persists through reload.
+    - The player's next turn is read as answer / uncertainty / refusal / counter-question / repair of their own answer / topic shift, and addressed to the asker.
+    - A clarification answer still resumes the player's own question.
+  - **Fragment context for Tier 2.** Compact structured conversation state goes into the advisory (facets and opaque labels only). A deterministic check requires exactly one compatible antecedent for a fragment reading.
+  - **Other:** temporal follow-ups ("before that", "ever", "at all"), same-kind item fragments ("the lamp?"), and a lone wh-fragment with no antecedent clarifies.
+- **Verification:**
+  - `tests/ed30h-confidence-items-adjacency.test.js` (7 service-level tests). All ED suites pass.
+  - Fuzz: 3,000 turns, seed 30030, 0 violations.
+  - Gemma J15: 149 turns, all zeros; turn p90 3.6–5.7 s.
+  - Full suite: 1,454 tests, 1,378 pass, 76 fail. No new failures.
+  - Inventory: 57 existing errors. `ed30h` hash `bf91b356`.
+- **Fifth blind corpus** (330 items, SHA-256 `914ffc1e…e982`, measured once):
+
+  | Measure | Full pipeline | Gate |
+  | --- | --- | --- |
+  | Whole turn correct | 46.1 | — |
+  | Speech act | 80.6 | ≥95 |
+  | Addressee | 82.7 | ≥98 |
+  | Predicate | 66.7 | ≥95 |
+  | Relation | 85.8 | ≥95 |
+  | Clarification rate | 13.0 | ≤8 |
+  | Confident-wrong | 32.4 | ≤1 |
+
+  Tier 1 alone: 42.1% whole-turn correct.
+
+  | Failure class | Share of failures |
+  | --- | --- |
+  | Never reached Tier 2 | 64.3% |
+  | Definition / purpose confusion | 1.0% |
+  | Discourse-link failure | 23.1% |
+  | Short-fragment low confidence | 0.5% |
+
+  Classes 2 and 4 are resolved.
+- **Remaining general blockers:**
+  1. Tier-1 over-confidence (chat particles and typos defeat the force and role analysis).
+  2. Tier-2 readings with no facet (they fail closed to clarification).
+  3. Discourse-link follow-ups whose facet is not recovered.
+- **Jack retest: no.** Per the ED-30H rule, ED-30I is not started automatically.
+
+## ED-30G utterance force, Tier-2 semantic completeness, discourse follow-ups — 2026-09-28
+
+- **Architecture: unchanged.** DIS, ledger, registry, personhood, private-state gates and provider-independent truth are unchanged. Changes are at the language-entry / discourse-resolution boundary:
+  - **Utterance force** (`dialogue-acts` `utteranceForce`). Questionhood does not depend on "?". It is recognised from wh / auxiliary inversion (typo-tolerant, after hedges and a vocative), aux-dropped subjects, tag and alternative tails, a late wh-clause, fragments, and a leading lowercase name followed by an inverted auxiliary.
+    - A "?" on a first-person claim or a report is *uncertain*, not a question.
+    - Each clause records a force confidence. Uncertainty alone sends the turn to Tier 2 (`force_uncertain`).
+  - **Aux restoration** for facet detection ("how long you been", "where we headed", "we all going … or what"). Collective "we/you all" and tag tails carry no facet.
+  - **Tier-2 states** (`dialogueTurn.assessAdvisory`):
+    - decoded → schema_valid → semantically_complete → accepted.
+    - Only a complete reading fills gaps: a valid, plausible registry facet where one is needed, a speech act where force was uncertain, a named addressee where a name did not resolve. A reading that contradicts what Tier 1 is sure of is rejected.
+    - The state is recorded on every turn (`turn.advisory_state`) and by the evaluator.
+  - **Fail closed.** A question Tier 1 did not understand, with no complete reading and no legacy route of its own, is a bounded clarification. Legacy routes are a knowledge query, a perception or past-event question, the addressee's state, a resolved thing, or an equipment topic.
+  - **Discourse follow-ups** (DIS-resolved; a unique antecedent is required):
+    - temporal / degree fragments keep the answered facet and its speaker;
+    - reason fragments ask for the explanation;
+    - target corrections ("no, <name>", "not you, <name>");
+    - referent corrections ("no the X", "not Y, the X", "the other X" → clarify);
+    - a new wh-question inside "I mean …" is its own question;
+    - item-aware repeat policy.
+  - **Tier-2 latency** (safe mechanisms only):
+    - one generated act (validation unchanged);
+    - `turn_relation` dropped;
+    - shorter facet glosses (static prefix 800 → 688 tokens).
+
+    Measured: warm p50 4.3 s, cold about 6.6 s; blind run p90 4.46 s with 0 timeouts (previously 10 timeouts and p90 7.1 s). A compact output grammar would save about 40% but made the model return null facets, so it was not used.
+- **Verification:**
+  - `tests/ed30g-utterance-force-followups.test.js` (9 tests, service-level for the critical cases).
+  - All ED suites pass.
+  - Fuzz: 3,000 turns, seed 30029, 177 echo moves, 0 violations.
+  - Gemma J15: 149 turns, 0 mismatches, leaks, non-answers or dropped questions.
+  - Full suite: 1,447 tests, 1,371 pass, 76 fail. No new failures; y80 #9 now passes.
+  - Inventory: 57 existing errors. `ed30g` hash `2ce979e2`.
+- **Fourth blind corpus** (325 items, SHA-256 `264c6307…709f`, measured once; full pipeline vs gate):
+
+  | Measure | Full pipeline | Gate |
+  | --- | --- | --- |
+  | Speech act | 78.5 | ≥95 |
+  | Addressee | 81.8 | ≥98 |
+  | Predicate | 67.4 | ≥95 |
+  | Relation | 85.8 | ≥95 |
+  | Clarification rate | 11.1 | ≤8 |
+  | Confident-wrong | 34.5 | ≤1 |
+  | Whole turn correct | 46.2 | — |
+
+  Tier 1 alone: 38.8% whole-turn correct. Tier 2 was invoked on 32.6% of turns, with 67% of readings accepted.
+- **Remaining general failure classes** (details in `docs/acceptance/ed30/README.md`):
+  1. Tier-1 force over-confidence keeps many turns away from the gate.
+  2. The legacy entity-definition route answers item questions.
+  3. Follow-ups carrying commentary, and answers to a coworker's question.
+  4. Tier-2 low-confidence declines on fragments.
+- **Jack retest: not yet.** Synthetic convergence is halted as instructed. These are general classes for a future decision, not a repair pass started here.
+
+## ED-30 end-to-end pass: full-pipeline evaluation, novel phrasing, echo follow-ups — 2026-09-28
+
+- **Evaluation** (`tools/dialogue-eval.js`). Tier-1-only metrics are kept. A separate full-production-pipeline mode (`--full`) runs:
+  - Tier 1;
+  - the ONE Tier-2 gate (`dialogueTurn.advisoryGate`, now also what `desktop/service.js` calls);
+  - one bounded v2 reading from the pinned local model;
+  - the production validation and reconciliation.
+
+  It reports the same fields plus whole-turn correctness (the release-gate fields), Tier-2 invocation, accepted/rejected counts with reasons, and latency.
+- **Novel phrasing: general rules, no phrase lists:**
+  - hedges and intensifiers carry no facet ("the actual job");
+  - typo repair against the registry's own closed cue lexicon, used only when it turns no cue into a cue ("reprot", "camra", "charg");
+  - an aux-dropped second-person line with no finite verb is asked ("you holding up ok"), so the gate sends its facet to Tier 2;
+  - a resolved referent no longer makes a factual question "complete" when its facet is unknown;
+  - items resolve by any 2+-word label part and a closed list of everyday hypernyms (a duffle is a bag);
+  - a lead-in "so" continues only an existing exchange;
+  - "what do you do?" is `person.role`, as for the group form.
+- **Tier 2:**
+  - the model gets one-line facet glosses;
+  - the static prompt comes first, for the prefix cache;
+  - the output cap is 360 tokens (160 truncated v2 act lists).
+- **Code validation of Tier 2:**
+  - a guessed addressee is dropped (field only);
+  - a facet the line's wh-word cannot ask is not filled, and neither is a person facet for a line that names only an item;
+  - a filled facet takes its canonical time frame.
+- **Echo follow-ups: surface anchors** (`dialogue-state` `surface_anchors`).
+  - When a spoken coworker line is accepted, its sentences are recorded with the request/predicate whose plan licensed them. These are conversational metadata only: words and request ids, never facts.
+  - A later echo is a fragment, or a word with a trailing wh ("Sealed how?", "cargo?", "the Bermuda branch?"). It re-asks that EXISTING request of the one who said the words, as an elaboration: the facts again, then "That's all I can tell you about it."
+  - An echo resolves only while fresh (nothing said by the player since). A wh-initial line ("What recall?") stays a meaning question. Several speakers matching the word means no echo.
+- **Provider independence, updated:**
+  - World truth and state (custody, locations, clock, personhood profiles) are identical for every wording provider, always.
+  - The conversation digest is identical unless a turn was resolved through words only one provider spoke. That is legitimate: the player heard different words.
+  - Pinned by `tests/ed30d` J16 (incl. the new surface-anchor test).
+- **Adverse remarks:**
+  - The player's own fatigue, fear, discomfort or negative verdict is carried as `player_affect`. It is not "You look tired." (that is about someone else), and negation is respected.
+  - A licensed reply fits it ("Hang in there.", "That's fair. It's a lot."), never "Sounds good.".
+- **Validator fix:** "Like I said, no, ..." (restating one's own answer) is neither a report nor a contradiction; a restated leak still is. Found by the new fuzz echo moves.
+- **Tests:**
+  - `tests/ed30f-end-to-end.test.js` (11 tests).
+  - Updated: ed30a (dropped addressee), ed30d (J16 invariant and a surface-anchor test).
+  - Dev sets: `dev-corpus` (151 items, 100% in both modes) and the new `dev-novel` (22 items).
+- **Verification:**
+  - All ED suites pass.
+  - Fuzz: 3,000 turns, seed 30028, 153 echo moves, 0 violations.
+  - Gemma J15: 149 turns, 0 mismatches, leaks, non-answers or dropped questions.
+  - Full suite: 1,438 tests, 1,362 pass, 76 fail. No new failures.
+  - Inventory: 57 existing errors.
+- **Third blind corpus** (334 items, SHA-256 `eb0b30d4…4dc6`, measured once):
+
+  | Measure | Tier 1 | Full pipeline |
+  | --- | --- | --- |
+  | Whole turn correct | 46.7 | 51.2 |
+  | Predicate | 61.4 | 67.4 |
+  | Confident-wrong | 29.6 | 31.1 |
+  | Clarify rate | 18.0 | 10.8 |
+
+  Tier 2 was invoked on 30.8% of turns, with 79.6% of readings accepted. **The gates are not met.** The blocking classes are in `docs/acceptance/ed30/README.md`:
+  1. unpunctuated questions read as statements never reach the gate;
+  2. accepted readings that filled no facet;
+  3. non-echo follow-ups and corrective repairs;
+  4. Tier-2 timeouts.
+
+## ED-30 follow-up: owner decisions applied + fresh held-out measurement — 2026-09-27
+
+- **Owner decisions (2026-09-27), applied at the lowest correct authority:**
+  1. **Follow-up routing** (`tools/dialogue-turn.js`, `resolveAddressee` / `isFollowUp`). Responder priority: explicit addressee > repair target > owner of the semantic antecedent (last substantive speaker) > active activity target > knowledgeable eligible responder > least-recently-spoken rotation.
+     - A genuine follow-up inherits its responder and is never rotated. A follow-up is an anaphor ("What's in it?"), a reply-questioning fragment ("Since when?", "How far?") or a thing the reply's authorized facts named. "What about X?" topic ellipsis also inherits.
+     - Only fresh untargeted shared questions rotate.
+     - Salience reads the replies' **authorized facts, never their wording**. An earlier draft read the wording, and the provider-independence test (ed28) caught it: semantics changed with the wording provider.
+  2. **Remarks and sarcasm** (`tools/dialogue-interpretation.js`, `cardinalityFor`). Cardinality is `none`, and an untargeted or group remark gets silence.
+     - A remark addressed to someone by name gets that person's one short acknowledgment.
+     - The authored beat-scoped "I'm so tired" / "long day" exception keeps one listener (pinned by y111).
+     - A previously failing y80 test ("…without forcing multiple replies") now passes.
+  3. **Tonya's prior Complex experience is SOME** (`data/worldpacks/clear-q4/personhood-constraints.json`, now marked as the owner's decision). No count, expedition history, anomaly history or specific event is established. The existing precision and backstory validators enforce this.
+  4. **"There"** resolves only to a place the exchange made active. That includes the player's own previous question, and a place named earlier in the same line ("What about Outpost A? Been there?"). With no such place it is clarified. The old "any anchor ⇒ the Complex" default is removed. "Going in" / "inside" still mean the Complex; "in there" needs an antecedent.
+  5. **Genders are not established.** No change: he/she for a coworker is rejected.
+  6. **Unsettled place history** keeps "I couldn't say for sure." No change.
+- **Independent defects fixed along the way** (found by probing and by the metamorphic test, before the measurement):
+  - "Who has the startup materials?" asked "which thing?", and later answered "I don't know". This already happened at HEAD. Items now resolve by any 2+-word part of their label, and a label-named item counts as a custody question.
+  - "what is it for" was misread as a facet repair; the repair reading now needs "No, …".
+  - A bare "Been there?" had no predicate cue.
+- **Tests:**
+  - New `tests/ed30e-owner-decisions.test.js` (7 tests) pins all six decisions through the production service.
+  - Updated expectations with owner-decision comments: ed2, ed26, ed29 (the fairness test now separates fresh questions from a follow-up).
+  - Dev corpus relabelled to the decisions; 151 items, 100%.
+- **Fresh held-out corpus:** 341 items, SHA-256 `2b7c8991…0de6`. Written blind by a new subagent and hashed before any parser change. Measured once, after all checks.
+
+  | Speech act | Addressee | Predicate | Relation | Cardinality | Temporal | Question form | Clarify rate | Confident-wrong |
+  | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+  | 84.8 | 85.0 | 62.2 | 85.0 | 81.2 | 88.6 | 73.3 | 21.7 | 24.3 |
+
+  **The L2 gates are not met.**
+  - Root causes: 94 fresh phrasings that no Tier-1 registry cue matches (the instrument does not run the Tier-2 advisory, which production uses for exactly these gaps), and 26 follow-up fragments that question the reply's words.
+  - The corpus is spent (`docs/acceptance/ed30/heldout2-*`). Nothing was tuned against it.
+- **Other checks:**
+  - Fuzz: 3,000 turns (seed 30027; garbage, fallback and leaky providers), 0 violations.
+  - Real model J15, re-run: 149 turns. 0 semantic mismatches, 0 private-state claims, 0 nonresponsive lines, 0 dropped questions.
+  - Full suite: 176 files, 1,426 tests, 1,350 pass, 76 fail. No new failures; the 76 are the existing set minus y80 #9.
+  - Inventory: 57 existing errors.
+
+## ED-30 Compositional Conversation, Dialogue Information State & Personhood Convergence — 2026-09-26
+
+- **Architecture: one turn pipeline.** Every LOCAL line now goes through the same staged pipeline, with the legacy frame builder kept as input:
+
+  | Stage | Module | What it does |
+  | --- | --- | --- |
+  | Normalize | `tools/dialogue-normalize.js` | Repairs apostrophes, chat slang and common typos; closed-vocabulary name repair; "were" → "we're" decided by syntax. The raw line is preserved. |
+  | Segment and acts | `tools/dialogue-acts.js` | Clauses, markers, politeness leads/tails, vocatives vs mentions, speech acts, indirect-question unwrapping, unpunctuated chat questions. |
+  | Analyze | `tools/dialogue-turn.js` | Addressees, relation (repair / ellipsis / attention / answer), completeness gate, reconciliation with the legacy frame, `finalizeFrame`. |
+  | Resolve | `tools/dialogue-resolvers.js` | Answers registry predicates from canonical state. |
+  | Plan | existing planner | Builds the response plan. |
+  | Validate | `tools/dialogue-claims.js` (H1–H5) plus the existing validators | Checks every candidate line. |
+  | Commit | ledger (`tools/dialogue-state.js`) | Records what was answered. |
+
+  - **Semantic Registry** (`tools/dialogue-registry.js`): one declarative table of predicates and facets. Parser, planner, validator, resolver and tests all read it; J14 proves that a new facet is data plus one resolver.
+  - **Dialogue Information State** (`run.expedition.dialogue_state`): the request ledger, activities, repairs, acquaintance, and a bounded learning-hook log that holds references only.
+  - **Personhood** (`tools/dialogue-personhood.js`, `data/worldpacks/clear-q4/personhood-constraints.json`): archetype-constrained profiles, self-state dimensions and history.
+  - **C6 seams, defined but not built** (`tools/dialogue-agents.js`): speaker agenda (always empty), belief view, and a need/goal read that returns "not established".
+- **Laws enforced in code.**
+  - **Third-party state.** Another person's private state or history is only ever an attributed report of what was heard, with matching content and polarity, or "you'd have to ask them".
+  - **Satisfaction.** A social reply never satisfies a question.
+  - **Inverted and count questions.** Inverted questions ("Is this your first time?") and count questions are answered correctly.
+  - **Tier 2 fills only real gaps.** The Tier-2 advisory (v2, constrained JSON schema) may fill only gaps that Tier 1 reports, and only from spans the player actually typed.
+  - **Provider independence.** Tested by semantic digest across fallback, garbage, throwing, scripted and leaky providers.
+- **Fail-closed defaults at the time** (superseded where the owner decided on 2026-09-27; see the follow-up entry above):
+  - Veteran-doctor prior Complex/expedition experience: a generated "some" band, overridable in data.
+  - Acquaintance is complete when every coworker has introduced themself, or when the player closes the round.
+  - "There" defaulted to the Complex for experience questions once the conversation had any anchor (replaced: it now needs an active place).
+  - Coworker gender is not established. Lines use names or "they"; he/she for a coworker is rejected.
+  - The wording for a place history the profile does not settle is "I couldn't say for sure."
+- **Tooling:**
+  - `npm run dialogue:repl` (the production service from a terminal);
+  - `dialogue:replay` (JSONL transcript regression);
+  - `dialogue:eval` (corpus scorer);
+  - `dialogue:fuzz` (seeded invariant fuzzer);
+  - developer-only `getDialogueTurnTrace` / `exportDialogueTranscript`.
+
+  Docs: `docs/dialogue/TRANSCRIPT_REGRESSION.md` and `docs/decisions/ed30-dialogue-dependencies.md`. Added fast-check as a devDependency only. Neither NLP library was adopted: the bake-off numbers are in the decision record.
+- **Tests:**
+  - `tests/ed30a`–`ed30d`: J4 trace, stage goldens, J5 metamorphic (fast-check), J6 minimal pairs, J7/J8 matrices, J9–J11, J12 personhood, J13 fuzzer, J14 plug-in, J16 independence, J17 cold reload, M1 trace, I6 transcripts.
+  - All findings from the independent reviews (A7) are pinned as tests.
+  - Existing ed tests were updated only where they encoded the older plan shape: ed2, ed5, ed15, ed16, ed26, ed29.
+- **Measured (ED-30 report has the full tables):**
+  - **Dev corpus:** 143 items, 100% on every field.
+  - **Held-out corpus** (338 items, SHA-256 e3a1e6f9…; blind-authored, measured twice as the brief allows).
+
+    | Run | Speech act | Addressee | Predicate | Relation | Cardinality | Temporal | Question form | Clarify rate | Confident-wrong |
+    | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+    | Run 1 | 77.5 | 60.1 | 56.8 | 75.1 | 68.9 | 87.9 | 78.1 | 25.7 | 39.6 |
+    | Run 2 (after class fixes on dev) | 93.5 | 64.2 | 83.1 | 86.4 | 78.4 | 94.4 | 81.4 | 12.7 | 35.5 |
+    | Run 2, convention-mapped | 93.5 | 85.2 (92.9 incl. rotation-policy items) | 83.1 | 86.4 | 84.9 | 94.4 | 81.4 | 12.7 | 14.8 |
+
+    Convention mapping means "untargeted" counted as "group" for an unaddressed room question, and "each_self_concise" counted as "each_self". **The L2 held-out gates are NOT met.**
+  - **Metamorphic:** 1,752 single-transform variants plus fast-check composed transforms (seed 30005), 0 failures.
+  - **Fuzz:** 3,000 turns across three providers, 0 invariant violations.
+  - **Real model** (Gemma 4 E4B, pinned llama.cpp): five scripted sessions, 149 turns. 0 semantic mismatches against the reviewed deterministic run, 0 accepted private-state claims, 0 accepted nonresponsive lines, 0 dropped questions.
+  - **Independent reviews:** two rounds. All blocking findings fixed and pinned.
+  - **Full suite, per file:** 175 files, 1,419 tests, 1,342 pass, 77 fail. The baseline was 171 files, 1,361 tests, 1,284 pass, 77 fail, and the 77 failing tests are the identical pre-existing set. The verification inventory is back to its 57 pre-existing errors; ED-30 added none.
+  - **Performance:** Tier 1 costs 0.21 / 0.35 ms (p50/p90). Per-turn persistence cost grows with conversation length because the whole save is cloned and hashed on every persist. This is pre-existing and flagged for a separate incremental-persistence pass.
+- **Design decisions raised to the owner** (all six decided on 2026-09-27 and applied; see the follow-up entry above): follow-up routing, acknowledging remarks, the veteran doctor's history, "there", coworker genders, and unsettled place-history wording.
+- **Not in scope.** The known raw-media provenance failure was not touched. Dialogue is not declared frozen.
+
+## Day-1 Canon Ratification + Knowledge Completion + Dialogue Convergence Pass — 2026-09-25
+
+- **Owner decisions applied (this pass).**
+  - The playable Maxwell briefing is ratified Day-1 authored canon. Its label changed from `legacy_unreconciled_briefing_material` to `ratified-day1-authored-canon`, under the mission record's own `cq4-day1-locked-design-law`, and the mission record now says so too.
+  - Baseline induction and baseline field procedure were granted to every CQ4 Day-1 expedition member.
+  - Also granted: the one-sentence ASYNC description, Maxwell's identity and authority, the startup-material semantics (destination is not purpose), and minimal definitions of verbal recall and the layout record.
+  - Full record: `docs/dialogue/DAY1_KNOWLEDGE_MATRIX.md`.
+- **Conflict recorded, not resolved (doctrine rule 3).** The crossing radio check's timing disagrees across sources.
+  - After crossing: the owner's field-procedure wording and the runtime opener (`CROSS` → `STANDARD_RADIO_CHECK`, ≥ 2 s hold).
+  - Before crossing: `mission.procedures[1-2]`, `reporting.check_ins[0]` and the undelivered `briefing_authority.threshold_sendoff`.
+  - The sendoff is therefore not ratified, and no text was changed.
+  - Not established anywhere: a green-tape return-marker procedure.
+- **Knowledge (tools/canonical-knowledge.js).**
+  - Provenance classes: `baseline_induction`, `baseline_field_procedure`, `briefing`, `self`, `observed`, `heard`, `remembered`, `own_speech`, plus attributed `player_claim`.
+  - Grants carry a facet. Queries return `known`, `partial` (the asked facet is missing: `missing_requested_detail`) or an unknown with its internal class.
+  - HEARD knowledge is general. It comes from the plan that authorized each line (the wording is never re-parsed) and reaches only that line's listeners. It keeps its reporting chain ("Daisy said Maxwell said"). It is merged as a `supports` entry when the listener already knows the fact.
+  - Player claims are remembered and counted, and are never promoted.
+  - Other additions: current vs historical custody, presence, where the team stands, and a current procedure recomputed from canonical state.
+  - Briefing beats stamp `at_interval`; a partial briefing grants only the delivered beats.
+- **Interpretation and planning.**
+  - Identity, role, authority, relation and presence are distinct concepts. So are definition and current state, and so are the origin, mechanism, contents, destination, custody and history facets.
+  - Reported speech: "What did Clint say…?", "Didn't Maxwell say noon?", "Who said…?", "What did I say…?", and one's own speech.
+  - Current action and location purpose are recognized.
+  - "That doctor" resolves only by event salience; otherwise the reply asks which doctor.
+  - Address corrections ("No, I meant Brady.", "Not Daisy.", "The other one.") re-ask the question of the intended person and never change facts.
+  - Self-introductions get one short acknowledgment from each teammate.
+  - Untargeted shared questions go to the least-recently-spoken knower. This is derived from `dialogue_history`, so it is reload-stable, and knowledge always beats rotation.
+- **Tier 2.**
+  - Optional `addressee_text_span`: a verbatim span, resolved by code to a single present coworker. A subject mention or a duplicate name fails closed.
+  - Optional `anchor_candidate`: a closed choice among the previous line's authorized facts.
+  - Six new intents.
+  - An accepted reading is the interpretation of the player's line, never knowledge.
+- **Validator.**
+  - Partial answers must state the unknown part, and a destination may never stand in for a purpose.
+  - Reported speech must be attributed.
+  - Player claims are never affirmed.
+  - Rejected outright: the non-canonical terms "portal", "gate device" and "the backrooms"; social acknowledgments that claim experience; unlicensed schedule or deployment terms and perception claims; and a speaker addressing themselves by name (seen in the real Gemma run).
+- **Fallback.** Quotation is safe: one outer pair of double quotes, no doubled terminal punctuation.
+- **Tests.**
+  - New `tests/ed29-day1-knowledge-convergence.test.js`.
+  - ed1, ed4, ed22 and ed28 were updated where they encoded the pre-ratification policy or the older plan shape. Each update is justified in the pass report.
+  - ed27, ed28 and ed29 were registered in the verification inventory through the documented mechanism (new entries only).
+- **Tier 2 latency.**
+  - The static intent menu moved into the system prefix, so the runtime's prefix cache reuses it. The model is asked for compact one-line JSON.
+  - Warm advisory calls: median 1.86 s, p90 2.28 s (12-line benchmark on real Gemma 4 E4B), down from 3.48 s / 4.27 s. The first call after a cache miss takes about 3.0 s.
+  - At most one advisory call per player turn, and none when Tier 1 typed the line.
+- **Real model.**
+  - Gemma 4 E4B ran the owner's 20-turn sequence plus 12 natural variants through the production service.
+  - The deterministic semantics differ only where advisory interpretation is allowed to change understanding (V2 and the resulting spokesperson rotation).
+  - Two real-model wording defects were fixed as validator rules and are covered by ed29 regressions: self-address by name, and moving earlier custody onto the speaker.
+- **Not in scope.** The known raw-media provenance failure in CI `validate` (`desktop/assets/audio/*.mp3`) is a separate governance issue and was not touched.
+
+## Semantic Interpretation + Canonical Knowledge Convergence Pass — 2026-09-25
+
+- **Evidence**: Jack's unscripted Electron run.
+  - Paraphrases fell to generic `ask_factual` with uncertainty ("What do we actually do around here?", "what is your specific job, then, daisy?", "Where are we supposed to go next?", "Who is that Kirk guy anyway?").
+  - The no-comma vocative "Brady tell me…" was room speech.
+  - A follow-up on Clint's line went to Daisy.
+  - "What recording?" had no antecedent.
+  - Self-state answers leaked assignments ("Just compiling the layout record.").
+  - A social statement produced a help-desk question.
+- **Diagnosis**: interpretation depended on narrow phrases; coworkers held no granted knowledge at all (the delivered briefing reached no one); the validator treated knowable facts as sayable; and questions were checked only for listed functions.
+- **Knowledge (source-backed, compartmentalized)**:
+  - `tools/canonical-knowledge.js` projects each actor's grants from canonical state only: self, briefing beats they were present for, observed attendance, heard self-descriptions.
+  - Each grant carries its authority class, source, basis, epistemic mode and scope.
+  - The briefing now stamps `beat_key` + `listeners` on every delivered line (`tools/cq4-day1-opener.js`).
+  - Definitions granted on mention are removed from reply context unless granted. The Threshold, Standard and the Complex are canon not yet granted to Day-1 coworkers, so the answer is a truthful "not told".
+  - In the opener, custody without observation is known only where the roster call stated it.
+  - Matrix and authority classes: `docs/dialogue/DAY1_KNOWLEDGE_MATRIX.md`.
+- **Interpretation**:
+  - Tier 1 recognizes question TYPES structurally over semantic classes: role, institution purpose, mission objective, next step, person identity, assignment purpose, entity definition. The entity is resolved by code against a canonical index that includes non-present entities; reference needs no presence, knowledge does.
+  - No-comma vocatives are recognized.
+  - Tier 2 (`tools/dialogue-advisory-interpreter.js`) runs one bounded advisory reading per player turn, and only when Tier 1 left the line generic. It returns a strict allowlisted schema (intent, referent span, confidence), is validated (spans must be the player's own words; confidence ≥ 0.6), uses the same pinned local model, and is persisted on the interaction (never re-requested on reload).
+  - Without accepted advice, a generic question naming a canonical entity is clarified (doctrine 7.26); it never becomes "I don't know".
+- **Threads/anchors**:
+  - A question about a term the previous speaker's AUTHORIZED facts introduced stays with that speaker.
+  - "What recording?" resolves to the fact that licensed the line (task aliases are language, not facts).
+- **Output ceiling**:
+  - Every operational term and every first-person activity claim in a candidate must be licensed by that turn's plan or by the player's words.
+  - Any question without a clarification plan is rejected, with or without "?".
+  - The capsule offers the speaker's assignment only on turns that authorize it. On real Gemma, operational volunteering on social turns fell from 4/8 to 0/8.
+- **Drift fixed**: the `verbal-recall` phrase is now "handling observation and verbal recall", per the authored roster call.
+- **Harnesses**: the ed test setups now deliver every briefing beat before concluding, as the Electron flow does.
+- **Verification**:
+  - `tests/ed28-semantic-knowledge.test.js` 10/10. ed1–ed27 pass; ed16, ed22 and ed27 expectations were updated to the sourced rules.
+  - Real Gemma 4 E4B and fallback-only share semantic digest `029dd3fae2fa6a9b` on the 17-turn human sequence.
+  - Advisory: 7/7 accepted on generic paraphrases, about 2.7 s each.
+
+## Conversational Pragmatics Convergence Pass — 2026-09-24
+
+- **Evidence**: Jack's human Electron trace on HEAD `7459f35`. Five failures, all in deterministic pragmatics; provider, presentation and Ava's own reply path worked.
+  - A quoted phrase of Elizabeth's line ("staying with") was planned as an unknown fact.
+  - "Hello Ava and Josephine" addressed nobody.
+  - After a direct exchange with Ava, "Why wouldn't you say anything…" went to someone else.
+  - That question was treated as a generic factual question.
+  - "just now, when I said hello ava and josephine…" dropped the open "when do you mean?".
+- **Root causes**:
+  - The address parser knew one leading vocative only; greeting+name, name lists and trailing vocatives were untargeted.
+  - Scope inheritance covered only reflexes ("What?").
+  - Open questions carried no expected answer shape, so only item names or repair phrases resumed them.
+  - No discourse function referred to earlier wording or to conversational events.
+  - Bare group nouns ("table", "all", "team") counted as group address anywhere.
+- **Fixed (general mechanisms)**:
+  - **Addressee sets.** `parseAddressees` resolves direct, subset and group address from sentence structure: leading vocatives, greetings, trailing vocatives and @mentions. A mentioned name is not an address. The interaction record carries a canonical `address` (`scope`, `addressee_ids`, `form`, `source`, `utterance`). A named set is answered only by its members: greetings and individual questions (including readiness) by each, shared facts by one spokesperson.
+  - **Active thread.** `resolveRecipientScope` applies, in order: explicit address or group language, then an answer to an open question (goes to its asker), then reflexes, discourse-dependent lines and second-person lines (continue the preceding direct/subset/group exchange), then room speech. A report, a location change or staleness ends the thread. It is derived from persisted history, so it survives a cold reload.
+  - **Earlier wording.** `ask_meaning` resolves quotations and prior lines, in order: exact quote, named speaker, addressee, latest line. Only lines the player heard or said are searched. A quoted span maps onto the authorized fact the line was planned with (receipt plan facts plus structured `fact_semantics`). Several matching facts are clarified; none means the words were only wording, so the line's basis answers. Another person's line is referred back to them, and only a responder who heard that line receives its text.
+  - **Open questions as typed slots.** The plan records `expected_slot` (`temporal`, `location`, `spatial_selection`, `referent`, `person`, `reason`, `yes_no`, `topic`). The value is persisted in the receipt basis. `matchOpenQuestionSlot` reads a fragment as the answer before any fresh interpretation:
+    - Temporal answers are anchored canonically and resume the question.
+    - Location answers replace the unresolved place.
+    - Reason answers are recorded as a `player_claim`.
+  - **Conversational events and silence.** The derived event log (12 exchanges) records address, listeners, owners, responders and a per-listener SIMULATION silence basis: `not_a_listener`, `response_policy_selected_other`, `not_selected_no_response`, `room_speech_no_response` or `reply_not_delivered` (the last is a failure, not canonical silence). `ask_response_event` resolves the exchange named (event descriptions, quotes, "until I addressed you directly") or the responder's latest unanswered one. Speech gets only a character-knowable reason: `did_not_hear`, `another_answered` or none. Motives, excuses and false "I did answer" are rejected. Talk about the conversation is never itself a candidate event.
+  - **Assignment semantics (Part 7).** The canonical source was underdefined, not Gemma: the team runtime's default posture (`follow` the lead, intent "maintain team contact", no order) was presented as the current assignment, "staying with the expedition lead". That hid the archetype's `primary_task` and read as lodging. Now an ordered task wins, then the assigned task, then the default posture. Follow is worded "following you" / "following <name>", with a gloss from the canonical intent. Lodging readings are rejected.
+  - **Trace.** `[YB:DISCOURSE_TRACE].pragmatics` shows explicit and inherited addressees, the active thread, the open question and slot, the slot answer, the prior utterance and quoted span, the conversational event, and per-plan basis, slot and silence basis. `[YB:COMMIT_TRACE]` adds the open question's slot and the thread.
+  - **Validator.** Silence motives, lodging readings and interpreting someone else's words are rejected. So are invented activities in greetings and bare statements, re-clarifying an answered clarification, and activity reports inside a clarification. "Where are you referring to?" counts as a clarification.
+  - **Renderer.** The LOCAL rail shows "→ Ava, Josephine" for a named set, not "→ Assembly Table".
+- **Verification**:
+  - `tests/ed27-conversational-pragmatics.test.js` passes 15/15, covering A–L, silence semantics and the trace.
+  - ed1–ed26 all pass. ed16 was updated for the corrected assignment phrase.
+  - Full per-file run (all 174 test files, this tree vs an untouched HEAD snapshot): 1244 pass / 80 fail vs 1229 / 80. The +15 are ed27; no test newly fails. `validate-assets` fails identically in both trees at the known raw-media provenance assertion.
+  - Real models: on the production path, Gemma 4 E4B and fallback-only share semantic digest `0c5f3d6963f44386` over the ed27 L sequence. In the human sequence Gemma worded 10 of 18 lines; every rejection was a real violation (invented motives for silence, counter-questions, invented activities).
+- **Not changed**: the raw-media provenance `validate` rule. ed27 is unregistered in the protected verification authority, like ed1–ed26.
+
+## Human-Conversation Semantics Convergence Pass — 2026-09-24
+
+- **Starting point**: HEAD `256a0d7`, which already fixed Jack's reproduction; that reproduction ran on the code before it. A fresh trace of the current production path found the remaining gaps below.
+- **Fixed (deterministic; no new model authority)**:
+  - **False recall.** Listeners who merely heard a line recalled it as their own reply ("I replied: …" from three people). `resolveKnownAnswer` now uses only the worker's own recorded replies.
+  - **Unspecific narrowing.** "You know the thing by the thing?" → "I mean the camera." now resumes as a question about the named item. Spatial and temporal fragments ("By the table.", "After the briefing.") also narrow an open clarification.
+  - **Explanations.** "What are you basing that on?", "What do you mean by that?", "Why not?" and bare "Where?"/"When?" are explanation requests on the prior line. An explanation may voice only its recorded basis; the validator rejects a different basis, invented reasons, and history of either polarity.
+  - **Topic stack.** Discourse markers ("Anyway, …") no longer block classification. A derived topic stack in `deriveDiscourseState` supports "back to what we were talking about" and survives a cold reload.
+  - **Group policy.** Everyone answers group greetings and group questions whose answer is individual (own feelings, experience, opinion, role, including "any/each of you"). One spokesperson answers shared facts and procedure. One listener answers untargeted remarks and requests. Only the addressee answers a direct question.
+  - **Kinds of not-knowing.** The plan now distinguishes `did_not_perceive`, `not_told`, `no_established_personal_history`, `no_established_opinion`, `procedure_not_known`, `no_established_fact`, `referent_unclear` and `time_unclear`. The model words the kind; it never picks it. The new `ask_opinion` answers only from canonical opinion, currently always "no view yet".
+  - **Temporal references.** Maxwell's departure is recorded canonically (`personnel_briefing.concluded_at_interval`). "When you said that" anchors to the prior exchange and "today"/"for the day" to the operation. Future events ("when we get back") and unrecorded anchors are clarified.
+  - **Requested actions.** A request produces structured intent `{action, object, recipient, actor_id, status: not_executed, reason: no_action_authority}` on the canonical interaction record, internal and not projected. Nothing executes. Wording may not accept the request or report it done.
+  - **Spatial selections.** `resolveSpatialReferenceSelection` checks a renderer selection against canonical spatial state (observer placement, perceivable entity, anchor, relation target, candidate set, staleness). The service now validates selections before they resolve deixis; previously it trusted them.
+  - **Stale explanations.** A custody explanation registers that custody as whole-turn commit-sensitive.
+  - **Traces.** `[YB:COMMIT_TRACE]` adds event ids, provider, per-line source, basis, estimated prompt tokens, validator reason, revalidation and the discourse state after the turn. `[YB:SPATIAL_TRACE]` records rejected selections.
+  - **Validator.** Typographic apostrophes are normalized (Qwen's "We’ll" bypassed rules). A bare "On it" no longer false-matches inside "opinion on it". Sarcasm answered with agreement plus a world fact is rejected. Own perception is "didn't notice", never "I don't know".
+  - **Presentation.** Model-worded communication turns carried the committed "Name: line" as result narration, which `renderer.js` played into `#interaction-feedback` outside the LOCAL transcript. That is the stray "Sydney: I don't know." line. Communication turns that committed dialogue no longer echo it.
+- **Verification**:
+  - `tests/ed26-conversation-semantics.test.js` passes 15/15: stateful branching, bounded properties, provider independence (fallback, malformed, throwing, wording), cold reload, stale state, temporal, uncertainty, action and spatial contracts, trace, sequences A–F, real-model findings and presentation.
+  - Full per-file run: 1229 pass / 80 fail across 33 files. Every failure is identical on the audit base, so nothing is newly failing.
+  - Real models on the production path: fallback-only, Gemma 4 E4B and Qwen3-4B share semantic digest `0c6582df6118f576` over 17 turns.
+- **Not changed**: the raw-media provenance `validate` rule (owner decision; no media or policy edits). The ed24–ed26 suites are unregistered in the protected verification authority, like ed1–ed23.
+
+## Human-Acceptance Dialogue Reproduction Repair — 2026-09-24
+
+- **Evidence**: Jack's first natural Electron conversation after the freeze audit, with developer traces from `~/Library/Application Support/Electron/yellow-beast/logs/desktop.log`. In that run Gemma produced exactly what each plan authorized and the validator accepted it, so every defect was in deterministic planning.
+- **Fixed (general mechanisms, no phrase special-casing)**:
+  - **Questions about a listener's own feeling** ("Are you all excited?", "Nervous?", "You seem tense, everything alright?") are now `check_in` with a `self_state_query`. The plan adds `self_state_answer`, the stance canonical affect gives. An ordinary state is "not especially", never "I don't know". Invented affect and self-access denial are rejected.
+  - **"Why?" / "What makes you say that?" / "How come?"** is now `ask_explanation`. The reason is the recorded basis of the speaker's own previous line, reconstructed via `responseBasisFromPlan` from that turn's persisted communication receipt; it survives a cold reload. Invented rationale is rejected.
+  - **"What's next?"** is now `ask_next_step`. It is answered from canonical authority only: the concluded briefing, the `LOCAL_INTRODUCTIONS` beat, the speaker's location, and the room's `known_destination` in the canon lexicon. With no such authority it is clarified. UI text is never consulted.
+  - **Repair fragments** ("I mean for the day", "No, the other one") now narrow the open clarification, or the player's just-answered question when explicitly self-repaired, by re-framing it. An unresolved repair clarifies again.
+  - **Group policy**: everyone answers a group greeting and a group question about their own feelings. One speaker answers shared-knowledge or task questions. One answers untargeted remarks. Only the addressee answers a direct question.
+  - **Dev traces**: with `YELLOW_BEAST_DEVELOPER_MODE=1` the `[YB:...]` traces also go to the terminal. They now carry the request id, listeners, the antecedent's recorded basis, and a `[YB:COMMIT_TRACE]`.
+- **Verification**:
+  - `tests/ed25-human-acceptance-dialogue.test.js`: 11/11.
+  - Full per-file run: 1214 pass / 80 fail across 33 files. Every failing test fails identically on the audit base, so nothing is newly failing.
+  - The real pinned model (Gemma 4 E4B) is semantically correct on the exact human sequence and on the generalization cases.
+- **Not changed**: the turn-feedback strip renders `result.public_reason` (a "Speaker: line" string) when a result has no `scene.narration`. That is the likely source of the one-off stray "Sydney: I don't know." line. It is not reproduced, so presentation is unchanged.
+
+## Final Dialogue Engine Audit, Model Ascension & Freeze-Readiness Pass — 2026-09-24
+
+- **Source truth**: branch `opener-human-green-2026-09-19`; audit base `1c3d106`. CI repairs landed separately during the pass (`800c77d`, `63e1d40`, `df6d107`, `acde934`, `446d044`). Scope: the LOCAL dialogue engine only. The facility map, Maxwell briefing, equipment staging, threshold flow, audio, UI styling, cinematics and Godot were not changed.
+- **Authority (now enforced end to end)**: interpretation → semantic frame → response owners → response plan → authorized contribution → observer-safe capsule → model *or* same-plan fallback → validation → pre-commit revalidation → commit → persist. The provider receives only the rendered capsule and contribution, under a compact system prompt, and must return `{"speech": ...}` through a JSON schema. The service fails closed (`DIALOGUE_PLAN_REQUIRED`) for any packet without a contribution and capsule, including autonomous reports.
+- **Proven defects fixed**:
+  - Custody answers are fail-closed: a holder is stated only when that listener's knowledge authority grants it.
+  - Check-ins and remarks about the speaker come from canonical self-state (`describeSelfState`). Affect moves only through sourced `applyAffectEvent`, and reading emotional state no longer writes it.
+  - Anaphora, fragment resumption of an open question, and noun-aware clarification are handled. Spatial deixis needs a canonical selection (`tools/spatial-event-contract.js`). Temporal references resolve against recorded anchors (briefing, crossing) or are clarified.
+  - Requests and orders are heard, never accepted. `request_disposition` records `order_routing: not_routed`.
+  - Map knowledge no longer transfers on keywords like "where" or "route", and a disclosure requires the first person.
+  - Pre-commit revalidation also covers fallback text, and all-fallback public reasons are built from committed lines.
+  - Validator holes closed: invented directives, situation assessments, duties, rationale, history, custody outside the plan, request acceptance, "you" as a vocative, and the PLAYER label in any case or as a name.
+  - Runtime:
+    - `--cache-ram 0`: the default 8 GiB host prompt cache inflated the footprint.
+    - `--ctx-size 4096`.
+    - Stale daemons are reaped.
+    - Crash-while-ready triggers an immediate respawn on the verified install.
+    - A healthy daemon is never killed for a request-level failure, and the pool's stale local cooldown clears once the supervisor is ready.
+    - Unrecoverable restarts are bounded at 3.
+- **Prompt**: mean prompt tokens fell from 1274 to 621 (real tokenizer). Completion tokens fell from 42 to 16 on the 4B, and nothing hits the generation ceiling.
+- **Model ascension**: memory budget ≤ 6.0 GB peak RSS for the dialogue server on a 16 GB machine. Production path, ctx 4096, 6 samples, 168 generations each:
+
+  | Model | Accept | Invented | Peak RSS | Latency mean / p90 | Group turn |
+  |---|---|---|---|---|---|
+  | Qwen3-4B | 66.1% | 15 | 3.18 GB | 1.86 / 2.23 s | 5.9 s |
+  | Gemma 4 E4B | 82.7% | 5 | 5.17 GB | 2.63 / 3.35 s | 8.4 s |
+  | Qwen3-8B | 78.6% | 9 | 5.59 GB | 3.28 / 4.03 s | 10.2 s |
+
+  - Qwen3.5-9B was worse (63.1% accept, 10 inventions).
+  - Qwen3-14B fails both budget and latency (6.2 s per line, 18.6 s groups).
+  - **Selected: Gemma 4 E4B Q4_K_M** (Apache-2.0; `tools/local-runtime-pin.json`, `docs/licenses/Gemma-4-Apache-2.0.txt`).
+  - Wording stays serial (`DIALOGUE_WORDING_CONCURRENCY = 1`): parallel slots halve tokens/s, and the group-turn gain did not justify the contention.
+  - Final confirmation on the final code: Gemma 4 E4B at 82.7% accept, 4 inventions, 0 echo, 0 malformed, peak RSS 5.37 GB, latency 2.54 / 3.27 s, group turn 8.1 s, no ceiling hits, 12/12 autonomous reports model-worded. On the 21-turn human-like sequence, 18 of 21 turns were model-worded; every rejection was a real violation (a counter-question, a situation assessment, a same-turn duplicate opening).
+- **Freeze invariant (real models)**: fallback-only, Gemma 4 E4B and Qwen3-4B produce the identical canonical-semantics digest over a 15-turn production sequence. This covers the dialogue records, interactions, plans, knowledge, custody, attitudes, memories, affect, survey state and speech queue.
+- **Crash recovery** (SIGKILL of the live daemon; time to the first model candidate): 38.5 s, 8 respawns and 27 fallback turns before; 5.6 s, 1 respawn and 2 fallback turns after. No orphan server either way.
+- **Verification**: Every `tests/*.test.js` file was run in this tree and in the untouched audit-base snapshot. Now: 1203 pass / 80 fail across 33 files. Baseline: 1172 / 81 across 34 files. **No test newly fails**, `tests/ed24-freeze-invariants.test.js` passes 30/30, and one baseline failure (y57 Electron settings) now passes. The focused dialogue/runtime suites (ed1-ed24, y102, y108-y111, y166-y174, y97, y76, y78) show zero new failures. `node --check` and `git diff --check` are clean. `npm test` cannot run its aggregate while the inventory is inconsistent: the runner short-circuits and then crashes while formatting. It behaves identically at the audit base. The inventory has 53 errors versus 51 at baseline; the only additions are ed24 lacking a manifest entry and required-test authority, the same state as ed1-ed23. The renderer smoke (`--reference-expedition`) passes locally. `npm run desktop:build` produced a 5.16 GB arm64 zip with Gemma staged and its SHA matching the pin. `npm run desktop:verify` then passed the offline smoke, the packaged renderer interaction, and the packaged runtime: READY on loopback on a 16 GiB machine, model matching the pin, 0 orphan processes. One earlier verify run hit a one-off blank renderer during the renderer smoke and did not reproduce on the same build. On hardware below the on-device floor (the 7 GB GitHub macOS runner), the runtime smoke now reports `hardware-below-floor` instead of claiming READY.
+- **Known, not changed (owner decisions or pre-existing)**:
+  - The CI `validate` raw-media provenance assertion (~35 runtime media without provenance records).
+  - The verification inventory was already inconsistent before this pass (protected-hash and manifest entries for the ed*/y166+ suites).
+  - Packaged size: the model alone is 4.98 GB, well above GitHub's 2 GiB release-asset limit, so a distribution channel is an owner decision.
+  - The `--day1-opener` renderer smoke (not run in CI) stops at the facility-broadcast presentation. Before the settings-v8 fix it failed even earlier.
+  - Pre-existing test failures are unchanged by this pass: 80 tests across 33 files, all failing with identical names on the audit base. In the dialogue and runtime area they are y73 (26), y36 (2), y37 (1), y108 (1, audio high-pass), y97 (1, pool candidates), y76 (1, hosted interpretation), y78 (2; the test reads a Promise synchronously, and its semantics pass when awaited). The same failing test names appear on the audit base.
+
+## Assembly Table LOCAL Dialogue Presentation & Group Response Pass — 2026-09-21
+
+- Normal Assembly Table dialogue remains in the right-side communications rail; the center column remains map/reconstruction space, apart from the existing authored Maxwell presentation.
+- The player-facing `@table` group route was removed. Natural-language interpretation now classifies obvious group greetings and questions while preserving direct coworker selection as an optional explicit address.
+- Deterministic dialogue policy now owns ordered `response_owners[]`: greetings and social check-ins can receive all-present replies, established-knowledge questions select only knowledgeable coworkers, warnings can be heard without forcing replies, and ambiguous group speech selects one clarification owner.
+- Untargeted LOCAL speech now has a beat-scoped deterministic response policy: social remarks may receive a bounded reaction, arbitrary statements may receive none, and silence still commits no dialogue events.
+- Multi-responder turns commit the player event first and each responder event afterward in deterministic order. Presentation consumes that same committed order. Model generation remains wordsmith-only and runs once per authorized responder.
+- Development-only traces record the provider, deterministic responder order, sanitized wordsmith inputs, raw candidates, fallback/model decisions, and committed event IDs without exposing those details in the player-facing UI.
+- Focused verification: dialogue policy/runtime plus the existing living-world LOCAL regression (`y78`, `y109`, `y110`, `y111`) passed 59/59. Authoritative `npm test` passed 839/839 with inventory consistency and all required reports green.
+
+## Beat 2.4 Reusable Dialogue Runtime & LOCAL Coworker Proof — 2026-09-20
+
+- **Source Truth**:
+  - Branch: `opener-human-green-2026-09-19`
+  - Base Commit: `9161525b3bad83f69afdc0c0238783915b0e6b11`
+  - Status: Working tree modifications preserved, uncommitted, strictly scoped to dialogue runtime completion and proof.
+- **Corrected Roadmap Readiness Assessment**:
+  - **LOCAL vs STANDARD Channels**: **READY**. Channel separation enforced across simulation and presentation. LOCAL uses acoustic room propagation with distance limits and recipient targeting; STANDARD uses radio transceivers with acknowledgment states and battery consumption.
+  - **Dialogue Transcript & History**: **READY**. Unified chronological `dialogue_history` backed by presentation bus envelopes, surviving cold boot restoration and renderer remounts without duplication.
+  - **Interruptions, Sequencing & Pacing**: **READY**. Progressive typewriter delivery (`YBDialoguePlayer`) supports instant skip-to-complete on first user action without advancing beats; canonical simulation state commits synchronously before UI typing timers.
+  - **Dialogue Persistence**: **READY**. Canonical dialogue events stored in `run.expedition.dialogue_history` survive full serialize-to-disk and deserialize cold restarts.
+  - **Multi-Character Conversations**: **READY for Deterministic Local Targeting** (Direct, Group, and Untargeted routing verified across 3 table coworkers); **PARTIALLY READY for Autonomous Multi-Turn Unscripted Exchanges** (requires local LLM routing for unscripted emergent peer conversations).
+  - **Natural-Language Input & Free-form Queries**: **PARTIALLY READY**. Fully wired and verified for Dr. Kirk Maxwell briefing and deterministic coworker targeting; model-assisted routing for unscripted queries verified with fail-safe fallback, awaiting full local appliance deployment.
+- **Dialogue Runtime & Targeting Semantics**:
+  - **Direct Address**: Only the addressed coworker responds; other coworkers hear acoustically if in range, but never become primary responders.
+  - **Group Address (`@table` / `@team`)**: Addressed to the group; designated spokesperson/equipment holder responds on behalf of the group; all present peers hear.
+  - **Untargeted Room Speech**: Spoken aloud to the room (`recipient_type = "none"`); all peers hear acoustically, but nobody answers (`"You speak aloud to the room. Nobody at the table responds."`). Creates exactly one dialogue event (player only).
+  - **Silence Path**: Player can proceed to Equipment Staging without speaking; creates exactly zero dialogue events.
+  - **Validation & Boundary Guards**: Physically absent targets (`LOCAL_TARGET_UNAVAILABLE`), unknown targets (`TARGET_NOT_FOUND`), channel mismatches (`INTRO_CHANNEL_UNAVAILABLE`), and empty/whitespace inputs (`COMMUNICATION_EMPTY`) fail closed without emitting dialogue events.
+  - **Fail-Safe Fallback**: Faulty or malformed model candidates fail validation and fall back to deterministic response without corrupting simulation state.
+- **Verification Evidence**:
+  - Unit test suite: `tests/y109-local-coworker-dialogue-runtime.test.js` (12/12 passing).
+  - Repair suite: `tests/y108-beat-2-4-convergence-repair.test.js` (11/11 passing).
+  - Verification Gate: `tests/y68-verification-gate.test.js` (32/32 passing).
+  - Authoritative Aggregate: `npm test` (800/800 passing, all reports passing, inventory 100% consistent).
+  - Native Packaged Verification: `desktop:verify`, `desktop:settings-regression`, `desktop:first-run-regression` all passing cleanly.
+  - Live Electron Automated Traversal: `node tools/run-visual-traversal.js` passed, capturing 21 screenshots covering title, video, waiver, AEOT boot, facility schematic, briefing inquiry/skip, and all 5 LOCAL dialogue targeting scenarios plus staging boundary.
+
+## Beat 2.4 Pre-Commit Authority Cleanup & Dialogue Architecture Convergence — 2026-09-20
+
+- **Pre-Commit Authority Cleanup**:
+  - **Player-Facing Room Label Neutralization (`desktop/renderer/surfaces.js`, `desktop/renderer/renderer.js`, `tools/cq4-day1-opener.js`)**:
+    - Purged invented room designations `ASYNC Briefing Room`, `Briefing Room`, `Lower Briefing Room`, and `KV31 Lower Briefing Room` from all player-facing UI, dialogue headers, and map annotations.
+    - Standardized player-facing location headers to neutral physical designations: `ASYNC FACILITY // LOWER LEVEL` (eyebrow) and `Assembly Table` (header). Unlabelled briefing spaces render strictly as geometry (`Controlled Facility Space`).
+  - **Paper Audio Foley Purge (`desktop/renderer/audio.js`, `desktop/assets/audio/Interface/`)**:
+    - Completely deleted procedural/synthesized paper rustle WAV files (`Paper_Sheet_Enter.wav`, `Paper_Sheet_Exit.wav`) and directory.
+    - Procedural fallback for `paper_sheet_enter` and `paper_sheet_exit` executes as an explicit silent no-op. Paper transitions remain silent until authentic recorded foley exists.
+  - **Validation Terminology Discipline**:
+    - Corrected all automated validation logs and status keys from "human-observed" to "live Electron automated traversal" / "rendered Electron traversal".
+    - Reserved human sensory validation exclusively for Jack's manual playthrough.
+
+- **Priority 1 — Facility Map Blueprint Authority Convergence (`desktop/renderer/surfaces.js`, `desktop/renderer/renderer.js`, `tools/cq4-day1-opener.js`)**:
+  - Reconciled facility schematic strictly against `/Users/jacktr/Pictures/Screenshots/ASYNC Facility.png` (`Top-down geometry extracted from gm_br_complex • fan reconstruction by schlimbodimblo`):
+    - Blueprint is the sole authority for room designations. Corridors and unlabelled briefing spaces render strictly as geometry without invented functional labels or subtitles.
+    - Lower Level: Briefing table area and circulation corridor render as pure geometry with `name: ""` and `subtitle: ""` (fallback to neutral `Controlled Facility Space`). Blueprint-exact rooms: `Threshold Chamber` (#1), `Dressing Room` (#2), `Freight Lift` (#9), `Lift` (#10).
+    - Middle Level: `Control Room` (#1), `Conference Room` (#2), `Relay Room` (#3/#4), `Medical Lab` (#5/#6), `Freight Lift` (#9), `Lift` (#8). Purged invented prefixes `KV31` and `Telemetry`. All functional subtitles removed.
+    - Upper Level: `Server Room` (#1), `Restrooms` (#2/#3), `Maintenance Access` (#4), `Freight Lift` (#5), `Lift` (#6). Purged ungrounded invention `Administrative Offices`. All functional subtitles removed.
+    - Upper Section: `Auditorium` (#1), `Lounge Access` (#2), `Lift`. Purged ungrounded invention `Mechanical & Roof Access`. All functional subtitles removed.
+  - Fixed Facility Floor Tab Inspection:
+    - Scoped floor tab click listener from `[data-facility-floor]` down to `button.facility-floor-button, g.facility-floor-tab` with `e.stopPropagation()`, preventing click events from bubbling up to `<details class="operational-map" data-facility-floor="lower">` and resetting the active floor back to `"lower"`.
+    - Passed `options` into `layoutMap(projection, null, options)` across `briefingWorkstation`, `expeditionCockpit`, and prefield layouts so `inspectedFacilityFloor` correctly switches rendered floor layers.
+
+- **Priority 2 & 3 — Progressive Dialogue Player & Dialogue Architecture Audit (`desktop/renderer/dialogue-player.js`, `desktop/renderer/renderer.js`, `desktop/renderer/styles.css`, `tools/presentation-bus.js`)**:
+  - Dialogue Architecture Inventory:
+    - Formalized canonical dialogue data contract `createDialogueEvent({ channel, speaker, recipient, text, mode, ... })` exported via `tools/presentation-bus.js`.
+    - Maintained strict unidirectional authority flow: `CQ4 / World Engine (Canonical Authority)` → `presentationBus / Projection (Observer Boundary)` → `YBDialoguePlayer (Progressive Presentation)`.
+  - Reusable `YBDialoguePlayer` supporting progressive letter-by-letter rendering tuned to conversational pace:
+    - Base character delay: ~36ms.
+    - Punctuation breaths: commas/colons 130ms, em/en dashes 180ms, sentence-ending periods/exclamations/questions 260ms, newlines 200ms.
+    - Skip-on-first-action semantics: clicking "CONTINUE LISTENING", clicking turn container, or pressing Space/Enter/Escape while typing immediately snaps the current beat to complete text without advancing the simulation beat. Subsequent action advances to the next beat.
+    - Safe detached DOM check (`element.isConnected === false`) cancels ticker and prevents memory leaks if the container unmounts mid-speech.
+    - Fast-forward / reduced-motion bypass: instant reveal when `__YB_TEST_FAST_BOOT__`, `__YB_TEST_FAST_FADE__`, `__YB_TEST_FAST_DIALOGUE__`, or `(prefers-reduced-motion: reduce)` is active.
+    - Suppressed false-positive failure banner: `renderMessage` in `renderer.js` avoids emitting `"That attempt could not be resolved."` on successful in-scene dialogue queries (`detail.outcome === "briefing-interacted"`).
+    - Responsive briefing layout: `.eti-turn-controls > .briefing-action-dock` uses responsive flexbox with wrap, and `.in-person-briefing` / `.briefing-transcript` use `flex: 1 1 auto; min-height: 0;` with subtle blinking caret (`▮`), eliminating text clipping at 1024x768.
+
+- **Priority 4 — LOCAL Introductions UX Audit & Repair (`desktop/renderer/surfaces.js`, `desktop/renderer/renderer.js`, `desktop/renderer/styles.css`)**:
+  - Coworker Table Presence: Coworker cards render as seated colleagues at the briefing table. Task label `"follow"` replaced with observational postures (`"Reviewing equipment manifest"`, `"Adjusting radio pack harness"`, `"Seated at table, awaiting staging"`).
+  - Direct Recipient Selection: Clicking any coworker card directly selects/deselects them as the comms recipient in the input dock (`[data-testid="q4-comms-target"]`), accompanied by visual highlight (`.selected-target`) and keyboard accessibility.
+  - Silence / Proceed Affordance: Clear institutional path to proceed in silence without speaking. The "PROCEED TO EQUIPMENT STAGING" button remains visible and accessible without requiring dialogue interaction.
+  - Visual Hierarchy Restraint: Under `.introductions-active`, stage advance button is styled with secondary restraint (`background: #242b35; border-color: #3b4654;`) until the user is ready, keeping focus on coworker presence.
+
+- **Priority 5 — Live Electron Automated Traversal (`desktop/visual-acceptance-smoke.js`, `tools/run-visual-traversal.js`)**:
+  - Ran live Electron instance using an isolated test profile (`profiles.createIsolatedTestProfile(...)`).
+  - Successfully traversed complete sequence (Steps 1 through 13b):
+    1. Title Screen with ASYNC logo & menu music.
+    2. July 1991 Date Card (non-interactive video).
+    3. Introductory Video (`IntroductoryVideoVotT.mov`) with tested `ESC` skip contract.
+    4. Personnel Waiver name entry.
+    5. Personnel Confirmation screen.
+    6. AEOT Initialization (8s countdown/test bypass).
+    7. AEOT Cold Boot (3 stages: Memory Check, Network Handshake, Subsystem Ready).
+    8. Facility Schematic inspection across all 4 levels (Lower, Middle, Upper, Upper Section). Blueprint exactness verified.
+    9. In-person Maxwell briefing with progressive letter-by-letter rendering.
+    10. Mid-typing skip test (snapped text instantly to full, did not advance beat).
+    11. Inquiry interaction ("What is our cutoff time?") yielding Dr. Maxwell's in-scene reply ("Departure is scheduled for 10:00 AM... Operational cutoff is 1:00 PM firm.") with clean UI feedback and zero error banners.
+    12. Completed Maxwell opening remarks and active CONCLUDE BRIEFING button.
+    13. LOCAL Introductions scene with 3 seated coworkers at Assembly Table and PROCEED TO EQUIPMENT STAGING affordance.
+    14. Coworker interaction: clicked coworker card to address directly, verified target select synchronization, clicked again to return to neutral.
+  - Audio audit: Standard facility strictly silences `complex_hum` and `complex_music`. `facility_ambient` active. Zero audio leaks.
+  - Visual integrity verified at both 1440x900 and 1024x768 viewports: zero clipping, collisions, or overlaps. 20 visual artifacts captured.
+
+- **Priority 6 — Verification Suite Health**:
+  - Aggregate test suite: 788 / 788 tests passed (100%).
+  - Reports passed: `corpus-context-closure`, `stranger-flow`, `replayability`.
+  - Packaged desktop regressions: `desktop:verify`, `desktop:settings-regression`, `desktop:first-run-regression` all passed.
+  - Verification inventory: consistent (0 errors, 0 warnings).
+  - No Git commits or pushes performed. Preserved clean working state for Jack's manual sensory review.
+
+
+## Paper sound and automatic Maxwell pacing — 2026-09-20
+
+- Added locally synthesized 1.8-second paper-rustle WAVs to the existing paper entry/exit hooks; these are procedural approximations, not recorded Foley. Provenance is beside the assets.
+- Maxwell opening remarks advance through the existing CONTINUE_BRIEFING action at a reading pace, without a continue button. Pacing pauses while the question field is focused or contains a draft, while the window is hidden, or while another action resolves. Leaving the surface invalidates its timer.
+- Fixed conclusion visibility to use canonical current_beat_index/beats_total fields. Explicit conclusion remains the player's choice after the remarks. Earlier dialogue is collapsed into an expandable history.
+- Authored title-video integration, PA music treatment, 1.8-second paper movement, hidden cinematic skip hints, and floor-inspection controls remain in place. Floor inspection is not physical travel.
+- No test suites or Electron run performed at user request. Paper timbre and briefing pacing require human listening/observation. No commit or push.
+
+
+## Authored Cinematic Asset Integration & Reusable ESC Skip Contract — 2026-09-19
+
+- Bounded pass status: **COMPLETED** (Pending Human Electron Observation / Verification).
+- Visual acceptance status: `UNVERIFIED — REQUIRES HUMAN ELECTRON OBSERVATION`.
+- Integrated authored assets:
+  - `DateCardNewPlayerClip.mov` (22.5s, 1920x1080, H.264/AAC stereo) → `desktop/assets/video/DateCardNewPlayerClip.mov` (Slot: `DATE_CARD_JULY_1991`).
+  - `IntroductoryVideoVotT.mov` (208.3s, 1920x1080, H.264/AAC stereo) → `desktop/assets/video/IntroductoryVideoVotT.mov` (Slot: `BRIEFING_INFORMATIONAL_VIDEO`).
+  - `CrossingIntoTheComplex.mov` (40.3s, 1920x1080, H.264/AAC stereo) → `desktop/assets/video/CrossingIntoTheComplex.mov` (Slot: `THRESHOLD_CROSSING_ENTRY_4`).
+- Core architecture & contracts delivered:
+  1. **Hard Cinematic Input Law**:
+     - Every non-interactive cinematic is immediately skippable via `ESC`.
+     - ESC halts audio and video immediately, unloads media decoder pipeline (`pause()`, `removeAttribute("src")`, `load()`), removes the DOM surface, and invokes the deterministic completion callback `finishCinematic(reason = "ended" | "skipped")`.
+     - Capture-phase key handling (`useCapture: true`) with `stopImmediatePropagation()`, `stopPropagation()`, and `preventDefault()` guarantees zero event leakage into newly revealed interactive screens or Electron window handlers.
+     - Synchronous event listener deregistration prevents keyboard listeners from outliving the active cinematic.
+     - Zero orphaned media elements or background audio streams survive dismissal.
+     - Restrained skip affordance: subtle monospace `ESC · SKIP` element placed non-dominantly at bottom right.
+  2. **Unified Cinematic Player (`desktop/renderer/cinematic-player.js`)**:
+     - UMD module (`YBCinematicPlayer`) providing `playCinematic(options)`, `getActiveCinematic()`, and `skipActiveCinematic()`.
+     - Section 24 visual placeholder registry integration with dynamic path resolution (`getResolvedPath`).
+     - Safe fast-test support (`__YB_TEST_FAST_DATE_CARD__`, `__YB_TEST_FAST_BRIEFING__`, `__YB_TEST_FAST_CROSSING__`, `__YB_TEST_FAST_FADE__`).
+     - Idempotent lifecycle execution: single-completion guard (`finished = true`) eliminates race conditions between natural `ended` events and simultaneous ESC skips.
+  3. **Strict Beat 1 Chronology Preserved**:
+     `NEW GAME → JULY, 1991 (DateCard) → INTRO VIDEO (VotT) → WAIVER / IDENTITY → PERSONNEL CONFIRMATION → PAPER EXIT → AEOT INITIALIZATION → AEOT COLD BOOT → BRIEFING PENDING`.
+  4. **Threshold Crossing Isolation & Acoustic Boundary**:
+     - `CrossingIntoTheComplex.mov` is strictly gated to the successful canonical `CROSS` action transition from pre-crossing (`STANDARD_RADIO_CHECK` / `THRESHOLD`) to `FIELD_OPERATION`.
+     - Suppressed during application start, prefield, boot, transit, and staging.
+     - Complex environmental ambience (`complex_hum`) is held until `finishCinematic` completes (`completeTransition`), ensuring authentic silence / video-track audio during crossing traversal.
+- Automated verification:
+  - Aggregate test suite: 775 / 775 passed (143 included, 4 quarantined, 0 retired).
+  - Fast test suite: 144 / 144 passed.
+  - New test registered: `tests/y107-authored-cinematic-assets-and-esc-skip.test.js` (aggregate tier).
+  - Verification inventory consistent (`INVENTORY CONSISTENT (0 errors, 0 warnings)`).
+
+## Beat 2: Physical Dr. Kirk Maxwell Briefing & Opener Repair 2.2 — 2026-09-19
+
+- Bounded pass status: **PENDING HUMAN ELECTRON OBSERVATION / VERIFICATION**.
+- Visual acceptance status: `UNVERIFIED — REQUIRES HUMAN ELECTRON OBSERVATION`.
+- Player-facing sequence delivered:
+  `BRIEFING PENDING → ATTEND BRIEFING → PHYSICAL DR. KIRK MAXWELL BRIEFING → INQUIRY / CONVERSATION → CONCLUDE BRIEFING → LOCAL_INTRODUCTIONS (3 COWORKERS AT TABLE) → PROCEED TO EQUIPMENT STAGING → RM-L02 DRESSING ROOM & EQUIPMENT ISSUE`.
+- Core repairs delivered (Failures A through H):
+  1. **Failure A — Environmental Ambience Physical State Ownership**:
+     - Ambience is strictly owned by physical environment state (`STANDARD` vs `COMPLEX`).
+     - Standard facility ambience resolves to authentic silence (`data:audio/wav;base64,...` silent PCM WAV data URI in `DEFAULT_SOUND_MAP`).
+     - Complex fluorescent hum (`FF1_Electrical_Buzz_01.mp3`) and music loops are strictly suppressed Standard-side prior to Threshold crossing.
+     - In `acoustic-director.js`, `physical_environment` is evaluated; `fluorescent_hum_level` is set to `0.0` in all Standard facility phases including `THRESHOLD` and `STANDARD_RADIO_CHECK`.
+  2. **Failure B — Reconciled Facility Map Geometry (`ASYNC Facility.png`)**:
+     - Fully reconciled the spatial schematic in `surfaces.js` to match the authentic Lower Level architecture from `ASYNC Facility.png` (`gm_br_complex`):
+       - `RM-L05 Briefing Room` (Lower Offices / Briefing)
+       - `HALL-L1 Corridor / Service` (Circulation & Machinery)
+       - `FREIGHT LIFT` (Levels 1–4 shaft)
+       - `RM-L02 Dressing Room` (Hazmat & Equipment Staging)
+       - `AIRLOCK` (Interlock transition corridor)
+       - `RM-L01 Threshold Chamber` (KV31 / LPMDS Hall)
+       - `KV31 CONTROL (LVL 2)` (Observation gallery overlook)
+       - `APERTURE` (LPMDS boundary opening)
+       - 4-level indicator pills: `LOWER LEVEL (ACTIVE)`, `MIDDLE LEVEL`, `UPPER LEVEL`, `UPPER SECTION`
+     - Removed provisional node graph and eliminated all label collisions.
+  3. **Failure C — De-gamified Maxwell Briefing Scene**:
+     - Purged gamified meta-UI badges (`IN-PERSON BRIEFING`, `Chief Expedition Briefing Authority · Standard Side`, turn badges, and attendance cards/tags).
+     - Clean, physical presentation: Dr. Kirk Maxwell seated across the desk in `KV31 Lower Briefing Room` with authentic transcript history.
+  4. **Failure D — Purged Player-Facing Backend Language**:
+     - Removed `"Action accepted."` fallback in `renderer.js` `renderMessage`.
+     - Removed `" Saved."` string in `play(...)`. Persistence occurs silently without leaking implementation details.
+  5. **Failure E — Unified Next Action Label**:
+     - Removed duplicated concatenation `"PROCEED TO ESD · PROCEED TO EQUIPMENT STAGING"`.
+     - Standardized to single clean, diegetic action: `"PROCEED TO EQUIPMENT STAGING"`.
+  6. **Failure F — Discrete `LOCAL_INTRODUCTIONS` Beat**:
+     - Concluding Maxwell's briefing transitions beat to `LOCAL_INTRODUCTIONS`.
+     - Dedicated room view in `briefingWorkstation`: Dr. Maxwell has departed; the three coworkers remain seated at the table (`coworker-presence-card`).
+     - Active `communicationConsole` on LOCAL channel for spoken dialogue.
+     - Action dock features explicit `"PROCEED TO EQUIPMENT STAGING"` (no automatic advance).
+  7. **Failure G — Equipment Staging Progressive Disclosure**:
+     - Staging displays physical dressing room / equipment issue: `EQUIPMENT STAGING · RM-L02 Dressing Room & Equipment Issue`.
+     - Removed giant unformatted mission dossier banner across the top.
+     - Suppressed premature empty evidence rail in prefield/staging (`fieldPhase || evidence.length > 0`).
+  8. **Failure H — Clean Diegetic Comms Copy**:
+     - Replaced internal `"LOCAL dialogue input is paused during equipment operation."` copy with clean, diegetic feedback: `"Personnel are focused on equipment preparation."`, state `"STANDBY"`, and placeholder `"Communications standby..."`.
+- Automated verification:
+  - Aggregate test suite: 768 / 768 passed (142 included, 4 quarantined, 0 retired).
+  - All targeted tests passed: `y106`, `y104`, `y98`, `y75`, `y47`, `y48`.
+  - Verification inventory consistent (`INVENTORY CONSISTENT (0 errors, 0 warnings)`).
+
+## Repair Pass 3.10.1: Menu Music Handoff + AEOT Cold-Boot Visibility — 2026-09-18
+
+- Bounded repair pass status: **COMPLETED** (Main-menu music fade handoff and AEOT cold boot visibility resolved).
+- Visual acceptance status: `UNVERIFIED — REQUIRES HUMAN ELECTRON OBSERVATION`.
+- Core repairs delivered:
+  1. **Immediate Menu Music Fade on New Game**:
+     - Synchronous initiation: `YBAudio.stopMenuMusic(1500)` triggers immediately when the player activates NEW GAME / enters the new-file sequence (`enterMode("field-researcher")`), before the screen fade to black.
+     - Linear fade-out from effective gain over 1500ms (< 2 seconds), completing and releasing cleanly well before the date presentation appears.
+     - Replaced obsolete/delayed stop hooks at personnel confirmation and initialization with immediate entry fade.
+     - Enhanced `YBAudio.diagnostics().menu` with active playback, fading state, fade multiplier, and current volume telemetry.
+     - Menu track does not restart or resume during date presentation, introductory video, waiver, confirmation, initialization, or AEOT startup.
+  2. **AEOT Cold-Boot Visibility & Sequential Energization**:
+     - Staged 3-region sequential power-up:
+       1. Top / Header (`.async-system-header`) — initiates at T=0 with `boot_power`.
+       2. Central Workstation / Facility Schematic (`.eti-center`) — initiates at T=850ms with `boot_drive`.
+       3. Lower Action / Status dock (`.eti-turn-controls`) — initiates at T=1700ms with `boot_relay`.
+     - Human-observable calibration: 850ms duration per region in production (~2.55s total) with non-overlapping energizing intervals; accelerated (30ms per region) in automated testing via `.fast-boot`.
+     - Early-1990s institutional display stabilization: subtle cathode/phosphor stabilization via `@keyframes eti-region-energize` (bloom to calibrated contrast/brightness) without cyberpunk glitches, fake CRT artifacts, scanline spectacle, or invented text.
+     - `BRIEFING PENDING` remains invisible (`.eti-cold-boot-pending`, `pointer-events: none`) and locked until the final region is energized.
+     - Entire interface remains non-interactive (`body[data-boot-locked="true"]`, `cursor: wait`) until cold boot completes at T=2550ms.
+  3. **Acoustic Discipline**:
+     - Removed automatic `ui_select` cue at cold boot completion.
+     - Preserved legitimate electrical hooks (`boot_power`, `boot_drive`, `boot_relay`).
+     - Strictly zero radio or transmission audio (`radio_chirp`, `radio_tx_chirp`, `radio_rx_cue`).
+- Automated verification:
+  - Aggregate test suite: 763 / 763 passed (141 included, 4 quarantined, 0 retired).
+  - Regression tests added to `tests/y75-ui-audio-spec-compliance.test.js` (menu music fade lifecycle, <2s release) and `tests/y105-authoritative-first-run-chronology.test.js` (sequential cold boot, 850ms calibration, absence of `ui_select`, immediate fade initiation).
+  - Packaged verifications passed: `npm run desktop:build`, `npm run desktop:verify`, `npm run desktop:settings-regression`, `npm run desktop:first-run-regression`.
+  - Conformance inventory: `INVENTORY CONSISTENT (0 errors, 0 warnings)`.
+
+## Implementation Pass 3.10: Authoritative First-Run Chronology + AEOT Cold Boot — 2026-09-18
+
+- Bounded pass status: **COMPLETED** (Authoritative first-run sequence and AEOT cold boot operational).
+- Visual acceptance status: `UNVERIFIED — REQUIRES HUMAN ELECTRON OBSERVATION`.
+- Authoritative first-run chronology enforced:
+  `NEW GAME → DATE PRESENTATION → INTRODUCTORY VIDEO → WAIVER / NAME PAPER → PERSONNEL CONFIRMATION → PAPER SLIDE-AWAY → AEOT SYSTEM INITIALIZATION → AEOT UI COLD BOOT → AEOT OPERATIONAL (BRIEFING PENDING) → STOP AT MAXWELL BOUNDARY`.
+- Core repairs delivered:
+  1. **Date Presentation & Standalone Introductory Video**:
+     - Date presentation starts from black, fades `JULY, 1991` in over 5s, fades out over 5s, accepting no skip input, and smoothly transitions into the standalone introductory video (`BRIEFING_INFORMATIONAL_VIDEO`).
+     - Standalone introductory video precedes the personnel waiver, grounding the legal acknowledgement in prior exposure to institutional material.
+     - Single-world persistence: reopening unconfirmed onboarding resumes from the Date Presentation within the existing world without creating or duplicating worlds.
+  2. **Sequential 4-Row AEOT System Initialization**:
+     - 4 audited diagnostic subsystem rows (`KV31 CORE LINK`, `OPTICAL BUS RELAYS`, `TOPOLOGY BUFFER`, `TELEMETRY MATRIX`) execute sequentially 0% → 100% (~2.0s per row in production, fast-tracked in automated testing).
+     - Subsystems step through discrete state indicators: `WAITING` → `ACTIVE` → `[OK]`.
+  3. **Staged AEOT UI Cold Boot**:
+     - Workstation mounts directly in KV31 Briefing Office displaying the controlled facility schematic (KV31-B1) on the central display.
+     - Sequential energization: Header powers up → Center panel energizes → Action dock activates with `BRIEFING PENDING` (locked/disabled).
+     - Synchronized electrical cues (`boot_power`, `boot_drive`, `boot_relay`, `ui_select`); strictly zero radio chirps (`radio_chirp`, `radio_tx_chirp`, `radio_rx_cue`).
+     - Removed obsolete post-boot `FACILITY_BROADCAST`, feed timers, and release buttons from workstation runtime.
+  4. **Strict Maxwell Boundary Enforcement**:
+     - Workstation stops immediately upon achieving operational `BRIEFING PENDING`.
+     - In-room Maxwell dialogue, coworker introductions, and transition to Equipment Staging remain strictly suppressed.
+- Automated verification:
+  - Aggregate test suite: 762 / 762 passed (141 included, 4 quarantined, 0 retired).
+  - New test registered: `tests/y105-authoritative-first-run-chronology.test.js` (aggregate tier).
+  - Packaged verifications passed: `npm run desktop:build`, `npm run desktop:verify`, `npm run desktop:settings-regression`, `npm run desktop:first-run-regression`.
+
+## Beat 1 Repair Pass 3: Clean ASYNC Workstation Handoff — 2026-09-17
+
+- Bounded pass status: **COMPLETED** (Clean workstation handoff boundary between initialization and facility broadcast).
+- Visual acceptance status: `UNVERIFIED — REQUIRES HUMAN ELECTRON OBSERVATION`.
+- Authoritative sequence enforced: `BOOT → FACILITY BROADCAST → MAXWELL BRIEFING/DIALOGUE → LOCAL INTRODUCTIONS → EQUIPMENT STAGING` (Facility broadcast and Maxwell briefing remain strictly separate beats).
+- Core repairs delivered:
+  1. **Clean Workstation Standby State**:
+     - ASYNC boot initialization runs non-interactably until completed.
+     - Terminal renders in clean operational standby in the KV31 briefing office with persistent player and exactly 3 coworkers loaded.
+     - Facility schematic rendered as central display (`#map-svg-root`, `#map-briefing-room`, `#map-you-marker`); briefing broadcast projector feed suppressed during standby.
+     - Facility broadcast, Maxwell dialogue, chirps, and coworker introductions strictly suppressed during standby.
+     - Primary action displays disabled `STANDBY` button with explanatory reason. Later-beat objectives and work-orders suppressed (`ASSIGNMENT PENDING`).
+  2. **Deterministic Authoritative Broadcast Transition**:
+     - Presentation pause timer transitions from standby into `startBriefingBroadcast({ world_id })`.
+     - 4 radio chirps and dated briefing card emitted once upon broadcast commencement.
+     - CRT feed and projector visuals activate only when `status === "in-progress"`.
+  3. **Idempotence & Cold-Boot Persistence**:
+     - Completed broadcast state persists across service restarts; completed broadcast never replays on world resume.
+- Automated verification:
+  - Aggregate test suite: 759 / 759 passed (140 included, 4 quarantined, 0 retired).
+  - Fast test suite: 143 / 143 passed.
+  - New test registered: `tests/y104-clean-workstation-handoff.test.js` (aggregate tier).
+  - Smoke tests passed: `node desktop/first-run-smoke.js`, `node desktop/renderer-smoke.js`, `node tools/verification-inventory.js`.
+
+## Beat 1 Repair Pass 1.3: Title Lockup & Smooth Dismissal — 2026-09-17
+
+- Bounded pass status: **COMPLETED** (Presentation-only title screen correction).
+- Visual acceptance status: `UNVERIFIED — REQUIRES HUMAN ELECTRON OBSERVATION`.
+- Scope constraints strictly preserved:
+  - Preserved verified world-selection/home screen, menu audio (bossa-only), exit confirmation dialog, title two-input gate law (`PRESS ANYTHING` → `PRESS AGAIN TO CONTINUE`), and authentic `ASYNC_Logo.png` asset.
+  - No new font files downloaded or introduced.
+  - Zero changes to CQ4 prefield flow, date card, waiver, personnel creation, persistence, or simulation layers.
+- Core repairs delivered:
+  1. **Title Lockup Refinement**:
+     - Reduced authoritative ASYNC logo height from `clamp(3.2rem, 8vw, 5.5rem)` to `clamp(2rem, 5vw, 3.5rem)` (~65% scale).
+     - Tightened vertical spacing between ASYNC logo and `VOICES OF THE THRESHOLD` to `0.5rem`, locking them into a single coherent visual mark.
+     - Moderately reduced main title `h1` size to `clamp(1.8rem, 4.2vw, 3.2rem)` with centered layout, restoring ample horizontal negative space and preventing screen edge crowding.
+  2. **Condensed Institutional Sans/Grotesk Typography**:
+     - Replaced terminal monospace on `h1` (`VOICES OF THE THRESHOLD`) with authentic archival condensed grotesk font stack: `"Arial Narrow", "Helvetica Neue", "Avenir Next Condensed", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif` with `font-stretch: condensed; font-weight: 700; letter-spacing: 0.07em; line-height: 1.15;`.
+     - Subtitle (`A Kane Pixels' Backrooms Simulacrum`) and prompt (`PRESS ANYTHING` / `PRESS AGAIN TO CONTINUE`) retain the established monospace font.
+  3. **Hardware-Accelerated Smooth Dismissal Wipe**:
+     - Diagnosed cause of Electron dismissal jitter: animating `clip-path: inset(...)` forced CPU rasterization and DOM reflow on every main-thread frame while audio and IPC events were dispatching.
+     - Replaced with a compositor-driven black shutter overlay (`.title-wipe-shutter`) animated with `transform: translate3d(-100%, 0, 0)` to `translate3d(0, 0, 0)` with `will-change: transform`.
+     - Completely offloaded to the GPU compositor thread: zero CPU raster repaints, zero layout reflows, locked 60fps/120fps fluid left-to-right sweep over 450ms.
+     - World-selection screen remains unexposed underneath until 450ms completion delay.
+- Automated verification:
+  - Aggregate test suite: 756 / 756 passed (139 included, 4 quarantined, 0 retired).
+  - Focused tests passed: `y103`, `y98`, `y75`, `y42`, `y30`, `y26`, `y77`.
+
+## Living Beatmap Player-Facing Post-Conformance Convergence Checkpoint — 2026-09-15
+
+- Bounded pass status: **CLOSED** for Living Beatmap desktop layout repair, locked Broadcast → Briefing state machine, settings appliance status card, and packaged verification.
+- Verified test suite: Governed aggregate **PASS** (137/137 suites, 740/740 tests, 0 failures, 0 warnings); `node tools/verification-inventory.js` **PASS** (included=137, quarantined=4, retired=0, unexplainedOnDisk=0).
+- Packaged desktop verification: `npm run desktop:build`, `npm run desktop:verify` (`offline_smoke`, `packaged_renderer_interaction`, `packaged_day1_opener_interaction`), and `npm run desktop:first-run-regression` all pass cleanly with production profiles unchanged.
+- Core repairs delivered:
+  1. **Communications Panel Vertical Ownership & Layout**: Completely refactored `.eti-comms` from a 5-row CSS grid with 7 children into a flex column with strict layer hierarchy: Header (Mode/State) → Mechanical Switch & Target Address → Timeline (`flex: 1 1 auto; overflow-y: auto`) → Guidance (`.comms-guidance` containing channel explanation & local communication notice) → Composer Form → Status. Eliminated text overlaps, element collisions, and track mismatches.
+  2. **Center-Column Content-Responsive Sizing**: Refactored `.eti-center` to a flex column (`display: flex; flex-direction: column; min-height: 0; gap: 7px;`). `.eti-spatial` set to `flex: 1 1 auto; min-height: 220px;`; `.eti-interpretive` set to `flex: 0 1 auto; min-height: 90px; max-height: 52%; overflow-y: auto;`. Stripped duplicate `<details class="operational-map">` from `phaseRecord` to prevent double map/feed rendering and preserve sacred AEOT geometry.
+  3. **Locked Canonical Broadcast → Briefing State Machine**: Dr. Kirk Maxwell's briefing presentation renders with live CRT feed and 4 chirps; release control restores facility map schematic and reveals Maxwell's greeting in purple typography (`.comm-maxwell`, `.comm-maxwell-text`); local channel enables coworker introductions; staging progression enables cleanly.
+  4. **Settings Appliance UI**: Appliance status card with status pill (`Ready`, `Not Installed`, `Installing`, `Repair Required`, `Unsupported`), strict 127.0.0.1 private loopback isolation notice, and `<details class="advanced-diagnostics" open>` housing diagnostics and configuration parameters without breaking native hit-testing.
+  5. **y101 State Machine Regression Test**: Registered in `verification/verification-authority.json` and `verification/test-manifest.json` with matching SHA-256 hash.
 
 ## Reference Expedition living-turn integration checkpoint — 2026-09-02
 
@@ -307,3 +1588,10 @@ Everything below this heading records prior implementation claims, tests, gates,
 - The sanctioned pre-expedition metagame restore and ASYNC save boundaries require deliberate reconciliation with active retirement/save language. Canonical persistence, invisible crash recovery, ephemeral session state, player checkpoint state, and branch-abandoning metagame reload must be separate authorities.
 - Deterministic real-elapsed-time offline progression requires an explicit bounded worldpack exception under the Doctrine's wall-clock rules. It must not authorize uncontrolled timer mutation and must include a scheduler constraint against systematic consumption of meaningful player opportunities.
 - Phase 01C does not silently reinterpret or amend those rules. The first proposed implementation pass is a documentation/authority-only human checkpoint to legislate the conflicts before runtime repair. Current world-retirement, persistence, checkpoint, and action-driven time behavior therefore remains historical implementation state, not proof of conformance to the ratified product direction.
+
+## Observer-safe dialogue bridge, internal wording runtime and checkpoint (2026-09-23)
+
+- Semantic route (unchanged authority): canonical state -> observer/knowledge authorities -> `compileObserverDialogueContext` (`tools/observer-context-compiler.js`) -> structured capsule -> `renderContributionTask` (`tools/dialogue-prompt-contract.js`) + `authorized_contribution` -> local model -> semantic validation -> pre-commit revalidation (`revalidateContext`: identity, commit-sensitive staleness, whole-turn cancellation) -> canonical commit. Player replies and autonomous reports both use it. The renderer requires no canonical module.
+- Canonical ontology: `tools/canon-lexicon.js` `CANONICAL_ENTITIES` (the Threshold is a fixed transition, non-portable). "threshold apparatus" was removed from player-facing/model-facing strings and is forbidden terminology; internal ids and canon claim files keep it.
+- Internal wording runtime: llama.cpp b11146 + Qwen3-4B Q4_K_M (Apache-2.0, Qwen/Qwen3-4B-GGUF@bc640142), pinned with SHA-256 and request options in `tools/local-runtime-pin.json`; replaced Qwen2.5-1.5B after a same-packet benchmark. The application installs it silently on first start (`startDialogueRuntime`), verifies it against the pin with a streaming hash, binds 127.0.0.1 only with the web UI disabled, re-checks the runtime after a crash repair, and falls back to same-plan deterministic wording meanwhile. `tools/stage-runtime-resources.js` stages it into `resources/` for electron-builder; `desktop/runtime-smoke.js` proves the packaged app reaches READY with no orphan process.
+- Known baseline, not caused by this pass: `npm test` stops at the verification-inventory gate (already INCONSISTENT at HEAD, 26 errors; new test files are unregistered); 81 tests are red at HEAD and 82 in this tree (y73 legacy-authorization and LOCAL-recall tests now conflict with the ED-2 personal-experience validator, y91 now passes); packaged `renderer-smoke` asserts a settings `local_model` nonce that settings schema v8 no longer stores; y76 #13 and y97 fail at HEAD.

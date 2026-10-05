@@ -1,0 +1,87 @@
+You are authoring a BLIND held-out evaluation corpus for a game's natural-language dialogue understanding. The measurement is only fair if you are independent of the software, so these rules are absolute:
+
+- Do NOT read, list, grep or open anything under /Users/jacktr/Developer/custodian-worldpack-backrooms (no source, no tests, no fixtures, no docs).
+- Do NOT read, list or open anything under /private/tmp/claude-501/ except that you WRITE into the single output directory named below. Earlier corpora exist on this machine; never look at them. Write every line fresh from your own judgement.
+- Do not run any code. Work only from this specification.
+
+Your only output: JSON Lines files written with the Write tool into
+
+/private/tmp/claude-501/-Users-jacktr-Developer-custodian-worldpack-backrooms/46b560a7-48f7-406e-b488-5f14dc2d8f7c/scratchpad/heldout4-2026-09-28/
+
+named part1.jsonl, part2.jsonl, ... Ids run y001, y002, ... continuously across parts.
+
+## Scene
+A player ("the lead") sits at an assembly table in a company briefing room with three coworkers: Giselle, Malcolm and Tonya. A doctor, Dr. Kirk Maxwell ("Kirk"/"Maxwell"), just gave a briefing and left. The briefing said: today's assignment is delivery and introductory reconnaissance; Malcolm has custody of the startup materials (a duffle) going to Outpost A (Bermuda branch); the player is on camera; Tonya is on the layout record; Giselle is on observation and verbal recall; get acquainted with the people at your table, then report to Equipment Staging. The company is ASYNC. They will enter a place called "the Complex" through "the Threshold". "Standard" is the ordinary-world side. Items: the 35mm field camera, the battery field lamp (a flashlight), the startup materials duffle, the layout record, a portable mass spectrometer, a radio. The scene may later move to Equipment Staging. Nobody's gender is established.
+
+## What the corpus must stress (realistic, MESSY conversational English)
+Most lines should look like real chat typing: omitted punctuation, fragments, contractions, typos, run-on multi-clause turns, hedges and fillers, lowercase names. Include: discourse follow-ups that only make sense after the previous exchange (asking about time, duration, basis or reason of what was just said, or passing the same question to someone else); corrections of who was addressed, of which thing was meant, and of which aspect was asked; indirect questions; remarks; sarcasm; group/subset questions; many questions typed WITHOUT a question mark; and a few statements or remarks that DO end in "?" without asking anything. IMPORTANT: invent all wording yourself — do not reuse any example phrase quoted anywhere in this brief.
+Real people typing casually and saying the same thing in MANY different ways. Above all:
+1. Paraphrase: ordinary questions phrased the way real people phrase them, NOT the textbook form. E.g. instead of "What is our objective?" write things like "so what are we actually doing", "what's the deal today", "what's the job", "what're we here to do"; instead of "Who has the camera?" things like "who's got the cam", "anyone seen who took the camera". Invent your own; vary vocabulary, slang, word order and length.
+2. Typos and chat style: missing letters, swapped letters, no apostrophes ("youve", "whats", "were" meaning "we're"), lowercase, no punctuation, "u", "r", "y'all", "gonna".
+3. Echo follow-ups: the player repeats or questions a word or phrase the coworker JUST said. With context NPC line "Nobody told me, the case is locked." the player types "locked how?" or "locked??"; with "I'm a bit on edge" the player types "on edge about what?". The echoed word must actually appear in last_npc_line.
+Also include the everyday classes: group quantifiers ("you two", "everyone", "anyone", "the rest of you"), vocatives anywhere, mentions that are not addresses ("Tonya told me..."), ellipsis ("And you?", "your turn", "same question"), repairs ("I was talking to Tonya", "no, I meant the Complex", "that's not what I asked"), attention calls ("hello?", "guys?"), remarks and sarcasm, indirect questions ("I wonder where we're headed"), declarative/tag questions, choice questions, politeness wrappers, deixis with and without an antecedent, and misleading minimal pairs.
+
+## Output format: JSON Lines, one object per line, AT LEAST 320 lines
+{
+ "id": "y001",
+ "context": {
+   "phase": "introductions" | "equipment_staging",
+   "active_speaker": null | "Giselle" | "Malcolm" | "Tonya",       // coworker who most recently spoke to the player
+   "last_npc_line": null | "<exactly what that coworker just said>",
+   "last_player_line": null | "<the player's previous line (the question that coworker was answering, if any)>",
+   "active_activity": null | "SELF_INTRODUCTION_ROUND" | "GROUP_CHECK_IN" | "EXPERIENCE_ROUND",
+   "activity_done": [],
+   "pending_unanswered_request": null | "<a player question nobody answered yet>"
+ },
+ "utterance": "<exactly what the player typed>",
+ "expected": {
+   "speech_act": one of ["greeting","farewell","self_introduction","social_acknowledgment","thanks","attention_call","statement","sarcasm","question","request","repair","elliptical_continuation","answer"],
+   "question_form": one of ["wh","yes_no","choice","declarative","indirect", null],
+   "addressee_kind": one of ["explicit","inherited","group","subset","untargeted"],
+   "addressees": ["Giselle"|"Malcolm"|"Tonya", ...],
+   "predicate": one of the PREDICATES below, or null,
+   "discourse_relation": one of ["new","continuation","repair","attention","topic_return","answer"],
+   "cardinality": one of ["each_self","one_knower","one_spokesperson","each_ack","none"],
+   "temporal_scope": one of ["now","today","ever","earlier", null],
+   "should_clarify": true | false
+ }
+}
+
+PREDICATES (use exactly these ids):
+person.first_day_at_async, person.async_tenure, person.expedition_experience, person.complex_experience, person.wellbeing, person.anticipation, person.nervousness, person.fatigue, person.self_description, person.identity, person.role, person.authority, person.presence, person.familiarity, person.current_assignment, person.current_activity, person.opinion, mission.objective, mission.destination, mission.participants, mission.schedule, mission.route, procedure.next_incomplete_step, procedure.instruction_history, transition.participants, item.holder, item.purpose, item.contents, item.destination, place.definition, place.status, institution.purpose, conversation.meaning_of, conversation.basis_of, conversation.reported_speech, conversation.response_event, conversation.explanation, conversation.repetition
+
+## Labeling rules (the game owner's ratified policy — follow exactly)
+
+Addressee (who must answer):
+- "explicit": the line names who it is for (vocative "Tonya, ..." / "..., Malcolm?" / "Hey Giselle", or a name list). addressees = those names.
+- "group": collective address language for everyone present ("everyone", "all of you", "you all", "y'all", "guys", "anyone"/"anybody", "you three", "folks", "team", "does anyone know", "which of you"). addressees = all three.
+- "subset": a quantified or named part of the group that is not a plain vocative ("you two" when context makes clear which two, "the rest of you" after one person answered, "everyone except Tonya"). addressees = those people.
+- "untargeted": a fresh shared question or remark with NO address language ("Where are we going?", "what's next", "Well this seems safe."). addressees = [].
+- "inherited": no address language, but a genuine follow-up, repair or continuation whose responder is set by the conversation. Owner-ratified responder priority: explicit addressee > target of a conversational repair > owner of the semantic antecedent / last substantive speaker ("Why?", "Since when?", an echo of their words) > target of the active conversational activity > a knowledgeable responder > fairness rotation (fresh untargeted shared questions only). A genuine follow-up is NOT rotated. addressees = the inherited responder(s).
+
+Speech acts and relations:
+- "question" covers all questions (use question_form). A polite "Can you tell me about yourself?" is "request" (predicate person.self_description). "Introduce yourself" is "request".
+- A repair of who was addressed or which question was asked is "repair"; predicate = that of the ORIGINAL request; addressees = the corrected target(s) ("explicit" if named, else "inherited"); relation "repair".
+- An elliptical line ("How about you two?", "Your turn", "And Malcolm?") is "elliptical_continuation"; predicate inherited from the prior request/activity; relation "continuation".
+- A genuine follow-up to the person who just answered ("Why?", "Since when?") is "question", relation "continuation", addressee "inherited". A follow-up about the time, duration or degree of what was just answered keeps the PREDICATE of the question that person was answering; a follow-up asking the reason is conversation.explanation; asking how they know is conversation.basis_of. Corrections of the addressee, of the thing meant or of the aspect asked are "repair" and keep (or, for an aspect correction, change to) the predicate the player now means.
+- ECHO FOLLOW-UP: a short line that repeats or questions a word/phrase the coworker just said ("locked how?", "locked??", "on edge about what?", "the Bermuda branch?"). Label: speech_act "question"; question_form "wh" if a question word follows the echoed word, otherwise "yes_no"; addressee "inherited" = that coworker; relation "continuation"; predicate = the predicate of the question that coworker was answering (the one in last_player_line); cardinality and temporal_scope as for that predicate asked of that one person. A full new question that merely reuses a word ("Who has the case?") is NOT an echo — label it normally.
+- Attention calls with a pending unanswered request: "attention_call", relation "attention", predicate = the pending request's predicate. Without one: predicate null, relation "attention", cardinality "one_spokesperson".
+- If the coworker's last line was a question to the player and the player's line answers it: "answer", relation "answer".
+- Remarks and sarcasm (owner policy): silence is normal. A statement or sarcastic remark that asks nothing: predicate null, cardinality "none", question_form null, relation "new" (addressee per the address rules).
+- Pure acknowledgments/fillers ("ok", "cool", "thanks"): cardinality "none", predicate null.
+
+Cardinality:
+- "each_self": each person answers their OWN state/history/feelings/role (asked of a group, a subset, or one person).
+- "one_knower": "does anyone know X" / "which of you ...".
+- "one_spokesperson": a shared institutional fact ("where are we going?", "what's next?"), or a factual question to one person that is not about themselves.
+- "each_ack": group greeting / farewell.
+- "none": remarks, sarcasm, fillers, acknowledgments.
+
+Predicate examples (the MEANING matters, not the words): where the group is going = mission.destination; what the group is doing / the job / the point of today = mission.objective; what to do or where to go/report next = procedure.next_incomplete_step; whether everyone goes together / who is coming along = transition.participants; what Maxwell told them to do = procedure.instruction_history; been inside the Complex before = person.complex_experience (temporal "ever"); been on an expedition before = person.expedition_experience ("ever"); first day = person.first_day_at_async ("today"); how long someone has worked here = person.async_tenure; how someone is doing = person.wellbeing ("now"); excited/looking forward = person.anticipation; nervous/scared = person.nervousness; tired = person.fatigue; who someone is = person.identity; what someone does / their job = person.role; who is in charge = person.authority; do people know each other = person.familiarity; who has/carries an item = item.holder; what an item is for = item.purpose; what is inside an item = item.contents; where an item is going = item.destination; what a place is = place.definition; what someone meant by X = conversation.meaning_of; how someone knows = conversation.basis_of; what someone said = conversation.reported_speech; why someone didn't answer = conversation.response_event; bare "why?" after a coworker's answer = conversation.explanation; "say that again?" = conversation.repetition. temporal_scope only when the line asks about a time frame.
+
+Clarification (owner policy): should_clarify is true only when a careful human listener genuinely could not tell what was meant or who was addressed ("give him the thing"; "you two?" with no context making the pair clear). "there" means a place ONLY when a place was active in the context; with none, "have you been there before?" should clarify. A coworker referred to only as he/she with no antecedent should clarify.
+
+## Coverage (at least 320 lines; categories may overlap)
+at least 80 paraphrases of ordinary questions in wording you invent (spread across at least 20 different predicates), 70 typo/chat-style lines (most without punctuation), 25 echo follow-ups (with contexts whose last_npc_line contains the echoed word; mix "X how?", "X??", "X of what?", "X, really?", two- or three-word phrase echoes), 25 quantifier/subset lines, 30 ellipsis / discourse follow-up lines, 30 repair/correction lines (target, facet and referent corrections), 12 attention calls, 15 remarks/sarcasm, 12 indirect questions, 12 declarative/tag questions, 8 choice questions, 20 minimal-pair lines, 20 equipment_staging lines, 15 lines that genuinely should clarify, 10 answers to a coworker's question. Keep every context realistic and self-consistent (active_speaker said last_npc_line; last_player_line is what they were answering).
+
+When finished, reply with only the file path(s) and the total line count. Do not include any corpus lines in your reply.

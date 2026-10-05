@@ -38,7 +38,7 @@ test("one preparation surface preserves canonical pre-field transitions without 
   let html = surfaces.render(started.projection);
   assert.match(html, /q4-preparation-surface/);
   assert.match(html, /OPERATIONAL PREPARATION/);
-  assert.match(html, /Continue to Staging/);
+  assert.match(html, /PROCEED TO ESD/);
   assert.match(html, /data-testid="q4-communications"/);
   assert.match(html, /data-testid="q4-comms-form"/);
   assert.doesNotMatch(html, /local-comms|standard-comms|Deploy to radio readiness/);
@@ -46,7 +46,7 @@ test("one preparation surface preserves canonical pre-field transitions without 
   assert.doesNotMatch(html, /What do you do\?|Nothing notable changes|natural-form|Structured controls/);
   html = surfaces.render(advance(service, world, "READY").projection);
   assert.match(html, /q4-preparation-surface/);
-  assert.match(html, /deliberately depart Equipment Staging/);
+  assert.match(html, /Cooperate with the team on equipment and movement preparation/);
   assert.match(html, /data-testid="select-store-route-marker-kit"/);
   assert.doesNotMatch(html, /What do you do\?|Nothing notable changes/);
 });
@@ -82,7 +82,7 @@ test("fresh production briefing enters staging without crossing or starting Stan
   assert.equal(selected.projection.q4.equipment.optional.some((item) => item.ref === "route-marker-kit"), false);
 });
 
-test("fresh production completes Standard outside before one explicit Threshold crossing", () => {
+test("fresh production completes Standard outside before one explicit Threshold crossing", async () => {
   const { service, world } = fixture(); start(service, world);
   advance(service, world, "READY");
   assert.equal(service.selectQ4OptionalStore({ world_id: world.id, item_id: "route-marker-kit" }).ok, true);
@@ -112,7 +112,7 @@ test("fresh production completes Standard outside before one explicit Threshold 
   assert.deepEqual(result.projection.q4.facility_operations.current, { threshold_crossing:null, kv31_arrival:null, standard_side_barrier:null, east_blast_door:null, field_release:null });
 
   const statement = "Standard, Clear-Q4 team accounted for outside the Threshold. Radio check.";
-  const checked = service.submitQ4Communication({ world_id: world.id, channel: "standard", text: statement });
+  const checked = await service.submitQ4Communication({ world_id: world.id, channel: "standard", text: statement });
   assert.equal(checked.ok, true);
   assert.equal(checked.projection.phase.phase_id, "STANDARD_RADIO_CHECK");
   assert.equal(checked.projection.q4.current_location.name, "Threshold Room");
@@ -168,10 +168,10 @@ test("facility operations represent physical milestones only through explicit ca
   assert.equal(facilityOperationsProjection(migrated).current.east_blast_door, null);
 });
 
-test("unified communications records LOCAL exchange without resolving a physical turn", () => {
+test("unified communications records LOCAL exchange without resolving a physical turn", async () => {
   const { service, world } = fixture(); const started = start(service, world);
   const peer = started.projection.q4.team.find((member) => !member.controlled);
-  const result = service.submitQ4Communication({ world_id: world.id, channel: "local", target: peer.first_name, text: `Good morning, ${peer.first_name}.` });
+  const result = await service.submitQ4Communication({ world_id: world.id, channel: "local", target: peer.first_name, text: `Good morning, ${peer.first_name}.` });
   assert.equal(result.ok, true);
   const html = surfaces.render(result.projection);
   assert.match(html, new RegExp(`Good morning, ${peer.first_name}\\.`));

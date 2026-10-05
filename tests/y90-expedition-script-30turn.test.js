@@ -224,7 +224,7 @@ test("y90 — 30-Turn Continuous Human-Style Expedition Script (Alpha Integratio
     assert.equal(canonicalLedger.getCoworkerLocation(entry.run, santiago.personnel_id), "utility-room");
 
     // TURN 23: Player asks Santiago what he observed while separated
-    const t23 = service.submitQ4Communication({
+    const t23 = await service.submitQ4Communication({
       world_id: world.id,
       channel: "local",
       target: "Santiago",

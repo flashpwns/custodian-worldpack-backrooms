@@ -214,7 +214,7 @@ test("9 Gate 3: Authored interpretation and AI performance work in the same turn
   for (const act of ["READY", "PROCEED", "APPROACH", "READY"]) {
     service.submitAction({ world_id: world.id, mode: "field-researcher", action: act });
   }
-  service.submitQ4Communication({ world_id: world.id, channel: "standard", text: "Standard, radio check." });
+  await service.submitQ4Communication({ world_id: world.id, channel: "standard", text: "Standard, radio check." });
   service.submitAction({ world_id: world.id, mode: "field-researcher", action: "CROSS" });
 
   const entry = service.session(world.id, "field-researcher");
@@ -289,7 +289,7 @@ test("12 Gate 10: Complex field play transitions cleanly to living turn runtime 
   for (const act of ["READY", "PROCEED", "APPROACH", "READY"]) {
     service.submitAction({ world_id: world.id, mode: "field-researcher", action: act });
   }
-  service.submitQ4Communication({ world_id: world.id, channel: "standard", text: "Standard, radio check." });
+  await service.submitQ4Communication({ world_id: world.id, channel: "standard", text: "Standard, radio check." });
   service.submitAction({ world_id: world.id, mode: "field-researcher", action: "CROSS" });
 
   const entry = service.session(world.id, "field-researcher");
@@ -383,7 +383,7 @@ test("18 Gate 2: Observer safety and compact context compiler include canonical 
   assert.ok(!JSON.stringify(packet).includes("canonical_geometry"));
 });
 
-test("19 Perception regression: Bidirectional connections correctly resolve reachability, direction, and visibility", () => {
+test("19 Perception regression: Bidirectional connections correctly resolve reachability, direction, and visibility", async () => {
   const { service, world } = createTestService("perception-bidirectional");
   const entry = service.session(world.id, "field-researcher");
 
@@ -391,7 +391,7 @@ test("19 Perception regression: Bidirectional connections correctly resolve reac
   for (const act of ["READY", "PROCEED", "APPROACH", "READY"]) {
     service.submitAction({ world_id: world.id, mode: "field-researcher", action: act });
   }
-  service.submitQ4Communication({ world_id: world.id, channel: "standard", text: "Standard, radio check." });
+  await service.submitQ4Communication({ world_id: world.id, channel: "standard", text: "Standard, radio check." });
   service.submitAction({ world_id: world.id, mode: "field-researcher", action: "CROSS" });
   service.submitAction({ world_id: world.id, mode: "field-researcher", action: "MOVE", target: "utility-room" });
 

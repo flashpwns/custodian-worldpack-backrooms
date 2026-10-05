@@ -1,0 +1,36 @@
+{
+ "version": "yellow-beast-reader-labeling-registry@v1",
+ "status": "owner-selected teacher, automated-reviewer family and human provenance are RECORDED before any labelling (see teacher / automated_reviewer / human); the reviewer model is intentionally not yet selected (model: null); tools/dialogue-reader-labels.js and tools/dialogue-reader-replay.js enforce the recorded identities; changing a recorded identity after labelling begins is an owner decision, recorded with its reason",
+ "teacher": {
+  "family": "openai",
+  "provider": "openai",
+  "model": "gpt-5.6-sol",
+  "recorded_by": "jack",
+  "recorded_at": "2026-10-01T08:19:36.869Z"
+ },
+ "automated_reviewer": {
+  "family": "claude",
+  "provider": "anthropic",
+  "model": null,
+  "recorded_by": "jack",
+  "recorded_at": "2026-10-01T08:19:36.869Z"
+ },
+ "human": {
+  "primary_labelers": [
+   "jack"
+  ],
+  "adjudicator": "jack"
+ },
+ "recommendation": {
+  "teacher": "a non-Claude top-tier reasoning model (Claude authored much of the current prompt, fixtures and review material)",
+  "automated_reviewer": "Claude family permitted",
+  "human": "primary labelling and adjudication authority"
+ },
+ "rules": [
+  "The teacher's model family differs from the automated review-labeler's family.",
+  "Teacher output never produces gold, in any label state.",
+  "An evaluated reader arm is never the label source of its own evaluation (gold whose labeller shares the arm's family is excluded from that arm's score).",
+  "Automated label suggestions (MODEL_ASSISTED_REVIEW) are hidden from the human primary labeller until the primary label is committed; a review created before the primary's committed_at invalidates the adjudicated row.",
+  "Only ADJUDICATED_GOLD, adjudicated by a human, counts for headline teacher scoring."
+ ]
+}

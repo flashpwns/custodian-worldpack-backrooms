@@ -41,11 +41,11 @@ function action(service, world, verb, target = null) {
   return result;
 }
 
-function reachField(service, world, { markerKit = false } = {}) {
+async function reachField(service, world, { markerKit = false } = {}) {
   action(service, world, "READY");
   if (markerKit) assert.equal(service.selectQ4OptionalStore({ world_id: world.id, item_id: "route-marker-kit" }).ok, true);
   for (const verb of ["PROCEED", "APPROACH", "READY"]) action(service, world, verb);
-  assert.equal(service.submitQ4Communication({ world_id: world.id, channel: "standard", text: "Standard, Clear-Q4 team accounted for. Radio check." }).ok, true);
+  assert.equal((await service.submitQ4Communication({ world_id: world.id, channel: "standard", text: "Standard, Clear-Q4 team accounted for. Radio check." })).ok, true);
   action(service, world, "CROSS");
   return service.getGameplayProjection({ world_id: world.id, mode: "field-researcher" }).projection;
 }
@@ -166,9 +166,9 @@ test("teammates can assist and originate truthful LOCAL and radio messages", () 
   assert.equal(communications.project(run.expedition).messages.at(-1).sender, assistant.display_name);
 });
 
-test("accepted orders use a real route and last-known projection hides remote consequences", (t) => {
+test("accepted orders use a real route and last-known projection hides remote consequences", async (t) => {
   const { service, world } = fixture(t, "team-separation");
-  let projection = reachField(service, world);
+  let projection = await reachField(service, world);
   const orderTarget = target(projection, "ORDER_INVESTIGATE", "Columned Corridor");
   const ordered = action(service, world, "ORDER_INVESTIGATE", orderTarget);
   assert.equal(ordered.result.outcome, "accepted");
@@ -184,17 +184,17 @@ test("accepted orders use a real route and last-known projection hides remote co
   assert.equal(projection.q4.hazards.length, 0, "remote hazard remains hidden");
 });
 
-test("LOCAL reaches only people in speaking range and failed delivery is persistent", (t) => {
+test("LOCAL reaches only people in speaking range and failed delivery is persistent", async (t) => {
   const { service, world } = fixture(t, "local-range");
-  let projection = reachField(service, world);
+  let projection = await reachField(service, world);
   const orderTarget = target(projection, "ORDER_INVESTIGATE", "Columned Corridor");
   projection = action(service, world, "ORDER_INVESTIGATE", orderTarget).projection;
   const remote = projection.q4.team.find((member) => member.contact_state === "CONTACT LOST");
-  const unheard = service.submitQ4Communication({ world_id: world.id, channel: "local", target: remote.personnel_id, text: "Report your status." });
+  const unheard = await service.submitQ4Communication({ world_id: world.id, channel: "local", target: remote.personnel_id, text: "Report your status." });
   assert.equal(unheard.ok, true);
   const expedition = service.session(world.id, "field-researcher").run.expedition;
   assert.equal(expedition.messages.at(-1).state, "delivered");
-  const heard = service.submitQ4Communication({ world_id: world.id, channel: "local", target: "team", text: "Hold local accountability." });
+  const heard = await service.submitQ4Communication({ world_id: world.id, channel: "local", target: "team", text: "Hold local accountability." });
   assert.equal(heard.ok, true);
   const localMessage = service.session(world.id, "field-researcher").run.expedition.messages.at(-1);
   assert.equal(localMessage.state, "delivered");
@@ -202,9 +202,9 @@ test("LOCAL reaches only people in speaking range and failed delivery is persist
   assert.ok(!localMessage.actual_recipients.includes(remote.personnel_id));
 });
 
-test("reunion reveals the hazard consequence, supports a grounded delay, and permits recovery", (t) => {
+test("reunion reveals the hazard consequence, supports a grounded delay, and permits recovery", async (t) => {
   const { service, world } = fixture(t, "hazard-recovery");
-  let projection = reachField(service, world, { markerKit: true });
+  let projection = await reachField(service, world, { markerKit: true });
   projection = action(service, world, "ORDER_INVESTIGATE", target(projection, "ORDER_INVESTIGATE", "Columned Corridor")).projection;
   projection = action(service, world, "MOVE", target(projection, "MOVE", "Columned Corridor")).projection;
   const injured = projection.q4.team.find((member) => /injur/i.test(member.condition));
@@ -224,11 +224,11 @@ test("reunion reveals the hazard consequence, supports a grounded delay, and per
   assert.ok(run.expedition.operational.consequences.some((record) => record.recovery));
 });
 
-test("interference delays a check-in past its deadline and a late delivery recovers the objective", (t) => {
+test("interference delays a check-in past its deadline and a late delivery recovers the objective", async (t) => {
   const { service, world } = fixture(t, "late-check-in");
-  let projection = reachField(service, world);
+  let projection = await reachField(service, world);
   projection = action(service, world, "MOVE", target(projection, "MOVE", "Columned Corridor")).projection;
-  const sent = service.submitQ4Communication({ world_id: world.id, channel: "standard", text: "Scheduled field status check-in." });
+  const sent = await service.submitQ4Communication({ world_id: world.id, channel: "standard", text: "Scheduled field status check-in." });
   assert.equal(sent.ok, true);
   assert.equal(sent.result.message.state, "delayed");
   assert.equal(sent.projection.q4.communications.check_ins[0].state, "transmitting");
@@ -272,9 +272,9 @@ test("route consequences block real movement and recoverable blocks can be clear
   assert.equal(bootstrap.act(run, "MOVE", "WEST — Columned Corridor").ok, true);
 });
 
-test("operational state, identities, messages, hazards, decisions, and consequences survive restart exactly", (t) => {
+test("operational state, identities, messages, hazards, decisions, and consequences survive restart exactly", async (t) => {
   const { appDataPath, service, world } = fixture(t, "operational-restart");
-  let projection = reachField(service, world);
+  let projection = await reachField(service, world);
   projection = action(service, world, "ORDER_INVESTIGATE", target(projection, "ORDER_INVESTIGATE", "Columned Corridor")).projection;
   const beforeRun = service.session(world.id, "field-researcher").run;
   const before = structuredClone({ clock: beforeRun.expedition.operational.clock, events: beforeRun.expedition.operational.events, messages: beforeRun.expedition.messages, team: beforeRun.expedition.team, runtime: beforeRun.expedition.team_runtime, hazards: beforeRun.expedition.hazards, consequences: beforeRun.expedition.operational.consequences, spatial: beforeRun.spatial });
@@ -289,9 +289,9 @@ test("operational state, identities, messages, hazards, decisions, and consequen
   restarted.shutdown();
 });
 
-test("observer projection and renderer presentation are side-effect free", (t) => {
+test("observer projection and renderer presentation are side-effect free", async (t) => {
   const { service, world } = fixture(t, "projection-purity");
-  reachField(service, world);
+  await reachField(service, world);
   const before = bootstrap.saveRun(service.session(world.id, "field-researcher").run);
   const first = service.getGameplayProjection({ world_id: world.id, mode: "field-researcher" }).projection;
   const second = service.getGameplayProjection({ world_id: world.id, mode: "field-researcher" }).projection;

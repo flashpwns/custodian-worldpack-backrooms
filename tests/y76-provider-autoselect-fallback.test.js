@@ -1,5 +1,8 @@
 "use strict";
 
+// These tests exercise the loopback stub lifecycle, independent of any real vendor/ runtime on the machine.
+process.env.YELLOW_BEAST_LOCAL_RUNTIME = "stub";
+
 const test = require("node:test");
 const assert = require("node:assert/strict");
 const fs = require("node:fs");
@@ -92,14 +95,14 @@ function serviceFixture({ secure = false, provider = "auto" } = {}) {
   return { root, credentials, service };
 }
 
-function setupWorldAndSession(service, seed = "y76-test") {
+async function setupWorldAndSession(service, seed = "y76-test") {
   const world = service.createWorld({ name: "Failover Certification", seed }).world;
   service.createQ4Personnel({ world_id: world.id, first_name: "Test", last_name: "Operator" });
   service.startSession({ world_id: world.id, mode: "field-researcher", seed, require_personnel: true, scenario: "reference-expedition" });
   for (const action of ["READY", "PROCEED", "APPROACH", "READY"]) {
     service.submitAction({ world_id: world.id, mode: "field-researcher", action });
   }
-  service.submitQ4Communication({ world_id: world.id, channel: "standard", text: "Standard, radio check." });
+  await service.submitQ4Communication({ world_id: world.id, channel: "standard", text: "Standard, radio check." });
   service.submitAction({ world_id: world.id, mode: "field-researcher", action: "CROSS" });
   return world;
 }
@@ -353,7 +356,7 @@ test("8. Successful fallback candidate executes canonical action EXACTLY ONCE", 
   });
 
   service.providerPool = pool;
-  const world = setupWorldAndSession(service, "canonical-once-test");
+  const world = await setupWorldAndSession(service, "canonical-once-test");
   const run = service.session(world.id, "field-researcher").run;
   const beforeInterval = run.expedition.clock.interval;
   const beforeHistoryLength = run.expedition.history.length;
@@ -392,7 +395,7 @@ test("9. No provider receives hidden canonical state", async () => {
   });
   service.providerPool = pool;
 
-  const world = setupWorldAndSession(service, "hidden-state-safety");
+  const world = await setupWorldAndSession(service, "hidden-state-safety");
   await service.submitNatural({
     world_id: world.id,
     mode: "field-researcher",
@@ -443,7 +446,7 @@ test("10. Switching providers preserves single canonical session", async () => {
   });
   service.providerPool = pool;
 
-  const world = setupWorldAndSession(service, "session-preservation");
+  const world = await setupWorldAndSession(service, "session-preservation");
   const sessionBefore = service.session(world.id, "field-researcher");
   const originalRun = sessionBefore.run;
 
@@ -485,7 +488,7 @@ test("11. Switching providers does not alter persistence schema", async () => {
   });
   service.providerPool = pool;
 
-  const world = setupWorldAndSession(service, "persistence-schema");
+  const world = await setupWorldAndSession(service, "persistence-schema");
   const saveFile = path.join(root, "saves", `${world.id}-field-researcher.json`);
 
   // Save under Groq
@@ -517,7 +520,7 @@ test("12. Provider and model metadata appears in diagnostics while secrets never
   });
   service.providerPool = pool;
 
-  const world = setupWorldAndSession(service, "diag-secrets-test");
+  const world = await setupWorldAndSession(service, "diag-secrets-test");
   await service.submitNatural({ world_id: world.id, mode: "field-researcher", text: "I walk into the passage." });
 
   const diagnostics = service.getDiagnostics();
@@ -562,7 +565,7 @@ test("13. Offline resilience remains available but hosted desktop interpretation
   assert.equal(pool.lastAttemptChain[4].provider, "offline");
   assert.equal(pool.lastAttemptChain[4].status, "completed");
 
-  const world = setupWorldAndSession(service, "all-fail-fallback");
+  const world = await setupWorldAndSession(service, "all-fail-fallback");
   const command = {
     world_id: world.id,
     mode: "field-researcher",
@@ -605,7 +608,7 @@ test("14. Manual provider mode does NOT silently use a different hosted provider
   const candidates = pool.getCandidates({ preferredProvider: "openai" });
   assert.deepEqual(candidates, ["openai", "offline"], "Manual mode candidates are only chosen provider and offline");
 
-  const world = setupWorldAndSession(service, "manual-mode-isolation");
+  const world = await setupWorldAndSession(service, "manual-mode-isolation");
   const result = await service.submitNatural({
     world_id: world.id,
     mode: "field-researcher",

@@ -1,0 +1,27 @@
+# Natural conversation engineering amendment — 2026-10-05
+
+Jack rejected the Assembly Table implementation in ordinary Electron play and explicitly requested natural, substantive conversation, varied character speech, and ongoing conversation memory. The implementation now supports fuller introductions drawn from stored character facts, personal preferences, code-owned reciprocal check-ins, truthful optional employment context, correction of ordinary name questions, and recall of the recorded conversation. This is an engineering change to the current legacy production dialogue path. Reader Phase 2 remains shadow-only.
+
+`characterization-amendment.json` is **machine-produced deterministic engineering evidence**, not a human observation, a blind label, independent benchmark gold, a Teacher Ceiling result, or Reader cutover authority. It contains twelve reviewed changes to the existing scenario assertions, each with its exact historical turn digest, changed top-level fields, exact replacement values, and reason. It does not replace a frozen experiment.
+
+The `ed31a` test still checks the original Phase 0 characterization and round-trip artifact SHA-256 pins unchanged. It replays every original scenario and compares every field against the historical snapshot, applying only these twelve sealed engineering changes. The amendment itself is hash-pinned. The original round-trip expectations remain exact apart from the earlier durable Tonya/Malcolm owner-policy overlay. An unlisted difference fails; no fields are ignored.
+
+The reviewed differences are:
+
+- Seven introduction/continuation plans: task moves from required to optional, while stored personal context becomes available. Name and role remain required. These deterministic fallback runs retain their original spoken text, canonical events and persistence.
+- Four turns in the chip-target scenario: a licensed reciprocal wellbeing question becomes a persisted inbound request. The following question is a counter-question, and subsequent persistence digests reflect that durable request. Speaker selection stays code-owned. Spoken address still does not derive from delivery.
+- One uncertain remark: the corrected completeness gate now invokes the advisory reader; the garbage-provider fixture records a failed advisory attempt. The effective statement, its addressee, silence and canonical events stay unchanged.
+
+These assertions defend intentional behavior changes without laundering them into the frozen Reader evaluation. The 474-render Teacher Ceiling worksheet/input packs, primary labels, machine provenance, independent-gold requirements and cutover gates are unchanged. Any future Reader migration must reconcile the changed production conversation contract explicitly; this amendment does not establish migration equivalence, independent benchmark quality or production Reader authority.
+
+Jack's earlier human acceptance remains **FAILED pending retest**. Automated or model-generated examples cannot change that verdict.
+
+## Full current replay and frozen experiment reproduction
+
+`full-engineering-edition.json` separately seals 136 reviewed production characterization turn changes, six round-trip diagnostic changes and four shadow-comparison changes. Changes are limited to optional personal context, real reciprocal questions and their later persistence, actual roster answers, heard-only optional fact learning, uncertainty diagnostics, and the explicit named polite question preamble. Each changed row pins its exact historical SHA-256 and exact replacement fields; every other original assertion remains exact. A hash-pinned test helper applies those changes. This is development engineering evidence, not a Reader-equivalence or human-quality claim.
+
+The current 944-render occurrences also have exact input/render digest assertions in that engineering edition. The current input population differs from the frozen Teacher population because production conversation prefixes now include real reciprocal questions and more accurate heard facts. They must never be pooled as the same benchmark population.
+
+`ed33b` reproduces the original frozen experiment by extracting immutable source commit `f873e4966cc04332fe4368b5fe12a7230a29f32c` into a temporary directory and replaying the original fixtures through that real service. This is the last verified source that reproduced the original manifest. It then enforces the original manifest, grouping, 474-render sample, JSON-control selection, safety and codec checks using the current frozen-contract tooling. The temporary archive reuses installed dependencies only after both its dependency declarations and lock are byte-identical to the current checkout; the pinned Custodian dependency remains unchanged. The working checkout and private captures are never reset, imported, rewritten or staged. A separate full current-service replay enforces the exact engineering edition, pure observer-safe rendering and wire round trips. The frozen artifacts and all label provenance stay byte-identical. A source archive requires the pinned commit to be available; absence fails the gate rather than silently using a different edition.
+
+The new named polite-preamble difference is classified by a narrow recorded-evidence rule as `FENCED_RAW_TEXT`: production resolves the actual spoken name, while the frozen Reader act cannot contain a name outside its own clause span. This preserves the frozen Reader contract and makes the future migration work explicit. Reader cutover remains closed.

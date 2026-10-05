@@ -35,18 +35,18 @@ test("production opening reaches staging without deployment or generated speech"
   assert.ok(cycle.active.simulation_truth.authoritative_clock);
 });
 
-test("LOCAL uses the submitted statement and does not consume an interval", () => {
+test("LOCAL uses the submitted statement and does not consume an interval", async () => {
   const { service, world } = fixture();
   service.submitAction({ world_id: world.id, mode: "field-researcher", action: "READY" });
   const before = service.getGameplayProjection({ world_id: world.id, mode: "field-researcher" }).projection.q4.operational_clock.interval;
   const statement = "The west relay is quiet but the team remains together.";
-  const result = service.submitQ4Communication({ world_id: world.id, channel: "local", text: statement });
+  const result = await service.submitQ4Communication({ world_id: world.id, channel: "local", text: statement });
   assert.equal(result.ok, true);
   assert.equal(result.projection.q4.operational_clock.interval, before);
-  assert.match(result.result.public_reason, /west relay|team remains together/i);
+  assert.ok(result.projection.q4.channels.local.history.some(row => row.speaker === "You" && row.text === statement), "The exact submitted statement is committed; a coworker need not parrot it");
 });
 
-test("production state machine completes radio outside and crosses only on player CROSS", () => {
+test("production state machine completes radio outside and crosses only on player CROSS", async () => {
   const { service, world } = fixture();
   for (const action of ["READY", "PROCEED", "APPROACH", "READY"]) assert.equal(service.submitAction({ world_id: world.id, mode: "field-researcher", action }).ok, true);
   let projection = service.getGameplayProjection({ world_id: world.id, mode: "field-researcher" }).projection;
@@ -57,7 +57,7 @@ test("production state machine completes radio outside and crosses only on playe
   assert.equal(service.session(world.id, "field-researcher").run.spatial.route_history.some((item) => item.connection_id === "threshold-crossing"), false);
 
   const statement = "State Tester to Standard. Team accounted for outside the Threshold. Radio check.";
-  const sent = service.submitQ4Communication({ world_id: world.id, channel: "standard", text: statement });
+  const sent = await service.submitQ4Communication({ world_id: world.id, channel: "standard", text: statement });
   assert.equal(sent.ok, true);
   assert.ok(sent.projection.q4.channels.standard.history.some((item) => item.speaker === "You" && item.text === statement));
   assert.deepEqual(sent.projection.available_actions[0], { type: "CROSS", target_required: false, targets: [] });

@@ -13,14 +13,14 @@ function fixture() {
   service.startSession({ world_id: world.id, mode: "field-researcher", seed: "three-channels" });
   return { service, world };
 }
-function reachField(service, world) {
+async function reachField(service, world) {
   for (const action of ["READY", "PROCEED", "APPROACH", "READY"]) assert.equal(service.submitAction({ world_id: world.id, mode: "field-researcher", action }).ok, true);
-  assert.equal(service.submitQ4Communication({ world_id: world.id, channel: "standard", text: "Standard, Clear-Q4 team accounted for. Radio check." }).ok, true);
+  assert.equal((await service.submitQ4Communication({ world_id: world.id, channel: "standard", text: "Standard, Clear-Q4 team accounted for. Radio check." })).ok, true);
   assert.equal(service.submitAction({ world_id: world.id, mode: "field-researcher", action: "CROSS" }).ok, true);
   return service.getGameplayProjection({ world_id: world.id, mode: "field-researcher" }).projection;
 }
 
-test("Clear-Q4 exposes dominant ACTION plus LOCAL and STANDARD lanes", () => {
+test("Clear-Q4 exposes dominant ACTION plus LOCAL and STANDARD lanes", async () => {
   const { service, world } = fixture();
   const briefing = service.getGameplayProjection({ world_id: world.id, mode: "field-researcher" }).projection;
   const briefingHtml = surfaces.render(briefing);
@@ -28,20 +28,20 @@ test("Clear-Q4 exposes dominant ACTION plus LOCAL and STANDARD lanes", () => {
   assert.match(briefingHtml, /data-testid="q4-communications"/);
   assert.match(briefingHtml, /data-testid="q4-channel"/);
   assert.match(fs.readFileSync(path.join(__dirname, "../desktop/renderer/renderer.js"), "utf8"), /data-testid="natural-primary"/); // ACTION remains the primary composer.
-  const field = reachField(service, world);
+  const field = await reachField(service, world);
   const fieldHtml = surfaces.render(field);
   assert.match(fieldHtml, /data-testid="q4-communications"/);
   assert.match(fieldHtml, /LOCAL/);
   assert.match(fieldHtml, /STANDARD/);
 });
 
-test("Q4 channels write distinguishable records and preserve physical continuity", () => {
+test("Q4 channels write distinguishable records and preserve physical continuity", async () => {
   const { service, world } = fixture();
   service.submitAction({ world_id: world.id, mode: "field-researcher", action: "LOOK" });
-  const before = reachField(service, world);
+  const before = await reachField(service, world);
   const location = before.scene.location; const phase = before.phase.phase_id; const interval = before.surface.expedition.clock.interval;
-  assert.equal(service.submitQ4Communication({ world_id: world.id, channel: "local", text: "Are you ready?" }).ok, true);
-  assert.equal(service.submitQ4Communication({ world_id: world.id, channel: "standard", text: "We have an unmarked doorway." }).ok, true);
+  assert.equal((await service.submitQ4Communication({ world_id: world.id, channel: "local", text: "Are you ready?" })).ok, true);
+  assert.equal((await service.submitQ4Communication({ world_id: world.id, channel: "standard", text: "We have an unmarked doorway." })).ok, true);
   const after = service.getGameplayProjection({ world_id: world.id, mode: "field-researcher" }).projection;
   assert.equal(after.phase.phase_id, phase); assert.equal(after.scene.location, location); assert.equal(after.surface.expedition.clock.interval, interval + 1);
   assert.ok(after.q4.channels.action.history.length >= 1);
@@ -51,28 +51,28 @@ test("Q4 channels write distinguishable records and preserve physical continuity
   assert.ok(after.surface.expedition.clock.communication_ticks >= 2);
 });
 
-test("LOCAL follows same-location personnel and does not grant Standard knowledge", () => {
+test("LOCAL follows same-location personnel and does not grant Standard knowledge", async () => {
   const { service, world } = fixture();
-  const unavailable = service.submitQ4Communication({ world_id: world.id, channel: "local", text: "Can you hear me?" });
+  const unavailable = await service.submitQ4Communication({ world_id: world.id, channel: "local", text: "Can you hear me?" });
   assert.equal(unavailable.ok, true);
-  reachField(service, world);
+  await reachField(service, world);
   const beforeRecords = Object.keys(service.getWorld(world.id).knowledge.institutional.records).length;
   const entry = service.session(world.id, "field-researcher"); entry.run.expedition.team.members[1].status = "unavailable";
-  const outOfRange = service.submitQ4Communication({ world_id: world.id, channel: "local", text: "Can you hear me?" });
+  const outOfRange = await service.submitQ4Communication({ world_id: world.id, channel: "local", text: "Can you hear me?" });
   assert.equal(outOfRange.ok, true);
   assert.equal(Object.keys(service.getWorld(world.id).knowledge.institutional.records).length, beforeRecords);
 });
 
-test("STANDARD requires radio availability and transfers only reported knowledge", () => {
-  const { service, world } = fixture(); reachField(service, world);
+test("STANDARD requires radio availability and transfers only reported knowledge", async () => {
+  const { service, world } = fixture(); await reachField(service, world);
   const beforeRecords = Object.keys(service.getWorld(world.id).knowledge.institutional.records).length;
   const entry = service.session(world.id, "field-researcher"); entry.run.expedition.equipment["survey-radio"].charges = 0;
-  const blocked = service.submitQ4Communication({ world_id: world.id, channel: "standard", text: "We have an unmarked doorway." });
+  const blocked = await service.submitQ4Communication({ world_id: world.id, channel: "standard", text: "We have an unmarked doorway." });
   assert.equal(blocked.ok, false); assert.equal(blocked.error.code, "STANDARD_UNAVAILABLE");
   entry.run.expedition.equipment["survey-radio"].charges = 1;
-  assert.equal(service.submitQ4Communication({ world_id: world.id, channel: "local", text: "I saw an unmarked doorway." }).ok, true);
+  assert.equal((await service.submitQ4Communication({ world_id: world.id, channel: "local", text: "I saw an unmarked doorway." })).ok, true);
   assert.equal(Object.keys(service.getWorld(world.id).knowledge.institutional.records).length, beforeRecords);
-  assert.equal(service.submitQ4Communication({ world_id: world.id, channel: "standard", text: "We have an unmarked doorway." }).ok, true);
+  assert.equal((await service.submitQ4Communication({ world_id: world.id, channel: "standard", text: "We have an unmarked doorway." })).ok, true);
   const records = Object.values(service.getWorld(world.id).knowledge.institutional.records);
   assert.equal(records.length, beforeRecords + 1); const report = records.find((record) => record.payload.report === "We have an unmarked doorway."); assert.ok(report); assert.match(report.payload.status, /delivered|acknowledged/);
   assert.doesNotMatch(JSON.stringify(service.getWorld(world.id).events), /objective\.doorway|doorway\.exists/);

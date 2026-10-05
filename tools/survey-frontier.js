@@ -72,17 +72,44 @@ function report(state, observer, { at = 0, message_id = null } = {}) {
   for (const [id, value] of Object.entries(knowledge.connections)) add(state.standard.connections, id, { state: state.standard.connections[id] ? "CONFIRMED" : "REPORTED", provenance: [{ source: "delivered-radio-report", observer, message_id, at, direct: false }] });
 }
 function known(state, observer, id, kind = "locations") { return Boolean(readPerson(state, observer)?.[kind]?.[id]); }
-function projectMap(state, definition, knowledge, current_location = null) {
-  knowledge ??= { locations:{}, connections:{} }; const locations = Object.fromEntries(definition.locations.map((item) => [item.id, item])); const connections = Object.fromEntries(definition.connections.map((item) => [item.id, item]));
-  const nodes = Object.entries(knowledge.locations).map(([id, item]) => ({ id, name: locations[id]?.name ?? "Recorded location", type: locations[id]?.type ?? "recorded-location", coordinates: clone(locations[id]?.coordinates ?? null), status: item.state, current: id === current_location, provenance: item.provenance.at(-1)?.source ?? "record" }));
+function projectMap(state, definition, knowledge, current_location = null, { visited_locations = [] } = {}) {
+  knowledge ??= { locations:{}, connections:{} };
+  const visitedSet = new Set(Array.isArray(visited_locations) ? visited_locations : []);
+  const locations = Object.fromEntries((definition?.locations ?? []).map((item) => [item.id, item]));
+  const connections = Object.fromEntries((definition?.connections ?? []).map((item) => [item.id, item]));
+  const nodes = Object.entries(knowledge.locations).map(([id, item]) => {
+    const hasDirect = (item.provenance ?? []).some((p) => p.direct === true && (p.source === "direct-observation" || p.source === "traversal"));
+    const visitedThisExpedition = visitedSet.has(id);
+    return {
+      id,
+      name: locations[id]?.name ?? "Recorded location",
+      type: locations[id]?.type ?? "recorded-location",
+      coordinates: clone(locations[id]?.coordinates ?? null),
+      status: item.state,
+      current: id === current_location,
+      visited: hasDirect,
+      visited_this_expedition: visitedThisExpedition,
+      provenance: item.provenance.at(-1)?.source ?? "record",
+      direct_observation: hasDirect
+    };
+  });
   const nodeIds = new Set(nodes.map((item) => item.id));
-  const edges = Object.entries(knowledge.connections).map(([id, item]) => { const connection = connections[id]; if (!connection) return null; const from = nodeIds.has(connection.from) ? connection.from : nodeIds.has(connection.to) ? connection.to : null; if (!from) return null; const to = nodeIds.has(connection.from) && nodeIds.has(connection.to) ? (from === connection.from ? connection.to : connection.from) : null; return { id, from, to, status: item.state, label: connection.relationship }; }).filter(Boolean);
+  const edges = Object.entries(knowledge.connections).map(([id, item]) => {
+    const connection = connections[id];
+    if (!connection) return null;
+    const from = nodeIds.has(connection.from) ? connection.from : nodeIds.has(connection.to) ? connection.to : null;
+    if (!from) return null;
+    const to = nodeIds.has(connection.from) && nodeIds.has(connection.to) ? (from === connection.from ? connection.to : connection.from) : null;
+    return { id, from, to, status: item.state, label: connection.relationship };
+  }).filter(Boolean);
   const claims = (state.historical?.claims ?? []).map((claim) => ({ id: claim.id, label: claim.label, status: "PRIOR_RECORD_ONLY", claim_state: claim.state ?? "UNCONFIRMED" }));
   return { version: "yellow-beast-survey-frontier-map@v1", nodes, edges, historical_claims: claims, current_location: nodeIds.has(current_location) ? current_location : null };
 }
-function map(state, definition, observer, { current_location = null } = {}) {
-  return projectMap(state, definition, readPerson(state, observer), current_location);
+function map(state, definition, observer, { current_location = null, visited_locations = [] } = {}) {
+  return projectMap(state, definition, readPerson(state, observer), current_location, { visited_locations });
 }
-function standardMap(state, definition) { return projectMap(state, definition, state.standard); }
+function standardMap(state, definition, { current_location = null, visited_locations = [] } = {}) {
+  return projectMap(state, definition, state.standard, current_location, { visited_locations });
+}
 function frontier(state, definition, observer) { const knowledge = readPerson(state, observer) ?? { locations:{}, connections:{} }; return Object.keys(knowledge.locations).flatMap((location) => definition.connections.filter((connection) => connection.from === location || connection.to === location).filter((connection) => !knowledge.connections[connection.id] || knowledge.connections[connection.id].state !== "SURVEYED").map((connection) => ({ location, route: connection.relationship, state: knowledge.connections[connection.id]?.state ?? "UNKNOWN" }))); }
 module.exports = { VERSION, create, migrate, validateCurrent, observe, traverse, share, report, known, map, standardMap, frontier };

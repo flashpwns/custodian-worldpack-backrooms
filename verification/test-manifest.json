@@ -78,6 +78,67 @@
       "fast": true
     },
     {
+      "file": "tests/y100-cinematic-registry.test.js",
+      "status": "included",
+      "tier": "aggregate"
+    },
+    {
+      "file": "tests/y101-broadcast-to-briefing.test.js",
+      "status": "included",
+      "tier": "aggregate"
+    },
+    {
+      "file": "tests/y102-managed-inference-appliance.test.js",
+      "status": "included",
+      "tier": "aggregate",
+      "fast": true
+    },
+    {
+      "file": "tests/y103-beat1-implementation.test.js",
+      "status": "included",
+      "tier": "aggregate"
+    },
+    {
+      "file": "tests/y104-clean-workstation-handoff.test.js",
+      "status": "included",
+      "tier": "aggregate"
+    },
+    {
+      "file": "tests/y105-authoritative-first-run-chronology.test.js",
+      "status": "included",
+      "tier": "aggregate"
+    },
+    {
+      "file": "tests/y106-physical-maxwell-briefing.test.js",
+      "status": "included",
+      "tier": "aggregate"
+    },
+    {
+      "file": "tests/y107-authored-cinematic-assets-and-esc-skip.test.js",
+      "status": "included",
+      "tier": "aggregate"
+    },
+    {
+      "file": "tests/y108-beat-2-4-convergence-repair.test.js",
+      "status": "included",
+      "tier": "aggregate"
+    },
+    {
+      "file": "tests/y109-local-coworker-dialogue-runtime.test.js",
+      "status": "included",
+      "tier": "aggregate"
+    },
+    {
+      "file": "tests/y110-dialogue-interpretation.test.js",
+      "status": "included",
+      "tier": "aggregate"
+    },
+    {
+      "file": "tests/y111-local-group-dialogue-pass.test.js",
+      "status": "included",
+      "tier": "aggregate"
+    },
+    {
       "file": "tests/y12b.test.js",
       "status": "included",
       "tier": "aggregate",
@@ -105,15 +166,15 @@
       "tier": "aggregate"
     },
     {
+      "file": "tests/y16-expedition.test.js",
+      "status": "included",
+      "tier": "aggregate"
+    },
+    {
       "file": "tests/y165-context-closure.test.js",
       "status": "included",
       "tier": "aggregate",
       "fast": true
-    },
-    {
-      "file": "tests/y16-expedition.test.js",
-      "status": "included",
-      "tier": "aggregate"
     },
     {
       "file": "tests/y17-procedural-complex.test.js",
@@ -574,15 +635,15 @@
       "tier": "aggregate"
     },
     {
+      "file": "tests/y68-long-world-known-failures.test.js",
+      "status": "included",
+      "tier": "aggregate"
+    },
+    {
       "file": "tests/y68-verification-gate.test.js",
       "status": "included",
       "tier": "aggregate",
       "fast": true
-    },
-    {
-      "file": "tests/y68-long-world-known-failures.test.js",
-      "status": "included",
-      "tier": "aggregate"
     },
     {
       "file": "tests/y69-reference-expedition.test.js",
@@ -630,6 +691,11 @@
       "tier": "aggregate"
     },
     {
+      "file": "tests/y79-canonical-world-ledger-invariants.test.js",
+      "status": "included",
+      "tier": "aggregate"
+    },
+    {
       "file": "tests/y79-clause-completeness-coordinated.test.js",
       "status": "included",
       "tier": "aggregate"
@@ -650,21 +716,15 @@
       "tier": "aggregate"
     },
     {
+      "file": "tests/y83-ai-runtime-stability.test.js",
+      "status": "included",
+      "tier": "aggregate"
+    },
+    {
       "file": "tests/y83-natural-command-transactions.test.js",
       "status": "included",
       "tier": "aggregate",
       "fast": false
-    },
-    {
-      "file": "tests/y84-live-provider-failure.test.js",
-      "status": "included",
-      "tier": "aggregate",
-      "fast": false
-    },
-    {
-      "file": "tests/y83-ai-runtime-stability.test.js",
-      "status": "included",
-      "tier": "aggregate"
     },
     {
       "file": "tests/y84-hybrid-canon-hardening.test.js",
@@ -672,9 +732,10 @@
       "tier": "aggregate"
     },
     {
-      "file": "tests/y79-canonical-world-ledger-invariants.test.js",
+      "file": "tests/y84-live-provider-failure.test.js",
       "status": "included",
-      "tier": "aggregate"
+      "tier": "aggregate",
+      "fast": false
     },
     {
       "file": "tests/y85-negation-aware-onboarding.test.js",
@@ -738,6 +799,266 @@
     },
     {
       "file": "tests/y94-cq4-day1-adversarial-corrective.test.js",
+      "status": "included",
+      "tier": "aggregate"
+    },
+    {
+      "file": "tests/y95-map-provenance-and-restart.test.js",
+      "status": "included",
+      "tier": "aggregate"
+    },
+    {
+      "file": "tests/y96-comms-targeting-and-absent-recipients.test.js",
+      "status": "included",
+      "tier": "aggregate"
+    },
+    {
+      "file": "tests/y97-local-model-provider.test.js",
+      "status": "included",
+      "tier": "aggregate"
+    },
+    {
+      "file": "tests/y98-opening-beats-1-4.test.js",
+      "status": "included",
+      "tier": "aggregate"
+    },
+    {
+      "file": "tests/y99-cq4-day1-beatmap-conformance.test.js",
+      "status": "included",
+      "tier": "aggregate"
+    },
+    {
+      "file": "tests/ed27-conversational-pragmatics.test.js",
+      "status": "included",
+      "tier": "aggregate"
+    },
+    {
+      "file": "tests/ed28-semantic-knowledge.test.js",
+      "status": "included",
+      "tier": "aggregate"
+    },
+    {
+      "file": "tests/ed29-day1-knowledge-convergence.test.js",
+      "status": "included",
+      "tier": "aggregate"
+    },
+    {
+      "file": "tests/ed30a-compositional-turns.test.js",
+      "status": "included",
+      "tier": "aggregate"
+    },
+    {
+      "file": "tests/ed30b-validation-personhood.test.js",
+      "status": "included",
+      "tier": "aggregate"
+    },
+    {
+      "file": "tests/ed30c-conversation-management.test.js",
+      "status": "included",
+      "tier": "aggregate"
+    },
+    {
+      "file": "tests/ed30d-properties-independence.test.js",
+      "status": "included",
+      "tier": "aggregate"
+    },
+    {
+      "file": "tests/ed30e-owner-decisions.test.js",
+      "status": "included",
+      "tier": "aggregate"
+    },
+    {
+      "file": "tests/ed30f-end-to-end.test.js",
+      "status": "included",
+      "tier": "aggregate"
+    },
+    {
+      "file": "tests/ed30g-utterance-force-followups.test.js",
+      "status": "included",
+      "tier": "aggregate"
+    },
+    {
+      "file": "tests/ed30h-confidence-items-adjacency.test.js",
+      "status": "included",
+      "tier": "aggregate"
+    },
+    {
+      "file": "tests/ed30i-evidence-facets-discourse.test.js",
+      "status": "included",
+      "tier": "aggregate"
+    },
+    {
+      "file": "tests/ed31a-reader-phase0.test.js",
+      "status": "included",
+      "tier": "aggregate"
+    },
+    {
+      "file": "tests/ed31b-reader-characterization-full.test.js",
+      "status": "included",
+      "tier": "long-world"
+    },
+    {
+      "file": "tests/ed32a-reader-phase1-shadow.test.js",
+      "status": "included",
+      "tier": "aggregate"
+    },
+    {
+      "file": "tests/ed32b-reader-phase1-shadow-full.test.js",
+      "status": "included",
+      "tier": "long-world"
+    },
+    {
+      "file": "tests/ed33a-reader-phase2-step0.test.js",
+      "status": "included",
+      "tier": "aggregate"
+    },
+    {
+      "file": "tests/ed33b-reader-phase2-replay-full.test.js",
+      "status": "included",
+      "tier": "long-world"
+    },
+    {
+      "file": "tests/ed33c-reader-phase2-step01.test.js",
+      "status": "included",
+      "tier": "aggregate"
+    },
+    {
+      "file": "tests/ed33d-reader-phase2-labeling-workstation.test.js",
+      "status": "included",
+      "tier": "aggregate"
+    },
+    {
+      "file": "tests/ed33e-reader-phase2-easy-labeling-ui.test.js",
+      "status": "included",
+      "tier": "aggregate"
+    },
+    {
+      "file": "tests/ed1-dialogue-discourse.test.js",
+      "status": "included",
+      "tier": "aggregate"
+    },
+    {
+      "file": "tests/ed15-dialogue-blockers.test.js",
+      "status": "included",
+      "tier": "aggregate"
+    },
+    {
+      "file": "tests/ed16-dialogue-closure.test.js",
+      "status": "included",
+      "tier": "aggregate"
+    },
+    {
+      "file": "tests/ed2-semantic-enforcement.test.js",
+      "status": "included",
+      "tier": "aggregate"
+    },
+    {
+      "file": "tests/ed21-validation-clean.test.js",
+      "status": "included",
+      "tier": "aggregate"
+    },
+    {
+      "file": "tests/ed22-context-bridge.test.js",
+      "status": "included",
+      "tier": "aggregate"
+    },
+    {
+      "file": "tests/ed23-provider-runtime.test.js",
+      "status": "included",
+      "tier": "aggregate"
+    },
+    {
+      "file": "tests/ed24-freeze-invariants.test.js",
+      "status": "included",
+      "tier": "aggregate"
+    },
+    {
+      "file": "tests/ed25-human-acceptance-dialogue.test.js",
+      "status": "included",
+      "tier": "aggregate"
+    },
+    {
+      "file": "tests/ed26-conversation-semantics.test.js",
+      "status": "included",
+      "tier": "aggregate"
+    },
+    {
+      "file": "tests/ed3-local-runtime-dev.test.js",
+      "status": "included",
+      "tier": "aggregate"
+    },
+    {
+      "file": "tests/ed33f-reader-machine-labeling.test.js",
+      "status": "included",
+      "tier": "aggregate"
+    },
+    {
+      "file": "tests/ed33g-reader-local-labeling.test.js",
+      "status": "included",
+      "tier": "aggregate"
+    },
+    {
+      "file": "tests/ed33h-reader-local-repair.test.js",
+      "status": "included",
+      "tier": "aggregate"
+    },
+    {
+      "file": "tests/ed33i-reader-exception-workstation.test.js",
+      "status": "included",
+      "tier": "aggregate"
+    },
+    {
+      "file": "tests/ed4-dialogue-reconciliation.test.js",
+      "status": "included",
+      "tier": "aggregate"
+    },
+    {
+      "file": "tests/ed5-autonomous-and-known-answer.test.js",
+      "status": "included",
+      "tier": "aggregate"
+    },
+    {
+      "file": "tests/y166-dialogue-runtime-supervisor.test.js",
+      "status": "included",
+      "tier": "aggregate"
+    },
+    {
+      "file": "tests/y167-cinematic-warmup-skip-gate.test.js",
+      "status": "included",
+      "tier": "aggregate"
+    },
+    {
+      "file": "tests/y168-observation-authority.test.js",
+      "status": "included",
+      "tier": "aggregate"
+    },
+    {
+      "file": "tests/y169-observation-persistence-integration.test.js",
+      "status": "included",
+      "tier": "aggregate"
+    },
+    {
+      "file": "tests/y170-speech-scheduler.test.js",
+      "status": "included",
+      "tier": "aggregate"
+    },
+    {
+      "file": "tests/y171-autonomous-speech-live.test.js",
+      "status": "included",
+      "tier": "aggregate"
+    },
+    {
+      "file": "tests/y172-autonomous-speech-turn-safety.test.js",
+      "status": "included",
+      "tier": "aggregate"
+    },
+    {
+      "file": "tests/y173-autonomous-speech-refresh.test.js",
+      "status": "included",
+      "tier": "aggregate"
+    },
+    {
+      "file": "tests/y174-autonomous-report-rendering.test.js",
       "status": "included",
       "tier": "aggregate"
     }

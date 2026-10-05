@@ -1,0 +1,321 @@
+{
+ "version": "yellow-beast-reader-legacy-coverage@v1",
+ "turns": 471,
+ "seam_recorded": 471,
+ "frames": 471,
+ "acts": 510,
+ "exact_turns": 422,
+ "exact_pct": 89.6,
+ "by_fixture_kind": {
+  "script": {
+   "turns": 149,
+   "exact": 132,
+   "exact_pct": 88.6
+  },
+  "transcript": {
+   "turns": 16,
+   "exact": 13,
+   "exact_pct": 81.3
+  },
+  "scenario": {
+   "turns": 107,
+   "exact": 88,
+   "exact_pct": 82.2
+  },
+  "probe": {
+   "turns": 199,
+   "exact": 189,
+   "exact_pct": 95
+  }
+ },
+ "validation_disposition_of_legacy_frames": {
+  "accept": 433,
+  "reject_fields": 1,
+  "clarify": 37
+ },
+ "validation_errors_on_legacy_frames": {
+  "V3:no_antecedent": 35,
+  "V3:others_count_mismatch": 3,
+  "V2:contradicts_chip_target": 1,
+  "V2:non_asking_reading_with_asking_features": 1
+ },
+ "validation_vs_legacy_decision": {
+  "V2:contradicts_chip_target": {
+   "legacy_also_declined": 0,
+   "legacy_proceeded": 1,
+   "examples_legacy_proceeded": [
+    "Tonya, how are you?"
+   ]
+  },
+  "V2:non_asking_reading_with_asking_features": {
+   "legacy_also_declined": 0,
+   "legacy_proceeded": 1,
+   "examples_legacy_proceeded": [
+    "what could possibly go wrong lol"
+   ]
+  },
+  "V3:no_antecedent": {
+   "legacy_also_declined": 35,
+   "legacy_proceeded": 0,
+   "examples_legacy_proceeded": []
+  },
+  "V3:others_count_mismatch": {
+   "legacy_also_declined": 3,
+   "legacy_proceeded": 0,
+   "examples_legacy_proceeded": []
+  }
+ },
+ "mismatch_classes": {
+  "reader-schema gap": {
+   "turns": 5,
+   "notes": 5,
+   "codes": {
+    "legacy_route_without_registry_facet": {
+     "count": 2,
+     "examples": [
+      "wat do u mean",
+      "why do you wanna know"
+     ]
+    },
+    "subject_without_name_span": {
+     "count": 1,
+     "examples": [
+      "You didn't answer me."
+     ]
+    },
+    "answer_option_without_canonical_option_id": {
+     "count": 1,
+     "examples": [
+      "the camera"
+     ]
+    },
+    "referent_not_in_candidates": {
+     "count": 1,
+     "examples": [
+      "Who has the case?"
+     ]
+    }
+   }
+  },
+  "resolver-policy concern": {
+   "turns": 22,
+   "notes": 22,
+   "codes": {
+    "inherited_via_raw_text:antecedent_owner": {
+     "count": 4,
+     "examples": [
+      "And where are the startup materials going?",
+      "What about Outpost A?",
+      "What's in it?"
+     ]
+    },
+    "rewrite:attention_call>elliptical_continuation": {
+     "count": 2,
+     "examples": [
+      "Giselle?",
+      "Tonya?"
+     ]
+    },
+    "rewrite:repair>social_acknowledgment": {
+     "count": 3,
+     "examples": [
+      "I was speaking to Tonya",
+      "Not today. Ever."
+     ]
+    },
+    "rewrite:statement>answer": {
+     "count": 9,
+     "examples": [
+      "yeah",
+      "the flashlight",
+      "I mean, the camera"
+     ]
+    },
+    "inherited_via_raw_text:surface_anchor": {
+     "count": 1,
+     "examples": [
+      "cargo?"
+     ]
+    },
+    "deictic_default_place": {
+     "count": 3,
+     "examples": [
+      "Have any of you been inside before?",
+      "Is this your first time going in, Malcolm?",
+      "are we all going in together"
+     ]
+    }
+   }
+  },
+  "legacy-only artifact": {
+   "turns": 15,
+   "notes": 16,
+   "codes": {
+    "relation_without_antecedent": {
+     "count": 3,
+     "examples": [
+      "Malcolm, I hope you don't mind me asking, but are you nervous at all?",
+      "So where do we go next, if you don't mind me asking?",
+      "Anyway, where are we going?"
+     ]
+    },
+    "player_claim_not_typed_by_legacy": {
+     "count": 4,
+     "examples": [
+      "Maxwell said the Complex is basically an aquarium.",
+      "I heard Tonya has never been in the Complex.",
+      "The camera is broken, by the way."
+     ]
+    },
+    "closing_marker_split": {
+     "count": 4,
+     "examples": [
+      "Okay, well that's that, where do we head to next?"
+     ]
+    },
+    "overlapping_clause_spans": {
+     "count": 1,
+     "examples": [
+      "yeah"
+     ]
+    },
+    "act_without_tokens": {
+     "count": 1,
+     "examples": [
+      "yeah"
+     ]
+    },
+    "name_span_without_legacy_role": {
+     "count": 2,
+     "examples": [
+      "I didn't ask you, Giselle"
+     ]
+    },
+    "rewrite:statement>question": {
+     "count": 1,
+     "examples": [
+      "camera's still on you"
+     ]
+    }
+   }
+  },
+  "needs-owner-decision": {
+   "turns": 10,
+   "notes": 10,
+   "codes": {
+    "collective_subject_routed_as_group_address": {
+     "count": 10,
+     "examples": [
+      "we all going",
+      "Will all of us be going to Equipment Staging together, or are we splitting up?",
+      "Are we all going?"
+     ]
+    }
+   }
+  }
+ },
+ "non_exact_turns": 49,
+ "class_turn_sum": 52,
+ "multi_class_turns": [
+  {
+   "fixture": "scenario/ed30i-inbound",
+   "text": "yeah",
+   "classes": [
+    "legacy-only artifact",
+    "resolver-policy concern"
+   ],
+   "codes": [
+    "resolver-policy concern:rewrite:statement>answer",
+    "legacy-only artifact:overlapping_clause_spans",
+    "legacy-only artifact:act_without_tokens"
+   ]
+  },
+  {
+   "fixture": "scenario/ed30i-inbound",
+   "text": "the camera",
+   "classes": [
+    "reader-schema gap",
+    "resolver-policy concern"
+   ],
+   "codes": [
+    "resolver-policy concern:rewrite:statement>answer",
+    "reader-schema gap:answer_option_without_canonical_option_id"
+   ]
+  },
+  {
+   "fixture": "dev-corpus.jsonl#d110",
+   "text": "are we all going in together",
+   "classes": [
+    "needs-owner-decision",
+    "resolver-policy concern"
+   ],
+   "codes": [
+    "needs-owner-decision:collective_subject_routed_as_group_address",
+    "resolver-policy concern:deictic_default_place"
+   ]
+  }
+ ],
+ "raw_text_dependencies": {
+  "facet_source:item_role": {
+   "count": 35,
+   "what": "itemRole: ITEM_ROLES clause regex table",
+   "examples": [
+    "who has teh camera",
+    "whats the duffle for",
+    "whats the camera for"
+   ]
+  },
+  "facet_source:discourse_followup": {
+   "count": 6,
+   "what": "fragment tables (ELABORATE_TIME / TEMPORAL / who-else / what-for) over the raw fragment",
+   "examples": [
+    "how come",
+    "when was that",
+    "who else"
+   ]
+  },
+  "addressee:antecedent_owner": {
+   "count": 4,
+   "what": "isFollowUp: FOLLOW_UP_FRAGMENT / FOLLOW_UP_ANAPHOR regex + salient_names (reply facts incl. OPTIONAL facts)",
+   "examples": [
+    "And where are the startup materials going?",
+    "What about Outpost A?",
+    "What's in it?"
+   ]
+  },
+  "facet_source:inbound_counter": {
+   "count": 2,
+   "what": "REPLY_COUNTER_WHY regex",
+   "examples": [
+    "why",
+    "why do you ask"
+   ]
+  },
+  "facet_source:surface_anchor": {
+   "count": 1,
+   "what": "echo tokens against heard wording",
+   "examples": [
+    "cargo?"
+   ]
+  },
+  "addressee:surface_anchor": {
+   "count": 1,
+   "what": "echoOf: echo-token overlap with the spoken reply (heard wording)",
+   "examples": [
+    "cargo?"
+   ]
+  }
+ },
+ "resolver_derived_addressees": {
+  "inbound_asker": 4,
+  "active_speaker": 10,
+  "repaired_request": 13,
+  "open_question_answer": 8,
+  "answer_repair": 1,
+  "answer_owner": 4,
+  "repair_asker": 2,
+  "pending_request": 1,
+  "activity_remaining": 1
+ },
+ "resolution_passthrough_identity": true
+}

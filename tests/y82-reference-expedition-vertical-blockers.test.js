@@ -14,20 +14,20 @@ const bootstrap = require("../tools/run-bootstrap");
 const reference = require("../tools/reference-expedition");
 const surfaces = require("../desktop/renderer/surfaces");
 
-function fieldFixture(seed) {
+async function fieldFixture(seed) {
   const appDataPath = fs.mkdtempSync(path.join(os.tmpdir(), "yb-reference-vertical-"));
   const service = new DesktopService({ appDataPath, defaultQ4Scenario:"reference-expedition", livingTurnProvider:createLivingProvider() });
   const world = service.createWorld({ name:"Reference vertical blocker", seed }).world;
   assert.equal(service.createQ4Personnel({ world_id:world.id, first_name:"Matthew", last_name:"Murphy" }).ok, true);
   assert.equal(service.startSession({ world_id:world.id, mode:"field-researcher", seed, require_personnel:true, scenario:"reference-expedition" }).ok, true);
   for (const action of ["READY", "PROCEED", "APPROACH", "READY"]) assert.equal(service.submitAction({ world_id:world.id, mode:"field-researcher", action }).ok, true);
-  assert.equal(service.submitQ4Communication({ world_id:world.id, channel:"standard", text:"Standard, Reference team. Four accounted for. Radio check." }).ok, true);
+  assert.equal((await service.submitQ4Communication({ world_id:world.id, channel:"standard", text:"Standard, Reference team. Four accounted for. Radio check." })).ok, true);
   assert.equal(service.submitAction({ world_id:world.id, mode:"field-researcher", action:"CROSS" }).ok, true);
   return { service, world, run:service.session(world.id, "field-researcher").run };
 }
 
-test("wrong-room generic survey use is unavailable and cannot consume the Reference instrument", () => {
-  const { service, world, run } = fieldFixture("wrong-room-survey-guard");
+test("wrong-room generic survey use is unavailable and cannot consume the Reference instrument", async () => {
+  const { service, world, run } = await fieldFixture("wrong-room-survey-guard");
   const before = structuredClone({ clock:run.expedition.clock, instrument:run.expedition.equipment["survey-instrument"], evidence:run.expedition.evidence });
   assert.equal(service.getAvailableActions({ world_id:world.id, mode:"field-researcher" }).actions.some((action) => action.type === "USE"), false);
 
@@ -43,15 +43,15 @@ test("wrong-room generic survey use is unavailable and cannot consume the Refere
   assert.ok(run.expedition.evidence.some((item) => item.type === "passage-depth-measurement" && item.measurement?.value === 18));
 });
 
-test("LOCAL retrospective answers remain bounded to the addressed coworker's own record", () => {
-  const { service, world, run } = fieldFixture("bounded-retrospective-answer");
+test("LOCAL retrospective answers remain bounded to the addressed coworker's own record", async () => {
+  const { service, world, run } = await fieldFixture("bounded-retrospective-answer");
   const beverly = run.expedition.team.members.find((member) => member.first_name === "Beverly");
   const santiago = run.expedition.team.members.find((member) => member.first_name === "Santiago");
   beverly.known_information.push({ kind:"location-investigated", location:"columned-corridor", at:6, source:"direct-observation" });
   beverly.condition = "minor injury";
   beverly.condition_history = [{ sequence:1, condition:"minor injury", status:"active", at:6, reason:"struck by a loose service bracket" }];
 
-  const answer = service.submitQ4Communication({ world_id:world.id, channel:"local", target:"Beverly", text:"Beverly, what happened while we were apart?" });
+  const answer = await service.submitQ4Communication({ world_id:world.id, channel:"local", target:"Beverly", text:"Beverly, what happened while we were apart?" });
   assert.equal(answer.ok, true);
   assert.match(answer.result.public_reason, /^Beverly: I checked the columned corridor\./);
   assert.match(answer.result.public_reason, /loose service bracket/);
@@ -59,7 +59,7 @@ test("LOCAL retrospective answers remain bounded to the addressed coworker's own
   const rendered = surfaces.render(answer.projection);
   assert.doesNotMatch(rendered, /Beverly Bell:<\/span>[^]*“Beverly:/);
 
-  const other = service.submitQ4Communication({ world_id:world.id, channel:"local", target:"Santiago", text:"Santiago, what happened while we were apart?" });
+  const other = await service.submitQ4Communication({ world_id:world.id, channel:"local", target:"Santiago", text:"Santiago, what happened while we were apart?" });
   assert.equal(other.ok, true);
   assert.match(other.result.public_reason, /^Santiago:/);
   assert.doesNotMatch(other.result.public_reason, /columned corridor|loose service bracket|minor injury/i);
@@ -67,7 +67,7 @@ test("LOCAL retrospective answers remain bounded to the addressed coworker's own
 });
 
 test("transfers use public names and coordinated presentation includes both attempts", async () => {
-  const { service, world } = fieldFixture("public-coordinated-presentation");
+  const { service, world } = await fieldFixture("public-coordinated-presentation");
   const transferred = service.submitAction({ world_id:world.id, mode:"field-researcher", action:"TRANSFER", target:"field-light|personnel-autumn-tucker" });
   assert.equal(transferred.ok, true);
   assert.equal(transferred.result.public_reason, "Battery field lamp transferred from You to Autumn Tucker.");
@@ -80,8 +80,8 @@ test("transfers use public names and coordinated presentation includes both atte
   assert.match(coordinated.result.summary, /Beverly Bell photographs fluorescent fixture\./);
 });
 
-test("CWL-10 route history contains only traversable connections", () => {
-  const { run } = fieldFixture("cwl-valid-routes");
+test("CWL-10 route history contains only traversable connections", async () => {
+  const { run } = await fieldFixture("cwl-valid-routes");
   const routeHistory = run.spatial?.route_history ?? [];
   assert.ok(routeHistory.length > 0, "expected non-empty route history");
   for (const entry of routeHistory) {
@@ -92,8 +92,8 @@ test("CWL-10 route history contains only traversable connections", () => {
   }
 });
 
-test("CWL-11 projection does not contain future events", () => {
-  const { run } = fieldFixture("cwl-no-future");
+test("CWL-11 projection does not contain future events", async () => {
+  const { run } = await fieldFixture("cwl-no-future");
   const player = run.session.startup.player.observer_id;
   const result = projectLiveScene(run, { observer_id: player });
   assert.equal(result.ok, true);
@@ -102,8 +102,8 @@ test("CWL-11 projection does not contain future events", () => {
   assert.equal(FUTURE.test(serialized), false, "projection contains future language");
 });
 
-test("CWL-14 written reports do not mutate canonical geography or evidence", () => {
-  const { run } = fieldFixture("cwl-report-claims");
+test("CWL-14 written reports do not mutate canonical geography or evidence", async () => {
+  const { run } = await fieldFixture("cwl-report-claims");
   const geoSnapshot = structuredClone(run.spatial.generated_locations);
   const objSnapshot = structuredClone(run.object_state);
   run.lifecycle = "completed";
@@ -115,8 +115,8 @@ test("CWL-14 written reports do not mutate canonical geography or evidence", () 
   assert.deepEqual(run.object_state, objSnapshot, "report mutated canonical objects");
 });
 
-test("CWL-17 spatial state validates after operations", () => {
-  const { run } = fieldFixture("cwl-spatial-valid");
+test("CWL-17 spatial state validates after operations", async () => {
+  const { run } = await fieldFixture("cwl-spatial-valid");
   const errors = spatialRuntime.validateState(
     run.spatial,
     bootstrap.topologyFor(run)

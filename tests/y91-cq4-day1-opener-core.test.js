@@ -11,6 +11,7 @@ const q4Personnel = require("../tools/q4-personnel");
 const cq4Day1Opener = require("../tools/cq4-day1-opener");
 const presentationBus = require("../tools/presentation-bus");
 const YBSurfaces = require("../desktop/renderer/surfaces");
+const aiLocalDialogue = require("../tools/ai-local-dialogue");
 
 function createTestOpenerService(seed = "opener-core-test") {
   const appDataPath = fs.mkdtempSync(path.join(os.tmpdir(), "yb-opener-core-"));
@@ -73,12 +74,13 @@ test("y91 — CQ4 Day 1 Opener: Dr. Kirk Maxwell Institutional Briefing and Arch
     const entry = service.session(world.id, "field-researcher");
     assert.ok(entry, "Session entry present");
 
-    // 1. Dr. Kirk Maxwell exists Standard-side, non-deployable, non-mortal
+    // 1. Maxwell remains a normal person who is excluded by assignment scope.
     const canonicalWorld = service.getWorld(world.id);
     const maxwell = canonicalWorld.characters["dr-kirk-maxwell"];
     assert.ok(maxwell, "Dr. Kirk Maxwell exists in canonical characters");
-    assert.equal(maxwell.mortal, false, "Maxwell is non-mortal");
+    assert.equal(maxwell.mortal, true, "Maxwell is not made magically immortal");
     assert.equal(maxwell.deployable, false, "Maxwell is non-deployable");
+    assert.equal(maxwell.assignment_scope, "briefing-only");
 
     // 2. Opener coworkers possess the 3 required archetypes
     const team = entry.run.expedition.team.members;
@@ -100,6 +102,23 @@ test("y91 — CQ4 Day 1 Opener: Dr. Kirk Maxwell Institutional Briefing and Arch
     assert.equal(coworker3.personality, "veteran-doctor");
     assert.equal(coworker3.primary_task, "layout-compilation");
 
+    const dialoguePacket = aiLocalDialogue.buildLocalDialoguePacket({
+      run: entry.run,
+      player_text: "How are you feeling about this assignment?",
+      speaker: coworker1,
+      person: canonicalWorld.characters[coworker1.personnel_id],
+      reaction_context: { worker: coworker1, equipment: [] },
+      reaction: { category: "acknowledgment" }
+    });
+    assert.deepEqual(dialoguePacket.speaker.characterization, {
+      archetype: "first-day-observer",
+      personality: "nervous-first-day",
+      primary_task: "verbal-recall",
+      // ED-1.5: identity reaches the model as STYLE keys only; factual substrate
+      // fields (region, tenure, etc.) are exposed solely as plan-authorized facts.
+      style: Object.fromEntries(["social_expression", "conversational_temperament", "social_tendency", "behavioral_disposition"].map((key) => [key, canonicalWorld.characters[coworker1.personnel_id].identity_substrate[key]]))
+    }, "The hosted dialogue packet must carry only this speaker's authored characterization, style-only");
+
     // 3. Initial equipment distribution
     // Coworker 2 holds startup-materials-duffle
     const duffle = Object.values(entry.run.expedition.logistics.items).find((i) => i.template === "startup-materials-duffle");
@@ -111,16 +130,19 @@ test("y91 — CQ4 Day 1 Opener: Dr. Kirk Maxwell Institutional Briefing and Arch
     assert.ok(layout, "Layout record exists");
     assert.equal(layout.current_holder, coworker3.identity, "Coworker 3 has initial custody of layout record");
 
-    // 4. Briefing event bus emissions
-    const busEvents = presentationBus.inspectEvents(world.id);
-    const maxwellEvents = busEvents.filter((e) => e.speaker === "DR. KIRK MAXWELL");
-    assert.ok(maxwellEvents.length >= 1, "Maxwell spoken dialogue emitted to presentation bus");
-    assert.match(maxwellEvents[0].text, /Good morning, Q4 assignees/);
-    assert.equal(maxwellEvents[0].physical_room_voice, true);
+    // 4. Initial workstation verification and Briefing event bus emissions
+    assert.equal(started.projection.q4.facility_broadcast.status, "completed", "Facility broadcast must be completed before workstation");
+    assert.equal(started.projection.q4.facility_broadcast.visible, false, "Broadcast feed must not be visible");
+    assert.equal(started.projection.q4.beat, "PERSONNEL_BRIEFING", "Session must begin in PERSONNEL_BRIEFING");
+    const standbyEvents = presentationBus.inspectEvents(world.id);
+    assert.equal(standbyEvents.filter((e) => e.speaker === "DR. KIRK MAXWELL").length, 0, "No Maxwell dialogue emitted initially");
 
-    const datedBriefings = busEvents.filter((e) => e.type === "opener_briefing_card");
-    assert.ok(datedBriefings.length >= 1, "Dated briefing card emitted");
-    assert.match(datedBriefings[0].title, /, 1994 BRIEFING$/);
+    const rendered = YBSurfaces.expeditionCockpit(started.projection, { phaseRecord: YBSurfaces.render(started.projection) });
+    assert.match(rendered, /data-display-mode="facility"/, "Schematic must be shown");
+    assert.doesNotMatch(rendered, /data-display-mode="facility-feed"/, "Facility feed must not be displayed");
+    assert.match(rendered, /BRIEFING PENDING/, "Action dock shows BRIEFING PENDING");
+    assert.doesNotMatch(rendered, /DR\. KIRK MAXWELL/, "Workstation must NOT identify Maxwell as having spoken yet");
+    assert.doesNotMatch(rendered, /Good morning, Q4 assignees/, "Workstation must NOT show Maxwell's scripted briefing yet");
   } finally {
     fs.rmSync(appDataPath, { recursive: true, force: true });
   }
@@ -133,8 +155,11 @@ test("y91 — CQ4 Day 1 Opener: Introductions Exit and Staging Flow", async () =
     service.startSession({ world_id: world.id, mode: "field-researcher", scenario: "day1-opener" });
     const entry = service.session(world.id, "field-researcher");
 
+    // Complete broadcast to transition to personnel briefing
+    service.submitAction({ world_id: world.id, mode: "field-researcher", action: "COMPLETE_BROADCAST" });
+
     // 1. Chat in BRIEFING
-    const chat = service.submitQ4Communication({
+    const chat = await service.submitQ4Communication({
       world_id: world.id,
       channel: "local",
       text: "Everyone ready for today?",
@@ -164,6 +189,7 @@ test("y91 — CQ4 Day 1 Opener: Hard 2-Item Carrying Capacity Limit Enforcement"
     const entry = service.session(world.id, "field-researcher");
 
     // Advance to STAGING
+    service.submitAction({ world_id: world.id, mode: "field-researcher", action: "COMPLETE_BROADCAST" });
     service.submitAction({ world_id: world.id, mode: "field-researcher", action: "READY" });
     assert.equal(entry.phase.phase_id, "STAGING");
 
@@ -234,6 +260,7 @@ test("y91 — CQ4 Day 1 Opener: Formal 2-Second Hold Radio Check-In vs Chat", as
     const entry = service.session(world.id, "field-researcher");
 
     // Advance to STANDARD_RADIO_CHECK: BRIEFING -> STAGING -> FACILITY_TRANSIT -> THRESHOLD -> STANDARD_RADIO_CHECK
+    service.submitAction({ world_id: world.id, mode: "field-researcher", action: "COMPLETE_BROADCAST" });
     service.submitAction({ world_id: world.id, mode: "field-researcher", action: "READY" });
     service.submitAction({ world_id: world.id, mode: "field-researcher", action: "PROCEED" });
     service.submitAction({ world_id: world.id, mode: "field-researcher", action: "APPROACH" });
@@ -271,10 +298,10 @@ test("y91 — CQ4 Day 1 Opener: Formal 2-Second Hold Radio Check-In vs Chat", as
     assert.equal(entry.run.expedition.last_check_in.source, "formal_radio_check_in");
     assert.equal(entry.run.expedition.radio_check_completed, true);
 
-    // 4. Verify presentation bus received radio_chirp
+    // 4. Verify presentation bus received an authorized radio transmission cue
     const busEvents = presentationBus.inspectEvents(world.id);
-    const chirp = busEvents.find((e) => e.type === "radio_chirp");
-    assert.ok(chirp, "radio_chirp event emitted on successful formal check-in");
+    const chirp = busEvents.find((e) => e.type === presentationBus.EVENT_TYPES.AUDIO_CUE && e.cue === "radio_tx_chirp");
+    assert.ok(chirp, "radio_tx_chirp event emitted on successful formal check-in");
 
     // 5. Verify action button is "CLEARED; CROSS?"
     const projection = service.projectionFor(world.id, "field-researcher");
@@ -289,6 +316,8 @@ test("y91 — CQ4 Day 1 Opener: Formal 2-Second Hold Radio Check-In vs Chat", as
     });
     assert.equal(crossRes.ok, true);
     assert.equal(entry.phase.phase_id, "FIELD_OPERATION");
+    assert.equal(crossRes.projection.acoustic_scene.phase_id, "FIELD_OPERATION", "The public acoustic projection must use the current service phase");
+    assert.equal(crossRes.projection.acoustic_scene.ambient_loop, "complex_hum", "The field projection must expose the Complex ambience");
 
     const postCrossEvents = presentationBus.inspectEvents(world.id);
     const shift = postCrossEvents.find((e) => e.type === "crossing_acoustic_shift");
