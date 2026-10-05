@@ -286,9 +286,15 @@ function validateContribution(contribution, rawSpeech, options = {}) {
   if (contribution.resumed_question && !contribution.may_ask_clarifying_question && /\b(?:(?:don'?t|do not) (?:know|understand|get)|not sure|no idea) what you(?:'re| are)? (?:mean|meant|asking|referring|talking)\b|\bwhat do you mean\b/i.test(speech)) return reject(CODES.UNMET, "the player answered the clarification; do not ask or deny it again");
   if (fn !== "report_observation" && fn !== "warn" && COMMITMENT_CLAIM.test(speech)) return reject(CODES.FORBIDDEN, "creates a commitment or instruction the simulation does not hold");
   if (VOCATIVE_YOU.test(speech)) return reject(CODES.SHAPE, "addresses the person as \"you\" as if it were a name");
-  // A speaker never addresses themselves by their own name ("Ann, I'm a field technician.").
   const ownName = speaker_name ?? requiredValue(contribution, "name")[0] ?? null;
-  if (ownName && new RegExp(`^\\s*${String(ownName).split(/\s+/)[0].replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\s*[,!:]`, "i").test(speech)) return reject(CODES.SHAPE, "addresses themselves by their own name");
+  const escapedOwnName = ownName ? String(ownName).split(/\s+/)[0].replace(/[.*+?^${}()|[\]\\]/g, "\\$&") : null;
+  // A bounded self-label confirmation ("Katie, yeah.") answers the request
+  // for an introduction. It does not address a listener named Katie. All
+  // remaining name, role, fact and claim checks still apply to the whole line.
+  const selfLabel = fn === "invite_self_description" && escapedOwnName &&
+    requiredValue(contribution, "name").length > 0 &&
+    new RegExp(`^\\s*${escapedOwnName},\\s*(?:yeah|yes|yep|that['’]s me)\\s*[.!](?:\\s|$)`, "i").test(speech);
+  if (escapedOwnName && !selfLabel && new RegExp(`^\\s*${escapedOwnName}\\s*[,!:]`, "i").test(speech)) return reject(CODES.SHAPE, "addresses themselves by their own name");
   // The player's claim about the world is heard as theirs; a coworker never affirms or restates it as fact.
   if (requiredValue(contribution, "player_claim").length) {
     if (PLAYER_CLAIM_ENDORSEMENT.test(speech)) return reject(CODES.FORBIDDEN, "endorses the player's claim as true");

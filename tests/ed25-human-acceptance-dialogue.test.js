@@ -597,3 +597,24 @@ test("Conversation recall may quote the actual player question without asserting
   assert.equal(C.validatePersonalClaims('You said, "Cecilia, how are you feeling?" Cecilia is nervous.',contribution,options).ok,false);
   assert.equal(C.validatePersonalClaims('You said, "Cecilia is nervous."',contribution,options).ok,false);
 });
+
+test("production introduction — a confirmed self-label is not a vocative to oneself", async () => {
+  const provider = scriptedLocal(() => {
+    const contribution = provider.packets.at(-1).authorized_contribution;
+    const name = contribution.required_facts.find(f => f.key === "name").value;
+    const role = contribution.required_facts.find(f => f.key === "role").value;
+    return `${name}, yeah. I'm a ${role}.`;
+  });
+  const state = setup("ed25-confirmed-self-label", provider.provider);
+  try {
+    await say(state, "Tell me a little about yourself.", { target: state.ids[0], request_id: "confirmed-label" });
+    const name = state.run.expedition.team.members.find(m => m.personnel_id === state.ids[0]).first_name;
+    const response = spokenFor(state.run, "confirmed-label", state.playerId);
+    assert.match(response[0].text, new RegExp(`^${name}, yeah\\.`), state.logs.join("\n"));
+    assert.ok(state.logs.some(line => line.includes("validator_accepted=true") && line.includes("fallback_used=false")), state.logs.join("\n"));
+    const facts = [{ key: "name", value: name }, { key: "role", value: "field researcher" }];
+    const intro = { discourse_function: "invite_self_description", required_facts: facts, optional_facts: [], forbidden_claims: ["invented_biography"] };
+    assert.equal(V.validateContribution(intro, `${name}, I'm a field researcher.`, { speaker_name: name }).ok, false);
+    assert.equal(V.validateContribution(intro, `${name}, yeah. I'm a field researcher. I grew up in Seattle.`, { speaker_name: name }).ok, false);
+  } finally { state.service.shutdown(); cleanup(state); }
+});

@@ -1,6 +1,6 @@
 # Dialogue closure authority — 2026-10-05
 
-This is the current dialogue readiness statement. Earlier implementation-state entries and acceptance artifacts are historical evidence. Jack’s human Electron test has FAILED the Assembly Table introduction/name exchange. His screenshot (2026-10-05 02:24:16) shows group name questions answered with departed Maxwell’s name, no reply to a correction, and repetition of the wrong answer after a direct plural name question. The prior automated run did not cover this failure. The repair now addresses ordinary names, correction, richer character replies and persistent conversation; current verification and packaging are being completed. Jack’s earlier human verdict remains FAILED until he retests.
+This is the current dialogue readiness statement. Earlier implementation-state entries and acceptance artifacts are historical evidence. Jack’s human Electron test has FAILED the Assembly Table introduction/name exchange. His screenshot (2026-10-05 02:24:16) shows group name questions answered with departed Maxwell’s name, no reply to a correction, and repetition of the wrong answer after a direct plural name question. The prior automated run did not cover this failure. The repair now addresses ordinary names, correction, richer character replies and persistent conversation; the complete ca7801d stack/package passed, and one additional native-discovered self-label validator repair is now being verified. Jack’s earlier human verdict remains FAILED until he retests.
 
 ## Authority and provenance
 
@@ -23,9 +23,11 @@ These repairs do not establish a one-in-a-million misunderstanding rate or prove
 
 ## Engineering and verification
 
-The table below currently preserves the previous f873e49 verification evidence; it will be replaced by the stable repair run and current packaged verification before handoff.
+The completed verification below was run serially against source `ca7801d2b326847409e4563886927dffc3dc5a9a`, including the durable coworker experience repair. A subsequent narrow self-label confirmation repair is in progress; readiness is pending its rebuilt verification.
 
 The initial 67 verification-inventory errors were repaired without dropping tests or changing verifier core, existing quarantine/tier authority or required reports. The four existing quarantines remain: V03 world-save equivalence (`y33`), historical UI expectations (`y34`, `y35`) and native settings display (`y54`). Reported tier totals cover the included authority set; this dialogue test readiness is not broader release certification. See `../../verification/DIALOGUE_INVENTORY_RECONCILIATION.md` for the classifications and reviewed expectation changes.
+
+A confirmed introduction label such as “Katie, yeah.” is distinguished from an actual vocative addressed to oneself; the complete reply still must satisfy name/role and every fact/claim check.
 
 A rejected substantive introduction containing an invented rationale gets one bounded rewording with the same owner, canonical facts and contribution plan. Both candidates face the validators; neither commits before acceptance, and a second failure uses the same-plan fallback. This preserves valid personal content without making employment dates imply motives or competence. Exact stored preference and trade assertions also accept bounded conversational phrasing (including a hedged preference), with whole-clause matching that rejects added claims. A licensed reciprocal wellbeing question may include both its verb and current-time wording; it still cannot ask an unrelated question.
 
@@ -35,24 +37,25 @@ Runtime repairs prevent a failed input’s follow-up drain from creating an empt
 
 | Gate | Result |
 | --- | --- |
-| Inventory / verifier core | Zero inventory errors or warnings; protected core integrity passes |
+| Inventory / verifier core | Zero inventory errors or warnings; 194 included files, four existing quarantines; protected core integrity passes |
 | `npm run test:meta` | 33/33 tests pass |
 | `npm run test:fast` | 143/143 tests pass |
-| Focused runtime repair suites | 40/40 tests pass |
-| Focused Reader / dialogue / governance | 158/158 plus 35/35 tests pass |
-| Focused long-world fixture repairs | 55/55 tests pass |
-| `npm test` canonical aggregate | 1,449/1,449 tests pass; zero failures, cancellations or skips; corpus-context-closure, stranger-flow and replayability reports pass |
-| `npm run test:long-world` | 198/198 tests pass; long-world-torture report passes |
-| `npm run test:native` | 1/1 real Electron renderer test passes; all three required native commands execute successfully |
-| macOS ARM64 `npm run desktop:build` | Successful source build, including settings and first-run rebuilds; no Developer ID signing/notarization (embedded Electron executable is ad hoc signed) |
-| Packaged source vs checkout / commit | Key Reader/dialogue source is byte-identical. The final handoff rebuild binds the package to committed HEAD; the launch preflight refuses stale HEAD or source bytes |
-| Jack’s official Electron dialogue acceptance | **FAILED — Assembly Table names and repair; other steps not established by this screenshot** |
+| Focused natural wording / runtime | 46/46 tests pass |
+| Focused growth / continuity / personhood | 27/27 pass; growth plus Reader characterization 30/30 pass |
+| `npm test` canonical aggregate | 1,469/1,469 pass; zero failures, cancellations or skips; corpus-context-closure, stranger-flow and replayability reports pass |
+| `npm run test:long-world` | 201/201 pass; long-world-torture report passes; full characterization, round-trip, shadow inertness, frozen-source Teacher contract replay and separate 944-occurrence current replay pass |
+| `npm run desktop:verify` | Packaged offline smoke, real Electron renderer interaction, pinned bundled model/runtime, READY loopback and zero orphan processes pass; 90 production files preserved during this verification |
+| macOS ARM64 `npm run desktop:build` | Successful at ca7801d; no Developer ID signing/notarization (embedded Electron executable is ad hoc signed) |
+| Packaged source vs checkout / commit | All 339 tracked packaged runtime JS/JSON/CSS/HTML files match both committed source and checkout byte-for-byte; zero private archive entries |
+| Jack’s official Electron dialogue acceptance | **FAILED pending Jack’s retest — no human PASS was fabricated** |
+
+Earlier repair attempts remain historical failures: a competing build transiently created a startup metadata file and correctly tripped the startup-hygiene test; an earlier concurrent long-world run timed out; an immutable-source replay initially lacked installed dependencies. The dependency replay now permits installed dependency reuse only when both manifest and lockfile match the frozen source exactly. The stable serial run above executed every gate successfully, without changing deadlines, quarantines, thresholds or frozen experiment inputs. The full `test:native` tier's historical result at f873e49 is not presented as a new run; current Electron evidence is the executed packaged verification.
 
 Native verification is automated evidence, not Jack’s observation or an ordinary-play certificate. It uses isolated profiles and asserts production-profile preservation. The checklist launch uses the normal packaged application with no injected state. Its preflight requires the current source revision (allowing only subsequent documentation-only commits) and byte-identical key dialogue source, then captures package/source provenance alongside Jack’s explicit observations.
 
 ## Remaining human work
 
-After engineering verification and the current rebuild, Jack must repeat human acceptance, including the failed name exchange, a natural five-turn conversation with distinctive voices, and follow-ups after reopening. His subjective judgment on the two Complex interpretations is surfaced in step 3. No result is preselected or signed on his behalf. Future independent benchmark creation and Reader cutover remain explicitly uncompleted and out of current implementation authority.
+After the final self-label repair verification and rebuild, Jack must repeat human acceptance, including the failed name exchange, a natural five-turn conversation with distinctive voices, and follow-ups after reopening. His subjective judgment on the two Complex interpretations is surfaced in step 3. No result is preselected or signed on his behalf. Future independent benchmark creation and Reader cutover remain explicitly uncompleted and out of current implementation authority.
 
 ```sh
 cd /Users/jacktr/Developer/custodian-worldpack-backrooms
