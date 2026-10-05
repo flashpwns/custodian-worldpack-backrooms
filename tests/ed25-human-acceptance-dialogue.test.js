@@ -55,6 +55,32 @@ function scriptedLocal(responder) {
   return { packets, provider: { name: "local", model: real.model, async presentLocal(packet) { packets.push(packet); return real.presentLocal(packet); } } };
 }
 const garbage = () => scriptedLocal(() => ({ raw: "{bad" }));
+test("a rejected introduction gets one rewording with the same facts and commits only accepted speech", async () => {
+  for (const repair of [true, false]) {
+    const packets = [];
+    const provider = { name: "local", model: "scripted", async presentLocal(packet) {
+      packets.push(structuredClone(packet));
+      const facts = packet.authorized_contribution.required_facts;
+      const name = facts.find(f => f.key === "name").value;
+      const role = facts.find(f => f.key === "role").value;
+      return { version: VERSION, speech: `I'm ${name}, a ${role}.` + (repair && packets.length === 2 ? "" : " So I am still getting the hang of things.") };
+    } };
+    const state = setup(`ed25-intro-reword-${repair}`, provider);
+    try {
+      await say(state, "Tell me a little about yourself beyond today's assignments.", { target: state.ids[0], request_id: "intro-reword" });
+      assert.equal(packets.length, 2, "one bounded attempt, even if the second candidate fails: " + state.logs.join("\n"));
+      assert.deepEqual(packets[1].authorized_contribution, packets[0].authorized_contribution);
+      assert.deepEqual(packets[1].context_capsule, packets[0].context_capsule);
+      assert.equal(packets[1].presentation_feedback, "omit_unsupported_rationale");
+      const speech = spokenFor(state.run, "intro-reword", state.playerId);
+      assert.equal(speech.length, 1, "no rejected candidate is committed");
+      assert.doesNotMatch(speech[0].text, /getting the hang/);
+      assert.equal(speech[0].speaker_id, state.ids[0]);
+      assert.ok(state.logs.some(line => line.includes(`validator_accepted=${repair}`) && line.includes(`fallback_used=${!repair}`)), "accepted repair uses model wording; rejected repair uses the same-plan fallback");
+      assert.match(require('../tools/dialogue-prompt-contract').renderContributionTask(packets[1]), /Omit explanations of why/);
+    } finally { state.service.shutdown(); cleanup(state); }
+  }
+});
 const HUMAN_SEQUENCE = ["Are you all excited for day one?", "What makes you say that?", "Oh ok I guess", "Whats next?", "I mean for the day"];
 
 // Pure fixtures.

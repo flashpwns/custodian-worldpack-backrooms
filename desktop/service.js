@@ -1984,6 +1984,16 @@ class DesktopService {
           const providerExecution = provider.getExecutions?.().at(-1) ?? null;
           selectedProvider = providerExecution?.selected_provider ?? provider.name ?? selectedProvider;
           validation = validateLocalDialogue(packet, candidateRaw);
+          // Keep a substantive introduction when its wording adds an unsupported explanation.
+          // One rewording uses exactly the same owner, facts and plan; neither attempt commits speech.
+          if (!validation.ok && packet.authorized_contribution.discourse_function === "invite_self_description"
+              && /^invented rationale/.test(validation.reason ?? "")) {
+            this.log(`LOCAL introduction rewording for ${context.speaker?.first_name ?? "responder"}: ${validation.code}`);
+            const rewordingPacket = structuredClone(packet);
+            rewordingPacket.presentation_feedback = "omit_unsupported_rationale";
+            candidateRaw = await dialogueProvider.presentLocal(rewordingPacket);
+            validation = validateLocalDialogue(packet, candidateRaw);
+          }
         } catch (providerError) {
           unavailable = true;
           validation = { ok:false, code:"LOCAL_PROVIDER_UNAVAILABLE" };

@@ -177,6 +177,7 @@ function renderContributionTask(packet) {
   // how: the shape of this turn. allowed: the facts the turn may state.
   const how = [];
   const allowed = [];
+  if (packet.presentation_feedback === "omit_unsupported_rationale") how.push("Reword this introduction using only the supplied facts: your name and role, and one or two supplied personal details. Omit explanations of why, motives, competence, and causal connections. Do not infer them from employment dates or background.");
   if (!capsule) {
     // Legacy rendering (no capsule): unchanged surface for callers that predate the bridge.
     how.push(`What kind of turn this is: ${c.discourse_function}.`);

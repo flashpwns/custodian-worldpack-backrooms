@@ -420,7 +420,7 @@
     "tests/ed22-context-bridge.test.js": "d99d74bc30980fefbe40bf6289eeac586463dd370710e5a2d49d1eeaab164e00",
     "tests/ed23-provider-runtime.test.js": "1942ab7736812c95bef5dd9aa1c5b7882dd9ae1af547f735ce23cb2fcc61690b",
     "tests/ed24-freeze-invariants.test.js": "a0b5b42953f383ab1ed13647591e6d5642f8ca8940f3b4cb533a3cebb1fad20e",
-    "tests/ed25-human-acceptance-dialogue.test.js": "044aa250016826a524414fa1b122806ab476ffcfab60961df2294f3c189ae3d5",
+    "tests/ed25-human-acceptance-dialogue.test.js": "07b8a92ab7fc8d53097666e514588f7469d0c6a8e655da65e33cde0c40d1b095",
     "tests/ed26-conversation-semantics.test.js": "f3cd9d263fa96a7068f3aaedc990e342de31c0e81ec7768168464b41ebc8d4c2",
     "tests/ed3-local-runtime-dev.test.js": "92da117aedaf8ec7d67b654c9936f767b34be9efb96c5429efa4e4f89c161fac",
     "tests/ed33f-reader-machine-labeling.test.js": "7ed3935ba6ade5ecb5d843215f8a09896721d324557367094e0530b9bb144193",
