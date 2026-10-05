@@ -13,7 +13,7 @@
 //   V0 schema      closed enums, <= 3 acts, ordered non-overlapping token spans, no unknown keys  -> reject frame
 //   V1 candidates  every label from the supplied lists; facet in registry; form / temporal / referent-kind
 //                  compatible with the facet                                                      -> reject field
-//   V2 surface     chip target wins; NAMED needs a supplied name span; no invented or absent names; a standalone
+//   V2 surface     spoken address only (Convention B); NAMED needs a supplied name span; no invented or absent names; a standalone
 //                  name is read against the DIS                                                   -> clarify / reject
 //   V3 discourse   answer needs a pending inbound request; continuation / repair / topic_return need an eligible
 //                  antecedent; OTHERS / EXCEPT resolve to non-empty sets; withdraw targets open state; conclude
@@ -28,6 +28,9 @@
 const registry = require("./dialogue-registry");
 
 const READER_FRAME_VERSION = "yellow-beast-reader-frame@v2";
+// Implementation identity, separate from the unchanged frozen linguistic schema/render contract.
+// Older scores must not be pooled with this Convention-B validation repair.
+const READER_VALIDATOR_VERSION = "yellow-beast-reader-validator@v2-convention-b";
 const MAX_ACTS = 3;
 
 const SPEECH_ACTS = Object.freeze(["greeting", "farewell", "self_introduction", "social_acknowledgment", "thanks", "attention_call", "statement", "sarcasm", "question", "request", "repair", "elliptical_continuation", "answer", "aside"]);
@@ -369,18 +372,14 @@ function whWordOf(act, input) {
 function validateSurface(frame, input = {}) {
   const errors = [];
   const names = new Map((input.features?.name_spans ?? []).map((n) => [n.label, n]));
-  const chip = input.chip_target ?? null;
   const inboundPending = Boolean(input.conversation?.inbound);
   const inboundWantsPerson = input.conversation?.inbound?.answer_shape === "person";
   frame.acts.forEach((act, i) => {
     const flag = (field, code, disposition, detail = {}) => errors.push(err("V2", code, { act: i, field, disposition, ...detail }));
     const op = act.address?.op;
     const addressed = (act.address?.names ?? []).map((l) => names.get(l)).filter(Boolean);
-    // The chip (explicit UI target) wins: a reading that addresses anyone else contradicts it.
-    if (chip) {
-      const agrees = op === "NONE" || op === "SECOND_PERSON" || (op === "NAMED" && addressed.length === 1 && addressed[0].person === chip);
-      if (!agrees) flag("address", "contradicts_chip_target", "reject_field", { chip });
-    }
+    // Convention B, ratified again by Jack 2026-10-05: the delivery chip is not language evidence.
+    // Code-side routing still owns delivery and records any conflict in resolveTurn.
     if (op === "NAMED" && !addressed.length) flag("address", "named_without_name_span", "reject_field");
     if (op !== "NAMED" && op !== "EXCEPT" && (act.address?.names ?? []).length) flag("address", "names_on_non_named_op", "reject_field", { op });
     if (op === "EXCEPT" && !addressed.length) flag("address", "except_without_name_span", "reject_field");
@@ -529,7 +528,7 @@ function validateReaderFrame(frame, input = {}) {
 }
 
 module.exports = {
-  READER_FRAME_VERSION, MAX_ACTS, SPEECH_ACTS, QUESTION_FORMS, FACET_SPECIAL, POLARITIES, NAME_ROLES, ADDRESS_OPS, RELATIONS, REPAIR_KINDS, DEIXIS_SPECIAL, REFERENT_CHOICE_SPECIAL, DISPOSITIONS, dispositionOf,
+  READER_FRAME_VERSION, READER_VALIDATOR_VERSION, MAX_ACTS, SPEECH_ACTS, QUESTION_FORMS, FACET_SPECIAL, POLARITIES, NAME_ROLES, ADDRESS_OPS, RELATIONS, REPAIR_KINDS, DEIXIS_SPECIAL, REFERENT_CHOICE_SPECIAL, DISPOSITIONS, dispositionOf,
   TEMPORALS, RESPONDENT_MODES, INBOUND_KINDS, INBOUND_OPTION_SPECIAL, SUBJECT_KINDS, ACTION_FAMILIES, ABSTAIN_FIELDS, LABEL, ACT_KEYS,
   ELIGIBLE_ANTECEDENT_STATES, OPEN_STATES, inheritedFacetBasis,
   readerFrameSchema, validateSchema, validateCandidates, validateSurface, validateDiscourse, validateReaderFrame, whWordOf, licensedReferents, wordsIn

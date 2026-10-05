@@ -8,7 +8,7 @@ const { DesktopService } = require("../desktop/service");
 const { createLivingProvider } = require("../tools/ai-living-provider");
 const bootstrap = require("../tools/run-bootstrap");
 
-function field(t, provider = createLivingProvider()) {
+async function field(t, provider = createLivingProvider()) {
   const appDataPath = fs.mkdtempSync(path.join(os.tmpdir(), "yb-command-transaction-"));
   t.after(() => fs.rmSync(appDataPath, { recursive:true, force:true }));
   const service = new DesktopService({ appDataPath, livingTurnProvider:provider, defaultQ4Scenario:"reference-expedition" });
@@ -17,14 +17,14 @@ function field(t, provider = createLivingProvider()) {
   assert.equal(service.createQ4Personnel({ world_id:world.id, first_name:"Matthew", last_name:"Murphy" }).ok,true);
   assert.equal(service.startSession({ ...input, seed:"command-transactions" }).ok,true);
   for (const action of ["READY","PROCEED","APPROACH","READY"]) assert.equal(service.submitAction({ ...input, action }).ok,true);
-  assert.equal(service.submitQ4Communication({ world_id:world.id,channel:"standard",text:"Standard, four accounted for. Radio check." }).ok,true);
+  assert.equal((await service.submitQ4Communication({ world_id:world.id,channel:"standard",text:"Standard, four accounted for. Radio check." })).ok,true);
   assert.equal(service.submitAction({ ...input, action:"CROSS" }).ok,true);
   return { service, appDataPath, input, get run() { return service.session(world.id,input.mode).run; } };
 }
 function deferred() { let resolve; const promise = new Promise(done => { resolve=done; }); return { promise, resolve }; }
 
 test("retrying an accepted movement, including after reload, never travels twice", async t => {
-  const f=field(t); const command={ ...f.input, text:"walk toward the open passage", request_id:"travel-once" };
+  const f=await field(t); const command={ ...f.input, text:"walk toward the open passage", request_id:"travel-once" };
   assert.equal((await f.service.submitNatural(command)).result?.executed,true);
   assert.equal(f.run.spatial.player_location,"open-passage");
   const committed=bootstrap.saveRun(f.run);
@@ -42,12 +42,12 @@ test("accepted action is durable while narration is pending; concurrent commands
   const entered=deferred(), release=deferred(); let presentations=0;
   const provider=createLivingProvider(); provider.present=async () => { presentations++; entered.resolve(); await release.promise; throw Error("narrator offline"); };
   t.after(() => release.resolve());
-  const f=field(t,provider); const command={ ...f.input,text:"walk toward the open passage",request_id:"pending-presentation" };
+  const f=await field(t,provider); const command={ ...f.input,text:"walk toward the open passage",request_id:"pending-presentation" };
   const first=f.service.submitNatural(command); await entered.promise;
   const retry=f.service.submitNatural(command);
   assert.equal((await f.service.submitNatural({ ...command,request_id:"other" })).error?.code,"SESSION_BUSY");
   assert.equal(f.service.submitAction({ ...f.input,action:"MOVE",target:"utility-room" }).error?.code,"SESSION_BUSY");
-  assert.equal(f.service.submitQ4Communication({ world_id:f.input.world_id,channel:"local",text:"Everyone good?" }).error?.code,"SESSION_BUSY");
+  assert.equal(await f.service.submitQ4Communication({ world_id:f.input.world_id,channel:"local",text:"Everyone good?" }).error?.code,"SESSION_BUSY");
   const next=new DesktopService({ appDataPath:f.appDataPath,livingTurnProvider:createLivingProvider() });
   assert.equal(next.resumeSession(f.input).ok,true);
   assert.equal(next.session(f.input.world_id,f.input.mode).run.spatial.player_location,"open-passage");
@@ -58,7 +58,7 @@ test("accepted action is durable while narration is pending; concurrent commands
 });
 
 test("a failed canonical save rolls the attempted movement back and permits a deliberate retry", async t => {
-  const f=field(t); const before=bootstrap.saveRun(f.run);
+  const f=await field(t); const before=bootstrap.saveRun(f.run);
   const disk=fs.readFileSync(f.service.sessionFile(f.input.world_id,f.input.mode),"utf8");
   const commit=f.service.commitPersistencePair;
   f.service.commitPersistencePair=() => { throw Error("injected storage failure"); };
@@ -71,7 +71,7 @@ test("a failed canonical save rolls the attempted movement back and permits a de
 });
 
 test("natural return updates the operational phase and retains physical return requirements", async t => {
-  const f=field(t);
+  const f=await field(t);
   const result=await f.service.submitNatural({ ...f.input,text:"let's head back" });
   assert.equal(result.result?.executed,true);
   assert.equal(f.service.session(f.input.world_id,f.input.mode).phase.phase_id,"RETURN");
@@ -85,7 +85,7 @@ test("natural return updates the operational phase and retains physical return r
 });
 
 test("equipment nouns and unsupported directions cannot authorize unrelated actions", async t => {
-  const f=field(t); const original=bootstrap.saveRun(f.run);
+  const f=await field(t); const original=bootstrap.saveRun(f.run);
   const wrongCustody=await f.service.submitNatural({ ...f.input,text:"give Beverly the camera" });
   assert.equal(wrongCustody.error?.code,"ITEM_NOT_IN_CUSTODY");
   assert.deepEqual(bootstrap.saveRun(f.run),original);

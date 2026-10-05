@@ -1,5 +1,7 @@
 # Reader Phase 2 machine assistance
 
+Current dialogue readiness and the 2026-10-05 provenance audit are authoritative in `../dialogue/DIALOGUE_CLOSURE_STATUS.md`. The historical machine runs below retain their original evidence and authority.
+
 Separate development-only machine candidates for the existing frozen 474-render census. This does not amend the preregistration, label schema, registry, scoring gates, human workstation, or gold eligibility. Machine consensus cannot establish accuracy or teacher ceiling and does not replace the preregistered human-gold experiment.
 
 The runner reuses hostedArm, its retry policy and durable receipts, frozen renderReaderPrompt inputs, and validateGoldFrame (V0–V3 plus resolveTurn). Offline capture is regenerated in memory solely for mechanical validation; legacy outputs are excluded from model inputs and are never used to propose labels. Only the frozen system and user text are transmitted. Reviewer receives no teacher candidate.

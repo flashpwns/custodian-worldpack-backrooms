@@ -1,5 +1,7 @@
 # Owner rulings needed before Phase 1 (from the Phase-0.5 round trip)
 
+**Current authority (2026-10-05):** this document preserves the historical pass. See [Dialogue closure status](../dialogue/DIALOGUE_CLOSURE_STATUS.md). Jack's recorded `spoken_address_separate` policy now accepts spoken Tonya address independently of Malcolm chip delivery; the chip still controls routing and the shadow records `chip_vs_vocative`. Historical chip-rejection descriptions below are superseded by that owner decision. Reader remains shadow-only.
+
 **Status (updated in Reader Phase 1, 2026-09-29):** the owner ruled on A (default adopted), B (#1, #2, #4 read as
 `new`; #3 gets a reader-state `c1` label), C3 (chip-wins in production, conflict recorded in the shadow; wh-led
 sarcasm fails closed). **C1 was ruled on 2026-09-29** (the form gate is for new questions; follow-ups and echoes inherit their antecedent's facet; `choice` on `transition.participants`, `yes_no` on `mission.schedule` and `mission.route`; no distance facet). **C2 remains undecided.** Implementation: `docs/reader/READER_PHASE1.md` (shadow only).

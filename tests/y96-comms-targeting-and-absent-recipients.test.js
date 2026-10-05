@@ -9,7 +9,7 @@ const { DesktopService } = require("../desktop/service");
 const history = require("../tools/world-history");
 const personnelContinuity = require("../tools/q4-personnel-continuity");
 
-function setupTestService(name = "targeting-test") {
+async function setupTestService(name = "targeting-test") {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), `yb-${name}-`));
   const service = new DesktopService({
     appDataPath: root,
@@ -27,21 +27,21 @@ function setupTestService(name = "targeting-test") {
   service.submitAction({ world_id: world.id, mode: "field-researcher", action: "PROCEED" });
   service.submitAction({ world_id: world.id, mode: "field-researcher", action: "APPROACH" });
   service.submitAction({ world_id: world.id, mode: "field-researcher", action: "READY" });
-  service.submitQ4Communication({ world_id: world.id, channel: "standard", text: "Standard, Clear-Q4 team accounted for. Radio check." });
+  await service.submitQ4Communication({ world_id: world.id, channel: "standard", text: "Standard, Clear-Q4 team accounted for. Radio check." });
   service.submitAction({ world_id: world.id, mode: "field-researcher", action: "CROSS" });
 
   return { root, service, world };
 }
 
-test("y96: explicit targets resolve correctly to active roster members", () => {
-  const { root, service, world } = setupTestService("valid-target");
+test("y96: explicit targets resolve correctly to active roster members", async () => {
+  const { root, service, world } = await setupTestService("valid-target");
   try {
     const entry = service.session(world.id, "field-researcher");
     const santiago = entry.run.expedition.team.members.find((m) => m.first_name === "Santiago");
     const beverly = entry.run.expedition.team.members.find((m) => m.first_name === "Beverly");
 
     // 1. Target by first name
-    const t1 = service.submitQ4Communication({
+    const t1 = await service.submitQ4Communication({
       world_id: world.id,
       channel: "local",
       target: "Santiago",
@@ -51,7 +51,7 @@ test("y96: explicit targets resolve correctly to active roster members", () => {
     assert.match(t1.result.public_reason, /^Santiago:/, "Santiago must be the responding speaker");
 
     // 2. Target by display name
-    const t2 = service.submitQ4Communication({
+    const t2 = await service.submitQ4Communication({
       world_id: world.id,
       channel: "local",
       target: beverly.display_name,
@@ -61,7 +61,7 @@ test("y96: explicit targets resolve correctly to active roster members", () => {
     assert.match(t2.result.public_reason, /^Beverly:/, "Beverly must be the responding speaker");
 
     // 3. Target by ID
-    const t3 = service.submitQ4Communication({
+    const t3 = await service.submitQ4Communication({
       world_id: world.id,
       channel: "local",
       target: santiago.personnel_id,
@@ -74,10 +74,10 @@ test("y96: explicit targets resolve correctly to active roster members", () => {
   }
 });
 
-test("y96: addressed text resolves recipient when target is null", () => {
-  const { root, service, world } = setupTestService("addressed-text");
+test("y96: addressed text resolves recipient when target is null", async () => {
+  const { root, service, world } = await setupTestService("addressed-text");
   try {
-    const res = service.submitQ4Communication({
+    const res = await service.submitQ4Communication({
       world_id: world.id,
       channel: "local",
       target: null,
@@ -90,8 +90,8 @@ test("y96: addressed text resolves recipient when target is null", () => {
   }
 });
 
-test("y96: absent world character is rejected without delivering or broadcasting", () => {
-  const { root, service, world } = setupTestService("absent-character");
+test("y96: absent world character is rejected without delivering or broadcasting", async () => {
+  const { root, service, world } = await setupTestService("absent-character");
   try {
     const q4Personnel = require("../tools/q4-personnel");
     const worldObj = service.getWorld(world.id);
@@ -101,7 +101,7 @@ test("y96: absent world character is rejected without delivering or broadcasting
     const initialReceiptCount = entry.run.expedition.communication_receipts?.length ?? 0;
 
     // Dr. Kirk Maxwell exists in world characters, but is not on the field team
-    const res = service.submitQ4Communication({
+    const res = await service.submitQ4Communication({
       world_id: world.id,
       channel: "local",
       target: "Dr. Kirk Maxwell",
@@ -120,10 +120,10 @@ test("y96: absent world character is rejected without delivering or broadcasting
   }
 });
 
-test("y96: completely unknown target is rejected with TARGET_NOT_FOUND", () => {
-  const { root, service, world } = setupTestService("unknown-target");
+test("y96: completely unknown target is rejected with TARGET_NOT_FOUND", async () => {
+  const { root, service, world } = await setupTestService("unknown-target");
   try {
-    const res = service.submitQ4Communication({
+    const res = await service.submitQ4Communication({
       world_id: world.id,
       channel: "local",
       target: "GhostOperator",
@@ -136,8 +136,8 @@ test("y96: completely unknown target is rejected with TARGET_NOT_FOUND", () => {
   }
 });
 
-test("y96: ambiguous target names are rejected with TARGET_AMBIGUOUS", () => {
-  const { root, service, world } = setupTestService("ambiguous-target");
+test("y96: ambiguous target names are rejected with TARGET_AMBIGUOUS", async () => {
+  const { root, service, world } = await setupTestService("ambiguous-target");
   try {
     const entry = service.session(world.id, "field-researcher");
     entry.run.expedition.team.members.push({
@@ -150,7 +150,7 @@ test("y96: ambiguous target names are rejected with TARGET_AMBIGUOUS", () => {
       status: "active"
     });
 
-    const res = service.submitQ4Communication({
+    const res = await service.submitQ4Communication({
       world_id: world.id,
       channel: "local",
       target: "Santiago",
@@ -164,14 +164,14 @@ test("y96: ambiguous target names are rejected with TARGET_AMBIGUOUS", () => {
   }
 });
 
-test("y96: intentional broadcasts deliver to all local peers", () => {
-  const { root, service, world } = setupTestService("broadcast-comms");
+test("y96: intentional broadcasts deliver to all local peers", async () => {
+  const { root, service, world } = await setupTestService("broadcast-comms");
   try {
     const entry = service.session(world.id, "field-researcher");
     const playerId = entry.run.session.startup.player.observer_id;
     const localPeers = entry.run.expedition.team.members.filter(m => m.personnel_id !== playerId);
 
-    const res = service.submitQ4Communication({
+    const res = await service.submitQ4Communication({
       world_id: world.id,
       channel: "local",
       target: "team",
@@ -181,7 +181,7 @@ test("y96: intentional broadcasts deliver to all local peers", () => {
     assert.equal(res.ok, true, "Broadcast communication must succeed");
     for (const peer of localPeers) {
       assert.ok(
-        (peer.known_information ?? []).some(k => k.text.includes("positions")),
+        (peer.known_information ?? []).some(k => k.kind === "reported-knowledge" && k.text === "Team, take note of our positions."),
         `Peer ${peer.first_name} must have received broadcast`
       );
     }
@@ -190,15 +190,15 @@ test("y96: intentional broadcasts deliver to all local peers", () => {
   }
 });
 
-test("y96: absent coworker in subsequent operation retains history without answering", () => {
-  const { root, service, world } = setupTestService("operation-transition-targeting");
+test("y96: absent coworker in subsequent operation retains history without answering", async () => {
+  const { root, service, world } = await setupTestService("operation-transition-targeting");
   try {
     const entry = service.session(world.id, "field-researcher");
     const santiago = entry.run.expedition.team.members.find((m) => m.first_name === "Santiago");
     assert.ok(santiago, "Santiago must be on Operation 1 roster");
 
     // Turn 1: Personal disclosure to Santiago
-    const t1 = service.submitQ4Communication({
+    const t1 = await service.submitQ4Communication({
       world_id: world.id,
       channel: "local",
       target: "Santiago",
@@ -230,7 +230,7 @@ test("y96: absent coworker in subsequent operation retains history without answe
     service.submitAction({ world_id: world.id, mode: "field-researcher", action: "PROCEED" });
     service.submitAction({ world_id: world.id, mode: "field-researcher", action: "APPROACH" });
     service.submitAction({ world_id: world.id, mode: "field-researcher", action: "READY" });
-    service.submitQ4Communication({ world_id: world.id, channel: "standard", text: "Standard, Clear-Q4 team accounted for in operation 2. Radio check." });
+    await service.submitQ4Communication({ world_id: world.id, channel: "standard", text: "Standard, Clear-Q4 team accounted for in operation 2. Radio check." });
     service.submitAction({ world_id: world.id, mode: "field-researcher", action: "CROSS" });
 
     const op2Entry = service.session(world.id, "field-researcher");
@@ -239,7 +239,7 @@ test("y96: absent coworker in subsequent operation retains history without answe
     assert.equal(santiagoOnOp2, false, "Santiago must NOT be on Operation 2 roster (shift rotation)");
 
     // Player attempts to talk to Santiago in Operation 2
-    const absentComms = service.submitQ4Communication({
+    const absentComms = await service.submitQ4Communication({
       world_id: world.id,
       channel: "local",
       target: "Santiago",

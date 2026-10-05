@@ -30,12 +30,12 @@ function createTestService(seed = "living-world-ref") {
   return { service, world, appDataPath };
 }
 
-function advanceToField(service, world) {
+async function advanceToField(service, world) {
   for (const action of ["READY", "PROCEED", "APPROACH", "READY"]) {
     const actResult = service.submitAction({ world_id: world.id, mode: "field-researcher", action });
     assert.equal(actResult.ok, true);
   }
-  const radio = service.submitQ4Communication({
+  const radio = await service.submitQ4Communication({
     world_id: world.id,
     channel: "standard",
     text: "Standard, Reference team. Four accounted for. Radio check."
@@ -48,7 +48,7 @@ function advanceToField(service, world) {
 
 test("Living World System 1: Physical Geography, Bidirectional Travel, and Route History", async () => {
   const { service, world } = createTestService("sys1-geo");
-  const entry = advanceToField(service, world);
+  const entry = await advanceToField(service, world);
   const run = entry.run;
 
   // We are in utility-room
@@ -79,7 +79,7 @@ test("Living World System 1: Physical Geography, Bidirectional Travel, and Route
 
 test("Living World System 2: Persistent Object State and Mutations Across Departures", async () => {
   const { service, world } = createTestService("sys2-objects");
-  const entry = advanceToField(service, world);
+  const entry = await advanceToField(service, world);
   const run = entry.run;
 
   // Fixture initial state
@@ -106,7 +106,7 @@ test("Living World System 2: Persistent Object State and Mutations Across Depart
 
 test("Living World System 3: Epistemic Isolation Across Observers", async () => {
   const { service, world } = createTestService("sys3-epistemic");
-  const entry = advanceToField(service, world);
+  const entry = await advanceToField(service, world);
   const run = entry.run;
   const beverly = run.expedition.team.members.find((m) => m.first_name === "Beverly");
 
@@ -134,7 +134,7 @@ test("Living World System 3: Epistemic Isolation Across Observers", async () => 
 
 test("Living World System 4 & 5: Coworker Agents, Follow/Remain Behavior, and Delegation", async () => {
   const { service, world } = createTestService("sys4-coworkers");
-  const entry = advanceToField(service, world);
+  const entry = await advanceToField(service, world);
   const run = entry.run;
   const santiago = run.expedition.team.members.find((m) => m.first_name === "Santiago");
 
@@ -180,7 +180,7 @@ test("Living World System 4 & 5: Coworker Agents, Follow/Remain Behavior, and De
 
 test("Living World System 6: Equipment as Capability, Custody, and Handoff", async () => {
   const { service, world } = createTestService("sys6-equip");
-  const entry = advanceToField(service, world);
+  const entry = await advanceToField(service, world);
   const run = entry.run;
   const player = run.session.startup.player.observer_id;
   const beverly = run.expedition.team.members.find((m) => m.first_name === "Beverly");
@@ -229,7 +229,7 @@ test("Living World System 6: Equipment as Capability, Custody, and Handoff", asy
 
 test("Living World System 8: Natural Action Coverage via Living Turns", async () => {
   const { service, world } = createTestService("sys8-natural");
-  const entry = advanceToField(service, world);
+  const entry = await advanceToField(service, world);
   const run = entry.run;
 
   // Natural language movement
@@ -272,10 +272,10 @@ test("Living World System 8: Natural Action Coverage via Living Turns", async ()
 
 test("Living World System 9: Local Communication Responds with Single Coworker (No Parrot Chorus)", async () => {
   const { service, world } = createTestService("sys9-comm");
-  advanceToField(service, world);
+  await advanceToField(service, world);
 
   // Local speech addressing Santiago
-  const santiagoComm = service.submitQ4Communication({
+  const santiagoComm = await service.submitQ4Communication({
     world_id: world.id,
     channel: "local",
     target: "Santiago",
@@ -288,7 +288,7 @@ test("Living World System 9: Local Communication Responds with Single Coworker (
   assert.doesNotMatch(santiagoComm.result.public_reason, /Autumn:/);
 
   // General local speech without target: responds with a single coworker
-  const generalComm = service.submitQ4Communication({
+  const generalComm = await service.submitQ4Communication({
     world_id: world.id,
     channel: "local",
     text: "Let's review our equipment before moving out."
@@ -309,7 +309,7 @@ test("Living World: Complete Unscripted 18-Step Reference Expedition Trace", asy
   assert.equal(entry.run.expedition.team.members.length, 4);
 
   // Step 2: Standard radio check
-  const check = service.submitQ4Communication({
+  const check = await service.submitQ4Communication({
     world_id: world.id,
     channel: "standard",
     text: "Standard, Reference team. Four accounted for. Radio check."
@@ -335,7 +335,7 @@ test("Living World: Complete Unscripted 18-Step Reference Expedition Trace", asy
   assert.equal(photoEv.capturing_observer, "personnel-beverly-bell");
 
   // Step 7: Local speech to Beverly
-  const beverlyTalk = service.submitQ4Communication({
+  const beverlyTalk = await service.submitQ4Communication({
     world_id: world.id,
     channel: "local",
     target: "Beverly",
@@ -363,7 +363,7 @@ test("Living World: Complete Unscripted 18-Step Reference Expedition Trace", asy
   assert.equal(santiago.contact_category, "CONTACT LOST");
 
   // Step 11: Local communication to Santiago fails (out of speaking range)
-  const callSantiago = service.submitQ4Communication({
+  const callSantiago = await service.submitQ4Communication({
     world_id: world.id,
     channel: "local",
     target: "Santiago",
@@ -427,4 +427,23 @@ test("Living World: Complete Unscripted 18-Step Reference Expedition Trace", asy
   // Step 18: Confirm entire session maintained causal integrity
   assert.equal(entry.run.spatial.route_history.length >= 4, true);
   assert.equal(entry.run.expedition.evidence.length >= 2, true);
+});
+
+test("Coworker projection freezes its own task snapshot without freezing canonical tasks", async () => {
+  const {service,world,appDataPath}=createTestService('task-projection-isolation');
+  try {
+    const entry=await advanceToField(service,world);
+    const ledger=require('../tools/canonical-world-ledger');
+    const member=entry.run.expedition.team.members.find(m=>m.first_name==='Beverly');
+    ledger.setCoworkerTask(entry.run,member.personnel_id,{task:'wait',target:'utility-room'});
+    const task=member.task;
+    const projected=require('../tools/live-scene-projection').projectObserverState(entry.run,member.personnel_id,'coworker-mini-shell');
+    assert.equal(projected.ok,true);
+    assert.notEqual(projected.packet.operational.current_task,task);
+    assert.equal(Object.isFrozen(projected.packet.operational.current_task),true);
+    assert.equal(Object.isFrozen(task),false);
+    task.progress=0.5;
+    assert.equal(projected.packet.operational.current_task.progress,0);
+    service.persistSession(service.getWorld(world.id),'field-researcher',entry);
+  } finally {fs.rmSync(appDataPath,{recursive:true,force:true});}
 });

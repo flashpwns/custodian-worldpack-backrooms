@@ -188,7 +188,7 @@ test("Subject (item 7): kind respected, names bound through the ReaderInput, men
 
 test("Owner ruling 4: a vocative contradicting the chip keeps the chip (production's rule) and the shadow records the conflict", () => {
   const { out, verdict } = shadowOf("Tonya, how are you?", (i) => [act(i, { facet: "person.wellbeing", name_roles: [{ name: "n1", role: "vocative" }], address: op("NAMED", ["n1"]) })], { chip: MALCOLM });
-  assert.equal(verdict.disposition, "reject_fields");
+  assert.equal(verdict.disposition, "accept", "Convention B: spoken address is valid independently of delivery");
   assert.deepEqual([out.outcome, out.primary.addressee.ids, out.routing.responders, out.conflicts], ["resolved", [MALCOLM], [MALCOLM], ["chip_vs_vocative"]]);
 });
 
@@ -351,5 +351,5 @@ test("Shadow-diff artifact is pinned; every mismatch carries a known cause; the 
   const rows = await SC.run({ fixtures: scenarios });
   const pinned = doc.rows.filter((r) => scenarios.some((s) => s.id === r.fixture));
   assert.equal(rows.length, pinned.length);
-  rows.forEach((row, i) => assert.deepEqual(row, pinned[i], `row ${i}: ${row.fixture} ${row.text}`));
+  rows.forEach((row, i) => assert.deepEqual(row, require("./fixtures/reader-owner-policy-overlay").currentShadow(pinned[i]), `row ${i}: ${row.fixture} ${row.text}`));
 });

@@ -2151,14 +2151,7 @@ class DesktopService {
       })}`);
     }
     canonical.result.public_reason = committedResponses.map((item) => `${item.speaker_name}: ${item.text}`).join(" ") || "Your message is heard. No further response is required.";
-    if (allFallback && first) {
-      // Built from what was actually COMMITTED (after revalidation/cancellation), never from a
-      // pre-commit fallback snapshot that may have gone stale or been cancelled.
-      const committedText = committedResponses.map((item) => `${item.speaker_name}: ${item.text}`).join(" ") || "Your message is heard. No further response is required.";
-      canonical.result.public_reason = first.unavailable
-        ? `Language assistance is unavailable. Deterministic response: ${committedText}`
-        : `Language assistance returned an invalid response and was rejected. Deterministic response: ${committedText}`;
-    }
+    // Provider failures remain in diagnostic metadata; player-facing speech is committed wording only.
     canonical.result.hosted_request = { request_id:requestId, provider:first?.selectedProvider ?? "unavailable", hosted:first?.selectedProvider !== "local", status:"completed", responder_count:committedResponses.length };
     if (first?.context?.interaction) {
       q4Interactions.updatePresentation(currentEntry.run.expedition, first.context.interaction.id, {

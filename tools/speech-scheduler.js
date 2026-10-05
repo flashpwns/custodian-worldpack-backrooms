@@ -457,7 +457,9 @@ function commitReport(run, entry, speechText, { source = presentationBus.SOURCES
 // to commit into. A false result is a postponement, never a failure: no
 // attempt increment, no removal, the entry is left exactly as it was.
 async function drainSpeechQueue(run, world, { max = 1, communicationTurnInflight = false, speak = null, canCommit = null } = {}) {
-  if (communicationTurnInflight) return { drained: [] };
+  // A follow-up after a failed player action may have nothing to drain. Do not initialize canonical
+  // queue state merely because a technical provider failure released the turn lock.
+  if (communicationTurnInflight || !run.expedition?.speech_queue) return { drained: [] };
   const drained = [];
   for (let i = 0; i < max; i++) {
     const entry = nextEligible(run, world);

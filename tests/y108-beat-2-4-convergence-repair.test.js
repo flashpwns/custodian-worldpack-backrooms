@@ -28,14 +28,14 @@ test("y108 — Failure A & B: Menu music lifecycle continuity & institutional PA
   assert.match(sourceCode, /stopAll\(options\s*=\s*\{\}\)/, "stopAll must support options parameter");
   assert.match(sourceCode, /record\.hookId\s*===\s*["']menu_music["']\s*&&\s*menuWanted\s*&&\s*options\.stopMenu\s*!==\s*true/, "stopAll must preserve menu music while menuWanted is true");
 
-  // 3. Tannoy / institutional PA speaker DSP chain verification
-  assert.match(sourceCode, /high\.type\s*=\s*["']highpass["'];\s*high\.frequency\.value\s*=\s*350/, "Highpass filter set to 350 Hz");
-  assert.match(sourceCode, /low\.type\s*=\s*["']lowpass["'];\s*low\.frequency\.value\s*=\s*4200/, "Lowpass filter set to 4200 Hz");
-  assert.match(sourceCode, /mid\.type\s*=\s*["']peaking["'];\s*mid\.frequency\.value\s*=\s*1600/, "Peaking horn filter center frequency set to 1600 Hz");
-  assert.match(sourceCode, /mid\.gain\.value\s*=\s*3\.5/, "Horn resonance peaking gain set to +3.5 dB");
-  assert.match(sourceCode, /mid\.Q\.value\s*=\s*1\.2/, "Horn resonance Q set to 1.2");
-  assert.match(sourceCode, /dry\.gain\.value\s*=\s*0\.68/, "Institutional room dry gain set to 0.68");
-  assert.match(sourceCode, /wet\.gain\.value\s*=\s*0\.32/, "Institutional room wet gain set to 0.32");
+  // 3. Startup-only tannoy graph checkpointed in 1c3d106; y75 also exercises the connected graph.
+  assert.match(sourceCode, /high\.type\s*=\s*["']highpass["'];\s*high\.frequency\.value\s*=\s*250/, "Highpass filter set to 250 Hz");
+  assert.match(sourceCode, /low\.type\s*=\s*["']lowpass["'];\s*low\.frequency\.value\s*=\s*4000/, "Lowpass filter set to 4000 Hz");
+  assert.match(sourceCode, /mid\.type\s*=\s*["']peaking["'];\s*mid\.frequency\.value\s*=\s*1500/, "Peaking horn filter center frequency set to 1500 Hz");
+  assert.match(sourceCode, /mid\.gain\.value\s*=\s*1/, "Horn resonance peaking gain set to +1 dB");
+  assert.match(sourceCode, /mid\.Q\.value\s*=\s*1\.1/, "Horn resonance Q set to 1.1");
+  assert.match(sourceCode, /dry\.gain\.value\s*=\s*0\.35/, "Institutional room dry gain set to 0.35");
+  assert.match(sourceCode, /wet\.gain\.value\s*=\s*0\.65/, "Institutional room wet gain set to 0.65");
 });
 
 test("y108 — Failure C & D: Physical document 1.8s transitions and silent audio hooks", () => {

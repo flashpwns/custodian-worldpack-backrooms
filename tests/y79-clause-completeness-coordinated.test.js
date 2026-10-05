@@ -19,7 +19,7 @@ const {
 const { executeLivingTurn, validatePresentation, buildProviderPacket } = require("../tools/ai-living-turn");
 const { projectLiveScene } = require("../tools/live-scene-projection");
 
-function createUtilityFixture(seed = "clause-completeness") {
+async function createUtilityFixture(seed = "clause-completeness") {
   const appDataPath = fs.mkdtempSync(path.join(os.tmpdir(), "yb-clause-test-"));
   const livingProvider = createLivingProvider();
   const service = new DesktopService({
@@ -33,7 +33,7 @@ function createUtilityFixture(seed = "clause-completeness") {
   for (const action of ["READY", "PROCEED", "APPROACH", "READY"]) {
     assert.equal(service.submitAction({ world_id: world.id, mode: "field-researcher", action }).ok, true);
   }
-  assert.equal(service.submitQ4Communication({ world_id: world.id, channel: "standard", text: "Standard, field team assembled at Threshold Room. Requesting link check." }).ok, true);
+  assert.equal((await service.submitQ4Communication({ world_id: world.id, channel: "standard", text: "Standard, field team assembled at Threshold Room. Requesting link check." })).ok, true);
   assert.equal(service.submitAction({ world_id: world.id, mode: "field-researcher", action: "CROSS" }).ok, true);
   const entry = service.session(world.id, "field-researcher");
   return { appDataPath, service, world, entry, run: entry.run, provider: livingProvider };
@@ -53,7 +53,7 @@ function canonicalSnapshot(run) {
 }
 
 test("1 Beverly photographs the fixture while I inspect it", async () => {
-  const { service, world, run } = createUtilityFixture("test-case-1");
+  const { service, world, run } = await createUtilityFixture("test-case-1");
   const beforeInterval = run.expedition.clock.interval;
   const beforeEvidence = run.expedition.evidence.length;
 
@@ -74,7 +74,7 @@ test("1 Beverly photographs the fixture while I inspect it", async () => {
 });
 
 test("2 I inspect the fixture while Beverly photographs it (verbatim live regression)", async () => {
-  const { service, world, run } = createUtilityFixture("test-case-2");
+  const { service, world, run } = await createUtilityFixture("test-case-2");
   const beforeInterval = run.expedition.clock.interval;
   const beforeEvidence = run.expedition.evidence.length;
 
@@ -97,7 +97,7 @@ test("2 I inspect the fixture while Beverly photographs it (verbatim live regres
 });
 
 test("3 I inspect the fixture and Beverly photographs it (and conjunction coordination)", async () => {
-  const { service, world, run } = createUtilityFixture("test-case-3");
+  const { service, world, run } = await createUtilityFixture("test-case-3");
   const beforeInterval = run.expedition.clock.interval;
   const beforeEvidence = run.expedition.evidence.length;
 
@@ -116,7 +116,7 @@ test("3 I inspect the fixture and Beverly photographs it (and conjunction coordi
 });
 
 test("4 While I inspect the fixture, Beverly photographs it (leading while coordination)", async () => {
-  const { service, world, run } = createUtilityFixture("test-case-4");
+  const { service, world, run } = await createUtilityFixture("test-case-4");
   const beforeInterval = run.expedition.clock.interval;
   const beforeEvidence = run.expedition.evidence.length;
 
@@ -136,7 +136,7 @@ test("4 While I inspect the fixture, Beverly photographs it (leading while coord
 
 test("5 Named coworker by first name, full name, and unique role", async () => {
   for (const ref of ["Beverly", "Beverly Bell", "documentation specialist"]) {
-    const { service, world, run } = createUtilityFixture(`test-case-5-${ref.replace(/\\s+/g, "-")}`);
+    const { service, world, run } = await createUtilityFixture(`test-case-5-${ref.replace(/\\s+/g, "-")}`);
     const beforeInterval = run.expedition.clock.interval;
     const res = await service.submitNatural({
       world_id: world.id,
@@ -151,7 +151,7 @@ test("5 Named coworker by first name, full name, and unique role", async () => {
 });
 
 test("6 Two valid simultaneous actions commit one interval", async () => {
-  const { service, world, run } = createUtilityFixture("test-case-6");
+  const { service, world, run } = await createUtilityFixture("test-case-6");
   const beforeInterval = run.expedition.clock.interval;
   const beforeAttempts = run.expedition.coordinated_attempts?.length ?? 0;
 
@@ -169,8 +169,8 @@ test("6 Two valid simultaneous actions commit one interval", async () => {
 });
 
 test("7 Reversed clause order produces equivalent authoritative intent, not necessarily identical prose", async () => {
-  const fixtureA = createUtilityFixture("test-case-7a");
-  const fixtureB = createUtilityFixture("test-case-7b");
+  const fixtureA = await createUtilityFixture("test-case-7a");
+  const fixtureB = await createUtilityFixture("test-case-7b");
 
   await fixtureA.service.submitNatural({
     world_id: fixtureA.world.id,
@@ -194,8 +194,8 @@ test("7 Reversed clause order produces equivalent authoritative intent, not nece
   assert.equal(runA.checklist.used, runB.checklist.used);
 });
 
-test("8 Coworker-held required equipment succeeds only for that coworker", () => {
-  const { run } = createUtilityFixture("test-case-8");
+test("8 Coworker-held required equipment succeeds only for that coworker", async () => {
+  const { run } = await createUtilityFixture("test-case-8");
   const player = run.session.startup.player.observer_id;
   const bundle = {
     submission_id: "coworker-photo-ok",
@@ -207,8 +207,8 @@ test("8 Coworker-held required equipment succeeds only for that coworker", () =>
   assert.equal(run.expedition.evidence.at(-1)?.operator, "personnel-beverly-bell");
 });
 
-test("9 Player cannot use coworker-held equipment implicitly", () => {
-  const { run } = createUtilityFixture("test-case-9");
+test("9 Player cannot use coworker-held equipment implicitly", async () => {
+  const { run } = await createUtilityFixture("test-case-9");
   const player = run.session.startup.player.observer_id;
   const before = canonicalSnapshot(run);
   const bundle = {
@@ -223,7 +223,7 @@ test("9 Player cannot use coworker-held equipment implicitly", () => {
 });
 
 test("10 Absent coworker causes clarification/rejection before any player clause commits", async () => {
-  const { service, world, run } = createUtilityFixture("test-case-10");
+  const { service, world, run } = await createUtilityFixture("test-case-10");
   const before = canonicalSnapshot(run);
 
   const res = await service.submitNatural({
@@ -238,7 +238,7 @@ test("10 Absent coworker causes clarification/rejection before any player clause
 });
 
 test("11 Ambiguous coworker causes clarification with safe options and zero mutation", async () => {
-  const { run, provider } = createUtilityFixture("test-case-11");
+  const { run, provider } = await createUtilityFixture("test-case-11");
   const before = canonicalSnapshot(run);
 
   const scope = buildCustodianScope(run);
@@ -261,7 +261,7 @@ test("11 Ambiguous coworker causes clarification with safe options and zero muta
 });
 
 test("12 Hidden/unobserved target is unavailable even if its internal ID is guessed", async () => {
-  const { run } = createUtilityFixture("test-case-12");
+  const { run } = await createUtilityFixture("test-case-12");
   const before = canonicalSnapshot(run);
   const player = run.session.startup.player.observer_id;
 
@@ -276,8 +276,8 @@ test("12 Hidden/unobserved target is unavailable even if its internal ID is gues
   assert.deepEqual(canonicalSnapshot(run), before);
 });
 
-test("13 One valid plus one impossible clause causes atomic no-mutation", () => {
-  const { run } = createUtilityFixture("test-case-13");
+test("13 One valid plus one impossible clause causes atomic no-mutation", async () => {
+  const { run } = await createUtilityFixture("test-case-13");
   const before = canonicalSnapshot(run);
   const player = run.session.startup.player.observer_id;
 
@@ -295,7 +295,7 @@ test("13 One valid plus one impossible clause causes atomic no-mutation", () => 
 });
 
 test("14 One valid plus one unsupported verb causes clarification/no-mutation", async () => {
-  const { service, world, run } = createUtilityFixture("test-case-14");
+  const { service, world, run } = await createUtilityFixture("test-case-14");
   const before = canonicalSnapshot(run);
 
   const res = await service.submitNatural({
@@ -309,8 +309,8 @@ test("14 One valid plus one unsupported verb causes clarification/no-mutation", 
   assert.deepEqual(canonicalSnapshot(run), before);
 });
 
-test("15 Three-clause sequence retains order", () => {
-  const { run } = createUtilityFixture("test-case-15");
+test("15 Three-clause sequence retains order", async () => {
+  const { run } = await createUtilityFixture("test-case-15");
   const scope = buildCustodianScope(run);
   const { segmentSourceClauses } = require("../tools/ai-interpreter-boundary");
   const text = "I inspect the fixture, then Beverly photographs it, then I check the panel.";
@@ -322,7 +322,7 @@ test("15 Three-clause sequence retains order", () => {
 });
 
 test("16 Mixed sequence and parallel relation is clarified before mutation", async () => {
-  const { service, world, run } = createUtilityFixture("test-case-16");
+  const { service, world, run } = await createUtilityFixture("test-case-16");
   const before = canonicalSnapshot(run);
 
   const res = await service.submitNatural({
@@ -337,7 +337,7 @@ test("16 Mixed sequence and parallel relation is clarified before mutation", asy
 });
 
 test("17 Conditional instruction is clarified and condition text cannot be dropped", async () => {
-  const { service, world, run } = createUtilityFixture("test-case-17");
+  const { service, world, run } = await createUtilityFixture("test-case-17");
   const before = canonicalSnapshot(run);
 
   const res = await service.submitNatural({
@@ -352,7 +352,7 @@ test("17 Conditional instruction is clarified and condition text cannot be dropp
 });
 
 test("18 Malformed hosted structured output fails closed", async () => {
-  const { run } = createUtilityFixture("test-case-18");
+  const { run } = await createUtilityFixture("test-case-18");
   const before = canonicalSnapshot(run);
   const badInterpreter = {
     name: "malformed-provider",
@@ -374,7 +374,7 @@ test("18 Malformed hosted structured output fails closed", async () => {
 });
 
 test("19 Hosted output with missing clause fails complete-coverage validation", async () => {
-  const { run } = createUtilityFixture("test-case-19");
+  const { run } = await createUtilityFixture("test-case-19");
   const before = canonicalSnapshot(run);
 
   const droppingInterpreter = {
@@ -405,7 +405,7 @@ test("19 Hosted output with missing clause fails complete-coverage validation", 
 });
 
 test("20 Hosted output with invented extra clause fails validation", async () => {
-  const { run } = createUtilityFixture("test-case-20");
+  const { run } = await createUtilityFixture("test-case-20");
   const before = canonicalSnapshot(run);
 
   const inventingInterpreter = {
@@ -438,7 +438,7 @@ test("20 Hosted output with invented extra clause fails validation", async () =>
 });
 
 test("21 Provider failure is distinct from ambiguity and retains zero mutation before dispatch", async () => {
-  const { run } = createUtilityFixture("test-case-21");
+  const { run } = await createUtilityFixture("test-case-21");
   const before = canonicalSnapshot(run);
 
   const failingInterpreter = {
@@ -460,7 +460,7 @@ test("21 Provider failure is distinct from ambiguity and retains zero mutation b
 });
 
 test("22 Presentation failure after successful coordinated dispatch retains exactly one canonical interval", async () => {
-  const { run, provider } = createUtilityFixture("test-case-22");
+  const { run, provider } = await createUtilityFixture("test-case-22");
   const beforeInterval = run.expedition.clock.interval;
 
   const failingPresenter = {
@@ -487,7 +487,7 @@ test("22 Presentation failure after successful coordinated dispatch retains exac
 });
 
 test("23 Save/reload preserves both coordinated effects and provenance", async () => {
-  const { appDataPath, service, world, run } = createUtilityFixture("test-case-23");
+  const { appDataPath, service, world, run } = await createUtilityFixture("test-case-23");
   const beforeInterval = run.expedition.clock.interval;
 
   const res = await service.submitNatural({
@@ -517,7 +517,7 @@ test("23 Save/reload preserves both coordinated effects and provenance", async (
 });
 
 test("24 Renderer displays a truthful combined outcome", async () => {
-  const { service, world } = createUtilityFixture("test-case-24");
+  const { service, world } = await createUtilityFixture("test-case-24");
 
   const res = await service.submitNatural({
     world_id: world.id,
@@ -532,8 +532,8 @@ test("24 Renderer displays a truthful combined outcome", async () => {
   assert.ok(!scene.narration.includes("internal_id"));
 });
 
-test("25 No generated player speech, thought, realization, emotion, or unsubmitted action", () => {
-  const { run } = createUtilityFixture("test-case-25");
+test("25 No generated player speech, thought, realization, emotion, or unsubmitted action", async () => {
+  const { run } = await createUtilityFixture("test-case-25");
   const projected = projectLiveScene(run, { observer_id: run.session.startup.player.observer_id });
   const providerPacket = buildProviderPacket(projected.packet, { ok: true, outcome: "succeeded" });
 

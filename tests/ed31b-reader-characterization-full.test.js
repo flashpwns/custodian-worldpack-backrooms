@@ -29,7 +29,7 @@ test("FULL round trip: every fixture turn's legacy -> ReaderFrame -> resolver ->
   const reference = JSON.parse(fs.readFileSync(path.join(ARTIFACTS, "roundtrip.json"), "utf8"));
   const rows = await RT.run();
   assert.equal(rows.length, reference.rows.length);
-  rows.forEach((row, i) => assert.deepEqual(row, reference.rows[i], `row ${i}: ${row.fixture} ${row.text}`));
+  rows.forEach((row, i) => assert.deepEqual(row, require("./fixtures/reader-owner-policy-overlay").currentRoundtrip(reference.rows[i]), `row ${i}: ${row.fixture} ${row.text}`));
   const summary = RT.summarize(rows);
   assert.equal(summary.behaviour_equivalent_pct, reference.behaviour_equivalent_pct);
   assert.equal(summary.exact_pct, reference.exact_pct);

@@ -1,7 +1,7 @@
 {
   "version": "yellow-beast-verification-manifest@v2",
   "governance": "verification/verification-authority.json",
-  "authority": "V02 — Test Truth and Verification Gate (docs/YELLOW_BEAST_VISION_PASS_MAP.md §V02)",
+  "authority": "V02 \u2014 Test Truth and Verification Gate (docs/YELLOW_BEAST_VISION_PASS_MAP.md \u00a7V02)",
   "tiers": [
     "fast",
     "aggregate",
@@ -929,6 +929,136 @@
     },
     {
       "file": "tests/ed33e-reader-phase2-easy-labeling-ui.test.js",
+      "status": "included",
+      "tier": "aggregate"
+    },
+    {
+      "file": "tests/ed1-dialogue-discourse.test.js",
+      "status": "included",
+      "tier": "aggregate"
+    },
+    {
+      "file": "tests/ed15-dialogue-blockers.test.js",
+      "status": "included",
+      "tier": "aggregate"
+    },
+    {
+      "file": "tests/ed16-dialogue-closure.test.js",
+      "status": "included",
+      "tier": "aggregate"
+    },
+    {
+      "file": "tests/ed2-semantic-enforcement.test.js",
+      "status": "included",
+      "tier": "aggregate"
+    },
+    {
+      "file": "tests/ed21-validation-clean.test.js",
+      "status": "included",
+      "tier": "aggregate"
+    },
+    {
+      "file": "tests/ed22-context-bridge.test.js",
+      "status": "included",
+      "tier": "aggregate"
+    },
+    {
+      "file": "tests/ed23-provider-runtime.test.js",
+      "status": "included",
+      "tier": "aggregate"
+    },
+    {
+      "file": "tests/ed24-freeze-invariants.test.js",
+      "status": "included",
+      "tier": "aggregate"
+    },
+    {
+      "file": "tests/ed25-human-acceptance-dialogue.test.js",
+      "status": "included",
+      "tier": "aggregate"
+    },
+    {
+      "file": "tests/ed26-conversation-semantics.test.js",
+      "status": "included",
+      "tier": "aggregate"
+    },
+    {
+      "file": "tests/ed3-local-runtime-dev.test.js",
+      "status": "included",
+      "tier": "aggregate"
+    },
+    {
+      "file": "tests/ed33f-reader-machine-labeling.test.js",
+      "status": "included",
+      "tier": "aggregate"
+    },
+    {
+      "file": "tests/ed33g-reader-local-labeling.test.js",
+      "status": "included",
+      "tier": "aggregate"
+    },
+    {
+      "file": "tests/ed33h-reader-local-repair.test.js",
+      "status": "included",
+      "tier": "aggregate"
+    },
+    {
+      "file": "tests/ed33i-reader-exception-workstation.test.js",
+      "status": "included",
+      "tier": "aggregate"
+    },
+    {
+      "file": "tests/ed4-dialogue-reconciliation.test.js",
+      "status": "included",
+      "tier": "aggregate"
+    },
+    {
+      "file": "tests/ed5-autonomous-and-known-answer.test.js",
+      "status": "included",
+      "tier": "aggregate"
+    },
+    {
+      "file": "tests/y166-dialogue-runtime-supervisor.test.js",
+      "status": "included",
+      "tier": "aggregate"
+    },
+    {
+      "file": "tests/y167-cinematic-warmup-skip-gate.test.js",
+      "status": "included",
+      "tier": "aggregate"
+    },
+    {
+      "file": "tests/y168-observation-authority.test.js",
+      "status": "included",
+      "tier": "aggregate"
+    },
+    {
+      "file": "tests/y169-observation-persistence-integration.test.js",
+      "status": "included",
+      "tier": "aggregate"
+    },
+    {
+      "file": "tests/y170-speech-scheduler.test.js",
+      "status": "included",
+      "tier": "aggregate"
+    },
+    {
+      "file": "tests/y171-autonomous-speech-live.test.js",
+      "status": "included",
+      "tier": "aggregate"
+    },
+    {
+      "file": "tests/y172-autonomous-speech-turn-safety.test.js",
+      "status": "included",
+      "tier": "aggregate"
+    },
+    {
+      "file": "tests/y173-autonomous-speech-refresh.test.js",
+      "status": "included",
+      "tier": "aggregate"
+    },
+    {
+      "file": "tests/y174-autonomous-report-rendering.test.js",
       "status": "included",
       "tier": "aggregate"
     }

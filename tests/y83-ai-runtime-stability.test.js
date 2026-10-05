@@ -24,7 +24,7 @@ const {
   validateAndResolve
 } = require("../tools/ai-interpreter-boundary");
 
-function createUtilityFixture(seed = "ai-stability-pass") {
+async function createUtilityFixture(seed = "ai-stability-pass") {
   const appDataPath = fs.mkdtempSync(path.join(os.tmpdir(), "yb-ai-stability-test-"));
   const livingProvider = createLivingProvider();
   const service = new DesktopService({
@@ -38,7 +38,7 @@ function createUtilityFixture(seed = "ai-stability-pass") {
   for (const action of ["READY", "PROCEED", "APPROACH", "READY"]) {
     assert.equal(service.submitAction({ world_id: world.id, mode: "field-researcher", action }).ok, true);
   }
-  assert.equal(service.submitQ4Communication({ world_id: world.id, channel: "standard", text: "Standard, field team assembled at Threshold Room. Requesting link check." }).ok, true);
+  assert.equal((await service.submitQ4Communication({ world_id: world.id, channel: "standard", text: "Standard, field team assembled at Threshold Room. Requesting link check." })).ok, true);
   assert.equal(service.submitAction({ world_id: world.id, mode: "field-researcher", action: "CROSS" }).ok, true);
   const entry = service.session(world.id, "field-researcher");
   return { appDataPath, service, world, entry, run: entry.run, provider: livingProvider };
@@ -64,8 +64,8 @@ function canonicalSnapshot(run) {
 // SECTION 26: ACCEPTANCE TESTS
 // =========================================================================
 
-test("1 Pronoun and vague reference resolution in code", () => {
-  const { run } = createUtilityFixture("test-case-1");
+test("1 Pronoun and vague reference resolution in code", async () => {
+  const { run } = await createUtilityFixture("test-case-1");
   const player = run.session.startup.player.observer_id;
 
   // Equipment resolution
@@ -93,8 +93,8 @@ test("1 Pronoun and vague reference resolution in code", () => {
   assert.equal(itRes.top_candidate?.name, "fluorescent fixture");
 });
 
-test("2 Precondition validation before AI dispatch", () => {
-  const { run } = createUtilityFixture("test-case-2");
+test("2 Precondition validation before AI dispatch", async () => {
+  const { run } = await createUtilityFixture("test-case-2");
   const player = run.session.startup.player.observer_id;
 
   // Unreachable door
@@ -113,8 +113,8 @@ test("2 Precondition validation before AI dispatch", () => {
   assert.equal(transferCheck.reason, "equipment_not_held");
 });
 
-test("3 Negative tests for hidden state isolation", () => {
-  const { run } = createUtilityFixture("test-case-3");
+test("3 Negative tests for hidden state isolation", async () => {
+  const { run } = await createUtilityFixture("test-case-3");
   const scope = buildCustodianScope(run);
   const jsonContext = JSON.stringify(scope.context);
 
@@ -131,8 +131,8 @@ test("3 Negative tests for hidden state isolation", () => {
   }
 });
 
-test("4 Deterministic communication routing", () => {
-  const { run } = createUtilityFixture("test-case-4");
+test("4 Deterministic communication routing", async () => {
+  const { run } = await createUtilityFixture("test-case-4");
   const player = run.session.startup.player.observer_id;
 
   // Radio transmission on standard channel
@@ -165,8 +165,8 @@ test("4 Deterministic communication routing", () => {
   assert.ok(localSpeech.recipients.includes("personnel-beverly-bell"));
 });
 
-test("5 Task continuity across turns in canonical ledger", () => {
-  const { run } = createUtilityFixture("test-case-5");
+test("5 Task continuity across turns in canonical ledger", async () => {
+  const { run } = await createUtilityFixture("test-case-5");
   const cwId = "personnel-beverly-bell";
 
   // Assign task
@@ -189,8 +189,8 @@ test("5 Task continuity across turns in canonical ledger", () => {
   assert.equal(task3.progress, 0.5);
 });
 
-test("6 Deterministic field note generation", () => {
-  const { run } = createUtilityFixture("test-case-6");
+test("6 Deterministic field note generation", async () => {
+  const { run } = await createUtilityFixture("test-case-6");
   const player = run.session.startup.player.observer_id;
 
   canonicalLedger.recordObservationMade(run, {
@@ -210,8 +210,8 @@ test("6 Deterministic field note generation", () => {
   assert.ok(note.text.includes("fluorescent-fixture") || note.text.includes("Bare Utility Room"));
 });
 
-test("7 Equipment continuity across operations", () => {
-  const { run } = createUtilityFixture("test-case-7");
+test("7 Equipment continuity across operations", async () => {
+  const { run } = await createUtilityFixture("test-case-7");
   const player = run.session.startup.player.observer_id;
 
   // Invariant: each equipment item has a valid holder
@@ -234,8 +234,8 @@ test("7 Equipment continuity across operations", () => {
   }
 });
 
-test("8 Save / reload round-trip continuity", () => {
-  const { service, world, run } = createUtilityFixture("test-case-8");
+test("8 Save / reload round-trip continuity", async () => {
+  const { service, world, run } = await createUtilityFixture("test-case-8");
 
   // Record structured state before save
   canonicalLedger.setCoworkerTask(run, "personnel-beverly-bell", "PHOTOGRAPH", "fluorescent-fixture");
@@ -260,7 +260,7 @@ test("8 Save / reload round-trip continuity", () => {
 });
 
 test("9 Error resilience against provider failure", async () => {
-  const { run } = createUtilityFixture("test-case-9");
+  const { run } = await createUtilityFixture("test-case-9");
 
   // Failing presentation provider
   const failingProvider = {
@@ -290,7 +290,7 @@ test("9 Error resilience against provider failure", async () => {
 });
 
 test("10 End-to-end multi-turn playable scenario", async () => {
-  const { service, world, run } = createUtilityFixture("test-case-10");
+  const { service, world, run } = await createUtilityFixture("test-case-10");
 
   // Turn 1: Inspect fixture
   const t1 = await service.submitNatural({
@@ -347,7 +347,7 @@ test("10 End-to-end multi-turn playable scenario", async () => {
 // =========================================================================
 
 test("11 Ambiguous pronoun with multiple male candidates returns clarification without mutation", async () => {
-  const { run } = createUtilityFixture("test-case-11");
+  const { run } = await createUtilityFixture("test-case-11");
   const before = canonicalSnapshot(run);
   const scope = buildCustodianScope(run);
 
@@ -381,15 +381,15 @@ test("11 Ambiguous pronoun with multiple male candidates returns clarification w
   assert.deepEqual(canonicalSnapshot(run), before);
 });
 
-test("12 Pronoun with zero antecedent returns clarification", () => {
-  const { run } = createUtilityFixture("test-case-12");
+test("12 Pronoun with zero antecedent returns clarification", async () => {
+  const { run } = await createUtilityFixture("test-case-12");
   const res = referentResolution.resolveReferent("that non-existent relic", run, "player");
   assert.equal(res.resolved, false);
   assert.equal(res.top_candidate, null);
 });
 
-test("13 Conflicting compound command is clarified before mutation", () => {
-  const { run } = createUtilityFixture("test-case-13");
+test("13 Conflicting compound command is clarified before mutation", async () => {
+  const { run } = await createUtilityFixture("test-case-13");
   const scope = buildCustodianScope(run);
 
   // Mixed relation sequence + coordinated without proper temporal order
@@ -427,8 +427,8 @@ test("13 Conflicting compound command is clarified before mutation", () => {
   assert.equal(res.kind, "clarification");
 });
 
-test("14 Illegal out-of-order action rejected before dispatch", () => {
-  const { run } = createUtilityFixture("test-case-14");
+test("14 Illegal out-of-order action rejected before dispatch", async () => {
+  const { run } = await createUtilityFixture("test-case-14");
   const player = run.session.startup.player.observer_id;
 
   // Preconditions require camera possession for PHOTOGRAPH
@@ -443,8 +443,8 @@ test("14 Illegal out-of-order action rejected before dispatch", () => {
   assert.ok(check.alternatives.length > 0);
 });
 
-test("15 Invisible / hidden entity reference rejected", () => {
-  const { run } = createUtilityFixture("test-case-15");
+test("15 Invisible / hidden entity reference rejected", async () => {
+  const { run } = await createUtilityFixture("test-case-15");
   const player = run.session.startup.player.observer_id;
 
   const canSee = perceptionService.canSee(player, "hidden-entity-room-99", run);
@@ -460,8 +460,8 @@ test("15 Invisible / hidden entity reference rejected", () => {
   assert.equal(check.reason, "target_not_visible");
 });
 
-test("16 Spatial telepathy attempt rejected without radio", () => {
-  const { run } = createUtilityFixture("test-case-16");
+test("16 Spatial telepathy attempt rejected without radio", async () => {
+  const { run } = await createUtilityFixture("test-case-16");
   const player = run.session.startup.player.observer_id;
 
   // Move Beverly away into another zone for test
@@ -481,8 +481,8 @@ test("16 Spatial telepathy attempt rejected without radio", () => {
   assert.ok(orderCheck.alternatives.includes("use(radio)"));
 });
 
-test("17 Entity creation / hallucinated item rejected", () => {
-  const { run } = createUtilityFixture("test-case-17");
+test("17 Entity creation / hallucinated item rejected", async () => {
+  const { run } = await createUtilityFixture("test-case-17");
   const scope = buildCustodianScope(run);
 
   const proposal = {
@@ -514,7 +514,7 @@ test("17 Entity creation / hallucinated item rejected", () => {
 });
 
 test("18 Rapid turn submission handled deterministically", async () => {
-  const { service, world, run } = createUtilityFixture("test-case-18");
+  const { service, world, run } = await createUtilityFixture("test-case-18");
 
   const results = [];
   results.push(await service.submitNatural({
@@ -538,8 +538,8 @@ test("18 Rapid turn submission handled deterministically", async () => {
   assert.ok(run.expedition.clock.interval >= 6);
 });
 
-test("19 Context budget boundary enforcement", () => {
-  const { run } = createUtilityFixture("test-case-19");
+test("19 Context budget boundary enforcement", async () => {
+  const { run } = await createUtilityFixture("test-case-19");
   const player = run.session.startup.player.observer_id;
 
   const compiled = observerContextCompiler.compileObserverContext(run, player);
@@ -551,8 +551,8 @@ test("19 Context budget boundary enforcement", () => {
   assert.ok(compiled.recent_events.length <= 4);
 });
 
-test("20 Model hallucination in presentation caught by validation", () => {
-  const { run } = createUtilityFixture("test-case-20");
+test("20 Model hallucination in presentation caught by validation", async () => {
+  const { run } = await createUtilityFixture("test-case-20");
   const player = run.session.startup.player.observer_id;
   const scope = buildCustodianScope(run);
 

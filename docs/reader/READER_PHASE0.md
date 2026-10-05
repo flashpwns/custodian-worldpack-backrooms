@@ -1,5 +1,7 @@
 # Dialogue reader: Phase 0 (seam construction)
 
+**Current authority (2026-10-05):** this document preserves the historical pass. See [Dialogue closure status](../dialogue/DIALOGUE_CLOSURE_STATUS.md). Jack's recorded `spoken_address_separate` policy now accepts spoken Tonya address independently of Malcolm chip delivery; the chip still controls routing and the shadow records `chip_vs_vocative`. Historical chip-rejection descriptions below are superseded by that owner decision. Reader remains shadow-only.
+
 **Baseline:** `9e51842` on `opener-human-green-2026-09-19`.
 
 **Scope:** architecture seams only.

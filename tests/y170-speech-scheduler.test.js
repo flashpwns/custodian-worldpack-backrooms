@@ -230,3 +230,11 @@ test("17: the wordsmith function only supplies text -- it cannot select speaker,
   assert.equal(observedEntry.feature_id, preselectedFeature);
   assert.equal(result.drained[0].speaker_id, preselectedObserver);
 });
+
+test("draining absent autonomous speech is inert, including after a failed player turn", async () => {
+  const run = { expedition: { clock: { interval: 0 } } };
+  const before = structuredClone(run);
+  const result = await require('../tools/speech-scheduler').drainSpeechQueue(run, {});
+  assert.deepEqual(result, { drained: [] });
+  assert.deepEqual(run, before, 'silence must not initialize canonical queue state');
+});

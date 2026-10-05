@@ -401,7 +401,7 @@ test("y109 — Malformed model response falls back safely without mutating world
 
     assert.equal(res.ok, true, "Request must still resolve cleanly via fallback");
     assert.equal(res.result.presentation_source, "deterministic-fallback", "Must mark presentation_source as fallback");
-    assert.match(res.result.public_reason, /Language assistance returned an invalid response and was rejected\. Deterministic response:/);
+    assert.doesNotMatch(res.result.public_reason, /language assistance|deterministic response|\bAI\b|\bLLM\b/i, "fallback speech must expose only the committed coworker wording");
 
     // Verify dialogue event is recorded as CANONICAL deterministic fallback
     const history = session.run.expedition.dialogue_history;

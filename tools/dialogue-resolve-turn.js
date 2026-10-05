@@ -101,13 +101,17 @@ function resolveAct(actIn, i, ctx, effective) {
   const f = findings.get(i) ?? { rejected: new Map(), clarify: [] };
   const conflicts = [];
   const reasons = [];
-  // Rejected fields: chip conflicts keep the chip (owner ruling 4); refinements are neutralized; routing-critical
-  // fields fail the act closed.
+  // Rejected refinements are neutralized; routing-critical fields fail the act closed.
   const act = { ...actIn };
-  let chipConflict = false;
+  const op = act.address?.op;
+  const addressed = (act.address?.names ?? []).map((label) => input.features.name_spans.find((n) => n.label === label)?.person);
+  // Delivery and spoken address are independent. A valid linguistic frame is not rejected for a delivery
+  // mismatch; the code-owned chip still wins routing and the discrepancy stays observable in the shadow.
+  let chipConflict = Boolean(input.chip_target && op !== "NONE" && op !== "SECOND_PERSON"
+    && !(op === "NAMED" && addressed.length === 1 && addressed[0] === input.chip_target));
+  if (chipConflict) conflicts.push("chip_vs_vocative");
   let criticalRejected = null;
   for (const [field, codes] of f.rejected) {
-    if (field === "address" && codes.every((c) => c === "contradicts_chip_target") && input.chip_target) { chipConflict = true; conflicts.push("chip_vs_vocative"); continue; }
     if (field in NEUTRALIZABLE) { act[field] = NEUTRALIZABLE[field]; reasons.push(`neutralized:${field}:${codes.join("+")}`); continue; }
     if (ROUTING_CRITICAL.has(field) && !criticalRejected) criticalRejected = { field, code: codes[0] };
   }

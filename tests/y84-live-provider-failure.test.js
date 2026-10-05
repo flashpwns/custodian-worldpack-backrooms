@@ -10,7 +10,7 @@ const { ProviderPool } = require("../tools/ai-provider-pool");
 const { createLivingProvider } = require("../tools/ai-living-provider");
 const bootstrap = require("../tools/run-bootstrap");
 
-function fixture(t, respond) {
+async function fixture(t, respond) {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), "yb-live-provider-"));
   t.after(() => fs.rmSync(root, { recursive:true, force:true }));
   const credentials = new CredentialStore();
@@ -25,7 +25,7 @@ function fixture(t, respond) {
   service.createQ4Personnel({ world_id:world.id, first_name:"Test", last_name:"Lead" });
   assert.equal(service.startSession({ ...input, seed:"provider-failure" }).ok,true);
   for (const action of ["READY", "PROCEED", "APPROACH", "READY"]) assert.equal(service.submitAction({ ...input, action }).ok,true);
-  assert.equal(service.submitQ4Communication({ world_id:world.id, channel:"standard", text:"Standard, radio check." }).ok,true);
+  assert.equal((await service.submitQ4Communication({ world_id:world.id, channel:"standard", text:"Standard, radio check." })).ok,true);
   assert.equal(service.submitAction({ ...input, action:"CROSS" }).ok,true);
   return { service, root, input, requests, logs, get run() { return service.session(world.id, input.mode).run; } };
 }
@@ -36,7 +36,7 @@ for (const [label, error, feedback] of [
   ["timeout", { name:"AbortError" }, /did not respond in time/],
   ["rate limit", { status:429, code:"rate_limit_exceeded" }, /rate limited/]
 ]) test(`${label} failure does not execute or save; cooldown retry remains truthful`, async t => {
-  const f = fixture(t, () => { throw Object.assign(new Error("fixture-secret-never-log"), error); });
+  const f = await fixture(t, () => { throw Object.assign(new Error("fixture-secret-never-log"), error); });
   const before = bootstrap.saveRun(f.run);
   const worldBefore = JSON.stringify(f.service.getWorld(f.input.world_id));
   const diskBefore = fs.readFileSync(f.service.sessionFile(f.input.world_id,f.input.mode), "utf8");
@@ -63,7 +63,7 @@ for (const [label, error, feedback] of [
 });
 
 test("unconfigured AUTO cannot silently become a successful hosted turn", async t => {
-  const f = fixture(t, () => { throw new Error("Should not call"); });
+  const f = await fixture(t, () => { throw new Error("Should not call"); });
   f.service.providerPool.isConfigured = () => false;
   f.service.updateSettings({ settings:{ provider:"auto" } });
   const before = bootstrap.saveRun(f.run);
@@ -76,7 +76,7 @@ test("unconfigured AUTO cannot silently become a successful hosted turn", async 
 
 test("presentation failure after hosted interpretation preserves committed action and warns outside speech", async t => {
   const base = createLivingProvider();
-  const f = fixture(t, async request => {
+  const f = await fixture(t, async request => {
     if (request.text.format.name.includes("interpretation")) return { id:"fixture-response", output_text:JSON.stringify(await base.interpret(JSON.parse(request.input))) };
     throw Object.assign(new Error("fixture-secret-never-log"), { status:429, code:"credit_balance_exhausted" });
   });
@@ -98,7 +98,7 @@ test("transport diagnostics correlate the input and safe context without logging
   const previous = process.env.YELLOW_BEAST_TURN_TRACE;
   process.env.YELLOW_BEAST_TURN_TRACE = "1";
   t.after(() => { if (previous === undefined) delete process.env.YELLOW_BEAST_TURN_TRACE; else process.env.YELLOW_BEAST_TURN_TRACE = previous; });
-  const f = fixture(t, () => { throw Object.assign(new Error("fixture-secret-never-log"), { status:401,code:"invalid_api_key" }); });
+  const f = await fixture(t, () => { throw Object.assign(new Error("fixture-secret-never-log"), { status:401,code:"invalid_api_key" }); });
   await f.service.submitNatural({ ...f.input,text:"Walk toward the open passage.",request_id:"trace-correlated" });
   const records = f.logs.map(line => JSON.parse(line));
   const calls = records.filter(item => item.stage === "provider-invocation");
@@ -127,7 +127,7 @@ test("turn-local provider provenance is not overwritten by another concurrent re
 });
 
 test("empty and malformed input never invokes a provider or changes reality", async t => {
-  const f = fixture(t, () => { throw Error("Must not call"); });
+  const f = await fixture(t, () => { throw Error("Must not call"); });
   const before = bootstrap.saveRun(f.run);
   for (const text of [null,{},"", "  ","x".repeat(4001)]) assert.equal((await f.service.submitNatural({ ...f.input,text })).error.code,"ACTION_TEXT_INVALID");
   assert.deepEqual(bootstrap.saveRun(f.run),before);
@@ -165,7 +165,7 @@ test("provider manager stores independent keys and models, reloads metadata, and
 });
 
 test("connection test invokes transport, classifies quota, and leaves expedition saves unchanged",async t=>{
-  const f=fixture(t,()=>{throw Object.assign(new Error("fixture-secret-never-log"),{status:429,code:"credit_balance_exhausted"});});
+  const f=await fixture(t,()=>{throw Object.assign(new Error("fixture-secret-never-log"),{status:429,code:"credit_balance_exhausted"});});
   const before=bootstrap.saveRun(f.run);
   const failed=await f.service.testProvider({provider:"openai",live:true});
   assert.equal(failed.ok,false); assert.match(failed.error.message,/API credit/);
@@ -219,7 +219,7 @@ test("failed key deletion is explicit and leaves credentials and preferences int
 });
 
 test("deleting a manually selected key does not authorize another provider or offline execution", async t => {
-  const f = fixture(t, () => { throw Error("No provider should be called"); });
+  const f = await fixture(t, () => { throw Error("No provider should be called"); });
   f.service.credentials.set("groq", "another-fixture-key");
   assert.equal(f.service.removeProviderKey({ provider:"openai" }).ok, true);
   assert.equal(f.service.settings().provider, "openai");
@@ -235,7 +235,7 @@ test("a resolved player action can be narrated without authorizing a second inve
   const { PRESENTATION_VERSION } = require("../tools/ai-living-turn");
   const base = createLivingProvider();
   let malicious = false;
-  const f = fixture(t, async request => {
+  const f = await fixture(t, async request => {
     if (request.text.format.name.includes("interpretation")) return { output_text:JSON.stringify(await base.interpret(JSON.parse(request.input))) };
     return { output_text:JSON.stringify({ version:PRESENTATION_VERSION,
       scene_description:malicious ? "You move toward the utility room. You decide to leave." : "You move toward the open passage.",
@@ -255,7 +255,7 @@ test("a resolved player action can be narrated without authorizing a second inve
 
 test("past observable movement does not authorize new movement narration after LOOK", async t => {
   const { executeLivingTurn, PRESENTATION_VERSION } = require("../tools/ai-living-turn");
-  const f = fixture(t, () => { throw Error("No hosted call needed"); });
+  const f = await fixture(t, () => { throw Error("No hosted call needed"); });
   const base = createLivingProvider();
   await executeLivingTurn({ run:f.run, player_text:"Walk toward the open passage.", interpreter:base });
   const result = await executeLivingTurn({ run:f.run, player_text:"Look around.", interpreter:base,

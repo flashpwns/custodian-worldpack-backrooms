@@ -130,10 +130,10 @@ test("y94 — Scenario 2: Delivery Feasibility != Automatic Delivery", async () 
     assert.equal(entry.run.expedition.day1_opener.delivery_completed, false);
     assert.equal(cq4Day1Opener.verifyDelivery(entry.run), false);
 
-    // Feasibility produced delivery opportunity dialogue, but bag was NOT automatically dropped
+    // Feasibility produces status, never unrouted scripted dialogue (12f0104); bag remains held.
     const events = presentationBus.inspectEvents(world.id);
-    const oppDialogue = events.find((e) => /Ready to unload the materials duffle/i.test(e.text));
-    assert.ok(oppDialogue, "Intern announced delivery opportunity upon arrival at Outpost A");
+    assert.ok(events.some(e => e.type === "personnel_status" && /delivery-opportunity-observed/.test(e.text)), "Intern delivery opportunity status is surfaced");
+    assert.ok(!events.some(e => e.type === "dialogue" && /Ready to unload the materials duffle/i.test(e.text)), "No fabricated unrouted delivery speech");
     assert.equal(duffle.current_holder, internId, "Duffle remains held despite reaching Outpost A");
     assert.equal(cq4Day1Opener.verifyDelivery(entry.run), false, "Delivery is not complete while held");
 
@@ -263,7 +263,7 @@ test("INCOMPLETE MISSION DOES NOT BLOCK EGRESS", async () => {
     assert.equal(entry.run.spatial.player_location, "threshold-side-entry");
 
     // 3. Request return surveillance verification via radio
-    const commsRes = service.submitQ4Communication({
+    const commsRes = await service.submitQ4Communication({
       world_id: world.id,
       channel: "standard",
       text: "Control Room, Team Lead Thorne at KV31. Aborting forward transit; standing by for return surveillance logging."
@@ -507,7 +507,7 @@ test("y94 — Scenario 6: Continuous Adversarial Regression Scenario", async () 
     assert.equal(entry.run.spatial.player_location, "threshold-side-entry");
 
     // 8. Surveillance Verification & Completion
-    const survRes = service.submitQ4Communication({
+    const survRes = await service.submitQ4Communication({
       world_id: world.id,
       channel: "standard",
       text: "Control Room, Team Lead Thorne at KV31. Materials delivered to Outpost A. Standing by for return logging."

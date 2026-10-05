@@ -34,11 +34,11 @@ function createAndStart(service, world, first_name = "Jack", last_name = "Rocha"
   assert.equal(service.confirmQ4Personnel({ world_id: world.id }).ok, true);
   return service.startSession({ world_id: world.id, mode: "field-researcher", seed: "player-identity", require_personnel: true, ...(scenario ? { scenario } : {}) });
 }
-function advanceTo(service, world, actions = ["READY", "PROCEED", "APPROACH", "READY", "RADIO_CHECK", "CROSS"]) {
+async function advanceTo(service, world, actions = ["READY", "PROCEED", "APPROACH", "READY", "RADIO_CHECK", "CROSS"]) {
   let result;
   for (const action of actions) {
     if (action === "RADIO_CHECK") {
-      result = service.submitQ4Communication({ world_id: world.id, channel: "standard", text: "Standard, Clear-Q4 team accounted for. Radio check." });
+      result = await service.submitQ4Communication({ world_id: world.id, channel: "standard", text: "Standard, Clear-Q4 team accounted for. Radio check." });
       assert.equal(result.ok, true);
     } else result = service.submitAction({ world_id: world.id, mode: "field-researcher", action });
   }
@@ -74,22 +74,22 @@ test("created identity persists and equipment holders name the actual people", (
   assert.equal(resumed.ok, true); assert.equal(resumed.projection.q4.player.name, "Jack Rocha");
 });
 
-test("LOCAL is delivered to a generated coworker before field entry while Standard remains procedurally gated", () => {
+test("LOCAL is delivered to a generated coworker before field entry while Standard remains procedurally gated", async () => {
   const { service, world } = fixture("communication-gates"); const started = createAndStart(service, world); const peer = started.projection.q4.team.find((member) => !member.controlled);
-  const local = service.submitQ4Communication({ world_id: world.id, channel: "local", target: peer.first_name, text: `Good morning, ${peer.first_name}.` });
+  const local = await service.submitQ4Communication({ world_id: world.id, channel: "local", target: peer.first_name, text: `Good morning, ${peer.first_name}.` });
   assert.equal(local.ok, true); assert.match(local.result.public_reason, new RegExp(`^${peer.first_name}:`));
-  const standard = service.submitQ4Communication({ world_id: world.id, channel: "standard", text: "Hello?" });
+  const standard = await service.submitQ4Communication({ world_id: world.id, channel: "standard", text: "Hello?" });
   assert.equal(standard.ok, false); assert.match(standard.error.message, /not active during briefing/i);
-  advanceTo(service, world, ["READY", "PROCEED", "APPROACH"]);
+  await advanceTo(service, world, ["READY", "PROCEED", "APPROACH"]);
   const threshold = service.getGameplayProjection({ world_id: world.id, mode: "field-researcher" }).projection;
   assert.equal(threshold.phase.phase_id, "THRESHOLD"); assert.equal(threshold.q4.channels.standard.available, false);
-  assert.match(service.submitQ4Communication({ world_id: world.id, channel: "standard", text: "Hello?" }).error.message, /approach|contact/i);
-  const radioReady = advanceTo(service, world, ["READY"]); assert.equal(radioReady.projection.phase.phase_id, "STANDARD_RADIO_CHECK");
+  assert.match((await service.submitQ4Communication({ world_id: world.id, channel: "standard", text: "Hello?" })).error.message, /approach|contact/i);
+  const radioReady = await advanceTo(service, world, ["READY"]); assert.equal(radioReady.projection.phase.phase_id, "STANDARD_RADIO_CHECK");
   assert.equal(radioReady.projection.q4.channels.standard.available, true);
   assert.equal(radioReady.projection.q4.channels.standard.state, "establishing");
-  const checked = advanceTo(service, world, ["RADIO_CHECK"]); assert.equal(checked.projection.phase.phase_id, "STANDARD_RADIO_CHECK");
+  const checked = await advanceTo(service, world, ["RADIO_CHECK"]); assert.equal(checked.projection.phase.phase_id, "STANDARD_RADIO_CHECK");
   assert.equal(checked.projection.q4.channels.standard.available, true);
-  const field = advanceTo(service, world, ["CROSS"]); assert.equal(field.projection.phase.phase_id, "FIELD_OPERATION");
+  const field = await advanceTo(service, world, ["CROSS"]); assert.equal(field.projection.phase.phase_id, "FIELD_OPERATION");
 });
 
 test("phase copy and progression controls identify the destination", () => {

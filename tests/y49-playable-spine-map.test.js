@@ -31,11 +31,11 @@ function reachRadio(service, world) {
   for (const action of ["READY", "PROCEED", "APPROACH", "READY"]) phaseAction(service, world, action);
 }
 
-function reachField(service, world) {
+async function reachField(service, world) {
   reachRadio(service, world);
   const rejected = service.submitAction({ world_id: world.id, mode: "field-researcher", action: "RADIO_CHECK" });
   assert.equal(rejected.ok, false);
-  const checked = service.submitQ4Communication({ world_id: world.id, channel: "standard", text: "Standard, Clear-Q4 team accounted for. Radio check." });
+  const checked = await service.submitQ4Communication({ world_id: world.id, channel: "standard", text: "Standard, Clear-Q4 team accounted for. Radio check." });
   assert.equal(checked.ok, true);
   assert.equal(checked.projection.phase.phase_id, "STANDARD_RADIO_CHECK");
   return phaseAction(service, world, "CROSS");
@@ -83,13 +83,13 @@ test("separated personnel cannot remain within speaking range", () => {
   assert.deepEqual(projection.q4.channels.local.targets, projection.q4.team.filter((member) => !member.controlled && member.first_name !== peer.first_name).map((member) => member.first_name));
 });
 
-test("radio check is a visible, persisted procedure before field departure", () => {
+test("radio check is a visible, persisted procedure before field departure", async () => {
   const { root, service, world } = fixture("radio-procedure");
   reachRadio(service, world);
   let projection = service.getGameplayProjection({ world_id: world.id, mode: "field-researcher" }).projection;
   assert.equal(projection.q4.channels.standard.available, true);
   assert.equal(projection.q4.channels.standard.state, "establishing");
-  const checked = service.submitQ4Communication({ world_id: world.id, channel: "standard", text: "Standard, Clear-Q4 team accounted for. Radio check." });
+  const checked = await service.submitQ4Communication({ world_id: world.id, channel: "standard", text: "Standard, Clear-Q4 team accounted for. Radio check." });
   assert.equal(checked.ok, true);
   projection = service.getGameplayProjection({ world_id: world.id, mode: "field-researcher" }).projection;
   assert.equal(projection.phase.phase_id, "STANDARD_RADIO_CHECK");
@@ -108,9 +108,9 @@ test("radio check is a visible, persisted procedure before field departure", () 
   assert.equal(resumed.projection.q4.channels.standard.state, "available");
 });
 
-test("field entry gives a concrete observation, truthful map, and canonical objectives", () => {
+test("field entry gives a concrete observation, truthful map, and canonical objectives", async () => {
   const { service, world } = fixture("field-entry");
-  const field = reachField(service, world).projection;
+  const field = (await reachField(service, world)).projection;
   assert.equal(field.q4.current_location.name, "Utility Room");
   assert.match(field.scene.narration, /utility room/i);
   assert.match(field.scene.narration, /fluorescent|corridor|passage/i);
@@ -127,9 +127,9 @@ test("field entry gives a concrete observation, truthful map, and canonical obje
   assert.doesNotMatch(html, /Next check-in:\s*0|Keep The Team Accounted For|Nothing notable/);
 });
 
-test("return processing exposes its authoritative controls and direct controls submit without a hidden selector", () => {
+test("return processing exposes its authoritative controls and direct controls submit without a hidden selector", async () => {
   const { service, world } = fixture("return-controls");
-  reachField(service, world);
+  await reachField(service, world);
   const returning = phaseAction(service, world, "ABORT").projection;
   const html = surfaces.render(returning);
   assert.match(html, /<details class="field-notes" open>/);
@@ -143,7 +143,7 @@ test("return processing exposes its authoritative controls and direct controls s
 
 test("natural observation and movement alter spatial state, team state, time, and discovery", async () => {
   const { service, world } = fixture("movement");
-  reachField(service, world);
+  await reachField(service, world);
   const oriented = await service.submitNatural({ world_id: world.id, mode: "field-researcher", text: "Orient myself." });
   assert.equal(oriented.ok, true);
   assert.match(oriented.result.scene.narration, /take stock of the utility room/i);
@@ -167,7 +167,7 @@ test("natural observation and movement alter spatial state, team state, time, an
 
 test("movement aliases cover passage, lower-level approach, return, and coworker checks", async () => {
   const { service, world } = fixture("movement-language");
-  const field = reachField(service, world).projection;
+  const field = (await reachField(service, world)).projection;
   const [firstPeer, secondPeer = firstPeer] = field.q4.team.filter((member) => !member.controlled);
   let result = await service.submitNatural({ world_id: world.id, mode: "field-researcher", text: "Enter the open passage." });
   assert.equal(result.projection.q4.current_location.name, "Open Passage");
@@ -199,10 +199,10 @@ test("check-in schedule has explicit scheduled, due, overdue, complete, and unsc
 
 test("complete FIELD_OPERATION identity, assignment, equipment, dialogue, radio, location, and map survive restart", async () => {
   const { root, service, world } = fixture("field-persistence");
-  const field = reachField(service, world).projection;
+  const field = (await reachField(service, world)).projection;
   const peer = field.q4.team.find((member) => !member.controlled);
   const assignedNames = field.q4.team.filter((member) => !member.controlled).map((member) => member.display_name);
-  const local = service.submitQ4Communication({ world_id: world.id, channel: "local", target: peer.first_name, text: `Stay with the route record, ${peer.first_name}.` });
+  const local = await service.submitQ4Communication({ world_id: world.id, channel: "local", target: peer.first_name, text: `Stay with the route record, ${peer.first_name}.` });
   assert.equal(local.ok, true);
   const moved = await service.submitNatural({ world_id: world.id, mode: "field-researcher", text: "Move into the corridor." });
   assert.equal(moved.ok, true);
@@ -229,9 +229,9 @@ test("complete FIELD_OPERATION identity, assignment, equipment, dialogue, radio,
   assert.equal(q4.check_in.remaining, q4.check_in.due_at - q4.operational_clock.interval);
 });
 
-test("legacy session and run envelopes migrate into a usable spatial field record", () => {
+test("legacy session and run envelopes migrate into a usable spatial field record", async () => {
   const { root, service, world } = fixture("legacy-spatial-migration");
-  reachField(service, world);
+  await reachField(service, world);
   service.shutdown();
   const saveFile = service.sessionFile(world.id, "field-researcher");
   const legacy = JSON.parse(fs.readFileSync(saveFile, "utf8"));

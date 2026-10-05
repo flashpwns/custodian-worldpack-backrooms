@@ -126,13 +126,13 @@ test("y88 — Multi-turn coworker behavioral sequence (10-step canonical proof)"
     assert.equal(playerLocReturned, beverlyLocReturned, "Step 6: Player and Beverly are reunited");
 
     // --- STEP 7: Player asks what happened ---
-    const askRes = service.submitQ4Communication({
+    const askRes = await service.submitQ4Communication({
       world_id: world.id,
       channel: "local",
       target: "Beverly",
       text: "Beverly, what did you see while we were separated?"
     });
-    assert.equal(askRes.ok, true, "Step 7: Asking Beverly must succeed");
+    assert.equal(askRes.ok, true, `Step 7: Asking Beverly must succeed: ${JSON.stringify(askRes.error)}`);
 
     // --- STEP 8: Beverly may report only what she legitimately perceived/remembers ---
     const answer = askRes.result?.public_reason ?? "";

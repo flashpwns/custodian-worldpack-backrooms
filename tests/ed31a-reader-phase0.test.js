@@ -110,6 +110,26 @@ test("V1 candidates: labels from the supplied lists; facet in registry and compa
   assert.ok(codes(RF.validateReaderFrame(frameOf(act(input, { span: [0, 2] }), act(input, { span: [3, 6], relation: { kind: "continuation", target: "s1" } })), input)).includes("same_turn_forward_reference"));
 });
 
+test("Convention B: delivery never supplies missing spoken address evidence, even across clauses", () => {
+  const verdict = (input, a) => RF.validateReaderFrame(frameOf(a), input);
+  const plain = inputFor("How is the camera?", { chip: MALCOLM }).input;
+  assert.ok(codes(verdict(plain, act(plain, { facet: "item.condition", address: op("SECOND_PERSON") }))).includes("second_person_without_evidence"));
+  assert.ok(codes(verdict(plain, act(plain, { address: op("NAMED", ["n99"]) }))).length);
+  assert.ok(codes(verdict(plain, act(plain, { address: op("ALL") }))).includes("all_without_evidence"));
+  const split = inputFor("How are you? How is the camera?", { chip: MALCOLM }).input;
+  const start = split.line.tokens.find((t) => t.i > 0 && t.text === "How").i;
+  assert.ok(codes(verdict(split, act(split, { span: [start, split.line.tokens.length - 1], facet: "item.condition", address: op("SECOND_PERSON") }))).includes("second_person_without_evidence"));
+  const named = inputFor("Tonya, how are you?", { chip: MALCOLM });
+  const labels = require("../tools/dialogue-reader-labels");
+  const before = JSON.stringify(named.input);
+  const result = labels.validateGoldFrame({ ...named, context: { ...ledgerFixture(), present: sc.present } }, "ask wellbeing @n1 new f=wh", "ACCEPT");
+  assert.equal(result.ok, true, JSON.stringify(result));
+  assert.equal(JSON.stringify(named.input), before, "frozen observer input is untouched");
+  assert.deepEqual(result.frame.acts[0].address.names, ["n1"], "Tonya remains the linguistic address");
+  assert.deepEqual(result.resolution.primary.addressee.ids, [MALCOLM], "code owns Malcolm delivery");
+  assert.deepEqual(result.resolution.conflicts, ["chip_vs_vocative"]);
+});
+
 test("V1 referent licensing: only entity spans, salience, the active place or the anaphoric set -- never the whole candidate list", () => {
   // Salient (from the last request's args / required facts): the duffle; not named in this line.
   const { input } = inputFor("what's in it?", { snapshot: { last_request: { request_id: "req-2", predicate: "item.contents", request_text: "What's in the duffle?", args: { item_id: "q4-startup-materials-duffle-01" } } } });
@@ -127,10 +147,11 @@ test("V1 referent licensing: only entity spans, salience, the active place or th
 });
 
 // ─── V2 ──────────────────────────────────────────────────────────────────────────────────────────────
-test("V2 surface: chip target wins; NAMED needs a name span; no invented or absent addressees; standalone names read against the DIS", () => {
+test("V2 surface: spoken address is separate from delivery; NAMED needs a name span; no invented or absent addressees; standalone names read against the DIS", () => {
   const withChip = inputFor("Tonya, how are you?", { chip: MALCOLM }).input;
   const v = (input, a) => RF.validateReaderFrame(frameOf(a), input);
-  assert.ok(codes(v(withChip, act(withChip, { facet: "person.wellbeing", name_roles: [{ name: "n1", role: "vocative" }], address: op("NAMED", ["n1"]) }))).includes("contradicts_chip_target"));
+  // Jack's durable 2026-10-05 policy: Convention B. Delivery cannot invalidate spoken Tonya address.
+  assert.deepEqual(codes(v(withChip, act(withChip, { facet: "person.wellbeing", name_roles: [{ name: "n1", role: "vocative" }], address: op("NAMED", ["n1"]) }))), []);
   assert.ok(!codes(v(withChip, act(withChip, { facet: "person.wellbeing", address: op("SECOND_PERSON") }))).includes("contradicts_chip_target"));
   const plain = inputFor("how are you all?").input;
   assert.ok(codes(v(plain, act(plain, { facet: "person.wellbeing", address: op("NAMED") }))).includes("named_without_name_span"));
@@ -503,7 +524,7 @@ test("Characterization authority is pinned; the scenario sessions replay identic
     const rt = [];
     const turns = await C.characterizeSession(spec, kind, { onTurn: (s, requestId, step) => { rt.push({ fixture: spec.id, kind: spec.kind, text: step.text, ...RT.roundTrip(s.service.readerReceipts.get(requestId)) }); } });
     assert.deepEqual(turns, snapshot.sessions.find((x) => x.id === spec.id).turns[kind], `${spec.id}: characterization drift`);
-    assert.deepEqual(rt, rows.get(spec.id), `${spec.id}: round-trip drift`);
+    assert.deepEqual(rt, rows.get(spec.id).map(require("./fixtures/reader-owner-policy-overlay").currentRoundtrip), `${spec.id}: round-trip drift`);
   }
 });
 

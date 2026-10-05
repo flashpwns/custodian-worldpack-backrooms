@@ -23,7 +23,7 @@ test("FULL shadow comparison: every characterized turn matches the pinned shadow
   const reference = JSON.parse(fs.readFileSync(ARTIFACT, "utf8"));
   const rows = await SC.run();
   assert.equal(rows.length, reference.rows.length);
-  rows.forEach((row, i) => assert.deepEqual(row, reference.rows[i], `row ${i}: ${row.fixture} ${row.text}`));
+  rows.forEach((row, i) => assert.deepEqual(row, require("./fixtures/reader-owner-policy-overlay").currentShadow(reference.rows[i]), `row ${i}: ${row.fixture} ${row.text}`));
   const summary = SC.summarize(rows);
   assert.deepEqual(summary.levels, reference.levels);
   assert.equal(summary.unclassified_turns, 0, JSON.stringify(summary.unclassified, null, 1));

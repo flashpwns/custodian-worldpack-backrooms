@@ -395,8 +395,8 @@ function projectObserverState(runValue, observerId, purpose = "presentation") {
         held_equipment: p.available_action_context.held_equipment
       },
       operational: {
-        current_task: member?.task ?? null,
-        task_history: member?.task_history?.slice(-3) ?? []
+        current_task: clone(member?.task ?? null),
+        task_history: clone(member?.task_history?.slice(-3) ?? [])
       },
       knowledge: {
         direct_observations: p.observer_knowledge.direct_observations ?? p.observer_knowledge.unresolved_observations,

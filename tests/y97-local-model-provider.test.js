@@ -141,10 +141,12 @@ test("provider pool and desktop settings select local generation without an API 
     requests.push(JSON.parse(options.body));
     return response({ id:"fixture", model:LOCAL_PROVIDER_SPEC.defaultModel, choices:[{ message:{ role:"assistant", content:JSON.stringify(waitProposal()) } }] });
   };
-  // With no managed appliance wired, the pool falls back to the legacy
-  // settings-driven loopback check so a bare ProviderPool remains testable.
+  // Appliance readiness owns availability; a selected local setting alone is not evidence.
   const settings = { provider:"local" };
-  const pool = new ProviderPool({ settingsGetter:() => settings, localFetch:fetchImpl });
+  const status = { is_ready:false, model:LOCAL_PROVIDER_SPEC.defaultModel, endpoint:LOCAL_PROVIDER_SPEC.defaultEndpoint };
+  const pool = new ProviderPool({ settingsGetter:() => settings, localFetch:fetchImpl, applianceGetter:() => ({ getStatus:() => status }) });
+  assert.deepEqual(pool.getCandidates({ preferredProvider:'local' }), ['offline']);
+  status.is_ready = true;
   assert.deepEqual(pool.getCandidates({ preferredProvider:"local" }), ["local", "offline"]);
   assert.equal(pool.getProviderInstance("local").model, LOCAL_PROVIDER_SPEC.defaultModel);
 

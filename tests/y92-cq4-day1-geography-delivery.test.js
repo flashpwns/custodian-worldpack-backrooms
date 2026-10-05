@@ -224,10 +224,10 @@ test("y92 — CQ4 Day 1 Opener: Delivery Mechanics (Room Entry Alone Does Not Co
     assert.equal(currentDuffle.current_holder, null, "Duffle is unheld");
     assert.equal(cq4Day1Opener.verifyDelivery(entry.run), true, "verifyDelivery is true once duffle is placed unheld at Outpost A");
 
-    // Verify dialogue event from coworker 2 on delivery
+    // The scheduler records delivery as personnel status, never unrouted scripted speech (12f0104).
     const events = presentationBus.inspectEvents(world.id);
-    const deliveryDialogue = events.find((e) => e.type === "dialogue" && /startup materials duffle/i.test(e.text));
-    assert.ok(deliveryDialogue, "Coworker 2 emitted delivery dialogue");
+    assert.ok(events.some(e => e.type === "personnel_status" && /deliver-startup-materials/.test(e.text)), "Delivery status is surfaced");
+    assert.ok(!events.some(e => e.type === "dialogue" && /startup materials duffle/i.test(e.text)), "Delivery does not fabricate unrouted speech");
   } finally {
     fs.rmSync(appDataPath, { recursive: true, force: true });
   }
@@ -297,7 +297,7 @@ test("y92 — CQ4 Day 1 Opener: Surveillance Return, Written Report, and Demo Te
     assert.equal(prematureReturn.error.code, "RETURN_SURVEILLANCE_UNVERIFIED");
 
     // 4. Radio contact at KV31 boundary receives Control Room confirmation
-    const radioContact = service.submitQ4Communication({
+    const radioContact = await service.submitQ4Communication({
       world_id: world.id,
       channel: "standard",
       text: "Control Room, Team Lead Thorne at KV31. Materials delivered to Outpost A. Standing by for return logging.",

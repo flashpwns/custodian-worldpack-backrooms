@@ -111,7 +111,7 @@ async function readTurnAsync({ input, bindings, rendered = null, request_id = nu
   const render = rendered ?? renderReaderPrompt(input, { output: cfg.output === "json" ? "json" : "wire" });
   const grammar = cfg.grammar && cfg.output !== "json" ? W.wireGrammar(input) : null;
   const base = {
-    version: ASYNC_RECEIPT_VERSION, reader_path: ASYNC_READER_VERSION, request_id,
+    version: ASYNC_RECEIPT_VERSION, reader_path: ASYNC_READER_VERSION, validator_version: RF.READER_VALIDATOR_VERSION, request_id,
     input_version: input?.version ?? READER_INPUT_VERSION, input_digest: sha(input ?? null),
     render_version: render.version, render_digest: render.render_digest, system_digest: render.system_digest, user_digest: render.user_digest,
     wire_version: W.WIRE_VERSION, wire_digest: W.WIRE_DIGEST, grammar_digest: grammar ? sha(grammar) : null, frame_version: RF.READER_FRAME_VERSION,

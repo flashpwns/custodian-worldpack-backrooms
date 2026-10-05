@@ -1,5 +1,7 @@
 # Dialogue reader: Phase 1 (shadow-only resolver)
 
+**Current authority (2026-10-05):** this document preserves the historical pass. See [Dialogue closure status](../dialogue/DIALOGUE_CLOSURE_STATUS.md). Jack's recorded `spoken_address_separate` policy now accepts spoken Tonya address independently of Malcolm chip delivery; the chip still controls routing and the shadow records `chip_vs_vocative`. Historical chip-rejection descriptions below are superseded by that owner decision. Reader remains shadow-only.
+
 **Baseline:** `ea12efb` (Phase 0.5) on `opener-human-green-2026-09-19`.
 
 **Scope (owner instruction, 2026-09-29):** SHADOW-ONLY resolver work.

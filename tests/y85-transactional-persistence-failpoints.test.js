@@ -9,7 +9,7 @@ const { createLivingProvider } = require("../tools/ai-living-provider");
 const bootstrap = require("../tools/run-bootstrap");
 const history = require("../tools/world-history");
 
-function createTestContext(t, { phase = "FIELD_OPERATION" } = {}) {
+async function createTestContext(t, { phase = "FIELD_OPERATION" } = {}) {
   const appDataPath = fs.mkdtempSync(path.join(os.tmpdir(), "yb-persistence-failpoints-"));
   t.after(() => fs.rmSync(appDataPath, { recursive: true, force: true }));
   const service = new DesktopService({ appDataPath, livingTurnProvider: createLivingProvider(), defaultQ4Scenario: "reference-expedition" });
@@ -33,7 +33,7 @@ function createTestContext(t, { phase = "FIELD_OPERATION" } = {}) {
   assert.equal(service.submitAction({ ...input, action: "PROCEED" }).ok, true);
   assert.equal(service.submitAction({ ...input, action: "APPROACH" }).ok, true);
   assert.equal(service.submitAction({ ...input, action: "READY" }).ok, true);
-  assert.equal(service.submitQ4Communication({ world_id: world.id, channel: "standard", text: "Standard, four accounted for. Radio check." }).ok, true);
+  assert.equal((await service.submitQ4Communication({ world_id: world.id, channel: "standard", text: "Standard, four accounted for. Radio check." })).ok, true);
   assert.equal(service.submitAction({ ...input, action: "CROSS" }).ok, true);
 
   return { service, appDataPath, input, worldId: world.id };
@@ -55,7 +55,7 @@ function verifyRollback({ service, worldId, mode, beforeRun, beforeWorld, diskSe
 }
 
 test("Failpoint 1: Movement mutation rolls back on persistence failure", async t => {
-  const ctx = createTestContext(t, { phase: "FIELD_OPERATION" });
+  const ctx = await createTestContext(t, { phase: "FIELD_OPERATION" });
   const { service, worldId, input } = ctx;
   const entry = service.session(worldId, input.mode);
 
@@ -85,7 +85,7 @@ test("Failpoint 1: Movement mutation rolls back on persistence failure", async t
 });
 
 test("Failpoint 2: Equipment custody and loadout changes roll back on persistence failure", async t => {
-  const ctx = createTestContext(t, { phase: "FIELD_OPERATION" });
+  const ctx = await createTestContext(t, { phase: "FIELD_OPERATION" });
   const { service, worldId, input } = ctx;
   const entry = service.session(worldId, input.mode);
 
@@ -115,7 +115,7 @@ test("Failpoint 2: Equipment custody and loadout changes roll back on persistenc
 });
 
 test("Failpoint 3: Tasks and orders roll back on persistence failure", async t => {
-  const ctx = createTestContext(t, { phase: "FIELD_OPERATION" });
+  const ctx = await createTestContext(t, { phase: "FIELD_OPERATION" });
   const { service, worldId, input } = ctx;
   const entry = service.session(worldId, input.mode);
 
@@ -144,7 +144,7 @@ test("Failpoint 3: Tasks and orders roll back on persistence failure", async t =
 });
 
 test("Failpoint 4: Knowledge and observation records roll back on persistence failure", async t => {
-  const ctx = createTestContext(t, { phase: "FIELD_OPERATION" });
+  const ctx = await createTestContext(t, { phase: "FIELD_OPERATION" });
   const { service, worldId, input } = ctx;
   const entry = service.session(worldId, input.mode);
 
@@ -171,7 +171,7 @@ test("Failpoint 4: Knowledge and observation records roll back on persistence fa
 });
 
 test("Failpoint 5: Authored beat consumption and phase advancement roll back on persistence failure", async t => {
-  const ctx = createTestContext(t, { phase: "BRIEFING" });
+  const ctx = await createTestContext(t, { phase: "BRIEFING" });
   const { service, worldId, input } = ctx;
   const entry = service.session(worldId, input.mode);
 
@@ -202,7 +202,7 @@ test("Failpoint 5: Authored beat consumption and phase advancement roll back on 
 });
 
 test("Failpoint 6: Evidence and written report submission roll back on persistence failure", async t => {
-  const ctx = createTestContext(t, { phase: "FIELD_OPERATION" });
+  const ctx = await createTestContext(t, { phase: "FIELD_OPERATION" });
   const { service, worldId, input } = ctx;
 
   // Move into return and report phase
@@ -237,7 +237,7 @@ test("Failpoint 6: Evidence and written report submission roll back on persisten
 });
 
 test("Failpoint 7: Clock and operational interval advancement roll back on persistence failure", async t => {
-  const ctx = createTestContext(t, { phase: "FIELD_OPERATION" });
+  const ctx = await createTestContext(t, { phase: "FIELD_OPERATION" });
   const { service, worldId, input } = ctx;
   const entry = service.session(worldId, input.mode);
 
@@ -266,7 +266,7 @@ test("Failpoint 7: Clock and operational interval advancement roll back on persi
 });
 
 test("Failpoint 8: Ledger and historical events roll back on persistence failure", async t => {
-  const ctx = createTestContext(t, { phase: "FIELD_OPERATION" });
+  const ctx = await createTestContext(t, { phase: "FIELD_OPERATION" });
   const { service, worldId, input } = ctx;
   const entry = service.session(worldId, input.mode);
 
@@ -282,7 +282,7 @@ test("Failpoint 8: Ledger and historical events roll back on persistence failure
   };
 
   // Submit standard communication that produces world history events
-  const commRes = service.submitQ4Communication({ world_id: worldId, channel: "standard", text: "Standard, reporting current status." });
+  const commRes = await service.submitQ4Communication({ world_id: worldId, channel: "standard", text: "Standard, reporting current status." });
   assert.equal(commRes.ok, false);
   assert.equal(commRes.error?.code, "PERSISTENCE_COMMIT_FAILED");
   assert.equal(commRes.error?.message, "The action could not be saved and was not committed. Check the operation record storage before retrying.");
@@ -291,13 +291,13 @@ test("Failpoint 8: Ledger and historical events roll back on persistence failure
   assert.equal(service.getWorld(worldId).events?.length ?? 0, initialEventCount, "Event count must not grow on failed persist");
 
   service.commitPersistencePair = originalCommit;
-  const retryComm = service.submitQ4Communication({ world_id: worldId, channel: "standard", text: "Standard, reporting current status." });
+  const retryComm = await service.submitQ4Communication({ world_id: worldId, channel: "standard", text: "Standard, reporting current status." });
   assert.equal(retryComm.ok, true);
   assert.equal((service.getWorld(worldId).events?.length ?? 0) > initialEventCount, true, "Event count grows on successful persist");
 });
 
 test("Failpoint 9: Natural language action mutation rolls back on persistence failure and does not misreport PROVIDER_UNAVAILABLE", async t => {
-  const ctx = createTestContext(t, { phase: "FIELD_OPERATION" });
+  const ctx = await createTestContext(t, { phase: "FIELD_OPERATION" });
   const { service, worldId, input } = ctx;
   const entry = service.session(worldId, input.mode);
 
