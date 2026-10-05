@@ -198,7 +198,7 @@ test("D/E — a quoted phrase resolves to the speaker's prior line and to the au
     assert.equal(intro.address.form, "trailing_vocative");
     assert.deepEqual(intro.owners, [state.ids[0]]);
     const line = intro.spoken[0].text;
-    const assignment = fact(intro.plan(state.ids[0]), "current_assignment");
+    const assignment = fact(intro.plan(state.ids[0]), "current_assignment") ?? intro.plan(state.ids[0]).optional_facts.find(f => f.key === "current_assignment")?.value;
     assert.ok(assignment && line.toLowerCase().includes(assignment.toLowerCase()), "the fallback worded the assignment");
     // Quote a sub-span of HER wording (the last three words of the assignment phrase).
     const span = assignment.split(/\s+/).slice(-3).join(" ");

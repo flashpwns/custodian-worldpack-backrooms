@@ -56,7 +56,9 @@ const SARCASM_PATTERNS = [
 
 // A greeting may carry a trailing group/plain vocative ("Goodmorning, y'all").
 const GREETING_VOCATIVE = "(?:y'?all|you all|everyone|everybody|all|guys|gang|folks|team|crew|there|friends)";
-const GREETING_HEAD = "(?:hey|hi|hello|hiya|good ?(?:morning|afternoon|evening|day)|morning|howdy|yo|greetings)";
+const GREETING_ATOM = "(?:hey|hi|hello|hiya|good ?(?:morning|afternoon|evening|day)|morning|howdy|yo|greetings)";
+const GREETING_HEAD = `${GREETING_ATOM}(?:\\s+(?:and\\s+)?${GREETING_ATOM})*`;
+const MEETING_GREETING = /^(?:(?:it['’]?s|it is)\s+)?(?:nice|good|great|glad|pleased|a pleasure)\s+(?:to\s+)?(?:meet|meeting)\s+you(?:\s+(?:all|both|two|three|guys|folks))?[.!\s]*$/i;
 const GREETING_PATTERNS = new RegExp(`^${GREETING_HEAD}(?:[\\s,!.-]+${GREETING_VOCATIVE})?[\\s!.,?]*$`, "i");
 
 const INTRODUCTION_PATTERNS = /\b(?:I'?m|My name is|Call me|I am|You can call me)\s+(?:[A-Z][A-Za-z'-]*|your (?:new )?(?:expedition lead|lead|team lead|camera operator|teammate|coworker|colleague)\b|the new (?:guy|girl|one|hire|person|camera operator|expedition lead|lead)\b|new here\b)/;
@@ -108,10 +110,12 @@ const REPETITION_REQUEST_PATTERNS = /\b(?:can|could|would) you (?:repeat|say)(?:
 
 // ─── Frame-level language cues (single owner of linguistic recognition) ─────
 // dialogue-discourse consumes these; it defines no patterns of its own.
+// Personal names of the addressed people; never a name for an item or a third person.
+const ADDRESSEE_NAME_QUESTION = /(?:^(?:(?:so|well|and|hey|hi|hello)[,!]?\s+)?what(?:['’]s|['’]re|\s+is|\s+are)\s+(?:your|all your|everyone(?:['’]?s|\s+is)|everybody(?:['’]?s|\s+is)|you all['’]s|y['’]?all['’]s)\s+names?(?:\s+(?:here|at (?:the )?table))?[?!.,\s]*$|\bwhat (?:should|can|do) (?:i|we) call (?:you|you all|everyone|everybody)[?!.,\s]*$|^(?:who (?:is|are) (?:everyone|everybody|you(?: all| guys| folks)?))[?!.,\s]*$|\b(?:didn['’]?t|did not) (?:catch|hear|get) your name[?!.,\s]*$)/i;
 const INVITE_SELF_DESCRIPTION_PATTERN = /\b(?:tell|telling|share|sharing|say|talk|describe)\b[^.?!]*\b(?:about\s+)?(?:yourself|yourselves)\b|\bintroduce (?:yourself|yourselves)\b|\bwho are you (?:all|guys|folks)\b/i;
 const ITEM_OWNERSHIP_PATTERN = /\b(?:who|which of you)\b[^.?!]*\b(?:assigned|has|have|had|holding|holds|carrying|carries|responsible for|got|took|issued)\b|\bwho(?:'s| is| was) (?:assigned|carrying|holding|responsible)\b/i;
 const ITEM_NOUN_PATTERN = /\b(?:kit|gear|equipment|radio|camera|light|duffle|spectrometer|instrument|recorder|device|record|carry|carrying|issued|assigned)\b/i;
-const ROLE_OR_ASSIGNMENT_PATTERN = /\bwhat(?:'s| is| are)? (?:your|their) (?:role|job|assignment|task|duty|duties)\b|\bwhat do you (?:do|handle)\b|\bwhat are you (?:doing|working on|assigned to|responsible for)\b|\bwhat(?:'s| is) (?:your )?(?:job|role) here\b/i;
+const ROLE_OR_ASSIGNMENT_PATTERN = /\bwhat(?:'s| is| are)? (?:your|their) (?:roles?|jobs?|assignments?|tasks?|duty|duties)\b|\bwhat do you (?:do|handle)\b|\bwhat are you (?:doing|working on|assigned to|responsible for)\b|\bwhat(?:'s| is) (?:your )?(?:job|role) here\b/i;
 const CLOSE_TOPIC_PATTERN = /^(?:never ?mind|forget (?:it|that)|nothing|it'?s nothing|drop it|that'?s all|that'?s it|no worries|don'?t worry about it)[\s.!]*$/i;
 const CHALLENGE_PATTERN = /\b(?:are you sure|that'?s (?:wrong|not right)|you'?re wrong|i don'?t (?:buy|believe)|prove it|doesn'?t (?:add up|make sense))\b/i;
 // A check-in asks about the addressee's own condition ("How are you holding up?", "You okay?",
@@ -198,6 +202,8 @@ const TEMPORAL_ANCHOR_PATTERNS = Object.freeze({
 });
 // A question about where an item is or who holds it ("Is the camera here?", "Have you seen the radio?").
 const CUSTODY_PREDICATE_PATTERN = /\b(?:where|here|with (?:you|me|him|her|them)|who(?:'s| is| has)?|has|have|got|carrying|holding|seen)\b/i;
+// Personal small talk is not a request to recite today's operational role.
+const PERSONAL_PREFERENCE_PATTERN = /\b(?:what do you (?:like|enjoy)(?: doing)?|what are you into|(?:your|any) hobbies|what do you do (?:outside (?:of )?work|in your (?:spare|free) time|when you(?:'re| are) (?:not working|off (?:work|duty))))\b/i;
 const BACKGROUND_PATTERN = /\b(?:your (?:background|training|education|trade)|where (?:are|were) you from|what did you (?:study|do) before|where did you (?:train|study)|how did you (?:get into|end up in) (?:this|the field|surveying))\b/i;
 const REQUEST_CUE_PATTERN = /\b(?:can|could|would|will) you\b|\bplease\b|\bi need\b|\blet me\b/i;
 const HANDOFF_REQUEST_PATTERN = /\b(?:hand|pass|give|bring|transfer)\b/i;
@@ -211,7 +217,7 @@ const HEARD_CONFIRMATION_PATTERN = /\b(?:did|do|does|can|could)\s+(?:anyone|anyb
 // against canonical entities. None of them names an answer. Anything they cannot type confidently is
 // left to the bounded advisory interpreter (Tier 2) or to ordinary factual handling.
 const LEAD = "^(?:so,?\\s+|and\\s+|but\\s+|well,?\\s*\\.*\\s*|um+,?\\s+|uh+,?\\s+|ok(?:ay)?,?\\s+|alright,?\\s+|hey,?\\s+|ah\\.?\\s+|then,?\\s+)*";
-const JOB_NOUN = "(?:job|role|assignment|task|duty|duties|position|responsibilit(?:y|ies)|work|function|part in this|part)";
+const JOB_NOUN = "(?:jobs?|roles?|assignments?|tasks?|duty|duties|positions?|responsibilit(?:y|ies)|work|function|part in this|part)";
 const POSSESSOR = "(?:your|his|her|their|my|[A-Za-z][a-z]+'s)";
 const SEMANTIC_INTENT_PATTERNS = Object.freeze({
   // "What is your (specific) job?", "What do you do (here)?", "What are you supposed to be doing?"
@@ -386,6 +392,7 @@ const LANGUAGE_PATTERNS = Object.freeze({
   briefing_person_description: BRIEFING_PERSON_DESCRIPTION,
   person_description: PERSON_DESCRIPTION,
   who_is_name: WHO_IS_NAME,
+  conversation_recap: /^(?:wait[, ]+|sorry[, ]+|remind me[, ]+)?(?:what (?:were|have) we (?:been )?talking about|what were we discussing|where were we(?: in (?:the|our) conversation)?)[?!. ]*$/i,
   response_event: RESPONSE_EVENT_PATTERN,
   // Third-person pronouns that point at a salient person ("What's his job?", "Why is he briefing us?").
   person_pronoun: /\b(?:he|him|his|she|her|hers)\b/i,
@@ -415,6 +422,9 @@ const LANGUAGE_PATTERNS = Object.freeze({
   event_reference: EVENT_REFERENCE_PATTERN,
   slot_answers: SLOT_ANSWER_PATTERNS,
   invite_self_description: INVITE_SELF_DESCRIPTION_PATTERN,
+  addressee_name_question: ADDRESSEE_NAME_QUESTION,
+  meeting_greeting: MEETING_GREETING,
+  team_roster_question: /\bwho\s+(?:am i|are we|will i be|will we be)\s+(?:working|going|travell?ing|heading|assigned)\s+with\b/i,
   repetition_request: REPETITION_REQUEST_PATTERNS,
   bare_reaction: BARE_REACTION_PATTERNS,
   ambiguous_reference: null, // assigned below (defined after this block)
@@ -425,6 +435,7 @@ const LANGUAGE_PATTERNS = Object.freeze({
   challenge: CHALLENGE_PATTERN,
   check_in: CHECK_IN_PATTERN,
   background: BACKGROUND_PATTERN,
+  personal_preference: PERSONAL_PREFERENCE_PATTERN,
   request_cue: REQUEST_CUE_PATTERN,
   handoff_request: HANDOFF_REQUEST_PATTERN,
   heard_confirmation: HEARD_CONFIRMATION_PATTERN,
@@ -692,7 +703,7 @@ function interpretUtterance(text, { isGroup = false } = {}) {
   }
 
   // Greeting (standalone)
-  if (GREETING_PATTERNS.test(raw)) {
+  if (MEETING_GREETING.test(raw) || GREETING_PATTERNS.test(raw)) {
     return make("greeting", "social", "friendly", false, 0.97);
   }
 
@@ -768,6 +779,12 @@ function spokesperson(pool = []) {
 }
 function resolveResponseOwners({ recipient_type, interpretation, player_text, candidates = [], frame = null } = {}) {
   const eligible = candidates.filter((candidate) => candidate?.response_eligible && candidate?.id);
+  // Answering a licensed personal check-in continues with the actual asker,
+  // even when the transport was untargeted LOCAL. It is not an arbitrary room remark.
+  if (frame?.discourse_function === "make_statement" && frame?.turn?.speech_act === "answer" && frame.turn.answers_predicate === "person.wellbeing") {
+    const asker = eligible.find(c => (frame.turn.addressee_ids ?? []).includes(c.id));
+    return asker ? [asker.id] : [];
+  }
   if (recipient_type === "direct") return eligible.slice(0, 1).map((candidate) => candidate.id);
   if (eligible.length === 0) return [];
   // ED-30: registry predicates and attention calls are owned by their response cardinality (each person

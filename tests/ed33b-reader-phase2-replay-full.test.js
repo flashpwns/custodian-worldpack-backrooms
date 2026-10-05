@@ -1,7 +1,7 @@
 "use strict";
 
 // Reader Phase 2 -- FULL development-corpus replay (long-world tier): every characterized fixture under every wording
-// provider it uses is captured through the real service; then
+// provider it uses is captured through the frozen-source real service; then
 //   - the compact wire round-trips every legacy frame exactly (G1 codec, beyond the gold frames of ed33a);
 //   - every model-facing render is pure, carries no canonical id and matches the pinned development manifest (the
 //     frozen dev inputs the teacher / E4B arms and labelers will see);
@@ -30,7 +30,7 @@ test("Full dev-corpus replay: wire round trip, render safety, pinned manifest (d
   assert.equal(sha256(MANIFEST), MANIFEST_SHA256, "the development manifest changed without a governance pin update");
   assert.equal(sha256(SAMPLE), SAMPLE_SHA256, "the preregistered teacher sample changed without a governance pin update");
   const manifest = JSON.parse(fs.readFileSync(MANIFEST, "utf8"));
-  const items = await RP.captureCorpus();
+  const items = await require("./fixtures/reader-frozen-source").captureFrozenCorpus();
   assert.equal(items.length, manifest.items.length, "the same replayed turns");
   const pinned = new Map(manifest.items.map((m) => [m.id, m]));
   let wire = 0;
@@ -84,4 +84,21 @@ test("Full dev-corpus replay: wire round trip, render safety, pinned manifest (d
   assert.equal(summary.resolved_outcome.pct, 100, JSON.stringify(summary.status));
   assert.equal(summary.invalid_output, 0);
   for (const [field, v] of Object.entries(summary.routing_fields)) assert.equal(v.pct, 100, field);
+});
+
+
+test("CURRENT production replay: every live render matches the separately sealed engineering manifest, with exact codec and observer-safe pure rendering", { timeout: 3600000 }, async () => {
+  const edition = require("./fixtures/reader-natural-conversation-edition").loadEdition();
+  const items = await RP.captureCorpus();
+  assert.deepEqual(items.map(i => { const frozen=RP.freezeItem(i); delete frozen.render_user; return frozen; }), edition.live_render_items);
+  for (const item of items) {
+    const render = R.renderReaderPrompt(item.input);
+    assert.deepEqual(render,R.renderReaderPrompt(structuredClone(item.input)),item.id);
+    for (const id of [...Object.values(item.bindings.people),...Object.values(item.bindings.requests),...Object.values(item.bindings.referents)].filter(x => typeof x === "string" && x.length > 8 && /[-:]/.test(x))) assert.ok(!render.user.includes(id),`${item.id}: canonical id leaked`);
+    if (item.l0.frame) {
+      const back = W.decodeWire(W.encodeWire(item.l0.frame,item.input),item.input);
+      assert.ok(back.ok,item.id);
+      assert.deepEqual(back.frame,W.canonicalFrame(item.l0.frame),item.id);
+    }
+  }
 });

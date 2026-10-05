@@ -1,7 +1,7 @@
 # Yellow Beast Implementation State
 ## Current dialogue closure authority — 2026-10-05
 
-See [Dialogue closure status](dialogue/DIALOGUE_CLOSURE_STATUS.md) for the sole current readiness statement and [Jack’s final Electron acceptance](dialogue/FINAL_HUMAN_ACCEPTANCE.md) for the launch command and seven-step run. The earlier entries below preserve historical evidence; their label counts, open policy statements and verification failures describe their recorded dates, not the current checkout. Reader remains shadow-only. Jack’s final human acceptance has not been performed.
+See [Dialogue closure status](dialogue/DIALOGUE_CLOSURE_STATUS.md) for the sole current readiness statement and [Jack’s final Electron acceptance](dialogue/FINAL_HUMAN_ACCEPTANCE.md) for the launch command and seven-step run. The earlier entries below preserve historical evidence; their label counts, open policy statements and verification failures describe their recorded dates, not the current checkout. Reader remains shadow-only. Jack’s human Electron acceptance FAILED the Assembly Table conversation on 2026-10-05. Natural conversation, correction and persistence repairs are in progress; readiness is withdrawn pending verified repair and Jack’s retest.
 
 
 ## Reader Phase 2, Easy human labeling UI (presentation only, shadow-only, no egress) — 2026-10-01

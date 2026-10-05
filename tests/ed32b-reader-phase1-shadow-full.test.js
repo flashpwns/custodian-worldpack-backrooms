@@ -19,13 +19,15 @@ const { CAUSES } = require("../tools/dialogue-shadow-causes");
 
 const ARTIFACT = path.join(__dirname, "..", "docs", "acceptance", "reader-phase1", "shadow-diff.json");
 
-test("FULL shadow comparison: every characterized turn matches the pinned shadow-diff artifact; every mismatch has a known cause", { timeout: 1800000 }, async () => {
+test("FULL shadow comparison: every turn matches the original artifact plus exact engineering amendments; every mismatch has a known cause", { timeout: 1800000 }, async () => {
   const reference = JSON.parse(fs.readFileSync(ARTIFACT, "utf8"));
   const rows = await SC.run();
   assert.equal(rows.length, reference.rows.length);
-  rows.forEach((row, i) => assert.deepEqual(row, require("./fixtures/reader-owner-policy-overlay").currentShadow(reference.rows[i]), `row ${i}: ${row.fixture} ${row.text}`));
+  const edition = require("./fixtures/reader-natural-conversation-edition");
+  const expected = edition.currentRows(reference.rows,"shadow");
+  rows.forEach((row,i)=>assert.deepEqual(row,expected[i],`row ${i}: ${row.fixture} ${row.text}`));
   const summary = SC.summarize(rows);
-  assert.deepEqual(summary.levels, reference.levels);
+  assert.deepEqual(summary.levels, edition.loadEdition().shadow_levels);
   assert.equal(summary.unclassified_turns, 0, JSON.stringify(summary.unclassified, null, 1));
   for (const reason of Object.keys(summary.mismatch_reasons)) assert.ok(CAUSES[reason], reason);
 });

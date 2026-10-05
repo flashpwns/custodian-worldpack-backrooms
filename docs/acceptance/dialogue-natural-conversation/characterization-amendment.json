@@ -1,0 +1,807 @@
+{
+  "version": "yellow-beast-natural-conversation-amendment@v1",
+  "authority": "Machine-produced deterministic engineering assertions only; no human observation, Reader gold, Teacher Ceiling amendment or cutover authority.",
+  "changes": [
+    {
+      "scenario": "scenario/ed30e-remarks",
+      "provider": "garbage",
+      "turn": 4,
+      "text": "Malcolm, this room gives me the creeps.",
+      "fields": [
+        "effective",
+        "tier2"
+      ],
+      "reason": "Uncertain force must visit advisory; a garbage provider fails closed without changing the remark or silence policy.",
+      "historical_turn_sha256": "91099283bc1a29cc5fb9b2bf7b0e485c4ae2a2a9d9705645fb9897dcd8b5d87e",
+      "expected_fields": {
+        "effective": {
+          "primary": {
+            "speech_act": "statement",
+            "question_form": null,
+            "relation": "new",
+            "relation_target": null,
+            "reissue_of": null,
+            "reopen": false,
+            "predicate": null,
+            "facet_source": null,
+            "fn_hint": null,
+            "request_text": "this room gives me the creeps.",
+            "addressee": {
+              "kind": "explicit",
+              "ids": [
+                "Malcolm"
+              ],
+              "quantifier": null,
+              "source": "vocative"
+            },
+            "cardinality": "none",
+            "temporal_scope": null,
+            "polarity": "positive",
+            "args": {},
+            "repair": null,
+            "clarify": null,
+            "overrides": [],
+            "advisory_filled": [],
+            "activity": null,
+            "alternatives": null,
+            "clause_speech_act": "statement"
+          },
+          "acts": [
+            {
+              "speech_act": "statement",
+              "question_form": null,
+              "relation": "new",
+              "relation_target": null,
+              "reissue_of": null,
+              "reopen": false,
+              "predicate": null,
+              "facet_source": null,
+              "fn_hint": null,
+              "request_text": "this room gives me the creeps.",
+              "addressee": {
+                "kind": "explicit",
+                "ids": [
+                  "Malcolm"
+                ],
+                "quantifier": null,
+                "source": "vocative"
+              },
+              "cardinality": "none",
+              "temporal_scope": null,
+              "polarity": "positive",
+              "args": {},
+              "repair": null,
+              "clarify": null,
+              "overrides": [],
+              "advisory_filled": [],
+              "activity": null,
+              "alternatives": null,
+              "clause_speech_act": "statement"
+            }
+          ],
+          "primary_index": 0,
+          "social": [],
+          "completeness": {
+            "complete": true,
+            "missing": []
+          },
+          "advisory": {
+            "applied": false,
+            "accepted": false,
+            "reason": "provider_error"
+          }
+        },
+        "tier2": {
+          "applied": false,
+          "accepted": false,
+          "reason": "provider_error"
+        }
+      }
+    },
+    {
+      "scenario": "scenario/ed30d-j16",
+      "provider": "garbage",
+      "turn": 6,
+      "text": "Tonya, tell me about yourself",
+      "fields": [
+        "plans"
+      ],
+      "reason": "Open introductions retain name and role, but move task into optional context and expose stored personal details; wording is not a compulsory roster recital.",
+      "historical_turn_sha256": "e2cc98b3286608499a49acc78aa656bb13553fc306d2255e9efdb7ea145d73c3",
+      "expected_fields": {
+        "plans": [
+          {
+            "who": "Tonya",
+            "plan": {
+              "fn": "invite_self_description",
+              "required": [
+                "name",
+                "role"
+              ],
+              "optional": [
+                "current_assignment",
+                "held_equipment",
+                "identity_fact",
+                "predicate_answer",
+                "personal_preference"
+              ],
+              "clarify": false,
+              "asks_player": false,
+              "expected_slot": null,
+              "answer": null
+            }
+          }
+        ]
+      }
+    },
+    {
+      "scenario": "scenario/ed30d-j16",
+      "provider": "garbage",
+      "turn": 7,
+      "text": "Malcolm, your turn",
+      "fields": [
+        "plans"
+      ],
+      "reason": "Open introductions retain name and role, but move task into optional context and expose stored personal details; wording is not a compulsory roster recital.",
+      "historical_turn_sha256": "13b69831a5570349fab824dd695c3e7f13157b4227aa2b62f6c42aaa46d4ae40",
+      "expected_fields": {
+        "plans": [
+          {
+            "who": "Malcolm",
+            "plan": {
+              "fn": "invite_self_description",
+              "required": [
+                "name",
+                "role"
+              ],
+              "optional": [
+                "current_assignment",
+                "held_equipment",
+                "identity_fact",
+                "predicate_answer",
+                "personal_preference"
+              ],
+              "clarify": false,
+              "asks_player": false,
+              "expected_slot": null,
+              "answer": null
+            }
+          }
+        ]
+      }
+    },
+    {
+      "scenario": "scenario/rounds-and-repairs",
+      "provider": "garbage",
+      "turn": 0,
+      "text": "Tonya, tell me about yourself",
+      "fields": [
+        "plans"
+      ],
+      "reason": "Open introductions retain name and role, but move task into optional context and expose stored personal details; wording is not a compulsory roster recital.",
+      "historical_turn_sha256": "47e5d1e4a7af7db81c1bb6cb2caa69c4d0faedbd1df2089930ba7628bd45bb32",
+      "expected_fields": {
+        "plans": [
+          {
+            "who": "Tonya",
+            "plan": {
+              "fn": "invite_self_description",
+              "required": [
+                "name",
+                "role"
+              ],
+              "optional": [
+                "current_assignment",
+                "held_equipment",
+                "identity_fact",
+                "predicate_answer",
+                "personal_preference"
+              ],
+              "clarify": false,
+              "asks_player": false,
+              "expected_slot": null,
+              "answer": null
+            }
+          }
+        ]
+      }
+    },
+    {
+      "scenario": "scenario/rounds-and-repairs",
+      "provider": "garbage",
+      "turn": 1,
+      "text": "Giselle, you?",
+      "fields": [
+        "plans"
+      ],
+      "reason": "Open introductions retain name and role, but move task into optional context and expose stored personal details; wording is not a compulsory roster recital.",
+      "historical_turn_sha256": "383e7fc074c1171422a3c8612bd328b2ebc172e5ed25636126806e21ed7ac739",
+      "expected_fields": {
+        "plans": [
+          {
+            "who": "Giselle",
+            "plan": {
+              "fn": "invite_self_description",
+              "required": [
+                "name",
+                "role"
+              ],
+              "optional": [
+                "current_assignment",
+                "held_equipment",
+                "identity_fact",
+                "predicate_answer",
+                "personal_preference"
+              ],
+              "clarify": false,
+              "asks_player": false,
+              "expected_slot": null,
+              "answer": null
+            }
+          }
+        ]
+      }
+    },
+    {
+      "scenario": "scenario/chip-target",
+      "provider": "garbage",
+      "turn": 0,
+      "text": "how are you?",
+      "fields": [
+        "ledger",
+        "pending_inbound",
+        "plans",
+        "lines_digest",
+        "semantic_digest",
+        "persistence_digest"
+      ],
+      "reason": "The code-owned last check-in speaker may return a wellbeing question; its persisted inbound request routes the following answer or counter-question and changes downstream persistence digests.",
+      "historical_turn_sha256": "dea38c0d71ff755a02f3602300d469994e13831461e32dce4de674e2614f2226",
+      "expected_fields": {
+        "ledger": {
+          "opened": [
+            {
+              "request_id": "r0",
+              "predicate": "person.wellbeing",
+              "fn": "check_in",
+              "state": "SATISFIED",
+              "targets": [
+                "Malcolm"
+              ],
+              "answered_by": [
+                "Malcolm"
+              ],
+              "slots": {
+                "yb-personnel-7cfe2bdb838f413e636d": "SATISFIED"
+              },
+              "cardinality": "each_self",
+              "temporal": "now",
+              "question_form": "wh",
+              "relation": "new",
+              "reissue_of": null,
+              "args": {}
+            }
+          ],
+          "changed": [],
+          "inbound_added": [
+            {
+              "event_id": "e6",
+              "from": "Malcolm",
+              "kind": "question",
+              "predicate": "person.wellbeing",
+              "answer_shape": "free_short_answer",
+              "options": []
+            }
+          ],
+          "anchors_added": [
+            {
+              "event_id": "e6",
+              "speaker": "Malcolm",
+              "spans": [
+                {
+                  "text": "I'm fine.",
+                  "request": "r0",
+                  "predicate": "person.wellbeing"
+                },
+                {
+                  "text": "How about you?",
+                  "request": "r0",
+                  "predicate": "person.wellbeing"
+                }
+              ]
+            }
+          ],
+          "learning": 3,
+          "activities": [
+            {
+              "kind": "GROUP_CHECK_IN",
+              "state": "active",
+              "completed": [
+                "Malcolm"
+              ],
+              "pending": []
+            }
+          ]
+        },
+        "pending_inbound": {
+          "from": "Malcolm",
+          "kind": "question",
+          "answer_shape": "free_short_answer",
+          "options": []
+        },
+        "plans": [
+          {
+            "who": "Malcolm",
+            "plan": {
+              "fn": "check_in",
+              "required": [
+                "self_state",
+                "self_state_answer",
+                "question_to_player"
+              ],
+              "optional": [],
+              "clarify": false,
+              "asks_player": true,
+              "expected_slot": null,
+              "answer": null
+            }
+          }
+        ],
+        "lines_digest": "71553833cba42f9a",
+        "semantic_digest": "93b6b3f77b64fc88",
+        "persistence_digest": "11e7919dfbb84f9e"
+      }
+    },
+    {
+      "scenario": "scenario/chip-target",
+      "provider": "garbage",
+      "turn": 1,
+      "text": "what's in the duffle?",
+      "fields": [
+        "effective",
+        "relation",
+        "args",
+        "ledger",
+        "planner_input",
+        "semantic_digest",
+        "persistence_digest"
+      ],
+      "reason": "The code-owned last check-in speaker may return a wellbeing question; its persisted inbound request routes the following answer or counter-question and changes downstream persistence digests.",
+      "historical_turn_sha256": "f2d14dcb3175fc73cd30dfa6e2f5407d65b2c0406eaaa6ba68434e5b37e984c2",
+      "expected_fields": {
+        "effective": {
+          "primary": {
+            "speech_act": "question",
+            "question_form": "wh",
+            "relation": "continuation",
+            "relation_target": null,
+            "reissue_of": null,
+            "reopen": false,
+            "predicate": "item.contents",
+            "facet_source": "item_role",
+            "fn_hint": null,
+            "request_text": "what's in the duffle?",
+            "addressee": {
+              "kind": "explicit",
+              "ids": [
+                "Tonya"
+              ],
+              "quantifier": null,
+              "source": "chip"
+            },
+            "cardinality": "one_spokesperson",
+            "temporal_scope": null,
+            "polarity": "positive",
+            "args": {
+              "reply_kind": "counter_question",
+              "item_id": "q4-startup-materials-duffle-01"
+            },
+            "repair": null,
+            "clarify": null,
+            "overrides": [],
+            "advisory_filled": [],
+            "activity": null,
+            "alternatives": null,
+            "clause_speech_act": "question"
+          },
+          "acts": [
+            {
+              "speech_act": "question",
+              "question_form": "wh",
+              "relation": "continuation",
+              "relation_target": null,
+              "reissue_of": null,
+              "reopen": false,
+              "predicate": "item.contents",
+              "facet_source": "item_role",
+              "fn_hint": null,
+              "request_text": "what's in the duffle?",
+              "addressee": {
+                "kind": "explicit",
+                "ids": [
+                  "Tonya"
+                ],
+                "quantifier": null,
+                "source": "chip"
+              },
+              "cardinality": "one_spokesperson",
+              "temporal_scope": null,
+              "polarity": "positive",
+              "args": {
+                "reply_kind": "counter_question",
+                "item_id": "q4-startup-materials-duffle-01"
+              },
+              "repair": null,
+              "clarify": null,
+              "overrides": [],
+              "advisory_filled": [],
+              "activity": null,
+              "alternatives": null,
+              "clause_speech_act": "question"
+            }
+          ],
+          "primary_index": 0,
+          "social": [],
+          "completeness": {
+            "complete": true,
+            "missing": []
+          },
+          "advisory": null
+        },
+        "relation": {
+          "kind": "continuation",
+          "target": null,
+          "reissue_of": null,
+          "reopen": false
+        },
+        "args": {
+          "reply_kind": "counter_question",
+          "item_id": "q4-startup-materials-duffle-01"
+        },
+        "ledger": {
+          "opened": [
+            {
+              "request_id": "r1",
+              "predicate": "item.contents",
+              "fn": "ask_assignment_purpose",
+              "state": "SATISFIED",
+              "targets": [
+                "Tonya"
+              ],
+              "answered_by": [
+                "Tonya"
+              ],
+              "slots": {
+                "shared": "SATISFIED"
+              },
+              "cardinality": "one_spokesperson",
+              "temporal": null,
+              "question_form": "wh",
+              "relation": "continuation",
+              "reissue_of": null,
+              "args": {
+                "reply_kind": "counter_question",
+                "item_id": "q4-startup-materials-duffle-01"
+              }
+            }
+          ],
+          "changed": [],
+          "inbound_added": [],
+          "anchors_added": [
+            {
+              "event_id": "e8",
+              "speaker": "Tonya",
+              "spans": [
+                {
+                  "text": "The startup materials are cargo we're delivering to Outpost A, Bermuda branch.",
+                  "request": "r1",
+                  "predicate": "item.contents"
+                },
+                {
+                  "text": "Malcolm's the one delivering them.",
+                  "request": "r1",
+                  "predicate": "item.contents"
+                },
+                {
+                  "text": "What's actually in them, nobody's told me.",
+                  "request": "r1",
+                  "predicate": "item.contents"
+                }
+              ]
+            }
+          ],
+          "learning": 9
+        },
+        "planner_input": [
+          {
+            "who": "Tonya",
+            "frame": {
+              "discourse_function": "ask_assignment_purpose",
+              "predicate": "item.contents",
+              "speech_act": "factual_question",
+              "target_scope": "direct",
+              "requested_content": "known_concept",
+              "expected_response_shape": "brief_grounded_answer",
+              "expected_slot": "referent",
+              "referents": [
+                {
+                  "type": "equipment",
+                  "id": "q4-startup-materials-duffle-01",
+                  "resolved": true,
+                  "source": null,
+                  "holder": "Malcolm"
+                }
+              ],
+              "knowledge_query": {
+                "concept": "assignment_purpose",
+                "entity": "q4-startup-materials-duffle-01",
+                "subject": null,
+                "facet": "contents"
+              },
+              "unresolved_reference": false,
+              "resumed_question": false,
+              "antecedent_resolved": true,
+              "requested_action": null,
+              "self_state_query": null,
+              "player_claim": false,
+              "topic_return": false,
+              "turn": {
+                "speech_act": "question",
+                "relation": "continuation",
+                "relation_target": null,
+                "reissue_of": null,
+                "cardinality": "one_spokesperson",
+                "temporal_scope": null,
+                "quantifier": null,
+                "clarify_reason": null,
+                "addressee": [
+                  "Tonya"
+                ],
+                "args": {
+                  "reply_kind": "counter_question",
+                  "item_id": "q4-startup-materials-duffle-01"
+                },
+                "overrides": []
+              }
+            }
+          }
+        ],
+        "semantic_digest": "2b6e558784e7b8cf",
+        "persistence_digest": "e13989fe700faff7"
+      }
+    },
+    {
+      "scenario": "scenario/chip-target",
+      "provider": "garbage",
+      "turn": 2,
+      "text": "Tonya, how are you?",
+      "fields": [
+        "persistence_digest"
+      ],
+      "reason": "The code-owned last check-in speaker may return a wellbeing question; its persisted inbound request routes the following answer or counter-question and changes downstream persistence digests.",
+      "historical_turn_sha256": "50c9a83f18760691325c5eb3fdb43ce9176539c48650057465a6b653c7fffd34",
+      "expected_fields": {
+        "persistence_digest": "5d9b4145d958621a"
+      }
+    },
+    {
+      "scenario": "scenario/chip-target",
+      "provider": "garbage",
+      "turn": 3,
+      "text": "and you?",
+      "fields": [
+        "ledger",
+        "pending_inbound",
+        "plans",
+        "lines_digest",
+        "semantic_digest",
+        "persistence_digest"
+      ],
+      "reason": "The code-owned last check-in speaker may return a wellbeing question; its persisted inbound request routes the following answer or counter-question and changes downstream persistence digests.",
+      "historical_turn_sha256": "58962baad00d4e207208ef7783e6057b8cc040f5929e164c39633b651411647c",
+      "expected_fields": {
+        "ledger": {
+          "opened": [
+            {
+              "request_id": "r3",
+              "predicate": "person.wellbeing",
+              "fn": "check_in",
+              "state": "SATISFIED",
+              "targets": [
+                "Giselle"
+              ],
+              "answered_by": [
+                "Giselle"
+              ],
+              "slots": {
+                "yb-personnel-a9e39e27dbdd2b980882": "SATISFIED"
+              },
+              "cardinality": "each_self",
+              "temporal": "now",
+              "question_form": "wh",
+              "relation": "continuation",
+              "reissue_of": null,
+              "args": {}
+            }
+          ],
+          "changed": [],
+          "inbound_added": [
+            {
+              "event_id": "e12",
+              "from": "Giselle",
+              "kind": "question",
+              "predicate": "person.wellbeing",
+              "answer_shape": "free_short_answer",
+              "options": []
+            }
+          ],
+          "anchors_added": [
+            {
+              "event_id": "e12",
+              "speaker": "Giselle",
+              "spans": [
+                {
+                  "text": "Honestly, a little nervous.",
+                  "request": "r3",
+                  "predicate": "person.wellbeing"
+                },
+                {
+                  "text": "How about you?",
+                  "request": "r3",
+                  "predicate": "person.wellbeing"
+                }
+              ]
+            }
+          ],
+          "learning": 3,
+          "activities": [
+            {
+              "kind": "GROUP_CHECK_IN",
+              "state": "active",
+              "completed": [
+                "Malcolm",
+                "Giselle"
+              ],
+              "pending": []
+            }
+          ]
+        },
+        "pending_inbound": {
+          "from": "Giselle",
+          "kind": "question",
+          "answer_shape": "free_short_answer",
+          "options": []
+        },
+        "plans": [
+          {
+            "who": "Giselle",
+            "plan": {
+              "fn": "check_in",
+              "required": [
+                "self_state",
+                "self_state_answer",
+                "question_to_player"
+              ],
+              "optional": [],
+              "clarify": false,
+              "asks_player": true,
+              "expected_slot": null,
+              "answer": null
+            }
+          }
+        ],
+        "lines_digest": "b200337baf1e1dc2",
+        "semantic_digest": "7ef00f52ca79bc8a",
+        "persistence_digest": "689f4bf0be043780"
+      }
+    },
+    {
+      "scenario": "scenario/ed30c-ellipsis",
+      "provider": "garbage",
+      "turn": 6,
+      "text": "Giselle, tell me about yourself.",
+      "fields": [
+        "plans"
+      ],
+      "reason": "Open introductions retain name and role, but move task into optional context and expose stored personal details; wording is not a compulsory roster recital.",
+      "historical_turn_sha256": "f7e758b9c1f386ade0707e1730d39abb4c307a118d0be2f623cd9bfe29429eae",
+      "expected_fields": {
+        "plans": [
+          {
+            "who": "Giselle",
+            "plan": {
+              "fn": "invite_self_description",
+              "required": [
+                "name",
+                "role"
+              ],
+              "optional": [
+                "current_assignment",
+                "held_equipment",
+                "identity_fact",
+                "predicate_answer",
+                "personal_preference"
+              ],
+              "clarify": false,
+              "asks_player": false,
+              "expected_slot": null,
+              "answer": null
+            }
+          }
+        ]
+      }
+    },
+    {
+      "scenario": "scenario/ed30c-ellipsis",
+      "provider": "garbage",
+      "turn": 8,
+      "text": "Malcolm, your turn.",
+      "fields": [
+        "plans"
+      ],
+      "reason": "Open introductions retain name and role, but move task into optional context and expose stored personal details; wording is not a compulsory roster recital.",
+      "historical_turn_sha256": "36fb52231ddc7780d7be01a55d9acc015d6fbaf50d7946b752e5af9536bc6022",
+      "expected_fields": {
+        "plans": [
+          {
+            "who": "Malcolm",
+            "plan": {
+              "fn": "invite_self_description",
+              "required": [
+                "name",
+                "role"
+              ],
+              "optional": [
+                "current_assignment",
+                "held_equipment",
+                "identity_fact",
+                "predicate_answer",
+                "personal_preference"
+              ],
+              "clarify": false,
+              "asks_player": false,
+              "expected_slot": null,
+              "answer": null
+            }
+          }
+        ]
+      }
+    },
+    {
+      "scenario": "scenario/ed30c-ellipsis",
+      "provider": "garbage",
+      "turn": 9,
+      "text": "Your turn.",
+      "fields": [
+        "plans"
+      ],
+      "reason": "Open introductions retain name and role, but move task into optional context and expose stored personal details; wording is not a compulsory roster recital.",
+      "historical_turn_sha256": "e5f78c30e55b9a95392a5aab8a3079788f6cc4da97d5d72309d52dc6664d0553",
+      "expected_fields": {
+        "plans": [
+          {
+            "who": "Tonya",
+            "plan": {
+              "fn": "invite_self_description",
+              "required": [
+                "name",
+                "role"
+              ],
+              "optional": [
+                "current_assignment",
+                "held_equipment",
+                "identity_fact",
+                "predicate_answer",
+                "personal_preference"
+              ],
+              "clarify": false,
+              "asks_player": false,
+              "expected_slot": null,
+              "answer": null
+            }
+          }
+        ]
+      }
+    }
+  ]
+}

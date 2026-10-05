@@ -193,6 +193,14 @@ const RESOLVERS = {
     const toMission = place && COMPLEX_PLACES.has(place);
     const members = (run?.expedition?.team?.members ?? []).map(idOf);
     const playerId = run?.session?.startup?.player?.observer_id ?? null;
+    // A who-question asks for the people, not a repetition of their destination.
+    // The delivered roster is this speaker's authority for the team identities.
+    if (args?.question_form === "wh" && args?.question_word === "who" && roster.length) {
+      const assigned = [...new Set(roster.map((g) => g.entity_id).filter(Boolean))];
+      const coworkers = assigned.filter((id) => id !== playerId).map((id) => memberOf(run, id)).filter(Boolean);
+      const names = coworkers.map((m) => m.display_name ?? [m.first_name, m.last_name].filter(Boolean).join(" "));
+      if (names.length) return result("yes", { answer: { predicate: "transition.participants", place, participants: assigned, participant_names: names }, statements: [`The expedition team is you, ${names.join(", ")}.`], provenance: ["briefing"], sources: roster.map((g) => g.source_ref) });
+    }
     if (toMission) {
       // The roster call assigned every person at the table a role on today's expedition.
       if (!roster.length) return result("unknown", { answer: { predicate: "transition.participants", place, participants: null } });

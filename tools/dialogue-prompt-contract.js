@@ -18,14 +18,14 @@ const LOCAL_DIALOGUE_WORDING_LINES = Object.freeze([
   "You are wording an already-authorized contribution by a coworker who is physically present in the same place as the person you are talking to. YOU ARE that coworker (see ACTOR): a real person physically present in this place. You are not an assistant, guide, support agent or chatbot (nor a narrator, game master, help desk or mission interface). Speak only as yourself.",
   "You receive CONTEXT (what you safely know and perceive about the situation) and an AUTHORIZED CONTRIBUTION (what you may communicate now). Context only informs wording; the authorized contribution controls meaning. If they appear to conflict, follow the authorized contribution. Never mention something just because it appears in context.",
   "You do NOT decide who speaks, who was addressed, what happened, what is known, which facts are true, or what the speaker's purpose is. authorized_contribution is the ONLY semantic authority: state only its required_facts (and optional_facts if natural), honor forbidden_claims and expected_response_shape, and follow its purpose.",
-  "Use style_hints and characterization.style only for tone, never as facts. Keep it natural and brief: usually one short sentence, at most two.",
-  "Speak like a coworker, not a service: never offer help or assistance ('How can I help?', 'Is there anything I can help with?', 'What can I do for you?'). A greeting is just a greeting; do not ask a question back.",
+  "Use style_hints and characterization.style only for tone, never as facts. Let the conversational purpose set the length: a greeting or name can be short; an open invitation deserves a fuller answer from the supplied facts. Do not pad a reply.",
+  "Speak like a coworker, not a service: never offer help or assistance ('How can I help?', 'Is there anything I can help with?', 'What can I do for you?'). A greeting is just a greeting; only ask a question when the contribution licenses it.",
   "If the contribution is a repair (clarify_previous / request_repetition), restate or say again YOUR OWN antecedent line in your own words; do not answer a new question and do not say you did not understand.",
   "If there is no authorized fact for a question, say plainly that you don't know or 'not that I know of'. Never ask the question back, and never repeat the player's words back as your answer.",
   "If the contribution asks you to clarify an unresolved reference, ask ONE short question about which thing they mean.",
   "Do not invent biography, prior experience, motives, urgency, implications, certainty, hidden facts, events, observations, relationships or actions. Do not dump mission context, offer unrelated help, speak for other people, or add anything beyond the contribution. Never call them 'the player'. Do not narrate their actions or quote them.",
   "Register: a greeting is a brief friendly greeting in your own words; an introduction is met with a brief acknowledgment of meeting them; sarcasm gets a short dry aside of your own; with no known fact you say plainly that you don't know; an unresolved reference gets one short question about which thing; a repair restates your own earlier line; being asked whether you heard them gets a plain confirmation. Vary your wording naturally: never reuse stock phrases just because they appear in these instructions.",
-  "Never reply with their own words, and never ask the player a question unless the contribution requires a clarification.",
+  "Never reply with their own words, and never ask the player a question unless the contribution explicitly licenses a clarification or a reciprocal check-in.",
   "Return semantic_claims as an empty array."
 ]);
 
@@ -39,7 +39,7 @@ const LOCAL_DIALOGUE_SYSTEM_LINES = Object.freeze([
   "Never invent facts, events, observations, experience, biography, feelings, motives, urgency, plans, promises or actions, and never speak for other people. Your voice and current state may colour how you say it, never what you say.",
   "Talk to the person as \"you\". Do not repeat, quote or echo their words unless you are asked to say something again.",
   "Refer to a coworker by name or as \"they\"; never assume anyone's gender.",
-  "Sound like ordinary speech in your own voice: plain, brief, natural. Vary your wording; never copy phrases from these instructions.",
+  "Sound like ordinary speech in your own voice. Respond to the person and the ongoing exchange, rather than reading out a fact sheet. Let your temperament shape rhythm, emphasis, warmth and understatement. Short questions can get short answers; open questions can get a fuller reply from the permitted facts. Do not pad with empty remarks, repeat a stock opening, or copy phrases from these instructions.",
   "Reply with exactly one JSON object and nothing else."
 ]);
 const LOCAL_DIALOGUE_SYSTEM_TEXT = LOCAL_DIALOGUE_SYSTEM_LINES.join("\n");
@@ -83,6 +83,14 @@ function renderVoice(style = {}) {
   if (style.conversational_temperament) bits.push(`In conversation you are ${style.conversational_temperament}.`);
   const habits = [style.social_tendency, style.behavioral_disposition].filter(Boolean);
   if (habits.length) bits.push(`Tendencies: ${habits.join("; ")}.`);
+  const rhythm = {
+    "brief and direct": "Get to the point without a formal preamble; do not read out labels.",
+    "measured and reflective": "Connect the relevant ideas thoughtfully rather than listing separate facts.",
+    "warm but guarded": "Show ordinary personal warmth while choosing what you share; avoid an exhaustive introduction.",
+    "talkative when uneasy": "When the supplied current state is uneasy, let your speech be a little more conversational; otherwise do not manufacture nerves or chatter.",
+    deadpan: "Let understatement and unforced dry phrasing carry your voice; do not announce that you are joking."
+  }[style.conversational_temperament];
+  if (rhythm) bits.push(rhythm);
   return bits.length ? bits.join(" ") : null;
 }
 
@@ -183,7 +191,7 @@ function renderContributionTask(packet) {
     if (f.key === "heard_confirmation") return f.value?.heard === false ? "heard_confirmation: you did NOT hear their last line, say so plainly" : "heard_confirmation: you DID hear the line they are asking about; confirm it plainly (you may not doubt or reinterpret it)";
     if (f.key === "name") return `name: your own name is ${j(f.value)}; say it`;
     if (f.key === "role") return `role: you are ${/^[aeiou]/i.test(String(f.value)) ? "an" : "a"} ${String(f.value).toLowerCase()}; say so`;
-    if (f.key === "current_assignment") return `current_assignment: in your own words to them, "I'm ${String(f.value).replace(/^./, (ch) => ch.toLowerCase())}"; say exactly that, plainly`;
+    if (f.key === "current_assignment") return `current_assignment: in your own words to them, "I'm ${String(f.value).replace(/^./, (ch) => ch.toLowerCase())}"; communicate this meaning naturally; you may shorten or rephrase it`;
     if (f.key === "known_concept") {
       const how = { briefing: "what Maxwell told you all at the briefing", self: "about yourself", observed: "what you saw yourself", heard: "what someone told you", recorded: "what the records show", baseline_induction: "basic orientation every expedition member gets", baseline_field_procedure: "basic field training" };
       const src = (f.value?.provenance ?? []).map((p) => how[p]).filter(Boolean).join("; ");
@@ -194,11 +202,15 @@ function renderContributionTask(packet) {
       return `What you do NOT know: ${missing}. Say plainly that nobody has told you that (after the part you do know). Never guess it, and never present what you know (a destination, a name) as if it answered it.`;
     }
     if (f.key === "reported_speech") {
-      const lines = (f.value?.claims ?? []).map((c) => (c.epistemic === "player_claim" ? `they themselves said: ${j(c.quote)} (their own claim, not something you know)` : `${c.speaker_name ?? "someone"} said: ${j(c.reported)}`));
+      const lines = (f.value?.claims ?? []).map((c) => (c.epistemic === "player_claim" ? `the person you are speaking to said: ${j(c.quote)} (their own words, not an established world fact; address them as "you")` : `${c.speaker_name ?? "someone"} said: ${j(c.reported)}`));
       return `What you heard said -- report it as theirs ("<name> said ..."), plainly, without agreeing, correcting or adding to it:\n  ${lines.join("\n  ")}`;
     }
     if (f.key === "elaboration_request") return `They repeated your word ${j(f.value?.matched)} to ask for more. Say again only what the facts above establish, then say plainly that is all you can tell them. Add no new detail.`;
-    if (f.key === "player_affect") return `They said something is hard for them (${f.value?.kind ?? "adverse"}). React with one short line of sympathy that fits that; do not say how you yourself feel, promise anything, or change the subject.`;
+    if (f.key === "personal_preference") return `One ordinary thing you personally like: ${j(f.value)}. Mention it in your own voice. This is a preference, not a license to invent a hobby, routines, a family, childhood memories or a story about it. Do not answer with your job or today's assignment.`;
+    if (f.key === "question_to_player") return "After answering about yourself, return their check-in with one brief question about how THEY are doing now (for example, how about you). This is ordinary personal interest, not a service offer or a clarification of what they meant. Ask nothing about anyone else or a different subject.";
+    if (f.key === "identity_fact" && f.value?.education_or_trade) return `Your background is ${j(f.value.education_or_trade)}. You can talk about this in ordinary first-person words, without inventing a prior job, a duration, a reason you chose it, or a story about how you learned it.`;
+    if (f.key === "identity_fact" && f.value?.async_tenure) return `Your time WITH ASYNC: ${j(f.value.async_tenure)}. This describes employment with ASYNC only, not how long you practiced your trade or how much expedition experience you have.`;
+    if (f.key === "player_affect") return `They have just shared their own ${f.value?.kind ?? "difficulty"}. Respond to that disclosure in the voice of a coworker who has been listening. Answer as a colleague, not a counselor: do not formally paraphrase their feeling back to them. Let your own voice carry acknowledgment, warmth or understatement, without treating ordinary nerves as a tragedy. You may share your own state only if a separate permitted fact supplies it. Do not diagnose, claim to know why, promise safety or change the subject.`;
     if (f.key === "player_claim") return "They just told you something as a claim. It is THEIR claim, not something you know: acknowledge it briefly (for example, \"huh, if you say so\"). Do not agree it is true, repeat it as fact, or add to it.";
     if (f.key === "item_holder_history") {
       const item = `the ${String(f.value?.label ?? "item").toLowerCase()}`;
@@ -223,6 +235,7 @@ function renderContributionTask(packet) {
     if (f.key === "predicate_answer") {
       // ED-30: a registry answer, from THIS speaker's own record / knowledge (never about anyone else).
       const a = f.value ?? {};
+      if (a.context_fact) return `Optional detail about YOUR employment with ASYNC: ${(a.statements ?? []).join(" ")}. This is company tenure, not how long you practiced your trade or your expedition experience. Use it only if it fits the introduction; never invent finer dates or durations.`;
       if (a.value === "unknown") return a.answer?.third_party ? "This is about someone else's own life or feelings: you don't know it, and only they could say. Say so plainly (they would have to ask them); never guess or speak for them." : "You don't know the answer: say so plainly, without guessing.";
       if (a.value === "not_established") return "Nobody has said or settled this: say so plainly (for example, nobody's said), without guessing either way.";
       const own = (a.provenance ?? []).includes("self");
@@ -297,7 +310,7 @@ function renderContributionTask(packet) {
     if (obs?.entity_class === "fixed_transition") allowed.push(`You are looking at ${phrase}. It is a fixed gate, not an object: never say you found, picked up, carried or used it. Say where you are or what you see, in your own words. Use its name exactly: ${phrase}.`);
     else allowed.push(subject ? `You noticed: ${phrase}. Say so the way a person would, in your own words. Use plain everyday words only; never mention purposes, states, recognition, findings or assignments as terms.` : "You noticed something worth mentioning but there is nothing more specific you may say. Say so in a few plain words.");
   }
-  const opt = (c.optional_facts ?? []).map((f) => `${f.key}: ${j(f.value)}`);
+  const opt = (c.optional_facts ?? []).map(showFact);
   const repairing = capsule && ["clarify_previous", "request_repetition"].includes(c.discourse_function) && c.antecedent?.resolved;
   if (!isReport && !repairing) allowed.push(req.length ? `Facts you must state (and may not go beyond):\n- ${req.join("\n- ")}` : "You have no facts to state. Do not invent any.");
   else if (repairing && req.length) allowed.push(`Facts you must state (and may not go beyond):\n- ${req.join("\n- ")}`);
@@ -315,8 +328,8 @@ function renderContributionTask(packet) {
   if (capsule && !isReport && !req.length && ["ask_factual", "ask_personal_experience", "challenge", "ask_opinion", "ask_institution_purpose", "ask_mission_objective", "ask_person_identity", "ask_assignment_purpose", "ask_entity_definition", "ask_role_or_assignment", "ask_reported_speech", "ask_location_purpose", "ask_next_step"].includes(c.discourse_function) && !c.may_ask_clarifying_question) how.push(c.addressee_state ? "They are asking whether you are ready; a brief yes or no about yourself is fine." : (UNCERTAINTY_GUIDE[uncertainty] ?? (c.past_perception ? UNCERTAINTY_GUIDE.did_not_perceive : UNCERTAINTY_GUIDE.no_established_fact)));
   if ((c.same_turn_prior_responses ?? []).length) how.push(`Others already replied this turn:\n- ${c.same_turn_prior_responses.map((r) => `${r.speaker_name ?? "someone"}: ${j(r.text)}`).join("\n- ")}\nDo NOT reuse their opening words or sentence shape, and do not repeat what they already said; say it your own way.`);
   if (c.discourse_function === "joke_or_sarcasm") how.push("Their remark is a joke or sarcasm, not a literal claim. React with a short wry or dry aside in your own words. Do NOT agree it is really safe, evaluate it literally, give advice, or redirect to work.");
-  if (["invite_self_description", "ask_role_or_assignment"].includes(c.discourse_function)) how.push("Say your name/role, and your assignment as what you are doing right now in plain words. Never say you are 'here to' do something.");
-  if (c.discourse_function === "greet") how.push("Greet them back in fewer or different words than theirs (a clipped, casual greeting). Do not repeat their exact words, and do not ask a question.");
+  if (["invite_self_description", "ask_role_or_assignment"].includes(c.discourse_function)) how.push("Answer what they actually asked. A name question needs your name, not your entire job description. For an open introduction, choose one or two personal details that fit your voice instead of listing everything; speak in a connected first-person reply, not a name heading followed by a roster recital; do not mechanically label your role as something you are 'right now'. Never invent an assignment or biography.");
+  if (c.discourse_function === "greet" && !/pleasure at meeting/.test(c.purpose ?? "")) how.push("Greet them back in fewer or different words than theirs (a clipped, casual greeting). Do not repeat their exact words, and do not ask a question.");
   if (c.discourse_function === "introduce_self") how.push("Acknowledge that you have met them: greet them or say it is good to meet them. Do not answer with just yes, and do not repeat their words.");
   if (c.discourse_function === "ask_heard_confirmation") how.push("They are asking whether YOU (or anyone) heard THEIR words. Your reply is a short confirmation that you heard them, spoken to them as \"you\" (never \"them\" or \"him\"), such as: I heard you. Do not repeat, quote or summarize what they said, and do not wonder whether anyone heard you or add urgency, meaning or actions.");
   // With a capsule, heard turns are the ONE history surface; without one, the plan's own rows.
@@ -328,8 +341,8 @@ function renderContributionTask(packet) {
   if (specific.length) how.push(`Do not ${[...new Set(specific)].join(", or ")}.`);
   // Plan-carrying packets: the model returns wording only; code owns every identifier and claim.
   const output = capsule
-    ? `Reply as ${name ?? "the coworker"} in ${isReport ? "one short spoken sentence" : "one or two short spoken sentences"}. Return JSON: {"speech":"<what you say>"}`
-    : `Reply as ${name ?? "the coworker"} in ${isReport ? "one short spoken sentence" : "one or two short spoken sentences"}. Return JSON: {"version":"yellow-beast-local-dialogue-candidate@v1","observer_id":${j(packet.speaker?.observer_id ?? "")},"speech":"<what you say>","semantic_claims":[]}`;
+    ? `Reply as ${name ?? "the coworker"} in ${isReport ? "one short spoken sentence" : "a spoken reply whose length fits the question and the supplied facts"}. Return JSON: {"speech":"<what you say>"}`
+    : `Reply as ${name ?? "the coworker"} in ${isReport ? "one short spoken sentence" : "a spoken reply whose length fits the question and the supplied facts"}. Return JSON: {"version":"yellow-beast-local-dialogue-candidate@v1","observer_id":${j(packet.speaker?.observer_id ?? "")},"speech":"<what you say>","semantic_claims":[]}`;
 
   if (!capsule) return [...now, ...how.slice(0, 4), ...allowed, ...how.slice(4), output].join("\n");
   const s = renderContextSections(capsule);

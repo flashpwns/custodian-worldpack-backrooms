@@ -171,6 +171,10 @@ function frameObligatesResponse(frame, responder_id = null, { recipient_type = n
   // "Did anyone hear what I said?" is answered by a listener who heard it; the
   // per-listener hearing check belongs to the caller (listener state, not wording).
   if (fn === "ask_heard_confirmation") return true;
+  // A personal disclosure during a directed conversation deserves a human
+  // acknowledgment. Untargeted room remarks retain the owner silence policy.
+  if (fn === "make_statement" && recipient_type === "direct" && frame?.player_affect && frame?.turn?.addressee_source === "ongoing_personal_disclosure") return true;
+  if (fn === "make_statement" && frame?.turn?.speech_act === "answer" && frame?.turn?.answers_predicate === "person.wellbeing" && frame.turn.addressee_ids?.includes(responder_id)) return true;
   // A directly addressed person owes an answer to an answerable question.
   if (recipient_type === "direct" && ANSWERABLE_QUESTIONS.has(fn)) return true;
   return OBLIGATING_FUNCTIONS.has(fn);
@@ -1337,6 +1341,7 @@ function buildSemanticFrame({ text, recipient_type = "none", interpretation = nu
   let fn = null;
   let unresolved = false;
   let background = false;
+  let preference = false;
   const isQuestion = LP.question_like.test(raw);
 
   const ownership = LP.item_ownership.test(raw) && LP.item_noun.test(raw);
@@ -1362,6 +1367,7 @@ function buildSemanticFrame({ text, recipient_type = "none", interpretation = nu
   else if (thatMeaning) { fn = "ask_entity_definition"; knowledgeQuery = { concept: "entity_definition", entity: withRelated(thatMeaning, entities) }; }
   else if (meaning) fn = "ask_meaning";
   // "Why didn't you answer me?": a recent conversational EVENT (who answered, who stayed silent).
+  else if (LP.conversation_recap.test(raw)) fn = "ask_reported_speech";
   else if (LP.response_event.test(raw)) fn = "ask_response_event";
   else if (LP.explanation_request.test(raw) || LP.bare_wh_followup.test(raw)) fn = "ask_explanation";
   else if (LP.bare_reaction.test(raw)) fn = "clarify_previous";
@@ -1372,11 +1378,14 @@ function buildSemanticFrame({ text, recipient_type = "none", interpretation = nu
   // "What are we doing today?" asks today's objective, not only the next step.
   else if (LP.semantic_intents.mission_objective.test(raw)) { fn = "ask_mission_objective"; knowledgeQuery = { concept: "mission_objective", entity: null }; }
   else if (LP.next_step.test(raw) || LP.semantic_intents.next_step.test(raw)) fn = "ask_next_step";
+  else if (LP.addressee_name_question.test(raw)) fn = "invite_self_description";
+  else if (LP.team_roster_question.test(raw)) fn = "ask_predicate";
   else if ((knowledgeIntent = semanticKnowledgeIntent(raw, { entities, addressee_ids, ownership, discourse }))) { fn = knowledgeIntent.fn; knowledgeQuery = knowledgeIntent.query; }
   else if (selfQuery && !ownership) fn = "check_in";
   else if (LP.ambiguous_reference.test(raw)) { fn = "ambiguous_reference"; unresolved = true; }
   else if (ownership) fn = "ask_item_ownership";
   else if (LP.invite_self_description.test(raw)) fn = "invite_self_description";
+  else if (LP.personal_preference.test(raw)) { fn = "ask_personal_experience"; preference = true; }
   else if (LP.background.test(raw)) { fn = "ask_personal_experience"; background = true; }
   else if (LP.role_or_assignment.test(raw)) fn = "ask_role_or_assignment";
   else if (LP.close_topic.test(raw)) fn = "close_topic";
@@ -1523,11 +1532,14 @@ function buildSemanticFrame({ text, recipient_type = "none", interpretation = nu
     version: DISCOURSE_VERSION,
     speech_act: interp.speech_act,
     discourse_function: fn,
+    ...(LP.team_roster_question.test(raw) ? { predicate: "mission.participants" } : {}),
+    ...(fn === "greet" && LP.meeting_greeting.test(raw) ? { greeting_kind: "meeting" } : {}),
+    ...(LP.conversation_recap.test(raw) ? { conversation_recap: [...(discourse?.event_log ?? discourse?.turns ?? [])].reverse().filter(t => t.kind === "player_exchange" && !t.meta && t.responses?.length && /^(?:ask_|invite_|check_in)/.test(t.discourse_function ?? "")).slice(0, 1).map(t => ({ player_text: t.player_text, listener_ids: [...(t.listener_ids ?? [])], interaction_id: t.interaction_id })) } : {}),
     topic: interp.topic,
     target_scope: scopeOf(recipient_type),
     scope_inherited: Boolean(scope_inherited),
     referents,
-    requested_content: background ? "background" : (REQUESTED_CONTENT[fn] ?? null),
+    requested_content: LP.addressee_name_question.test(raw) ? "name" : preference ? "preference" : background ? "background" : (REQUESTED_CONTENT[fn] ?? null),
     expected_response_shape: EXPECTED_SHAPES[fn],
     literal_question: fn === "ambiguous_reference" ? false : interp.literal_question,
     question_form: /^(?:who|what|where|when|why|how|which)\b/i.test(raw) ? "wh" : (/^(?:are|is|do|does|did|can|could|will|would|have|has|should|was|were)\b/i.test(raw) ? "yes_no" : null),
@@ -1765,7 +1777,13 @@ function buildSelfKnowledge({ person = null, member = null, task = null, held_eq
     held_equipment: held_equipment.map((item) => (typeof item === "string" ? item : item?.label ?? item?.id)).filter(Boolean),
     prior_expedition_experience: source.prior_expedition_experience ?? null,
     identity_style: pick(substrate, IDENTITY_STYLE_KEYS),
-    identity_facts: pick(substrate, PLAN_AUTHORIZABLE_IDENTITY_FACTS),
+    identity_facts: { ...pick(substrate, PLAN_AUTHORIZABLE_IDENTITY_FACTS),
+      ...(substrate?.mundane_preference ? { mundane_preference: substrate.mundane_preference } : {}),
+      // Personhood is the persisted authority for employment history. The older
+      // identity seed must not contradict it during an open introduction.
+      ...(member?.personhood ? { async_tenure: ({ first_day: "today", weeks: "a few weeks", months: "a few months", years: "for years" })[member.personhood.async_tenure] ?? null } : {})
+    },
+    employment_history: member?.personhood?.async_tenure ? { band: member.personhood.async_tenure, statement: require("./dialogue-resolvers").TENURE_PHRASE[member.personhood.async_tenure] ?? null } : null,
     established_relationships: relationships.slice(0, 3),
     known_answer,
     // equipment id -> whether THIS speaker can know its holder (observer authority).
@@ -1789,7 +1807,7 @@ const SOCIAL_FUNCTIONS = new Set(["attend", "greet", "introduce_self", "acknowle
 const PURPOSES = Object.freeze({
   greet: "return the greeting briefly and socially; add no operational content",
   introduce_self: "acknowledge the player's introduction briefly; do not ask questions or start a questionnaire",
-  invite_self_description: "briefly identify yourself and your current role or assignment in one or two short sentences; add only supplied optional facts",
+  invite_self_description: "identify yourself as a person, using your name and role; choose relevant supplied personal details instead of reciting a roster entry; let your own voice and the conversation determine how much to say",
   ask_factual: "answer only from supplied required_facts; if there are none, say you do not know without inventing",
   ask_personal_experience: "answer only from supplied required_facts; if there are none, say honestly that you have nothing established to share",
   ask_role_or_assignment: "state your role and current assignment from supplied required_facts, briefly",
@@ -1940,21 +1958,29 @@ function planResponses({ frame, owner_ids = [], responders = {}, names = {} } = 
     const selfIdentity = fn === "ask_person_identity" && aboutSelf && ["person_identity", "person_role"].includes(kq?.concept ?? "person_identity");
     if (fn === "invite_self_description" || selfRoleQuestion || selfIdentity) {
       if (self?.name) required.push({ key: "name", value: self.name });
-      if (self?.role) required.push({ key: "role", value: self.role });
-      if (self?.current_assignment) {
-        required.push({ key: "current_assignment", value: self.current_assignment });
+      if (frame.requested_content !== "name" && self?.role) required.push({ key: "role", value: self.role });
+      if (frame.requested_content !== "name" && self?.current_assignment) {
+        (fn === "invite_self_description" ? optional : required).push({ key: "current_assignment", value: self.current_assignment });
         if (self.assignment_semantics) semantics.current_assignment = { ...self.assignment_semantics };
       }
-      if (self?.held_equipment?.length) optional.push({ key: "held_equipment", value: self.held_equipment });
-      // Generic self-description stays minimal: no background, tenure, region,
-      // age, preferences or concerns unless the player actually asks.
-      if (fn === "invite_self_description" && self?.current_activity) optional.push({ key: "current_activity", value: self.current_activity });
+      if (frame.requested_content !== "name" && self?.held_equipment?.length) optional.push({ key: "held_equipment", value: self.held_equipment });
+      // An open invitation to describe oneself licenses the existing background,
+      // not a manufactured biography. A name-only question stays name-only.
+      if (fn === "invite_self_description" && frame.requested_content !== "name") {
+        if (identity.education_or_trade) optional.push({ key: "identity_fact", value: { education_or_trade: identity.education_or_trade } });
+        if (self?.employment_history?.statement) optional.push({ key: "predicate_answer", value: { predicate: "person.async_tenure", value: "value", answer: { band: self.employment_history.band }, statements: [self.employment_history.statement], provenance: ["self"], context_fact: true } });
+        if (identity.mundane_preference) optional.push({ key: "personal_preference", value: identity.mundane_preference });
+      }
+      if (fn === "invite_self_description" && frame.requested_content !== "name" && self?.current_activity) optional.push({ key: "current_activity", value: self.current_activity });
     } else if (fn === "ask_personal_experience") {
       if (self?.known_answer) required.push({ key: "known_answer", value: self.known_answer });
-      if (frame.requested_content === "background") {
+      if (frame.requested_content === "preference") {
+        if (identity.mundane_preference) required.push({ key: "personal_preference", value: identity.mundane_preference });
+      } else if (frame.requested_content === "background") {
         // Explicit background question: the authorized background facts only.
         if (identity.education_or_trade) required.push({ key: "identity_fact", value: { education_or_trade: identity.education_or_trade } });
-        if (identity.async_tenure) optional.push({ key: "identity_fact", value: { async_tenure: identity.async_tenure } });
+        // Employment duration is answered by the personhood resolver when
+        // asked; it is not background/trade experience.
       } else if (self?.prior_expedition_experience) {
         // Company tenure is not expedition experience and is never a substitute.
         required.push({ key: "prior_expedition_experience", value: self.prior_expedition_experience });
@@ -2016,6 +2042,10 @@ function planResponses({ frame, owner_ids = [], responders = {}, names = {} } = 
     // An adverse remark about how it is for them (tired, scared, cold, "this sucks"): a licensed reply must
     // fit it -- never a cheerful "Sounds good." -- and claims nothing about the speaker's own state.
     if (frame.player_affect && ["make_statement", "social_observation", "express_uncertainty", "joke_or_sarcasm"].includes(fn)) required.push({ key: "player_affect", value: { ...frame.player_affect } });
+    // In an ongoing personal exchange a coworker can choose to share their
+    // own established state, rather than only paraphrasing the player. No
+    // mood is invented and an unaddressed room remark still stays silent.
+    if (frame.player_affect && fn === "make_statement" && (frame.turn?.addressee_source === "ongoing_personal_disclosure" || frame.turn?.answers_predicate === "person.wellbeing") && self?.self_state?.state === "affected" && self.self_state.affect?.length) optional.push({ key: "self_state", value: self.self_state });
     // An echo of one's own words ("Sealed how?") asks for more about that answer: the reply restates only
     // what is established and says when that is all (the words located the answer; they add nothing).
     if (frame.turn?.args?.echo?.matched) optional.push({ key: "elaboration_request", value: { matched: String(frame.turn.args.echo.matched).slice(0, 60) } });
@@ -2077,7 +2107,8 @@ function planResponses({ frame, owner_ids = [], responders = {}, names = {} } = 
     // "What did Clint say ...?": attributed claims this responder HEARD (a player's claim stays the player's).
     if (fn === "ask_reported_speech" && !frame?.unresolved_reference) {
       const k = responders[responder_id]?.knowledge ?? null;
-      const r = k?.reported ?? null;
+      const recap = frame.conversation_recap?.filter(t => t.listener_ids?.includes(responder_id));
+      const r = frame.conversation_recap ? { status: recap.length ? "known" : "not_heard", heard_speaker: recap.length > 0, claims: recap.map(t => ({ key: "conversation_recap", speaker_id: null, speaker_name: "you", epistemic_mode: "player_claim", text: t.player_text, source_ref: t.interaction_id })) } : (k?.reported ?? null);
       const speakerName = frame?.knowledge_query?.speaker_label ?? null;
       // "Did Maxwell say anything about splitting up?": only claims about that topic answer it (review F10).
       const aboutText = String(frame?.turn?.request_text ?? "").match(/\babout\s+([^?.!]+)/i)?.[1] ?? null;
@@ -2091,8 +2122,8 @@ function planResponses({ frame, owner_ids = [], responders = {}, names = {} } = 
         required.push({ key: "uncertainty", value: { kind: "report_topic_not_held", speaker_name: speakerName } });
         semantics.knowledge = { concept: "reported_speech", entity_id: k.entity?.id ?? null, status: "report_topic_not_held", speaker_id: frame?.knowledge_query?.speaker_id ?? null, facts: [], unknown_reason: canonicalKnowledge.SEMANTIC_REASON.LEGITIMATE_UNKNOWN };
       } else if (r?.status === "known") {
-        required.push({ key: "reported_speech", value: { speaker_name: speakerName, about: k.entity?.label ?? null, claims: r.claims.filter(onTopic).slice(-3).map((c) => ({ ...c, reported: firstPerson(c.reported) })).map((c) => ({ speaker_id: c.speaker_id ?? null, speaker_name: c.speaker_name ?? names[c.speaker_id] ?? null, epistemic: c.epistemic_mode, ...(c.epistemic_mode === "player_claim" ? { quote: c.text } : c.epistemic_mode === "own_speech" && c.line ? { quote: c.line } : { reported: c.reported }) })).filter((c, i, all) => !c.quote || all.findIndex((x) => x.quote === c.quote) === i) } });
-        semantics.knowledge = { concept: "reported_speech", entity_id: k.entity?.id ?? null, status: "known", speaker_id: frame?.knowledge_query?.speaker_id ?? null, facts: r.claims.map((c) => ({ key: c.key, speaker_id: c.speaker_id, provenance: c.epistemic_mode, source_ref: c.source_ref })) };
+        required.push({ key: "reported_speech", value: { speaker_name: speakerName, about: k?.entity?.label ?? null, claims: r.claims.filter(onTopic).slice(-3).map((c) => ({ ...c, reported: firstPerson(c.reported) })).map((c) => ({ speaker_id: c.speaker_id ?? null, speaker_name: c.speaker_name ?? names[c.speaker_id] ?? null, epistemic: c.epistemic_mode, ...(c.epistemic_mode === "player_claim" ? { quote: c.text } : c.epistemic_mode === "own_speech" && c.line ? { quote: c.line } : { reported: c.reported }) })).filter((c, i, all) => !c.quote || all.findIndex((x) => x.quote === c.quote) === i) } });
+        semantics.knowledge = { concept: "reported_speech", entity_id: k?.entity?.id ?? null, status: "known", speaker_id: frame?.knowledge_query?.speaker_id ?? null, facts: r.claims.map((c) => ({ key: c.key, speaker_id: c.speaker_id, provenance: c.epistemic_mode, source_ref: c.source_ref })) };
       } else {
         required.push({ key: "uncertainty", value: { kind: r?.heard_speaker ? "not_heard_on_topic" : "did_not_hear_speaker", speaker_name: speakerName } });
         semantics.knowledge = { concept: "reported_speech", entity_id: k?.entity?.id ?? null, status: r?.status ?? "not_heard", speaker_id: frame?.knowledge_query?.speaker_id ?? null, facts: [], unknown_reason: canonicalKnowledge.SEMANTIC_REASON.LEGITIMATE_UNKNOWN };
@@ -2169,12 +2200,18 @@ function planResponses({ frame, owner_ids = [], responders = {}, names = {} } = 
     // An answer to the speaker's own open "Why?" is the player's CLAIM: heard, never canonical truth.
     if (frame.slot_answer?.slot === "reason") required.push({ key: "stated_reason", value: { text: frame.slot_answer.text, status: "player_claim" } });
 
+    // Reciprocal conversation is a code-owned move, not a wording model's
+    // decision. One willing speaker may return an open check-in; never a chorus
+    // of questions, a repeated questionnaire, or a question about private others.
+    const reciprocal = fn === "check_in" && frame.self_state_query?.asked === "wellbeing" && frame.self_state_query?.polarity === "open" && owner_ids.at(-1) === responder_id && !responders[responder_id]?.repeat_of && ["asks one practical follow-up", "fills silence with small talk"].includes(self?.identity_style?.social_tendency);
+    if (reciprocal) required.push({ key: "question_to_player", value: { topic: "current_wellbeing", scope: "player_self", answer_shape: "free_short_answer" } });
+
     const clarifying = fn === "ambiguous_reference" || Boolean(frame?.unresolved_reference) || clarifyMeaning || (fn === "ask_response_event" && !required.some((f) => f.key === "conversation_event")) || (Boolean(frame?.temporal_reference) && !frame.temporal_reference.resolved && ["ask_factual", "ask_personal_experience"].includes(fn) && required.every((f) => f.key === "uncertainty")) || (fn === "ask_next_step" && required.length === 0);
     planned.push({
       responder_id,
       recipient_scope: frame?.target_scope ?? "untargeted",
       discourse_function: fn,
-      purpose: PURPOSES[fn],
+      purpose: fn === "greet" && frame.greeting_kind === "meeting" ? "return their pleasure at meeting you briefly and naturally; do not restart a morning greeting or invent a prior relationship" : PURPOSES[fn],
       requested_content: frame?.requested_content ?? null,
       expected_response_shape: frame?.expected_response_shape ?? EXPECTED_SHAPES[fn],
       required_facts: required,
@@ -2184,6 +2221,7 @@ function planResponses({ frame, owner_ids = [], responders = {}, names = {} } = 
       // the question anyway (a known answer already fixes which event is meant).
       // (The uncertainty descriptor states which kind of not-knowing applies; it is not an answering fact.)
       may_ask_clarifying_question: clarifying,
+      ...(reciprocal ? { asks_player: true, predicate: "person.wellbeing", answer_shape: "free_short_answer" } : {}),
       // What an answer to that clarification must supply (persisted: the open question survives a reload).
       expected_slot: clarifying ? (clarifyMeaning ? (fn === "ask_factual" ? "topic" : "referent") : (fn === "ask_response_event" ? "temporal" : (frame?.expected_slot ?? clarificationSlot(frame)))) : null,
       // Structured meaning of the facts above (bookkeeping, not model-facing).
@@ -2235,6 +2273,7 @@ function toAuthorizedContribution(plan, frame, { names = {} } = {}) {
   const ante = frame?.antecedent ?? { type: "none", resolved: true };
   return {
     discourse_function: plan.discourse_function,
+    ...(plan.asks_player ? { asks_player: true } : {}),
     purpose: plan.purpose,
     expected_response_shape: plan.expected_response_shape,
     requested_content: plan.requested_content,

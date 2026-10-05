@@ -338,7 +338,8 @@ test("ED-1.5 — plans own fact selection; fallback respects the plan", () => {
   assert.deepEqual(role.plan.style_hints, { social_expression: "dryly observant" });
   const intro = plan("Tell me about yourself.");
   const introJson = JSON.stringify(D.toAuthorizedContribution(intro.plan, intro.frame, { names: {} }));
-  assert.ok(!introJson.includes("emergency medical training") && !introJson.includes("Great Lakes") && !introJson.includes("first week"), "generic self-description offers no background facts");
+  assert.ok(introJson.includes("emergency medical training"), "an open invitation may draw on the speaker's stored background");
+  assert.ok(!introJson.includes("Great Lakes"), "unrequested region remains outside the contribution");
 });
 
 // ── Validation wiring ───────────────────────────────────────────────────────

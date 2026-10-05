@@ -455,7 +455,8 @@ function recordInboundRequest(run, { event_id, speaker_id, text, plan, request_i
   if (!state || !event_id || !speaker_id || !kind) return null;
   // What the expectation is about is canonical too: the facet of the request the plan answered (a
   // clarification is about the player's own question).
-  const predicate = plan?.predicate ?? (plan?.required_facts ?? []).find((f) => f.key === "predicate_answer")?.value?.predicate ?? null;
+  const reciprocal = (plan?.required_facts ?? []).find(f => f.key === "question_to_player")?.value;
+  const predicate = reciprocal?.topic === "current_wellbeing" ? "person.wellbeing" : plan?.predicate ?? (plan?.required_facts ?? []).find((f) => f.key === "predicate_answer")?.value?.predicate ?? null;
   // The expected answer shape is canonical: from the plan that asked (its declared shape and offered option
   // ids, or its clarification slot), never from the words a wording provider chose. Only without a plan (an
   // offline evaluation context) are the words read.
@@ -532,7 +533,7 @@ function commitTurnLines(run, items = [], { present_ids = [] } = {}) {
     // The accepted spoken line's sentences, anchored to what licensed them (conversational metadata only).
     if (item.text && item.event_id) recordSurfaceAnchors(run, { event_id: item.event_id, speaker_id: item.speaker_id, text: item.text, parts: parts.map((part) => ({ request_id: part.request_id, predicate: part.frame?.predicate ?? null })) });
     personhood.recordSelfStateSnapshot(run, item.speaker_id, { source: "turn_commit" });
-    for (const proposition of knowledge.propositionsOfPlan(item.plan, { speaker_id: item.speaker_id })) {
+    for (const proposition of knowledge.propositionsOfPlan(item.plan, { speaker_id: item.speaker_id, spoken_text: item.text })) {
       for (const listener of new Set(item.listeners ?? [])) {
         if (!listener || listener === item.speaker_id) continue;
         recordLearning(run, { actor_id: listener, proposition: { concept: proposition.concept ?? null, key: proposition.key ?? null, predicate: proposition.predicate ?? null, reported: proposition.reported ?? null }, source_actor_id: item.speaker_id, source_event_id: item.event_id ?? null });

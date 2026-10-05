@@ -1,5 +1,7 @@
 # Jack’s official final Electron dialogue acceptance
 
+**Human test failed on 2026-10-05:** the Assembly Table names/repair exchange failed; engineering repairs now include richer personal replies, ordinary name/role questions, reciprocal conversation and persisted follow-ups. Jack’s retest is still required. Do not treat the earlier automated green run as a human PASS.
+
 Launch from this checkout:
 
 ```sh
@@ -12,12 +14,12 @@ This opens the ARM64 packaged Yellow Beast app and one local checklist. Test a f
 The seven ordered steps are:
 
 1. During Maxwell’s briefing, ask **“What is the schedule and cutoff time?”**; finish normally.
-2. At the Assembly Table, inspect the team; say **“Hello, everyone.”** and **“I’m Jack.”** in LOCAL.
+2. At the Assembly Table, inspect the team; say **“Hello and goodmorning, everyone.”**, ask **“What're everyone's names?”**, then **“Well yes, but I mean everyone at the table, here.”** Select one coworker and ask **“WHAT ARE YOUR NAMES?”** Clear the selection and say **“I’m Jack.”** in LOCAL. Talk naturally for five turns: ask about them, follow up on something they actually said, and share how you feel. Judge substance and differences between their voices.
 3. Select the doctor: **“Have you been inside the Complex before?”** then **“So youve been there before? this, complex?”** Repeat the latter with an intern selected.
 4. Select a coworker: **“You look nervous.”** Clear the recipient: **“Well, this seems incredibly safe.”**
 5. Address the group: **“What are you all carrying?”**
 6. Say **“You know the thing by the thing?”**; then leave the composer empty and wait without submitting.
-7. Watch presentation and ordering throughout; quit normally, reopen and resume to inspect continuity.
+7. Watch presentation and ordering throughout; quit normally, reopen and resume to inspect continuity. Ask **“What were we talking about?”** and follow up on something a coworker previously told you. Judge whether it feels like the same conversation.
 
 The checklist records observations without showing frozen Reader candidate wires or expected resolver answers. The two unapproved AI-assisted Complex interpretations remain unapproved. Testing those utterances supplies subjective implementation observations; it does **not** silently approve the frozen candidates or create blind labels. Any later explicit candidate approval must retain its AI-assisted owner-ratification provenance.
 

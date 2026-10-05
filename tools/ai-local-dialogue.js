@@ -620,7 +620,7 @@ function validateNamedPeople(packet, speech) {
 
 // Style/delivery is free; a NEW state is not. A first-person emotional or social claim (fear, anger,
 // frustration, distrust, attachment...) is a substantive character state, so it must be established by
-// the capsule's canonical human context (or already voiced by the player's own words). Dry colour such
+// the capsule's canonical human context. The player's feeling never establishes the coworker's. Dry colour such
 // as "Yeah, very reassuring." claims no state and passes.
 const EMOTION_WORDS = "terrified|scared|afraid|frightened|petrified|panick\\w*|angry|furious|annoyed|irritated|frustrated|fed up|sick of|sick and tired|worried|anxious|nervous|uneasy|on edge|excited|thrilled|heartbroken|devastated|exhausted|traumati[sz]ed|suspicious|distrust\\w*|resent\\w*|hate|hated|love|loved|jealous|lonely";
 const EMOTION_CLAIM = new RegExp(`\\b(?:i(?:'m| am| feel| felt| was|'ve been| have been| get| got)|it makes me|makes me|getting|i really|i just)\\b[^.?!]{0,30}\\b(?:${EMOTION_WORDS})\\b|\\b(?:annoy\\w*|irritat\\w*|frustrat\\w*|upset\\w*|scar\\w*|frighten\\w*|worr\\w*|anger\\w*)\\s+(?:me|us)\\b|\\bgetting on my nerves\\b`, "i");
@@ -628,13 +628,12 @@ const AFFECT_SYNONYMS = { tense: /\b(?:tense|stress\w*|on edge|uneasy|nervous|an
 function validateAffectClaims(packet, speech) {
   const capsule = packet?.context_capsule;
   if (!capsule) return { ok: true };
-  const match = String(speech).match(EMOTION_CLAIM);
-  if (!match) return { ok: true };
-  const said = String(packet.player_message?.text ?? "");
-  if (new RegExp(`\\b(?:${EMOTION_WORDS})\\b`, "i").test(said)) return { ok: true }; // answering the player's own wording
   const established = (capsule.human_context?.affect ?? []).join(" ") + " " + (capsule.human_context?.relationship ?? "");
-  const supported = Object.entries(AFFECT_SYNONYMS).some(([key, re]) => re.test(match[0]) && (key === "tense" ? /tense|stress/i.test(established) : key === "pressed" ? /pressed/i.test(established) : key === "tired" ? /tired/i.test(established) : /guarded/i.test(established)));
-  return supported ? { ok: true } : { ok: false, code: "LOCAL_PRESENTATION_FORBIDDEN_CLAIM", reason: `invents a character state not established by canonical context: "${match[0].trim()}"` };
+  for (const match of String(speech).matchAll(new RegExp(EMOTION_CLAIM.source, "ig"))) {
+    const supported = Object.entries(AFFECT_SYNONYMS).some(([key, re]) => re.test(match[0]) && (key === "tense" ? AFFECT_SYNONYMS.tense.test(established) : key === "pressed" ? /pressed/i.test(established) : key === "tired" ? /tired/i.test(established) : /guarded/i.test(established)));
+    if (!supported) return { ok: false, code: "LOCAL_PRESENTATION_FORBIDDEN_CLAIM", reason: `invents a character state not established by canonical context: "${match[0].trim()}"` };
+  }
+  return { ok: true };
 }
 
 function validateLocalDialogue(packet, candidate, runValue = null) {

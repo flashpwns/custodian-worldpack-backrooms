@@ -33,6 +33,7 @@ const CAUSES = Object.freeze({
   // ── fenced: raw player words decide production (READER_RAW_TEXT_INVENTORY.md) ──
   raw_C4_address_correction: { class: "FENCED_RAW_TEXT", site: "C4", title: "resolveAddressCorrection overlay (raw text) decided the addressee", fields: [ANY] },
   raw_C5_address_overlay: { class: "FENCED_RAW_TEXT", site: "C5/C6", title: "parseAddressees / inferLocalRecipientType over the raw line set the recipients the analysis did not", fields: [ROUTING, /^lifecycle\.request\.targets$/, /^act\.temporal$/, /^frame\./] },
+  raw_polite_preamble_vocative: { class: "FENCED_RAW_TEXT", site: "C5/C6 (named polite preamble)", title: "Production carries the explicitly named polite preamble into its following question; the frozen Reader act only contains names inside its own token span", fields: [/^routing\.(addressees|recipients|responders)$/, /^lifecycle\.request\.targets$/, /^frame\.turn\.addressee_ids$/] },
   raw_C7_recipient_scope: { class: "FENCED_RAW_TEXT", site: "C7", title: "resolveRecipientScope inherited recipients from raw-word overlap", fields: [/^routing\.(recipients|addressees)$/] },
   raw_answer_address_record: { class: "FENCED_RAW_TEXT", site: "C5/C6", title: "an answer keeps the raw-text address parse (addressFromTurn skips answers): no recipient", fields: [/^routing\.recipients$/] },
   raw_C8_follow_up: { class: "FENCED_RAW_TEXT", site: "C8/C10", title: "legacy inherited the addressee through isFollowUp / echo regexes", fields: [ROUTING, /^act\.relation\.target$/, /^frame\.turn\./, /^lifecycle\.request\.targets$/] },
@@ -106,6 +107,7 @@ function turnCauses(record, out, pl) {
   if (prod.addressee?.source === "legacy_correction") add("raw_C4_address_correction");
   const analysisIds = [...(prod.addressee?.ids ?? [])].sort().join(",");
   if ((pr.recipient_ids ?? []).length && pr.address_source === "explicit" && [...pr.recipient_ids].sort().join(",") !== analysisIds && prod.addressee?.source !== "collective") add("raw_C5_address_overlay");
+  if (prod.addressee?.source === "vocative" && (prod.addressee.ids ?? []).length === 1 && !(sp.addressee?.ids ?? []).length && /,\s*(?:I hope you (?:don't|do not) mind me asking|may I ask|can I ask)[\s\S]*\b(?:but|and)\s+(?:are|have|do|is|can|will)\b/i.test(record.input?.line?.raw ?? "")) add("raw_polite_preamble_vocative");
   if (pr.address_form === "inherited") add("raw_C7_recipient_scope");
   if (prod.speech_act === "answer" && !(pr.recipient_ids ?? []).length) add("raw_answer_address_record");
   if (["antecedent_owner", "surface_anchor"].includes(prod.addressee?.source)) add("raw_C8_follow_up");

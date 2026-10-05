@@ -296,3 +296,251 @@ test("stale state — a procedure answer whose speaker left the room during gene
     assert.ok(state.logs.some((l) => /pre-commit revalidation cancelled reply/.test(l)));
   } finally { cleanup(state); }
 });
+
+test("screenshot regression — addressed name questions use each coworker's own name, never Maxwell", async () => {
+  const state = setup('names-screenshot', garbage().provider);
+  try {
+    const peers=state.run.expedition.team.members.filter(m=>state.ids.includes(m.personnel_id??m.id));
+    await say(state,'Hello and goodmorning, everyone.',{request_id:'names-greeting'});
+    assert.equal(spokenFor(state.run,'names-greeting',state.playerId).length,3,'Combined group greeting reaches all three coworkers');
+    const verify=(requestId,ids)=>{
+      const speech=spokenFor(state.run,requestId,state.playerId);
+      assert.deepEqual(speech.map(e=>e.speaker_id),ids,'Code owns the complete ordered responder set');
+      for(const e of speech){const peer=peers.find(m=>(m.personnel_id??m.id)===e.speaker_id);assert.match(e.text,new RegExp(peer.first_name));assert.doesNotMatch(e.text,/Maxwell|Kirk|briefing|custody/i);}
+      for(const c of contextsFor(state.run,requestId))assert.deepEqual(c.response_plan.required_facts.map(f=>f.key),['name'],'Name questions authorize only the speaker name');
+    };
+    await say(state,"What're everyone's names?",{request_id:'names-group'});verify('names-group',state.ids);
+    await say(state,'Well yes, but I mean everyone at the table, here.',{request_id:'names-repair'});verify('names-repair',state.ids);
+    const direct=peers.at(-1);await say(state,'WHAT ARE YOUR NAMES?',{request_id:'names-direct',target:direct.first_name});verify('names-direct',[direct.personnel_id??direct.id]);
+    await say(state,'Who was that doctor who briefed us?',{request_id:'names-maxwell'});
+    const report=spokenFor(state.run,'names-maxwell',state.playerId);assert.equal(report.length,1);assert.match(report[0].text,/Maxwell|Kirk/,'A question actually about Maxwell retains his briefing facts');
+  }finally{state.service.shutdown();cleanup(state);}
+});
+
+test("own-name contract accepts ordinary variants without treating object or third-person names as self-introductions", () => {
+  for(const text of ["What's your name?",'What is your name?',"What’re everybody’s names?","What are everyone's names?",'WHAT ARE YOUR NAMES?',"What's everyone's name?"]){
+    const p=planFor(text);assert.equal(p.frame.requested_content,'name',text);assert.deepEqual(p.plan.required_facts.map(f=>f.key),['name'],text);assert.deepEqual(p.plan.optional_facts,[],text);
+    const line=F.presentFallback({frame:p.frame,plan:p.plan});assert.match(line,/Omar/);assert.equal(verdict(p.contribution,line,text).ok,true);
+    assert.equal(verdict(p.contribution,"That's Dr. Kirk Maxwell. He said we can call him Kirk.",text).ok,false,'A true fact about another person does not answer the question');
+  }
+  for(const text of ["What are your names for those instruments?","What's your doctor's name?",'Who was that doctor who briefed us?','Everyone at the table is here.'])assert.notEqual(planFor(text).frame.requested_content,'name',text);
+});
+
+test("group target repair without an earlier question clarifies instead of inventing names", async () => {
+  const state=setup('names-repair-no-question',garbage().provider);
+  try {await say(state,'I mean everyone at the table, here.',{request_id:'names-orphan-repair'});const speech=spokenFor(state.run,'names-orphan-repair',state.playerId);assert.equal(speech.length,1);const c=contextsFor(state.run,'names-orphan-repair')[0];assert.equal(c.response_plan.may_ask_clarifying_question,true);assert.equal(c.response_plan.required_facts.some(f=>f.key==='name'),false);}finally{state.service.shutdown();cleanup(state);}
+});
+
+test("ordinary introductions — wording families and fresh short questions answer the people present", async () => {
+  const s = setup("natural-introductions", garbage().provider);
+  try {
+    const names = s.run.expedition.team.members.filter((m) => (m.personnel_id ?? m.id) !== s.playerId).map((m) => m.first_name);
+    for (const [i, text] of ["Hey folks, I don’t think we’ve met. What should I call you?", "Who is everyone?", "Could you remind me who everyone is?"].entries()) {
+      const request_id = `natural-intro-${i}`;
+      await say(s, text, { request_id });
+      const lines = spokenFor(s.run, request_id, s.playerId);
+      assert.equal(lines.length, 3, `${text}: everyone introduces themselves`);
+      for (const [n, line] of lines.entries()) assert.ok(line.text.includes(names[n]), `${text}: ${line.text}`);
+    }
+    await say(s, "Wait, I meant you three, not Maxwell.", { request_id: "natural-target-repair" });
+    const repaired = spokenFor(s.run, "natural-target-repair", s.playerId);
+    assert.equal(repaired.length, 3);
+    for (const [n, line] of repaired.entries()) assert.ok(line.text.includes(names[n]), line.text);
+    await say(s, "Who am I working with today?", { request_id: "natural-roster" });
+    const roster = spokenFor(s.run, "natural-roster", s.playerId);
+    assert.equal(roster.length, 1);
+    for (const name of names) assert.ok(roster[0].text.includes(name), `roster identifies ${name}: ${roster[0].text}`);
+    assert.doesNotMatch(roster[0].text, /report to Equipment Staging/i);
+    await say(s, "Nice to meet you all.", { request_id: "natural-meeting" });
+    const meeting = spokenFor(s.run, "natural-meeting", s.playerId);
+    assert.equal(meeting.length, 3);
+    for (const line of meeting) assert.match(line.text, /meet you/i);
+  } finally { s.service.shutdown(); cleanup(s); }
+});
+
+test("language recovery — the shared gate honors uncertain force and complete short questions stay fresh", () => {
+  const T = require("../tools/dialogue-turn");
+  const analysis = T.analyzeTurn({ raw: "Something about this arrangement feels off.", present: [], entities: [] });
+  const gate = T.advisoryGate({ message: analysis.raw, analysis, frame: { discourse_function: "make_statement" }, completeness: { complete: false, missing: ["force_uncertain"] } });
+  assert.equal(gate.needed, true, "a gap detected by completeness must reach the language interpreter");
+  assert.equal(gate.contract.tier1_complete, false);
+  const fresh = T.analyzeTurn({ raw: "Who is everyone?", present: [{ id: "a", name: "Ava" }], entities: [] });
+  const advice = { version: "yellow-beast-dialogue-advisory@v2", accepted: true, acts: [{ speech_act: "question", facet: "person.self_description", quantifier: "all", discourse_relation: "continuation" }], tier1_missing: ["facet_unresolved"] };
+  assert.equal(T.assessAdvisory(advice, fresh, { dis: { last_request: { predicate: "mission.destination" } } }).accepted, true, "a complete short question does not require the previous topic to match");
+});
+
+
+test("open introductions allow stored personal detail without turning name questions into biographies", () => {
+  const self = selfOf({ person: { first_name: "Omar", role: "field technician", identity_substrate: { education_or_trade: "industrial electrical work", async_tenure: "under six months" } } });
+  const open = planFor("Tell me about yourself.", { self });
+  assert.deepEqual(open.plan.optional_facts.filter(f => f.key === "identity_fact").map(f => f.value), [{ education_or_trade: "industrial electrical work" }]);
+  assert.equal(verdict(open.contribution, "I'm Omar, a field technician. My background is industrial electrical work.").ok, true);
+  for (const line of ["I'm Omar, a field technician. I've been with ASYNC ten years.", "I'm Omar, a field technician. My brother got me this job.", "I'm Omar, a field technician. I've been into the Complex three times.", "I'm Omar, a field technician. I've done industrial electrical work for under six months."]) assert.equal(verdict(open.contribution, line).ok, false, line);
+  const name = planFor("What's your name?", { self });
+  assert.equal(name.plan.optional_facts.some(f => f.key === "identity_fact"), false);
+  assert.equal(verdict(name.contribution, "Omar. I've been with ASYNC under six months.").ok, false);
+});
+
+test("employment detail in introductions comes from canonical personhood, not a conflicting older identity seed", () => {
+  const self = selfOf({ person: { first_name: "Omar", role: "field technician", identity_substrate: { async_tenure: "one to two years" } }, member: { personhood: { async_tenure: "weeks" } } });
+  const { plan, contribution } = planFor("Tell me about yourself.", { self });
+  assert.equal(plan.optional_facts.find(f => f.key === "predicate_answer")?.value.answer.band, "weeks");
+  assert.equal(verdict(contribution, "I'm Omar, a field technician. My background is electrical work, and I've been with ASYNC for a few weeks.").ok, true);
+  assert.equal(verdict(contribution, "I'm Omar, a field technician. I've been with ASYNC one to two years.").ok, false);
+});
+
+test("reciprocal check-ins are planned for one speaker and remain answerable after reload", () => {
+  const S = require('../tools/dialogue-state');
+  const self = selfOf({ person: { first_name: 'Omar', identity_substrate: { social_tendency: 'asks one practical follow-up' } } });
+  const { frame, plan, contribution } = planFor('How are you feeling?', { self });
+  assert.equal(plan.asks_player, true);
+  assert.equal(plan.may_ask_clarifying_question, false, 'personal interest is not failure to understand');
+  for (const good of ["I'm all right. How about you?", "Doing okay. How are you feeling?", "I’m doing all right. How are you feeling now?", "I'm doing all right. And how are things for you?"]) assert.equal(verdict(contribution, good).ok, true, good);
+  for (const bad of ["I'm all right.", "I'm all right. Is Maxwell nervous?", "I'm all right. Can I help you?", "I'm all right. Where are we going?"]) assert.equal(verdict(contribution, bad).ok, false, bad);
+  const line = F.presentFallback({ frame, plan });
+  assert.equal(verdict(contribution, line).ok, true, line);
+  const group = D.planResponses({ frame, owner_ids: ['c-nora', 'c-omar'], responders: { 'c-nora': { self }, 'c-omar': { self } } });
+  assert.deepEqual(group.filter(p => p.asks_player).map(p => p.responder_id), ['c-omar']);
+  const run = { expedition: { dialogue_history: [{ id: 'player-before', speaker_id: 'p-jack', text: 'How are you feeling?' }, { id: 'omar-check-in', speaker_id: 'c-omar', text: line }] } };
+  S.recordInboundRequest(run, { event_id: 'omar-check-in', speaker_id: 'c-omar', text: line, plan });
+  const restored = JSON.parse(JSON.stringify(run));
+  assert.equal(S.inboundFor(restored, { player_id: 'p-jack' }).pending.from, 'c-omar');
+  assert.equal(S.inboundFor(restored, { player_id: 'p-jack' }).pending.predicate, 'person.wellbeing');
+  const T = require('../tools/dialogue-turn');
+  const turn = T.analyzeTurn({ raw: "I'm a little nervous.", present: [{ id: 'c-omar', first_name: 'Omar' }], dis: { pending_inbound_request: S.inboundFor(restored, { player_id: 'p-jack' }).pending } });
+  assert.equal(turn.primary.speech_act, 'answer');
+  assert.deepEqual(turn.primary.addressee.ids, ['c-omar']);
+});
+
+test("off-duty small talk draws on a stored preference rather than reciting the current assignment", async () => {
+  const self = selfOf({ person: { first_name: 'Omar', role: 'field technician', identity_substrate: { mundane_preference: 'radio baseball' } } });
+  for (const text of ["What do you do when you're not working?", 'What are you into?', 'Do you have any hobbies?', 'What do you enjoy doing?', 'What do you do in your spare time?']) {
+    const { frame, plan, contribution } = planFor(text, { self });
+    assert.equal(frame.discourse_function, 'ask_personal_experience', text);
+    assert.equal(frame.requested_content, 'preference', text);
+    assert.deepEqual(plan.required_facts, [{ key: 'personal_preference', value: 'radio baseball' }]);
+    assert.equal(verdict(contribution, F.presentFallback({ frame, plan }), text).ok, true);
+    assert.equal(verdict(contribution, "I like radio baseball.", text).ok, true);
+    assert.equal(verdict(contribution, "I don't like radio baseball.", text).ok, false);
+    assert.equal(verdict(contribution, "I like radio baseball and fishing.", text).ok, false);
+    assert.equal(verdict(contribution, "I enjoy radio baseball. I think the mission is dangerous.", text).ok, false);
+    assert.equal(verdict(contribution, "I'm a field technician.", text).ok, false);
+    assert.equal(verdict(contribution, 'My brother got me into radio baseball.', text).ok, false);
+  }
+  const s = setup('ed25-personal-small-talk', null, { offline: true });
+  try {
+    await say(s, "What're everyone's names?");
+    const id = s.ids[0];
+    const r = await say(s, "What do you do when you're not working?", { target: id });
+    const context = contextsFor(s.run, r.request_id ?? r.receipt?.id ?? s.run.expedition.communication_receipts.at(-1).id).find(c => c.responder_id === id) ?? s.run.expedition.communication_receipts.at(-1).response_contexts[0];
+    assert.equal(context.semantic_frame.requested_content, 'preference');
+    assert.equal(context.response_plan.required_facts.some(f => f.key === 'personal_preference'), true);
+  } finally { cleanup(s); }
+});
+
+test("natural wording of canonical first-day nerves is not rejected by a second affect check", () => {
+  const { validateAffectClaims } = require('../tools/ai-local-dialogue');
+  const packet = { context_capsule: { human_context: { affect: ['a little nervous'] } }, player_message: { text: 'How are you feeling?' } };
+  for (const speech of ["I'm a little nervous right now.", "I feel a bit uneasy.", "I'm on edge."]) assert.equal(validateAffectClaims(packet, speech).ok, true, speech);
+  assert.equal(validateAffectClaims(packet, "I'm furious.").ok, false);
+  assert.equal(validateAffectClaims({ ...packet, context_capsule: { human_context: { affect: [] } } }, "I'm nervous.").ok, false);
+});
+
+test("conversation memory records spoken optional details, never the unused contents of a character packet", () => {
+  const K = require('../tools/canonical-knowledge');
+  const plan = { discourse_function: 'invite_self_description', required_facts: [{ key: 'name', value: 'Omar' }], optional_facts: [{ key: 'identity_fact', value: { education_or_trade: 'industrial electrical work' } }, { key: 'personal_preference', value: 'radio baseball' }] };
+  const empty = K.propositionsOfPlan(plan, { speaker_id: 'omar', spoken_text: "I'm Omar." });
+  assert.equal(empty.some(p => p.key === 'personal_background' || p.key === 'personal_preference'), false);
+  const said = K.propositionsOfPlan(plan, { speaker_id: 'omar', spoken_text: "I'm Omar. I like radio baseball." });
+  assert.equal(said.some(p => p.key === 'personal_preference'), true);
+  assert.equal(said.some(p => p.key === 'personal_background'), false);
+  const restored = JSON.parse(JSON.stringify(plan));
+  assert.deepEqual(K.propositionsOfPlan(restored, { speaker_id: 'omar', spoken_text: "I'm Omar. I like radio baseball." }), said);
+});
+
+test("plain plural job questions and conversation recall use actual ongoing speech", async () => {
+  for (const text of ['What are your jobs?', 'What are your roles?', 'What are your assignments?']) {
+    const { frame, plan } = planFor(text);
+    assert.equal(frame.discourse_function, 'ask_role_or_assignment', text);
+    assert.equal(plan.required_facts.some(f => f.key === 'role'), true, text);
+  }
+  const s = setup('ed25-conversation-recap', null, { offline: true });
+  try {
+    await say(s, 'What do we do next?');
+    const fresh = new DesktopService({ appDataPath: s.root, defaultQ4Scenario: 'day1-opener', developerMode: true });
+    fresh.updateSettings({ provider: 'offline' });
+    assert.equal(fresh.resumeSession({ world_id: s.worldId, mode: 'field-researcher' }).ok, true);
+    const r = await fresh.submitQ4Communication({ world_id: s.worldId, channel: 'local', text: 'What were we talking about?' });
+    assert.equal(r.ok, true, JSON.stringify(r.error));
+    const restored = fresh.session(s.worldId, 'field-researcher').run;
+    const receipt = restored.expedition.communication_receipts.at(-1);
+    const ctx = receipt.response_contexts[0];
+    assert.equal(ctx.semantic_frame.discourse_function, 'ask_reported_speech');
+    assert.deepEqual(ctx.response_plan.required_facts.find(f => f.key === 'reported_speech').value.claims.map(c => c.quote), ['What do we do next?']);
+    assert.equal(receipt.response_contexts[0].response_plan.may_ask_clarifying_question, false);
+    assert.match(restored.expedition.dialogue_history.at(-1).text, /what do we do next/i);
+    fresh.shutdown();
+  } finally { cleanup(s); }
+});
+
+test("a player's answer to a reciprocal check-in is acknowledged by its asker after cold service reload", async () => {
+  const s = setup('natural-persistent-2026-10-05', null, { offline: true });
+  try {
+    const world = s.service.getWorld(s.worldId);
+    const asker = s.ids.find(id => ['asks one practical follow-up', 'fills silence with small talk'].includes(world.characters[id]?.identity_substrate?.social_tendency));
+    assert.ok(asker, 'fixture has a canonically sociable coworker');
+    await say(s, 'How are you feeling?', { target: asker, request_id: 'reciprocal-before-reload' });
+    const S = require('../tools/dialogue-state');
+    assert.equal(S.inboundFor(s.run, { player_id: s.playerId }).pending?.from, asker);
+    const fresh = new DesktopService({ appDataPath: s.root, defaultQ4Scenario: 'day1-opener', developerMode: true });
+    fresh.updateSettings({ provider: 'offline' });
+    assert.equal(fresh.resumeSession({ world_id: s.worldId, mode: 'field-researcher' }).ok, true);
+    const r = await fresh.submitQ4Communication({ world_id: s.worldId, channel: 'local', text: "I'm honestly a bit nervous.", request_id: 'reciprocal-after-reload' });
+    assert.equal(r.ok, true, JSON.stringify(r.error));
+    const run = fresh.session(s.worldId, 'field-researcher').run;
+    const spoken = spokenFor(run, 'reciprocal-after-reload', s.playerId);
+    assert.equal(spoken.length, 1);
+    assert.equal(spoken[0].speaker_id, asker);
+    assert.equal(S.inboundFor(run, { player_id: s.playerId }).pending, null);
+    fresh.shutdown();
+  } finally { cleanup(s); }
+});
+
+test("a personal disclosure can elicit a coworker's established state, never a manufactured shared mood", () => {
+  const make = state => {
+    const frame = { ...D.buildSemanticFrame({ text: "I'm honestly a bit nervous.", recipient_type: 'direct' }), turn: { speech_act: 'answer', answers_predicate: 'person.wellbeing', addressee_ids: ['c-omar'] } };
+    return D.toAuthorizedContribution(D.planResponses({ frame, owner_ids: ['c-omar'], responders: { 'c-omar': { self: selfOf({ self_state: state }) } }, names: NAMES })[0]);
+  };
+  const known = make({ state: 'affected', affect: ['a little nervous'] });
+  assert.equal(known.optional_facts.some(f => f.key === 'self_state'), true);
+  assert.equal(verdict(known, "I'm a little nervous too.", "I'm honestly a bit nervous.").ok, true);
+  // Production also checks the observer capsule before accepting wording.
+  const { validateAffectClaims } = require('../tools/ai-local-dialogue');
+  const packet = { context_capsule: { human_context: { affect: ['a little nervous'] } }, player_message: { text: "I'm honestly a bit nervous." } };
+  assert.equal(validateAffectClaims(packet, "I'm furious too.").ok, false);
+  assert.equal(validateAffectClaims(packet, "I'm a little nervous. I'm furious too.").ok, false);
+  const ordinary = make({ state: 'ordinary', affect: [] });
+  assert.equal(ordinary.optional_facts.some(f => f.key === 'self_state'), false);
+  const ordinaryPacket = { ...packet, context_capsule: { human_context: { affect: [] } } };
+  assert.equal(verdict(ordinary, "I'm a little nervous too.", "I'm honestly a bit nervous.").ok && validateAffectClaims(ordinaryPacket, "I'm a little nervous too.").ok, false);
+});
+
+test("A named polite question supersedes the previous reciprocal asker; mentions do not", () => {
+  const T = require("../tools/dialogue-turn");
+  const present = [{id:"c-malcolm",name:"Malcolm",names:["Malcolm"]},{id:"c-tonya",name:"Tonya",names:["Tonya"]}];
+  const dis = {pending_inbound_request:{from:"c-tonya",kind:"question",predicate:"person.wellbeing",answer_shape:"free_short_answer"}};
+  const named = T.analyzeTurn({raw:"Malcolm, I hope you don't mind me asking, but are you nervous at all?",present,dis});
+  assert.deepEqual(named.primary.addressee.ids,["c-malcolm"]);
+  assert.equal(named.primary.args.reply_kind,undefined);
+  const mention = T.analyzeTurn({raw:"I spoke with Malcolm, but are you nervous at all?",present,dis});
+  assert.notDeepEqual(mention.primary.addressee.ids,["c-malcolm"]);
+});
+
+test("Conversation recall may quote the actual player question without asserting private state", () => {
+  const C = require("../tools/dialogue-claims");
+  const contribution = {discourse_function:"ask_reported_speech",required_facts:[{key:"reported_speech",value:{claims:[{epistemic:"player_claim",speaker_name:"you",quote:"Cecilia, how are you feeling?"}]}}],optional_facts:[]};
+  const options = {people:[{id:"c-cecilia",name:"Cecilia"}],speaker_id:"c-other",speaker_name:"Gordon"};
+  assert.equal(C.validatePersonalClaims('You said, "Cecilia, how are you feeling?"',contribution,options).ok,true);
+  assert.equal(C.validatePersonalClaims('You said, "Cecilia, how are you feeling?" Cecilia is nervous.',contribution,options).ok,false);
+  assert.equal(C.validatePersonalClaims('You said, "Cecilia is nervous."',contribution,options).ok,false);
+});

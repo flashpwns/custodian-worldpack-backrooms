@@ -503,13 +503,18 @@ test("Gold-DIS evaluator: canonical prefixes with checkpoints, incomplete items 
 });
 
 // ─── pinned authorities ──────────────────────────────────────────────────────────────────────────────
-test("Characterization authority is pinned; the scenario sessions replay identically; the round trip on them matches its pinned artifact", async () => {
+test("Historical Reader authority remains pinned; current scenarios match the exact natural-conversation engineering amendment and historical round trip", async () => {
   const charFile = path.join(ARTIFACTS, "characterization.json");
   const rtFile = path.join(ARTIFACTS, "roundtrip.json");
   assert.equal(sha256(charFile), CHARACTERIZATION_SHA256, "the characterization artifact changed without a governance pin update");
   assert.equal(sha256(rtFile), ROUNDTRIP_SHA256, "the round-trip artifact changed without a governance pin update");
   const snapshot = JSON.parse(fs.readFileSync(charFile, "utf8"));
   const roundtrip = JSON.parse(fs.readFileSync(rtFile, "utf8"));
+  const amendmentFile = path.join(ROOT, "docs", "acceptance", "dialogue-natural-conversation", "characterization-amendment.json");
+  assert.equal(sha256(amendmentFile), "3c51028847879e42edda79af9d4ee52ed315d5e31b7fc5da299b3ca9011f28b4", "the engineering amendment changed without review and a governance pin update");
+  const amendment = JSON.parse(fs.readFileSync(amendmentFile, "utf8"));
+  assert.equal(amendment.changes.length, 12);
+  let amendmentsChecked = 0;
   const census = snapshot.census;
   for (const source of ["answer_owner", "activity_remaining", "person_set_continuation", "open_question_answer", "surface_anchor", "pending_request", "answer_repair", "repair_asker", "antecedent_owner", "inbound_asker", "chip"]) assert.ok(census.addressee_source.includes(source), `characterization exercises addressee.source ${source}`);
   for (const source of ["tier1_registry", "item_role", "discourse_followup", "surface_anchor", "tier2_advisory", "inbound_counter", "inherited_request", "inherited_activity", "legacy_frame"]) assert.ok(census.facet_source.includes(source), `characterization exercises facet_source ${source}`);
@@ -523,9 +528,19 @@ test("Characterization authority is pinned; the scenario sessions replay identic
     const kind = spec.providers[0];
     const rt = [];
     const turns = await C.characterizeSession(spec, kind, { onTurn: (s, requestId, step) => { rt.push({ fixture: spec.id, kind: spec.kind, text: step.text, ...RT.roundTrip(s.service.readerReceipts.get(requestId)) }); } });
-    assert.deepEqual(turns, snapshot.sessions.find((x) => x.id === spec.id).turns[kind], `${spec.id}: characterization drift`);
+    const expected = structuredClone(snapshot.sessions.find((x) => x.id === spec.id).turns[kind]);
+    for (const change of amendment.changes.filter(c => c.scenario === spec.id && c.provider === kind)) {
+      assert.equal(expected[change.turn].text, change.text);
+      assert.equal(crypto.createHash("sha256").update(JSON.stringify(expected[change.turn])).digest("hex"), change.historical_turn_sha256, "amendment must match its exact historical source turn");
+      assert.deepEqual(Object.keys(change.expected_fields), change.fields);
+      assert.ok(change.reason.length > 40);
+      Object.assign(expected[change.turn], change.expected_fields);
+      amendmentsChecked++;
+    }
+    assert.deepEqual(turns, expected, `${spec.id}: characterization drift (only explicitly sealed changes are allowed)`);
     assert.deepEqual(rt, rows.get(spec.id).map(require("./fixtures/reader-owner-policy-overlay").currentRoundtrip), `${spec.id}: round-trip drift`);
   }
+  assert.equal(amendmentsChecked, amendment.changes.length, "every amendment must be exercised; unrelated historical assertions stay exact");
 });
 
 test("The baseline failing-test set is a committed, pinned artifact that the comparison tool reads mechanically", () => {

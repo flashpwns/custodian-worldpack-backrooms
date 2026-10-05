@@ -71,11 +71,11 @@ test("ED-1.6 A/B/C — assignments are rendered to safe phrases; raw task object
       const contribution = packet.authorized_contribution;
       const bad = strings(contribution).filter((text) => UNSAFE.test(text));
       assert.deepEqual(bad, [], "no [object Object], internal ids or raw ids anywhere in the contribution");
-      const assignment = contribution.required_facts.find((f) => f.key === "current_assignment");
+      const assignment = [...contribution.required_facts, ...contribution.optional_facts].find((f) => f.key === "current_assignment");
       if (assignment) assert.equal(typeof assignment.value, "string");
     }
     for (const event of spoken) assert.doesNotMatch(event.text, UNSAFE);
-    assert.ok(spoken.some((e) => /following you|handling observation and verbal recall|delivering the startup materials|compiling the layout record/.test(e.text)) || mine.some((p) => p.authorized_contribution.required_facts.some((f) => f.key === "current_assignment")), "the follow task renders as a phrase");
+    assert.ok(spoken.some((e) => /following you|handling observation and verbal recall|delivering the startup materials|compiling the layout record/.test(e.text)) || mine.some((p) => [...p.authorized_contribution.required_facts, ...p.authorized_contribution.optional_facts].some((f) => f.key === "current_assignment")), "the follow task renders as a phrase");
     // receipt snapshots are safe too
     const receipt = state.session.run.expedition.communication_receipts?.at(-1);
     if (receipt) assert.deepEqual(strings(receipt.response_contexts ?? []).filter((t) => /\[object|q4-player \[/.test(t)), []);
@@ -159,10 +159,11 @@ test("ED-1.6 H/I/J — facts offered for self-description, background and experi
   const plan = (text, type = "group") => { const frame = D.buildSemanticFrame({ text, recipient_type: type }); return { frame, plan: D.planResponses({ frame, owner_ids: ["c-nora"], responders, names: {} })[0] }; };
 
   const intro = plan("Mind telling me a bit about yourselves?");
-  assert.deepEqual(intro.plan.required_facts.map((f) => f.key), ["name", "role", "current_assignment"]);
-  assert.deepEqual(intro.plan.optional_facts, []);
+  assert.deepEqual(intro.plan.required_facts.map((f) => f.key), ["name", "role"]);
+  assert.deepEqual(intro.plan.optional_facts.map(f => f.key), ["current_assignment", "identity_fact", "personal_preference"]);
   const blob = JSON.stringify(D.toAuthorizedContribution(intro.plan, intro.frame));
-  for (const secret of ["emergency medical training", "first week", "Great Lakes", "paper maps", "parking meter"]) assert.ok(!blob.includes(secret), secret);
+  for (const permitted of ["emergency medical training", "paper maps"]) assert.ok(blob.includes(permitted), permitted);
+  for (const secret of ["first week", "Great Lakes", "parking meter"]) assert.ok(!blob.includes(secret), secret);
   assert.equal(F.presentFallback(intro), "I'm Nora, a field medical doctor. I'm waiting here.");
 
   const background = plan("What's your background?", "direct");

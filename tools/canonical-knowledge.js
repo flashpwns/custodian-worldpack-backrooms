@@ -462,7 +462,8 @@ const UNKNOWN_CLASS = Object.freeze({ CANON_NOT_GRANTED: SEMANTIC_REASON.LEGITIM
 // ─── heard propositions (Hole 1/2): meaning from the plan that authorized the line, never its wording ──
 /**
  * Structured propositions an authorized line communicated, keyed by the facts that licensed it. Surface
- * wording is never parsed back into meaning. Returns [{ concept, key, facet, entity_ids, reported }].
+ * wording creates no meaning: it only gates whether a licensed optional detail was actually spoken.
+ * Returns [{ concept, key, facet, entity_ids, reported }].
  */
 // Third-person, past-tense report clauses for a person's own registry answers ("Tonya said it wasn't
 // her first day"): a report is temporally hedged by construction (E4).
@@ -474,14 +475,34 @@ const REPORTED_SELF_CLAUSE = Object.freeze({
   // Acquaintance is always with someone: the clause names them when the answer did.
   "person.familiarity": (a) => { const who = String(a.statements?.[0] ?? "").match(/\bmet ([A-Z][\w.]*(?: [A-Z][\w]*)?) today\b/)?.[1] ?? null; return a.value === "no" ? (who ? `they'd only met ${who} today` : "they'd only just met") : "they knew each other"; }
 });
-function propositionsOfPlan(plan, { speaker_id, speaker_name, names = {} } = {}) {
+function propositionsOfPlan(plan, { speaker_id, speaker_name, names = {}, spoken_text = null } = {}) {
   const out = [];
   if (!plan) return out;
-  if (plan.discourse_function === "compound") return plan.parts.flatMap((p) => propositionsOfPlan(p.plan, { speaker_id, speaker_name, names }));
+  if (plan.discourse_function === "compound") return plan.parts.flatMap((p) => propositionsOfPlan(p.plan, { speaker_id, speaker_name, names, spoken_text }));
+  // An optional fact offered to the wordsmith was not necessarily spoken. Only
+  // selected, licensed details may become heard propositions; a model cannot
+  // teach a listener the unused contents of its packet.
+  if (spoken_text) {
+    const words = text => [...new Set(String(text).toLowerCase().match(/[a-z]{3,}/g) ?? [])];
+    const said = new Set(words(spoken_text));
+    const mentioned = value => { const terms = words(value); return terms.length > 0 && terms.filter(w => said.has(w)).length / terms.length >= 0.75; };
+    for (const fact of plan.optional_facts ?? []) {
+      const eligible = fact.key === "predicate_answer"
+        ? require("./dialogue-claims").extractPropositions(spoken_text).some(p => p.families.includes(fact.value?.predicate))
+        : fact.key === "identity_fact" ? mentioned(fact.value?.education_or_trade ?? "")
+        : ["current_assignment", "personal_preference"].includes(fact.key) && mentioned(fact.value);
+      if (!eligible) continue;
+      out.push(...propositionsOfPlan({ ...plan, required_facts: [fact], optional_facts: [], fact_semantics: fact.key === "current_assignment" ? { current_assignment: plan.fact_semantics?.current_assignment } : {} }, { speaker_id, speaker_name, names }));
+    }
+  }
   const value = (key) => (plan.required_facts ?? []).find((f) => f.key === key)?.value ?? null;
   const role = value("role");
   const assignment = value("current_assignment");
   const task = plan.fact_semantics?.current_assignment?.task ?? null;
+  const background = value("identity_fact")?.education_or_trade;
+  if (background) out.push({ concept: "person_identity", key: "personal_background", facet: "background", entity_ids: [speaker_id], reported: `their background was ${background}` });
+  const preference = value("personal_preference");
+  if (preference) out.push({ concept: "person_identity", key: "personal_preference", facet: "preference", entity_ids: [speaker_id], reported: `they liked ${preference}` });
   if (role) out.push({ concept: "role_or_assignment", key: "role", facet: "role", entity_ids: [speaker_id], reported: `they're ${/^[aeiou]/i.test(role) ? "an" : "a"} ${role}` });
   if (assignment) out.push({ concept: "role_or_assignment", key: "current_assignment", facet: "assignment", entity_ids: [speaker_id, ...(task ? [`task:${task}`] : [])], reported: `they're ${sentence(assignment).replace(/^I'm\s+/i, "").replace(/^./, (c) => c.toLowerCase())}` });
   for (const fact of plan.fact_semantics?.knowledge?.facts ?? []) {
@@ -551,7 +572,7 @@ function heardPropositions(run, actorId) {
     }
     const plan = (receipts.get(event.submission_id)?.response_contexts ?? []).find((c) => c.target_worker_id === event.speaker_id)?.response_plan ?? null;
     const speakerName = event.speaker_name ?? names[event.speaker_id] ?? null;
-    for (const p of propositionsOfPlan(plan, { speaker_id: event.speaker_id, speaker_name: speakerName, names })) {
+    for (const p of propositionsOfPlan(plan, { speaker_id: event.speaker_id, speaker_name: speakerName, names, spoken_text: event.text })) {
       // Reported by someone else, the speaker's own name in their proposition becomes "they".
       const reported = speakerName && p.reported ? p.reported.replace(new RegExp(`^((?:Maxwell said )?)${escapeRe(speakerName)} is\\b`), "$1they're").replace(new RegExp(`^((?:Maxwell said )?)${escapeRe(speakerName)} has\\b`), "$1they have") : p.reported;
       out.push({ ...base, speaker_name: speakerName, epistemic_mode: PROVENANCE.HEARD, ...p, reported });
@@ -612,7 +633,7 @@ function ownSpeechPropositions(run, actorId) {
   for (const event of run?.expedition?.dialogue_history ?? []) {
     if (event?.kind !== "speech" || event.speaker_id !== actorId || !event.submission_id) continue;
     const plan = (receipts.get(event.submission_id)?.response_contexts ?? []).find((c) => c.target_worker_id === actorId)?.response_plan ?? null;
-    for (const p of propositionsOfPlan(plan, { speaker_id: actorId, speaker_name: "I" })) out.push({ speaker_id: actorId, speaker_name: "I", epistemic_mode: "own_speech", source_event: event.id ?? null, source_ref: `dialogue_history.${event.submission_id}`, interaction: event.submission_id, at: event.interval ?? null, line: event.text ?? null, ...p });
+    for (const p of propositionsOfPlan(plan, { speaker_id: actorId, speaker_name: "I", spoken_text: event.text })) out.push({ speaker_id: actorId, speaker_name: "I", epistemic_mode: "own_speech", source_event: event.id ?? null, source_ref: `dialogue_history.${event.submission_id}`, interaction: event.submission_id, at: event.interval ?? null, line: event.text ?? null, ...p });
   }
   return out;
 }

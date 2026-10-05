@@ -371,6 +371,7 @@ function presentFallback(input = {}) {
   // An echo asked for more about one's own answer: the facts are restated, and nothing more is established.
   // Only a substantive answer says so: never a clarifying question, never a brief social check-in.
   const plan = input.plan;
+  if (line && plan?.discourse_function !== "compound" && fact(plan, "question_to_player")?.topic === "current_wellbeing") return `${line} How about you?`;
   if (line && optionalFact(plan, "elaboration_request") && !plan?.may_ask_clarifying_question && plan?.expected_response_shape !== "short_social_acknowledgment" && !/\?\s*$/.test(line) && !/\ball I (?:know|can tell you)\b/i.test(line)) return `${line} That's all I can tell you about it.`;
   return line;
 }
@@ -390,6 +391,9 @@ function presentFallbackLine({ frame, plan = null, prior = [] } = {}) {
   // function: sympathy only.
   const affect = ["make_statement", "social_observation", "express_uncertainty", "joke_or_sarcasm"].includes(fn) && !fact(plan, "player_claim") && !fact(plan, "known_answer") ? fact(plan, "player_affect") : null;
   if (affect?.kind && AFFECT_ACK[affect.kind]) return variant(AFFECT_ACK[affect.kind][0], AFFECT_ACK[affect.kind].slice(1), prior);
+
+  const preference = fact(plan, "personal_preference");
+  if (preference) return `I'm partial to ${preference}.`;
 
   // Knowledge answers: exactly the granted statements (provenance kept in the plan), or a truthful unknown.
   // PARTIAL knowledge says both what is known and that the asked detail is not.
@@ -434,7 +438,7 @@ function presentFallbackLine({ frame, plan = null, prior = [] } = {}) {
     case "ask_role_or_assignment": {
       const name = fact(plan, "name");
       const role = fact(plan, "role");
-      const assignment = fact(plan, "current_assignment");
+      const assignment = fact(plan, "current_assignment") ?? optionalFact(plan, "current_assignment");
       const held = optionalFact(plan, "held_equipment");
       if (fn === "ask_role_or_assignment" && !role && !assignment) return "Nothing specific right now.";
       if (!name && !role && !assignment) return null;
@@ -563,6 +567,7 @@ function presentFallbackLine({ frame, plan = null, prior = [] } = {}) {
       return variant(HEARD_BY_TEMPERAMENT[style.conversational_temperament] ?? "Yeah, I heard you.", HEARD_ALTERNATES, prior);
     }
     case "greet":
+      if (frame.greeting_kind === "meeting") return variant(INTRODUCE_BY_EXPRESSION[style.social_expression] ?? "Good to meet you.", INTRODUCE_ALTERNATES, prior);
       return variant(GREET_BY_EXPRESSION[style.social_expression] ?? "Hello.", GREET_ALTERNATES, prior);
     case "introduce_self":
       return variant(INTRODUCE_BY_EXPRESSION[style.social_expression] ?? "Good to meet you.", INTRODUCE_ALTERNATES, prior);

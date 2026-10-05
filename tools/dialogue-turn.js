@@ -276,6 +276,9 @@ function resolveAddressee(act, { present = [], dis = null, explicit_target_id = 
   const speaker = dis?.active_speaker?.speaker_id ?? null;
   // A collective "we" question about who goes where is put to the table.
   if (/^(?:(?:do|will|should|are|can|shall|would) we|we)\b/i.test(act.body_expanded) && (act.predicate_candidates ?? []).some((c) => /participants/.test(c.id))) return { kind: "group", ids: presentIds, quantifier: "we", source: "collective" };
+  // A first-person disclosure within an ongoing one-to-one exchange is still
+  // said to that coworker. It is not a private fact about a different person.
+  if (act.speech_act === "statement" && speaker && presentIds.includes(speaker) && (dis?.active_speaker?.speaker_ids?.length ?? 1) <= 1 && /^i (?:am|feel)\b[^?]*\b(?:nervous|anxious|worried|scared|afraid|tired|exhausted|cold|hungry|uneasy)\b/i.test(act.body_expanded)) return { kind: "inherited", ids: [speaker], quantifier: null, source: "ongoing_personal_disclosure" };
   if (secondPerson && speaker && presentIds.includes(speaker)) return { kind: "inherited", ids: [speaker], quantifier: null, source: "active_speaker" };
   // Follow-ups that only make sense against the last reply ("Why?", "Huh?", "Excited?", "What is there?")
   // stay with the one who gave it.
@@ -900,6 +903,10 @@ function reconcile(frame, effective) {
   const entry = registry.get(predicate);
   if (!entry) return { ...out, predicate: legacyPredicate };
   const fn = frame.discourse_function;
+  // An addressee's own name is a self-description, not an unresolved third-person identity query.
+  // Keep the per-person contract and the name-only facts instead of querying an absent entity.
+  if (fn === "invite_self_description" && frame.requested_content === "name") return { ...out, predicate: "person.self_description", override: { from: predicate, to: "person.self_description", reason: "addressee_own_name" } };
+  if (fn === "ask_personal_experience" && frame.requested_content === "preference") return { ...out, predicate: legacyPredicate, override: { kept: fn, over: predicate, reason: "off_duty_personal_detail_not_assignment" } };
   if (STRUCTURAL_KEEP.has(fn) && fn !== "make_request") return { ...out, predicate: legacyPredicate ?? predicate, override: { kept: fn, over: predicate, reason: "structural_legacy_function" } };
   if (fn === "make_request" && entry.id !== "person.self_description") return { ...out, predicate: legacyPredicate ?? predicate, override: { kept: fn, over: predicate, reason: "structural_legacy_function" } };
   // A more specific item facet (where it goes, what it's for, what's in it, its state) beats the legacy custody guess.
@@ -979,7 +986,7 @@ function addressFromTurn(primary, legacy, people = []) {
 
 /** Argument slots for one responder's resolver call. */
 function argsFor(frame, responderId) {
-  const args = { ...(frame?.turn?.args ?? {}) };
+  const args = { ...(frame?.turn?.args ?? {}), question_form: frame?.question_form ?? null, question_word: String(frame?.turn?.request_text ?? "").match(/^\s*(who|what|where|when|why|how|which)\b/i)?.[1]?.toLowerCase() ?? null };
   const entry = frame?.predicate ? registry.get(frame.predicate) : null;
   if (entry?.domain === "person") args.subject_id = args.third_party_subject ?? responderId;
   // "Do you two know each other?" is asked AMONG a set of people; carried to one of them ("your turn,
@@ -997,7 +1004,7 @@ function finalizeFrame(frame, primary, rec, { completeness = null, entities = []
   if (!frame) return frame;
   // The player ANSWERED a coworker's question: nothing is asked; the words are their answer, heard by the asker
   // (a clarification answer instead resumes the player's own question -- the legacy resumed_question path).
-  if (primary?.speech_act === "answer" && primary?.args?.inbound_kind === "question") return Object.freeze({ ...frame, discourse_function: "make_statement", predicate: null, requested_content: null, knowledge_query: null, referents: [], turn: { ...(frame.turn ?? {}), speech_act: "answer", relation: "answer", cardinality: "none", reply_kind: primary.args.reply_kind ?? "answer", addressee_ids: [...(primary.addressee?.ids ?? [])] } });
+  if (primary?.speech_act === "answer" && primary?.args?.inbound_kind === "question") return Object.freeze({ ...frame, discourse_function: "make_statement", predicate: null, requested_content: null, knowledge_query: null, referents: [], turn: { ...(frame.turn ?? {}), speech_act: "answer", relation: "answer", cardinality: "none", ...(primary.args.answers_predicate === "person.wellbeing" ? { answers_predicate: primary.args.answers_predicate } : {}), reply_kind: primary.args.reply_kind ?? "answer", addressee_ids: [...(primary.addressee?.ids ?? [])] } });
   // Fail closed (ED-30G): a question Tier 1 did not understand and no complete Tier-2 reading filled is never
   // answered as a generic question -- it is clarified.
   // (Only when the legacy reading has no route of its own either: a known-answer or temporal question the
@@ -1040,6 +1047,7 @@ function finalizeFrame(frame, primary, rec, { completeness = null, entities = []
     relation: primary.relation, relation_target: primary.relation_target, reissue_of: primary.reissue_of, repair: primary.repair ?? null,
     speech_act: primary.speech_act, cardinality, temporal_scope: temporal, alternatives: primary.alternatives ?? null,
     args: { ...(primary.args ?? {}), ...(thirdParty ? { third_party_subject: thirdParty } : {}), ...(thirdParty && predicate === "person.familiarity" ? { other_id: mentionIds.find((id) => id !== thirdParty) ?? (primary.args?.other_id !== thirdParty ? primary.args?.other_id ?? null : null) } : {}) }, addressee_kind: primary.addressee?.kind ?? null, addressee_ids: [...(primary.addressee?.ids ?? [])],
+    ...(primary.addressee?.source === "ongoing_personal_disclosure" ? { addressee_source: primary.addressee.source } : {}),
     quantifier: primary.addressee?.quantifier ?? null, clarify_reason: primary.clarify?.reason ?? null, request_text: primary.request_text ?? null, completeness: completeness ?? null, overrides: [...(primary.overrides ?? []), ...(rec?.override ? [rec.override] : [])], facet_source: primary.facet_source ?? null
   } : null;
   const common = { predicate: predicate ?? null, answer_contract: entry?.answer_contract ?? null, turn };
@@ -1204,7 +1212,13 @@ function fragmentAntecedents(dis) {
   if (dis?.activity?.template?.predicate) out.push({ source: "activity", predicate: dis.activity.template.predicate, responders: [] });
   return out;
 }
-function isFragmentTurn(e) { return e?.act?.force?.cue === "fragment" || String(e?.act?.body ?? e?.act?.text ?? "").replace(/[?!.]+$/, "").trim().split(/\s+/).filter(Boolean).length <= 3; }
+function isFragmentTurn(e) {
+  const text = String(e?.act?.body_expanded ?? e?.act?.body ?? e?.act?.text ?? "").trim();
+  // A complete short question ("Who is everyone?") is not an elliptical fragment.
+  // Word count alone must not force a fresh question to match the previous topic.
+  if (/^(?:who|what|where|when|why|how|which)\s+(?:is|are|was|were|do|does|did|can|could|should|would|will|has|have)\b/i.test(text)) return false;
+  return e?.act?.force?.cue === "fragment" || text.replace(/[?!.]+$/, "").split(/\s+/).filter(Boolean).length <= 3;
+}
 
 function assessAdvisory(advice, analysis, { entities = [], dis = null } = {}) {
   const e = analysis?.primary ?? null;
@@ -1318,7 +1332,7 @@ function tier1Contract(analysis, frame, completeness = null, { dis = null } = {}
   const reasons = [];
   const push = (field, status, why) => reasons.push({ field, status, why });
   const force = e?.act?.force ?? null;
-  push("speech_act", force?.confidence === "uncertain" && e?.speech_act !== "answer" ? "uncertain" : "resolved", `${e?.speech_act ?? "none"}:${force?.cue ?? "n/a"}`);
+  push("speech_act", (force?.confidence === "uncertain" || (c.missing ?? []).includes("force_uncertain")) && e?.speech_act !== "answer" ? "uncertain" : "resolved", `${e?.speech_act ?? "none"}:${force?.cue ?? "n/a"}`);
   const asking = ["question", "request", "elliptical_continuation", "repair", "attention_call"].includes(e?.speech_act);
   const cands = e?.act?.predicate_candidates ?? [];
   const competing = cands.length >= 2 && new Set(cands.slice(0, 2).map((x) => String(x.id).split(".")[0])).size === 2 && registry.get(cands[0].id)?.priority === registry.get(cands[1].id)?.priority && !e?.facet_source?.match(/item_role|discourse_followup|surface_anchor|inbound_counter/);

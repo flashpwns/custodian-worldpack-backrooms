@@ -4,15 +4,15 @@
 const fs=require('node:fs'),path=require('node:path'),http=require('node:http'),crypto=require('node:crypto'),cp=require('node:child_process');
 const ROOT=path.resolve(__dirname,'..');
 const APP=path.join(ROOT,'dist/desktop/mac-arm64/Yellow Beast.app');
-const SOURCE_FILES=['desktop/service.js','tools/dialogue-reader-frame.js','tools/dialogue-discourse.js','tools/dialogue-resolve-turn.js','tools/live-scene-projection.js','tools/speech-scheduler.js'];
+const SOURCE_FILES=['desktop/service.js','tools/ai-local-dialogue.js','tools/canonical-knowledge.js','tools/dialogue-state.js','tools/dialogue-claims.js','tools/dialogue-validation.js','tools/dialogue-reader-frame.js','tools/dialogue-discourse.js','tools/dialogue-interpretation.js','tools/dialogue-acts.js','tools/dialogue-turn.js','tools/dialogue-advisory-interpreter.js','tools/dialogue-fallback.js','tools/dialogue-prompt-contract.js','tools/dialogue-resolvers.js','tools/dialogue-resolve-turn.js','tools/live-scene-projection.js','tools/speech-scheduler.js'];
 const STEPS=Object.freeze([
  {id:'briefing',title:'1. Maxwell briefing',action:'Start a fresh Day 1 operation as Jack. During the briefing, ask: “What is the schedule and cutoff time?” Then finish the briefing normally.'},
- {id:'introduction',title:'2. Assembly Table introduction',action:'At the Assembly Table, confirm the visible team is you plus three coworkers. Use LOCAL. Say “Hello, everyone.” Then “I’m Jack.”'},
+ {id:'introduction',title:'2. Assembly Table introduction',action:'At the Assembly Table, confirm the visible team is you plus three coworkers. Use LOCAL. Say “Hello and goodmorning, everyone.” Ask “What\'re everyone\'s names?” Then “Well yes, but I mean everyone at the table, here.” Select one coworker and ask “WHAT ARE YOUR NAMES?” Clear the selection and say “I’m Jack.” Then talk naturally for five turns: ask about them, follow up on something they actually said, and share how you feel. Judge substance and differences between their voices.'},
  {id:'experience',title:'3. Direct experience and clarification',action:'Select the doctor and ask “Have you been inside the Complex before?” Then ask “So youve been there before? this, complex?” Repeat the latter question with an intern selected. Record anything confusing in the two replies.'},
  {id:'social',title:'4. Social observation and sarcasm',action:'Select a coworker and say “You look nervous.” Clear the selected recipient and say “Well, this seems incredibly safe.”'},
  {id:'carrying',title:'5. Group carrying question',action:'With the group addressed, ask “What are you all carrying?” Observe who responds, their equipment claims, and the order of the exchange.'},
  {id:'ambiguity',title:'6. Ambiguity and silence',action:'Say “You know the thing by the thing?” Observe the clarification. Leave the composer empty and wait without sending anything. Note any invented player speech or empty message.'},
- {id:'continuity',title:'7. Presentation and restart',action:'Throughout the run, watch whether your submitted words appear before the replies, LOCAL stays in the comms rail, and technical model labels leak into speech. Quit normally, reopen Yellow Beast and resume this operation; inspect the exchange order and your team again.'}
+ {id:'continuity',title:'7. Presentation and restart',action:'Throughout the run, watch whether your submitted words appear before the replies, LOCAL stays in the comms rail, and technical model labels leak into speech. Quit normally, reopen Yellow Beast and resume this operation; inspect the exchange order and your team again. Continue the conversation: ask “What were we talking about?” and follow up on something a coworker previously told you. Judge whether it still feels like the same conversation.'}
 ]);
 function observations(value){
  if(!value||typeof value!=='object'||value.observer!=='Jack'||!Array.isArray(value.steps)||value.steps.length!==STEPS.length)throw new Error('Enter Jack and an observation for every row.');
@@ -31,7 +31,12 @@ async function start({root=ROOT,launch=true}={}){
   if(!fs.existsSync(archive))throw new Error('Packaged ARM64 app missing. Run npm run desktop:build first.');
   const asar=require('@electron/asar');
   const build=JSON.parse(asar.extractFile(archive,'desktop/build-info.json').toString('utf8'));
-  if(build.commit!==head)throw new Error('Packaged build is from another commit. Run npm run desktop:build first.');
+  if(build.commit!==head){
+   // A later documentation-only evidence commit does not invalidate verified runtime bytes.
+   const ancestor=cp.spawnSync('git',['merge-base','--is-ancestor',build.commit,head],{cwd:ROOT});
+   const changed=cp.execFileSync('git',['diff','--name-only',build.commit,head],{cwd:ROOT,encoding:'utf8'}).trim().split('\n').filter(Boolean);
+   if(ancestor.status!==0||changed.some(f=>!f.startsWith('docs/')||!f.endsWith('.md')))throw new Error('Packaged runtime is from another source revision. Run npm run desktop:build first.');
+  }
   for(const file of SOURCE_FILES)if(!asar.extractFile(archive,file).equals(fs.readFileSync(path.join(ROOT,file))))throw new Error('Packaged source differs: '+file+'. Run npm run desktop:build first.');
   provenance.packaged_build=build;
   provenance.packaged_asar_sha256=crypto.createHash('sha256').update(fs.readFileSync(archive)).digest('hex');

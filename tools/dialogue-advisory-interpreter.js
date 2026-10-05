@@ -198,6 +198,7 @@ const ADVISORY_V2_SYSTEM_TEXT = [
   "Describe the line as ONE act: the part that asks or requests something (if any), otherwise the main thing said. Choose: speech_act; facet (what is asked about: one id from the list, or NONE if none fits); who is addressed (addressee_candidate label, or null); what place/thing it is about (referent_candidate label, or null); quantifier; discourse_relation.",
   "speech_act: \"question\" when the person wants information or a confirmation, even typed without a question mark (a statement said to check it, e.g. \"the bag's still with you\", asks); \"statement\" only when they tell something and expect nothing back.",
   "Every *_text field must be copied EXACTLY from the line, or null. Use only the labels given. A short fragment (\"since when\", \"and you\", \"the lamp\") continues the conversation state given: read it against that. If you cannot tell, say confidence low.",
+  "Use the main information request, not a greeting or background remark before it. Asking what to call the listeners or who everyone is asks for person.self_description; it does not ask whether they have met before. Asking who works or travels with the speaker asks mission.participants, not person.familiarity. A request to be reminded may ask a fresh, complete question rather than continue the last topic.",
   "Reply with exactly one compact JSON object and nothing else."
 ].join("\n");
 

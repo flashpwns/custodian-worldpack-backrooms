@@ -124,7 +124,7 @@ function licenseOf(contribution) {
   const reportedStatements = [];
   for (const f of facts) {
     if (f.key === "reported_speech") for (const c of f.value?.claims ?? []) if (c.speaker_id) reportedAbout.add(c.speaker_id);
-    if (f.key === "reported_speech") for (const c of f.value?.claims ?? []) if (c.epistemic === "own_speech" && typeof c.quote === "string") ownQuotes.push(c.quote);
+    if (f.key === "reported_speech") for (const c of f.value?.claims ?? []) if (["own_speech", "player_claim"].includes(c.epistemic) && typeof c.quote === "string") ownQuotes.push(c.quote);
     // What was heard is licensed only as the report it is ("Tonya said she was doing all right").
     if (f.key === "reported_speech") for (const c of f.value?.claims ?? []) if (c.reported && c.speaker_name) reportedStatements.push(`${c.speaker_name} said ${c.reported}`);
     if (f.key === "predicate_answer" && f.value?.answer?.reported && f.value.answer.speaker_id) reportedAbout.add(f.value.answer.speaker_id);
@@ -134,6 +134,11 @@ function licenseOf(contribution) {
     if (Array.isArray(f.value?.statements)) statements.push(...f.value.statements);
     if (typeof f.value === "string") statements.push(f.value);
     if (f.value?.text) statements.push(f.value.text);
+    // Grounded personal detail is optional in an open introduction, but still
+    // licenses only its stored value (never an entire history predicate family).
+    if (f.key === "identity_fact" && f.value?.async_tenure) statements.push(`I have been with ASYNC ${f.value.async_tenure}.`);
+    if (f.key === "personal_preference") statements.push(`I enjoy ${f.value}.`, `I like ${f.value}.`, `I prefer ${f.value}.`);
+    if (f.key === "identity_fact" && f.value?.education_or_trade) statements.push(`My background is ${f.value.education_or_trade}.`);
     // Repair: the preceding lines the speaker may repeat verbatim.
     if (Array.isArray(f.value)) for (const v of f.value) if (typeof v?.text === "string") statements.push(v.text);
   }
@@ -270,6 +275,10 @@ function validatePrecision(speech, contribution) {
   const answers = licenseOf(contribution).predicateAnswers;
   const s = String(speech);
   if (COUNT_CLAIM.test(s) && !answers.some((a) => a.answer?.count != null)) return reject(CODES.PRECISION, `adds a count canon does not store: "${s.match(COUNT_CLAIM)[0]}"`);
+  // A stored duration is attached to its fact, not a free number available for
+  // any biography. ASYNC tenure cannot become years of practicing a trade.
+  const identityTenure = licenseOf(contribution).facts.some(f => (f.key === "identity_fact" && f.value?.async_tenure) || (f.key === "predicate_answer" && f.value?.predicate === "person.async_tenure"));
+  if (identityTenure && claimClauses(s).some(clause => !/\bASYNC\b/i.test(clause) && /\b(?:studied|trained|worked|done|doing|practi[cs]ed|experience in)\b[^.!?]*\b(?:for|about|over|under|around)\s+(?:\d+|one|two|three|four|five|six|seven|eight|nine|ten|a few|several)[^.!?]*\b(?:years?|months?|weeks?)\b/i.test(clause))) return reject(CODES.PRECISION, "turns ASYNC tenure into an unsupported duration of trade experience");
   const exact = s.match(EXACT_TENURE);
   if (exact && !/\b(?:first|today)\b/i.test(exact[0])) {
     const stated = licenseOf(contribution).statements.join(" ").toLowerCase();
@@ -388,6 +397,14 @@ function validateResponsiveness(speech, contribution, { people = [], speaker_id 
 function validateClaims(speech, contribution, opts = {}) {
   const personal = validatePersonalClaims(speech, contribution, opts);
   if (!personal.ok) return personal;
+  // Optional personal context licenses its stored band, not arbitrary history.
+  // Validate it only when the candidate actually voices that predicate.
+  const props = extractPropositions(speech, opts);
+  for (const fact of contribution?.optional_facts ?? []) {
+    if (fact.key !== "predicate_answer" || !props.some(p => p.families.includes(fact.value?.predicate))) continue;
+    const bounded = validateResponsiveness(speech, { ...contribution, required_facts: [fact] }, opts);
+    if (!bounded.ok) return bounded;
+  }
   const precision = validatePrecision(speech, contribution);
   if (!precision.ok) return precision;
   const ceiling = validateEntityCeiling(speech, contribution, opts);

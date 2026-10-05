@@ -219,7 +219,7 @@ function validateContribution(contribution, rawSpeech, options = {}) {
     // The WHOLE line keeps the shape rules a part is excused from: no unrequested question, and one combined
     // word ceiling for the parts (review F9).
     const whole = String(rawSpeech ?? "");
-    if (!(contribution.parts ?? []).some((p) => p.may_ask_clarifying_question) && asksQuestion(whole)) return reject(CODES.SHAPE, "asks a question the plan does not authorize");
+    if (!(contribution.parts ?? []).some((p) => p.may_ask_clarifying_question || (p.required_facts ?? []).some(f => f.key === "question_to_player")) && asksQuestion(whole)) return reject(CODES.SHAPE, "asks a question the plan does not authorize");
     const cap = (contribution.parts ?? []).reduce((n, p) => n + (MAX_WORDS[p.discourse_function] ?? 30), 0);
     if (whole.split(/\s+/).filter(Boolean).length > cap) return reject(CODES.SHAPE, `a combined answer longer than ${cap} words`);
     // Each part is judged on the sentences that answer IT (a mixed "No, ... Yes, ..." answer is two answers).
@@ -255,6 +255,13 @@ function validateContribution(contribution, rawSpeech, options = {}) {
   const fn = contribution.discourse_function;
   // ED-30: an attention response is a word or two of listening, nothing more.
   if (fn === "attend") return /^\s*(?:yes|yeah|yep|mm+|hm+|mhm|what'?s up|what is it|i'?m (?:here|listening)|here|go ahead|listening)\b[\s?.!,]*$/i.test(speech) ? { ok: true } : reject(CODES.SHAPE, "an attention response is a word or two");
+  const reciprocal = requiredValue(contribution, "question_to_player")[0];
+  if (reciprocal) {
+    const questions = sentences(speech).filter(asksQuestion);
+    // Meaning is licensed narrowly. Wording can vary; this is not permission
+    // to ask about tasks, hidden facts, someone else's state or future actions.
+    if (reciprocal.topic !== "current_wellbeing" || questions.length !== 1 || !/^(?:(?:and|so|well)[, ]+)?(?:how about (?:you|yourself)|what about (?:you|yourself)|you|how (?:are you|do you feel|are you feeling)(?: (?:doing|feeling|holding up|today|now|right now))?|how are things (?:for|with) you|how(?:\'s| is) it going (?:for|with) you|(?:are )?you (?:doing|feeling) (?:okay|all right|alright|fine))\s*\?$/i.test(questions[0].trim())) return reject(CODES.SHAPE, "does not ask the licensed reciprocal check-in");
+  }
   // ED-30 H1-H5: personal claims about anyone but the speaker (unless an attributed licensed report),
   // unlicensed self claims, manufactured precision, the entity ceiling, and answer responsiveness.
   const claims = dialogueClaims.validateClaims(speech, contribution, { people, speaker_id, speaker_name: speaker_name ?? requiredValue(contribution, "name")[0] ?? null, entities, resolveMentions, prior: prior ?? (contribution.same_turn_prior_responses ?? []).map((p) => p?.text).filter(Boolean), player_text });
@@ -338,7 +345,7 @@ function validateContribution(contribution, rawSpeech, options = {}) {
   // Response shape: a question is authorized only by a clarification plan. Every other plan answers,
   // reacts or acknowledges; an unrequested question (help-desk "Is there a procedure I should follow?")
   // violates it, question mark or not.
-  if (!compound_part && fn !== "report_observation" && fn !== "ambiguous_reference" && !contribution.may_ask_clarifying_question && asksQuestion(speech)) return reject(CODES.SHAPE, NO_COUNTER_QUESTION.has(fn) ? "answers with a question" : "asks a question the plan does not authorize");
+  if (!compound_part && fn !== "report_observation" && fn !== "ambiguous_reference" && !contribution.may_ask_clarifying_question && !reciprocal && asksQuestion(speech)) return reject(CODES.SHAPE, NO_COUNTER_QUESTION.has(fn) ? "answers with a question" : "asks a question the plan does not authorize");
   // A coworker's gender is not canonical: a line that names one must not give them "he"/"she" (fail closed;
   // the fallback uses the name or "they"). Lines about Maxwell, whose pronoun canon establishes, are exempt.
   if ((people ?? []).some((p) => new RegExp(`\\b${String(p.name ?? "").replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\b`, "i").test(speech)) && /\b(?:she|he|her|him|his|hers|herself|himself|she's|he's)\b/i.test(speech) && !/\b(?:maxwell|kirk)\b/i.test(speech)) return reject(CODES.SHAPE, "assigns a coworker a gender that canon does not establish");
@@ -431,7 +438,8 @@ function validateContribution(contribution, rawSpeech, options = {}) {
       const nameFact = requiredValue(contribution, "name")[0];
       if (fn === "invite_self_description" && nameFact && coverage(speech, nameFact) < 0.5) return reject(CODES.UNMET, "a self-introduction includes the speaker's name");
       if (facts.length && !facts.some(([, v]) => coverage(speech, v) >= 0.5)) return reject(CODES.UNMET, "does not express the supplied name/role/assignment");
-      if (sents.length > 3 || speech.length > 400) return reject(CODES.SHAPE, "self-description must be brief");
+      const openIntroduction = fn === "invite_self_description" && contribution.requested_content !== "name";
+      if (sents.length > (openIntroduction ? 6 : 3) || speech.length > (openIntroduction ? 600 : 400)) return reject(CODES.SHAPE, "self-description exceeds the conversational limit");
       break;
     }
     case "ask_item_ownership": {
@@ -503,7 +511,7 @@ function validateContribution(contribution, rawSpeech, options = {}) {
       const experience = requiredValue(contribution, "prior_expedition_experience")[0];
       const known = requiredValue(contribution, "known_answer")[0];
       const background = requiredValue(contribution, "identity_fact")[0]?.education_or_trade;
-      const supplied = experience || knownAnswerText(known) || background || null;
+      const supplied = experience || knownAnswerText(known) || background || requiredValue(contribution, "personal_preference")[0] || null;
       if (supplied) {
         if (coverage(speech, supplied) < 0.5) return reject(CODES.UNMET, "does not express the supplied fact");
       } else {

@@ -1,6 +1,6 @@
 # Dialogue closure authority — 2026-10-05
 
-This is the current dialogue readiness statement. Earlier implementation-state entries and acceptance artifacts are historical evidence. The scoped dialogue engineering gates are complete. Jack’s official final Electron acceptance has not been performed; automated verification is not human observation.
+This is the current dialogue readiness statement. Earlier implementation-state entries and acceptance artifacts are historical evidence. Jack’s human Electron test has FAILED the Assembly Table introduction/name exchange. His screenshot (2026-10-05 02:24:16) shows group name questions answered with departed Maxwell’s name, no reply to a correction, and repetition of the wrong answer after a direct plural name question. The prior automated run did not cover this failure. The repair now addresses ordinary names, correction, richer character replies and persistent conversation; current verification and packaging are being completed. Jack’s earlier human verdict remains FAILED until he retests.
 
 ## Authority and provenance
 
@@ -13,11 +13,21 @@ This is the current dialogue readiness statement. Earlier implementation-state e
 - **Formal benchmark / cutover:** no independent ADJUDICATED_GOLD benchmark is established. The frozen Teacher Ceiling requires the original 474-render sample, complete adjudication accounting and at least 300 valid independent adjudicated renders before a formal headline score. Teacher/reviewer provenance, subsequent E4B, calibration/sealed acceptance and production cutover remain separate, uncompleted gates. The historical C2 self-state `today`/`now` scope decision also remains deferred for Reader authority; existing strict validation and legacy production scope are preserved. These requirements govern the experiment and future Reader authority; they do **not** prevent Jack testing the currently authoritative dialogue implementation while Reader stays shadow-only. No threshold, frozen experiment, schema/render input or headline eligibility rule was relaxed.
 - Historical evidence and frozen artifacts remain byte-identical. New validator receipts/scores identify `yellow-beast-reader-validator@v2-convention-b`; old scores must not be silently pooled with the repaired implementation.
 
+## Current natural conversation repairs
+
+Open introductions now offer stored background, preferences and canonical employment history without forcing every coworker to recite their assignment. The wordsmith receives temperament-specific guidance and may vary sentence structure and length. A true first-day nervous state is accepted rather than discarded by a mismatched secondary check. In a personal exchange a coworker may share their own established state; the player’s feeling never licenses an invented coworker feeling.
+
+Ordinary combined greetings, plural name/role questions, introduction preambles and corrections of the addressed group are resolved before wording. One code-selected coworker may return a personal check-in. Its inbound question is durable, and its asker acknowledges the player’s answer after cold reload. Conversation recall uses the actual heard question; optional personal facts enter structured hearing memory only when spoken. The complete speech history remains available.
+
+These repairs do not establish a one-in-a-million misunderstanding rate or prove Jack finds the voices human. His judgment of conversational substance, variation and continuity remains the final acceptance gate. Unaddressed remarks retain the established silence policy.
+
 ## Engineering and verification
+
+The table below currently preserves the previous f873e49 verification evidence; it will be replaced by the stable repair run and current packaged verification before handoff.
 
 The initial 67 verification-inventory errors were repaired without dropping tests or changing verifier core, existing quarantine/tier authority or required reports. The four existing quarantines remain: V03 world-save equivalence (`y33`), historical UI expectations (`y34`, `y35`) and native settings display (`y54`). Reported tier totals cover the included authority set; this dialogue test readiness is not broader release certification. See `../../verification/DIALOGUE_INVENTORY_RECONCILIATION.md` for the classifications and reviewed expectation changes.
 
-Runtime repairs prevent a failed input’s follow-up drain from creating an empty canonical queue, isolate frozen coworker task projections from mutable canonical tasks, and keep LOCAL fallback speech free of provider diagnostics. Older LOCAL test callers now await actual responder completion. Frozen replay checks apply only the exact owner-authorized validator-disposition overlay; every other historical field stays enforced.
+Runtime repairs prevent a failed input’s follow-up drain from creating an empty canonical queue, isolate frozen coworker task projections from mutable canonical tasks, and keep LOCAL fallback speech free of provider diagnostics. Older LOCAL test callers now await actual responder completion. Frozen evaluation files remain unchanged. The current engineering regression applies twelve exact, hash-pinned scenario amendments plus a separately sealed full-corpus edition (136 changed characterization turns, six round-trip diagnostics and four shadow rows); every unlisted historical field stays enforced. The frozen experiment is reproduced from its last verified immutable source, while a separate 944-occurrence current-service replay enforces the revised engineering edition. This is not a Teacher Ceiling amendment, benchmark gold or cutover evidence. See `../acceptance/dialogue-natural-conversation/README.md`.
 
 | Gate | Result |
 | --- | --- |
@@ -32,13 +42,13 @@ Runtime repairs prevent a failed input’s follow-up drain from creating an empt
 | `npm run test:native` | 1/1 real Electron renderer test passes; all three required native commands execute successfully |
 | macOS ARM64 `npm run desktop:build` | Successful source build, including settings and first-run rebuilds; no Developer ID signing/notarization (embedded Electron executable is ad hoc signed) |
 | Packaged source vs checkout / commit | Key Reader/dialogue source is byte-identical. The final handoff rebuild binds the package to committed HEAD; the launch preflight refuses stale HEAD or source bytes |
-| Jack’s official Electron dialogue acceptance | **NOT PERFORMED** |
+| Jack’s official Electron dialogue acceptance | **FAILED — Assembly Table names and repair; other steps not established by this screenshot** |
 
-Native verification is automated evidence, not Jack’s observation or an ordinary-play certificate. It uses isolated profiles and asserts production-profile preservation. The checklist launch uses the normal packaged application with no injected state. Its preflight requires packaged build metadata to match current HEAD and byte-identical key dialogue source, then captures package/source provenance alongside Jack’s explicit observations.
+Native verification is automated evidence, not Jack’s observation or an ordinary-play certificate. It uses isolated profiles and asserts production-profile preservation. The checklist launch uses the normal packaged application with no injected state. Its preflight requires the current source revision (allowing only subsequent documentation-only commits) and byte-identical key dialogue source, then captures package/source provenance alongside Jack’s explicit observations.
 
 ## Remaining human work
 
-The only pre-implementation-acceptance gate is Jack’s official seven-step Electron run, plus his subjective judgment on the two Complex interpretations surfaced in step 3. No result is preselected or signed on his behalf. Future independent benchmark creation and Reader cutover remain explicitly uncompleted and out of current implementation authority.
+After engineering verification and the current rebuild, Jack must repeat human acceptance, including the failed name exchange, a natural five-turn conversation with distinctive voices, and follow-ups after reopening. His subjective judgment on the two Complex interpretations is surfaced in step 3. No result is preselected or signed on his behalf. Future independent benchmark creation and Reader cutover remain explicitly uncompleted and out of current implementation authority.
 
 ```sh
 cd /Users/jacktr/Developer/custodian-worldpack-backrooms

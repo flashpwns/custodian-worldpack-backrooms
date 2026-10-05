@@ -68,6 +68,8 @@ const TARGET_REPAIR = [
   /^(?:wait,?\s+|sorry,?\s+|oh,?\s+)*i\s+(?:meant to ask|wanted to ask|was trying to ask|should have asked)\s+(?<name>[A-Za-z][A-Za-z'-]+)(?:\s+(?:that|this|it))?\s*[.!?]*$/i,
   // "I wasn't asking you, I was asking Tonya." (exclusion + the intended target in one line)
   /^i\s+(?:wasn'?t|was not|am not|'m not)\s+(?:asking|talking to|speaking to)\s+(?<exclude>you|[A-Za-z][A-Za-z'-]+)\s*[,;.]?\s*(?:i\s+(?:was|am|'m)\s+(?:asking|talking to|speaking to)|i\s+meant|i\s+asked)\s+(?<name>[A-Za-z][A-Za-z'-]+)\s*[.!?]*$/i,
+  // Correcting the addressed group, with conversational markers retained in the raw clause.
+  /^(?:(?:well|yes|yeah|no|but|wait|sorry|actually)[, ]+)*i\s+mean(?:t)?\s+(?<group>everyone|everybody|all of you|you (?:two|three)|the whole (?:table|group|team))(?:\s+at\s+(?:the\s+)?table)?(?:\s*,?\s*here)?(?:\s*,?\s*not\s+(?:just\s+)?[A-Za-z][A-Za-z'-]+)?\s*[.!?]*$/i,
   // The whole group was meant ("I meant all of you", "that was for the whole table", "everyone, not just X").
   /^i\s+(?:meant|was asking|asked|was talking to|was speaking to|meant to ask)\s+(?<group>all of you|all three of you|you all|y'?all|everyone|everybody|the whole (?:table|group|team)|both of you|you both|you two|the group|the rest of you|all three)(?:\s*,?\s*not just\s+(?<exclude>[A-Za-z][A-Za-z'-]+))?\s*[.!?]*$/i,
   /^(?:that|this|it|the question)(?:\s+one)?\s+(?:was|is)\s+(?:meant\s+)?for\s+(?<group>everyone|everybody|all of you|the whole (?:table|group|team)|the group|both of you|you both|all three of you)\s*[.!?]*$/i,
@@ -559,6 +561,11 @@ function clauseActCore(clause, { people = [] } = {}) {
     coordinated: Boolean(clause.coordinated)
   };
   const trimmed = body.replace(/[\s]+/g, " ").trim();
+  // Keep social phrases intact: "nice" is not a removable marker inside a meeting greeting.
+  if (/^(?:(?:it['’]?s|it is)\s+)?(?:nice|good|great|glad|pleased|a pleasure)\s+(?:to\s+)?(?:meet|meeting)\s+you(?:\s+(?:all|both|two|three|guys|folks))?[.!\s]*$/i.test(cleanText.trim())) {
+    act.speech_act = "greeting"; act.body = cleanText.trim(); act.body_expanded = cleanText.trim(); return act;
+  }
+
   // "Have you and Tonya been in?": Tonya is asked too (a coordinated subject with "you").
   for (const m of body.matchAll(/\byou and ([A-Za-z][A-Za-z'-]+)\b/gi)) {
     const person = people.find((p) => (p.names ?? [p.name]).some((n) => String(n).toLowerCase() === m[1].toLowerCase()));
@@ -743,6 +750,15 @@ function parseActs(raw, { people = [], vocabulary = [], protect = [] } = {}) {
   // A coordinated second question inherits the first one's addressee ("Tonya, is it your first day, and
   // have you been in there before?").
   for (let i = 1; i < acts.length; i += 1) if (acts[i].coordinated && !acts[i].vocatives.length && acts[i - 1].vocatives.length) acts[i].vocatives = acts[i - 1].vocatives.map((v) => ({ ...v, form: "coordinated" }));
+  // A named polite question preamble addresses its immediately following question too.
+  // A person merely mentioned in another statement supplies no such evidence.
+  for (let i = 1; i < acts.length; i += 1) {
+    const lead = acts[i - 1], question = acts[i];
+    const polite = /\b(?:hope you (?:do not|don't) mind me asking|may I ask|can I ask)\b/i.test(lead.body_expanded || lead.body);
+    const namedLead = polite && people.find(p => (p.names ?? [p.name]).some(n => new RegExp(`^${escapeRe(n)},\\s*(?:I hope|may I ask|can I ask)\\b`, "i").test(lead.text)));
+    const vocatives = lead.vocatives.length ? lead.vocatives : namedLead ? [{id:namedLead.id,name:namedLead.name}] : [];
+    if (polite && vocatives.length && !question.vocatives.length && question.speech_act === "question") question.vocatives = vocatives.map(v => ({ ...v, form: "preceding_clause" }));
+  }
   // "Giselle? Malcolm?": consecutive bare-name calls are one call to both.
   for (let i = acts.length - 1; i > 0; i -= 1) {
     const a = acts[i - 1], b = acts[i];

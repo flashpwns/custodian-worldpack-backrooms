@@ -61,7 +61,8 @@ test("ED-1 A — 'Mind telling me a bit about yourselves?' is a group self-descr
     assert.equal(plan.discourse_function, "invite_self_description");
     assert.match(plan.purpose, /identify yourself/);
     assert.doesNotMatch(plan.purpose, /task help|mission|check/i);
-    assert.deepEqual(plan.required_facts.map((f) => f.key), plan.responder_id === "c-nora" ? ["name", "role", "current_assignment"] : ["name", "role"]);
+    assert.deepEqual(plan.required_facts.map((f) => f.key), ["name", "role"]);
+    assert.equal(plan.optional_facts.some((f) => f.key === "current_assignment"), plan.responder_id === "c-nora", "an open introduction can mention an assignment without being forced into a roster recital");
     assert.ok(plan.forbidden_claims.includes("invented_biography"));
     assert.ok(plan.forbidden_claims.includes("unrequested_mission_briefing"));
   }
